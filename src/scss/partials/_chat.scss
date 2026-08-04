@@ -877,7 +877,7 @@
     --send-as-margin-left: 0rem;
     --send-as-margin-right: .25rem;
     --send-as-total-size: calc(var(--send-as-size) + var(--send-as-margin-left) + var(--send-as-margin-right));
-    --commands-size: 2.375rem;
+    --commands-size: 2.5rem;
     --commands-margin-left: 0rem;
     --commands-margin-right: 0rem;
     --commands-total-size: calc(var(--commands-size) + var(--commands-margin-left) + var(--commands-margin-right));
@@ -903,7 +903,7 @@
       background-color: var(--primary-color);
       display: flex;
       align-items: center;
-      padding: 0 .6875rem;
+      padding: 0 .75rem;
       // justify-content: center;
       margin-inline-start: var(--commands-margin-left);
       cursor: pointer;
@@ -934,7 +934,7 @@
       }
 
       &-icon-scale {
-        transform: scale(.875);
+        transform: scale(1);
         display: flex;
         align-items: center;
         justify-content: center;

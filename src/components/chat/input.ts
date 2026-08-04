@@ -954,6 +954,10 @@ export default class ChatInput {
     let webViewTempId = 0, waitingForWebView = false;
     attachClickEvent(this.botCommandsToggle, (e) => {
       cancelEvent(e);
+      if(this.hasOffset?.type !== 'commands' || !this.hasOffset.forwards) {
+        return;
+      }
+
       const botId = this.chat.peerId.toUserId();
       const {botMenuButton} = this;
       if(botMenuButton) {
@@ -2782,7 +2786,7 @@ export default class ChatInput {
 
     if(botMenuButton && isInputEmpty) {
       // padding + icon size + icon margin
-      const width = getTextWidth(botMenuButton.text, FontFull) + 22 + 20 + 6;
+      const width = getTextWidth(botMenuButton.text, FontFull) + 24 + 20 + 6;
       this.newMessageWrapper.style.setProperty('--commands-size', `${Math.ceil(width)}px`);
     } else {
       // this.newMessageWrapper.style.setProperty('--commands-size', `38px`);
