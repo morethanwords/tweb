@@ -806,6 +806,7 @@ export default class Chat extends EventListenerBase<{
             const scrollSaver = this.bubbles.createScrollSaver();
             scrollSaver.save();
             this.container.classList.toggle(className, !isSmallScreen && isActive);
+            this.topbar.setFloating();
             this.topbar.container.classList.toggle('hide-pinned', isSmallScreen);
             scrollSaver.restore();
           },

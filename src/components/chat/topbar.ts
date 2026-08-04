@@ -1575,12 +1575,13 @@ export default class ChatTopbar {
     }
 
     const floatingHeight = count > 0 ? platesHeight + Math.max(0, count - 1) * PLATE_DIVIDER + TOPBAR_GAP : 0;
+    const reservedFloatingHeight = this.chat.container.classList.contains('is-search-active') ? 0 : floatingHeight;
     this.container.dataset.floating = '' + count;
     this.chat.container.style.setProperty(
       '--pinned-floating-height',
-      `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`
+      `calc(${reservedFloatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`
     );
-    this.chat.updatePinnedFloatingHeight(floatingHeight);
+    this.chat.updatePinnedFloatingHeight(reservedFloatingHeight);
   };
 
   private messagesCounter({
