@@ -649,7 +649,7 @@ PeerProfile.Phone = () => {
 
     return {
       phone,
-      isAnonymous: appConfig.fragment_prefixes.some((prefix) => phone.startsWith(prefix)),
+      isAnonymous: appConfig.fragment_prefixes?.some((prefix) => phone.startsWith(prefix)) ?? false,
       formatted: formatUserPhone(phone)
     };
   });
