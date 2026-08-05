@@ -1,16 +1,18 @@
 import {afterEach, describe, expect, test, vi} from 'vitest';
 import {renderLatexInto} from '@components/instantViewMath';
 
-// jsdom's MathML elements have no `style`, which the real Temml writes to — stand in for it with
-// the shape it produces for `a=b \tag{1}\label{electronHelpers}` plus a `\ref` pointing at it.
-vi.mock('temml', () => ({
-  default: {
+// Temml ships as an IIFE global loaded through a <script> tag (see loadTemml for why it must not
+// be bundled), and jsdom does not fetch external scripts — so the loader is the seam to stub.
+// jsdom's MathML elements also have no `style`, which the real Temml writes to; stand in for it
+// with the shape it produces for `a=b \tag{1}\label{electronHelpers}` plus a `\ref` pointing at it.
+vi.mock('@helpers/math/loadTemml', () => ({
+  default: () => Promise.resolve({
     render: (source: string, element: HTMLElement) => {
       const label = source.match(/\\label\{([^}]+)\}/)[1];
       element.innerHTML = `<math><mtable><mtr id="${label}"><mtd></mtd></mtr>` +
         `<mrow class="tml-ref" href="#${label}"></mrow></mtable></math>`;
     }
-  }
+  })
 }));
 
 // `\label{…}` is the only way message content can put an `id` of its choosing into the document.

@@ -8,23 +8,7 @@ import {JSX, onMount} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
 import styles from '@components/instantView.module.scss';
-
-type TemmlRender = (source: string, element: HTMLElement, options?: {displayMode?: boolean, throwOnError?: boolean}) => void;
-let temmlPromise: Promise<{render: TemmlRender}> | undefined;
-
-// Temml and its font CSS load lazily on the first formula (not at IV open) as a Vite-minified async
-// chunk. WebA loads the unminified bundle via `temml.mjs?url` to dodge an old Temml/Vite build bug;
-// that bug is fixed since https://github.com/ronkok/Temml/pull/128, so a plain dynamic import works
-// and lets Vite minify + tree-shake it (~2x smaller over the wire).
-function ensureTemml(): Promise<{render: TemmlRender}> {
-  if(!temmlPromise) {
-    temmlPromise = Promise.all([
-      import('temml'),
-      import('temml/dist/Temml-Local.css')
-    ]).then(([m]) => (m as unknown as {default: {render: TemmlRender}}).default);
-  }
-  return temmlPromise;
-}
+import loadTemml from '@helpers/math/loadTemml';
 
 // Temml writes `\label{foo}` straight into `id="foo"`, and formula sources arrive in message
 // content — so a message would otherwise pick ids for the document. That is two problems: an id is
@@ -49,7 +33,7 @@ function namespaceLabelIds(element: HTMLElement) {
 // fallback if the library fails to load or the source doesn't parse (matches WebA's behaviour).
 export function renderLatexInto(element: HTMLElement, source: string, isBlock: boolean) {
   element.textContent = source;
-  ensureTemml().then((temml) => {
+  loadTemml().then((temml) => {
     try {
       element.textContent = '';
       temml.render(source, element, {displayMode: isBlock, throwOnError: true});
