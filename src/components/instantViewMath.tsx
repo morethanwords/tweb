@@ -26,6 +26,25 @@ function ensureTemml(): Promise<{render: TemmlRender}> {
   return temmlPromise;
 }
 
+// Temml writes `\label{foo}` straight into `id="foo"`, and formula sources arrive in message
+// content — so a message would otherwise pick ids for the document. That is two problems: an id is
+// exposed on `window` under its own name (a DOM-clobbering primitive), and it can collide with an
+// id the app or another formula already owns. Rewrite every id, and the `\ref` links pointing at
+// them, into a per-render namespace: the dashes keep it off the global scope and the counter keeps
+// each rendered formula to itself.
+let labelIdSeed = 0;
+function namespaceLabelIds(element: HTMLElement) {
+  const labelled = element.querySelectorAll('[id]');
+  const referencing = element.querySelectorAll('[href^="#"]');
+  if(!labelled.length && !referencing.length) {
+    return;
+  }
+
+  const prefix = 'tml-label-' + ++labelIdSeed + '-';
+  labelled.forEach((node) => node.setAttribute('id', prefix + node.getAttribute('id')));
+  referencing.forEach((node) => node.setAttribute('href', '#' + prefix + node.getAttribute('href').slice(1)));
+}
+
 // Render LaTeX `source` into `element` as MathML. Shows the raw source until Temml loads and as a
 // fallback if the library fails to load or the source doesn't parse (matches WebA's behaviour).
 export function renderLatexInto(element: HTMLElement, source: string, isBlock: boolean) {
@@ -34,6 +53,7 @@ export function renderLatexInto(element: HTMLElement, source: string, isBlock: b
     try {
       element.textContent = '';
       temml.render(source, element, {displayMode: isBlock, throwOnError: true});
+      namespaceLabelIds(element);
     } catch{
       element.textContent = source;
     }

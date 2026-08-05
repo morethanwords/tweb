@@ -290,6 +290,8 @@ declare global {
     originalError?: any,
   };
 
+  // read it through getElectronHelpers() from @helpers/electronHelpers — a bare `typeof` check also
+  // matches any element whose id happens to be `electronHelpers`, which message content can render
   const electronHelpers: {
     openExternal(url): void;
   } | undefined;

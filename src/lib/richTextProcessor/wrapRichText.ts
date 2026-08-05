@@ -9,6 +9,7 @@ import {MessageEntity} from '@layer';
 import encodeSpoiler from '@lib/richTextProcessor/encodeSpoiler';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
+import setExternalToAnchor, {getElectronHelpers} from '@helpers/electronHelpers';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import EMOJI_VERSIONS_SUPPORTED from '@environment/emojiVersionsSupport';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
@@ -594,16 +595,13 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             onclick = undefined;
           }
 
-          const href = (currentContext || typeof electronHelpers === 'undefined') ?
-            url :
-            `javascript:electronHelpers.openExternal('${url}');`;
-
           element = document.createElement('a');
           element.className = 'anchor-url';
-          (element as HTMLAnchorElement).href = href;
+          (element as HTMLAnchorElement).href = url;
 
-          if(!(currentContext || typeof electronHelpers !== 'undefined')) {
-            setBlankToAnchor(element as HTMLAnchorElement);
+          if(!currentContext) {
+            // under Electron the link belongs to the system browser rather than the app window
+            (getElectronHelpers() ? setExternalToAnchor : setBlankToAnchor)(element as HTMLAnchorElement);
           }
 
           if(onclick) {
