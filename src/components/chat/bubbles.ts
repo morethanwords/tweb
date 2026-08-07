@@ -6287,7 +6287,7 @@ export default class ChatBubbles {
         group: manual ? 'none' : this.chat.animationGroup,
         play,
         liteModeKey: manual ? false : 'stickers_chat',
-        loop,
+        loop: isEmoji ? false : loop, // * big emoji should be played once
         emoji: isEmoji ? context.messageMessage : undefined,
         withThumb: true,
         loadPromises: context.loadPromises,

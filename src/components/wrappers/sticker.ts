@@ -132,8 +132,6 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     lottieLoader.loadLottieWorkers();
   }
 
-  loop = !!(!emoji || isCustomEmoji) && loop;
-
   div.forEach((div) => {
     div.dataset.docId = '' + doc.id;
     if(emoji) {
