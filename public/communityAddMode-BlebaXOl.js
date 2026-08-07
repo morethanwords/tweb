@@ -1,0 +1,2 @@
+function e(e){return e?.pFlags.manage_linked_peers?`admins`:`all`}function t(e,t){let n={...t?.pFlags};return e===`admins`?n.manage_linked_peers=!0:delete n.manage_linked_peers,{...t,_:`chatBannedRights`,pFlags:n,until_date:t?.until_date??2147483647}}export{t as n,e as t};
+//# sourceMappingURL=communityAddMode-BlebaXOl.js.map

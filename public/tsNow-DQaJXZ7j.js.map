@@ -1,0 +1,1 @@
+{"version":3,"file":"tsNow-DQaJXZ7j.js","names":[],"sources":["../src/helpers/tsNow.ts"],"sourcesContent":["export default function tsNow(seconds?: true) {\n  const t = Date.now();\n  return seconds ? t / 1000 | 0 : t;\n}\n"],"mappings":"AAAA,SAAwB,EAAM,EAAgB,CAC5C,IAAM,EAAI,KAAK,IAAI,EACnB,OAAO,EAAU,EAAI,IAAO,EAAI,CAClC"}

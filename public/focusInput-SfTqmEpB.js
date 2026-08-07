@@ -1,0 +1,2 @@
+import{S as e}from"./apiManagerProxy-C03fqha3.js";import{O as t,P as n}from"./solid-C3SSzulL.js";import{h as r,p as i}from"./web-xw_ovNjO.js";var a=r(`<div>`);function o(e){let[r,o]=n(e,[`amount`,`withTransition`]);return(()=>{var e=a();return i(e,t(o,{get style(){return{"padding-top":r.amount,transition:r.withTransition?`.2s`:void 0}}}),!1,!1),e})()}function s(t,n){if(t.focus(),e(t),n){let e=new KeyboardEvent(n.type,n);t.dispatchEvent(e)}}export{o as n,s as t};
+//# sourceMappingURL=focusInput-SfTqmEpB.js.map

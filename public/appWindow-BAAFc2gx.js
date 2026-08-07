@@ -1,0 +1,2 @@
+var e=typeof window<`u`?window:void 0,t=new Set,n=new Set;function r(){return e}function i(){return e.document.body}function a(r){let i=e;!r||r===i||(n.forEach(e=>{try{e(r,i)}catch{}}),e=r,t.forEach(e=>{try{e(r,i)}catch{}}))}function o(e){return t.add(e),()=>t.delete(e)}function s(e){return n.add(e),()=>n.delete(e)}function c(t,n,r,i){let a,s=e=>{a=t(e),a.addEventListener(n,r,i)},c=()=>a?.removeEventListener(n,r,i);s(e);let l=o(e=>{c(),s(e)});return()=>{c(),l()}}export{s as a,o as i,r as n,a as o,i as r,c as t};
+//# sourceMappingURL=appWindow-BAAFc2gx.js.map

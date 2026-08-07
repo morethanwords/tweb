@@ -1,0 +1,2 @@
+import{n as e,t}from"./peerTypeSection-0_zC14CE.js";var n=e(e=>{let n=t(`video`,`AutoDownloadVideosTitle`,e.listenerSetter);e.scrollable.append(n.container)});export{n as default};
+//# sourceMappingURL=video-CF97eLAU.js.map
