@@ -1,6 +1,7 @@
 import {batch, createContext, createEffect, createMemo, createResource, createSignal, For, JSX, on, onCleanup, Show, untrack, useContext} from 'solid-js';
 import {render} from 'solid-js/web';
 import Section from '@components/section';
+import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {useChat, usePeer} from '@stores/peers';
 import {BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Photo, StoryItem, Document, MessageMedia, Timezone, User, UserFull, UserStatus} from '@layer';
@@ -1609,13 +1610,7 @@ PeerProfile.LinkedCommunity = () => {
       context.peer() :
       context.peer;
   });
-  const linkedCommunityId = createMemo(() => {
-    const value = peer();
-    return (
-      value?._ === 'user' ||
-      value?._ === 'channel'
-    ) ? value.linked_community_id?.toChatId() : undefined;
-  });
+  const linkedCommunityId = createMemo(() => getLinkedCommunityId(peer()));
   const linkedCommunity = useCommunity(linkedCommunityId);
   const linkedCommunityFull = useCommunityFull(linkedCommunityId);
   const hasJoinedLinkedCommunity = createMemo(() => {

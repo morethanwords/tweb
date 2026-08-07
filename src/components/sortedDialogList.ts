@@ -199,7 +199,7 @@ export default class SortedDialogList {
       !this.virtualFilterId &&
       !this.monoforumParentPeerId
     ) {
-      attachCommunityChildBadge(dialogElement.dom.listEl, key);
+      attachCommunityChildBadge(dialogElement, key);
     }
 
     await Promise.all(loadPromises);

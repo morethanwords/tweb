@@ -6,6 +6,7 @@ import type {
   CommunityPeerLinkRequestsState
 } from '@appManagers/appCommunitiesManager';
 import createMemoOrReturn, {ValueOrGetter} from '@helpers/solid/createMemoOrReturn';
+import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedCommunity';
 import {appState} from '@stores/appState';
 import {usePeers} from '@stores/peers';
 
@@ -26,25 +27,43 @@ export function useCommunityDialogs() {
   return communityDialogs;
 }
 
+/**
+ * Builds the projection key by looking up only the handful of known Community ids.
+ *
+ * It must never enumerate `peers`: that is a store proxy holding every peer the client
+ * knows, so `Object.values(peers)` hits the `get` trap for every key, allocates a signal
+ * per peer and per touched property, and subscribes the caller to ALL of them. On a large
+ * account that measured ~1s of main thread, re-run on any peer update whatsoever — an
+ * unrelated user coming online was enough.
+ */
+export function collectCollapsedCommunityDialogsKey(
+  peers: ReturnType<typeof usePeers>,
+  dialogs: CommunityDialogsState,
+  joinedCommunityIds: ChatId[] | null
+) {
+  const communityIds = new Set<ChatId>(joinedCommunityIds || []);
+  for(const communityId of Object.keys(dialogs)) {
+    communityIds.add(communityId.toChatId());
+  }
+
+  return [...communityIds]
+  .filter((communityId) => isCollapsedCommunity(peers[communityId.toPeerId(true)]))
+  .sort((a, b) => +a - +b)
+  .map((communityId) => {
+    const peerIds = dialogs[communityId]?.dialogs
+    .map(({peerId}) => peerId)
+    .sort((a, b) => a - b) || [];
+    return `${communityId}:${peerIds.join(',')}`;
+  }).join(';');
+}
+
 export function useCollapsedCommunityDialogsKey() {
   const peers = usePeers();
-  return createMemo(() => {
-    const communityIds = Object.values(peers)
-    .filter((community) => {
-      return community._ === 'community' &&
-        !community.pFlags.left &&
-        community.pFlags.collapsed_in_dialogs;
-    })
-    .map((community) => community.id)
-    .sort((a, b) => +a - +b);
-
-    return communityIds.map((communityId) => {
-      const peerIds = communityDialogs[communityId]?.dialogs
-      .map(({peerId}) => peerId)
-      .sort((a, b) => a - b) || [];
-      return `${communityId}:${peerIds.join(',')}`;
-    }).join(';');
-  });
+  return createMemo(() => collectCollapsedCommunityDialogsKey(
+    peers,
+    communityDialogs,
+    appState.joinedCommunityIds
+  ));
 }
 
 export function useCommunityFulls() {

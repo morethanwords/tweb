@@ -11,6 +11,7 @@ import {
   reconcileCommunityFulls,
   reconcileCommunityPeerLinkRequests,
   reconcileCommunityPeerLinkRequestsState,
+  collectCollapsedCommunityDialogsKey,
   useCollapsedCommunityDialogsKey,
   useCommunity,
   useCommunityDialog,
@@ -212,6 +213,82 @@ describe('communities Solid stores', () => {
     leftCommunity.pFlags.left = true;
     reconcilePeer(COMMUNITY_ID.toPeerId(true), leftCommunity);
     expect(key()).toBe('');
+  });
+
+  // The key used to be derived with Object.values(peers). That enumerates the whole peer
+  // store and, because it is a reactive proxy, subscribes the memo to every peer — so an
+  // unrelated user coming online re-ran the entire walk (~1s of main thread on a large
+  // account). Assert it now touches ONLY the Community ids and never enumerates.
+  test('derives the projection key without enumerating the peer store', () => {
+    const collapsed = makeCommunity(COMMUNITY_ID, 'Community');
+    collapsed.pFlags.collapsed_in_dialogs = true;
+
+    const backing: Record<string, any> = {
+      [COMMUNITY_ID.toPeerId(true)]: collapsed
+    };
+    for(let i = 0; i < 500; ++i) {
+      backing[900 + i] = {_: 'user', id: 900 + i, pFlags: {}};
+    }
+
+    const readKeys: string[] = [];
+    let enumerated = 0;
+    const peers = new Proxy(backing, {
+      get(target, prop) {
+        if(typeof prop === 'string') readKeys.push(prop);
+        return target[prop as string];
+      },
+      ownKeys(target) {
+        ++enumerated;
+        return Reflect.ownKeys(target);
+      }
+    });
+
+    const key = collectCollapsedCommunityDialogsKey(
+      peers as any,
+      {[COMMUNITY_ID]: makeCommunityDialog(COMMUNITY_ID, 0, [301 as PeerId])} as any,
+      [COMMUNITY_ID]
+    );
+
+    expect(key).toBe(`${COMMUNITY_ID}:301`);
+    expect(enumerated).toBe(0);
+    expect(readKeys).toEqual(['' + COMMUNITY_ID.toPeerId(true)]);
+  });
+
+  test('still reacts to a Community collapsing and to its dialog list', () => {
+    const key = useCollapsedCommunityDialogsKey();
+    setAppStateSilent('joinedCommunityIds', [OTHER_COMMUNITY_ID]);
+
+    const community = makeCommunity(OTHER_COMMUNITY_ID, 'Other');
+    reconcilePeer(OTHER_COMMUNITY_ID.toPeerId(true), community);
+    expect(key()).toBe('');
+
+    const collapsed = makeCommunity(OTHER_COMMUNITY_ID, 'Other');
+    collapsed.pFlags.collapsed_in_dialogs = true;
+    reconcilePeer(OTHER_COMMUNITY_ID.toPeerId(true), collapsed);
+    expect(key()).toBe(`${OTHER_COMMUNITY_ID}:`);
+
+    reconcileCommunityDialog(
+      OTHER_COMMUNITY_ID,
+      makeCommunityDialog(OTHER_COMMUNITY_ID, 0, [301 as PeerId])
+    );
+    expect(key()).toBe(`${OTHER_COMMUNITY_ID}:301`);
+  });
+
+  // A Community known only through the mirrored dialogs map (not yet in
+  // joinedCommunityIds) still has to show up in the key.
+  test('picks up a Community that only exists in the dialogs store', () => {
+    const key = useCollapsedCommunityDialogsKey();
+    setAppStateSilent('joinedCommunityIds', null);
+
+    const collapsed = makeCommunity(COMMUNITY_ID, 'Community');
+    collapsed.pFlags.collapsed_in_dialogs = true;
+    reconcilePeer(COMMUNITY_ID.toPeerId(true), collapsed);
+    reconcileCommunityDialog(
+      COMMUNITY_ID,
+      makeCommunityDialog(COMMUNITY_ID, 0, [401 as PeerId])
+    );
+
+    expect(key()).toBe(`${COMMUNITY_ID}:401`);
   });
 
   test('reconciles peer-link request snapshots and keyed updates', () => {

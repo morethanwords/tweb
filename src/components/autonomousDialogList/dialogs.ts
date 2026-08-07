@@ -1,6 +1,8 @@
 import {createEffect, createRoot} from 'solid-js';
 import {Dialog} from '@appManagers/appMessagesManager';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
+import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
+import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedCommunity';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
@@ -389,14 +391,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
         const projection: CommunityProjection[] = [];
         for(const id of Object.keys(communityDialogs)) {
           const communityId = id.toChatId();
+          // read unconditionally: this runs in an effect, and short-circuiting past the
+          // peer would drop its subscription
           const community = peers[communityId.toPeerId(true)];
           const dialog = communityDialogs[communityId];
-          if(
-            !dialog ||
-            community?._ !== 'community' ||
-            community.pFlags.left ||
-            !community.pFlags.collapsed_in_dialogs
-          ) {
+          if(!dialog || !isCollapsedCommunity(community)) {
             continue;
           }
 
@@ -427,20 +426,14 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   }
 
   private getCollapsedCommunityId(peerId: PeerId) {
-    const peer = apiManagerProxy.getPeer(peerId);
-    const communityId = peer?._ === 'channel' || peer?._ === 'user' ?
-      peer.linked_community_id?.toChatId() :
-      undefined;
+    const communityId = getLinkedCommunityId(apiManagerProxy.getPeer(peerId));
     if(!communityId) {
       return;
     }
 
-    const community = apiManagerProxy.getChat(communityId);
     const communityDialog = apiManagerProxy.getCommunityDialog(communityId);
-    return community?._ === 'community' &&
-      !community.pFlags.left &&
-      !!communityDialog &&
-      community.pFlags.collapsed_in_dialogs ?
+    return communityDialog &&
+      isCollapsedCommunity(apiManagerProxy.getChat(communityId)) ?
       communityId :
       undefined;
   }

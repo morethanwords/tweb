@@ -2,7 +2,6 @@ import {createEffect, createRoot} from 'solid-js';
 import {render} from 'solid-js/web';
 import CommunityAvatar from '@components/communities/communityAvatar';
 import CommunityChildBadge from '@components/communities/communityChildBadge';
-import defineSolidElement from '@lib/solidjs/defineSolidElement';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {i18n} from '@lib/langPack';
 import type {
@@ -126,24 +125,21 @@ export function createCommunityDialogListElement(
   return dialogElement;
 }
 
-type CommunityChildBadgeProps = {
-  peerId: PeerId
-};
-
-const CommunityChildBadgeElement = defineSolidElement<
-  CommunityChildBadgeProps,
-  never
->({
-  name: 'community-child-dialog-badge',
-  component: (props) => <CommunityChildBadge peerId={props.peerId} />
-});
-
+// The badge sits on EVERY row of the main chat list, so its lifetime is tied to
+// the dialog element rather than to DOM connectedness: the virtual list detaches
+// and re-attaches rows on every scroll pass, and a custom element would tear the
+// reactive root down and rebuild it each time — ~20us per row per pass, ~93% of
+// the row's whole mount cost, paid by every user whether or not they are in a
+// single community.
 export function attachCommunityChildBadge(
-  container: HTMLElement,
+  dialogElement: DialogElement,
   peerId: PeerId
 ) {
-  const element = new CommunityChildBadgeElement;
-  element.feedProps({peerId});
-  element.classList.add(styles.ChildBadgeHost);
-  container.append(element);
+  const host = document.createElement('div');
+  host.classList.add(styles.ChildBadgeHost);
+
+  const dispose = render(() => <CommunityChildBadge peerId={peerId} />, host);
+  dialogElement.middlewareHelper.onDestroy(dispose);
+
+  dialogElement.dom.listEl.append(host);
 }

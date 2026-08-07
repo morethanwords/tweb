@@ -41,6 +41,26 @@ export type DeferredSortedVirtualListItem<T> = {
 const EXTRA_ITEMS_TO_KEEP = 50;
 
 
+/**
+ * How far the reveal threshold jumps once a batch of loaded-but-hidden rows is ready.
+ *
+ * Reveal used to advance to (lowest queued index + 1), which let through exactly ONE row
+ * per timer: a window of N rows needed N serial ~8ms hops, and every hop is a `setTimeout`,
+ * so a main thread busy with scrolling stretches them and the tail of the window keeps
+ * showing skeletons for up to a second even though the dialogs are already in memory.
+ * The whole ready batch can go at once — the single tick still keeps rows from popping in
+ * on the same frame they arrive.
+ */
+export function getNextRevealIdx(queued: number[]) {
+  let max = -1;
+  for(const idx of queued) {
+    if(idx > max) max = idx;
+  }
+
+  return max < 0 ? null : max + 1;
+}
+
+
 export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedVirtualListArgs<T>) => createRoot(dispose => {
   const {
     scrollable,
@@ -198,22 +218,18 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
 
   const [queuedToBeRevealed, setQueuedToBeRevealed] = createSignal<number[]>([]);
 
-  const minQueuedToBeRevealed = createMemo(() =>
-    !queuedToBeRevealed().length ?
-      null :
-      Math.min(...queuedToBeRevealed())
-  );
+  const nextRevealIdx = createMemo(() => getNextRevealIdx(queuedToBeRevealed()));
 
 
   createEffect(() => {
-    const mn = minQueuedToBeRevealed();
+    const next = nextRevealIdx();
 
-    if(mn === null) return;
+    if(next === null) return;
 
     const timeout = self.setTimeout(() => {
       batch(() => {
-        setRevealIdx(prev => Math.max(mn + 1, prev));
-        setQueuedToBeRevealed(prev => prev.filter(n => revealIdx() <= n))
+        setRevealIdx(prev => Math.max(next, prev));
+        setQueuedToBeRevealed(prev => prev.filter(n => next <= n));
       });
     }, 1000 / 60 / 2);
 
@@ -253,13 +269,34 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   }
 
   let shrinkTimeout: number;
+  let shrinkMovedSinceScheduled = false;
 
-  createEffect(on(visibleItems, () => {
-    self.clearTimeout(shrinkTimeout);
-
+  // Wait for a tick in which nothing moved before shrinking, so the list is never cut
+  // out from under a scroll that is still running. `visibleItems` is written on EVERY
+  // row mount and unmount, though, and re-arming the timer on each of those churned a
+  // clearTimeout + setTimeout pair per row; one pending timer that re-checks on each
+  // tick debounces exactly the same way for a fraction of the timer traffic.
+  const scheduleShrink = () => {
     shrinkTimeout = self.setTimeout(() => {
+      if(shrinkMovedSinceScheduled) {
+        shrinkMovedSinceScheduled = false;
+        scheduleShrink();
+        return;
+      }
+
+      shrinkTimeout = undefined;
       checkShrink(visibleItems(), itemsLength());
     }, 0);
+  };
+
+  createEffect(on(visibleItems, () => {
+    if(shrinkTimeout !== undefined) {
+      shrinkMovedSinceScheduled = true;
+      return;
+    }
+
+    shrinkMovedSinceScheduled = false;
+    scheduleShrink();
   }));
 
   <VerticalVirtualList

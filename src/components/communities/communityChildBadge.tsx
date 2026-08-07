@@ -1,4 +1,5 @@
 import {createMemo, Show} from 'solid-js';
+import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
 import {IconTsx} from '@components/iconTsx';
 import {i18n} from '@lib/langPack';
 import {usePeer} from '@stores/peers';
@@ -8,12 +9,7 @@ export default function CommunityChildBadge(props: {
   peerId: PeerId
 }) {
   const peer = usePeer(() => props.peerId);
-  const communityId = createMemo(() => {
-    const value = peer();
-    return value?._ === 'channel' || value?._ === 'user' ?
-      value.linked_community_id?.toChatId() :
-      undefined;
-  });
+  const communityId = createMemo(() => getLinkedCommunityId(peer()));
   const openCommunity = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();

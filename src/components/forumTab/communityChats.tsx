@@ -166,6 +166,10 @@ export default function CommunityChats(props: {
       });
     }
   });
+  // Deliberately NOT isCollapsedCommunity(): this only mirrors the flag for the toggle
+  // below, while that predicate answers whether the Community folds its chats into OUR
+  // list and so also demands membership. Swapping it in would draw the toggle off for a
+  // Community we left while its flag is on, and flipping it would push a bogus change.
   const isCollapsed = () => {
     const value = community();
     return value?._ === 'community' &&

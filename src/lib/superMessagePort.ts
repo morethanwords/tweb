@@ -117,6 +117,35 @@ function describeTask(task: Task) {
   };
 }
 
+// The parts a pending invoke is identified by, kept apart so the readable name is only
+// built where it is actually printed.
+type AwaitingTaskName = {
+  taskType: string,
+  taskName?: string,
+  taskMethod?: string
+};
+
+function getInvokeTaskName(type: string, value: unknown): AwaitingTaskName {
+  const payload = value as {
+    name?: string,
+    method?: string
+  };
+
+  return {
+    taskType: type,
+    taskName: payload?.name,
+    taskMethod: payload?.method
+  };
+}
+
+function formatAwaitingName(entry: AwaitingTaskName) {
+  return [
+    entry.taskType,
+    entry.taskName,
+    entry.taskMethod
+  ].filter(Boolean).join(':');
+}
+
 
 class SuperMessagePort<
   Workers extends Listeners,
@@ -130,11 +159,13 @@ class SuperMessagePort<
   protected pingResolves: Map<SendPort, () => void>;
 
   protected taskId: number;
+  // * the task name is stored unjoined on purpose: every invoke allocates this entry,
+  // * but only the stuck watchdog and the debug log ever read it, so building the
+  // * string here would be per-call garbage for something almost nobody looks at
   protected awaiting: {
-    [id: number]: {
+    [id: number]: AwaitingTaskName & {
       resolve: any,
       reject: any,
-      taskType: string,
       port?: SendPort,
       createdAt: number,
       warned?: boolean
@@ -199,9 +230,9 @@ class SuperMessagePort<
       const age = now - entry.createdAt;
       if(!entry.warned && age >= STUCK_WARN_FIRST_MS) {
         entry.warned = true;
-        this.log.warn(`[STUCK] ${entry.taskType} pending ${age}ms (id=${id})`);
+        this.log.warn(`[STUCK] ${formatAwaitingName(entry)} pending ${age}ms (id=${id})`);
       } else if(entry.warned && age >= STUCK_WARN_PERSIST_MS && age % STUCK_WARN_PERSIST_MS < STUCK_WATCHDOG_INTERVAL_MS) {
-        this.log.error(`[STUCK] ${entry.taskType} still pending after ${age}ms (id=${id}) — likely no listener on peer or port not started`);
+        this.log.error(`[STUCK] ${formatAwaitingName(entry)} still pending after ${age}ms (id=${id}) — likely no listener on peer or port not started`);
       }
     }
   };
@@ -451,21 +482,9 @@ class SuperMessagePort<
     deferred.reject(error);
   }
 
-  private getInvokeDebugName(type: string, value: unknown) {
-    const payload = value as {
-      name?: string,
-      method?: string
-    };
-    return [
-      type,
-      payload?.name,
-      payload?.method
-    ].filter(Boolean).join(':');
-  }
-
   private getTaskDebugName(task: Task) {
     return task.type === 'invoke' ?
-      this.getInvokeDebugName(task.payload.type, task.payload.payload) :
+      formatAwaitingName(getInvokeTaskName(task.payload.type, task.payload.payload)) :
       task.type;
   }
 
@@ -528,7 +547,7 @@ class SuperMessagePort<
       return;
     }
 
-    this.debug && this.log.debug('done', deferred.taskType, result, error);
+    this.debug && this.log.debug('done', formatAwaitingName(deferred), result, error);
     'error' in task.payload ? deferred.reject(error) : deferred.resolve(result);
     delete this.awaiting[taskId];
   };
@@ -758,9 +777,9 @@ class SuperMessagePort<
     const promise = new Promise<Awaited<ReturnType<Send[T]>>>((resolve, reject) => {
       task = this.createInvokeTask(type as string, payload, withAck, undefined, transfer);
       this.awaiting[task.id] = {
+        ...getInvokeTaskName(type as string, payload),
         resolve,
         reject,
-        taskType: this.getInvokeDebugName(type as string, payload),
         port,
         createdAt: Date.now()
       };

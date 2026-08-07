@@ -18,6 +18,8 @@ import {
 import {usePeers} from '@stores/peers';
 import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Ref, Setter, Show} from 'solid-js';
 import {createStore, unwrap} from 'solid-js/store';
+import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
+import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedCommunity';
 import styles from './archiveDialog.module.scss';
 import Badge from './badge';
 import {IconTsx} from './iconTsx';
@@ -152,17 +154,8 @@ function useArchivedDialogsState() {
 
   const sortedDialogs = createMemo(() => dialogs()
   .filter((dialog) => {
-    const peer = peers[dialog.peerId];
-    const communityId = (
-      peer?._ === 'channel' ||
-      peer?._ === 'user'
-    ) ? peer.linked_community_id?.toChatId() : undefined;
-    const community = peers[communityId?.toPeerId(true)];
-    return !(
-      community?._ === 'community' &&
-      !community.pFlags.left &&
-      community.pFlags.collapsed_in_dialogs
-    );
+    const communityId = getLinkedCommunityId(peers[dialog.peerId]);
+    return !isCollapsedCommunity(peers[communityId?.toPeerId(true)]);
   })
   .sort((a, b) => getArchivedDialogIndex(b) - getArchivedDialogIndex(a)));
 

@@ -15,6 +15,7 @@ import {
   PeerNotifySettings,
   Update
 } from '@layer';
+import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedCommunity';
 import {AppManager} from '@appManagers/manager';
 import type {Dialog, MyMessage} from '@appManagers/appMessagesManager';
 import {FOLDER_ID_ALL} from '@appManagers/constants';
@@ -1166,12 +1167,7 @@ export class AppCommunitiesManager extends AppManager {
     const peerIds = new Set<PeerId>();
     for(const communityIdString in this.computedDialogs) {
       const communityId = +communityIdString as ChatId;
-      const community = this.appChatsManager.getChat(communityId);
-      if(
-        community?._ !== 'community' ||
-        community.pFlags.left ||
-        !community.pFlags.collapsed_in_dialogs
-      ) {
+      if(!isCollapsedCommunity(this.appChatsManager.getChat(communityId))) {
         continue;
       }
 
@@ -1444,14 +1440,11 @@ export class AppCommunitiesManager extends AppManager {
     folderId: REAL_FOLDER_ID = FOLDER_ID_ALL
   ) {
     communityId = communityId.toChatId();
-    const community = this.appChatsManager.getChat(communityId);
     if(
       pinned &&
       (
         !this.isCommunityMembershipCurrent(communityId) ||
-        community?._ !== 'community' ||
-        community.pFlags.left ||
-        !community.pFlags.collapsed_in_dialogs
+        !isCollapsedCommunity(this.appChatsManager.getChat(communityId))
       )
     ) {
       return;
@@ -1492,11 +1485,8 @@ export class AppCommunitiesManager extends AppManager {
         return true;
       }
 
-      const community = this.appChatsManager.getChat(communityId);
       return this.isCommunityMembershipCurrent(communityId) &&
-        community?._ === 'community' &&
-        !community.pFlags.left &&
-        !!community.pFlags.collapsed_in_dialogs;
+        isCollapsedCommunity(this.appChatsManager.getChat(communityId));
     });
   }
 
