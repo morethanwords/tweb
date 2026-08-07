@@ -1,5 +1,6 @@
 import {
   expandAlbumSelectionRange,
+  isSameGroupedSelectionUnit,
   setAlbumItemsSelection
 } from '@components/chat/selectionRange';
 
@@ -75,6 +76,32 @@ describe('chat album drag selection', () => {
       elements: [album],
       getGroupedItems: () => [firstItem, secondItem, thirdItem]
     })).toEqual([album]);
+  });
+
+  it('treats an album and its items as one drag unit', () => {
+    const {album, firstItem, thirdItem} = createAlbum();
+
+    expect(isSameGroupedSelectionUnit(album, thirdItem)).toBe(true);
+    expect(isSameGroupedSelectionUnit(thirdItem, album)).toBe(true);
+    expect(isSameGroupedSelectionUnit(firstItem, thirdItem)).toBe(false);
+  });
+
+  it('treats grouped documents as one drag unit too', () => {
+    const {album: documents, firstItem} = createAlbum();
+    documents.classList.remove('is-album');
+    documents.classList.add('is-multiple-documents');
+
+    expect(isSameGroupedSelectionUnit(documents, firstItem)).toBe(true);
+  });
+
+  it('does not merge separate bubbles into one drag unit', () => {
+    const text = document.createElement('div');
+    text.classList.add('bubble');
+    const {album, firstItem} = createAlbum();
+
+    expect(isSameGroupedSelectionUnit(text, firstItem)).toBe(false);
+    expect(isSameGroupedSelectionUnit(album, text)).toBe(false);
+    expect(isSameGroupedSelectionUnit(text, text)).toBe(false);
   });
 
   it('forces deselection through every album item', () => {

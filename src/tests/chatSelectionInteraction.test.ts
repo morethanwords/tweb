@@ -94,24 +94,25 @@ describe('chat album pointer drag selection', () => {
     album.dataset.peerId = String(peerId);
     album.getBoundingClientRect = () => rect(100);
 
-    const firstItem = document.createElement('div');
-    firstItem.classList.add('grouped-item');
-    firstItem.dataset.mid = '101';
-    firstItem.dataset.peerId = String(peerId);
-    firstItem.getBoundingClientRect = () => rect(100);
+    const createItem = (mid: number, top: number) => {
+      const item = document.createElement('div');
+      item.classList.add('grouped-item');
+      item.dataset.mid = '' + mid;
+      item.dataset.peerId = String(peerId);
+      item.getBoundingClientRect = () => rect(top);
+      return item;
+    };
 
-    const secondItem = document.createElement('div');
-    secondItem.classList.add('grouped-item');
-    secondItem.dataset.mid = '102';
-    secondItem.dataset.peerId = String(peerId);
-    secondItem.getBoundingClientRect = () => rect(140);
-    album.append(firstItem, secondItem);
+    const firstItem = createItem(101, 100);
+    const secondItem = createItem(102, 140);
+    const thirdItem = createItem(103, 180);
+    album.append(firstItem, secondItem, thirdItem);
 
     const text = document.createElement('div');
     text.classList.add('bubble');
-    text.dataset.mid = '103';
+    text.dataset.mid = '104';
     text.dataset.peerId = String(peerId);
-    text.getBoundingClientRect = () => rect(200);
+    text.getBoundingClientRect = () => rect(240);
     root.append(album, text);
     document.body.append(root);
 
@@ -140,22 +141,21 @@ describe('chat album pointer drag selection', () => {
     const selection = new ChatSelection(chat as any, bubbles as any, input as any, managers as any);
     selection.attachListeners(root, new ListenerSetter());
 
-    const drag = async(from: HTMLElement, to: HTMLElement) => {
-      from.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, button: 0}));
-      from.dispatchEvent(new MouseEvent('mousemove', {bubbles: true}));
-      to.dispatchEvent(new MouseEvent('mousemove', {bubbles: true}));
+    const drag = async(...elements: HTMLElement[]) => {
+      elements[0].dispatchEvent(new MouseEvent('mousedown', {bubbles: true, button: 0}));
+      elements.forEach((element) => element.dispatchEvent(new MouseEvent('mousemove', {bubbles: true})));
       document.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
       await flushPromises();
     };
 
-    return {album, text, selection, drag};
+    return {album, firstItem, secondItem, thirdItem, text, selection, drag};
   };
 
   it('selects album to text and deselects text to album', async() => {
     const {album, text, selection, drag} = createHarness();
 
     await drag(album, text);
-    expect(selection.getSelectedMids()).toEqual([101, 102, 103]);
+    expect(selection.getSelectedMids()).toEqual([101, 102, 103, 104]);
 
     await drag(text, album);
     expect(selection.getSelectedMids()).toEqual([]);
@@ -165,9 +165,33 @@ describe('chat album pointer drag selection', () => {
     const {album, text, selection, drag} = createHarness();
 
     await drag(text, album);
-    expect(selection.getSelectedMids()).toEqual([101, 102, 103]);
+    expect(selection.getSelectedMids()).toEqual([101, 102, 103, 104]);
 
     await drag(album, text);
     expect(selection.getSelectedMids()).toEqual([]);
+  });
+
+  it('does not select anything while the pointer stays inside one album', async() => {
+    const {album, secondItem, thirdItem, selection, drag} = createHarness();
+
+    await drag(album, secondItem, thirdItem);
+    expect(selection.getSelectedMids()).toEqual([]);
+  });
+
+  it('selects the album only once the pointer leaves it', async() => {
+    const {album, secondItem, text, selection, drag} = createHarness();
+
+    await drag(album, secondItem, text);
+    expect(selection.getSelectedMids()).toEqual([101, 102, 103, 104]);
+  });
+
+  it('keeps an item range granular when the pointer crosses the album itself', async() => {
+    const {album, secondItem, thirdItem, text, selection, drag} = createHarness();
+
+    selection.toggleByElement(text);
+    await flushPromises();
+
+    await drag(secondItem, album, thirdItem);
+    expect(selection.getSelectedMids()).toEqual([102, 103, 104]);
   });
 });

@@ -40,6 +40,7 @@ import {toastNew} from '@components/toast';
 import confirmationPopup from '@components/confirmationPopup';
 import {
   expandAlbumSelectionRange,
+  isSameGroupedSelectionUnit,
   setAlbumItemsSelection
 } from '@components/chat/selectionRange';
 import {ChatType} from './chatType';
@@ -182,6 +183,9 @@ export class AppSelection extends EventListenerBase<{
 
     const seen = new Map<PeerId, Map<number, HTMLElement>>();
     let selecting: boolean;
+    // * the first element the drag has actually processed — everything belonging to its selection
+    // * unit is not a second element
+    let dragAnchor: HTMLElement;
 
     /* let good = false;
     const {x, y} = e; */
@@ -214,6 +218,10 @@ export class AppSelection extends EventListenerBase<{
         return;
       }
 
+      if(dragAnchor && this.isSameSelectionUnit(dragAnchor, element)) {
+        return;
+      }
+
       const isSelected = this.isMidSelected(peerId, mid);
       if(selecting === undefined) {
         // bubblesContainer.classList.add('no-select');
@@ -221,6 +229,7 @@ export class AppSelection extends EventListenerBase<{
       }
 
       seenElements.set(mid, element);
+      dragAnchor ??= element;
 
       if((selecting && !isSelected) || (!selecting && isSelected)) {
         const seenLength = accumulateMapSet(seen);
@@ -307,6 +316,14 @@ export class AppSelection extends EventListenerBase<{
     this.listenerSetter.add(this.listenElement)('mousemove', onMouseMove);
     this.listenerSetter.add(activeDocument)('mouseup', onMouseUp, documentListenerOptions);
   };
+
+  /**
+   * Whether `element` is a part of the same selectable unit the drag has started on, and so must not
+   * count as another element of the range
+   */
+  protected isSameSelectionUnit(anchor: HTMLElement, element: HTMLElement) {
+    return false;
+  }
 
   protected getElementsBetween(first: HTMLElement, last: HTMLElement) {
     if(first === last) {
@@ -822,11 +839,21 @@ export default class ChatSelection extends AppSelection {
     });
   }
 
+  protected isSameSelectionUnit(anchor: HTMLElement, element: HTMLElement) {
+    return isSameGroupedSelectionUnit(anchor, element);
+  }
+
   protected getElementsBetween(first: HTMLElement, last: HTMLElement) {
+    const elements = super.getElementsBetween(first, last);
+    if(first === last) {
+      // * there is no range yet — expanding the endpoints here would pull in the whole album
+      return elements;
+    }
+
     return expandAlbumSelectionRange({
       first,
       last,
-      elements: super.getElementsBetween(first, last),
+      elements,
       getGroupedItems: (bubble) => this.bubbles.getBubbleGroupedItems(bubble)
     });
   }
