@@ -53,6 +53,11 @@ interface CloseTask extends SuperMessagePortTask {
   type: 'close'
 }
 
+type DataCloneError = {
+  type: 'DATA_CLONE_ERROR',
+  message: string
+};
+
 // interface OpenTask extends SuperMessagePortTask {
 //   type: 'open'
 // }
@@ -401,15 +406,7 @@ class SuperMessagePort<
         //   this.log(`batching ${task.payload.length} tasks`);
         // }
 
-        try {
-          // if(IS_SERVICE_WORKER && !port) {
-          //   notifyAll(task);
-          // } else {
-          this.postMessage(ports, task);
-          // }
-        } catch(err) {
-          this.log.error('postMessage error:', err, describeTask(task), ports);
-        }
+        this.sendTask(ports, task);
       });
 
       this.pending.delete(port);
@@ -418,6 +415,110 @@ class SuperMessagePort<
     this.debug && this.log.debug('released tasks');
 
     this.releasingPending = false;
+  }
+
+  private createDataCloneError(): DataCloneError {
+    return {
+      type: 'DATA_CLONE_ERROR',
+      message: 'Message port task payload could not be cloned'
+    };
+  }
+
+  private isDataCloneError(error: unknown) {
+    return (error as {name?: string})?.name === 'DataCloneError';
+  }
+
+  private sendDataCloneError(port: SendPort, taskId: number) {
+    const task = this.createTask('result', {
+      taskId,
+      error: this.createDataCloneError()
+    });
+
+    try {
+      this.postMessage(port, task);
+    } catch(error) {
+      this.log.error('postMessage clone-error fallback failed:', error, task.type, task.id);
+    }
+  }
+
+  private rejectUnsentInvoke(task: InvokeTask, error: unknown) {
+    const deferred = this.awaiting[task.id];
+    if(!deferred) {
+      return;
+    }
+
+    delete this.awaiting[task.id];
+    deferred.reject(error);
+  }
+
+  private getInvokeDebugName(type: string, value: unknown) {
+    const payload = value as {
+      name?: string,
+      method?: string
+    };
+    return [
+      type,
+      payload?.name,
+      payload?.method
+    ].filter(Boolean).join(':');
+  }
+
+  private getTaskDebugName(task: Task) {
+    return task.type === 'invoke' ?
+      this.getInvokeDebugName(task.payload.type, task.payload.payload) :
+      task.type;
+  }
+
+  private sendTask(ports: SendPort[], task: Task, deliveredElsewhere = false) {
+    const failedPorts: SendPort[] = [];
+    const cloneFailedPorts: SendPort[] = [];
+    let firstError: unknown;
+    let sent = false;
+
+    ports.forEach((port) => {
+      try {
+        this.postMessage(port, task);
+        sent = true;
+      } catch(error) {
+        failedPorts.push(port);
+        firstError ??= error;
+        if(this.isDataCloneError(error)) {
+          cloneFailedPorts.push(port);
+        } else {
+          this.log.error('postMessage error:', error, task.type, task.id);
+        }
+      }
+    });
+
+    if(!failedPorts.length) {
+      return;
+    }
+
+    if(cloneFailedPorts.length) {
+      this.log.error(
+        'postMessage data clone error:',
+        this.getTaskDebugName(task),
+        task.id
+      );
+    }
+
+    if(task.type === 'batch') {
+      const wasDelivered = deliveredElsewhere || sent;
+      task.payload.forEach((innerTask) => {
+        this.sendTask(failedPorts, innerTask, wasDelivered);
+      });
+    } else if(task.type === 'result' || task.type === 'ack') {
+      cloneFailedPorts.forEach((port) => {
+        this.sendDataCloneError(port, task.payload.taskId);
+      });
+    } else if(task.type === 'invoke' && !task.payload.void && !sent && !deliveredElsewhere) {
+      this.rejectUnsentInvoke(
+        task,
+        cloneFailedPorts.length === failedPorts.length ?
+          this.createDataCloneError() :
+          firstError
+      );
+    }
   }
 
   protected processResultTask = (task: ResultTask) => {
@@ -656,7 +757,13 @@ class SuperMessagePort<
     let task: InvokeTask;
     const promise = new Promise<Awaited<ReturnType<Send[T]>>>((resolve, reject) => {
       task = this.createInvokeTask(type as string, payload, withAck, undefined, transfer);
-      this.awaiting[task.id] = {resolve, reject, taskType: type as string, port, createdAt: Date.now()};
+      this.awaiting[task.id] = {
+        resolve,
+        reject,
+        taskType: this.getInvokeDebugName(type as string, payload),
+        port,
+        createdAt: Date.now()
+      };
       this.pushTask(task, port);
     });
 
