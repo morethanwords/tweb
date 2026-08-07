@@ -104,6 +104,7 @@ import {PossibleDialog} from '@components/autonomousDialogList/base';
 import {ForumTab} from '@components/forumTab/forumTab';
 import findForumTabByPeerId from '@components/forumTab/findForumTabByPeerId';
 import shouldOpenForumAsNavigationTab from '@components/forumTab/communityOpenMode';
+import isCommunityChat from '@appManagers/utils/communities/isCommunity';
 import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
@@ -1838,9 +1839,10 @@ export class AppDialogsManager {
     }
 
     const {managers} = this;
-    const community = !peerId.isUser() ?
+    const chat = !peerId.isUser() ?
       apiManagerProxy.getChat(peerId.toChatId()) :
       undefined;
+    const community = isCommunityChat(chat) ? chat : undefined;
     const isCommunity = !!community;
     const canOpenCommunity = community?._ === 'communityForbidden' ||
       (
