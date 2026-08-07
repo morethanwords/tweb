@@ -2542,9 +2542,9 @@ export default class ChatInput {
         if(good && showJoin) {
           // "Subscribe" for a broadcast channel; "Join" for a group you must
           // join before you can post (regular group OR gigagroup).
-          const joinKey: LangPackKey = isBroadcast ?
-            'Chat.Subscribe' :
-            type === 'request' ? 'ChannelJoinRequest' : 'ChannelJoin';
+          const joinKey: LangPackKey = type === 'request' ?
+            'ChannelJoinRequest' :
+            isBroadcast ? 'Chat.Subscribe' : 'ChannelJoin';
           this.joinBtn.replaceChildren(i18n(joinKey));
         }
 
