@@ -24,14 +24,10 @@ const Modes = {
   // decoded voice) are NOT covered: disposing those is self-contained and was
   // a plain leak fix, so it stays active even here. Neither are the handful of
   // pre-existing raw URL.revokeObjectURL call sites (recording, rtmp, download).
-  // * OFF in dev and tests, so the mechanic keeps being exercised locally.
-  // * ON in production for now — the lifecycle is verified but has not been
-  //   dogfooded; flip by dropping `import.meta.env.PROD` once it has.
-  // Overrides (they reach the worker too — makeWorkerURL forwards query
-  // params): ?noObjectUrlRevoke=1 forces it on, ?forceObjectUrlRevoke=1
-  // forces it off (i.e. enables revocation in a production build).
-  noObjectUrlRevoke: location.search.indexOf('forceObjectUrlRevoke=1') > 0 ? false :
-    (import.meta.env.PROD || location.search.indexOf('noObjectUrlRevoke=1') > 0),
+  // * OFF everywhere by default — the lifecycle is live in production too.
+  // * ?noObjectUrlRevoke=1 forces it on to fall back to the old behaviour
+  //   (it reaches the worker too — makeWorkerURL forwards query params).
+  noObjectUrlRevoke: location.search.indexOf('noObjectUrlRevoke=1') > 0,
   // Run MTProto + crypto entirely in the main thread (debug only). Loops the
   // worker entries back through a MessageChannel in the same realm so
   // breakpoints / call stacks span the whole pipeline. Multi-tab features
