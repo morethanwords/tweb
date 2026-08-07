@@ -3281,6 +3281,7 @@ const lang = {
   },
   'TonNeededTitle': '%s Grams Needed',
   'StarsNeededText': 'Buy **Stars** and use them on **%s** and other mini apps.',
+  'PaymentInvoiceDisabledStarsText': 'Not enough Stars',
   'TonNeededText': 'You can add Grams to your balance via the third-party platform Fragment.',
   'FragmentTopUp': 'Top-Up via Fragment',
   'MenuTelegramStars': 'My Stars',

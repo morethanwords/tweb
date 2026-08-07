@@ -10917,7 +10917,7 @@ export default class ChatBubbles {
       const button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
       button.append(Sparkles({isDiv: true, mode: 'button'}));
       attachClickEvent(button, () => {
-        PopupElement.createPopup(PopupStars);
+        PopupElement.createPopup(PopupStars, {spendPurposePeerId: this.peerId});
       });
 
       elements.push(stickerDiv, subtitle, button);
@@ -10947,7 +10947,7 @@ export default class ChatBubbles {
         button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
         button.append(Sparkles({isDiv: true, mode: 'button'}));
         attachClickEvent(button, () => {
-          PopupElement.createPopup(PopupStars);
+          PopupElement.createPopup(PopupStars, {spendPurposePeerId: this.peerId});
         });
       }
 

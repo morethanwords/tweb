@@ -42,6 +42,7 @@ import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import {IconTsx} from '@components/iconTsx';
 import Tabs from '@components/tabs';
 import {GrowHeightReveal} from '@helpers/solid/animations';
+import getStarsSpendPurposePeerId from '@helpers/getStarsSpendPurposePeerId';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -351,6 +352,7 @@ export default class PopupStars extends PopupElement {
   private toppedUp: boolean;
   private ton: boolean;
   private spendPurposePeerId: PeerId;
+  private purposePeerId: PeerId;
 
   constructor(options: {
     paymentForm?: PaymentsPaymentForm.paymentsPaymentFormStars,
@@ -373,6 +375,8 @@ export default class PopupStars extends PopupElement {
     });
 
     safeAssign(this, options);
+
+    this.purposePeerId = getStarsSpendPurposePeerId(this.spendPurposePeerId);
 
     this.construct();
   }
@@ -619,8 +623,8 @@ export default class PopupStars extends PopupElement {
                     amount: option.amount,
                     currency: option.currency,
                     stars: option.stars,
-                    spend_purpose_peer: this.spendPurposePeerId && this.spendPurposePeerId !== rootScope.myId ?
-                      await this.managers.appPeersManager.getInputPeerById(this.spendPurposePeerId) :
+                    spend_purpose_peer: this.purposePeerId ?
+                      await this.managers.appPeersManager.getInputPeerById(this.purposePeerId) :
                       undefined
                   };
 
@@ -852,6 +856,15 @@ export default class PopupStars extends PopupElement {
     ]);
     this.options = options;
     this.appConfig = appConfig;
+
+    // * topping up for a spend on a bot or a channel can be forbidden, then there's nothing to offer
+    if(!this.ton && this.purposePeerId && appConfig.stars_spend_topup_invoice_disabled) {
+      toastNew({langPackKey: 'PaymentInvoiceDisabledStarsText'});
+      this.hide();
+      this.onCancel?.();
+      return;
+    }
+
     this.appendSolid(() => this._construct(image, peerTitle, avatar));
     this.addEventListener('close', () => {
       if(!this.toppedUp && this.onCancel) {

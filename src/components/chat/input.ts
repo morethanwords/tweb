@@ -5173,7 +5173,7 @@ export default class ChatInput {
     new SuggestPostPopup({HotReloadGuard: SolidJSHotReloadGuardProvider, suggestChange: !!initial?.changeMid, initialStars: initial?.stars, initialTimestamp: initial?.timestamp, onFinish: (payload) => {
       const balance = +useStars()() || 0;
       if(!this.chat.canManageDirectMessages && payload.stars && payload.stars > balance) {
-        PopupElement.createPopup(PopupStars);
+        PopupElement.createPopup(PopupStars, {spendPurposePeerId: this.chat.peerId});
         return;
       }
 

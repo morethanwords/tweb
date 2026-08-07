@@ -91,7 +91,7 @@ export default class PaidMessagesInterceptor {
     if(PaidMessagesInterceptor.starsBalance < totalStarsAmount)
     {
       this.pendingUndoableMessage.abort();
-      PopupElement.createPopup(PopupStars);
+      PopupElement.createPopup(PopupStars, {spendPurposePeerId: peerId});
       return PAYMENT_REJECTED;
     }
 
@@ -142,7 +142,7 @@ export default class PaidMessagesInterceptor {
 
     if(PaidMessagesInterceptor.starsBalance < totalStarsAmount)
     {
-      PopupElement.createPopup(PopupStars);
+      PopupElement.createPopup(PopupStars, {spendPurposePeerId: peerId});
       return PAYMENT_REJECTED;
     }
 
