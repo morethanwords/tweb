@@ -106,6 +106,7 @@ import {ForumTab} from '@components/forumTab/forumTab';
 import findForumTabByPeerId from '@components/forumTab/findForumTabByPeerId';
 import shouldOpenForumAsNavigationTab from '@components/forumTab/communityOpenMode';
 import isCommunityChat from '@appManagers/utils/communities/isCommunity';
+import {getCommunityPeerSubtitle} from '@components/communities/communityPeerStatus';
 import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
@@ -2236,6 +2237,23 @@ export class AppDialogsManager {
     });
   }
 
+  // what to show instead of the last message when there is none at all
+  private getEmptySubtitle(peerId: PeerId, listEl: HTMLElement) {
+    if(apiManagerProxy.isBotforum(peerId)) {
+      return i18n('NoMessagesYet');
+    }
+
+    if(!listEl.dataset.communityDialog) {
+      return;
+    }
+
+    // a community bot has no history until its chat is started
+    const peer = apiManagerProxy.getPeer(peerId);
+    return peer?._ === 'user' && peer.pFlags.bot ?
+      getCommunityPeerSubtitle(peer) :
+      undefined;
+  }
+
   private getLastMessageForDialog(dialog: PossibleDialog, lastMessage?: Message.message | Message.messageService) {
     let draftMessage: MyDraftMessage;
     const {peerId, draft} = dialog as Dialog;
@@ -2309,9 +2327,9 @@ export class AppDialogsManager {
     }
 
     if(!lastMessage && !draftMessage && !subtitlePeerId/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
-      const withNoMessagesText = apiManagerProxy.isBotforum(peerId);
+      const emptySubtitle = this.getEmptySubtitle(peerId, dom.listEl);
 
-      dom.lastMessageSpan.replaceChildren(...(withNoMessagesText ? [i18n('NoMessagesYet')] : []));
+      dom.lastMessageSpan.replaceChildren(...(emptySubtitle ? [emptySubtitle] : []));
       dom.lastTimeSpan.replaceChildren();
       delete dom.listEl.dataset.mid;
 

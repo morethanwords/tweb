@@ -216,6 +216,7 @@ export default function CommunityChats(props: {
   const sections = createMemo(() => {
     return getCommunityChatSections(linkedChats());
   });
+  const chatsCount = createMemo(() => full()?.linked_peers?.length);
   createEffect(() => {
     const value = sections();
     props.tab.xd.setItems([
@@ -294,17 +295,20 @@ export default function CommunityChats(props: {
 
   return (
     <>
+      <Portal mount={props.tab.headerAvatar}>
+        <CommunityAvatar
+          community={community()}
+          title={community()?.title}
+          size={32}
+        />
+      </Portal>
       <Portal mount={props.tab.title}>
-        <div class={styles.HeaderTitle}>
-          <CommunityAvatar
-            community={community()}
-            title={community()?.title}
-            size={32}
-          />
-          <span class={styles.HeaderTitleText}>
-            {community()?.title || i18n('Community.Chats')}
-          </span>
-        </div>
+        {community()?.title || i18n('Community.Chats')}
+      </Portal>
+      <Portal mount={props.tab.subtitle}>
+        {chatsCount() === undefined ?
+          i18n('Community.Title') :
+          i18n('Community.ChatsCount', [chatsCount()])}
       </Portal>
       <Show
         when={

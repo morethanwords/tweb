@@ -1,17 +1,3 @@
-.HeaderTitle {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: .75rem;
-
-}
-
-.HeaderTitleText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .HiddenPeerIcon {
   flex: 0 0 auto;
   color: var(--chatlist-pinned-color, var(--secondary-text-color));

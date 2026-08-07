@@ -46,6 +46,9 @@ export class CommunityForumTab extends ForumTab {
     super.syncInit();
     this.container.classList.add('community-forum-tab');
 
+    // the avatar goes next to both header rows: the title and the chats count
+    this.createHeaderAvatar();
+
     this.xd = new AutonomousCommunityDialogList({
       appDialogsManager,
       communityId: this.peerId.toChatId(),

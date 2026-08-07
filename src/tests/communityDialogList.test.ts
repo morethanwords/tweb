@@ -200,6 +200,37 @@ describe('AutonomousCommunityDialogList', () => {
     .toHaveBeenLastCalledWith(120);
   });
 
+  it('leaves the rows in place when the same items are applied again', () => {
+    const {manager, managers, elements} = createFakeDialogsManager();
+    controller = new AutonomousCommunityDialogList({
+      appDialogsManager: manager as any,
+      communityId: 100 as ChatId,
+      middleware: getMiddleware().get()
+    });
+    setManagers(managers);
+    const first = 1 as PeerId;
+    const second = 2 as PeerId;
+    const items = [
+      item(first, 'joined', dialog(first), false),
+      item(second, 'joined', dialog(second))
+    ];
+    controller.setItems(items);
+    const list = controller.getList('joined');
+    const observer = new MutationObserver(() => {});
+    observer.observe(list, {childList: true, subtree: true});
+
+    // reprojecting the same state must not touch the DOM: reinserting a row
+    // detaches everything rendered inside it
+    controller.setItems(items.map((value) => ({...value})));
+
+    expect(observer.takeRecords()).toHaveLength(0);
+    observer.disconnect();
+    expect([...list.children]).toEqual([
+      elements.get(first).dom.listEl,
+      elements.get(second).dom.listEl
+    ]);
+  });
+
   it('applies the projected mute state synchronously', () => {
     const {manager, managers, elements} = createFakeDialogsManager();
     controller = new AutonomousCommunityDialogList({

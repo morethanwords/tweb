@@ -14,6 +14,7 @@ import type {
 } from '@components/forumTab/communityChatsModel';
 import type {Middleware} from '@helpers/middleware';
 import noop from '@helpers/noop';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import type {
   AppDialogsManager,
   DialogElement
@@ -341,10 +342,16 @@ export class AutonomousCommunityDialogList
     }
 
     const {mutedIcon, titleSpanContainer} = dialogElement.dom;
-    titleSpanContainer.insertBefore(
-      icon,
-      mutedIcon?.parentElement === titleSpanContainer ? mutedIcon : null
-    );
+    const before = mutedIcon?.parentElement === titleSpanContainer ?
+      mutedIcon :
+      null;
+    // reinserting an already placed icon would restart its animations
+    if(
+      icon.parentElement !== titleSpanContainer ||
+      icon.nextSibling !== before
+    ) {
+      titleSpanContainer.insertBefore(icon, before);
+    }
   }
 
   private sortList(kind: CommunityDialogListKind) {
@@ -364,10 +371,13 @@ export class AutonomousCommunityDialogList
         (this.itemPositions.get(b.peerId) || 0);
     });
 
+    // position, don't reappend: moving a row that is already in place would
+    // detach it from the DOM and restart everything rendered inside it
+    let position = 0;
     for(const item of items) {
       const dialogElement = this.dialogElements.get(item.peerId);
       if(dialogElement) {
-        list.append(dialogElement.dom.listEl);
+        positionElementByIndex(dialogElement.dom.listEl, list, position++);
       }
     }
   }
@@ -683,18 +693,20 @@ export class AutonomousCommunityDialogList
             }
           }
         );
+        dialogElement.dom.listEl.dataset.communityId = '' + this.communityId;
         this.dialogElements.set(item.peerId, dialogElement);
       }
 
-      dialogElement.dom.listEl.dataset.communityChatKind = item.kind;
-      dialogElement.dom.listEl.dataset.communityId = '' + this.communityId;
+      const {listEl} = dialogElement.dom;
+      if(listEl.dataset.communityChatKind !== item.kind) {
+        listEl.dataset.communityChatKind = item.kind;
+      }
       dialogElement.setMuted(!!item.muted, 0);
       dialogElement.dom.avatarEl?.setAutoDeletePeriod(
         item.dialog?.ttl_period || 0
       );
       this.syncHiddenPeerIcon(item, dialogElement);
       this.syncDialogActive(item.peerId, dialogElement);
-      this.lists[item.kind].append(dialogElement.dom.listEl);
       if(item.kind === 'viewable') {
         const {lastMessage} = item;
         if(

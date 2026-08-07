@@ -34,6 +34,12 @@
       }
     }
 
+    // sits in front of the rows, which keep their own inline padding
+    &__avatar {
+      flex: 0 0 auto;
+      margin-inline-start: .5rem;
+    }
+
     &__title {
       flex: 1;
       font-weight: var(--font-weight-bold);

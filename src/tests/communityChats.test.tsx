@@ -15,7 +15,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@lib/langPack', () => ({
-  i18n: (key: string) => document.createTextNode(key)
+  i18n: (key: string, args?: any[]) => document.createTextNode(
+    args ? `${key}:${args.join(',')}` : key
+  )
 }));
 
 vi.mock('@lib/apiManagerProxy', () => ({
@@ -222,7 +224,9 @@ describe('CommunityChats', () => {
     };
     const tab = {
       peerId: (123 as ChatId).toPeerId(true),
+      headerAvatar: document.createElement('div'),
       title: document.createElement('div'),
+      subtitle: document.createElement('div'),
       toggleAsOne: mocks.toggleAsOne,
       openLinkedChat: vi.fn(),
       openAddChat: vi.fn(),
@@ -242,6 +246,11 @@ describe('CommunityChats', () => {
     const container = document.createElement('div');
     document.body.append(container);
     dispose = render(() => <CommunityChats tab={tab} />, container);
+
+    expect(tab.headerAvatar.querySelector('[data-testid="community-avatar"]'))
+    .not.toBeNull();
+    expect(tab.title.textContent).toBe('Community');
+    expect(tab.subtitle.textContent).toBe('Community.ChatsCount:5');
 
     const sections = [...container.querySelectorAll(
       '.sidebar-left-section-container'
@@ -276,10 +285,10 @@ describe('CommunityChats', () => {
     expect(container.querySelector('h2')).toBeNull();
     expect(container.querySelector(
       `[data-peer-id="${requestablePeerId}"] [data-testid="peer-subtitle"]`
-    )?.textContent).toBe('Members');
+    )?.textContent).toBe('Members:42');
     expect(container.querySelector(
       `[data-peer-id="${hiddenPeerId}"] [data-testid="peer-subtitle"]`
-    )?.textContent).toBe('Members');
+    )?.textContent).toBe('Members:7');
     expect(container.querySelector(
       `[data-peer-id="${hiddenPeerId}"] ` +
       '[data-testid="peer-title-accessory"] [data-icon="eye2"]'
@@ -333,7 +342,9 @@ describe('CommunityChats', () => {
     };
     const tab = {
       peerId: (123 as ChatId).toPeerId(true),
+      headerAvatar: document.createElement('div'),
       title: document.createElement('div'),
+      subtitle: document.createElement('div'),
       toggleAsOne: mocks.toggleAsOne,
       openLinkedChat: vi.fn(),
       openAddChat: vi.fn(),
@@ -385,7 +396,9 @@ describe('CommunityChats', () => {
     .mockResolvedValueOnce(undefined);
     const tab = {
       peerId: (123 as ChatId).toPeerId(true),
+      headerAvatar: document.createElement('div'),
       title: document.createElement('div'),
+      subtitle: document.createElement('div'),
       managers: {
         appProfileManager: {getChatFull: mocks.getChatFull},
         appCommunitiesManager: {
@@ -404,6 +417,7 @@ describe('CommunityChats', () => {
     await vi.waitFor(() => {
       expect(container.querySelector('[role="alert"]')).not.toBeNull();
     });
+    expect(tab.subtitle.textContent).toBe('Community.Title');
     const retry = [...container.querySelectorAll('button')].find((button) => {
       return button.textContent === 'Community.Retry';
     });

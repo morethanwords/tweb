@@ -23,8 +23,9 @@ export class ForumTab extends SliderSuperTabEventable {
   public static register: Register<PeerId, typeof ForumTab> = new Register;
 
 
-  protected rows: HTMLElement;
-  protected subtitle: HTMLElement;
+  public rows: HTMLElement;
+  public subtitle: HTMLElement;
+  public headerAvatar: HTMLElement;
 
   public peerId: PeerId;
   private firstTime: boolean;
@@ -125,6 +126,14 @@ export class ForumTab extends SliderSuperTabEventable {
     if(!isFloating) {
       return this.triggerAsyncInit();
     }
+  }
+
+  // an avatar slot in front of the header rows, for tabs that want one
+  protected createHeaderAvatar() {
+    const avatar = document.createElement('div');
+    avatar.classList.add('sidebar-header__avatar');
+    this.rows.before(avatar);
+    return this.headerAvatar = avatar;
   }
 
   protected getRectFromForPlaceholder = () => {
