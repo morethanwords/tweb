@@ -68,6 +68,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import filterAsync from '@helpers/array/filterAsync';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import getDialogMentionBadgeState from '@helpers/dialogMentionBadgeState';
 import Row, {RowMediaSizeType} from '@components/row'
 import SettingSection from '@components/settingSection';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
@@ -2511,23 +2512,20 @@ export class AppDialogsManager {
       !isAllChats &&
       (!!this.forumTab || appSidebarLeft.isCollapsed()) &&
       isDialogUnread;
-    const hasMentionsBadge = !!(
-      !isSaved &&
-      !isMonoforumThread &&
-      dialog.unread_mentions_count &&
-      (dialog.unread_mentions_count > 1 || dialog.unread_count > 1)
-    );
+    // * `unreadCount` counts the unread topics for a forum, so the mention state
+    // * must be derived from it too — not from `dialog.unread_count`
+    const {isMention, hasMentionsBadge} = getDialogMentionBadgeState({
+      unreadCount,
+      unreadMessagesCount: (dialog as Dialog | ForumTopic).unread_count,
+      unreadMentionsCount: isSaved || isMonoforumThread ? 0 : dialog.unread_mentions_count,
+      hasUnreadBadge
+    });
     const hasReactionsBadge = isSaved ? false : !!dialog.unread_reactions_count;
     const hasPollVotesBadge = isSaved || isMonoforumThread ? false : !!(dialog as Dialog | ForumTopic).unread_poll_votes_count;
-    let isMention = false, unreadBadgeText: string;
+    let unreadBadgeText: string;
     if(hasUnreadBadge) {
-      if(!isSaved && !isMonoforumThread && dialog.unread_mentions_count && unreadCount === 1) {
-        unreadBadgeText = '@';
-        isMention = true;
-      } else {
-        // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
-        unreadBadgeText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
-      }
+      // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
+      unreadBadgeText = isMention ? '@' : '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
     }
 
     dialogElement.setBadgeState({

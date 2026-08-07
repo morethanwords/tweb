@@ -10,6 +10,7 @@ import type {
   DialogElement
 } from '@lib/appDialogsManager';
 import formatNumber from '@helpers/number/formatNumber';
+import getDialogMentionBadgeState from '@helpers/dialogMentionBadgeState';
 import {
   useCommunity,
   useCommunityDialog
@@ -92,8 +93,15 @@ export function createCommunityDialogListElement(
       const unreadCount = value?.unreadCount || 0;
       const unreadMarked = !!value?.unreadMarked;
       const unread = unreadCount > 0 || unreadMarked;
-      const unreadMention = !!value?.unreadMentionsCount &&
-        unreadCount === 1;
+      const {
+        isMention: unreadMention,
+        hasMentionsBadge
+      } = getDialogMentionBadgeState({
+        unreadCount,
+        unreadMessagesCount: value?.unreadMessagesCount || 0,
+        unreadMentionsCount: value?.unreadMentionsCount || 0,
+        hasUnreadBadge: unread
+      });
       const unreadText = !unread ? undefined :
         unreadCount === 1 && unreadMarked ? '' :
         unreadMention ? '@' : formatNumber(unreadCount, 1);
@@ -104,11 +112,7 @@ export function createCommunityDialogListElement(
         unreadText,
         unreadMention,
         unreadAvatar: false,
-        mentions: !!value?.unreadMentionsCount &&
-          (
-            value.unreadMentionsCount > 1 ||
-            unreadCount > 1
-          ),
+        mentions: hasMentionsBadge,
         reactions: !!value?.unreadReactionsCount,
         pollVotes: !!value?.unreadPollVotesCount,
         transitionDuration: 0
