@@ -110,7 +110,7 @@ export default class PopupJoinChatInvite extends PopupPeer {
       buttons: addCancelButton([{
         langKey: getJoinLangKey(chatInvite),
         callback: () => {
-          PopupJoinChatInvite.import(hash);
+          PopupJoinChatInvite.import(hash, chatInvite.title);
         }
       }]),
       description: true
@@ -126,11 +126,11 @@ export default class PopupJoinChatInvite extends PopupPeer {
     appImManager.open({peerId});
   }
 
-  public static import(hash: string) {
+  public static import(hash: string, chatTitle?: string) {
     rootScope.managers.appChatInvitesManager.importChatInvite(hash)
     .then((result) => {
       if(typeof(result) === 'object') {
-        void appImManager.openJoinChatWebView(result);
+        void appImManager.openJoinChatWebView(result, chatTitle);
         return;
       }
 

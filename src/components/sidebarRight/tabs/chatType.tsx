@@ -26,7 +26,8 @@ import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import type {AppChatTypeTab} from '@components/solidJsTabs/tabs';
+import {openUserPermissionsTab, type AppChatTypeTab} from '@components/solidJsTabs/tabs';
+import anchorCallback from '@helpers/dom/anchorCallback';
 
 const ChatType: Component = () => {
   const [tab] = useSuperTab<typeof AppChatTypeTab>();
@@ -72,7 +73,7 @@ const ChatType: Component = () => {
 
       onChange();
 
-      if(joinRequestSection && !linkedChatId) {
+      if(joinRequestSection && !linkedChatId && !isBroadcast) {
         joinRequestSection.container.classList.toggle('hide', value !== 'public');
       }
     });
@@ -230,7 +231,7 @@ const ChatType: Component = () => {
         }
 
         if(changedJoinToSend || changedJoinRequest) {
-          const joinToSendValue = joinToSendRow.checkboxField.checked;
+          const joinToSendValue = joinToSendRow?.checkboxField.checked;
           const joinRequestValue = joinRequestRow.checkboxField.checked;
           const callbacks = [
             changedJoinToSend && (() => tab.managers.appChatsManager.toggleJoinToSend(
@@ -258,27 +259,32 @@ const ChatType: Component = () => {
     tab.scrollable.append(section.container, privateSection.container, publicContainer);
 
     let joinRequestSection: SettingSection, joinToSendRow: Row, joinRequestRow: Row, originalJoinToSend: boolean, originalJoinRequest: boolean;
-    if(!isBroadcast) {
+    // a channel gets the same approval switch: it gates its invite links, and it is the only place
+    // where the guard bot behind those approvals can be seen and taken off again
+    {
       const section = joinRequestSection = new SettingSection({
-        name: 'ChannelSettingsJoinTitle',
-        caption: linkedChatId ? 'ChannelSettingsJoinToSendInfo' : 'ChannelSettingsJoinRequestInfo'
+        name: isBroadcast ? undefined : 'ChannelSettingsJoinTitle',
+        caption: true
       });
 
-      joinToSendRow = new Row({
-        titleLangKey: 'ChannelSettingsJoinToSend',
-        checkboxField: new CheckboxField({
-          toggle: true
-        })
-      });
+      if(!isBroadcast) {
+        joinToSendRow = new Row({
+          titleLangKey: 'ChannelSettingsJoinToSend',
+          checkboxField: new CheckboxField({
+            toggle: true
+          })
+        });
+      }
 
       joinRequestRow = new Row({
-        titleLangKey: 'ChannelSettingsJoinRequest',
+        titleLangKey: isBroadcast ? 'ChannelSettingsJoinRequestChannel' : 'ChannelSettingsJoinRequest',
         checkboxField: new CheckboxField({
           toggle: true
         })
       });
 
       const canToggleJoinRequest = () => {
+        if(isBroadcast) return true;
         return linkedChatId ? joinToSendRow.checkboxField.checked : !publicContainer.classList.contains('hide');
       };
 
@@ -293,13 +299,13 @@ const ChatType: Component = () => {
       const onChatUpdate = () => {
         originalJoinToSend = !!(chat as Chat.channel).pFlags.join_to_send;
         originalJoinRequest = !!(chat as Chat.channel).pFlags.join_request;
-        joinToSendRow.checkboxField.setValueSilently(originalJoinToSend);
+        joinToSendRow?.checkboxField.setValueSilently(originalJoinToSend);
         joinRequestRow.checkboxField.setValueSilently(originalJoinRequest);
         toggleJoinRequestVisibility();
         onChange();
       };
 
-      [joinToSendRow, joinRequestRow].forEach((row) => {
+      [joinToSendRow, joinRequestRow].filter(Boolean).forEach((row) => {
         tab.listenerSetter.add(row.checkboxField.input)('change', () => {
           if(joinToSendRow === row) {
             toggleJoinRequestVisibility();
@@ -310,13 +316,47 @@ const ChatType: Component = () => {
       });
 
       if(!linkedChatId) {
-        joinToSendRow.container.classList.add('hide');
+        joinToSendRow?.container.classList.add('hide');
       }
 
       addChatUpdateListener(onChatUpdate);
       onChatUpdate();
 
-      section.content.append(joinToSendRow.container, joinRequestRow.container);
+      // a guard bot (channelFull.guard_bot_id) greets new members through its own mini app instead of
+      // the admins approving them by hand — surface which bot it is, and let the admin open its rights
+      const updateCaption = async() => {
+        const guardBotId = (await tab.managers.appProfileManager.getCachedFullChat(chatId) as ChatFull.channelFull)?.guard_bot_id;
+        const nodes: (Node | string)[] = [
+          i18n(linkedChatId && !isBroadcast ? 'ChannelSettingsJoinToSendInfo' : 'ChannelSettingsJoinRequestInfo')
+        ];
+
+        // the bot is named by its @username, like on iOS — a display title says much less about
+        // which bot this actually is, and a bot without one gets no mention at all
+        const guardBotUsername = guardBotId &&
+          getPeerActiveUsernames(await tab.managers.appUsersManager.getUser(guardBotId.toUserId()))[0];
+        if(guardBotUsername) {
+          const peerId = guardBotId.toPeerId(false);
+          const anchor = anchorCallback(async() => {
+            const participant = await tab.managers.appProfileManager.getParticipant(chatId, peerId);
+            if(participant) {
+              openUserPermissionsTab(tab.slider, chatId, participant, true);
+            }
+          });
+          anchor.append('@' + guardBotUsername);
+          nodes.push(' ', i18n('GuardBotManagedBy', [anchor]));
+        }
+
+        section.caption.replaceChildren(...nodes);
+      };
+
+      await updateCaption();
+      tab.listenerSetter.add(rootScope)('chat_full_update', (updatedChatId) => {
+        if(chatId === updatedChatId) {
+          updateCaption();
+        }
+      });
+
+      section.content.append(...[joinToSendRow?.container, joinRequestRow.container].filter(Boolean));
       tab.scrollable.append(section.container);
     }
 

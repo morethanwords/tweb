@@ -8,7 +8,7 @@
 import deepEqual from '@helpers/object/deepEqual';
 import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
-import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '@layer';
+import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, InputUser, MessagesChats, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -1157,8 +1157,39 @@ export class AppChatsManager extends AppManager {
     return this.toggleSomething(chatId, 'toggleJoinToSend', enabled);
   }
 
-  public toggleJoinRequest(chatId: ChatId, enabled: boolean) {
-    return this.toggleSomething(chatId, 'toggleJoinRequest', enabled);
+  /**
+   * `guardBotId` hands join requests to a guard bot (`user.pFlags.bot_guard`), which greets new
+   * members in its own mini app; `clearGuardBot` gives them back to the admins.
+   */
+  public toggleJoinRequest(chatId: ChatId, enabled: boolean, options?: {
+    guardBotId?: BotId,
+    clearGuardBot?: boolean
+  }) {
+    const {guardBotId, clearGuardBot} = options || {};
+    const guardBot: InputUser = clearGuardBot ?
+      {_: 'inputUserEmpty'} :
+      (guardBotId ? this.appUsersManager.getUserInput(guardBotId) : undefined);
+
+    return this.migrateChat(chatId).then((channelId) => {
+      return this.apiManager.invokeApi('channels.toggleJoinRequest', {
+        channel: this.getChannelInput(channelId),
+        enabled,
+        guard_bot: guardBot
+      }).then((updates) => {
+        if(guardBot) {
+          this.appProfileManager.modifyCachedFullChat<ChatFull.channelFull>(channelId, (channelFull) => {
+            const newGuardBotId = clearGuardBot ? undefined : guardBotId;
+            if(String(channelFull.guard_bot_id || '') === String(newGuardBotId || '')) {
+              return false;
+            }
+
+            channelFull.guard_bot_id = newGuardBotId;
+          });
+        }
+
+        return this.onChatUpdated(channelId, updates);
+      });
+    });
   }
 
   public toggleForum(chatId: ChatId, enabled: boolean) {

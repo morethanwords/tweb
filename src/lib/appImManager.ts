@@ -344,7 +344,7 @@ export class AppImManager extends EventListenerBase<{
     };
     rootScope.addEventListener('premium_toggle', onPremiumToggle);
 
-    rootScope.addEventListener('join_chat_webview_decision', async(update) => {
+    rootScope.addEventListener('join_chat_webview_decision', (update) => {
       const flow = this.joinChatFlowsByQueryId.get(String(update.query_id));
       if(!flow) {
         return;
@@ -362,20 +362,20 @@ export class AppImManager extends EventListenerBase<{
       this.closeJoinChatFlow(flow);
 
       const peerId = getPeerId(update.peer);
+      const peer = apiManagerProxy.getPeer(peerId);
+      // the chat is unknown on an invite-link join that was declined or queued, so the toast must
+      // not depend on its title — like the official clients, only the group/channel wording differs
+      const isBroadcast = (peer as MTChat.channel)?._ === 'channel' && !!(peer as MTChat.channel).pFlags.broadcast;
       const langPackKey: LangPackKey = update.result._ === 'joinChatBotResultApproved' ?
-        'GuardBotJoinRequestApproved' :
+        (isBroadcast ? 'GroupRequestApprovedChannel' : 'GroupRequestApproved') :
         update.result._ === 'joinChatBotResultDeclined' ?
-          'GuardBotJoinRequestDeclined' :
-          'GuardBotJoinRequestQueued';
-      const title = await getPeerTitle({peerId, plainText: true, useManagers: true});
+          (isBroadcast ? 'GroupRequestDeclinedChannel' : 'GroupRequestDeclined') :
+          (isBroadcast ? 'GroupRequestSentChannel' : 'GroupRequestSent');
 
-      toastNew({langPackKey, langPackArguments: [title]});
-      if(
-        hadOpenWebApp &&
-        update.result._ === 'joinChatBotResultApproved' &&
-        apiManagerProxy.getPeer(peerId)
-      ) {
-        void this.setInnerPeer({peerId});
+      toastNew({langPackKey});
+      if(hadOpenWebApp && update.result._ === 'joinChatBotResultApproved' && peer) {
+        // `open` (not `setInnerPeer`) so a forum lands on its topics tab, like PopupJoinChatInvite
+        void this.open({peerId});
       }
     });
 
@@ -1076,11 +1076,31 @@ export class AppImManager extends EventListenerBase<{
     return attachMenuBot;
   }
 
+  // the guard-bot disclaimer names both the chat and the bot, and is shown on every join attempt
+  // (the mini app gets to see the user before they are a member) — same as tdesktop's forced confirmation
+  public async confirmGuardBotWebView({botId, chatTitle}: {botId: BotId, chatTitle: string}) {
+    const peerId = botId.toPeerId(false);
+    return confirmationPopup({
+      titleLangKey: 'TermsOfUse',
+      descriptionLangKey: 'WebAppGuardDisclaimerText',
+      descriptionLangArgs: [
+        chatTitle,
+        await getPeerTitle({peerId, plainText: true}),
+        wrapRichText(I18n.format('WebAppDisclaimerUrl', true))
+      ],
+      button: {
+        langKey: 'BotWebAppInstantViewOpen'
+      },
+      peerId
+    });
+  }
+
   public async openWebApp(options: Partial<RequestWebViewOptions> & {
     onClose?: () => void,
     joinChat?: {
       queryId: Long,
-      flow: JoinChatFlow
+      flow: JoinChatFlow,
+      chatTitle: string
     }
   }) {
     options.botId ??= options.attachMenuBot?.bot_id;
@@ -1106,10 +1126,11 @@ export class AppImManager extends EventListenerBase<{
 
     if(!options.noConfirmation) {
       if(joinChat) {
-        await this.confirmBotWebView({
+        await this.confirmGuardBotWebView({
           botId: options.botId,
-          ignoreConfirmedState: true
+          chatTitle: joinChat.chatTitle
         });
+        await this.pushBotIdAsConfirmed(options.botId);
       } else {
         const attachMenuBot = options.attachMenuBot;
         let needDisclaimer: boolean;
@@ -1207,17 +1228,20 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
-  public async openJoinChatWebView({botId, queryId, peerId}: ChatInviteJoinWebView) {
+  public async openJoinChatWebView({botId, queryId, peerId}: ChatInviteJoinWebView, chatTitle?: string) {
     const flow = this.createJoinChatFlow(queryId);
     if(!flow) {
       return;
     }
 
+    // an invite-link join has no chat yet, so the title comes from the invite the caller showed
+    chatTitle ??= peerId ? await getPeerTitle({peerId, plainText: true, useManagers: true}) : '';
+
     try {
       await this.openWebApp({
         botId,
         peerId: peerId ?? botId.toPeerId(false),
-        joinChat: {queryId, flow}
+        joinChat: {queryId, flow, chatTitle}
       });
     } catch(err) {
       const type = (err as ApiError)?.type;

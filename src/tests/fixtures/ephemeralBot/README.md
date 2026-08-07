@@ -1,9 +1,11 @@
-# Ephemeral and Business Bot API fixture
+# Ephemeral, Business and Guard Bot API fixture
 
 This long-polling bot exercises the Bot API side of Ephemeral Messages in a
 real group chat. It can also be connected to a Telegram Business account for
-end-to-end Chat Automation testing. It is intentionally separate from Vitest:
-the fixture talks to Telegram over the network and needs a dedicated bot token.
+end-to-end Chat Automation testing, and act as the guard bot of a chat so that
+guard-bot joins can be tested end to end. It is intentionally separate from
+Vitest: the fixture talks to Telegram over the network and needs a dedicated
+bot token.
 
 ## Prerequisites
 
@@ -93,6 +95,71 @@ the business account only when all of these checks pass:
 Edited and deleted business-message updates are logged but never mutated.
 Messages other than `/business` are ignored. This makes it safe to keep the
 fixture running while testing included and excluded chat rules.
+
+## Guard Mode
+
+A guard bot greets people who try to join a chat: instead of an admin approving
+them by hand, the join opens the bot's Mini App and the bot answers the join
+request query. Enable join request queries for the test bot in @BotFather — the
+fixture checks `getMe.supports_join_request_queries` at startup and aborts if
+the supplied bot cannot process them.
+
+Then assign the bot as the guard bot of the test chat: promote it to admin in
+Web K and turn on **Process Join Requests** in its admin rights. The chat also
+needs **Approve new members** on, which that switch enables for you.
+
+```bash
+read -s 'TG_EPHEMERAL_BOT_TOKEN?Bot token: '
+export TG_EPHEMERAL_BOT_TOKEN
+export TG_EPHEMERAL_BOT_GUARD_CHAT_IDS='-1001234567890'
+export TG_EPHEMERAL_BOT_GUARD_RESULT='approve'
+pnpm test:ephemeral-bot
+```
+
+`TG_EPHEMERAL_BOT_GUARD_CHAT_IDS` is the outer safety boundary: join requests
+from every other chat are ignored, so the fixture can never answer for a real
+chat. It accepts a comma-separated list and may be used on its own — the other
+allowlists are not required for Guard Mode.
+
+`TG_EPHEMERAL_BOT_GUARD_RESULT` is the outcome sent to
+`answerChatJoinRequestQuery`: `approve` (default), `decline`, or `queue` to hand
+the decision back to the administrators. Restart the fixture to rehearse another
+one. The three map exactly onto the three client outcomes — joined, refused, and
+"you will be added once an admin approves".
+
+Set `TG_EPHEMERAL_BOT_GUARD_WEB_APP_URL` to an HTTPS URL to test the Mini App
+step: the fixture calls `sendChatJoinRequestWebApp` first, so the client opens
+that page inside the join Mini App, and only then resolves the query with the
+configured result. `TG_EPHEMERAL_BOT_GUARD_WEB_APP_DELAY_MS` (default 8000)
+controls how long the app stays up in between.
+
+Two server rules bound what the fixture can rehearse, both established against
+the live API:
+
+- a query may carry only one Mini App — a second `sendChatJoinRequestWebApp`
+  answers `RESULT_INVALID`;
+- a query has a short response window. `TG_EPHEMERAL_BOT_GUARD_WEB_APP_START_DELAY_MS`
+  holds the app back on purpose to observe that: at 20s the query is already
+  gone ("query is too old"), and the join falls back to an ordinary approval
+  request that the guard bot never resolves.
+
+Together those mean the Mini App URL always reaches the client through
+`messages.requestChatJoinWebView`, never as a later `joinChatBotResultWebView`
+decision, so the client's swap-the-URL-in-place path cannot be produced from
+the Bot API.
+
+A query the fixture can no longer answer — expired, or already resolved — is
+logged as `guard-query-unanswerable` with the API message and skipped. It has to
+be skipped rather than fatal: the same update is redelivered on every poll until
+the batch is acknowledged, so dying on it wedges the fixture on that one update.
+
+A join request without `query_id` is an ordinary approval request that was not
+delegated to a guard bot. The fixture logs it and leaves it to the admins,
+because there is no query to answer.
+
+Wait for the fixture's `ready` event, then join the chat from a second account —
+by invite link and by the Join button, since the client treats those paths
+differently. Each answered query is logged as `guard-join-request-answered`.
 
 ## Commands
 

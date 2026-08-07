@@ -8,6 +8,7 @@ import {LangPackKey, i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import confirmationPopup from '@components/confirmationPopup';
+import {toastNew} from '@components/toast';
 import InputField from '@components/inputField';
 import SettingSection from '@components/settingSection';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -59,7 +60,8 @@ const ChatUserPermissions: Component = () => {
   const solidState = createSolidTabState<{
     rights: ChatAdminRights | ChatBannedRights,
     rank: string,
-    addAsAdmin: boolean
+    addAsAdmin: boolean,
+    processJoinRequests: boolean
   }>({
     tab,
     save: () => handleChannelsTooMuch(saveCallback),
@@ -97,6 +99,12 @@ const ChatUserPermissions: Component = () => {
         'channelParticipantBanned'
       ];
     }
+
+    // a guard bot greets new members in its own mini app instead of admins approving them by hand;
+    // it is stored on the chat (channelFull.guard_bot_id), not in the participant's admin rights
+    let confirmGuardBotChange: () => Promise<void>;
+    let applyGuardBotChange: () => Promise<void>;
+    let guardBotSection: SettingSection;
 
     let chatPermissions: ChatPermissions;
     {
@@ -152,6 +160,8 @@ const ChatUserPermissions: Component = () => {
             return;
           }
 
+          await confirmGuardBotChange?.();
+
           let rights = p.takeOut();
           if(addingBot && !addAsAdmin) {
             await tab.managers.appMessagesManager.addBotToChat(userId, chatId, addingBot.startParam);
@@ -180,6 +190,8 @@ const ChatUserPermissions: Component = () => {
             rankInputField?.value
           );
           const targetChatId = resultChatId || chatId;
+
+          await applyGuardBotChange?.();
 
           if(addingBot?.sendStartAfterAdmin && addingBot.startParam) {
             await tab.managers.appMessagesManager.startBot(userId, targetChatId, addingBot.startParam);
@@ -222,6 +234,8 @@ const ChatUserPermissions: Component = () => {
         const onAddAsAdminChange = () => {
           addAsAdmin = addAsAdminField.checked;
           section.container.classList.toggle('hide', !addAsAdmin);
+          // a bot that is not being made an admin cannot be the chat's guard bot either
+          guardBotSection?.container.classList.toggle('hide', !addAsAdmin);
           solidState.set({addAsAdmin});
         };
 
@@ -232,6 +246,116 @@ const ChatUserPermissions: Component = () => {
       }
 
       tab.scrollable.append(section.container);
+    }
+
+    if(
+      editingAdmin &&
+      isChannel &&
+      user.pFlags.bot_guard &&
+      _canEditAdmin &&
+      userId !== rootScope.myId
+    ) {
+      const getCurrentGuardBotId = async() => {
+        const channelFull = await tab.managers.appProfileManager.getChannelFull(chatId);
+        return channelFull?.guard_bot_id;
+      };
+
+      const isThisBot = (guardBotId: Awaited<ReturnType<typeof getCurrentGuardBotId>>) => {
+        return !!guardBotId && String(guardBotId) === String(userId);
+      };
+
+      const wasEnabled = isThisBot(await getCurrentGuardBotId());
+
+      const section = guardBotSection = new SettingSection({
+        caption: 'GuardBotProcessJoinRequestsInfo'
+      });
+
+      const checkboxField = new CheckboxField({
+        toggle: true,
+        checked: wasEnabled,
+        listenerSetter: tab.listenerSetter
+      });
+
+      const row = new Row({
+        titleLangKey: 'GuardBotProcessJoinRequests',
+        checkboxField,
+        listenerSetter: tab.listenerSetter
+      });
+
+      solidState.setInitial({processJoinRequests: wasEnabled});
+      tab.listenerSetter.add(checkboxField.input)('change', () => {
+        solidState.set({processJoinRequests: checkboxField.checked});
+      });
+
+      section.content.append(row.container);
+      section.container.classList.toggle('hide', !addAsAdmin);
+      tab.scrollable.append(section.container);
+
+      confirmGuardBotChange = async() => {
+        const currentGuardBotId = await getCurrentGuardBotId();
+        if(!addAsAdmin || !checkboxField.checked || isThisBot(currentGuardBotId)) {
+          return;
+        }
+
+        const peerId = userId.toPeerId(false);
+        // `rejectWithReason` keeps a cancel from rejecting with `undefined`, which the
+        // `handleChannelsTooMuch` wrapper around the save would then read `.type` off
+        if(currentGuardBotId) {
+          await confirmationPopup({
+            titleLangKey: 'GuardBotReplaceTitle',
+            descriptionLangKey: 'GuardBotReplaceText',
+            descriptionLangArgs: [
+              await wrapPeerTitle({peerId: currentGuardBotId.toPeerId(false)}),
+              await wrapPeerTitle({peerId})
+            ],
+            button: {
+              langKey: 'GuardBotReplaceUse',
+              langArgs: [await wrapPeerTitle({peerId})]
+            },
+            peerId,
+            rejectWithReason: true
+          });
+
+          return;
+        }
+
+        await confirmationPopup({
+          titleLangKey: isBroadcast ? 'ChannelSettingsJoinRequestChannel' : 'ChannelSettingsJoinRequest',
+          descriptionLangKey: isBroadcast ? 'GuardBotEnableSubscribersText' : 'GuardBotEnableMembersText',
+          descriptionLangArgs: [await wrapPeerTitle({peerId})],
+          button: {
+            langKey: 'GuardBotEnable'
+          },
+          peerId,
+          rejectWithReason: true
+        });
+      };
+
+      applyGuardBotChange = async() => {
+        const currentGuardBotId = await getCurrentGuardBotId();
+        const isCurrent = isThisBot(currentGuardBotId);
+        if(!addAsAdmin || checkboxField.checked === isCurrent) {
+          return;
+        }
+
+        try {
+          if(checkboxField.checked) {
+            await tab.managers.appChatsManager.toggleJoinRequest(chatId, true, {guardBotId: userId});
+          } else {
+            // dropping the bot must not silently turn approvals off for the chat
+            await tab.managers.appChatsManager.toggleJoinRequest(
+              chatId,
+              !!(chat as Chat.channel).pFlags.join_request,
+              {clearGuardBot: true}
+            );
+          }
+        } catch(err) {
+          // the admin rights are already saved by now, so a rejected guard change would otherwise
+          // pass silently — the server refuses a bot it does not consider a guard bot at all
+          toastNew({langPackKey: 'Error.AnError'});
+          throw err;
+        }
+      };
     }
 
     let rankInputField: InputField;

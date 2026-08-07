@@ -163,6 +163,96 @@ describe('layer 228 migration', () => {
     });
   });
 
+  describe('guard bot on the chat side', () => {
+    const channel: Chat.channel = {
+      _: 'channel',
+      pFlags: {broadcast: true},
+      id: 100,
+      access_hash: '42',
+      title: 'Channel',
+      photo: {_: 'chatPhotoEmpty'},
+      date: 0
+    };
+    const channelInput = {
+      _: 'inputChannel',
+      channel_id: channel.id,
+      access_hash: '42'
+    };
+
+    const createManager = () => {
+      const invokeApi = vi.fn().mockResolvedValue(undefined as unknown as Updates);
+      const modifyCachedFullChat = vi.fn();
+      const onChatUpdated = vi.fn();
+      const manager = new AppChatsManager();
+      Object.assign(manager as any, {
+        chats: {[channel.id]: channel},
+        apiManager: {invokeApi},
+        appProfileManager: {modifyCachedFullChat},
+        appUsersManager: {
+          getUserInput: (id: UserId) => ({_: 'inputUser', user_id: id, access_hash: '7'})
+        },
+        onChatUpdated
+      });
+
+      return {manager, invokeApi, modifyCachedFullChat, onChatUpdated};
+    };
+
+    test('sends no guard fields for a plain approval toggle', async() => {
+      const {manager, invokeApi, modifyCachedFullChat} = createManager();
+
+      await manager.toggleJoinRequest(channel.id, true);
+
+      expect(invokeApi).toHaveBeenCalledWith('channels.toggleJoinRequest', {
+        channel: channelInput,
+        enabled: true,
+        guard_bot: undefined
+      });
+      expect(modifyCachedFullChat).not.toHaveBeenCalled();
+    });
+
+    test('hands join requests to a guard bot and caches it on the full chat', async() => {
+      const {manager, invokeApi, modifyCachedFullChat, onChatUpdated} = createManager();
+
+      await manager.toggleJoinRequest(channel.id, true, {guardBotId: 777});
+
+      expect(invokeApi).toHaveBeenCalledWith('channels.toggleJoinRequest', {
+        channel: channelInput,
+        enabled: true,
+        guard_bot: {_: 'inputUser', user_id: 777, access_hash: '7'}
+      });
+      expect(onChatUpdated).toHaveBeenCalledWith(channel.id, undefined);
+
+      const channelFull = {guard_bot_id: undefined as any};
+      modifyCachedFullChat.mock.calls[0][1](channelFull);
+      expect(channelFull.guard_bot_id).toBe(777);
+    });
+
+    test('clears the guard bot without turning approvals off', async() => {
+      const {manager, invokeApi, modifyCachedFullChat} = createManager();
+
+      await manager.toggleJoinRequest(channel.id, true, {clearGuardBot: true});
+
+      expect(invokeApi).toHaveBeenCalledWith('channels.toggleJoinRequest', {
+        channel: channelInput,
+        enabled: true,
+        guard_bot: {_: 'inputUserEmpty'}
+      });
+
+      const channelFull = {guard_bot_id: 777 as any};
+      modifyCachedFullChat.mock.calls[0][1](channelFull);
+      expect(channelFull.guard_bot_id).toBeUndefined();
+    });
+
+    test('leaves the cached full alone when the guard bot did not change', async() => {
+      const {manager, modifyCachedFullChat} = createManager();
+
+      await manager.toggleJoinRequest(channel.id, true, {guardBotId: 777});
+
+      const channelFull = {guard_bot_id: '777' as any};
+      expect(modifyCachedFullChat.mock.calls[0][1](channelFull)).toBe(false);
+    });
+  });
+
   test('routes Community request count updates away from the chat join request UI', async() => {
     const handlePendingJoinRequestsUpdate = vi.fn().mockReturnValue(true);
     const getState = vi.fn();

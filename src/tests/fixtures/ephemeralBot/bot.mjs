@@ -12,6 +12,11 @@ import {
   processBusinessMessage
 } from './business.mjs';
 import {
+  isUnanswerableQueryError,
+  parseGuardConfig,
+  processJoinRequest
+} from './guard.mjs';
+import {
   BotApiError,
   getErrorDetails,
   getPollRetryDelay,
@@ -86,9 +91,17 @@ const businessConfig = parseBusinessConfig({
   userIds: process.env.TG_EPHEMERAL_BOT_BUSINESS_USER_IDS,
   chatIds: process.env.TG_EPHEMERAL_BOT_BUSINESS_CHAT_IDS
 });
-if(!allowedChatIds.size && !businessConfig) {
+const guardConfig = parseGuardConfig({
+  chatIds: process.env.TG_EPHEMERAL_BOT_GUARD_CHAT_IDS,
+  result: process.env.TG_EPHEMERAL_BOT_GUARD_RESULT,
+  webAppUrl: process.env.TG_EPHEMERAL_BOT_GUARD_WEB_APP_URL,
+  webAppDelayMs: process.env.TG_EPHEMERAL_BOT_GUARD_WEB_APP_DELAY_MS,
+  webAppStartDelayMs: process.env.TG_EPHEMERAL_BOT_GUARD_WEB_APP_START_DELAY_MS
+});
+if(!allowedChatIds.size && !businessConfig && !guardConfig) {
   throw new Error(
-    'Configure TG_EPHEMERAL_BOT_CHAT_IDS or both Business Mode allowlists'
+    'Configure TG_EPHEMERAL_BOT_CHAT_IDS, the Guard Mode allowlist, ' +
+    'or both Business Mode allowlists'
   );
 }
 
@@ -96,6 +109,7 @@ const apiUrl = `https://api.telegram.org/bot${token}/`;
 const businessStartedAt = Math.floor(Date.now() / 1000);
 const businessConnections = new Map();
 const handledBusinessMessages = new Set();
+const handledJoinQueries = new Set();
 let stopRequested = false;
 let activePollController;
 let offset;
@@ -154,6 +168,12 @@ if(expectedUsername && bot.username !== expectedUsername) {
 if(businessConfig && bot.can_connect_to_business !== true) {
   throw new Error(
     `@${bot.username} cannot be connected to a Telegram Business account`
+  );
+}
+if(guardConfig && bot.supports_join_request_queries !== true) {
+  throw new Error(
+    `@${bot.username} cannot process join request queries; enable it in @BotFather ` +
+    'and assign the bot as the guard bot of the test chat'
   );
 }
 
@@ -550,7 +570,48 @@ async function handleDeletedBusinessMessages(deletedMessages) {
   });
 }
 
+async function handleJoinRequest(joinRequest) {
+  let result;
+  try {
+    result = await processJoinRequest({
+      joinRequest,
+      config: guardConfig,
+      handledQueryIds: handledJoinQueries,
+      answerJoinRequestQuery: (params) => call('answerChatJoinRequestQuery', params),
+      sendJoinRequestWebApp: (params) => call('sendChatJoinRequestWebApp', params),
+      wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      onWebAppSent: (url) => log('guard-web-app-sent', {url})
+    });
+  } catch(error) {
+    if(!isUnanswerableQueryError(error)) {
+      throw error;
+    }
+
+    log('guard-query-unanswerable', {
+      userId: joinRequest.from?.id,
+      message: error.message
+    });
+    return;
+  }
+
+  if(result.type === 'ignored') {
+    log('guard-join-request-ignored', {reason: result.reason});
+    return;
+  }
+
+  log('guard-join-request-answered', {
+    result: result.result,
+    webAppSent: result.webAppSent,
+    userId: result.userId
+  });
+}
+
 async function handleUpdate(update) {
+  if(guardConfig && update.chat_join_request) {
+    await handleJoinRequest(update.chat_join_request);
+    return;
+  }
+
   if(businessConfig && update.business_connection) {
     handleBusinessConnection(update.business_connection);
     return;
@@ -640,6 +701,9 @@ if(allowedChatIds.size) {
 }
 
 const allowedUpdates = ['message', 'callback_query'];
+if(guardConfig) {
+  allowedUpdates.push('chat_join_request');
+}
 if(businessConfig) {
   allowedUpdates.push(
     'business_connection',
@@ -694,6 +758,10 @@ while(!stopRequested && !fatalError) {
     log('ready', {
       username: bot.username,
       allowedChatCount: allowedChatIds.size,
+      guardMode: !!guardConfig,
+      guardResult: guardConfig?.result,
+      guardWebApp: !!guardConfig?.webAppUrl,
+      allowedGuardChatCount: guardConfig?.allowedChatIds.size || 0,
       businessMode: !!businessConfig,
       allowedBusinessUserCount: businessConfig?.allowedUserIds.size || 0,
       allowedBusinessChatCount: businessConfig?.allowedChatIds.size || 0

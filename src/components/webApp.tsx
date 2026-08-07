@@ -188,6 +188,8 @@ export default class WebApp {
     this.forceHide();
   };
 
+  // the url is applied even before the web view exists — `createWebView` reads `webViewResultUrl.url`,
+  // so a decision arriving while `init` is still awaiting is not lost
   private loadExternal(url: string) {
     this.webViewResultUrl.url = url;
     this.readyResult = undefined;
@@ -197,14 +199,34 @@ export default class WebApp {
       return;
     }
 
-    iframe.style.opacity = '0';
-    iframe.classList.add('disable-hover');
-    iframe.addEventListener('load', () => {
-      iframe.style.opacity = '1';
-      iframe.classList.remove('disable-hover');
-    }, {once: true});
+    this.hideWebViewContent();
+    iframe.addEventListener('load', this.showWebViewContent, {once: true});
     iframe.src = this.getWebViewUrl(url);
   }
+
+  private hideWebViewContent() {
+    const iframe = this.telegramWebView?.iframe;
+    if(!iframe) {
+      return;
+    }
+
+    iframe.style.opacity = '0';
+    iframe.classList.add('disable-hover');
+  }
+
+  private showWebViewContent = () => {
+    if(this.iconElement) {
+      this.iconElement.style.opacity = '0';
+    }
+
+    const iframe = this.telegramWebView?.iframe;
+    if(!iframe) {
+      return;
+    }
+
+    iframe.style.opacity = '1';
+    iframe.classList.remove('disable-hover');
+  };
 
   private getWebViewUrl(url: string) {
     return url.replace('tgWebAppVersion=8.0', 'tgWebAppVersion=9.0');
@@ -1024,18 +1046,10 @@ export default class WebApp {
       url: this.getWebViewUrl(this.webViewResultUrl.url), // fixme
       sandbox: SANDBOX_ATTRIBUTES,
       allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation; clipboard-write;',
-      onLoad: () => {
-        if(this.iconElement) {
-          this.iconElement.style.opacity = '0';
-        }
-
-        telegramWebView.iframe.style.opacity = '1';
-        telegramWebView.iframe.classList.remove('disable-hover');
-      }
+      onLoad: () => this.showWebViewContent()
     });
 
-    telegramWebView.iframe.style.opacity = '0';
-    telegramWebView.iframe.classList.add('disable-hover');
+    this.hideWebViewContent();
     telegramWebView.iframe.allowFullscreen = true;
 
     telegramWebView.addMultipleEventsListeners({
@@ -1049,12 +1063,7 @@ export default class WebApp {
         }
       },
       web_app_ready: () => {
-        if(this.iconElement) {
-          this.iconElement.style.opacity = '0';
-        }
-
-        telegramWebView.iframe.style.opacity = '1';
-        telegramWebView.iframe.classList.remove('disable-hover');
+        this.showWebViewContent();
       },
       web_app_data_send: ({data}) => {
         if(!this.webViewOptions.isSimpleWebView || this.webViewOptions.fromSwitchWebView) {
