@@ -43,6 +43,7 @@ import {IconTsx} from '@components/iconTsx';
 import Tabs from '@components/tabs';
 import {GrowHeightReveal} from '@helpers/solid/animations';
 import getStarsSpendPurposePeerId from '@helpers/getStarsSpendPurposePeerId';
+import confirmationPopup from '@components/confirmationPopup';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -353,6 +354,7 @@ export default class PopupStars extends PopupElement {
   private ton: boolean;
   private spendPurposePeerId: PeerId;
   private purposePeerId: PeerId;
+  private purchaseBlocked: boolean;
 
   constructor(options: {
     paymentForm?: PaymentsPaymentForm.paymentsPaymentFormStars,
@@ -567,10 +569,10 @@ export default class PopupStars extends PopupElement {
     } else if(this.itemPrice) {
       subtitle = i18n(this.paymentForm ? 'StarsNeededText' : 'Stars.Subscribe.Need', [peerTitle]);
     } else {
-      subtitle = i18n('TelegramStarsInfo');
+      subtitle = i18n(this.purchaseBlocked ? 'StarsPurchaseUnavailable' : 'TelegramStarsInfo');
     }
 
-    const firstSection = (
+    const firstSection = !this.purchaseBlocked && (
       <Section caption="Stars.TOS">
         <div class="popup-stars-options" style={{height: (displayingRows() * 79 + (displayingRows() - 1) * 8) + 'px'}}>
           <Show when={this.ton}>
@@ -781,7 +783,7 @@ export default class PopupStars extends PopupElement {
 
     const restSection = (
       <>
-        {this.appConfig.stars_gifts_enabled && !this.ton && (
+        {this.appConfig.stars_gifts_enabled && !this.ton && !this.purchaseBlocked && (
           <Section>
             <Button
               class="btn-primary btn-transparent primary"
@@ -856,6 +858,19 @@ export default class PopupStars extends PopupElement {
     ]);
     this.options = options;
     this.appConfig = appConfig;
+
+    // * stars can be unavailable for purchase at all, then only the balance and the history are left
+    this.purchaseBlocked = !this.ton && !!appConfig.stars_purchase_blocked;
+    if(this.purchaseBlocked && (this.itemPrice || this.giftPeerId)) {
+      confirmationPopup({
+        titleLangKey: 'StarsNotAvailableTitle',
+        descriptionLangKey: 'StarsNotAvailableText',
+        button: {langKey: 'OK', isCancel: true}
+      }).catch(() => {});
+      this.hide();
+      this.onCancel?.();
+      return;
+    }
 
     // * topping up for a spend on a bot or a channel can be forbidden, then there's nothing to offer
     if(!this.ton && this.purposePeerId && appConfig.stars_spend_topup_invoice_disabled) {

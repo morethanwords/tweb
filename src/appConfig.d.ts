@@ -113,7 +113,6 @@ export interface MTAppConfig {
   stars_paid_post_amount_max?:               number;
   stars_gifts_enabled?:                      boolean;
   stars_paid_reaction_amount_max?:           number;
-  stars_purchase_blocked?:                   boolean;
   stars_spend_topup_invoice_disabled?:       boolean;
   stars_revenue_withdrawal_min?:             number;
   stars_subscription_amount_max?:            number;
