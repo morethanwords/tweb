@@ -1,2 +1,0 @@
-import{O as e,P as t}from"./solid-C3SSzulL.js";import{h as n,p as r}from"./web-xw_ovNjO.js";import{r as i}from"./index-DbhRHb0m.js";var a={Radio:`_Radio_nnosg_1`,floating:`_floating_nnosg_27`,checked:`_checked_nnosg_31`},o=n(`<span>`),s=n=>{let[s,c]=t(n,[`checked`,`floating`,`class`,`classList`]);return(()=>{var t=o();return r(t,e({get class(){return i(a.Radio,s.class)},get classList(){return{[a.checked]:s.checked,[a.floating]:s.floating,"offset-left":s.floating,...s.classList}}},c),!1,!1),t})()};export{s as t};
-//# sourceMappingURL=staticRadio-DhjKKPy5.js.map

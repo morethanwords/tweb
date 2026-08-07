@@ -430,18 +430,6 @@
       margin-bottom: var(--section-padding-bottom);
     }
 
-    .sidebar-left-section {
-      position: relative;
-      background-color: var(--surface-color);
-      padding-bottom: .5rem;
-
-      .profile-subtitle {
-        .peer-typing-container {
-          justify-content: center;
-        }
-      }
-    }
-
     &.search-empty {
       .gradient-delimiter {
         display: none;
