@@ -545,6 +545,11 @@ export default class ChatTopbar {
         this.chat.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       verify: async() => {
+        // the flag outlives the forum it was set for, so ask the peer too
+        if(!apiManagerProxy.isForum(this.peerId)) {
+          return false;
+        }
+
         const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
         return !!(dialog && (dialog as Dialog.dialog).pFlags.view_forum_as_messages);
       }

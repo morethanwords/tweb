@@ -41,7 +41,7 @@ export default function hasRights(
     rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
 
     if(!rights) {
-      return chat._ === 'community' && action === 'change_info';
+      return false;
     }
   }
 
@@ -119,6 +119,12 @@ export default function hasRights(
 
     case 'change_info':
     case 'invite_users': {
+      // a Community is administered like a channel: these are granted rights,
+      // not member ones its default banned rights could take away
+      if(chat._ === 'community') {
+        return isAdmin && !!myFlags[action];
+      }
+
       return isAdmin || (chat as Chat.channel).pFlags.broadcast ? !!myFlags[action] : !myFlags[action];
     }
 

@@ -1764,7 +1764,7 @@ describe('AppCommunitiesManager permissions', () => {
     admin?: true,
     expected: boolean
   }>([
-    {permission: 'change_info', expected: true},
+    {permission: 'change_info', expected: false},
     {permission: 'change_info', defaultBanned: true, expected: false},
     {permission: 'change_info', defaultBanned: true, admin: true, expected: true},
     {permission: 'manage_linked_peers', expected: false},
@@ -1843,6 +1843,13 @@ describe('AppCommunitiesManager permissions', () => {
       until_date: 0
     };
     const {manager} = createHarness({communities: [community]});
+
+    expect(manager.canEditCommunity(COMMUNITY_ID)).toBe(false);
+  });
+
+  test('does not expose Edit Community to a plain member', () => {
+    // editing a Community is granted, not left over from its default rights
+    const {manager} = createHarness({communities: [makeCommunity()]});
 
     expect(manager.canEditCommunity(COMMUNITY_ID)).toBe(false);
   });

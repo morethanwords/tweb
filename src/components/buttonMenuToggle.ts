@@ -57,6 +57,26 @@ export function filterButtonMenuItems(buttons: ButtonMenuItemOptionsVerifiable[]
   return filterAsync(buttons, (button) => button?.verify ? button.verify() ?? false : true);
 }
 
+/**
+ * A menu whose every item fails its verify has nothing to open, so hide its trigger.
+ * Returns a function to call whenever something the verifies depend on has changed.
+ */
+export function createButtonMenuVisibility(
+  button: HTMLElement,
+  buttons: ButtonMenuItemOptionsVerifiable[],
+  hide?: () => boolean
+) {
+  let changeId = 0;
+  return () => {
+    const id = ++changeId;
+    void filterButtonMenuItems(buttons).then((items) => {
+      if(id === changeId) {
+        button.classList.toggle('hide', (hide?.() ?? false) || !items.length);
+      }
+    });
+  };
+}
+
 export type ButtonMenuDirection = 'bottom-left' | 'bottom-right' | 'bottom-center' | 'top-left' | 'top-right'
 
 export default function ButtonMenuToggle({

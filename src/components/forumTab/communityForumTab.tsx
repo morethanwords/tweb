@@ -1,4 +1,4 @@
-import {createEffect, createRoot} from 'solid-js';
+import {createEffect, createRoot, on} from 'solid-js';
 import {render} from 'solid-js/web';
 import appDialogsManager from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
@@ -8,7 +8,8 @@ import {
   AutonomousCommunityDialogList
 } from '@components/autonomousDialogList/communityDialogs';
 import appSidebarLeft from '@components/sidebarLeft';
-import ButtonMenuToggle from '@components/buttonMenuToggle';
+import ButtonMenuToggle, {createButtonMenuVisibility} from '@components/buttonMenuToggle';
+import type {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {i18n} from '@lib/langPack';
 import {toast} from '@components/toast';
 import CommunityChats, {
@@ -37,6 +38,7 @@ export class CommunityForumTab extends ForumTab {
   public xd: AutonomousCommunityDialogList;
 
   private dispose?: () => void;
+  private menuDispose?: () => void;
   private membershipDispose?: () => void;
   private membershipCloseRequested = false;
   private pendingRequestsPromise?: Promise<void>;
@@ -98,15 +100,24 @@ export class CommunityForumTab extends ForumTab {
   }) {
     const result = super.init(options);
 
+    const buttons: ButtonMenuItemOptionsVerifiable[] = [{
+      icon: 'edit',
+      text: 'Community.Edit',
+      onClick: this.openEdit,
+      verify: this.canEditCommunity
+    }];
     const menu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
-      buttons: [{
-        icon: 'edit',
-        text: 'Community.Edit',
-        onClick: this.openEdit,
-        verify: this.canEditCommunity
-      }]
+      buttons
+    });
+    const updateMenuVisibility = createButtonMenuVisibility(menu, buttons);
+    const communityId = this.peerId.toChatId();
+    this.menuDispose = createRoot((dispose) => {
+      const community = useCommunity(() => communityId);
+      // our rights in the Community decide whether the menu has anything to show
+      createEffect(on(community, () => updateMenuVisibility()));
+      return dispose;
     });
 
     this.header.append(menu);
@@ -196,6 +207,8 @@ export class CommunityForumTab extends ForumTab {
   };
 
   public onCloseAfterTimeout() {
+    this.menuDispose?.();
+    this.menuDispose = undefined;
     this.membershipDispose?.();
     this.membershipDispose = undefined;
     this.dispose?.();

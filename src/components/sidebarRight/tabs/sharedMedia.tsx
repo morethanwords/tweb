@@ -16,7 +16,7 @@ import liteMode from '@helpers/liteMode';
 import addChatUsers from '@components/addChatUsers';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import ButtonMenuToggle, {filterButtonMenuItems} from '@components/buttonMenuToggle';
+import ButtonMenuToggle, {createButtonMenuVisibility} from '@components/buttonMenuToggle';
 import {useIsFrozen} from '@stores/appState';
 import {profileStarGiftsButtonMenu} from '@components/stargifts/profileList';
 import {profileStoriesButtonMenu} from '@components/stories/profileList';
@@ -512,17 +512,11 @@ const SharedMedia: Component = () => {
     direction: 'bottom-left',
     buttons: btnMenuButtons
   });
-  let buttonMenuVisibilityChangeId = 0;
-  updateButtonMenuVisibility = () => {
-    const changeId = ++buttonMenuVisibilityChangeId;
-    void filterButtonMenuItems(btnMenuButtons).then((items) => {
-      if(changeId !== buttonMenuVisibilityChangeId) {
-        return;
-      }
-
-      btnMenu.classList.toggle('hide', hideButtonMenu || items.length === 0);
-    });
-  };
+  updateButtonMenuVisibility = createButtonMenuVisibility(
+    btnMenu,
+    btnMenuButtons,
+    () => hideButtonMenu
+  );
 
   transitionFirstItem.element.append(editBtn);
 

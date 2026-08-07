@@ -171,7 +171,9 @@ export default class DialogsContextMenu {
       onClick: () => {
         appImManager.toggleViewAsMessages(this.peerId, false);
       },
-      verify: () => !!(this.dialog && (this.dialog as Dialog).pFlags.view_forum_as_messages)
+      // the flag outlives the forum it was set for, so ask the peer too
+      verify: () => apiManagerProxy.isForum(this.peerId) &&
+        !!(this.dialog && (this.dialog as Dialog).pFlags.view_forum_as_messages)
     }, {
       icon: 'topics',
       text: 'SavedViewAsChats',
