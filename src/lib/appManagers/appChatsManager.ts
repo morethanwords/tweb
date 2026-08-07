@@ -24,6 +24,12 @@ import {SlicedCachedFetcher} from '@appManagers/utils/chats/slicedCachedFetcher'
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 
 export type Channel = Chat.channel;
+export type ChatInviteJoinWebView = {
+  _: 'chatInviteJoinWebView',
+  botId: BotId,
+  queryId: Long,
+  peerId?: PeerId
+};
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |
   'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' |
   'invite_links' | 'create_giveaway' | 'just_admin' | 'toggle_forum'/*  | 'view_statistics' */;
@@ -505,14 +511,20 @@ export class AppChatsManager extends AppManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  // Layer 227 turned the join result into a union: `messages.chatInviteJoinResultOk` carries the
-  // usual `Updates`, while `messages.chatInviteJoinResultWebView` means the join is gated behind a
-  // guard bot's web app (guest chats). tweb can't drive that web-view flow yet, so we just cache the
-  // bot and report no updates. Shared by `channels.joinChannel` and `messages.importChatInvite`.
-  public processChatInviteJoinResult(result: MessagesChatInviteJoinResult): Updates {
+  // Layer 228 splits guard-bot joins into an initial query and a separate WebView request.
+  // Cache the bot before the UI asks for confirmation, matching the official clients.
+  public processChatInviteJoinResult(
+    result: MessagesChatInviteJoinResult,
+    peerId?: PeerId
+  ): Updates | ChatInviteJoinWebView {
     if(result._ === 'messages.chatInviteJoinResultWebView') {
       this.appUsersManager.saveApiUsers(result.users);
-      return undefined;
+      return {
+        _: 'chatInviteJoinWebView',
+        botId: result.bot_id,
+        queryId: result.query_id,
+        peerId
+      };
     }
 
     return result.updates;
@@ -522,10 +534,13 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('channels.joinChannel', {
       channel: this.getChannelInput(id)
     }).then((result) => {
-      const updates = this.processChatInviteJoinResult(result);
-      // no updates on a web-view-gated join (guard bot) — nothing to apply or invalidate, and
-      // `onChatUpdated` → `processUpdateMessage` would throw on an undefined message.
-      if(updates) this.onChatUpdated(id, updates);
+      const processed = this.processChatInviteJoinResult(result, id.toPeerId(true));
+      // A guard-bot join has no updates until its WebView reaches a decision.
+      if(processed._ === 'chatInviteJoinWebView') {
+        return processed;
+      }
+
+      this.onChatUpdated(id, processed);
     });
   }
 

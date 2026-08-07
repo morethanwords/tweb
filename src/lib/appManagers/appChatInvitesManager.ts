@@ -1,5 +1,5 @@
 import Modes from '@config/modes';
-import {ChatInvite, InputUser, StarsSubscriptionPricing, Updates} from '@layer';
+import {ChatInvite, DataJSON, InputUser, StarsSubscriptionPricing, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 
@@ -24,6 +24,9 @@ export default class AppChatInvitesManager extends AppManager {
           recentRequesters: update.recent_requesters,
           requestsPending: update.requests_pending
         });
+      },
+      updateJoinChatWebViewDecision: (update) => {
+        this.rootScope.dispatchEvent('join_chat_webview_decision', update);
       }
     });
   }
@@ -81,13 +84,22 @@ export default class AppChatInvitesManager extends AppManager {
   public importChatInvite(hash: string) {
     return this.apiManager.invokeApi('messages.importChatInvite', {hash})
     .then((result) => {
-      const updates = this.appChatsManager.processChatInviteJoinResult(result);
-      // no updates / no joined chat on a web-view-gated join (guard bot) — nothing to apply or open,
-      // and `processUpdateMessage` would throw on an undefined message.
-      if(!updates) return;
-      this.apiUpdatesManager.processUpdateMessage(updates);
-      const chat = (updates as Updates.updates).chats[0];
+      const processed = this.appChatsManager.processChatInviteJoinResult(result);
+      if(processed._ === 'chatInviteJoinWebView') {
+        return processed;
+      }
+
+      this.apiUpdatesManager.processUpdateMessage(processed);
+      const chat = (processed as Updates.updates).chats[0];
       return chat.id;
+    });
+  }
+
+  public requestChatJoinWebView(queryId: Long, themeParams?: DataJSON) {
+    return this.apiManager.invokeApi('messages.requestChatJoinWebView', {
+      query_id: queryId,
+      theme_params: themeParams ?? this.apiManager.getThemeParams(),
+      platform: 'web'
     });
   }
 

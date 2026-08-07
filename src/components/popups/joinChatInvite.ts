@@ -128,10 +128,15 @@ export default class PopupJoinChatInvite extends PopupPeer {
 
   public static import(hash: string) {
     rootScope.managers.appChatInvitesManager.importChatInvite(hash)
-    .then((chatId) => {
-      // no chatId when the join is gated behind a guard bot's web app (layer 227), which tweb
-      // can't open yet — nothing to route to in that case.
-      if(chatId) this.openChat(chatId);
+    .then((result) => {
+      if(typeof(result) === 'object') {
+        void appImManager.openJoinChatWebView(result);
+        return;
+      }
+
+      if(result) {
+        this.openChat(result);
+      }
     }, (error) => {
       if((error as ApiError).type === 'INVITE_REQUEST_SENT') {
         toastNew({langPackKey: 'RequestToJoinSent'});

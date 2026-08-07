@@ -85,6 +85,7 @@ import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
 import NBSP from '@helpers/string/nbsp';
 import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import {MiddleEllipsisElement} from '@components/middleEllipsis';
@@ -101,6 +102,7 @@ import PopupGiftPremium from '@components/popups/giftPremium';
 import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import type {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import type {ChatInviteJoinWebView} from '@appManagers/appChatsManager';
 import {Middleware} from '@helpers/middleware';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import wrapStickerAnimation, {emojiAnimationContainer} from '@components/wrappers/stickerAnimation';
@@ -110,6 +112,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {findUpAvatar} from '@components/avatarNew';
 import safePlay from '@helpers/dom/safePlay';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import PopupWebApp from '@components/popups/webApp';
 import {setPeerColors} from '@appManagers/utils/peers/getPeerColorById';
@@ -198,6 +201,13 @@ export enum APP_TABS {
   PROFILE
 }
 
+type JoinChatFlow = {
+  active: boolean,
+  isWebAppOpen: boolean,
+  queryIds: Set<string>,
+  pendingWebViewUrl?: string
+};
+
 export class AppImManager extends EventListenerBase<{
   chat_changing: (details: {from: Chat, to: Chat}) => void,
   peer_changed: (chat: Chat) => void,
@@ -223,6 +233,7 @@ export class AppImManager extends EventListenerBase<{
   private chatsSelectTabDebounced: () => void;
 
   private backgroundPromises: {[url: string]: MaybePromise<string>};
+  private joinChatFlowsByQueryId = new Map<string, JoinChatFlow>();
 
   private topbarCall: TopbarCallController;
   private chatAudio: ChatAudioController;
@@ -332,6 +343,41 @@ export class AppImManager extends EventListenerBase<{
       this.dispatchEvent('premium_toggle', isPremium);
     };
     rootScope.addEventListener('premium_toggle', onPremiumToggle);
+
+    rootScope.addEventListener('join_chat_webview_decision', async(update) => {
+      const flow = this.joinChatFlowsByQueryId.get(String(update.query_id));
+      if(!flow) {
+        return;
+      }
+
+      if(update.result._ === 'joinChatBotResultWebView') {
+        if(!flow.isWebAppOpen) {
+          flow.pendingWebViewUrl = update.result.url;
+        }
+
+        return;
+      }
+
+      const hadOpenWebApp = flow.isWebAppOpen;
+      this.closeJoinChatFlow(flow);
+
+      const peerId = getPeerId(update.peer);
+      const langPackKey: LangPackKey = update.result._ === 'joinChatBotResultApproved' ?
+        'GuardBotJoinRequestApproved' :
+        update.result._ === 'joinChatBotResultDeclined' ?
+          'GuardBotJoinRequestDeclined' :
+          'GuardBotJoinRequestQueued';
+      const title = await getPeerTitle({peerId, plainText: true, useManagers: true});
+
+      toastNew({langPackKey, langPackArguments: [title]});
+      if(
+        hadOpenWebApp &&
+        update.result._ === 'joinChatBotResultApproved' &&
+        apiManagerProxy.getPeer(peerId)
+      ) {
+        void this.setInnerPeer({peerId});
+      }
+    });
 
     onPremiumToggle(rootScope.premium);
     this.managers.rootScope.getPremium().then(onPremiumToggle);
@@ -939,6 +985,10 @@ export class AppImManager extends EventListenerBase<{
 
   public async pushBotIdAsConfirmed(botId: BotId) {
     const [appState, setAppState] = useAppState();
+    if(appState.confirmedWebViews.includes(botId)) {
+      return;
+    }
+
     await setAppState('confirmedWebViews', [...appState.confirmedWebViews, botId]);
   }
 
@@ -1027,7 +1077,11 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public async openWebApp(options: Partial<RequestWebViewOptions> & {
-    onClose?: () => void
+    onClose?: () => void,
+    joinChat?: {
+      queryId: Long,
+      flow: JoinChatFlow
+    }
   }) {
     options.botId ??= options.attachMenuBot?.bot_id;
     options.themeParams ??= {
@@ -1036,9 +1090,12 @@ export class AppImManager extends EventListenerBase<{
     };
 
     const onClose = options.onClose;
+    const joinChat = options.joinChat;
     delete options.onClose; // to avoid passing it to the worker
+    delete options.joinChat;
 
     if(
+      !joinChat &&
       !options.attachMenuBot/*  &&
       (options.fromAttachMenu || options.fromSideMenu) */
     ) {
@@ -1048,26 +1105,37 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(!options.noConfirmation) {
-      const attachMenuBot = options.attachMenuBot;
-      let needDisclaimer: boolean;
-      if(options.fromSideMenu) {
-        if(attachMenuBot?.pFlags?.side_menu_disclaimer_needed) {
-          needDisclaimer = true;
-        } else {
-          await this.pushBotIdAsConfirmed(options.botId);
-        }
-      } else {
-        const user = apiManagerProxy.getUser(options.botId);
-        needDisclaimer = user.pFlags.bot_attach_menu && attachMenuBot?.pFlags?.inactive;
-      }
-
-      if(needDisclaimer) {
-        await this.toggleBotInAttachMenu(options.botId, true, attachMenuBot);
-      } else {
+      if(joinChat) {
         await this.confirmBotWebView({
-          botId: options.botId
+          botId: options.botId,
+          ignoreConfirmedState: true
         });
+      } else {
+        const attachMenuBot = options.attachMenuBot;
+        let needDisclaimer: boolean;
+        if(options.fromSideMenu) {
+          if(attachMenuBot?.pFlags?.side_menu_disclaimer_needed) {
+            needDisclaimer = true;
+          } else {
+            await this.pushBotIdAsConfirmed(options.botId);
+          }
+        } else {
+          const user = apiManagerProxy.getUser(options.botId);
+          needDisclaimer = user.pFlags.bot_attach_menu && attachMenuBot?.pFlags?.inactive;
+        }
+
+        if(needDisclaimer) {
+          await this.toggleBotInAttachMenu(options.botId, true, attachMenuBot);
+        } else {
+          await this.confirmBotWebView({
+            botId: options.botId
+          });
+        }
       }
+    }
+
+    if(joinChat && !joinChat.flow.active) {
+      return;
     }
 
     try {
@@ -1075,27 +1143,124 @@ export class AppImManager extends EventListenerBase<{
       if(options.fromBotMenu || options.fromSideMenu || options.main) {
         cacheKeyArr.push('main');
       }
+      if(joinChat) {
+        cacheKeyArr.push('join', joinChat.queryId);
+      }
 
       const cacheKey = cacheKeyArr.join('-');
 
-      const webViewResultUrl = await this.managers.appAttachMenuBotsManager.requestWebView(options as RequestWebViewOptions);
+      const webViewResultUrl = joinChat ?
+        await this.managers.appChatInvitesManager.requestChatJoinWebView(joinChat.queryId, options.themeParams) :
+        await this.managers.appAttachMenuBotsManager.requestWebView(options as RequestWebViewOptions);
+      if(joinChat && !joinChat.flow.active) {
+        return;
+      }
+
+      if(joinChat && webViewResultUrl.query_id !== undefined) {
+        this.addJoinChatQueryId(joinChat.flow, webViewResultUrl.query_id);
+      }
+      if(joinChat?.flow.pendingWebViewUrl) {
+        webViewResultUrl.url = joinChat.flow.pendingWebViewUrl;
+        joinChat.flow.pendingWebViewUrl = undefined;
+      }
+
+      const joinChatQueryIds = joinChat ?
+        [joinChat.queryId, webViewResultUrl.query_id].filter((queryId) => queryId !== undefined) :
+        undefined;
+      const webAppOnClose = joinChat ? () => {
+        try {
+          onClose?.();
+        } finally {
+          this.closeJoinChatFlow(joinChat.flow);
+        }
+      } : onClose;
+
       const webAppOptions: Parameters<typeof openWebAppInAppBrowser>[0] = {
         webViewResultUrl,
         webViewOptions: options as RequestWebViewOptions,
         attachMenuBot: options.attachMenuBot,
         cacheKey,
-        onClose
+        onClose: webAppOnClose,
+        joinChat: joinChatQueryIds ? {queryIds: joinChatQueryIds} : undefined
       };
+      if(joinChat) {
+        joinChat.flow.isWebAppOpen = true;
+      }
+
       if(!IS_WEB_APP_BROWSER_SUPPORTED || options.forcePopup) {
         PopupElement.createPopup(PopupWebApp, webAppOptions);
       } else {
-        openWebAppInAppBrowser(webAppOptions);
+        await openWebAppInAppBrowser(webAppOptions);
       }
     } catch(err) {
+      if(joinChat) {
+        joinChat.flow.isWebAppOpen = false;
+      }
+
       if((err as ApiError).type === 'PEER_ID_INVALID' && options.attachMenuBot) {
         toastNew({
           langPackKey: 'BotAlreadyAddedToAttachMenu'
         });
+      } else if(joinChat) {
+        throw err;
+      }
+    }
+  }
+
+  public async openJoinChatWebView({botId, queryId, peerId}: ChatInviteJoinWebView) {
+    const flow = this.createJoinChatFlow(queryId);
+    if(!flow) {
+      return;
+    }
+
+    try {
+      await this.openWebApp({
+        botId,
+        peerId: peerId ?? botId.toPeerId(false),
+        joinChat: {queryId, flow}
+      });
+    } catch(err) {
+      const type = (err as ApiError)?.type;
+      if(type) {
+        toast(type);
+      }
+    } finally {
+      if(!flow.isWebAppOpen) {
+        this.closeJoinChatFlow(flow);
+      }
+    }
+  }
+
+  private createJoinChatFlow(queryId: Long) {
+    if(this.joinChatFlowsByQueryId.has(String(queryId))) {
+      return;
+    }
+
+    const flow: JoinChatFlow = {
+      active: true,
+      isWebAppOpen: false,
+      queryIds: new Set()
+    };
+    this.addJoinChatQueryId(flow, queryId);
+    return flow;
+  }
+
+  private addJoinChatQueryId(flow: JoinChatFlow, queryId: Long) {
+    const key = String(queryId);
+    flow.queryIds.add(key);
+    this.joinChatFlowsByQueryId.set(key, flow);
+  }
+
+  private closeJoinChatFlow(flow: JoinChatFlow) {
+    if(!flow.active) {
+      return;
+    }
+
+    flow.active = false;
+    flow.isWebAppOpen = false;
+    for(const queryId of flow.queryIds) {
+      if(this.joinChatFlowsByQueryId.get(queryId) === flow) {
+        this.joinChatFlowsByQueryId.delete(queryId);
       }
     }
   }

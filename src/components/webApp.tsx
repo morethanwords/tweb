@@ -5,7 +5,7 @@ import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import ListenerSetter from '@helpers/listenerSetter';
 import safeAssign from '@helpers/object/safeAssign';
 import themeController from '@helpers/themeController';
-import {AttachMenuBot, BotInfo, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage} from '@layer';
+import {AttachMenuBot, BotInfo, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage, Update} from '@layer';
 import appImManager from '@lib/appImManager';
 import {InternalLink, INTERNAL_LINK_TYPE} from '@lib/internalLink';
 import internalLinkProcessor from '@lib/internalLinkProcessor';
@@ -67,7 +67,10 @@ export type WebAppLaunchOptions = {
   webViewOptions: WebApp['webViewOptions'],
   attachMenuBot?: AttachMenuBot,
   cacheKey?: string,
-  onClose?: () => void
+  onClose?: () => void,
+  joinChat?: {
+    queryIds: Long[]
+  }
 };
 
 export default class WebApp {
@@ -84,6 +87,8 @@ export default class WebApp {
   private iconElement: HTMLElement | SVGElement;
   private listenerSetter: ListenerSetter;
   private destroyed: boolean;
+  private joinChat: WebAppLaunchOptions['joinChat'];
+  private joinChatDecisionHandled: boolean;
   // private mainButtonText: HTMLElement;
 
   public header: HTMLElement;
@@ -151,7 +156,7 @@ export default class WebApp {
       }
     });
 
-    if(this.webViewResultUrl._ === 'webViewResultUrl') {
+    if(!this.joinChat && this.webViewResultUrl._ === 'webViewResultUrl') {
       const queryId = this.webViewResultUrl.query_id;
       this.listenerSetter.add(rootScope)('web_view_result_sent', (_queryId) => {
         if(queryId === _queryId) {
@@ -159,6 +164,50 @@ export default class WebApp {
         }
       });
     }
+
+    if(this.joinChat) {
+      this.listenerSetter.add(rootScope)('join_chat_webview_decision', this.onJoinChatWebViewDecision);
+    }
+  }
+
+  private onJoinChatWebViewDecision = (update: Update.updateJoinChatWebViewDecision) => {
+    if(!this.joinChat?.queryIds.some((queryId) => String(queryId) === String(update.query_id))) {
+      return;
+    }
+
+    if(this.joinChatDecisionHandled) {
+      return;
+    }
+
+    if(update.result._ === 'joinChatBotResultWebView') {
+      this.loadExternal(update.result.url);
+      return;
+    }
+
+    this.joinChatDecisionHandled = true;
+    this.forceHide();
+  };
+
+  private loadExternal(url: string) {
+    this.webViewResultUrl.url = url;
+    this.readyResult = undefined;
+
+    const iframe = this.telegramWebView?.iframe;
+    if(!iframe) {
+      return;
+    }
+
+    iframe.style.opacity = '0';
+    iframe.classList.add('disable-hover');
+    iframe.addEventListener('load', () => {
+      iframe.style.opacity = '1';
+      iframe.classList.remove('disable-hover');
+    }, {once: true});
+    iframe.src = this.getWebViewUrl(url);
+  }
+
+  private getWebViewUrl(url: string) {
+    return url.replace('tgWebAppVersion=8.0', 'tgWebAppVersion=9.0');
   }
 
   protected _constructFooter() {
@@ -524,15 +573,20 @@ export default class WebApp {
   };
 
   public destroy() {
+    if(this.destroyed) {
+      return;
+    }
+
     this.destroyed = true;
-    this.telegramWebView.destroy();
+    this.telegramWebView?.destroy();
     this.listenerSetter.removeAll();
+    clearTimeout(this.reloadTimeout);
     clearTimeout(this._deviceMotionTimeoutId);
     clearTimeout(this._deviceOrientationTimeoutId);
     window.removeEventListener('devicemotion', this.handleDeviceMotion);
     window.removeEventListener('deviceorientation', this.handleDeviceOrientation);
     window.removeEventListener('deviceorientationabsolute', this.handleDeviceOrientation);
-    this.footerCleanup();
+    this.footerCleanup?.();
   }
 
 
@@ -967,7 +1021,7 @@ export default class WebApp {
 
   protected createWebView() {
     const telegramWebView = this.telegramWebView = new TelegramWebView({
-      url: this.webViewResultUrl.url.replace('tgWebAppVersion=8.0', 'tgWebAppVersion=9.0'), // fixme
+      url: this.getWebViewUrl(this.webViewResultUrl.url), // fixme
       sandbox: SANDBOX_ATTRIBUTES,
       allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation; clipboard-write;',
       onLoad: () => {
@@ -1314,7 +1368,12 @@ export default class WebApp {
 
   public async init(mountCallback: () => MaybePromise<void>) {
     if(!this.attachMenuBot || !IS_WEB_APP_BROWSER_SUPPORTED) {
-      this.title.append(await this.getTitle(false));
+      const title = await this.getTitle(false);
+      if(this.destroyed) {
+        return;
+      }
+
+      this.title.append(title);
     }
 
     let hasIcon = false;
@@ -1323,6 +1382,10 @@ export default class WebApp {
 
     } else  */try {
       const attachMenuBot = this.attachMenuBot ?? await this.managers.appAttachMenuBotsManager.getAttachMenuBot(this.webViewOptions.botId);
+      if(this.destroyed) {
+        return;
+      }
+
       const icon = getAttachMenuBotIcon(attachMenuBot);
       if(icon) {
         await wrapAttachBotIcon({
@@ -1332,13 +1395,22 @@ export default class WebApp {
           textColor: () => 'secondary-text-color',
           strokeWidth: () => .5
         });
+        if(this.destroyed) {
+          return;
+        }
 
         hasIcon = true;
       }
     } catch(err) {}
 
+    if(this.destroyed) {
+      return;
+    }
 
     const botInfo = await this.getBotInfo();
+    if(this.destroyed) {
+      return;
+    }
 
 
     const bodyColorFromSettings = themeController.isNight() ? botInfo.app_settings?.background_dark_color : botInfo.app_settings?.background_color;
@@ -1363,10 +1435,10 @@ export default class WebApp {
     this.setHeaderColor(headerColorFromSettings ? {color: rgbIntToHex(headerColorFromSettings)} : {color_key: 'bg_color'});
     this.body.prepend(...[this.iconElement, telegramWebView.iframe].filter(Boolean));
 
-    this.body.addEventListener('fullscreenchange', () => {
+    this.listenerSetter.add(this.body)('fullscreenchange', () => {
       const isFullscreen = document.fullscreenElement === this.body;
-      this.telegramWebView.dispatchWebViewEvent('fullscreen_changed', {is_fullscreen: isFullscreen});
-      this.telegramWebView.dispatchWebViewEvent('content_safe_area_changed', {
+      this.telegramWebView?.dispatchWebViewEvent('fullscreen_changed', {is_fullscreen: isFullscreen});
+      this.telegramWebView?.dispatchWebViewEvent('content_safe_area_changed', {
         top: isFullscreen ? 56 : 0,
         left: 0,
         right: 0,
@@ -1377,15 +1449,23 @@ export default class WebApp {
 
     if(this.webViewOptions.fullscreen || this.webViewResultUrl?.pFlags.fullscreen) {
       this.body.requestFullscreen().catch((err) => {
+        if(this.destroyed) {
+          return;
+        }
+
         console.error(err);
-        this.telegramWebView.dispatchWebViewEvent('fullscreen_failed', {error: 'UNSUPPORTED'});
+        this.telegramWebView?.dispatchWebViewEvent('fullscreen_failed', {error: 'UNSUPPORTED'});
       });
     }
 
     Promise.resolve(mountCallback()).then(() => {
+      if(this.destroyed) {
+        return;
+      }
+
       telegramWebView.onMount();
 
-      if(!this.webViewOptions.isSimpleWebView && (this.webViewResultUrl as WebViewResult.webViewResultUrl).query_id) {
+      if(!this.joinChat && !this.webViewOptions.isSimpleWebView && (this.webViewResultUrl as WebViewResult.webViewResultUrl).query_id) {
         setTimeout(() => this.prolongWebView(), 50e3);
       }
     });

@@ -203,6 +203,7 @@ export type BroadcastEvents = {
   'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService},
 
   'web_view_result_sent': Long,
+  'join_chat_webview_decision': Update.updateJoinChatWebViewDecision,
 
   'premium_toggle': boolean,
   'premium_toggle_private': {isNew: boolean, isPremium: boolean},
