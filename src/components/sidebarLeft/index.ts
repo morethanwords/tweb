@@ -1,4 +1,4 @@
-import {createEffect, createRoot, createSignal} from 'solid-js';
+import {createEffect, createRoot, createSignal, on} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
@@ -98,6 +98,7 @@ import useHasFoldersSidebar, {
 } from '@stores/foldersSidebar';
 import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
+import {useCollapsedCommunityDialogsKey} from '@stores/communities';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
@@ -222,12 +223,30 @@ export class AppSidebarLeft extends SidebarSlider {
     this.archivedCount = createBadge('span', 24, 'gray');
     this.archivedCount.classList.add('archived-count');
 
+    let archiveCountGeneration = 0;
+    const updateArchivedCount = async() => {
+      const generation = ++archiveCountGeneration;
+      const {unreadCount} = await rootScope.managers.dialogsStorage
+      .getFolderUnreadCount(FOLDER_ID_ARCHIVE, true);
+      if(generation !== archiveCountGeneration) {
+        return;
+      }
+
+      setBadgeContent(
+        this.archivedCount,
+        unreadCount ? '' + formatNumber(unreadCount, 1) : ''
+      );
+    };
     rootScope.addEventListener('folder_unread', (folder) => {
       if(folder.id === FOLDER_ID_ARCHIVE) {
-        // const count = folder.unreadMessagesCount;
-        const count = folder.unreadPeerIds.size;
-        setBadgeContent(this.archivedCount, count ? '' + formatNumber(count, 1) : '');
+        void updateArchivedCount().catch(noop);
       }
+    });
+    createRoot(() => {
+      const projectionKey = useCollapsedCommunityDialogsKey();
+      createEffect(on(projectionKey, () => {
+        void updateArchivedCount().catch(noop);
+      }));
     });
 
     let statusMiddlewareHelper: MiddlewareHelper, fireOnNew: boolean;
@@ -520,10 +539,16 @@ export class AppSidebarLeft extends SidebarSlider {
     const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
     const isFloating = force || this.hasSomethingOpenInside();
     const isCollapsed = this.isCollapsed();
+    const hasRealTabs = this.hasTabsInNavigation();
 
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
-    this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
+    this.sidebarEl.classList.toggle('has-real-tabs', hasRealTabs);
     this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
+    // A floating forum stays mounted under its own management tabs — take it out
+    // of hit-testing so the selected tab gets pointer and keyboard interaction.
+    if(appDialogsManager.forumTab) {
+      appDialogsManager.forumTab.container.inert = hasRealTabs;
+    }
     useHasOpenLeftTabs()[1](isFloating);
 
     // Keep the pop-out flag in sync with the actual tabs state regardless of
@@ -1043,7 +1068,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: singular ? 'Channel' : 'NewChannel',
       onClick: () => {
         closeTabsBefore(() => {
-          this.createTab(AppNewChannelTab).open();
+          this.createTab(AppNewChannelTab).open({});
         });
       }
     }, {
@@ -1197,6 +1222,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const pickedElements: HTMLElement[] = [];
     let selectedPeerId: PeerId = ''.toPeerId();
+    let selectedCommunityId: ChatId;
     let selectedMinDate = 0;
     let selectedMaxDate = 0;
     const updatePicked = () => {
@@ -1238,6 +1264,7 @@ export class AppSidebarLeft extends SidebarSlider {
         selectedMaxDate = +maxDate;
       } else {
         selectedPeerId = key.toPeerId();
+        selectedCommunityId = undefined;
       }
 
       target.addEventListener('click', () => {
@@ -1252,15 +1279,30 @@ export class AppSidebarLeft extends SidebarSlider {
 
     searchSuper.nav.parentElement.append(helper);
 
+    const getCommunityByPeerId = (peerId: PeerId) => {
+      return peerId.isAnyChat() ?
+        apiManagerProxy.getChat(peerId.toChatId()) :
+        undefined;
+    };
     const renderEntity = (key: PeerId | string, title?: string | HTMLElement) => {
-      return AppSelectPeers.renderEntity({
+      const peerId = key.isPeerId() ? key.toPeerId() : undefined;
+      const community = peerId && getCommunityByPeerId(peerId);
+      const rendered = AppSelectPeers.renderEntity({
         key,
-        title,
+        title: title ?? community?.title,
         middleware: helperMiddlewareHelper.get(),
         avatarSize: 30,
         fallbackIcon: 'calendarfilter',
         primary: true
-      }).element;
+      });
+      if(community) {
+        void rendered.avatar.render({
+          peerId,
+          peer: community as any
+        });
+      }
+
+      return rendered.element;
     };
 
     const unselectEntity = (target: HTMLElement) => {
@@ -1269,6 +1311,7 @@ export class AppSidebarLeft extends SidebarSlider {
         selectedMinDate = selectedMaxDate = 0;
       } else {
         selectedPeerId = ''.toPeerId();
+        selectedCommunityId = undefined;
       }
 
       target.middlewareHelper.destroy();
@@ -1324,6 +1367,26 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const updateSearchQuery = ({search: value, chatType}: UpdateSearchQueryArgs) => {
+      const globalOnlyTabs: SearchSuperMediaType[] = [
+        'channels',
+        'apps',
+        'posts'
+      ];
+      for(const type of globalOnlyTabs) {
+        searchSuper.mediaTabsMap
+        .get(type)
+        ?.menuTab.classList.toggle('hide', !!selectedCommunityId);
+      }
+      if(
+        selectedCommunityId &&
+        globalOnlyTabs.includes(searchSuper.mediaTab.type)
+      ) {
+        searchSuper.selectTab(
+          searchSuper.mediaTabs.indexOf(searchSuper.mediaTabsMap.get('chats')),
+          false
+        );
+      }
+
       if(searchSuper.mediaTab.type === 'posts') {
         searchSuper.globalPostsSearch?.setQuery(value);
         return
@@ -1333,7 +1396,8 @@ export class AppSidebarLeft extends SidebarSlider {
       searchSuper.cleanupHTML();
       searchSuper.setQuery({
         peerId: selectedPeerId,
-        folderId: selectedPeerId ? undefined : 0,
+        communityId: selectedCommunityId,
+        folderId: selectedPeerId || selectedCommunityId ? undefined : 0,
         query: value,
         chatType,
         minDate: selectedMinDate,
@@ -1356,7 +1420,7 @@ export class AppSidebarLeft extends SidebarSlider {
         promises.push(elements);
       }
 
-      if(!selectedPeerId && value.trim()) {
+      if(!selectedPeerId && !selectedCommunityId && value.trim()) {
         const middleware = searchSuper.middleware.get();
         const promise = Promise.all([
           this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
@@ -1529,7 +1593,12 @@ export class AppSidebarLeft extends SidebarSlider {
         onFocus();
         focusInput();
 
-        selectedPeerId = peerId;
+        selectedCommunityId = getCommunityByPeerId(peerId) ?
+          peerId.toChatId() :
+          undefined;
+        selectedPeerId = selectedCommunityId ?
+          ''.toPeerId() :
+          peerId;
 
         this.inputSearch.onChange(this.inputSearch.value = '');
 
@@ -1565,7 +1634,10 @@ export class AppSidebarLeft extends SidebarSlider {
 
       if(!this.searchSuper) return;
       const channelsTab = this.searchSuper.mediaTabs.find((tab) => tab.type === 'channels');
-      channelsTab.menuTab?.classList.toggle('hide', !hasChannels);
+      channelsTab.menuTab?.classList.toggle(
+        'hide',
+        !hasChannels || !!this.searchSuper.searchContext.communityId
+      );
     };
 
     checkChannelsVisiblity();
@@ -1579,6 +1651,10 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   public closeSearch() {
+    if(!this.isSearchActive) {
+      return;
+    }
+
     simulateClickEvent(this.backBtn);
   }
 

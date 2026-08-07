@@ -532,7 +532,7 @@ const ChatInviteLinks: Component = () => {
     const loadLinksPromise = Promise.all([p.invites, p.invitesRevoked]).then(([chatInvites, chatInvitesRevoked]) => {
       if(adminId) {
         primaryInvite = chatInvites.invites[0] as ChatInvite;
-      } else if(!usernames.length) {
+      } else if(!usernames.length && chatFull._ !== 'communityFull') {
         primaryInvite = chatFull.exported_invite as ChatInvite;
       }
 

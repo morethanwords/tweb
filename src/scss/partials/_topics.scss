@@ -16,6 +16,10 @@
     // max-width: unquote("min(100%, 20rem)") !important;
     // display: flex !important;
 
+    &.community-forum-tab {
+      background-color: var(--background-color) !important;
+    }
+
     &.is-floating {
       --offset: 5rem;
       --width: calc(100% - var(--offset));
@@ -56,6 +60,14 @@
 
     .sidebar-header {
       padding: 0 .75rem;
+
+      > .btn-icon {
+        flex: 0 0 auto;
+      }
+
+      &__rows {
+        margin-inline-end: .5rem;
+      }
 
       &__title,
       &__subtitle {

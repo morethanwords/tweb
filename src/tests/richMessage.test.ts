@@ -142,6 +142,21 @@ describe('flattenRichMessageSummary', () => {
     expect(flattenRichMessageSummary(rich).text).toBe('Unsupported block: pageBlockFuture');
   });
 
+  test('renders the updated side of layer 228 text diffs', () => {
+    const summary = flattenRichMessageSummary(richMessage([
+      {
+        _: 'pageBlockParagraph',
+        text: {
+          _: 'textDiff',
+          text: text('new'),
+          old_text: text('old')
+        }
+      }
+    ]));
+
+    expect(summary.text).toBe('new');
+  });
+
   test('decodes inline textMath to source and keeps following entities aligned', () => {
     const summary = flattenRichMessageSummary(richMessage([
       {

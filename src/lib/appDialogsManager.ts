@@ -48,14 +48,15 @@ import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {AppManagers} from '@lib/managers';
 import appSidebarRight from '@components/sidebarRight';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
-import wrapMessageForReply, {WrapMessageForReplyOptions} from '@components/wrappers/messageForReply';
+import renderDialogSubtitleParts from '@components/wrappers/dialogSubtitle';
+import wrapMessageForReply from '@components/wrappers/messageForReply';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 import isMessageRestricted, {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import getMessageSenderPeerIdOrName from '@appManagers/utils/messages/getMessageSenderPeerIdOrName';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import getProxiedManagers from '@lib/getProxiedManagers';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
 import middlewarePromise from '@helpers/middlewarePromise';
 import appDownloadManager from '@lib/appDownloadManager';
 import groupCallsController from '@lib/calls/groupCallsController';
@@ -88,7 +89,6 @@ import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '@appMana
 import {ChatType} from '@components/chat/chatType';
 import rtmpCallsController from '@lib/calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
-import {WrapRichTextOptions} from '@richTextProcessor/wrapRichText';
 import createFolderContextMenu from '@helpers/dom/createFolderContextMenu';
 import {useAppSettings} from '@stores/appSettings';
 import {unwrap} from 'solid-js/store';
@@ -102,6 +102,8 @@ import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants'
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
 import {PossibleDialog} from '@components/autonomousDialogList/base';
 import {ForumTab} from '@components/forumTab/forumTab';
+import findForumTabByPeerId from '@components/forumTab/findForumTabByPeerId';
+import shouldOpenForumAsNavigationTab from '@components/forumTab/communityOpenMode';
 import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
@@ -119,6 +121,10 @@ import {toastNew} from '@components/toast';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 20;
+
+export function findDialogListElement(target: EventTarget) {
+  return findUpTag(target, DIALOG_LIST_ELEMENT_TAG);
+}
 
 export type DialogDom = {
   avatarEl: ReturnType<typeof avatarNew>,
@@ -183,7 +189,7 @@ const avatarSizeMap: {[k in DialogElementSize]?: number} = {
 export type DialogElementSize = RowMediaSizeType;
 export type AsAllChatsType = 'monoforum' | 'topics';
 
-type DialogElementOptions = {
+export type DialogElementOptions = {
   peerId: PeerId,
   rippleEnabled?: boolean,
   onlyFirstName?: boolean,
@@ -202,11 +208,28 @@ type DialogElementOptions = {
   dontSetActive?: boolean,
   asAllChats?: AsAllChatsType,
   autoDeletePeriod?: number,
+  avatarElement?: HTMLElement
+};
+
+export type DialogElementBadgeState = {
+  muted: boolean,
+  pinned: boolean,
+  unread: boolean,
+  unreadText?: string,
+  unreadMention?: boolean,
+  unreadAvatar: boolean,
+  unreadAvatarText?: string,
+  mentions: boolean,
+  reactions: boolean,
+  pollVotes: boolean,
+  transitionDuration?: number
 };
 
 export class DialogElement extends Row {
   public dom: DialogDom;
+  public isMainList: boolean;
   public middlewareHelper: MiddlewareHelper;
+  private peerTitle: PeerTitle;
 
   constructor({
     peerId,
@@ -226,7 +249,8 @@ export class DialogElement extends Row {
     controlled,
     dontSetActive,
     asAllChats,
-    autoDeletePeriod
+    autoDeletePeriod,
+    avatarElement
   }: DialogElementOptions) {
     super({
       clickable: true,
@@ -240,6 +264,7 @@ export class DialogElement extends Row {
       asLink: true
     });
 
+    this.isMainList = isMainList;
     this.subtitleRight.remove();
 
     const wrapMiddleware = wrapOptions?.middleware;
@@ -258,25 +283,27 @@ export class DialogElement extends Row {
 
     const usePeerId = isSavedDialog ? threadId : peerId;
 
-    const avatar = isForumTopic || asAllChats === 'topics' ? undefined : avatarNew({
-      middleware: this.middlewareHelper.get(),
-      size: avatarSizeMap[avatarSize],
+    const avatar = avatarElement || isForumTopic || asAllChats === 'topics' ?
+      undefined :
+      avatarNew({
+        middleware: this.middlewareHelper.get(),
+        size: avatarSizeMap[avatarSize],
 
-      lazyLoadQueue: newWrapOptions.lazyLoadQueue,
-      isDialog: !!meAsSaved,
-      peerId: fromName ? NULL_PEER_ID : usePeerId,
-      peerTitle: fromName,
-      withStories,
-      // Animate video avatars only in the primary chat list (withStories), not
-      // in compact pickers / search rows.
-      withVideoAvatar: withStories,
-      wrapOptions: newWrapOptions,
-      meAsNotes: isSavedDialog,
-      asAllChats: asAllChats === 'monoforum',
-      autoDeletePeriod
-    });
+        lazyLoadQueue: newWrapOptions.lazyLoadQueue,
+        isDialog: !!meAsSaved,
+        peerId: fromName ? NULL_PEER_ID : usePeerId,
+        peerTitle: fromName,
+        withStories,
+        // Animate video avatars only in the primary chat list (withStories), not
+        // in compact pickers / search rows.
+        withVideoAvatar: withStories,
+        wrapOptions: newWrapOptions,
+        meAsNotes: isSavedDialog,
+        asAllChats: asAllChats === 'monoforum',
+        autoDeletePeriod
+      });
     loadPromises?.push(avatar?.readyThumbPromise);
-    const avatarEl = avatar?.node;
+    const avatarEl = avatarElement || avatar?.node;
     if(avatarEl) {
       avatarEl.classList.add('dialog-avatar');
       this.applyMediaElement(avatarEl, avatarSize);
@@ -303,7 +330,7 @@ export class DialogElement extends Row {
       ...newWrapOptions
     };
 
-    const peerTitle = new PeerTitle();
+    const peerTitle = this.peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
       peerId: usePeerId,
       fromName,
@@ -403,9 +430,38 @@ export class DialogElement extends Row {
     this.middlewareHelper?.destroy();
   }
 
+  public updateTitle(fromName: string) {
+    return this.peerTitle.update({fromName});
+  }
+
   public remove() {
     this.destroy();
     this.dom.listEl.remove();
+  }
+
+  public setMuted(isMuted: boolean, transitionDuration = 0) {
+    const {dom} = this;
+    const wasMuted = dom.listEl.classList.contains('is-muted') &&
+      !dom.listEl.classList.contains('backwards');
+    if(isMuted === wasMuted) {
+      return;
+    }
+
+    if(isMuted && !dom.mutedIcon) {
+      dom.mutedIcon = Icon('nosound', 'dialog-muted-icon');
+      dom.titleSpanContainer.append(dom.mutedIcon);
+    }
+
+    SetTransition({
+      element: dom.listEl,
+      className: 'is-muted',
+      forwards: isMuted,
+      duration: transitionDuration,
+      onTransitionEnd: !isMuted ? (() => {
+        dom.mutedIcon?.remove();
+        delete dom.mutedIcon;
+      }) : undefined
+    });
   }
 
   public createPinnedBadge() {
@@ -454,6 +510,74 @@ export class DialogElement extends Row {
     this.dom.subtitleEl.append(badge);
   }
 
+  public setBadgeState(options: DialogElementBadgeState) {
+    const transitionDuration = options.transitionDuration || 0;
+    this.setMuted(options.muted, transitionDuration);
+
+    const mounted = {
+      pinnedBadge: !!this.dom.pinnedBadge,
+      unreadBadge: !!this.dom.unreadBadge,
+      unreadAvatarBadge: !!this.dom.unreadAvatarBadge,
+      mentionsBadge: !!this.dom.mentionsBadge,
+      reactionsBadge: !!this.dom.reactionsBadge,
+      pollVotesBadge: !!this.dom.pollVotesBadge
+    };
+    if(options.pinned) this.createPinnedBadge();
+    if(options.unread) this.createUnreadBadge();
+    if(options.unreadAvatar) this.createUnreadAvatarBadge();
+    if(options.mentions) this.createMentionsBadge();
+    if(options.reactions) this.createReactionsBadge();
+    if(options.pollVotes) this.createPollVotesBadge();
+
+    const subtitleBadgesLength = [
+      options.pinned,
+      options.unread,
+      options.mentions,
+      options.reactions,
+      options.pollVotes
+    ].filter(Boolean).length;
+    SetTransition({
+      element: this.subtitleRow,
+      className: 'has-only-pinned-badge',
+      forwards: options.pinned && subtitleBadgesLength === 1,
+      duration: transitionDuration
+    });
+
+    const states: Array<[
+      Parameters<DialogElement['toggleBadgeByKey']>[0],
+      boolean
+    ]> = [
+      ['pinnedBadge', options.pinned],
+      ['unreadBadge', options.unread],
+      ['unreadAvatarBadge', options.unreadAvatar],
+      ['mentionsBadge', options.mentions],
+      ['reactionsBadge', options.reactions],
+      ['pollVotesBadge', options.pollVotes]
+    ];
+    for(const [key, visible] of states) {
+      if(!this.dom[key]) {
+        continue;
+      }
+      this.toggleBadgeByKey(key, visible, mounted[key], !transitionDuration);
+    }
+
+    if(options.unread && this.dom.unreadBadge) {
+      if(options.unreadText !== undefined) {
+        this.dom.unreadBadge.innerText = options.unreadText;
+      }
+      this.dom.unreadBadge.classList.add('unread');
+      this.dom.unreadBadge.classList.toggle('mention', !!options.unreadMention);
+    }
+
+    if(options.unreadAvatar && this.dom.unreadAvatarBadge) {
+      if(options.unreadAvatarText !== undefined) {
+        this.dom.unreadAvatarBadge.innerText = options.unreadAvatarText;
+      }
+      this.dom.unreadAvatarBadge.classList.add('unread');
+      this.dom.unreadAvatarBadge.classList.toggle('mention', !!options.unreadMention);
+    }
+  }
+
   public toggleBadgeByKey(
     key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'pinnedBadge'>,
     hasBadge: boolean,
@@ -495,7 +619,10 @@ type GetDialogOptions = {
 };
 
 type InitDialogAdditionalOptions = {
-  isBatch?: boolean;
+  isBatch?: boolean,
+  dialog?: AnyDialog,
+  lastMessage?: MyMessage,
+  onInitPromise?: (promise: Promise<unknown>) => void
 };
 
 const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates => ({
@@ -552,6 +679,7 @@ export class AppDialogsManager {
 
   private forumsTabs: Map<PeerId, ForumTab>;
   private forumsSlider: HTMLElement;
+  private forumTabByPeerIdPromises = new Map<PeerId, Promise<void>>();
   public forumTab: ForumTab;
   private forumNavigationItem: NavigationItem;
 
@@ -902,8 +1030,10 @@ export class AppDialogsManager {
       }
 
       const dialogElements = [
-        this.xd?.sortedList?.getDialogElement?.(peerId),
-        this.forumTab?.xd?.sortedList?.getDialogElement(threadId || monoforumThreadId || peerId)
+        this.xd?.getDialogElement(peerId),
+        this.forumTab?.xd?.getDialogElement(
+          threadId || monoforumThreadId || peerId
+        )
       ].filter(Boolean);
 
       dialogElements.forEach(dialogElement => {
@@ -1586,14 +1716,16 @@ export class AppDialogsManager {
     }
 
     if(hideTab) {
-      const dialogElement = this.xd.getDialogElement(hideTab.peerId);
-      if(dialogElement) {
-        dialogElement.dom.listEl.classList.remove('is-forum-open');
-      }
+      this.xd.getListElement(hideTab.peerId)
+      ?.classList.remove('is-forum-open');
     }
 
     if(hideTab === newTab) {
       newTab = undefined;
+    }
+
+    if(newTab) {
+      appSidebarLeft.closeSearch();
     }
 
     hideTab?.toggle(false);
@@ -1604,10 +1736,8 @@ export class AppDialogsManager {
     }
 
     if(newTab) {
-      const dialogElement = this.xd.getDialogElement(newTab.peerId);
-      if(dialogElement) {
-        dialogElement.dom.listEl.classList.add('is-forum-open');
-      }
+      this.xd.getListElement(newTab.peerId)
+      ?.classList.add('is-forum-open');
 
       appImManager.selectTab(APP_TABS.CHATLIST);
     }
@@ -1659,7 +1789,39 @@ export class AppDialogsManager {
     return !!this.forumsTabs.get(peerId);
   }
 
-  public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {
+  public toggleForumTabByPeerId(
+    peerId: PeerId,
+    show?: boolean,
+    asInnerIfAsMessages?: boolean,
+    ForumTabConstructorOverride?: typeof ForumTab
+  ) {
+    const previousPromise = this.forumTabByPeerIdPromises.get(peerId);
+    const run = () => this.toggleForumTabByPeerIdInternal(
+      peerId,
+      show,
+      asInnerIfAsMessages,
+      ForumTabConstructorOverride
+    );
+    const promise = previousPromise ?
+      previousPromise.then(run, run) :
+      run();
+    this.forumTabByPeerIdPromises.set(peerId, promise);
+
+    const cleanup = () => {
+      if(this.forumTabByPeerIdPromises.get(peerId) === promise) {
+        this.forumTabByPeerIdPromises.delete(peerId);
+      }
+    };
+    promise.then(cleanup, cleanup);
+    return promise;
+  }
+
+  private async toggleForumTabByPeerIdInternal(
+    peerId: PeerId,
+    show?: boolean,
+    asInnerIfAsMessages?: boolean,
+    ForumTabConstructorOverride?: typeof ForumTab
+  ) {
     if(peerId === rootScope.myId) {
       const tab = appSidebarLeft.getTab(AppSharedMediaTab);
       if(show === true || (show === undefined && !tab)) {
@@ -1676,8 +1838,26 @@ export class AppDialogsManager {
     }
 
     const {managers} = this;
-    const history = appSidebarLeft.getHistory();
-    const lastTab = history[history.length - 1];
+    const community = !peerId.isUser() ?
+      apiManagerProxy.getChat(peerId.toChatId()) :
+      undefined;
+    const isCommunity = !!community;
+    const canOpenCommunity = community?._ === 'communityForbidden' ||
+      (
+        community?._ === 'community' &&
+        !community.pFlags.left
+      );
+    let ForumTabConstructor = ForumTabConstructorOverride;
+    if(!ForumTabConstructor) {
+      if(canOpenCommunity) {
+        ({CommunityForumTab: ForumTabConstructor} = await import(
+          '@components/forumTab/communityForumTab'
+        ));
+      } else {
+        ForumTabConstructor = ForumTab.register.getEntry(peerId);
+      }
+    }
+    if(!ForumTabConstructor) return;
 
     const dialog = await managers.dialogsStorage.getDialogOnly(peerId);
     const viewAsMessages = dialog && !!dialog.pFlags.view_forum_as_messages;
@@ -1690,18 +1870,49 @@ export class AppDialogsManager {
       return;
     }
 
+    const history = appSidebarLeft.getHistory();
+    const lastTab = history[history.length - 1];
     let forumTab: ForumTab;
-    if(lastTab/*  && !(lastTab instanceof AppArchivedTab) */) {
-      if(lastTab instanceof ForumTab && lastTab.peerId === peerId && show) {
-        shake(lastTab.container);
+    const asNavigationTab = shouldOpenForumAsNavigationTab({
+      hasNavigationHistory: !!lastTab,
+      isCommunity,
+      isNarrowScreen: mediaSizes.isLessThanFloatingLeftSidebar
+    });
+    if(asNavigationTab) {
+      const isSameTab = lastTab instanceof ForumTab &&
+        lastTab.peerId === peerId;
+      const existingTab = findForumTabByPeerId(history, peerId);
+      if(show === false) {
+        if(isSameTab) {
+          lastTab.close();
+        }
         return;
       }
 
-      const ForumTabConstructor = ForumTab.register.getEntry(peerId);
-      if(!ForumTabConstructor) return;
+      if(isSameTab) {
+        appSidebarLeft.closeSearch();
+        if(show) {
+          shake(lastTab.container);
+        }
+        return;
+      }
+
+      if(existingTab) {
+        if(!await appSidebarLeft.closeTabsUntilTab(existingTab)) {
+          return;
+        }
+
+        appSidebarLeft.closeSearch();
+        return;
+      }
 
       forumTab = appSidebarLeft.createTab(ForumTabConstructor);
-      forumTab.open({peerId, managers});
+      appSidebarLeft.closeSearch();
+      const openPromise = forumTab.open({peerId, managers});
+      if(isCommunity && mediaSizes.isLessThanFloatingLeftSidebar) {
+        appImManager.selectTab(APP_TABS.CHATLIST);
+      }
+      await openPromise;
       return;
     }
 
@@ -1710,6 +1921,7 @@ export class AppDialogsManager {
     show ??= !isSameTab;
     if(show === isSameTab) {
       if(show) {
+        appSidebarLeft.closeSearch();
         shake(forumTab.container);
       }
 
@@ -1717,9 +1929,6 @@ export class AppDialogsManager {
     }
 
     if(show && !forumTab) {
-      const ForumTabConstructor = ForumTab.register.getEntry(peerId);
-      if(!ForumTabConstructor) return;
-
       forumTab = new ForumTabConstructor(undefined);
       forumTab.init({peerId, managers});
 
@@ -1742,6 +1951,10 @@ export class AppDialogsManager {
 
     const params = new URLSearchParams();
     params.set('p', '' + peerId);
+    const communityId = +element.dataset.communityId || undefined;
+    if(communityId && peerId === communityId.toChatId().toPeerId(true)) {
+      params.set('community', '1');
+    }
     if(lastMsgId) params.set('message', '' + lastMsgId);
     if(threadId) params.set('thread', '' + threadId);
     const url = `#/im?${params.toString()}`;
@@ -1791,12 +2004,16 @@ export class AppDialogsManager {
     let willOpenStory = false;
 
     const setWillOpenStory = (e: Event) => willOpenStory = !isOpeningStoriesDisabled() && !!getOpenStoryCallback(e.target);
+    const isDialogListAction = (target: EventTarget) => {
+      return !!(target as HTMLElement).closest?.('[data-dialog-list-action]');
+    };
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        setWillOpenStory(e)
+        setWillOpenStory(e) ||
+        isDialogListAction(e.target)
       ) {
         return;
       }
@@ -1810,7 +2027,7 @@ export class AppDialogsManager {
         return;
       }
 
-      const elem = findUpTag(target, DIALOG_LIST_ELEMENT_TAG);
+      const elem = findDialogListElement(target);
 
       if(!elem) {
         return;
@@ -1842,6 +2059,29 @@ export class AppDialogsManager {
       }
 
       if(onFound?.(elem) === false) {
+        return;
+      }
+
+      const community = !peerId.isUser() ?
+        apiManagerProxy.getChat(peerId.toChatId()) :
+        undefined;
+      if(
+        community?._ === 'community' &&
+        !community.pFlags.left &&
+        !threadId
+      ) {
+        if(e.ctrlKey || e.metaKey) {
+          this.openDialogInNewTab(elem);
+          cancelEvent(e);
+          return;
+        }
+
+        const isFromRightSidebar = appSidebarRight.sidebarEl.contains(elem);
+        this.toggleForumTabByPeerId(
+          peerId,
+          isFromRightSidebar ? true : undefined,
+          false
+        );
         return;
       }
 
@@ -1928,6 +2168,10 @@ export class AppDialogsManager {
     // cancel link click
     // ! do not change it to attachClickEvent
     list.addEventListener('click', (e) => {
+      if(isDialogListAction(e.target)) {
+        return;
+      }
+
       if(e.button === 0) {
         cancelEvent(e);
       }
@@ -2025,7 +2269,9 @@ export class AppDialogsManager {
     highlightWord,
     isBatch = false,
     setUnread = false,
-    noForwardIcon
+    noForwardIcon,
+    setMessageId = true,
+    subtitlePeerId
   }: {
     dialog: PossibleDialog,
     lastMessage?: Message.message | Message.messageService,
@@ -2033,7 +2279,9 @@ export class AppDialogsManager {
     highlightWord?: string,
     isBatch?: boolean,
     setUnread?: boolean,
-    noForwardIcon?: boolean
+    noForwardIcon?: boolean,
+    setMessageId?: boolean,
+    subtitlePeerId?: PeerId
   }) {
     if(!dialogElement) {
       dialogElement = this.xd.getDialogElement(dialog.peerId);
@@ -2057,7 +2305,7 @@ export class AppDialogsManager {
       this.setUnreadMessagesN({dialog, dialogElement, isBatch, setLastMessagePromise: promise});
     }
 
-    if(!lastMessage && !draftMessage/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
+    if(!lastMessage && !draftMessage && !subtitlePeerId/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
       const withNoMessagesText = apiManagerProxy.isBotforum(peerId);
 
       dom.lastMessageSpan.replaceChildren(...(withNoMessagesText ? [i18n('NoMessagesYet')] : []));
@@ -2069,7 +2317,7 @@ export class AppDialogsManager {
     }
 
     // set it before content so won't have bug in appSearch
-    if(isSearch && lastMessage) {
+    if(isSearch && setMessageId && lastMessage) {
       dom.listEl.dataset.mid = '' + lastMessage.mid;
 
       const replyTo = lastMessage.reply_to as MessageReplyHeader.messageReplyHeader;
@@ -2083,20 +2331,7 @@ export class AppDialogsManager {
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
       let mediaContainer: HTMLElement;
-      let willPrepend: (Promise<any> | HTMLElement)[] = [];
-      let icon: Icon;
-      if(draftMessage) {
-
-      } else if((lastMessage as Message.message)?.fwdFromId && !isSaved && !noForwardIcon) {
-        icon = 'forward_filled';
-      } else if((lastMessage as Message.message)?.reply_to?._ === 'messageReplyStoryHeader') {
-        icon = 'storyreply';
-      }
-
-      if(icon) {
-        const span = Icon(icon, 'dialog-subtitle-ico', 'dialog-subtitle-ico-' + icon);
-        willPrepend.push(span);
-      }
+      const mediaParts: (Promise<HTMLElement> | HTMLElement)[] = [];
 
       if(lastMessage && !draftMessage && !isRestricted) {
         const media = getMediaFromMessage(lastMessage, true);
@@ -2113,7 +2348,7 @@ export class AppDialogsManager {
               mediaContainer.classList.add('is-round');
             }
 
-            willPrepend.push(wrapPhoto({
+            mediaParts.push(wrapPhoto({
               photo: media,
               message: lastMessage,
               container: mediaContainer,
@@ -2145,96 +2380,26 @@ export class AppDialogsManager {
         }
       }
 
-      /* if(lastMessage.from_id === auth.id) { // You:  */
-      if(draftMessage) {
-        const span = document.createElement('span');
-        span.classList.add('danger');
-        span.append(i18n('Draft'), ': ');
-        willPrepend.unshift(span);
-      } else if(peerId.isAnyChat() && peerId !== lastMessage.fromId && !(lastMessage as Message.messageService).action) {
-        const span = document.createElement('span');
-        span.classList.add('primary-text');
-
-        if(lastMessage.fromId === rootScope.myId) {
-          span.append(i18n('FromYou'));
-          willPrepend.unshift(span);
-        } else {
-          // str = sender.first_name || sender.last_name || sender.username;
-          const p = middleware(wrapPeerTitle({
-            peerId: lastMessage.fromId,
-            onlyFirstName: true
-          })).then((element) => {
-            span.prepend(element);
-            return span;
-          }, noop);
-
-          willPrepend.unshift(p);
-        }
-
-        span.append(': ');
-        // console.log(sender, senderBold.innerText);
-      }
-
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
-      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions & WrapRichTextOptions> = {
-        textColor: this.getTextColor(dom.listEl.classList.contains('active'))
-      };
-
-      let fragment: DocumentFragment, wrapResult: ReturnType<typeof wrapMessageForReply>;
-      if(highlightWord && (lastMessage as Message.message)?.message) {
-        wrapResult = wrapMessageForReply({
-          ...wrapMessageForReplyOptions,
-          message: lastMessage,
-          highlightWord,
-          withoutMediaType
-        });
-      } else if(draftMessage) {
-        wrapResult = wrapMessageForReply({
-          ...wrapMessageForReplyOptions,
-          message: draftMessage
-        });
-      } else if(lastMessage) {
-        wrapResult = wrapMessageForReply({
-          ...wrapMessageForReplyOptions,
-          message: lastMessage,
-          withoutMediaType
-        });
-      } else { // rare case
-        fragment = document.createDocumentFragment();
-      }
-
-      if(wrapResult) {
-        fragment = await middleware(wrapResult);
-      }
-
-      if(willPrepend.length) {
-        willPrepend = await middleware(Promise.all(willPrepend));
-        // fragment.prepend(...(willPrepend as HTMLElement[]));
-      }
-
-      // const flex = !!mediaContainer && (willPrepend as HTMLElement[])[0] === mediaContainer;
-      const flex = true;
-      dom.lastMessageSpan.classList.toggle('dialog-subtitle-flex', flex);
-      if(flex) {
-        const parts = [...willPrepend, fragment].map((part, idx, arr) => {
-          const span = document.createElement('span');
-          span.classList.add('dialog-subtitle-span');
-          // if(part !== mediaContainer) {
-          span.classList.add('dialog-subtitle-span-overflow');
-          // }
-          if(idx === (arr.length - 1)) {
-            span.classList.add('dialog-subtitle-span-last');
-            span.dir = 'auto';
-          }
-          span.append(part as HTMLElement);
-          // setInnerHTML(span, part as HTMLElement);
-          return span;
-        });
-        dom.lastMessageSpan.replaceChildren(...parts);
-        // dom.lastMessageSpan.replaceChildren(...[mediaContainer, span].filter(Boolean));
-      } else {
-        replaceContent(dom.lastMessageSpan, fragment);
-      }
+      const parts = await renderDialogSubtitleParts({
+        peerId,
+        isSaved,
+        lastMessage,
+        draftMessage,
+        highlightWord,
+        noForwardIcon,
+        mediaParts,
+        withoutMediaType,
+        prependPeerId: subtitlePeerId,
+        middleware,
+        messageRenderer: wrapMessageForReply,
+        peerTitleRenderer: wrapPeerTitle,
+        textColor: this.getTextColor(
+          dom.listEl.classList.contains('active')
+        )
+      });
+      dom.lastMessageSpan.classList.add('dialog-subtitle-flex');
+      dom.lastMessageSpan.replaceChildren(...parts);
     }
 
     if(lastMessage || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
@@ -2292,8 +2457,6 @@ export class AppDialogsManager {
     ]);
 
     let [isMuted, m, isPinned, isDialogUnread, forumUnreadCount] = await middleware(promises);
-    const wasMuted = dom.listEl.classList.contains('is-muted') && !dom.listEl.classList.contains('backwards');
-
     const {count: unreadTopicsCount, hasUnmuted: hasUnmutedTopic} = forumUnreadCount || {};
 
     const {draftMessage, lastMessage} = m || {};
@@ -2331,24 +2494,6 @@ export class AppDialogsManager {
 
     dom.listEl.classList.toggle('no-unmuted-topic', !isMuted && hasUnmutedTopic !== undefined && !hasUnmutedTopic);
 
-    if(isMuted !== wasMuted) {
-      if(isMuted && !dom.mutedIcon) {
-        dom.mutedIcon = Icon('nosound', 'dialog-muted-icon');
-        dom.titleSpanContainer.append(dom.mutedIcon);
-      }
-
-      SetTransition({
-        element: dom.listEl,
-        className: 'is-muted',
-        forwards: isMuted,
-        duration: transitionDuration,
-        onTransitionEnd: !isMuted ? (() => {
-          dom.mutedIcon.remove();
-          delete dom.mutedIcon;
-        }) : undefined
-      });
-    }
-
     setSendingStatus(dom.statusSpan, isTopic && dialog.pFlags.closed ? 'premium_lock' : setStatusMessage, true);
 
     // if(isTopic) {
@@ -2356,103 +2501,51 @@ export class AppDialogsManager {
     // }
 
     const hasPinnedBadge = isPinned && !isMonoforumThread && !isAllChats;
-    const isPinnedBadgeMounted = !!dom.pinnedBadge;
-    if(hasPinnedBadge) {
-      dialogElement.createPinnedBadge();
-    }
-
     const hasUnreadBadge = isDialogUnread;
-    const isUnreadBadgeMounted = !!dom.unreadBadge;
-    if(hasUnreadBadge) {
-      dialogElement.createUnreadBadge();
-    }
-
-    const hasUnreadAvatarBadge = this.xd !== this.xds[FOLDER_ID_ARCHIVE] && !isTopic && !isMonoforumThread && !isAllChats && (!!this.forumTab || appSidebarLeft.isCollapsed()) && isDialogUnread;
-
-    const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
-    if(hasUnreadAvatarBadge) {
-      dialogElement.createUnreadAvatarBadge();
-    }
-
-    const hasMentionsBadge = isSaved || isMonoforumThread ? false : (dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1));
-    const isMentionsBadgeMounted = !!dom.mentionsBadge;
-    if(hasMentionsBadge) {
-      dialogElement.createMentionsBadge();
-    }
-
+    const hasUnreadAvatarBadge = dialogElement.isMainList !== false &&
+      this.xd !== this.xds[FOLDER_ID_ARCHIVE] &&
+      !isTopic &&
+      !isMonoforumThread &&
+      !isAllChats &&
+      (!!this.forumTab || appSidebarLeft.isCollapsed()) &&
+      isDialogUnread;
+    const hasMentionsBadge = !!(
+      !isSaved &&
+      !isMonoforumThread &&
+      dialog.unread_mentions_count &&
+      (dialog.unread_mentions_count > 1 || dialog.unread_count > 1)
+    );
     const hasReactionsBadge = isSaved ? false : !!dialog.unread_reactions_count;
-    const isReactionsBadgeMounted = !!dom.reactionsBadge;
-    if(hasReactionsBadge) {
-      dialogElement.createReactionsBadge();
-    }
-
     const hasPollVotesBadge = isSaved || isMonoforumThread ? false : !!(dialog as Dialog | ForumTopic).unread_poll_votes_count;
-    const isPollVotesBadgeMounted = !!dom.pollVotesBadge;
-    if(hasPollVotesBadge) {
-      dialogElement.createPollVotesBadge();
-    }
-
-    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge, hasPollVotesBadge].filter(Boolean).length;
-    SetTransition({
-      element: dialogElement.subtitleRow,
-      className: 'has-only-pinned-badge',
-      forwards: hasPinnedBadge && badgesLength === 1,
-      duration: isBatch ? 0 : BADGE_TRANSITION_TIME
-    });
-
-    const a: [Parameters<DialogElement['toggleBadgeByKey']>[0], boolean, boolean][] = [
-      ['pinnedBadge', hasPinnedBadge, isPinnedBadgeMounted],
-      ['unreadBadge', hasUnreadBadge, isUnreadBadgeMounted],
-      ['unreadAvatarBadge', hasUnreadAvatarBadge, isUnreadAvatarBadgeMounted],
-      ['mentionsBadge', hasMentionsBadge, isMentionsBadgeMounted],
-      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted],
-      ['pollVotesBadge', hasPollVotesBadge, isPollVotesBadgeMounted]
-    ];
-
-    a.forEach(([key, hasBadge, isBadgeMounted]) => {
-      const badge = dom[key];
-      if(!badge) {
-        return;
+    let isMention = false, unreadBadgeText: string;
+    if(hasUnreadBadge) {
+      if(!isSaved && !isMonoforumThread && dialog.unread_mentions_count && unreadCount === 1) {
+        unreadBadgeText = '@';
+        isMention = true;
+      } else {
+        // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
+        unreadBadgeText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
       }
+    }
 
-      dialogElement.toggleBadgeByKey(key, hasBadge, isBadgeMounted, isBatch);
+    dialogElement.setBadgeState({
+      muted: isMuted,
+      pinned: hasPinnedBadge,
+      unread: hasUnreadBadge,
+      unreadText: unreadBadgeText,
+      unreadMention: isMention,
+      unreadAvatar: hasUnreadAvatarBadge,
+      unreadAvatarText: unreadBadgeText || undefined,
+      mentions: hasMentionsBadge,
+      reactions: hasReactionsBadge,
+      pollVotes: hasPollVotesBadge,
+      transitionDuration
     });
 
-    if(!hasUnreadBadge) {
-      deferred.resolve();
-      return;
-    }
-
-    let isUnread = true, isMention = false, unreadBadgeText: string;
-    if(!isSaved && !isMonoforumThread && dialog.unread_mentions_count && unreadCount === 1) {
-      unreadBadgeText = '@';
-      isMention = true;
-    } else if(isDialogUnread) {
-      // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
-      unreadBadgeText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
-    } else {
-      unreadBadgeText = '';
-      isUnread = false;
-    }
-
-    if(isTopic) {
+    if(isTopic && dom.unreadBadge) {
       const notVisited = isDialogUnread && unreadBadgeText === ' ';
       dom.unreadBadge.classList.toggle('not-visited', notVisited);
     }
-
-    const b: Array<[HTMLElement, string]> = [
-      dom.unreadBadge && [dom.unreadBadge, unreadBadgeText],
-      dom.unreadAvatarBadge && [dom.unreadAvatarBadge, unreadBadgeText || undefined]
-    ];
-
-    b.filter(Boolean).forEach(([badge, text]) => {
-      if(text !== undefined) {
-        badge.innerText = unreadBadgeText;
-      }
-
-      badge.classList.toggle('unread', isUnread);
-      badge.classList.toggle('mention', isMention);
-    });
 
     // if(isPinned && !isUnread && !isMention) {
     //   dom.unreadBadge.classList.add('badge-icon', 'dialog-pinned-icon');
@@ -2524,6 +2617,7 @@ export class AppDialogsManager {
     if(ret) {
       const promise = this.initDialog(ret, options);
       options.loadPromises?.push(promise);
+      options.onInitPromise?.(promise);
     }
 
     if(ret && this.lazyLoadQueue) {
@@ -2574,7 +2668,10 @@ export class AppDialogsManager {
 
   public initDialog(dialogElement: DialogElement, options: Parameters<AppDialogsManager['addDialogNew']>[0] & InitDialogAdditionalOptions) {
     const {peerId} = options;
-    const getDialogPromise = this.getDialog(peerId, {threadOrSavedId: options.threadId, monoforumParentPeerId: options.monoforumParentPeerId});
+    const getDialogPromise = this.getDialog(options.dialog || peerId, {
+      threadOrSavedId: options.threadId,
+      monoforumParentPeerId: options.monoforumParentPeerId
+    });
 
     const promise = getDialogPromise.then((dialog) => {
       const promises: (Promise<any> | void)[] = [];
@@ -2595,6 +2692,7 @@ export class AppDialogsManager {
         dialog,
         dialogElement: dialogElement,
         isBatch: options.isBatch,
+        lastMessage: options.lastMessage,
         setUnread: true
       }));
 

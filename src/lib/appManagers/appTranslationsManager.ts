@@ -207,6 +207,9 @@ export default class AppTranslationsManager extends AppManager {
 
   public togglePeerTranslations(peerId: PeerId, disabled: boolean) {
     this.appProfileManager.modifyCachedFullPeer(peerId, (fullPeer) => {
+      if(!('pFlags' in fullPeer)) {
+        return false;
+      }
       if(disabled) fullPeer.pFlags.translations_disabled = true;
       else delete fullPeer.pFlags.translations_disabled;
     });

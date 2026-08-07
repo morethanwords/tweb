@@ -48,7 +48,7 @@ describe('parseBotAdminRights', () => {
   });
 
   test('ignores unknown and empty names', () => {
-    expect(parseBotAdminRights('unknown++pin_messages')).toEqual({
+    expect(parseBotAdminRights('unknown++pin_messages+manage_linked_peers')).toEqual({
       _: 'chatAdminRights',
       pFlags: {
         pin_messages: true

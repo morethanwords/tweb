@@ -1,0 +1,18 @@
+.withRightInteractive {
+  :global(.dialog-title),
+  :global(.dialog-subtitle) {
+    padding-inline-end:
+      calc(var(--community-peer-dialog-action-width, 0px) + .5rem);
+  }
+}
+
+.rightInteractive {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  inset-inline-end: .75rem;
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}

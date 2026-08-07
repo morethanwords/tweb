@@ -171,7 +171,10 @@ const ChatDiscussion: Component = () => {
           d.append(br.cloneNode(), br.cloneNode(), i18n('Discussion.Set.PrivateGroup'));
         }
 
-        if(groupChatFull._ === 'chatFull' || groupChatFull.pFlags.hidden_prehistory) {
+        if(
+          groupChatFull._ === 'chatFull' ||
+          (groupChatFull._ === 'channelFull' && groupChatFull.pFlags.hidden_prehistory)
+        ) {
           d.append(br.cloneNode(), br.cloneNode(), i18n('DiscussionLinkGroupAlertHistory'));
         }
 

@@ -1,86 +1,140 @@
-import {Component} from 'solid-js';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
-import {ChannelParticipant, Chat} from '@layer';
-import hasRights from '@appManagers/utils/chats/hasRights';
+import {
+  Component,
+  createEffect,
+  createSignal,
+  onCleanup,
+  Show
+} from 'solid-js';
+import {Portal} from 'solid-js/web';
+import type AppSelectPeers from '@components/appSelectPeers';
+import Button from '@components/buttonTsx';
+import useCommunityTabGuard
+from '@components/communities/useCommunityTabGuard';
+import Section from '@components/section';
+import createMiddleware from '@helpers/solid/createMiddleware';
 import {i18n} from '@lib/langPack';
-import AppSelectPeers from '@components/appSelectPeers';
-import ButtonCorner from '@components/buttonCorner';
-import showPickUserPopup from '@components/popups/pickUser';
-import SettingSection from '@components/settingSection';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {createSelectorForParticipants} from '@components/sidebarRight/tabs/participantsSelector';
-import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppRemovedUsersTab} from '@components/solidJsTabs/tabs';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import createChatRemovedUsersSource from './chatRemovedUsersSource';
+import createCommunityRemovedUsersSource
+from './communityRemovedUsersSource';
+import {
+  isRemovedParticipant,
+  type RemovedUsersSource
+} from './removedUsersSource';
 
 const RemovedUsers: Component = () => {
   const [tab] = useSuperTab<typeof AppRemovedUsersTab>();
   const promiseCollector = usePromiseCollector();
-  const chatId = tab.payload;
+  const communityId = 'communityId' in tab.payload ?
+    tab.payload.communityId :
+    undefined;
+  const chatId = 'chatId' in tab.payload ? tab.payload.chatId : undefined;
+  if(communityId !== undefined) {
+    useCommunityTabGuard(tab, communityId);
+  }
 
-  let selector: AppSelectPeers;
+  const middlewareHelper = createMiddleware();
+  const middleware = middlewareHelper.get(tab.middlewareHelper.get());
+  const [source, setSource] = createSignal<RemovedUsersSource>();
+  const [selector, setSelector] = createSignal<AppSelectPeers>();
+  const [captionElement, setCaptionElement] =
+    createSignal<HTMLDivElement>();
+  onCleanup(() => {
+    tab.container.classList.remove(
+      'edit-peer-container',
+      'removed-users-container'
+    );
+    selector()?.container?.remove();
+  });
+
+  createEffect(() => {
+    const currentSelector = selector();
+    const element = captionElement();
+    if(currentSelector && element) {
+      currentSelector.scrollable.container.insertBefore(
+        element,
+        currentSelector.heightContainer
+      );
+    }
+  });
 
   promiseCollector.collect((async() => {
-    const chat = await tab.managers.appChatsManager.getChat(chatId) as Chat.channel | Chat.chat;
-    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
-    tab.container.classList.add('edit-peer-container', 'removed-users-container');
-
-    const canChangePermissions = hasRights(chat, 'change_permissions');
-    const addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
-    if(canChangePermissions) tab.content.append(addBtn);
-
-    attachClickEvent(addBtn, () => {
-      const popup = showPickUserPopup({
-        titleLangKey: 'RemovedUsers',
-        peerType: ['channelParticipants'],
-        peerId: chatId.toPeerId(true),
-        onSelect: (chosen) => {
-          const participant = popup.selector.participants.get(chosen[0].peerId);
-          tab.managers.appChatsManager.kickFromChat(chatId, participant);
-        },
-        placeholder: 'SearchPlaceholder'
+    const removedUsersSource = communityId === undefined ?
+      await createChatRemovedUsersSource({tab, chatId, middleware}) :
+      await createCommunityRemovedUsersSource({
+        tab,
+        communityId,
+        middleware
       });
-    }, {listenerSetter: tab.listenerSetter});
+    if(!middleware()) {
+      return;
+    }
 
-    const {selector: _selector, loadPromise} = createSelectorForParticipants({
+    tab.container.classList.add(
+      'edit-peer-container',
+      'removed-users-container'
+    );
+    const selectorResult = removedUsersSource.createSelector({
       appendTo: tab.content,
       managers: tab.managers,
-      middleware: tab.middlewareHelper.get(),
-      peerId: chatId.toPeerId(true),
-      channelParticipantsFilter: (q) => ({_: 'channelParticipantsKicked', q}),
-      channelParticipantsUpdateFilter: (participant) => participant?._ === 'channelParticipantBanned' && participant.pFlags.left,
-      getSubtitleForElement: async(peerId) => {
-        const participant = selector.participants.get(peerId);
-        const kickedBy = (participant as ChannelParticipant.channelParticipantBanned).kicked_by.toPeerId(false);
-        return i18n('UserRemovedBy', [await wrapPeerTitle({peerId: kickedBy})]);
+      middleware,
+      getSubtitleForElement: async(participantId: PeerId) => {
+        const participant = selector()?.participants.get(participantId);
+        if(!isRemovedParticipant(participant)) {
+          return;
+        }
+
+        return i18n('UserRemovedBy', [
+          await wrapPeerTitle({
+            peerId: participant.kicked_by.toPeerId(false)
+          })
+        ]);
       }
     });
+    setSelector(selectorResult.selector);
+    selectorResult.selector.scrollable.container.querySelector(
+      '.gradient-delimiter'
+    )?.remove();
+    removedUsersSource.attachSelectorBehavior(selectorResult.selector);
+    setSource(removedUsersSource);
 
-    selector = _selector;
-
-    const section = new SettingSection({
-      noDelimiter: true,
-      caption: isBroadcast ? 'NoBlockedChannel2' : 'NoBlockedGroup2'
-    });
-
-    section.container.firstElementChild.remove();
-    const hr = selector.scrollable.container.querySelector('.gradient-delimiter');
-    hr?.remove();
-    selector.scrollable.append(section.container, selector.scrollable.container.lastElementChild);
-
-    createParticipantContextMenu({
-      listenTo: selector.scrollable.container,
-      slider: tab.slider,
-      chatId,
-      participants: selector.participants,
-      middleware: tab.middlewareHelper.get()
-    });
-
-    await loadPromise;
+    await selectorResult.loadPromise;
   })());
 
-  return null;
+  return (
+    <>
+      <Portal mount={tab.content}>
+        <Show when={source()?.canChangePermissions}>
+          <Button.Corner
+            class="is-visible"
+            icon="addmember_filled"
+            aria-label={i18n('RemovedUsers').textContent}
+            tabIndex={0}
+            onClick={() => source()?.openAddParticipant()}
+          />
+        </Show>
+      </Portal>
+
+      <Show when={source()}>
+        {(source) => (
+          <Show when={selector()}>
+            {(selector) => (
+              <Portal mount={selector().scrollable.container}>
+                <Section
+                  ref={setCaptionElement}
+                  noContent
+                  caption={source().caption}
+                />
+              </Portal>
+            )}
+          </Show>
+        )}
+      </Show>
+    </>
+  );
 };
 
 export default RemovedUsers;

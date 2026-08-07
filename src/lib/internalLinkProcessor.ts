@@ -722,7 +722,7 @@ export class InternalLinkProcessor {
           case 'contact':
             return showCreateContactPopup();
           case 'channel':
-            return appSidebarLeft.createTab(AppNewChannelTab).open();
+            return appSidebarLeft.createTab(AppNewChannelTab).open({});
           case 'group':
             return createNewGroupTab(appSidebarLeft);
           default:

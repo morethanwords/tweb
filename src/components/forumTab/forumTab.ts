@@ -31,7 +31,7 @@ export class ForumTab extends SliderSuperTabEventable {
 
   protected log: ReturnType<typeof logger>;
 
-  public xd: AutonomousDialogListBase;
+  public xd?: AutonomousDialogListBase;
 
   public async toggle(value: boolean) {
     if(this.triggerAsyncInit) {
@@ -67,7 +67,13 @@ export class ForumTab extends SliderSuperTabEventable {
   }
 
   protected async asyncInit(): Promise<void> {
-    this.xd.onChatsScroll();
+    this.xd?.onChatsScroll();
+  }
+
+  protected async onSearchClick() {
+    appSidebarLeft.closeEverythingInside();
+    if(liteMode.isAvailable('animations')) await pause(400);
+    appSidebarLeft.initSearch().openWithPeerId(this.peerId);
   }
 
   public init(options: {
@@ -100,25 +106,21 @@ export class ForumTab extends SliderSuperTabEventable {
     if(IS_TOUCH_SUPPORTED) {
       handleTabSwipe({
         element: this.container,
-        onSwipe: () => {
-          appDialogsManager.toggleForumTab(undefined, this);
-        },
+        onSwipe: this._close,
         middleware: this.middlewareHelper.get()
       });
     }
 
     const searchButton = ButtonIcon('search');
-    attachClickEvent(searchButton, async() => {
-      appSidebarLeft.closeEverythingInside();
-      if(liteMode.isAvailable('animations')) await pause(400);
-      appSidebarLeft.initSearch().openWithPeerId(this.peerId);
-    });
+    attachClickEvent(searchButton, () => this.onSearchClick());
 
     this.header.append(searchButton);
 
     this.syncInit();
 
-    this.xd.getRectFromForPlaceholder = this.getRectFromForPlaceholder;
+    if(this.xd) {
+      this.xd.getRectFromForPlaceholder = this.getRectFromForPlaceholder;
+    }
 
     if(!isFloating) {
       return this.triggerAsyncInit();
@@ -155,6 +157,6 @@ export class ForumTab extends SliderSuperTabEventable {
 
   public onCloseAfterTimeout() {
     super.onCloseAfterTimeout();
-    this.xd.destroy();
+    this.xd?.destroy();
   }
 }

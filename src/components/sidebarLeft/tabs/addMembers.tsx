@@ -22,6 +22,8 @@ const AddMembersTab = () => {
     extraCategories,
     extraCategoriesSectionLangKey,
     peerType,
+    channelParticipantsPeerId,
+    peerLoader,
     exceptSelf,
     filterPeerTypeBy,
     limit,
@@ -60,10 +62,20 @@ const AddMembersTab = () => {
     onChange: skippable ? null : (length) => {
       nextBtn.classList.toggle('is-visible', !!length);
     },
-    peerType: peerType || [isPrivacy ? 'dialogs' : 'contacts'],
+    peerType: peerType || [peerLoader ?
+      'custom' :
+      (
+        channelParticipantsPeerId ?
+          'channelParticipants' :
+          (isPrivacy ? 'dialogs' : 'contacts')
+      )],
+    peerId: channelParticipantsPeerId,
+    getMoreCustom: peerLoader,
     placeholder,
-    exceptSelf: exceptSelf ?? isPrivacy,
-    filterPeerTypeBy: filterPeerTypeBy || (isPrivacy ? ['isAnyGroup', 'isUser'] : undefined),
+    exceptSelf: exceptSelf ??
+      (isPrivacy || !!channelParticipantsPeerId || !!peerLoader),
+    filterPeerTypeBy: filterPeerTypeBy ??
+      (isPrivacy ? ['isAnyGroup', 'isUser'] : undefined),
     managers: tab.managers,
     design: isPrivacy ? 'round' : 'square',
     checkboxSide: isPrivacy ? 'right' : 'left'
@@ -132,7 +144,12 @@ const AddMembersTab = () => {
 
   function attachToPromise(promise: Promise<any>) {
     const removeLoader = setButtonLoader(nextBtn, 'arrow_next');
-    promise.then(() => {
+    promise.then((result) => {
+      if(result === false) {
+        removeLoader();
+        return;
+      }
+
       tab.close();
     }, () => {
       removeLoader();

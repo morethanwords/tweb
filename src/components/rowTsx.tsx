@@ -24,6 +24,10 @@ const {
 const Row = (props: {children: JSX.Element} & Partial<{
   ref: Ref<HTMLElement>,
   clickable: boolean | JSX.HTMLAttributes<HTMLElement>['onClick'],
+  role: JSX.HTMLAttributes<HTMLElement>['role'],
+  tabIndex: number,
+  'aria-label': string,
+  'on:keydown': JSX.HTMLAttributes<HTMLElement>['on:keydown'],
   havePadding: boolean,
   noRipple: boolean,
   noWrap: boolean,
@@ -34,8 +38,6 @@ const Row = (props: {children: JSX.Element} & Partial<{
   // buttonRightLangKey: LangPackKey,
   // rightTextContent?: string,
   as: 'a' | 'label' | 'div',
-  role: JSX.HTMLAttributes<HTMLElement>['role'],
-  tabIndex: number,
   'aria-checked': boolean,
   'aria-disabled': boolean,
   contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
@@ -117,7 +119,8 @@ const Row = (props: {children: JSX.Element} & Partial<{
         (typeof(props.clickable) !== 'boolean' && props.clickable) ||
         (props.contextMenu ? openContextMenu : undefined)
       }
-      onKeyDown={props.tabIndex !== undefined && props.clickable ? (event: KeyboardEvent) => {
+      aria-label={props['aria-label']}
+      onKeyDown={!props['on:keydown'] && props.tabIndex !== undefined && props.clickable ? (event: KeyboardEvent) => {
         if(event.key !== 'Enter' && event.key !== ' ') {
           return;
         }
@@ -125,6 +128,7 @@ const Row = (props: {children: JSX.Element} & Partial<{
         event.preventDefault();
         (event.currentTarget as HTMLElement).click();
       } : undefined}
+      on:keydown={props['on:keydown']}
       noRipple={!haveRipple()}
     >
       {resolvedChildren()}

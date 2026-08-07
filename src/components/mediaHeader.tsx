@@ -24,9 +24,13 @@ import styles from '@components/mediaHeader.module.scss';
  * components, etc. Cards that need an imperative ref to the slot can pass a
  * stable container element via `element`.
  */
-function MediaHeader(props: {class?: string, children?: JSX.Element}): JSX.Element {
+function MediaHeader(props: {
+  class?: string,
+  children?: JSX.Element,
+  marginBottom?: boolean
+}): JSX.Element {
   return (
-    <div class={classNames(styles.container, props.class)}>
+    <div class={classNames(styles.container, props.marginBottom && styles.marginBottom, props.class)}>
       {props.children}
     </div>
   );

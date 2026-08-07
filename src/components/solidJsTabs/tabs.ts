@@ -1,5 +1,5 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatFull, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -16,8 +16,12 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {deleteFolder as deleteEditFolder, getEditFolderInitArgs} from '@components/sidebarLeft/tabs/editFolderShared';
-import type {SelectSearchPeerType} from '@components/appSelectPeers';
+import type {
+  FilterPeerTypeByFunc,
+  SelectSearchPeerType
+} from '@components/appSelectPeers';
 import type {IsPeerType} from '@appManagers/appPeersManager';
+import type {AppChatFull} from '@appManagers/appProfileManager';
 
 
 export const AppPasscodeLockTab =
@@ -234,8 +238,13 @@ export const AppBlockedUsersTab =
   });
 
 
+type AppNewChannelTabPayload = {
+  onCreate?: (chatId: ChatId) => MaybePromise<void>,
+  openAfter?: boolean
+};
+
 export const AppNewChannelTab =
-  scaffoldSolidJSTab({
+  scaffoldSolidJSTab<AppNewChannelTabPayload>({
     title: 'NewChannel',
     getComponentModule: () => import('../sidebarLeft/tabs/newChannel')
   });
@@ -252,7 +261,7 @@ export const AppBackgroundColorTab =
 type AppNewGroupTabPayload = {
   peerIds: PeerId[],
   isGeoChat?: boolean,
-  onCreate?: (chatId: ChatId) => void,
+  onCreate?: (chatId: ChatId) => MaybePromise<void>,
   openAfter?: boolean,
   title?: string,
   asChannel?: boolean
@@ -396,8 +405,12 @@ export const AppDataAndStorageTab =
 
 // ─── Right sidebar ───
 
+type AppRemovedUsersTabPayload =
+  | {chatId: ChatId}
+  | {communityId: ChatId};
+
 export const AppRemovedUsersTab =
-  scaffoldSolidJSTabEventable<ChatId>({
+  scaffoldSolidJSTabEventable<AppRemovedUsersTabPayload>({
     title: 'ChannelBlacklist',
     getComponentModule: () => import('../sidebarRight/tabs/removedUsers')
   });
@@ -426,8 +439,12 @@ export const AppChatMembersTab =
     getComponentModule: () => import('../sidebarRight/tabs/chatMembers')
   });
 
+type AppChatAdministratorsTabPayload =
+  | {chatId: ChatId}
+  | {communityId: ChatId};
+
 export const AppChatAdministratorsTab =
-  scaffoldSolidJSTabEventable<{chatId: ChatId}>({
+  scaffoldSolidJSTabEventable<AppChatAdministratorsTabPayload>({
     title: 'PeerInfo.Administrators',
     getComponentModule: () => import('../sidebarRight/tabs/chatAdministrators')
   });
@@ -463,12 +480,12 @@ export const AppChatDiscussionTab =
   });
 
 export const AppChatTypeTab =
-  scaffoldSolidJSTabEventable<{chatId: ChatId, chatFull: ChatFull}>({
+  scaffoldSolidJSTabEventable<{chatId: ChatId, chatFull: AppChatFull}>({
     title: 'ChannelType',
     getComponentModule: () => import('../sidebarRight/tabs/chatType')
   });
 
-type AppUserPermissionsTabPayload = {
+type AppUserPermissionsChatPayload = {
   participant: ChannelParticipant | ChatParticipant,
   chatId: ChatId,
   userId: UserId,
@@ -482,9 +499,25 @@ type AppUserPermissionsTabPayload = {
   }
 };
 
+type AppUserPermissionsCommunityPayload = {
+  communityId: ChatId,
+  participantId: PeerId,
+  participant?: ChannelParticipant,
+  editingAdmin: true,
+  onUpdated?: (participant?: ChannelParticipant) => MaybePromise<void>
+};
+
+type AppUserPermissionsTabPayload =
+  AppUserPermissionsChatPayload |
+  AppUserPermissionsCommunityPayload;
+
 export const AppUserPermissionsTab =
   scaffoldSolidJSTabEventable<AppUserPermissionsTabPayload>({
-    title: (p) => p.addingBot && !p.addingBot.existingAdmin ? 'AddBot' : (p.editingAdmin ? 'EditAdmin' : 'UserRestrictions'),
+    title: (p) => 'communityId' in p ?
+      'EditAdmin' :
+      (p.addingBot && !p.addingBot.existingAdmin ?
+        'AddBot' :
+        (p.editingAdmin ? 'EditAdmin' : 'UserRestrictions')),
     getComponentModule: () => import('../sidebarRight/tabs/userPermissions')
   });
 
@@ -494,7 +527,7 @@ export function openUserPermissionsTab(
   chatId: ChatId,
   participant: ChatParticipant | ChannelParticipant,
   isAdmin?: boolean,
-  options?: Pick<AppUserPermissionsTabPayload, 'initialAdminRights' | 'existingAdminRights' | 'addingBot'>
+  options?: Pick<AppUserPermissionsChatPayload, 'initialAdminRights' | 'existingAdminRights' | 'addingBot'>
 ) {
   slider.createTab(AppUserPermissionsTab).open({
     participant,
@@ -502,6 +535,22 @@ export function openUserPermissionsTab(
     userId: getParticipantPeerId(participant).toUserId(),
     editingAdmin: isAdmin,
     ...options
+  });
+}
+
+export function openCommunityUserPermissionsTab(
+  slider: SidebarSlider,
+  communityId: ChatId,
+  participantId: PeerId,
+  participant?: ChannelParticipant,
+  onUpdated?: (participant?: ChannelParticipant) => MaybePromise<void>
+) {
+  slider.createTab(AppUserPermissionsTab).open({
+    communityId,
+    participantId,
+    participant,
+    editingAdmin: true,
+    onUpdated
   });
 }
 
@@ -621,6 +670,83 @@ export const AppEditChatTab =
   scaffoldSolidJSTab<AppEditChatTabPayload>({
     title: 'Edit',
     getComponentModule: () => import('../sidebarRight/tabs/editChat')
+  });
+
+
+type AppAddGroupToCommunityTabPayload = {
+  peerId: PeerId
+};
+
+export const AppAddGroupToCommunityTab =
+  scaffoldSolidJSTab<AppAddGroupToCommunityTabPayload>({
+    title: 'Community.AddGroup',
+    getComponentModule: () => import('../communities/addGroupToCommunity')
+  });
+
+
+type AppCreateCommunityTabPayload = {
+  peerId: PeerId
+};
+
+export const AppCreateCommunityTab =
+  scaffoldSolidJSTab<AppCreateCommunityTabPayload>({
+    title: 'Community.Create',
+    getComponentModule: () => import('../communities/createCommunity')
+  });
+
+
+export type CommunityChatVisibility = 'visible' | 'hidden';
+export type CommunityChatSettingsMode = 'settings' | 'add';
+
+type AppCommunityChatSettingsTabPayload = {
+  communityId?: ChatId,
+  peerId: PeerId,
+  mode?: CommunityChatSettingsMode,
+  initialVisibility?: CommunityChatVisibility,
+  onSave?: (visibility: CommunityChatVisibility) => MaybePromise<void>,
+  returnToEditChat?: boolean,
+  returnToEditCommunity?: boolean
+};
+
+export const AppCommunityChatSettingsTab =
+  scaffoldSolidJSTab<AppCommunityChatSettingsTabPayload>({
+    title: (payload) => payload.mode === 'add' ?
+      'Community.AddChat' :
+      'Community.ChatSettings',
+    getComponentModule: () => import('../communities/communityChatSettings')
+  });
+
+
+type AppEditCommunityTabPayload = {
+  communityId: ChatId
+};
+
+export const AppEditCommunityTab =
+  scaffoldSolidJSTab<AppEditCommunityTabPayload>({
+    title: 'Community.Edit',
+    getComponentModule: () => import('../communities/editCommunity')
+  });
+
+
+type AppAddChatToCommunityTabPayload = {
+  communityId: ChatId
+};
+
+export const AppAddChatToCommunityTab =
+  scaffoldSolidJSTab<AppAddChatToCommunityTabPayload>({
+    title: 'Community.AddChat',
+    getComponentModule: () => import('../communities/addChatToCommunity')
+  });
+
+
+type AppCommunityPendingRequestsTabPayload = {
+  communityId: ChatId
+};
+
+export const AppCommunityPendingRequestsTab =
+  scaffoldSolidJSTab<AppCommunityPendingRequestsTabPayload>({
+    title: 'Community.PendingRequests',
+    getComponentModule: () => import('../communities/communityPendingRequests')
   });
 
 
@@ -846,6 +972,14 @@ export type AppAddMembersExtraCategory = {
   statusLangKey?: LangPackKey;
 };
 
+export type AppAddMembersPeerLoader = (
+  query: string,
+  isCurrent: () => boolean
+) => Promise<{
+  result: PeerId[],
+  isEnd: boolean
+}>;
+
 type AppAddMembersTabPayload = {
   title: LangPackKey;
   placeholder: LangPackKey;
@@ -857,8 +991,10 @@ type AppAddMembersTabPayload = {
   extraCategories?: ReadonlyArray<AppAddMembersExtraCategory>;
   extraCategoriesSectionLangKey?: LangPackKey;
   peerType?: SelectSearchPeerType[];
+  channelParticipantsPeerId?: PeerId;
+  peerLoader?: AppAddMembersPeerLoader;
   exceptSelf?: boolean;
-  filterPeerTypeBy?: IsPeerType[];
+  filterPeerTypeBy?: IsPeerType[] | FilterPeerTypeByFunc;
   limit?: number;
   limitCallback?: () => void;
   attachToPromise?: (promise: Promise<any>) => void;

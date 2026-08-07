@@ -683,7 +683,7 @@ export namespace UserStatus {
 /**
  * @link https://core.telegram.org/type/Chat
  */
-export type Chat = Chat.chatEmpty | Chat.chat | Chat.chatForbidden | Chat.channel | Chat.channelForbidden;
+export type Chat = Chat.chatEmpty | Chat.chat | Chat.chatForbidden | Chat.channel | Chat.channelForbidden | Chat.communityForbidden | Chat.community;
 
 export namespace Chat {
   export type chatEmpty = {
@@ -823,7 +823,7 @@ export namespace Chat {
 /**
  * @link https://core.telegram.org/type/ChatFull
  */
-export type ChatFull = ChatFull.chatFull | ChatFull.channelFull;
+export type ChatFull = ChatFull.chatFull | ChatFull.channelFull | ChatFull.communityFull;
 
 export namespace ChatFull {
   export type chatFull = {
@@ -1967,7 +1967,7 @@ export namespace MessageAction {
 /**
  * @link https://core.telegram.org/type/Dialog
  */
-export type Dialog = Dialog.dialog | Dialog.dialogFolder;
+export type Dialog = Dialog.dialog | Dialog.dialogFolder | Dialog.dialogCommunity;
 
 export namespace Dialog {
   export type dialog = {
@@ -2229,7 +2229,7 @@ export namespace AuthExportedAuthorization {
 /**
  * @link https://core.telegram.org/type/InputNotifyPeer
  */
-export type InputNotifyPeer = InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyUsers | InputNotifyPeer.inputNotifyChats | InputNotifyPeer.inputNotifyBroadcasts | InputNotifyPeer.inputNotifyForumTopic;
+export type InputNotifyPeer = InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyUsers | InputNotifyPeer.inputNotifyChats | InputNotifyPeer.inputNotifyBroadcasts | InputNotifyPeer.inputNotifyForumTopic | InputNotifyPeer.inputNotifyCommunity;
 
 export namespace InputNotifyPeer {
   export type inputNotifyPeer = {
@@ -2798,7 +2798,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateGroupCallMessage | Update.updateGroupCallEncryptedMessage | Update.updatePinnedForumTopic | Update.updatePinnedForumTopics | Update.updateDeleteGroupCallMessages | Update.updateStarGiftAuctionState | Update.updateStarGiftAuctionUserState | Update.updateEmojiGameInfo | Update.updateStarGiftCraftFail | Update.updateChatParticipantRank | Update.updateManagedBot | Update.updateBotGuestChatQuery | Update.updateAiComposeTones | Update.updateJoinChatWebViewDecision | Update.updateNewBotConnection | Update.updateWebBrowserSettings | Update.updateWebBrowserException | Update.updateNewEphemeralMessage | Update.updateDeleteEphemeralMessages | Update.updateEditEphemeralMessage | Update.updateBotStarsSubscription | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateGroupCallMessage | Update.updateGroupCallEncryptedMessage | Update.updatePinnedForumTopic | Update.updatePinnedForumTopics | Update.updateDeleteGroupCallMessages | Update.updateStarGiftAuctionState | Update.updateStarGiftAuctionUserState | Update.updateEmojiGameInfo | Update.updateStarGiftCraftFail | Update.updateChatParticipantRank | Update.updateManagedBot | Update.updateBotGuestChatQuery | Update.updateAiComposeTones | Update.updateJoinChatWebViewDecision | Update.updateNewBotConnection | Update.updateWebBrowserSettings | Update.updateWebBrowserException | Update.updateNewEphemeralMessage | Update.updateDeleteEphemeralMessages | Update.updateEditEphemeralMessage | Update.updateEphemeralBotCallbackQuery | Update.updateBotStarsSubscription | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -3982,6 +3982,16 @@ export namespace Update {
     message: EphemeralMessage
   };
 
+  export type updateEphemeralBotCallbackQuery = {
+    _: 'updateEphemeralBotCallbackQuery',
+    query_id: string | number,
+    user_id: string | number,
+    peer: Peer,
+    msg_id: number,
+    data: Uint8Array,
+    message: EphemeralMessage
+  };
+
   export type updateBotStarsSubscription = {
     _: 'updateBotStarsSubscription',
     flags?: number,
@@ -4616,7 +4626,7 @@ export namespace HelpSupport {
 /**
  * @link https://core.telegram.org/type/NotifyPeer
  */
-export type NotifyPeer = NotifyPeer.notifyPeer | NotifyPeer.notifyUsers | NotifyPeer.notifyChats | NotifyPeer.notifyBroadcasts | NotifyPeer.notifyForumTopic;
+export type NotifyPeer = NotifyPeer.notifyPeer | NotifyPeer.notifyUsers | NotifyPeer.notifyChats | NotifyPeer.notifyBroadcasts | NotifyPeer.notifyForumTopic | NotifyPeer.notifyCommunity;
 
 export namespace NotifyPeer {
   export type notifyPeer = {
@@ -8918,7 +8928,7 @@ export namespace InputMessage {
 /**
  * @link https://core.telegram.org/type/InputDialogPeer
  */
-export type InputDialogPeer = InputDialogPeer.inputDialogPeer | InputDialogPeer.inputDialogPeerFolder;
+export type InputDialogPeer = InputDialogPeer.inputDialogPeer | InputDialogPeer.inputDialogPeerFolder | InputDialogPeer.inputDialogPeerCommunity;
 
 export namespace InputDialogPeer {
   export type inputDialogPeer = {
@@ -8940,7 +8950,7 @@ export namespace InputDialogPeer {
 /**
  * @link https://core.telegram.org/type/DialogPeer
  */
-export type DialogPeer = DialogPeer.dialogPeer | DialogPeer.dialogPeerFolder;
+export type DialogPeer = DialogPeer.dialogPeer | DialogPeer.dialogPeerFolder | DialogPeer.dialogPeerCommunity;
 
 export namespace DialogPeer {
   export type dialogPeer = {
@@ -9877,6 +9887,7 @@ export namespace ChatAdminRights {
       delete_stories?: true,
       manage_direct_messages?: true,
       manage_ranks?: true,
+      manage_linked_peers?: true,
     }>
   };
 }
@@ -9913,6 +9924,7 @@ export namespace ChatBannedRights {
       send_plain?: true,
       edit_rank?: true,
       send_reactions?: true,
+      manage_linked_peers?: true,
     }>,
     until_date: number
   };
@@ -18817,27 +18829,28 @@ export interface ConstructorDeclMap {
   'botInlineMessageRichMessage': BotInlineMessage.botInlineMessageRichMessage,
   'communityForbidden': Chat.communityForbidden,
   'community': Chat.community,
+  'communityPeer': CommunityPeer.communityPeer,
   'communityFull': ChatFull.communityFull,
+  'communityPeerRequest': CommunityPeerRequest.communityPeerRequest,
+  'communities.peerLinkRequests': CommunitiesPeerLinkRequests.communitiesPeerLinkRequests,
   'messageActionChangeCommunity': MessageAction.messageActionChangeCommunity,
-  'dialogCommunity': Dialog.dialogCommunity,
   'inputNotifyCommunity': InputNotifyPeer.inputNotifyCommunity,
+  'notifyCommunity': NotifyPeer.notifyCommunity,
+  'inputReplyToEphemeralMessage': InputReplyTo.inputReplyToEphemeralMessage,
+  'ephemeralMessage': EphemeralMessage.ephemeralMessage,
   'updateNewEphemeralMessage': Update.updateNewEphemeralMessage,
   'updateDeleteEphemeralMessages': Update.updateDeleteEphemeralMessages,
   'updateEditEphemeralMessage': Update.updateEditEphemeralMessage,
-  'updateBotStarsSubscription': Update.updateBotStarsSubscription,
-  'notifyCommunity': NotifyPeer.notifyCommunity,
-  'textDiff': RichText.textDiff,
-  'inputDialogPeerCommunity': InputDialogPeer.inputDialogPeerCommunity,
-  'dialogPeerCommunity': DialogPeer.dialogPeerCommunity,
-  'inputReplyToEphemeralMessage': InputReplyTo.inputReplyToEphemeralMessage,
-  'inputAiComposeToneSingleUse': InputAiComposeTone.inputAiComposeToneSingleUse,
-  'communityPeer': CommunityPeer.communityPeer,
-  'communityPeerRequest': CommunityPeerRequest.communityPeerRequest,
-  'communities.peerLinkRequests': CommunitiesPeerLinkRequests.communitiesPeerLinkRequests,
-  'ephemeralMessage': EphemeralMessage.ephemeralMessage,
+  'updateEphemeralBotCallbackQuery': Update.updateEphemeralBotCallbackQuery,
   'communities.participantJoinedChats': CommunitiesParticipantJoinedChats.communitiesParticipantJoinedChats,
+  'textDiff': RichText.textDiff,
   'messages.translatedRichMessage': MessagesTranslatedRichMessage.messagesTranslatedRichMessage,
   'messages.composedRichMessageWithAI': MessagesComposedRichMessageWithAI.messagesComposedRichMessageWithAI,
+  'dialogCommunity': Dialog.dialogCommunity,
+  'inputDialogPeerCommunity': InputDialogPeer.inputDialogPeerCommunity,
+  'dialogPeerCommunity': DialogPeer.dialogPeerCommunity,
+  'inputAiComposeToneSingleUse': InputAiComposeTone.inputAiComposeToneSingleUse,
+  'updateBotStarsSubscription': Update.updateBotStarsSubscription,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -23556,31 +23569,6 @@ export type MessagesGetRichMessage = {
   id: number
 };
 
-export type MessagesTranslateRichMessage = {
-  flags?: number,
-  peer?: InputPeer,
-  id?: Array<number>,
-  text?: Array<InputRichMessage>,
-  to_lang: string,
-  tone?: string
-};
-
-export type MessagesComposeRichMessageWithAI = {
-  flags?: number,
-  proofread?: boolean,
-  emojify?: boolean,
-  text?: InputRichMessage,
-  translate_to_lang?: string,
-  tone?: InputAiComposeTone
-};
-
-export type MessagesRequestChatJoinWebView = {
-  flags?: number,
-  query_id: string | number,
-  theme_params?: DataJSON,
-  platform: string
-};
-
 export type CommunitiesCreate = {
   flags?: number,
   hidden?: boolean,
@@ -23671,6 +23659,42 @@ export type EphemeralGetCallbackAnswer = {
   peer: InputPeer,
   id: number,
   data?: Uint8Array
+};
+
+export type EphemeralEditMessage = {
+  flags?: number,
+  peer: InputPeer,
+  receiver_id: InputUser,
+  id: number,
+  message?: string,
+  media?: InputMedia,
+  entities?: Array<MessageEntity>,
+  reply_markup?: ReplyMarkup
+};
+
+export type MessagesTranslateRichMessage = {
+  flags?: number,
+  peer?: InputPeer,
+  id?: Array<number>,
+  text?: Array<InputRichMessage>,
+  to_lang: string,
+  tone?: string
+};
+
+export type MessagesComposeRichMessageWithAI = {
+  flags?: number,
+  proofread?: boolean,
+  emojify?: boolean,
+  text?: InputRichMessage,
+  translate_to_lang?: string,
+  tone?: InputAiComposeTone
+};
+
+export type MessagesRequestChatJoinWebView = {
+  flags?: number,
+  query_id: string | number,
+  theme_params?: DataJSON,
+  platform: string
 };
 
 export interface MethodDeclMap {
@@ -24464,9 +24488,6 @@ export interface MethodDeclMap {
   'account.toggleWebBrowserSettingsException': {req: AccountToggleWebBrowserSettingsException, res: Updates},
   'account.deleteWebBrowserSettingsExceptions': {req: AccountDeleteWebBrowserSettingsExceptions, res: AccountWebBrowserSettings},
   'messages.getRichMessage': {req: MessagesGetRichMessage, res: MessagesMessages},
-  'messages.translateRichMessage': {req: MessagesTranslateRichMessage, res: MessagesTranslatedRichMessage},
-  'messages.composeRichMessageWithAI': {req: MessagesComposeRichMessageWithAI, res: MessagesComposedRichMessageWithAI},
-  'messages.requestChatJoinWebView': {req: MessagesRequestChatJoinWebView, res: WebViewResult},
   'communities.create': {req: CommunitiesCreate, res: Updates},
   'communities.togglePeerLink': {req: CommunitiesTogglePeerLink, res: boolean},
   'communities.getJoinedCommunities': {req: CommunitiesGetJoinedCommunities, res: MessagesChats},
@@ -24480,5 +24501,8 @@ export interface MethodDeclMap {
   'ephemeral.deleteMessage': {req: EphemeralDeleteMessage, res: boolean},
   'ephemeral.reportMessage': {req: EphemeralReportMessage, res: ReportResult},
   'ephemeral.getCallbackAnswer': {req: EphemeralGetCallbackAnswer, res: MessagesBotCallbackAnswer},
+  'ephemeral.editMessage': {req: EphemeralEditMessage, res: Updates},
+  'messages.translateRichMessage': {req: MessagesTranslateRichMessage, res: MessagesTranslatedRichMessage},
+  'messages.composeRichMessageWithAI': {req: MessagesComposeRichMessageWithAI, res: MessagesComposedRichMessageWithAI},
+  'messages.requestChatJoinWebView': {req: MessagesRequestChatJoinWebView, res: WebViewResult},
 }
-

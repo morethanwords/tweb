@@ -10,7 +10,7 @@ import getPeerTitle from '@components/wrappers/getPeerTitle';
 import generateTitleIcons from '@components/generateTitleIcons';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import lottieLoader from '@lib/lottie/lottieLoader';
-import {AsAllChatsType} from '@lib/appDialogsManager';
+import type {AsAllChatsType} from '@lib/appDialogsManager';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 
 export type PeerTitleOptions = {

@@ -77,6 +77,9 @@ import showNoForwardsPopup from '@components/popups/noForwards';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import handleCommunityChatJoinError
+from '@components/communities/handleCommunityChatJoinError';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -390,6 +393,9 @@ export default class ChatTopbar {
     }
 
     const fullChat = await this.managers.appProfileManager.getChatFull(chatId);
+    if(!('call' in fullChat) || !fullChat.call) {
+      return false;
+    }
     const inputGroupCall = fullChat.call as InputGroupCall.inputGroupCall;
     const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(
       inputGroupCall.id
@@ -713,7 +719,7 @@ export default class ChatTopbar {
         }
 
         const fullPeer = await this.managers.appProfileManager.getCachedProfileByPeerId(this.peerId);
-        return fullPeer && !!fullPeer.pFlags.translations_disabled;
+        return fullPeer && 'pFlags' in fullPeer && !!fullPeer.pFlags.translations_disabled;
       }
     }, {
       icon: 'lock',
@@ -1108,20 +1114,31 @@ export default class ChatTopbar {
     button.setAttribute('disabled', 'true');
 
     const chatId = this.peerId.toChatId();
-    let promise: Promise<any>;
-    if(await this.managers.appChatsManager.isChannel(chatId)) {
-      promise = this.managers.appChatsManager.joinChannel(chatId);
-    } else {
-      promise = this.managers.appChatsManager.addChatUser(chatId, rootScope.myId);
-    }
+    const isChannel = await this.managers.appChatsManager.isChannel(chatId);
+    const promise = handleChannelsTooMuch(() => {
+      return isChannel ?
+        this.managers.appChatsManager.joinChannel(chatId) :
+        this.managers.appChatsManager.addChatUser(chatId, rootScope.myId);
+    });
 
-    promise.catch((err) => {
+    promise.then((result) => {
+      if(result?._ === 'chatInviteJoinWebView') {
+        void this.chat.appImManager.openJoinChatWebView(result);
+      }
+    }).catch((err) => {
       assumeType<ApiError>(err);
-      switch(err.type) {
-        case 'INVITE_REQUEST_SENT': {
-          toastNew({langPackKey: 'Chat.SendJoinRequest.Info'});
-          return;
-        }
+      const chat = this.chat.peer;
+      const isBroadcast = chat?._ === 'channel' &&
+        !!chat.pFlags.broadcast;
+      if(handleCommunityChatJoinError({
+        error: err,
+        isBroadcast,
+        communityId: chat?._ === 'channel' && chat.linked_community_id ?
+          chat.linked_community_id.toChatId() :
+          undefined,
+        managers: this.managers
+      })) {
+        return;
       }
 
       throw err;
@@ -1261,8 +1278,11 @@ export default class ChatTopbar {
       // plate restores exactly the view the user left on — including the
       // pin-list border indicator and counter. Fall back to fullPeer's
       // `pinned_msg_id`, which is always the newest pin (index 0).
+      const pinnedMessageId = cachedFull && 'pinned_msg_id' in cachedFull ?
+        cachedFull.pinned_msg_id :
+        undefined;
       const hint = savedPosition?.pinnedMessages ||
-        (cachedFull?.pinned_msg_id ? {mid: cachedFull.pinned_msg_id, index: 0, count: 1} : undefined);
+        (pinnedMessageId ? {mid: pinnedMessageId, index: 0, count: 1} : undefined);
       if(hint) {
         prepareInitialPromise = newPlate.prepareInitial(hint);
       }

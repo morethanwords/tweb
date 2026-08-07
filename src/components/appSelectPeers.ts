@@ -95,6 +95,7 @@ export default class AppSelectPeers {
   private filterPeerTypeBy: IsPeerType[] | FilterPeerTypeByFunc;
   private channelParticipantsFilter: ChannelParticipantsFilter | ((q: string) => ChannelParticipantsFilter);
   private channelParticipantsUpdateFilter: (participant: ChannelParticipant | ChatParticipant) => boolean;
+  private channelParticipantsUpdatePeerId: PeerId;
   private meAsSaved: boolean;
   private onSelect: (peerId: PeerId, adding: boolean, e: MouseEvent) => MaybePromise<void | boolean>;
 
@@ -172,6 +173,7 @@ export default class AppSelectPeers {
     headerSearch?: AppSelectPeers['headerSearch'],
     channelParticipantsFilter?: AppSelectPeers['channelParticipantsFilter'],
     channelParticipantsUpdateFilter?: AppSelectPeers['channelParticipantsUpdateFilter'],
+    channelParticipantsUpdatePeerId?: AppSelectPeers['channelParticipantsUpdatePeerId'],
     noSearch?: AppSelectPeers['noSearch'],
     rippleEnabled?: AppSelectPeers['rippleEnabled'],
     avatarSize?: AppSelectPeers['avatarSize'],
@@ -512,7 +514,7 @@ export default class AppSelectPeers {
     };
 
     if(this.channelParticipantsUpdateFilter) this.listenerSetter.add(rootScope)('chat_participant', (update) => {
-      if(update.channel_id.toPeerId(true) !== this.peerId) {
+      if(update.channel_id.toPeerId(true) !== (this.channelParticipantsUpdatePeerId ?? this.peerId)) {
         return;
       }
 
@@ -521,7 +523,7 @@ export default class AppSelectPeers {
 
     if(
       this.channelParticipantsUpdateFilter &&
-      apiManagerProxy.getPeer(this.peerId)._ === 'chat'
+      apiManagerProxy.getPeer(this.peerId)?._ === 'chat'
     ) {
       this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
         if(chatId.toPeerId(true) !== this.peerId) {
@@ -1005,13 +1007,13 @@ export default class AppSelectPeers {
       if(!this.emptySearchPlaceholderMiddlewareHelper) {
         this.emptySearchPlaceholderMiddlewareHelper = getMiddleware();
         const middleware = this.emptySearchPlaceholderMiddlewareHelper.get();
-        const [query, setQuery] = createSignal(this.query);
-        const [description, setDescription] = createSignal<JSX.Element>();
-        const [hide, setHide] = createSignal(false);
-        this.emptySearchPlaceholderQuerySetter = setQuery;
-        this.emptySearchPlaceholderHideSetter = setHide;
 
         createRoot((dispose) => {
+          const [query, setQuery] = createSignal(this.query);
+          const [description, setDescription] = createSignal<JSX.Element>();
+          const [hide, setHide] = createSignal(false);
+          this.emptySearchPlaceholderQuerySetter = setQuery;
+          this.emptySearchPlaceholderHideSetter = setHide;
           middleware.onClean(dispose);
           createEffect(() => {
             const query$ = query();
@@ -1025,19 +1027,21 @@ export default class AppSelectPeers {
           createEffect(() => {
             this.section.container.classList.toggle('is-visible', hide());
           });
-        });
-        return emptyPlaceholder({
-          middleware,
-          title: () => i18n('SearchEmptyViewTitle'),
-          description,
-          hide
-        }).then((container) => {
-          if(!middleware()) {
-            return;
-          }
 
-          this.heightContainer.append(container);
+          emptyPlaceholder({
+            middleware,
+            title: () => i18n('SearchEmptyViewTitle'),
+            description,
+            hide
+          }).then((container) => {
+            if(!middleware()) {
+              return;
+            }
+
+            this.heightContainer.append(container);
+          });
         });
+        return;
       } else {
         this.dialogsPlaceholder?.detach(length);
         this.emptySearchPlaceholderHideSetter(false);

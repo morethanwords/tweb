@@ -1,0 +1,47 @@
+.HeaderTitle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .75rem;
+
+}
+
+.HeaderTitleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.HiddenPeerIcon {
+  flex: 0 0 auto;
+  color: var(--chatlist-pinned-color, var(--secondary-text-color));
+}
+
+:global(.chatlist-chat.active) .HiddenPeerIcon {
+  color: rgba(255, 255, 255, .7);
+}
+
+.AddChatButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  width: calc(100% - 2rem);
+  margin: .75rem 1rem 1rem;
+
+  :global(.button-icon) {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+}
+
+.LoadError {
+  padding: 2rem 1rem;
+  color: var(--secondary-text-color);
+  text-align: center;
+}
+
+.LoadErrorButton {
+  display: block;
+  margin: .75rem auto 0;
+}

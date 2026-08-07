@@ -29,7 +29,9 @@ const ChatReactionsTab: Component = () => {
       ]);
       const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
 
-      let _chatReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
+      let _chatReactions: ChatReactions = chatFull._ === 'communityFull' ?
+        {_: 'chatReactionsNone'} :
+        chatFull.available_reactions ?? {_: 'chatReactionsNone'};
       let chatReactions = _chatReactions;
       let emoticons = new Set(_chatReactions._ === 'chatReactionsSome' ? _chatReactions.reactions.map((reaction) => (reaction as Reaction.reactionEmoji).emoticon) : []);
 

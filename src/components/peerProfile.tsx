@@ -18,7 +18,8 @@ import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import anchorCopy from '@helpers/dom/anchorCopy';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {useAppConfig} from '@stores/appState';
+import {appState, useAppConfig} from '@stores/appState';
+import {useCommunity, useCommunityFull} from '@stores/communities';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import usePeerTranslation from '@hooks/usePeerTranslation';
 import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
@@ -58,6 +59,9 @@ import showAddBotToChat from '@components/popups/addBotToChat';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
 import {showPeerReport} from '@components/popups/reportAd';
+import appDialogsManager from '@lib/appDialogsManager';
+import CommunityAvatar from '@components/communities/communityAvatar';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 keepMe(ripple);
 
@@ -208,6 +212,7 @@ const PeerProfile = (props: {
         <PeerProfile.PersonalChannel />
         <PeerProfile.MainSection />
         <PeerProfile.BotMainApp />
+        <PeerProfile.LinkedCommunity />
         <PeerProfile.BotVerification />
         <PeerProfile.BotPermissions />
         {props.searchSuperContainer}
@@ -1520,6 +1525,153 @@ PeerProfile.BotMainApp = () => {
           onClick={onClick}
         />
       </Section>
+    </Show>
+  );
+};
+
+function CommunityProfileDialog(props: {
+  community: Chat.community,
+  chatsCount?: number,
+  hidden: boolean
+}) {
+  const {i18n} = useHotReloadGuard();
+  const middleware = createMiddleware();
+  const peerId = props.community.id.toPeerId(true);
+  const list = appDialogsManager.createChatList();
+  const loadPromises: Promise<any>[] = [];
+  const dialogElement = appDialogsManager.addDialogNew({
+    peerId,
+    container: list,
+    rippleEnabled: true,
+    avatarSize: 'abitbigger',
+    append: true,
+    fromName: props.community.title,
+    noIcons: true,
+    wrapOptions: {middleware: middleware.get()},
+    withStories: false,
+    loadPromises
+  });
+  const communityAvatar = wrapSolidComponent(() => (
+    <CommunityAvatar
+      community={props.community}
+      title={props.community.title}
+      size={42}
+    />
+  ), middleware.get());
+  communityAvatar.classList.add(
+    'row-media',
+    'row-media-abitbigger',
+    'dialog-avatar'
+  );
+  const avatarNode = dialogElement.dom.avatarEl?.node;
+  if(avatarNode) {
+    avatarNode.replaceWith(communityAvatar);
+  } else {
+    dialogElement.container.append(communityAvatar);
+  }
+  dialogElement.media = communityAvatar;
+  dialogElement.container.classList.add('community-profile-dialog');
+  createEffect(() => {
+    dialogElement.dom.titleSpan.replaceChildren(
+      wrapEmojiText(props.community.title)
+    );
+  });
+  createEffect(() => {
+    const chatsCount = props.chatsCount;
+    dialogElement.dom.lastMessageSpan.replaceChildren(
+      chatsCount === undefined ?
+        i18n('Community.Title') :
+        i18n('Community.ProfileStatus', [chatsCount])
+    );
+  });
+  onCleanup(() => dialogElement.destroy());
+
+  return (
+    <Section
+      caption={props.hidden ? 'Community.HiddenInfo' : undefined}
+      ref={(element) => {
+        appDialogsManager.setListClickListener({
+          list: element,
+          autonomous: false
+        });
+      }}
+    >
+      {list}
+    </Section>
+  );
+}
+
+PeerProfile.LinkedCommunity = () => {
+  const context = useContext(PeerProfileContext);
+  const {rootScope} = useHotReloadGuard();
+  const peer = createMemo(() => {
+    return typeof(context.peer) === 'function' ?
+      context.peer() :
+      context.peer;
+  });
+  const linkedCommunityId = createMemo(() => {
+    const value = peer();
+    return (
+      value?._ === 'user' ||
+      value?._ === 'channel'
+    ) ? value.linked_community_id?.toChatId() : undefined;
+  });
+  const linkedCommunity = useCommunity(linkedCommunityId);
+  const linkedCommunityFull = useCommunityFull(linkedCommunityId);
+  const hasJoinedLinkedCommunity = createMemo(() => {
+    const communityId = linkedCommunityId();
+    if(!communityId) {
+      return false;
+    }
+
+    const joinedCommunityIds = appState.joinedCommunityIds;
+    if(joinedCommunityIds) {
+      return joinedCommunityIds.includes(communityId);
+    }
+
+    const community = linkedCommunity();
+    return community?._ === 'community' && !community.pFlags.left;
+  });
+  const visibleCommunity = createMemo(() => {
+    const value = peer();
+    if(
+      !value ||
+      (
+        value._ !== 'channel' &&
+        !(value._ === 'user' && value.pFlags.bot)
+      ) ||
+      !hasJoinedLinkedCommunity()
+    ) {
+      return;
+    }
+
+    const community = linkedCommunity();
+    return community?._ === 'community' ? community : undefined;
+  });
+  const linkedPeer = createMemo(() => {
+    return linkedCommunityFull()?.linked_peers.find((linked) => {
+      return getPeerId(linked.peer) === context.peerId;
+    });
+  });
+  createEffect(on(linkedCommunityId, (communityId) => {
+    if(!communityId) {
+      return;
+    }
+
+    void Promise.resolve(rootScope.managers.appProfileManager
+    .getChatFull(communityId))
+    .catch(() => {});
+  }));
+
+  return (
+    <Show keyed when={visibleCommunity()}>
+      {(community) => (
+        <CommunityProfileDialog
+          community={community}
+          chatsCount={linkedCommunityFull()?.linked_peers.length}
+          hidden={linkedPeer()?.visible === false}
+        />
+      )}
     </Show>
   );
 };

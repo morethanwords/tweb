@@ -241,6 +241,9 @@ import {richMessageToPage} from '@lib/richMessage';
 import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
+import {
+  CommunityChangedServiceBubble
+} from '@components/chat/bubbles/communityChanged';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -2161,7 +2164,7 @@ export default class ChatBubbles {
           }
 
           this.safeRenderMessage({
-            message,
+            message: message as Message.messageService,
             reverse: true,
             bubble
           });
@@ -7067,6 +7070,37 @@ export default class ChatBubbles {
             contentWrapper.append(buttons);
           }
         } else if(
+          action._ === 'messageActionChangeCommunity' &&
+          action.community_id !== undefined &&
+          action.community_id !== 0 &&
+          action.community_id !== '0'
+        ) {
+          const communityId = action.community_id.toChatId();
+          const community = await this.managers.appChatsManager.getChat(communityId);
+          const text = await wrapMessageActionTextNew({
+            message,
+            ...wrapOptions,
+            noLinks: !!community?.title
+          });
+          this.wrapSomeSolid(() => CommunityChangedServiceBubble({
+            communityId,
+            initialCommunity: community?._ === 'community' ||
+              community?._ === 'communityForbidden' ? community : undefined,
+            initialText: text,
+            message: message as Message.messageService,
+            onViewClick: () => {
+              void import('@lib/appDialogsManager').then(({default: appDialogsManager}) => {
+                return appDialogsManager.toggleForumTabByPeerId(
+                  communityId.toPeerId(true),
+                  true,
+                  false
+                );
+              });
+            },
+            serviceContainer: s,
+            wrapOptions
+          }), s, middleware);
+        } else if(
           PHOTO_BUBBLE_ACTIONS[action._] &&
           (action as MessageAction.messageActionChatEditPhoto).photo?._ === 'photo'
         ) {
@@ -10143,6 +10177,9 @@ export default class ChatBubbles {
     // title.after(wrappedRank);
     const container = document.createElement('div');
     container.classList.add('title-flex');
+    if(title.classList.contains('topic-name-button-container')) {
+      container.classList.add('title-flex-topic');
+    }
     title.replaceWith(container);
     let boostsElement: HTMLElement;
     const boosts = message.from_boosts_applied;

@@ -251,6 +251,10 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         // )
       }), options);
     }
+    case 'textDiff':
+      // Normal rendering resolves a diff to its updated text. A dedicated diff
+      // viewer can render old_text separately when that UI is implemented.
+      return processRichText(richText.text, options);
     default:
       return {
         _: 'textWithEntities',

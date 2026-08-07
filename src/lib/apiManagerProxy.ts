@@ -1,6 +1,6 @@
 import type {ModifyFunctionsToAsync} from '@types';
 import {type State} from '@config/state';
-import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '@layer';
+import type {Chat, ChatFull, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '@layer';
 import type {CryptoMethods} from '@lib/crypto/crypto_methods';
 import type ThumbsStorage from '@lib/storages/thumbs';
 import type {ThumbStorageMedia} from '@lib/storages/thumbs';
@@ -61,6 +61,14 @@ import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorag
 import type {PushSingleManager} from '@appManagers/pushSingleManager';
 import getDeepProperty from '@helpers/object/getDeepProperty';
 import {_changeHistoryStorageKey, _deleteHistoryStorage, _iterateHistoryStorages, _useHistoryStorage} from '@stores/historyStorages';
+import {
+  reconcileCommunityDialog,
+  reconcileCommunityDialogs,
+  reconcileCommunityFull,
+  reconcileCommunityFulls,
+  reconcileCommunityPeerLinkRequests,
+  reconcileCommunityPeerLinkRequestsState
+} from '@stores/communities';
 import SlicedArray, {SliceEnd} from '@helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '@appManagers/utils/messages/createHistoryStorage';
 import tabId from '@config/tabId';
@@ -80,6 +88,10 @@ import {
   THREADED_WORKER_PROTOCOL_VERSION,
   type ThreadedWorkerType
 } from '@lib/threadedWorkerTypes';
+import type {
+  CommunityDialog,
+  CommunityPeerLinkRequestsState
+} from '@appManagers/appCommunitiesManager';
 
 
 export type Mirrors = {
@@ -97,6 +109,15 @@ export type Mirrors = {
   },
   peers: {
     [peerId in PeerId]: Exclude<Chat, Chat.chatEmpty> | User.user
+  },
+  communityFull: {
+    [communityId in ChatId]: ChatFull.communityFull
+  },
+  communityDialogs: {
+    [communityId in ChatId]: CommunityDialog
+  },
+  communityPeerLinkRequests: {
+    [communityId in ChatId]: CommunityPeerLinkRequestsState
   },
   avatars: AppAvatarsManager['savedAvatarURLs'],
   historyStorage: any
@@ -189,6 +210,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
       messages: {},
       groupedMessages: {},
       peers: {},
+      communityFull: {},
+      communityDialogs: {},
+      communityPeerLinkRequests: {},
       avatars: {},
       historyStorage: undefined
     };
@@ -285,6 +309,30 @@ class ApiManagerProxy extends MTProtoMessagePort {
           reconcilePeer(payload.key.toPeerId(), payload.value as any);
         } else {
           reconcilePeers(payload.value);
+        }
+      },
+
+      communityFull: (payload) => {
+        if(payload.key) {
+          reconcileCommunityFull(payload.key.toChatId(), payload.value);
+        } else {
+          reconcileCommunityFulls(payload.value);
+        }
+      },
+
+      communityDialogs: (payload) => {
+        if(payload.key) {
+          reconcileCommunityDialog(payload.key.toChatId(), payload.value);
+        } else {
+          reconcileCommunityDialogs(payload.value);
+        }
+      },
+
+      communityPeerLinkRequests: (payload) => {
+        if(payload.key) {
+          reconcileCommunityPeerLinkRequestsState(payload.key.toChatId(), payload.value);
+        } else {
+          reconcileCommunityPeerLinkRequests(payload.value);
         }
       },
 
@@ -1186,6 +1234,18 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public getChat(chatId: ChatId) {
     return this.mirrors.peers[chatId.toPeerId(true)] as Exclude<Chat, Chat.chatEmpty>;
+  }
+
+  public getCommunityFull(communityId: ChatId) {
+    return this.mirrors.communityFull[communityId];
+  }
+
+  public getCommunityDialog(communityId: ChatId) {
+    return this.mirrors.communityDialogs[communityId];
+  }
+
+  public getCommunityPeerLinkRequests(communityId: ChatId) {
+    return this.mirrors.communityPeerLinkRequests[communityId];
   }
 
   public isForum(peerId: PeerId) {

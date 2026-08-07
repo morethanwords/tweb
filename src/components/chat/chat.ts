@@ -40,7 +40,7 @@ import {Accessor, createEffect, createMemo, createRoot, createSignal, on, onClea
 import TopbarSearch from '@components/chat/topbarSearch';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import liteMode from '@helpers/liteMode';
-import {useFullPeer} from '@stores/fullPeers';
+import {useFullPeer, type PeerFull} from '@stores/fullPeers';
 import {useAppConfig, useAppState} from '@stores/appState';
 import {unwrap} from 'solid-js/store';
 import callbackify from '@helpers/callbackify';
@@ -219,7 +219,7 @@ export default class Chat extends EventListenerBase<{
   public historyStorage: ReturnType<typeof useHistoryStorage>;
   public historyStorageNoThreadId: ReturnType<typeof useHistoryStorage>;
   public peerTranslation: ReturnType<typeof usePeerTranslation>;
-  public fullPeer: Accessor<ChatFull | UserFull>;
+  public fullPeer: Accessor<PeerFull>;
 
   public staticMessages: MyMessage[] = [];
 
@@ -1575,7 +1575,9 @@ export default class Chat extends EventListenerBase<{
 
       return {
         cached: fullPeer.cached,
-        result: fullPeer.result.then((fullPeer) => fullPeer.ttl_period)
+        result: fullPeer.result.then((fullPeer) => {
+          return 'ttl_period' in fullPeer ? fullPeer.ttl_period : undefined;
+        })
       }
     } catch{
       return {

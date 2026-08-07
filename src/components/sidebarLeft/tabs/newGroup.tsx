@@ -184,12 +184,12 @@ const NewGroup: Component = () => {
         return;
       }
 
-      promise.then(({chatId, missingInvitees}) => {
-        onCreate?.(chatId);
+      promise.then(async({chatId, missingInvitees}) => {
+        await onCreate?.(chatId);
         tab.close();
         if(openAfter) appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
         handleMissingInvitees(chatId, missingInvitees);
-      }, (err) => {
+      }).catch((err) => {
         console.error('createGroup error', err);
         toggle();
       });

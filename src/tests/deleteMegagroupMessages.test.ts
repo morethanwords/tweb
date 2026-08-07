@@ -27,6 +27,12 @@ vi.mock('@lib/langPack', () => ({
 vi.mock('@components/section', () => ({default: class Section {}}));
 vi.mock('@components/stackedAvatars', () => ({default: class StackedAvatars {}}));
 vi.mock('@components/wrappers/peerTitle', () => ({default: vi.fn()}));
+vi.mock('@components/wrappers/getPeerTitle', () => ({
+  default: vi.fn().mockResolvedValue('Alice')
+}));
+vi.mock('@components/confirmationPopup', () => ({
+  default: vi.fn().mockResolvedValue(undefined)
+}));
 vi.mock('@components/avatarNew', () => ({avatarNew: vi.fn()}));
 vi.mock('@components/peerTitle', () => ({default: class PeerTitle {}}));
 vi.mock('@components/rowTsx', () => ({default: vi.fn()}));
@@ -441,6 +447,63 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       banOrRestrict: true
     });
     expect(getParticipant).not.toHaveBeenCalled();
+  });
+
+  it('exposes and executes Community-wide moderation for a linked group', async() => {
+    const communityId = 400 as ChatId;
+    const getPeerLinkedCommunityId = vi.fn().mockResolvedValue(communityId);
+    const hasRights = vi.fn().mockResolvedValue(true);
+    const getChatFull = vi.fn().mockResolvedValue({
+      _: 'communityFull',
+      linked_peers: [{}, {}, {}]
+    });
+    const options = await (PopupDeleteMegagroupMessages.prototype as any)
+    .getModerateOptions.call({
+      managers: {
+        appProfileManager: {getChatFull},
+        appCommunitiesManager: {
+          getPeerLinkedCommunityId,
+          hasRights
+        }
+      }
+    }, chatPeerId);
+
+    expect(options).toMatchObject({
+      communityId,
+      communityChatsCount: 3
+    });
+    expect(getPeerLinkedCommunityId).toHaveBeenCalledWith(chatPeerId);
+    expect(hasRights).toHaveBeenCalledWith(communityId, 'ban_users');
+
+    const getParticipantJoinedChats = vi.fn().mockResolvedValue({
+      _: 'communities.participantJoinedChats',
+      creator_chat_ids: [],
+      joined_chat_ids: [100],
+      chats: [],
+      users: []
+    });
+    const toggleParticipantBanned = vi.fn().mockResolvedValue(undefined);
+    const popup = {
+      managers: {
+        appCommunitiesManager: {
+          getParticipantJoinedChats,
+          toggleParticipantBanned
+        }
+      }
+    };
+
+    const result = await (PopupDeleteMegagroupMessages.prototype as any)
+    .banFromCommunity.call(popup, communityId, selectedPeerId);
+
+    expect(result).toBe(true);
+    expect(getParticipantJoinedChats).toHaveBeenCalledWith({
+      communityId,
+      participantId: selectedPeerId
+    });
+    expect(toggleParticipantBanned).toHaveBeenCalledWith({
+      communityId,
+      participantId: selectedPeerId
+    });
   });
 });
 

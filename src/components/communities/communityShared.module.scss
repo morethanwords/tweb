@@ -1,0 +1,64 @@
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.avatarMedia {
+  position: relative;
+  overflow: visible;
+}
+
+.peerAvatar {
+  flex: none;
+}
+
+.peerAvatarOverlay {
+  position: absolute;
+  right: -.1875rem;
+  bottom: -.1875rem;
+  display: flex;
+  border: 2px solid var(--surface-color);
+  border-radius: 50%;
+}
+
+.hiddenPeerIcon {
+  flex: 0 0 auto;
+  color: var(--chatlist-pinned-color, var(--secondary-text-color));
+}
+
+:global(.chatlist-chat.active) .hiddenPeerIcon {
+  color: rgba(255, 255, 255, .7);
+}
+
+.editorFields {
+  padding: 0 1rem 1rem;
+}
+
+.primaryButton {
+  width: calc(100% - 2rem);
+  min-height: 3rem;
+  margin: 0 1rem 1.5rem;
+  border-radius: 1.5rem;
+}
+
+.saveCorner {
+  opacity: 1;
+  visibility: visible;
+}
+
+.empty {
+  padding: 1.5rem 1rem;
+  color: var(--secondary-text-color);
+  text-align: center;
+}
+
+.footerAction {
+  width: 100%;
+}
+
+.pendingCount {
+  color: var(--primary-color);
+}

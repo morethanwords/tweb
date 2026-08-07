@@ -1,0 +1,41 @@
+.ChildBadge {
+  position: absolute;
+  z-index: 3;
+  top: 2.75rem;
+  inset-inline-start: 2.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0;
+  border: 2px solid var(--background, var(--surface-color));
+  border-radius: 50%;
+  appearance: none;
+  background: var(--surface-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+  color: var(--primary-text-color);
+  cursor: pointer;
+  font-size: .625rem;
+  line-height: 1;
+  pointer-events: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.ChildBadgeHost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ChildBadgeHitArea {
+  position: absolute;
+  top: -2.3125rem;
+  inset-inline-start: -2.4375rem;
+  width: 3.375rem;
+  height: 3.375rem;
+}

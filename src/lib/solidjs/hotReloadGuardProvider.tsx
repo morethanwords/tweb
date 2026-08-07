@@ -9,6 +9,7 @@ import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
 import PaidMessagesInterceptor from '@components/chat/paidMessagesInterceptor';
 import {pickLanguage} from '@components/chat/translation';
+import CommunityLinkSection from '@components/communities/communityLinkSection';
 import confirmationPopup from '@components/confirmationPopup';
 import createEmojiDropdownButton, {useEmojiDropdown} from '@components/emojiDropdownButton';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
@@ -156,7 +157,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       pickLanguage,
       usePeerTranslation,
       showSharingPickerPopup,
-      PaidMessagesInterceptor
+      PaidMessagesInterceptor,
+      CommunityLinkSection
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

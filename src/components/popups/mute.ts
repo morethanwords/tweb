@@ -3,6 +3,7 @@ import {LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import {RadioFormFromValues} from '@components/row';
 import PopupPeer from '@components/popups/peer';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 const ONE_HOUR = 3600;
 const times: {value: number | string, langPackKey: LangPackKey, checked?: boolean}[] = [{
@@ -27,14 +28,36 @@ const times: {value: number | string, langPackKey: LangPackKey, checked?: boolea
 }];
 
 export default class PopupMute extends PopupPeer {
-  constructor(peerId: PeerId, threadId?: number) {
+  constructor(
+    peerId?: PeerId,
+    threadId?: number,
+    communityId?: ChatId
+  ) {
+    const community = communityId ?
+      apiManagerProxy.getChat(communityId) :
+      undefined;
     super('popup-mute', {
-      peerId,
-      titleLangKey: 'Notifications',
+      peerId: communityId ? undefined : peerId,
+      title: community?.title,
+      titleLangKey: community?.title ? undefined : 'Notifications',
       buttons: [{
         langKey: 'ChatList.Context.Mute',
         callback: () => {
-          this.managers.appMessagesManager.mutePeer({peerId, muteUntil: time === -1 ? MUTE_UNTIL : tsNow(true) + time, threadId});
+          const muteUntil = time === -1 ?
+            MUTE_UNTIL :
+            tsNow(true) + time;
+          if(communityId) {
+            this.managers.appCommunitiesManager.muteCommunity(
+              communityId,
+              muteUntil
+            );
+          } else {
+            this.managers.appMessagesManager.mutePeer({
+              peerId,
+              muteUntil,
+              threadId
+            });
+          }
         }
       }],
       body: true

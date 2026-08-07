@@ -236,7 +236,9 @@ export class AppReactionsManager extends AppManager {
       quickReaction,
       topReactions
     ]) => {
-      let chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
+      let chatAvailableReactions: ChatReactions = chatFull._ === 'communityFull' ?
+        {_: 'chatReactionsNone'} :
+        chatFull.available_reactions ?? {_: 'chatReactionsNone'};
 
       let trulyAll: boolean;
       if(chatAvailableReactions._ === 'chatReactionsAll' && !chatAvailableReactions.pFlags.allow_custom) {

@@ -5,7 +5,7 @@ import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
 import {onCleanup} from 'solid-js';
 import {PEER_FULL_TTL} from '@appManagers/constants';
 
-type PeerFull = ChatFull | UserFull;
+export type PeerFull = ChatFull | UserFull;
 
 const [state, setState] = createStore<{[peerId: PeerId]: PeerFull}>({});
 const expirations = new Map<PeerId, number>();

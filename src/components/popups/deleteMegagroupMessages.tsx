@@ -4,9 +4,10 @@ import {Chat, ChatFull, Message, Reaction} from '@layer';
 import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import Section from '@components/section';
 import StackedAvatars from '@components/stackedAvatars';
-import {createEffect, createSignal} from 'solid-js';
+import {createEffect, createSignal, Show} from 'solid-js';
 import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
 import flatten from '@helpers/array/flatten';
 import {avatarNew} from '@components/avatarNew';
 import PeerTitle from '@components/peerTitle';
@@ -17,12 +18,21 @@ import {ChatPermissions} from '@components/sidebarRight/tabs/groupPermissions/sh
 import {animate} from '@helpers/animation';
 import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
 import rootScope from '@lib/rootScope';
+import confirmationPopup from '@components/confirmationPopup';
+import {toastNew} from '@components/toast';
+import type {AppManagers} from '@lib/managers';
 
 const className = 'popup-delete-megagroup-messages';
 
 type DeleteCheckboxFieldsField = CheckboxFieldsField & {
   peerId?: PeerId,
-  action: 'report' | 'delete' | 'deleteReactions' | 'deleteOptions' | 'ban',
+  action:
+    'report' |
+    'delete' |
+    'deleteReactions' |
+    'deleteOptions' |
+    'ban' |
+    'communityBan',
   peerRow?: boolean
 };
 
@@ -33,7 +43,9 @@ type ModerateOptions = {
   reportReaction: boolean,
   deleteAllMessages: boolean,
   deleteAllReactions: boolean,
-  banOrRestrict: boolean
+  banOrRestrict: boolean,
+  communityId?: ChatId,
+  communityChatsCount?: number
 };
 
 const getNoModerateOptions = (): ModerateOptions => ({
@@ -43,6 +55,38 @@ const getNoModerateOptions = (): ModerateOptions => ({
   deleteAllReactions: false,
   banOrRestrict: false
 });
+
+function getCommunityId(managers: AppManagers, peerId: PeerId) {
+  return managers.appCommunitiesManager?.getPeerLinkedCommunityId(peerId);
+}
+
+async function getCommunityModerateOptions(
+  managers: AppManagers,
+  peerId: PeerId
+): Promise<Partial<ModerateOptions>> {
+  const communitiesManager = managers.appCommunitiesManager;
+  if(!communitiesManager) {
+    return {};
+  }
+
+  const communityId = await getCommunityId(managers, peerId);
+  const canBanFromCommunity = !!communityId &&
+    await communitiesManager.hasRights(communityId, 'ban_users')
+    .catch(() => false);
+  if(!canBanFromCommunity) {
+    return {};
+  }
+
+  const communityFull = await Promise.resolve(managers.appProfileManager
+  .getChatFull(communityId))
+  .catch((): undefined => undefined);
+  return {
+    communityId,
+    communityChatsCount: communityFull?._ === 'communityFull' ?
+      communityFull.linked_peers.length :
+      undefined
+  };
+}
 
 type ModerateMessage = Message.message | Message.messageService;
 
@@ -133,6 +177,13 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
       byPeers.get(this.reaction.participantPeerId)?.has('deleteReactions');
     const {restricting, managers} = this;
     for(const [fromId, actions] of byPeers) {
+      if(actions.has('communityBan')) {
+        const communityId = await getCommunityId(managers, peerId);
+        if(!communityId || !await this.banFromCommunity(communityId, fromId)) {
+          return false;
+        }
+      }
+
       const promises: Promise<any>[] = [];
       if(actions.has('ban') && restricting) {
         const rights = this.chatPermissions.takeOut();
@@ -186,6 +237,59 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
     return true;
   }
 
+  private async banFromCommunity(
+    communityId: ChatId,
+    participantId: PeerId
+  ) {
+    try {
+      const joinedChats = await this.managers.appCommunitiesManager
+      .getParticipantJoinedChats({communityId, participantId});
+      if(joinedChats.creator_chat_ids.length) {
+        const title = await getPeerTitle({
+          peerId: participantId,
+          plainText: true,
+          onlyFirstName: true
+        });
+        try {
+          await confirmationPopup({
+            titleLangKey: 'Community.BanWarningTitle',
+            descriptionLangKey: 'Community.BanWarning',
+            descriptionLangArgs: [
+              title,
+              joinedChats.creator_chat_ids.length
+            ],
+            button: {
+              langKey: 'Community.Ban',
+              isDanger: true
+            }
+          });
+        } catch{
+          return false;
+        }
+      }
+
+      await this.managers.appCommunitiesManager.toggleParticipantBanned({
+        communityId,
+        participantId
+      });
+      toastNew({
+        langPackKey: 'Community.Banned',
+        langPackArguments: [
+          await getPeerTitle({
+            peerId: participantId,
+            plainText: true,
+            onlyFirstName: true
+          })
+        ]
+      });
+      return true;
+    } catch(error) {
+      console.error('ban participant from community error', error);
+      toastNew({langPackKey: 'Error.AnError'});
+      return false;
+    }
+  }
+
   private async getModerateOptions(peerId: PeerId): Promise<ModerateOptions> {
     if(!this.reaction) {
       return {
@@ -193,7 +297,8 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
         reportReaction: false,
         deleteAllMessages: true,
         deleteAllReactions: true,
-        banOrRestrict: true
+        banOrRestrict: true,
+        ...await getCommunityModerateOptions(this.managers, peerId)
       };
     }
 
@@ -236,7 +341,8 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
       reportReaction: isMegagroup && isPublic,
       deleteAllMessages: isChannel && canDeleteMessages,
       deleteAllReactions: canDeleteMessages,
-      banOrRestrict
+      banOrRestrict,
+      ...(isChannel ? await getCommunityModerateOptions(this.managers, peerId) : {})
     };
   }
 
@@ -303,6 +409,19 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
         peerIds: fromPeerIds,
         langKey: isSinglePeer ? 'DeleteBan' : 'DeleteBanUsers',
         langArgs: isSinglePeer ? [await wrapPeerTitle({peerId: fromPeerIds[0], onlyFirstName: true})] : undefined
+      });
+    }
+
+    if(
+      isSinglePeer &&
+      fromPeerIds[0].isUser() &&
+      fromPeerIds[0] !== rootScope.myId &&
+      moderateOptions.communityId
+    ) {
+      actions.push({
+        action: 'communityBan',
+        peerIds: fromPeerIds,
+        langKey: 'Community.BanFromCommunity'
       });
     }
 
@@ -444,6 +563,7 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
     let onAnyChange: () => void;
     this.appendSolid(() => {
       const [banning, setBanning] = createSignal<PeerId[]>([]);
+      const [communityBanning, setCommunityBanning] = createSignal(false);
       const [collapsed, setCollapsed] = createSignal(true);
       const collapsedName = () => collapsed() ?
         (banning().length === 1 ? 'DeleteToggleRestrictUser' : 'DeleteToggleRestrictUsers') :
@@ -454,6 +574,10 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
         .filter((field) => field.action === 'ban' && field.checkboxField.checked && field.peerId)
         .map(({peerId}) => peerId);
         setBanning(peerIds);
+        setCommunityBanning(fields.some((field) => {
+          return field.action === 'communityBan' &&
+            field.checkboxField.checked;
+        }));
       };
 
       createEffect(() => {
@@ -501,6 +625,20 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
               {flatten(createdFields)}
             </Section>
           }
+          <Show when={
+            communityBanning() &&
+            moderateOptions.communityChatsCount
+          }>
+            <Section noShadow noDelimiter>
+              <Row>
+                <Row.Subtitle>
+                  {i18n('Community.BanFromCommunityInfo', [
+                    moderateOptions.communityChatsCount
+                  ])}
+                </Row.Subtitle>
+              </Row>
+            </Section>
+          </Show>
           {hasBanAction && <>
             <Section
               class={`${className}-permissions`}

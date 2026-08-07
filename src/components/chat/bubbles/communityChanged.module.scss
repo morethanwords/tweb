@@ -1,0 +1,31 @@
+:global(.bubble.service .service-msg.bubble-community-changed) {
+  width: 11.25rem;
+  min-height: 10.3125rem;
+  padding: 0;
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.Content {
+  width: 100%;
+  min-height: inherit;
+  padding: .9375rem 1rem .75rem;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font: inherit;
+  text-align: center;
+}
+
+.Avatar {
+  margin-bottom: .8125rem;
+}
+
+.Text {
+  max-width: 9.25rem;
+  font-size: .8125rem;
+  line-height: 1rem;
+  text-wrap: balance;
+  word-break: break-word;
+}

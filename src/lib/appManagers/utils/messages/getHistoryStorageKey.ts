@@ -12,7 +12,8 @@ export function getSearchStorageFilterKey({
   inputFilter,
   savedReaction,
   query,
-  hashtagType
+  hashtagType,
+  communityId
 }: Parameters<typeof getHistoryStorageKey>[0]): SearchStorageFilterKey {
   let reactionsPart: string;
   if(savedReaction) {
@@ -24,7 +25,8 @@ export function getSearchStorageFilterKey({
   }
 
   const filter: SearchStorageFilterKey = inputFilter?._;
-  return [filter, hashtagType !== 'this' && hashtagType, query, reactionsPart].filter(Boolean).join('_');
+  const communityPart = communityId ? `community-${communityId}` : undefined;
+  return [filter, hashtagType !== 'this' && hashtagType, query, reactionsPart, communityPart].filter(Boolean).join('_');
 }
 
 export function getHistoryStorageType(options: RequestHistoryOptions): HistoryStorage['type'] {

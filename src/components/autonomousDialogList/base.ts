@@ -334,14 +334,17 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
   }
 
   public getDialogDom(key: DialogKey) {
-    // return this.doms[peerId];
-    const element = this.sortedList.getDialogElement(key);
+    const element = this.getDialogElement(key);
     return element?.dom;
   }
 
   public getDialogElement(key: DialogKey) {
     const element = this.sortedList.getDialogElement(key);
     return element;
+  }
+
+  public getListElement(key: DialogKey) {
+    return this.getDialogElement(key)?.dom.listEl;
   }
 
   public bindScrollable() {

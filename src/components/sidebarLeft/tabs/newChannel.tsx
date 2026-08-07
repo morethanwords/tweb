@@ -11,10 +11,12 @@ import type {AppChatsManager} from '@lib/appManagers/appChatsManager';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import type {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 
 const NewChannel = () => {
-  const [tab] = useSuperTab();
+  const [tab] = useSuperTab<typeof AppNewChannelTab>();
   const {appImManager, appSidebarLeft} = useHotReloadGuard();
+  const {onCreate, openAfter = true} = tab.payload;
 
   let uploadAvatar: AvatarEditPayload | null = null;
   let nameField!: InputField;
@@ -48,22 +50,27 @@ const NewChannel = () => {
         broadcast: true
       };
       handleChannelsTooMuch(() => tab.managers.appChatsManager.createChannel(options))
-      .then((channelId) => {
+      .then(async(channelId) => {
         if(uploadAvatar) {
           uploadAvatar.file().then((inputFile) => {
             tab.managers.appChatsManager.editPhoto(channelId, inputFile);
           });
         }
 
-        appImManager.setInnerPeer({peerId: channelId.toPeerId(true)});
+        await onCreate?.(channelId);
+        if(!openAfter) {
+          tab.close();
+          return;
+        }
 
+        appImManager.setInnerPeer({peerId: channelId.toPeerId(true)});
         appSidebarLeft.removeTabFromHistory(tab);
         addChatUsers({
           peerId: channelId.toPeerId(true),
           slider: tab.slider,
           skippable: true
         });
-      }, (err) => {
+      }).catch((err) => {
         console.error('createChannel error', err);
         toggle();
       });

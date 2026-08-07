@@ -1,149 +1,225 @@
-import {Component} from 'solid-js';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant} from '@layer';
-import hasRights from '@appManagers/utils/chats/hasRights';
-import {i18n} from '@lib/langPack';
-import AppSelectPeers from '@components/appSelectPeers';
-import ButtonCorner from '@components/buttonCorner';
-import CheckboxField from '@components/checkboxField';
-import showPickUserPopup from '@components/popups/pickUser';
-import Row from '@components/row';
-import SettingSection from '@components/settingSection';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
-import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import {Component, createSignal, onCleanup, Show} from 'solid-js';
+import {Portal} from 'solid-js/web';
+import type AppSelectPeers from '@components/appSelectPeers';
+import Button from '@components/buttonTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import useCommunityTabGuard
+from '@components/communities/useCommunityTabGuard';
+import Row from '@components/rowTsx';
+import Section from '@components/section';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import getParticipantPeerId
+from '@appManagers/utils/chats/getParticipantPeerId';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
-import {createSelectorForParticipants} from './participantsSelector';
-import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {i18n} from '@lib/langPack';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppChatAdministratorsTab} from '@components/solidJsTabs/tabs';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import type {
+  AdministratorParticipant,
+  AdministratorsSource
+} from './administratorsSource';
+import createChatAdministratorsSource from './chatAdministratorsSource';
+import createCommunityAdministratorsSource
+from './communityAdministratorsSource';
 
 const ChatAdministrators: Component = () => {
   const [tab] = useSuperTab<typeof AppChatAdministratorsTab>();
   const promiseCollector = usePromiseCollector();
-  const {chatId} = tab.payload;
+  const communityId = 'communityId' in tab.payload ?
+    tab.payload.communityId :
+    undefined;
+  const chatId = 'chatId' in tab.payload ? tab.payload.chatId : undefined;
+  if(communityId !== undefined) {
+    useCommunityTabGuard(tab, communityId);
+  }
 
-  let selector: AppSelectPeers;
+  const middlewareHelper = createMiddleware();
+  const middleware = middlewareHelper.get(tab.middlewareHelper.get());
+  const [administratorSource, setAdministratorSource] =
+    createSignal<AdministratorsSource>();
+  const [selector, setSelector] = createSignal<AppSelectPeers>();
+  const [antiSpamChecked, setAntiSpamChecked] = createSignal(false);
+  let openPermissions: (
+    participantOrPeerId: AdministratorParticipant | PeerId
+  ) => void;
+  onCleanup(() => {
+    tab.container.classList.remove(
+      'edit-peer-container',
+      'chat-administrators-container'
+    );
+    selector()?.container?.remove();
+  });
 
   promiseCollector.collect((async() => {
-    const peerId = chatId.toPeerId(true);
-    tab.container.classList.add('edit-peer-container', 'chat-administrators-container');
+    const source: AdministratorsSource = communityId === undefined ?
+      await createChatAdministratorsSource({
+        tab,
+        chatId,
+        middleware
+      }) :
+      await createCommunityAdministratorsSource({tab, communityId});
+    if(!middleware()) {
+      return;
+    }
 
-    const [chat, isBroadcast, chatFull, appConfig] = await Promise.all([
-      tab.managers.appChatsManager.getChat(chatId),
-      tab.managers.appChatsManager.isBroadcast(chatId),
-      tab.managers.appProfileManager.getChatFull(chatId),
-      tab.managers.apiManager.getAppConfig()
-    ]);
+    tab.container.classList.add(
+      'edit-peer-container',
+      'chat-administrators-container'
+    );
 
-    const canAddAdmins = hasRights(chat, 'add_admins');
-    const addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
-    if(canAddAdmins) tab.content.append(addBtn);
+    const syncParticipant = async(
+      participantId: PeerId,
+      updatedParticipant?: AdministratorParticipant
+    ) => {
+      if(!middleware()) {
+        return;
+      }
+      const currentSelector = selector();
+      if(!currentSelector) {
+        return;
+      }
+      if(!updatedParticipant || !isParticipantAdmin(updatedParticipant)) {
+        currentSelector.participants.delete(participantId);
+        currentSelector.deletePeerId(participantId);
+        return;
+      }
 
-    const openPermissions = async(participant: ChatParticipant | ChannelParticipant) => {
-      openUserPermissionsTab(tab.slider, chatId, participant, true);
+      const updatedParticipantId = getParticipantPeerId(updatedParticipant);
+      currentSelector.participants.set(
+        updatedParticipantId,
+        updatedParticipant
+      );
+      if(!currentSelector.getElementByKey(updatedParticipantId)) {
+        await currentSelector.renderResultsFunc(
+          [updatedParticipantId],
+          false
+        );
+      }
     };
 
-    attachClickEvent(addBtn, () => {
-      const popup = showPickUserPopup({
-        titleLangKey: 'Administrators',
-        peerType: ['channelParticipants'],
-        peerId,
-        onSelect: (chosen) => {
-          const participant = popup.selector.participants.get(chosen[0].peerId);
-          openPermissions(participant);
-        },
-        placeholder: 'SearchPlaceholder'
+    openPermissions = (
+      participantOrPeerId: AdministratorParticipant | PeerId
+    ) => {
+      const currentSelector = selector();
+      const participant = typeof(participantOrPeerId) === 'object' ?
+        participantOrPeerId :
+        currentSelector?.participants.get(participantOrPeerId);
+      const participantId = participant ?
+        getParticipantPeerId(participant) :
+        participantOrPeerId as PeerId;
+      source.openPermissions({
+        participantId,
+        participant,
+        onUpdated: (updatedParticipant) => {
+          return syncParticipant(participantId, updatedParticipant);
+        }
       });
-    }, {listenerSetter: tab.listenerSetter});
+    };
 
-    const canSeeAntiSpam = !isBroadcast &&
-      (chat as Chat.chat | Chat.channel).participants_count >= appConfig.telegram_antispam_group_size_min;
-
-    const {selector: _selector, loadPromise} = createSelectorForParticipants({
+    const selectorResult = source.createSelector({
       appendTo: tab.content,
       managers: tab.managers,
-      middleware: tab.middlewareHelper.get(),
-      peerId,
-      channelParticipantsFilter: (q) => {
-        return {_: 'channelParticipantsAdmins', q};
-      },
-      getSubtitleForElement: async(peerId) => {
-        const participant = selector.participants.get(peerId);
-        if(participant._ === 'channelParticipantCreator' || participant._ === 'chatParticipantCreator') {
+      middleware,
+      getSubtitleForElement: async(peerId: PeerId) => {
+        const participant = selector()?.participants.get(peerId);
+        if(!participant) {
+          return;
+        }
+        if(
+          participant._ === 'channelParticipantCreator' ||
+          participant._ === 'chatParticipantCreator'
+        ) {
           return i18n('ChannelCreator');
         }
 
-        const promotedBy = (
-          (participant as ChannelParticipant.channelParticipantAdmin).promoted_by ||
-          (participant as ChatParticipant.chatParticipantAdmin).inviter_id
-        ).toPeerId(false);
-        return i18n('EditAdminPromotedBy', [await wrapPeerTitle({peerId: promotedBy})]);
-      },
-      onSelect: (peerId) => {
-        const participant = selector.participants.get(peerId);
-        openPermissions(participant);
-      },
-      channelParticipantsUpdateFilter: isParticipantAdmin
-    });
-
-    selector = _selector;
-
-    if(canSeeAntiSpam) {
-      const section = new SettingSection({
-        noDelimiter: true,
-        caption: 'ChannelAntiSpamInfo'
-      });
-
-      const canToggleAntiSpam = hasRights(chat, 'delete_messages');
-
-      const checked = !!(chatFull as ChatFull.channelFull)?.pFlags?.antispam;
-      const row = new Row({
-        titleLangKey: 'ChannelAntiSpam',
-        checkboxField: new CheckboxField({
-          name: 'agg',
-          toggle: true,
-          listenerSetter: tab.listenerSetter,
-          checked,
-          disabled: !canToggleAntiSpam
-        }),
-        listenerSetter: tab.listenerSetter
-      });
-
-      if(!canToggleAntiSpam) row.toggleDisability(canToggleAntiSpam);
-
-      tab.listenerSetter.add(row.checkboxField.input)('change', () => {
-        const _checked = row.checkboxField.checked;
-        if(_checked === checked) {
+        let promotedBy: UserId;
+        if(participant._ === 'channelParticipantAdmin') {
+          promotedBy = participant.promoted_by;
+        } else if(participant._ === 'chatParticipantAdmin') {
+          promotedBy = participant.inviter_id;
+        } else {
           return;
         }
-
-        const promise = handleChannelsTooMuch(() => tab.managers.appChatsManager.toggleAntiSpam(chatId, _checked))
-        .catch((err) => {
-          console.error('toggleAntiSpam error', err);
-          row.checkboxField.setValueSilently(!_checked);
-        });
-        row.disableWithPromise(promise);
-      });
-
-      section.content.append(row.container);
-
-      selector.scrollable.append(section.container, selector.scrollable.container.lastElementChild);
-    }
-
-    createParticipantContextMenu({
-      chatId,
-      listenTo: selector.scrollable.container,
-      participants: selector.participants,
-      slider: tab.slider,
-      middleware: tab.middlewareHelper.get()
+        return i18n('EditAdminPromotedBy', [
+          await wrapPeerTitle({peerId: promotedBy.toPeerId(false)})
+        ]);
+      },
+      onSelect: (participantId: PeerId) => {
+        openPermissions(
+          selector()?.participants.get(participantId) || participantId
+        );
+      }
     });
+    setSelector(selectorResult.selector);
+    source.attachSelectorBehavior?.(selectorResult.selector);
+    setAntiSpamChecked(!!source.antiSpam?.checked);
+    setAdministratorSource(source);
 
-    await loadPromise;
+    await selectorResult.loadPromise;
   })());
 
-  return null;
+  const toggleAntiSpam = async(checked: boolean) => {
+    const antiSpam = administratorSource()?.antiSpam;
+    if(!antiSpam || checked === antiSpamChecked()) {
+      return;
+    }
+
+    const previousChecked = antiSpamChecked();
+    setAntiSpamChecked(checked);
+    try {
+      await antiSpam.toggle(checked);
+    } catch(error) {
+      console.error('toggleAntiSpam error', error);
+      setAntiSpamChecked(previousChecked);
+    }
+  };
+
+  return (
+    <>
+      <Portal mount={tab.content}>
+        <Show when={administratorSource()?.canAddAdmins}>
+          <Button.Corner
+            class="is-visible"
+            icon="addmember_filled"
+            aria-label={i18n('EditAdminAddAdmins').textContent}
+            tabIndex={0}
+            onClick={() => {
+              administratorSource()?.openAddAdmin(openPermissions);
+            }}
+          />
+        </Show>
+      </Portal>
+
+      <Show when={administratorSource()?.antiSpam}>
+        {(antiSpam) => (
+          <Show when={selector()}>
+            {(selector) => (
+              <Portal mount={selector().scrollable.container}>
+                <Section
+                  noDelimiter
+                  caption="ChannelAntiSpamInfo"
+                >
+                  <Row>
+                    <Row.CheckboxFieldToggle>
+                      <CheckboxFieldTsx
+                        toggle
+                        checked={antiSpamChecked()}
+                        disabled={antiSpam().disabled}
+                        onChange={(checked) => void toggleAntiSpam(checked)}
+                      />
+                    </Row.CheckboxFieldToggle>
+                    <Row.Title>{i18n('ChannelAntiSpam')}</Row.Title>
+                  </Row>
+                </Section>
+              </Portal>
+            )}
+          </Show>
+        )}
+      </Show>
+    </>
+  );
 };
 
 export default ChatAdministrators;

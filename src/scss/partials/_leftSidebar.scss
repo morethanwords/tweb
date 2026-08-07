@@ -39,6 +39,14 @@
     }
   }
 
+  // A floating forum/community remains mounted while its own management tabs
+  // are open. Move it out of the hit-testing layer so the selected slider tab
+  // receives both pointer and keyboard interaction.
+  &.has-real-tabs .topics-container.is-floating {
+    transform: translateX(calc(100% * var(--reflect)));
+    pointer-events: none;
+  }
+
   .main-search-sidebar-header {
     transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
     opacity: 1;

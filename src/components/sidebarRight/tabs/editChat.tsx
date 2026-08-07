@@ -1,752 +1,868 @@
-import {Component} from 'solid-js';
-import InputField from '@components/inputField';
-import EditPeer from '@components/editPeer';
-import Row, {CreateRowFromCheckboxField} from '@components/row';
-import Button from '@components/button';
+import {
+  Component,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on,
+  onCleanup,
+  Show
+} from 'solid-js';
+import {Portal} from 'solid-js/web';
 import {ChatRights} from '@appManagers/appChatsManager';
-import {Chat, ChatFull, ChatParticipants} from '@layer';
-import {AppChatTypeTab} from '@components/solidJsTabs/tabs';
-import rootScope from '@lib/rootScope';
-import {AppGroupPermissionsTab} from '@components/solidJsTabs/tabs';
-import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
-import PopupDeleteDialog from '@components/popups/deleteDialog';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import toggleDisability from '@helpers/dom/toggleDisability';
-import CheckboxField from '@components/checkboxField';
-import {AppChatReactionsTab} from '@components/solidJsTabs/tabs';
 import hasRights from '@appManagers/utils/chats/hasRights';
-import replaceContent from '@helpers/dom/replaceContent';
-import SettingSection from '@components/settingSection';
-import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import PopupElement from '@components/popups';
-import {AppChatAdministratorsTab} from '@components/solidJsTabs/tabs';
-import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
-import {AppChatMembersTab} from '@components/solidJsTabs/tabs';
-import {AppRemovedUsersTab} from '@components/solidJsTabs/tabs';
-import {AppChatDiscussionTab} from '@components/solidJsTabs/tabs';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
-import cancelEvent from '@helpers/dom/cancelEvent';
-import {hideToast, toastNew} from '@components/toast';
-import {AppChatInviteLinksTab} from '@components/solidJsTabs/tabs';
-import {AppChatRequestsTab} from '@components/solidJsTabs/tabs';
 import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
-import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupBoost from '@components/popups/boost';
-import namedPromises from '@helpers/namedPromises';
-import apiManagerProxy from '@lib/apiManagerProxy';
-import {AppDirectMessagesTab} from '@components/solidJsTabs';
-import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
-import appImManager from '@lib/appImManager';
-import {ChatType} from '@components/chat/chatType';
-import {appSettings} from '@stores/appSettings';
-import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
-import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import AvatarEdit, {AvatarEditPayload} from '@components/avatarEdit';
+import Button from '@components/buttonTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import Row from '@components/rowTsx';
+import Section from '@components/section';
+import {AppDirectMessagesTab} from '@components/solidJsTabs';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
-import type {AppEditChatTab} from '@components/solidJsTabs/tabs';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {
+  AppAddGroupToCommunityTab,
+  AppAdminRecentActionsTab,
+  AppChatAdministratorsTab,
+  AppChatDiscussionTab,
+  AppChatInviteLinksTab,
+  AppChatMembersTab,
+  AppChatReactionsTab,
+  AppChatRequestsTab,
+  AppChatTypeTab,
+  AppEditChatTab,
+  AppGroupPermissionsTab,
+  AppRemovedUsersTab
+} from '@components/solidJsTabs/tabs';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import numberThousandSplitter, {
+  numberThousandSplitterForStars
+} from '@helpers/number/numberThousandSplitter';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import {Chat, ChatFull, ChatParticipants} from '@layer';
+import type {LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {appSettings} from '@stores/appSettings';
 
-const EditChat: Component = () => {
+const PERMISSION_FLAGS = [
+  'send_stickers',
+  'send_polls',
+  'send_photos',
+  'send_videos',
+  'send_roundvideos',
+  'send_audios',
+  'send_voices',
+  'send_docs',
+  'send_plain',
+  'embed_links',
+  'invite_users',
+  'pin_messages',
+  'change_info'
+] as const satisfies readonly ChatRights[];
+
+type EditChat = Chat.chat | Chat.channel;
+type EditChatFull = ChatFull.chatFull | ChatFull.channelFull;
+
+async function loadEditChatData(
+  tab: InstanceType<typeof AppEditChatTab>,
+  chatId: ChatId
+) {
+  const [chatFull, chat, appConfig, availableReactions, joinedCommunities] = await Promise.all([
+    tab.managers.appProfileManager.getChatFull(chatId, true),
+    tab.managers.appChatsManager.getChat(chatId) as Promise<EditChat>,
+    tab.managers.apiManager.getAppConfig(),
+    tab.managers.appReactionsManager.getAvailableReactions(),
+    tab.managers.appCommunitiesManager.getJoinedCommunities()
+  ]);
+
+  return {
+    chatId,
+    chatFull: chatFull as EditChatFull,
+    chat,
+    appConfig,
+    availableReactions,
+    joinedCommunities
+  };
+}
+
+type EditChatData = Awaited<ReturnType<typeof loadEditChatData>>;
+
+const EditChatTab: Component = () => {
   const [tab] = useSuperTab<typeof AppEditChatTab>();
   const promiseCollector = usePromiseCollector();
-  let chatId = tab.payload.chatId;
+  const [chatId, setChatId] = createSignal(tab.payload.chatId);
+  const initialPromise = loadEditChatData(tab, tab.payload.chatId);
+  let isInitialLoad = true;
 
-  const _init = async() => {
-    // * cleanup prev
-    tab.listenerSetter.removeAll();
+  tab.container.classList.add('edit-peer-container', 'edit-group-container');
+  promiseCollector.collect(initialPromise);
 
-    tab.container.classList.add('edit-peer-container', 'edit-group-container');
-    // title is set by the scaffold (title: 'Edit')
+  const [data] = createResource(chatId, (currentChatId) => {
+    if(isInitialLoad) {
+      isInitialLoad = false;
+      return initialPromise;
+    }
 
-    let chatNameInputField: InputField, descriptionInputField: InputField, editPeer: EditPeer;
+    return loadEditChatData(tab, currentChatId);
+  });
 
-    let {
-      chatFull,
-      chat,
-      isBroadcast,
-      isChannel,
-      canChangeType,
-      canChangePermissions,
-      canToggleForum,
-      canManageAdmins,
-      canChangeInfo,
-      canDeleteChat,
-      canPostMessages,
-      canManageInviteLinks,
-      canInviteUsers,
-      isBroadcastGroup,
-      appConfig,
-      availableReactions
-    } = await namedPromises({
-      chatFull: tab.managers.appProfileManager.getChatFull(chatId, true),
-      chat: tab.managers.appChatsManager.getChat(chatId) as Promise<Chat.chat | Chat.channel>,
-      isBroadcast: tab.managers.appChatsManager.isBroadcast(chatId),
-      isChannel: tab.managers.appChatsManager.isChannel(chatId),
-      isBroadcastGroup: tab.managers.appChatsManager.isBroadcastGroup(chatId),
-      canChangeType: tab.managers.appChatsManager.hasRights(chatId, 'change_type'),
-      canChangePermissions: tab.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
-      canToggleForum: tab.managers.appChatsManager.hasRights(chatId, 'toggle_forum'),
-      canManageAdmins: tab.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
-      canChangeInfo: tab.managers.appChatsManager.hasRights(chatId, 'change_info'),
-      canDeleteChat: tab.managers.appChatsManager.hasRights(chatId, 'delete_chat'),
-      canPostMessages: tab.managers.appChatsManager.hasRights(chatId, 'post_messages'),
-      canManageInviteLinks: tab.managers.appChatsManager.hasRights(chatId, 'invite_links'),
-      canInviteUsers: tab.managers.appChatsManager.hasRights(chatId, 'invite_users'),
-      appConfig: tab.managers.apiManager.getAppConfig(),
-      availableReactions: tab.managers.appReactionsManager.getAvailableReactions()
+  return (
+    <Show when={data()} keyed>
+      {(loaded) => (
+        <EditChatForm
+          data={loaded}
+          onMigrate={setChatId}
+        />
+      )}
+    </Show>
+  );
+};
+
+export default EditChatTab;
+
+function EditChatForm(props: {
+  data: EditChatData,
+  onMigrate: (chatId: ChatId) => void
+}) {
+  const [tab] = useSuperTab<typeof AppEditChatTab>();
+  const {
+    AvatarNewTsx,
+    ChatType,
+    CommunityLinkSection,
+    I18n,
+    PeerTitleTsx,
+    PopupElement,
+    apiManagerProxy,
+    appDialogsManager,
+    appImManager,
+    confirmationPopup,
+    hideToast,
+    i18n,
+    join,
+    toastNew
+  } = useHotReloadGuard();
+  const [chat, setChat] = createSignal<EditChat>(props.data.chat);
+  const [chatFull, setChatFull] = createSignal<EditChatFull>(props.data.chatFull);
+  const [title, setTitle] = createSignal(props.data.chat.title);
+  const [about, setAbout] = createSignal(props.data.chatFull.about || '');
+  const [saving, setSaving] = createSignal(false);
+  const [hasAvatarPreview, setHasAvatarPreview] = createSignal(false);
+  const [topicsBusy, setTopicsBusy] = createSignal(false);
+  const [autotranslationBusy, setAutotranslationBusy] = createSignal(false);
+  const [signaturesBusy, setSignaturesBusy] = createSignal(false);
+  const [historyBusy, setHistoryBusy] = createSignal(false);
+  const [deleting, setDeleting] = createSignal(false);
+  let uploadAvatar: AvatarEditPayload;
+  let alive = true;
+
+  const chatId = () => props.data.chatId;
+  const peerId = () => chatId().toPeerId(true);
+  const isChannel = () => chat()._ === 'channel';
+  const channel = () => chat()._ === 'channel' ? chat() as Chat.channel : undefined;
+  const channelFull = () => chatFull()._ === 'channelFull' ? chatFull() as ChatFull.channelFull : undefined;
+  const isBroadcast = () => !!channel()?.pFlags.broadcast;
+  const isBroadcastGroup = () => !!channel()?.pFlags.gigagroup;
+  const isForum = () => !!channel()?.pFlags.forum;
+  const isAdmin = () => hasRights(chat(), 'just_admin');
+  const canChangeType = () => hasRights(chat(), 'change_type');
+  const canChangePermissions = () => hasRights(chat(), 'change_permissions');
+  const canToggleForum = () => hasRights(chat(), 'toggle_forum');
+  const canChangeInfo = () => hasRights(chat(), 'change_info');
+  const canDeleteChat = () => hasRights(chat(), 'delete_chat');
+  const canPostMessages = () => hasRights(chat(), 'post_messages');
+  const canManageInviteLinks = () => hasRights(chat(), 'invite_links');
+  const canInviteUsers = () => hasRights(chat(), 'invite_users');
+  const linkedChatId = () => channelFull()?.linked_chat_id;
+  const linkedCommunityId = () => channel()?.linked_community_id?.toChatId();
+  const availableReactionsLength = props.data.availableReactions.filter((reaction) => {
+    return !reaction.pFlags.inactive;
+  }).length;
+
+  const avatarEdit = new AvatarEdit((payload) => {
+    uploadAvatar = payload;
+    setHasAvatarPreview(true);
+  }, {isForum: isForum()});
+
+  const isDirty = createMemo(() => {
+    return title() !== props.data.chat.title ||
+      about() !== (props.data.chatFull.about || '') ||
+      hasAvatarPreview();
+  });
+  const canSave = createMemo(() => {
+    return isDirty() && !!title().trim() && !saving();
+  });
+  const showTopics = createMemo(() => {
+    return canToggleForum() &&
+      ((channel()?.participants_count || 0) >= props.data.appConfig.forum_upgrade_participants_min || isForum()) &&
+      !isBroadcast();
+  });
+  const showDiscussion = createMemo(() => {
+    return isAdmin() && (isBroadcast() || !!linkedChatId());
+  });
+  const hasMainSettings = createMemo(() => {
+    return canChangeType() ||
+      canManageInviteLinks() ||
+      (canInviteUsers() && isAdmin()) ||
+      (canChangeInfo() && isAdmin()) ||
+      (canChangePermissions() && !isBroadcast() && !isBroadcastGroup()) ||
+      showDiscussion() ||
+      (isAdmin() && isChannel()) ||
+      showTopics();
+  });
+  const mainCaption = createMemo<LangPackKey>(() => {
+    if(showTopics()) {
+      return 'ForumToggleDescription';
+    }
+
+    if(isAdmin()) {
+      return 'DiscussionInfo';
+    }
+  });
+  const canManageCommunity = createMemo(() => {
+    const value = channel();
+    if(
+      !value ||
+      !value.pFlags.creator ||
+      value.pFlags.monoforum ||
+      (!value.pFlags.broadcast && !value.pFlags.megagroup)
+    ) {
+      return false;
+    }
+
+    const communityId = linkedCommunityId();
+    return !communityId || props.data.joinedCommunities.some((community) => {
+      return community.id.toChatId() === communityId;
     });
+  });
 
-    tab.scrollable.replaceChildren();
-
-    const chatUpdateListeners: {[type in 'full' | 'basic']: (() => void)[]} = {full: [], basic: []};
-    const addChatUpdateListener = (callback: () => void, type: 'full' | 'basic' = 'basic') => {
-      chatUpdateListeners[type].push(callback);
-    };
-
-    tab.listenerSetter.add(rootScope)('chat_update', async(updatedChatId) => {
-      if(chatId === updatedChatId) {
-        chat = await tab.managers.appChatsManager.getChat(chatId) as typeof chat;
-        chatUpdateListeners['basic'].forEach((callback) => callback());
-      }
-    });
-
-    tab.listenerSetter.add(rootScope)('chat_full_update', async(updatedChatId) => {
-      if(chatId === updatedChatId) {
-        chatFull = await tab.managers.appProfileManager.getChatFull(updatedChatId);
-        chatUpdateListeners['full'].forEach((callback) => callback());
-      }
-    });
-
-    const peerId = chatId.toPeerId(true);
-    const isAdmin = hasRights(chat, 'just_admin');
-
-    {
-      const section = new SettingSection({noDelimiter: true, caption: 'PeerInfo.SetAboutDescription'});
-      const inputFields: InputField[] = [];
-
-      const inputWrapper = document.createElement('div');
-      inputWrapper.classList.add('input-wrapper');
-
-      chatNameInputField = new InputField({
-        label: isBroadcast ? 'EnterChannelName' : 'CreateGroup.NameHolder',
-        name: 'chat-name',
-        maxLength: 255,
-        required: true,
-        canBeEdited: canChangeInfo
-      });
-      descriptionInputField = new InputField({
-        label: 'DescriptionPlaceholder',
-        name: 'chat-description',
-        maxLength: 255,
-        withLinebreaks: true,
-        canBeEdited: canChangeInfo
-      });
-
-      chatNameInputField.setOriginalValue(chat.title);
-      descriptionInputField.setOriginalValue(chatFull.about);
-
-      inputWrapper.append(chatNameInputField.container, descriptionInputField.container);
-
-      inputFields.push(chatNameInputField, descriptionInputField);
-
-      editPeer = new EditPeer({
-        peerId,
-        inputFields,
-        listenerSetter: tab.listenerSetter,
-        popupOptions: {isForum: (chat as Chat.channel).pFlags.forum},
-        middleware: tab.middlewareHelper.get()
-      });
-      tab.content.append(editPeer.nextBtn);
-
-      if(!canChangeInfo) {
-        editPeer.avatarElem.node.classList.remove('avatar-placeholder');
-        editPeer.avatarEdit.container.replaceChildren(editPeer.avatarElem.node);
-        editPeer.avatarEdit.container.classList.add('disable-hover');
-      }
-
-      section.content.append(inputWrapper);
-      tab.scrollable.append(editPeer.avatarEdit.container, section.container);
+  const reactionsSubtitle = createMemo(() => {
+    const reactions = chatFull().available_reactions ?? {_: 'chatReactionsNone'} as const;
+    if(reactions._ === 'chatReactionsSome') {
+      const length = reactions.reactions.length;
+      return length === availableReactionsLength ?
+        i18n('ReactionsAll') :
+        `${length}/${availableReactionsLength}`;
     }
 
-    {
-      const section = new SettingSection({caption: true});
-
-      if(canChangeType) {
-        const chatTypeRow = new Row({
-          titleLangKey: isBroadcast ? 'ChannelType' : 'GroupType',
-          clickable: () => {
-            tab.slider.createTab(AppChatTypeTab).open({chatId: chatId, chatFull});
-          },
-          icon: 'lock',
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setChatTypeSubtitle = () => {
-          let key: LangPackKey;
-          const username = getPeerActiveUsernames(chat as Chat.channel)[0];
-          if(isBroadcast) {
-            key = username ? 'TypePublic' : 'TypePrivate';
-          } else {
-            key = username ? 'TypePublicGroup' : 'TypePrivateGroup';
-          }
-
-          chatTypeRow.subtitle.replaceChildren(i18n(key));
-        };
-
-        setChatTypeSubtitle();
-        addChatUpdateListener(setChatTypeSubtitle);
-        section.content.append(chatTypeRow.container);
-      }
-
-      if(canManageInviteLinks) {
-        const inviteLinksRow = new Row({
-          titleLangKey: 'InviteLinks',
-          navigationTab: {
-            constructor: AppChatInviteLinksTab,
-            slider: tab.slider,
-            getInitArgs: () => ({
-              chatId: chatId,
-              p: AppChatInviteLinksTab.getInitArgs(chatId)
-            })
-          },
-          icon: 'link',
-          listenerSetter: tab.listenerSetter,
-          subtitle: true
-        });
-
-        const setInviteLinksCount = () => {
-          inviteLinksRow.subtitle.textContent = '1';
-        };
-
-        setInviteLinksCount();
-        addChatUpdateListener(setInviteLinksCount, 'full');
-
-        section.content.append(inviteLinksRow.container);
-      }
-
-      if(canInviteUsers && isAdmin) {
-        const requestsRow = new Row({
-          titleLangKey: isBroadcast ? 'SubscribeRequests' : 'MemberRequests',
-          navigationTab: {
-            constructor: AppChatRequestsTab,
-            getInitArgs: () => chatId,
-            slider: tab.slider
-          },
-          icon: 'adduser',
-          listenerSetter: tab.listenerSetter,
-          subtitle: true
-        });
-
-        const setRequestsCount = () => {
-          const count = chatFull.requests_pending;
-          requestsRow.subtitle.textContent = '' + count;
-          requestsRow.container.classList.toggle('hide', !count);
-        };
-
-        setRequestsCount();
-        addChatUpdateListener(setRequestsCount, 'full');
-
-        section.content.append(requestsRow.container);
-      }
-
-      // if(canChangeType || canChangePermissions) {
-      if(canChangeInfo && isAdmin) {
-        const reactionsRow = new Row({
-          titleLangKey: 'Reactions',
-          icon: 'reactions',
-          navigationTab: {
-            constructor: AppChatReactionsTab,
-            slider: tab.slider,
-            getInitArgs: () => ({
-              chatId: chatId
-            })
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const availableReactionsLength = availableReactions.filter((availableReaction) => !availableReaction.pFlags.inactive).length;
-        const setReactionsLength = () => {
-          const chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
-          if(chatAvailableReactions._ === 'chatReactionsSome') {
-            const length = chatAvailableReactions.reactions.length;
-            if(length === availableReactionsLength) {
-              replaceContent(reactionsRow.subtitle, i18n('ReactionsAll'));
-            } else {
-              reactionsRow.subtitle.textContent = length + '/' + availableReactionsLength;
-            }
-          } else {
-            replaceContent(reactionsRow.subtitle, i18n(chatAvailableReactions._ === 'chatReactionsAll' ? 'ReactionsAll' : 'Checkbox.Disabled'));
-          }
-        };
-
-        setReactionsLength();
-        addChatUpdateListener(setReactionsLength, 'full');
-        section.content.append(reactionsRow.container);
-      }
-
-      if(canChangeInfo && isBroadcast && isAdmin) {
-        const directMessagesRow = new Row({
-          titleLangKey: 'ChannelDirectMessages.Settings.Title',
-          icon: 'messageunread',
-          clickable: () => {
-            if(chat._ !== 'channel') return;
-            tab.slider.createTab(AppDirectMessagesTab).open({chat});
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setEnabledStatus = () => {
-          if(chat._ !== 'channel') return;
-
-          const linkedMonoforumChat = chat.linked_monoforum_id ? apiManagerProxy.getChat(chat.linked_monoforum_id) : undefined;
-
-          if(linkedMonoforumChat?._ !== 'channel') {
-            replaceContent(directMessagesRow.subtitle, i18n('ChannelDirectMessages.Settings.Off'));
-            return;
-          }
-
-          const starsAmount = linkedMonoforumChat.send_paid_messages_stars || 0;
-
-          replaceContent(
-            directMessagesRow.subtitle,
-            starsAmount ?
-              i18n('Stars', [numberThousandSplitterForStars(starsAmount)]) :
-              i18n('ChannelDirectMessages.Settings.Free')
-          );
-        };
-
-        setEnabledStatus();
-        addChatUpdateListener(setEnabledStatus, 'basic');
-        section.content.append(directMessagesRow.container);
-      }
-
-      if(canChangePermissions && !isBroadcast && !isBroadcastGroup) {
-        const flags = [
-          'send_stickers',
-          'send_polls',
-          'send_photos',
-          'send_videos',
-          'send_roundvideos',
-          'send_audios',
-          'send_voices',
-          'send_docs',
-          'send_plain',
-          'embed_links',
-          'invite_users',
-          'pin_messages',
-          'change_info'
-        ] as ChatRights[];
-
-        const permissionsRow = new Row({
-          titleLangKey: 'ChannelPermissions',
-          clickable: () => {
-            const permsTab = tab.slider.createTab(AppGroupPermissionsTab);
-            permsTab.open({chatId: chatId});
-          },
-          icon: 'permissions',
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setPermissionsLength = () => {
-          const permissions = flags.reduce((acc, f) => acc + +hasRights(chat, f, (chat as Chat.chat).default_banned_rights), 0) + '/' + flags.length;
-          const paid = !!+(chat as Chat.channel)?.send_paid_messages_stars ? I18n.format('PrivacySettingsController.Paid', true) : undefined;
-          permissionsRow.subtitle.innerHTML = '';
-          permissionsRow.subtitle.append(...join([permissions, paid].filter(Boolean)));
-        };
-
-        setPermissionsLength();
-        addChatUpdateListener(setPermissionsLength);
-        section.content.append(permissionsRow.container);
-      }
-
-      if(/* canChangeInfo &&  */isAdmin) {
-        const discussionRow = new Row({
-          icon: 'comments',
-          titleLangKey: isBroadcast ? 'PeerInfo.Discussion' : 'LinkedChannel',
-          subtitle: true,
-          navigationTab: {
-            constructor: AppChatDiscussionTab,
-            getInitArgs: () => ({
-              chatId: chatId,
-              linkedChatId: (chatFull as ChatFull.channelFull).linked_chat_id
-            }),
-            slider: tab.slider
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setSubtitle = async() => {
-          const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;
-          let el: HTMLElement;
-          if(linkedChatId) {
-            el = await wrapPeerTitle({peerId: linkedChatId.toPeerId(true)});
-          } else {
-            el = i18n('PeerInfo.Discussion.Add');
-          }
-
-          if(!isBroadcast) {
-            discussionRow.container.classList.toggle('hide', !linkedChatId);
-          }
-
-          discussionRow.subtitle.replaceChildren(el);
-        };
-
-        await setSubtitle();
-        addChatUpdateListener(setSubtitle, 'full');
-
-        section.caption.replaceChildren(i18n('DiscussionInfo'));
-        section.content.append(discussionRow.container);
-      }
-
-      if(isAdmin && isChannel) {
-        const recentActionsRow = new Row({
-          icon: 'clipboard',
-          titleLangKey: 'RecentActions',
-          clickable: () => {
-            if(appSettings.logsDiffView) {
-              tab.slider.createTab(AppAdminRecentActionsTab).open({channelId: chatId, isBroadcast});
-            } else {
-              appImManager.setInnerPeer({
-                peerId: chatId.toPeerId(true),
-                type: ChatType.Logs
-              });
-            }
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        section.content.append(recentActionsRow.container);
-      }
-
-      if(
-        canToggleForum &&
-        (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum) &&
-        !isBroadcast
-      ) {
-        const topicsRow = new Row({
-          checkboxField: new CheckboxField({toggle: true}),
-          titleLangKey: 'Topics',
-          clickable: (e) => {
-            if((chatFull as ChatFull.channelFull).linked_chat_id) {
-              toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
-              cancelEvent(e);
-              return;
-            }
-          },
-          icon: 'topics',
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setTopics = () => {
-          const isForum = !!(chat as Chat.channel).pFlags.forum;
-          editPeer.avatarElem.node.parentElement.classList.toggle('is-forum', isForum);
-          topicsRow.checkboxField.setValueSilently(isForum);
-
-          // const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;
-          // topicsRow.toggleDisability(!!linkedChatId);
-        };
-
-        tab.listenerSetter.add(topicsRow.checkboxField.input)('change', (e) => {
-          if(!e.isTrusted) {
-            return;
-          }
-
-          const value = topicsRow.checkboxField.checked;
-          const promise = handleChannelsTooMuch(() => tab.managers.appChatsManager.toggleForum(chatId, value));
-          topicsRow.disableWithPromise(promise);
-        });
-
-        setTopics();
-        addChatUpdateListener(setTopics);
-        addChatUpdateListener(setTopics, 'full');
-
-        section.caption.replaceChildren(i18n('ForumToggleDescription'));
-        section.content.append(topicsRow.container);
-      }
-
-      section.caption.classList.toggle('hide', !section.caption.childElementCount);
-
-      if(section.content.childElementCount) tab.scrollable.append(section.container);
-
-      attachClickEvent(editPeer.nextBtn, () => {
-        editPeer.nextBtn.disabled = true;
-
-        const promises: Promise<any>[] = [];
-
-        const id = chatId;
-        if(chatNameInputField.isValidToChange()) {
-          promises.push(tab.managers.appChatsManager.editTitle(id, chatNameInputField.value));
-        }
-
-        if(descriptionInputField.isValidToChange()) {
-          promises.push(tab.managers.appChatsManager.editAbout(id, descriptionInputField.value));
-        }
-
-        if(editPeer.uploadAvatar) {
-          promises.push(editPeer.uploadAvatar.file().then((inputFile) => {
-            return tab.managers.appChatsManager.editPhoto(id, inputFile);
-          }));
-        }
-
-        Promise.race(promises).finally(() => {
-          editPeer.nextBtn.removeAttribute('disabled');
-          tab.close();
-        });
-      }, {listenerSetter: tab.listenerSetter});
+    return i18n(reactions._ === 'chatReactionsAll' ? 'ReactionsAll' : 'Checkbox.Disabled');
+  });
+  const directMessagesSubtitle = createMemo(() => {
+    const monoforumId = channel()?.linked_monoforum_id;
+    const monoforum = monoforumId ? apiManagerProxy.getChat(monoforumId) : undefined;
+    if(monoforum?._ !== 'channel') {
+      return i18n('ChannelDirectMessages.Settings.Off');
     }
 
-    {
-      const section = new SettingSection({});
+    const stars = monoforum.send_paid_messages_stars || 0;
+    return stars ?
+      i18n('Stars', [numberThousandSplitterForStars(stars)]) :
+      i18n('ChannelDirectMessages.Settings.Free');
+  });
+  const permissionsSubtitle = createMemo(() => {
+    const permissions = PERMISSION_FLAGS.reduce((count, flag) => {
+      return count + +hasRights(chat(), flag, chat().default_banned_rights);
+    }, 0) + '/' + PERMISSION_FLAGS.length;
+    const paid = channel()?.send_paid_messages_stars ?
+      I18n.format('PrivacySettingsController.Paid', true) :
+      undefined;
 
-      /* if(canManageAdmins)  */{
-        const administratorsRow = new Row({
-          titleLangKey: 'PeerInfo.Administrators',
-          subtitle: true,
-          icon: 'admin',
-          navigationTab: {
-            constructor: AppChatAdministratorsTab,
-            slider: tab.slider,
-            getInitArgs: () => ({
-              chatId: chatId
-            })
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setAdministratorsLength = () => {
-          let count: number;
-          const participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
-          if(participants?._ === 'chatParticipants') {
-            count = participants.participants.filter(isParticipantAdmin).length;
-          } else {
-            count = (chatFull as ChatFull.channelFull).admins_count;
-          }
-
-          count ||= 1;
-          administratorsRow.subtitle.textContent = '' + count;
-        };
-
-        setAdministratorsLength();
-        addChatUpdateListener(setAdministratorsLength, 'full');
-
-        section.content.append(administratorsRow.container);
-      }
-
-      {
-        const membersRow = new Row({
-          titleLangKey: isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers',
-          icon: 'newgroup',
-          clickable: () => {
-            tab.slider.createTab(AppChatMembersTab).open(chatId);
-          },
-          listenerSetter: tab.listenerSetter,
-          subtitle: true
-        });
-
-        // const i = new I18n.IntlElement();
-        // membersRow.subtitle.append(i.element);
-
-        const setMembersLength = () => {
-          const participants = getParticipantsCount(chatFull);
-          membersRow.subtitle.textContent = numberThousandSplitter(participants);
-          // i.compareAndUpdate({
-          //   key: isBroadcast ? 'Subscribers' : 'Members',
-          //   args: [numberThousandSplitter(participants)]
-          // });
-        };
-
-        setMembersLength();
-        addChatUpdateListener(setMembersLength, 'full');
-
-        section.content.append(membersRow.container);
-      }
-
-      /* if(canChangePermissions)  */{
-        const removedUsersRow = new Row({
-          titleLangKey: 'ChannelBlockedUsers',
-          subtitle: true,
-          icon: 'deleteuser',
-          clickable: () => {
-            const removedTab = tab.slider.createTab(AppRemovedUsersTab);
-            removedTab.open(chatId);
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const setRemovedUsersLength = () => {
-          removedUsersRow.container.classList.toggle('hide', !isChannel);
-          const kickedCount = (chatFull as ChatFull.channelFull).kicked_count || 0;
-          if(kickedCount) {
-            removedUsersRow.subtitle.textContent = numberThousandSplitter(kickedCount);
-          } else {
-            removedUsersRow.subtitle.replaceChildren(i18n('NoBlockedUsers'));
-          }
-        };
-
-        setRemovedUsersLength();
-        addChatUpdateListener(setRemovedUsersLength, 'full');
-
-        section.content.append(removedUsersRow.container);
-      }
-
-      tab.scrollable.append(section.container);
+    return join([permissions, paid].filter(Boolean));
+  });
+  const administratorsCount = createMemo(() => {
+    const participants = (chatFull() as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    let count: number;
+    if(participants?._ === 'chatParticipants') {
+      count = participants.participants.filter(isParticipantAdmin).length;
+    } else {
+      count = channelFull()?.admins_count;
     }
 
-    if(isBroadcast && canChangeInfo) {
-      const section = new SettingSection({});
+    return count || 1;
+  });
+  const membersCount = createMemo(() => {
+    return numberThousandSplitter(getParticipantsCount(chatFull()));
+  });
+  const removedUsersSubtitle = createMemo(() => {
+    const count = channelFull()?.kicked_count || 0;
+    return count ? numberThousandSplitter(count) : i18n('NoBlockedUsers');
+  });
 
-      const r = new Row({
-        titleLangKey: 'ChannelAutotranslation',
-        checkboxField: new CheckboxField({
-          toggle: true
-        }),
-        icon: 'premium_translate',
-        clickable: (e) => {
-          if(((chat as Chat.channel).level ?? 0) < appConfig.channel_autotranslation_level_min) {
-            toastNew({
-              langPackKey: 'ChannelAutotranslationLevelMin',
-              langPackArguments: [
-                appConfig.channel_autotranslation_level_min,
-                anchorCallback(() => {
-                  hideToast();
-                  PopupElement.createPopup(PopupBoost, peerId);
-                })
-              ]
-            });
-            cancelEvent(e);
-          }
-        }
-      });
+  const [topics, setTopics] = createSignal(isForum());
+  const [autotranslation, setAutotranslation] = createSignal(!!channel()?.pFlags.autotranslation);
+  const [signMessages, setSignMessages] = createSignal(!!channel()?.pFlags.signatures);
+  const [showProfiles, setShowProfiles] = createSignal(
+    !!channel()?.pFlags.signatures && !!channel()?.pFlags.signature_profiles
+  );
+  const [showChatHistory, setShowChatHistory] = createSignal(
+    isChannel() && !channelFull()?.pFlags.hidden_prehistory
+  );
 
-      tab.listenerSetter.add(r.checkboxField.input)('change', () => {
-        const toggle = r.toggleDisability(true);
-        tab.managers.appChatsManager.toggleAutotranslation(chatId, r.checkboxField.checked)
-        .catch(() => {
-          r.checkboxField.setValueSilently(false);
-        }).finally(toggle);
-      });
+  createEffect(() => {
+    avatarEdit.container.classList.toggle('is-forum', isForum());
+  });
+  createEffect(() => {
+    setTopics(isForum());
+    setAutotranslation(!!channel()?.pFlags.autotranslation);
+    setSignMessages(!!channel()?.pFlags.signatures);
+    setShowProfiles(!!channel()?.pFlags.signatures && !!channel()?.pFlags.signature_profiles);
+  });
+  createEffect(() => {
+    setShowChatHistory(isChannel() && !channelFull()?.pFlags.hidden_prehistory);
+  });
+  createEffect(on(linkedCommunityId, (communityId) => {
+    if(communityId) {
+      void Promise.resolve(tab.managers.appProfileManager
+      .getChatFull(communityId))
+      .catch((): undefined => undefined);
+    }
+  }));
 
-      const update = () => {
-        r.checkboxField.setValueSilently(!!(chat as Chat.channel).pFlags.autotranslation);
-      };
-
-      update();
-      addChatUpdateListener(update);
-
-      section.content.append(r.container);
-
-      tab.scrollable.append(section.container);
+  subscribeOn(rootScope)('chat_update', async(updatedChatId) => {
+    if(updatedChatId !== chatId()) {
+      return;
     }
 
-    if(isBroadcast && canPostMessages) {
-      const section = new SettingSection({caption: true});
-      const signMessagesCheckboxField = new CheckboxField({
-        text: 'ChannelSignMessages'
-      });
-
-      const showProfilesCheckboxField = new CheckboxField({
-        text: 'ChannelSignMessagesWithProfile'
-      });
-
-      tab.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
-        const toggle = signMessagesCheckboxField.toggleDisability(true);
-        tab.managers.appChatsManager.toggleSignatures(chatId, signMessagesCheckboxField.checked, signMessagesCheckboxField.checked && showProfilesCheckboxField.checked).then(() => {
-          toggle();
-        });
-      });
-
-      tab.listenerSetter.add(showProfilesCheckboxField.input)('change', () => {
-        const toggle = showProfilesCheckboxField.toggleDisability(true);
-        tab.managers.appChatsManager.toggleSignatures(chatId, signMessagesCheckboxField.checked, showProfilesCheckboxField.checked).then(() => {
-          toggle();
-        });
-      });
-
-      const update = () => {
-        signMessagesCheckboxField.setValueSilently(!!(chat as Chat.channel).pFlags.signatures);
-        showProfilesCheckboxField.setValueSilently(signMessagesCheckboxField.checked && !!(chat as Chat.channel).pFlags.signature_profiles);
-        row2.container.classList.toggle('hide', !signMessagesCheckboxField.checked);
-        section.caption.replaceChildren(i18n(showProfilesCheckboxField.checked ? 'ChannelSignProfilesInfo' : 'ChannelSignMessagesInfo'));
-      };
-
-      const row2 = CreateRowFromCheckboxField(showProfilesCheckboxField);
-
-      update();
-      addChatUpdateListener(update);
-
-      section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container, row2.container);
-      tab.scrollable.append(section.container);
+    const updatedChat = await tab.managers.appChatsManager.getChat(updatedChatId) as EditChat;
+    if(alive) {
+      setChat(updatedChat);
+    }
+  });
+  subscribeOn(rootScope)('chat_full_update', async(updatedChatId) => {
+    if(updatedChatId !== chatId()) {
+      return;
     }
 
-    if(!isBroadcast) {
-      const section = new SettingSection({
+    const updatedFull = await tab.managers.appProfileManager.getChatFull(updatedChatId) as EditChatFull;
+    if(alive) {
+      setChatFull(updatedFull);
+    }
+  });
+  subscribeOn(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
+    if(peerId() === migrateFrom) {
+      props.onMigrate(migrateTo.toChatId());
+    }
+  });
 
-      });
-
-      if(!isBroadcast && canChangeType) {
-        const showChatHistoryCheckboxField = new CheckboxField({
-          text: 'ChatHistory'
-        });
-
-        tab.listenerSetter.add(showChatHistoryCheckboxField.input)('change', () => {
-          const toggle = showChatHistoryCheckboxField.toggleDisability(true);
-          const value = !showChatHistoryCheckboxField.checked;
-          handleChannelsTooMuch(() => tab.managers.appChatsManager.togglePreHistoryHidden(chatId, value))
-          .catch((err) => {
-            console.error('togglePreHistoryHidden error:', err);
-            showChatHistoryCheckboxField.setValueSilently(value);
-          }).finally(toggle);
-        });
-
-        const onChatUpdate = () => {
-          showChatHistoryCheckboxField.setValueSilently(isChannel && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory);
-        };
-
-        onChatUpdate();
-        addChatUpdateListener(onChatUpdate, 'full');
-
-        section.content.append(CreateRowFromCheckboxField(showChatHistoryCheckboxField).container);
-      }
-
-      if(section.content.childElementCount) {
-        tab.scrollable.append(section.container);
-      }
+  const save = async() => {
+    if(!canSave()) {
+      return;
     }
 
-    if(canDeleteChat) {
-      const section = new SettingSection({});
-
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'});
-
-      attachClickEvent(btnDelete, () => {
-        PopupElement.createPopup(PopupDeleteDialog, peerId/* , 'delete' */, undefined, (promise) => {
-          const toggle = toggleDisability([btnDelete], true);
-          promise.then(() => {
-            tab.close();
-          }, () => {
-            toggle();
-          });
-        });
-      }, {listenerSetter: tab.listenerSetter});
-
-      section.content.append(btnDelete);
-
-      tab.scrollable.append(section.container);
+    const promises: Promise<unknown>[] = [];
+    if(title() !== props.data.chat.title) {
+      promises.push(tab.managers.appChatsManager.editTitle(chatId(), title()));
+    }
+    if(about() !== (props.data.chatFull.about || '')) {
+      promises.push(tab.managers.appChatsManager.editAbout(chatId(), about()));
+    }
+    if(uploadAvatar) {
+      promises.push(uploadAvatar.file().then((file) => {
+        return tab.managers.appChatsManager.editPhoto(chatId(), file);
+      }));
     }
 
-    if(!isChannel) {
-      // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
-      tab.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
-        if(peerId === migrateFrom) {
-          chatId = migrateTo.toChatId();
-          _init();
-        }
-      });
+    setSaving(true);
+    try {
+      await Promise.all(promises);
+      tab.close();
+    } catch(error) {
+      console.error('edit chat error', error);
+      toastNew({langPackKey: 'Error.AnError'});
+    } finally {
+      setSaving(false);
     }
   };
 
-  promiseCollector.collect(_init());
+  const toggleTopics = async(value: boolean) => {
+    if(linkedChatId()) {
+      setTopics(!value);
+      toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
+      return;
+    }
 
-  return null;
-};
+    setTopicsBusy(true);
+    try {
+      await handleChannelsTooMuch(() => {
+        return tab.managers.appChatsManager.toggleForum(chatId(), value);
+      });
+    } catch(error) {
+      setTopics(!value);
+      console.error('toggleForum error', error);
+    } finally {
+      setTopicsBusy(false);
+    }
+  };
 
-export default EditChat;
+  const showAutotranslationLevelToast = () => {
+    toastNew({
+      langPackKey: 'ChannelAutotranslationLevelMin',
+      langPackArguments: [
+        props.data.appConfig.channel_autotranslation_level_min,
+        anchorCallback(async() => {
+          hideToast();
+          const {default: PopupBoost} = await import('@components/popups/boost');
+          PopupElement.createPopup(PopupBoost, peerId());
+        })
+      ]
+    });
+  };
+  const canToggleAutotranslation = () => {
+    return (channel()?.level ?? 0) >= props.data.appConfig.channel_autotranslation_level_min;
+  };
+  const toggleAutotranslation = async(value: boolean) => {
+    if(!canToggleAutotranslation()) {
+      setAutotranslation(!value);
+      showAutotranslationLevelToast();
+      return;
+    }
+
+    setAutotranslationBusy(true);
+    try {
+      await tab.managers.appChatsManager.toggleAutotranslation(chatId(), value);
+    } catch(error) {
+      setAutotranslation(!value);
+      console.error('toggleAutotranslation error', error);
+    } finally {
+      setAutotranslationBusy(false);
+    }
+  };
+
+  const toggleSignMessages = async(value: boolean) => {
+    const profiles = value && showProfiles();
+    setSignaturesBusy(true);
+    try {
+      await tab.managers.appChatsManager.toggleSignatures(chatId(), value, profiles);
+    } catch(error) {
+      setSignMessages(!value);
+      console.error('toggleSignatures error', error);
+    } finally {
+      setSignaturesBusy(false);
+    }
+  };
+  const toggleShowProfiles = async(value: boolean) => {
+    setSignaturesBusy(true);
+    try {
+      await tab.managers.appChatsManager.toggleSignatures(chatId(), signMessages(), value);
+    } catch(error) {
+      setShowProfiles(!value);
+      console.error('toggle signature profiles error', error);
+    } finally {
+      setSignaturesBusy(false);
+    }
+  };
+  const toggleChatHistory = async(value: boolean) => {
+    setHistoryBusy(true);
+    try {
+      await handleChannelsTooMuch(() => {
+        return tab.managers.appChatsManager.togglePreHistoryHidden(chatId(), !value);
+      });
+    } catch(error) {
+      setShowChatHistory(!value);
+      console.error('togglePreHistoryHidden error:', error);
+    } finally {
+      setHistoryBusy(false);
+    }
+  };
+
+  const removeFromCommunity = async(communityId: ChatId) => {
+    try {
+      await confirmationPopup({
+        titleLangKey: isBroadcast() ?
+          'Community.RemoveChannel' :
+          'Community.RemoveGroup',
+        descriptionLangKey: 'Community.RemoveConfirm',
+        descriptionLangArgs: [chat().title],
+        button: {
+          langKey: 'Remove',
+          isDanger: true
+        }
+      });
+    } catch{
+      return;
+    }
+
+    try {
+      await tab.managers.appCommunitiesManager.togglePeerLink({
+        communityId,
+        peerId: peerId(),
+        action: 'deleted'
+      });
+      toastNew({
+        langPackKey: isBroadcast() ?
+          'Community.ChannelRemoved' :
+          'Community.Removed'
+      });
+    } catch(error) {
+      console.error('remove group from community error', error);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
+  };
+
+  const deleteChat = async() => {
+    if(deleting()) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const {default: PopupDeleteDialog} = await import('@components/popups/deleteDialog');
+      setDeleting(false);
+      PopupElement.createPopup(PopupDeleteDialog, peerId(), undefined, (promise) => {
+        setDeleting(true);
+        promise.then(() => {
+          tab.close();
+        }, () => {
+          setDeleting(false);
+        });
+      });
+    } catch(error) {
+      setDeleting(false);
+      console.error('open delete chat popup error', error);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
+  };
+
+  onCleanup(() => {
+    alive = false;
+    avatarEdit.clear();
+    uploadAvatar = undefined;
+  });
+
+  return (
+    <>
+      <Portal mount={tab.content}>
+        <Show when={isDirty()}>
+          <Button.Corner
+            class="is-visible"
+            icon="check"
+            aria-label={i18n('Save').textContent}
+            disabled={!canSave()}
+            tabIndex={0}
+            onClick={save}
+          />
+        </Show>
+      </Portal>
+
+      <Show
+        when={canChangeInfo()}
+        fallback={(
+          <div
+            class="avatar-edit disable-hover"
+            classList={{'is-forum': isForum()}}
+          >
+            <AvatarNewTsx
+              class="avatar-placeholder"
+              peerId={peerId()}
+              size={120}
+            />
+          </div>
+        )}
+      >
+        {avatarEdit.container}
+        <Portal mount={avatarEdit.container}>
+          <Show when={!hasAvatarPreview()}>
+            <AvatarNewTsx
+              class="avatar-placeholder"
+              peerId={peerId()}
+              size={120}
+            />
+          </Show>
+        </Portal>
+      </Show>
+
+      <Section noDelimiter caption="PeerInfo.SetAboutDescription">
+        <div class="input-wrapper">
+          <InputFieldTsx
+            label={isBroadcast() ? 'EnterChannelName' : 'CreateGroup.NameHolder'}
+            name="chat-name"
+            maxLength={255}
+            required
+            value={title()}
+            onRawInput={setTitle}
+            disabled={!canChangeInfo()}
+          />
+          <InputFieldTsx
+            label="DescriptionPlaceholder"
+            name="chat-description"
+            maxLength={255}
+            withLinebreaks
+            value={about()}
+            onRawInput={setAbout}
+            disabled={!canChangeInfo()}
+          />
+        </div>
+      </Section>
+
+      <Show when={hasMainSettings()}>
+        <Section caption={mainCaption()}>
+          <Show when={canChangeType()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppChatTypeTab).open({
+                chatId: chatId(),
+                chatFull: chatFull()
+              });
+            }}>
+              <Row.Icon icon="lock" />
+              <Row.Title>{i18n(isBroadcast() ? 'ChannelType' : 'GroupType')}</Row.Title>
+              <Row.Subtitle>{i18n((() => {
+                const isPublic = !!getPeerActiveUsernames(channel())[0];
+                if(isBroadcast()) {
+                  return isPublic ? 'TypePublic' : 'TypePrivate';
+                }
+
+                return isPublic ? 'TypePublicGroup' : 'TypePrivateGroup';
+              })())}</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={canManageInviteLinks()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppChatInviteLinksTab).open({
+                chatId: chatId(),
+                p: AppChatInviteLinksTab.getInitArgs(chatId())
+              });
+            }}>
+              <Row.Icon icon="link" />
+              <Row.Title>{i18n('InviteLinks')}</Row.Title>
+              <Row.Subtitle>1</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={canInviteUsers() && isAdmin() && !!chatFull().requests_pending}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppChatRequestsTab).open(chatId());
+            }}>
+              <Row.Icon icon="adduser" />
+              <Row.Title>{i18n(isBroadcast() ? 'SubscribeRequests' : 'MemberRequests')}</Row.Title>
+              <Row.Subtitle>{chatFull().requests_pending}</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={canChangeInfo() && isAdmin()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppChatReactionsTab).open({chatId: chatId()});
+            }}>
+              <Row.Icon icon="reactions" />
+              <Row.Title>{i18n('Reactions')}</Row.Title>
+              <Row.Subtitle>{reactionsSubtitle()}</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={canChangeInfo() && isBroadcast() && isAdmin()}>
+            <Row clickable={() => {
+              const value = channel();
+              if(value) {
+                tab.slider.createTab(AppDirectMessagesTab).open({chat: value});
+              }
+            }}>
+              <Row.Icon icon="messageunread" />
+              <Row.Title>{i18n('ChannelDirectMessages.Settings.Title')}</Row.Title>
+              <Row.Subtitle>{directMessagesSubtitle()}</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={canChangePermissions() && !isBroadcast() && !isBroadcastGroup()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppGroupPermissionsTab).open({chatId: chatId()});
+            }}>
+              <Row.Icon icon="permissions" />
+              <Row.Title>{i18n('ChannelPermissions')}</Row.Title>
+              <Row.Subtitle>{permissionsSubtitle()}</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={showDiscussion()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppChatDiscussionTab).open({
+                chatId: chatId(),
+                linkedChatId: linkedChatId()
+              });
+            }}>
+              <Row.Icon icon="comments" />
+              <Row.Title>{i18n(isBroadcast() ? 'PeerInfo.Discussion' : 'LinkedChannel')}</Row.Title>
+              <Row.Subtitle>
+                <Show when={linkedChatId()} fallback={i18n('PeerInfo.Discussion.Add')}>
+                  {(id) => <PeerTitleTsx peerId={id().toPeerId(true)} />}
+                </Show>
+              </Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={isAdmin() && isChannel()}>
+            <Row clickable={() => {
+              if(appSettings.logsDiffView) {
+                tab.slider.createTab(AppAdminRecentActionsTab).open({
+                  channelId: chatId(),
+                  isBroadcast: isBroadcast()
+                });
+              } else {
+                appImManager.setInnerPeer({
+                  peerId: peerId(),
+                  type: ChatType.Logs
+                });
+              }
+            }}>
+              <Row.Icon icon="clipboard" />
+              <Row.Title>{i18n('RecentActions')}</Row.Title>
+            </Row>
+          </Show>
+
+          <Show when={showTopics()}>
+            <Row clickable={(event) => {
+              if(linkedChatId()) {
+                toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
+                cancelEvent(event);
+              }
+            }}>
+              <Row.CheckboxFieldToggle>
+                <CheckboxFieldTsx
+                  toggle
+                  signal={[topics, setTopics]}
+                  disabled={topicsBusy()}
+                  onChange={(value) => void toggleTopics(value)}
+                />
+              </Row.CheckboxFieldToggle>
+              <Row.Icon icon="topics" />
+              <Row.Title>{i18n('Topics')}</Row.Title>
+            </Row>
+          </Show>
+        </Section>
+      </Show>
+
+      <Section>
+        <Row clickable={() => {
+          tab.slider.createTab(AppChatAdministratorsTab).open({chatId: chatId()});
+        }}>
+          <Row.Icon icon="admin" />
+          <Row.Title>{i18n('PeerInfo.Administrators')}</Row.Title>
+          <Row.Subtitle>{administratorsCount()}</Row.Subtitle>
+        </Row>
+        <Row clickable={() => {
+          tab.slider.createTab(AppChatMembersTab).open(chatId());
+        }}>
+          <Row.Icon icon="newgroup" />
+          <Row.Title>{i18n(isBroadcast() ? 'PeerInfo.Subscribers' : 'GroupMembers')}</Row.Title>
+          <Row.Subtitle>{membersCount()}</Row.Subtitle>
+        </Row>
+        <Show when={isChannel()}>
+          <Row clickable={() => {
+            tab.slider.createTab(AppRemovedUsersTab).open({chatId: chatId()});
+          }}>
+            <Row.Icon icon="deleteuser" />
+            <Row.Title>{i18n('ChannelBlockedUsers')}</Row.Title>
+            <Row.Subtitle>{removedUsersSubtitle()}</Row.Subtitle>
+          </Row>
+        </Show>
+      </Section>
+
+      <Show when={isBroadcast() && canChangeInfo()}>
+        <Section>
+          <Row clickable={(event) => {
+            if(!canToggleAutotranslation()) {
+              showAutotranslationLevelToast();
+              cancelEvent(event);
+            }
+          }}>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                toggle
+                signal={[autotranslation, setAutotranslation]}
+                disabled={autotranslationBusy()}
+                onChange={(value) => void toggleAutotranslation(value)}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Icon icon="premium_translate" />
+            <Row.Title>{i18n('ChannelAutotranslation')}</Row.Title>
+          </Row>
+        </Section>
+      </Show>
+
+      <Show when={isBroadcast() && canPostMessages()}>
+        <Section caption={showProfiles() ? 'ChannelSignProfilesInfo' : 'ChannelSignMessagesInfo'}>
+          <Row disabled={signaturesBusy()}>
+            <Row.CheckboxField>
+              <CheckboxFieldTsx
+                signal={[signMessages, setSignMessages]}
+                disabled={signaturesBusy()}
+                onChange={(value) => void toggleSignMessages(value)}
+              />
+            </Row.CheckboxField>
+            <Row.Title>{i18n('ChannelSignMessages')}</Row.Title>
+          </Row>
+          <Show when={signMessages()}>
+            <Row disabled={signaturesBusy()}>
+              <Row.CheckboxField>
+                <CheckboxFieldTsx
+                  signal={[showProfiles, setShowProfiles]}
+                  disabled={signaturesBusy()}
+                  onChange={(value) => void toggleShowProfiles(value)}
+                />
+              </Row.CheckboxField>
+              <Row.Title>{i18n('ChannelSignMessagesWithProfile')}</Row.Title>
+            </Row>
+          </Show>
+        </Section>
+      </Show>
+
+      <Show when={!isBroadcast() && canChangeType()}>
+        <Section>
+          <Row disabled={historyBusy()}>
+            <Row.CheckboxField>
+              <CheckboxFieldTsx
+                signal={[showChatHistory, setShowChatHistory]}
+                disabled={historyBusy()}
+                onChange={(value) => void toggleChatHistory(value)}
+              />
+            </Row.CheckboxField>
+            <Row.Title>{i18n('ChatHistory')}</Row.Title>
+          </Row>
+        </Section>
+      </Show>
+
+      <Show when={canManageCommunity()}>
+        <CommunityLinkSection
+          linkedCommunityId={linkedCommunityId()}
+          communities={props.data.joinedCommunities}
+          middleware={tab.middlewareHelper.get()}
+          caption="Community.Description"
+          addIcon="newgroup"
+          addText={isBroadcast() ?
+            'Community.AddChannel' :
+            'Community.AddGroup'}
+          removeText={isBroadcast() ?
+            'Community.RemoveChannel' :
+            'Community.RemoveGroup'}
+          onAdd={() => {
+            tab.slider.createTab(AppAddGroupToCommunityTab).open({peerId: peerId()});
+          }}
+          onOpenCommunity={(communityId) => {
+            void appDialogsManager.toggleForumTabByPeerId(
+              communityId.toPeerId(true),
+              true,
+              false
+            );
+          }}
+          onRemove={removeFromCommunity}
+        />
+      </Show>
+
+      <Show when={canDeleteChat()}>
+        <Section>
+          <Button
+            class="btn-primary btn-transparent danger"
+            disabled={deleting()}
+            icon="delete"
+            text={isBroadcast() ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'}
+            onClick={deleteChat}
+          />
+        </Section>
+      </Show>
+    </>
+  );
+}

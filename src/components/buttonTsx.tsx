@@ -82,10 +82,17 @@ Button.Corner = (props: Partial<{
   ref: Ref<HTMLElement>,
   children: JSX.Element,
   onClick: (e: MouseEvent) => void,
-  class: string
-}>) => {
+  class: string,
+  icon: Icon,
+  disabled: boolean,
+  tabIndex: number
+}> & ButtonAccessibilityProps) => {
   return (
-    <Button {...props} class={classNames('btn-circle', 'btn-corner', 'z-depth-1', props.class)} tabIndex={-1} />
+    <Button
+      {...props}
+      class={classNames('btn-circle', 'btn-corner', 'z-depth-1', props.class)}
+      tabIndex={props.tabIndex ?? -1}
+    />
   );
 };
 

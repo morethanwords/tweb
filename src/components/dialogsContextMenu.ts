@@ -1,13 +1,14 @@
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {ForumTopic} from '@layer';
 import type {AnyDialog} from '@lib/storages/dialogs';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import appDialogsManager, {
+  findDialogListElement
+} from '@lib/appDialogsManager';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
-import findUpTag from '@helpers/dom/findUpTag';
 import {toastNew} from '@components/toast';
 import PopupMute from '@components/popups/mute';
 import {AppManagers} from '@lib/managers';
@@ -26,10 +27,22 @@ import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import canRemoveCommunityPeer from '@appManagers/utils/communities/canRemovePeer';
+import confirmationPopup from '@components/confirmationPopup';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
+import type {
+  CommunityDialog
+} from '@appManagers/appCommunitiesManager';
+import leaveCommunityWithConfirmation, {
+  canLeaveCommunity
+} from '@components/communities/leaveCommunity';
 
+type DialogContextMenuButton = ButtonMenuItemOptionsVerifiable & {
+  communityMode?: 'joined' | 'all'
+};
 
 export default class DialogsContextMenu {
-  private buttons: ButtonMenuItemOptionsVerifiable[];
+  private buttons: DialogContextMenuButton[];
 
   private peerId: PeerId;
   private filterId: number;
@@ -38,6 +51,11 @@ export default class DialogsContextMenu {
   private dialog: AnyDialog | MonoforumDialog;
   private canManageTopics: boolean;
   private canDelete: boolean;
+  private canRemoveFromCommunity: boolean;
+  private communityId?: ChatId;
+  private communityDialog?: CommunityDialog;
+  private isCommunityDialog = false;
+  private communityChatKind?: 'joined' | 'viewable';
   private li: HTMLElement;
   private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
 
@@ -53,6 +71,17 @@ export default class DialogsContextMenu {
         this.li = li;
         li.classList.add('menu-open');
         this.peerId = li.dataset.peerId.toPeerId();
+        this.communityId = li.dataset.communityId ?
+          (+li.dataset.communityId).toChatId() :
+          undefined;
+        this.communityChatKind = li.dataset.communityChatKind as
+          'joined' | 'viewable' | undefined;
+        this.isCommunityDialog = !!this.communityId &&
+          !this.communityChatKind &&
+          this.peerId.toChatId() === this.communityId;
+        this.communityDialog = this.isCommunityDialog ?
+          apiManagerProxy.getCommunityDialog(this.communityId) :
+          undefined;
         this.threadId = +li.dataset.threadId || undefined;
         this.monoforumParentPeerId = +li.dataset.monoforumParentPeerId || undefined;
 
@@ -60,12 +89,19 @@ export default class DialogsContextMenu {
           throw 'All chats dialog';
         }
 
-        this.dialog = this.monoforumParentPeerId ?
-          await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, this.peerId):
-          await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
+        this.dialog = this.isCommunityDialog ?
+          undefined :
+          this.monoforumParentPeerId ?
+            await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, this.peerId):
+            await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
         this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
         this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
         this.canDelete = await this.checkIfCanDelete();
+        this.canRemoveFromCommunity = !!this.communityId &&
+          canRemoveCommunityPeer(
+            apiManagerProxy.getChat(this.communityId),
+            apiManagerProxy.getPeer(this.peerId)
+          );
       },
       onOpenBefore: async() => {
         this.buttons?.forEach(button => button?.onOpen?.());
@@ -87,28 +123,48 @@ export default class DialogsContextMenu {
         this.threadId =
         this.monoforumParentPeerId =
         this.canManageTopics = undefined;
+        this.canRemoveFromCommunity = undefined;
+        this.communityId = undefined;
+        this.communityDialog = undefined;
+        this.isCommunityDialog = false;
+        this.communityChatKind = undefined;
       },
       findElement: (e) => {
-        return findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
+        return findDialogListElement(e.target);
       }
     });
   }
 
   private getButtons() {
+    if(this.buttons) {
+      return this.buttons;
+    }
+
     const [appSettings] = useAppSettings();
-    this.buttons ??= [{
+    this.buttons = [{
       icon: 'newtab',
       text: 'OpenInNewTab',
-      onClick: (e) => {
+      onClick: (e: MouseEvent | TouchEvent) => {
         appDialogsManager.openDialogInNewTab(this.li);
         cancelEvent(e);
       },
       verify: () => IS_SHARED_WORKER_SUPPORTED && !this.monoforumParentPeerId
     }, {
+      icon: 'topics',
+      text: 'Community.View',
+      onClick: () => {
+        appDialogsManager.toggleForumTabByPeerId(
+          this.peerId,
+          true,
+          false
+        );
+      },
+      verify: () => this.isCommunityDialog
+    }, {
       icon: 'eye',
       text: 'ChatList.Context.Preview',
       onClick: this.onPreviewClick,
-      verify: () => true
+      verify: () => !!this.dialog
     }, {
       icon: 'topics',
       text: 'TopicViewAsTopics',
@@ -134,12 +190,21 @@ export default class DialogsContextMenu {
       icon: 'unread',
       text: 'MarkAsUnread',
       onClick: this.onUnreadClick,
-      verify: async() => !this.threadId && !(await this.managers.appMessagesManager.isDialogUnread(this.dialog))
+      verify: async() => !!this.dialog &&
+        !this.isCommunityDialog &&
+        !this.threadId &&
+        !(await this.managers.appMessagesManager.isDialogUnread(this.dialog))
     }, {
       icon: 'readchats',
       text: 'MarkAsRead',
       onClick: this.onUnreadClick,
-      verify: () => this.managers.appMessagesManager.isDialogUnread(this.dialog)
+      verify: () => this.isCommunityDialog ?
+        !!(
+          this.communityDialog?.unreadCount ||
+          this.communityDialog?.unreadMarked
+        ) :
+        !!this.dialog &&
+          this.managers.appMessagesManager.isDialogUnread(this.dialog)
     }, createSubmenuTrigger({
       options: {
         icon: 'folder',
@@ -155,6 +220,10 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => {
+        if(this.isCommunityDialog) {
+          return !this.communityDialog?.pFlags.pinned;
+        }
+        if(!this.dialog) return false;
         if(isMonoforumDialog(this.dialog)) return false;
 
         if(isSavedDialog(this.dialog)) {
@@ -175,6 +244,10 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: async() => {
+        if(this.isCommunityDialog) {
+          return !!this.communityDialog?.pFlags.pinned;
+        }
+        if(!this.dialog) return false;
         if(isMonoforumDialog(this.dialog)) return false;
 
         if(isSavedDialog(this.dialog)) {
@@ -193,27 +266,78 @@ export default class DialogsContextMenu {
     }, {
       icon: 'mute',
       text: 'ChatList.Context.Mute',
+      communityMode: 'joined',
       onClick: this.onMuteClick,
       verify: async() => {
-        return !this.monoforumParentPeerId && this.peerId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId}));
+        if(this.isCommunityDialog) {
+          return !this.managers.appCommunitiesManager
+          .isCommunityMuted(this.communityId);
+        }
+        return !!this.dialog &&
+          !this.monoforumParentPeerId &&
+          this.peerId !== rootScope.myId &&
+          !(await this.managers.appNotificationsManager.isPeerLocalMuted({
+            peerId: this.peerId,
+            threadId: this.threadId
+          }));
       }
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
+      communityMode: 'joined',
       onClick: this.onUnmuteClick,
       verify: () => {
-        return !this.monoforumParentPeerId && this.peerId !== rootScope.myId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId});
+        if(this.isCommunityDialog) {
+          return this.managers.appCommunitiesManager
+          .isCommunityMuted(this.communityId);
+        }
+        return !!this.dialog &&
+          !this.monoforumParentPeerId &&
+          this.peerId !== rootScope.myId &&
+          this.managers.appNotificationsManager.isPeerLocalMuted({
+            peerId: this.peerId,
+            threadId: this.threadId
+          });
       }
     }, {
       icon: 'archive',
       text: 'Archive',
       onClick: this.onArchiveClick,
-      verify: () => !this.threadId && !this.monoforumParentPeerId && (this.dialog as Dialog).folder_id !== FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
+      verify: () => isDialog(this.dialog) &&
+        !this.threadId &&
+        !this.monoforumParentPeerId &&
+        this.dialog.folder_id !== FOLDER_ID_ARCHIVE &&
+        this.peerId !== rootScope.myId
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => !this.threadId && !this.monoforumParentPeerId && (this.dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
+      verify: () => isDialog(this.dialog) &&
+        !this.threadId &&
+        !this.monoforumParentPeerId &&
+        this.dialog.folder_id === FOLDER_ID_ARCHIVE &&
+        this.peerId !== rootScope.myId
+    }, {
+      icon: 'group',
+      text: 'Community.ShowSeparately',
+      onClick: () => {
+        this.managers.appCommunitiesManager.toggleCollapsedInDialogs(
+          this.communityId,
+          false
+        ).catch((error) => {
+          console.error('ungroup community error', error);
+          toastNew({langPackKey: 'Error.AnError'});
+        });
+      },
+      verify: () => this.isCommunityDialog
+    }, {
+      icon: 'logout',
+      className: 'danger',
+      text: 'Community.Leave',
+      onClick: this.onLeaveCommunityClick,
+      verify: () => this.isCommunityDialog && canLeaveCommunity(
+        apiManagerProxy.getChat(this.communityId)
+      )
     }, CAN_HIDE_TOPIC ? {
       icon: 'hide',
       text: 'Hide',
@@ -248,12 +372,38 @@ export default class DialogsContextMenu {
     }, {
       icon: 'delete',
       className: 'danger',
+      text: 'Community.RemoveChat',
+      communityMode: 'all',
+      onClick: this.onRemoveFromCommunityClick,
+      verify: () => this.canRemoveFromCommunity
+    }, {
+      icon: 'delete',
+      className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
       verify: () => this.canDelete
-    }];
+    }].filter(Boolean) as DialogContextMenuButton[];
 
-    return this.buttons = this.buttons.filter(Boolean);
+    for(const button of this.buttons) {
+      const verify = button.verify;
+      button.verify = () => {
+        if(this.communityChatKind) {
+          if(!button.communityMode) {
+            return false;
+          }
+          if(
+            button.communityMode === 'joined' &&
+            this.communityChatKind !== 'joined'
+          ) {
+            return false;
+          }
+        }
+
+        return verify ? verify() : true;
+      };
+    }
+
+    return this.buttons;
   }
 
   private createAddToFolderSubmenu = async({middleware}: CreateSubmenuArgs) => {
@@ -290,6 +440,10 @@ export default class DialogsContextMenu {
 
 
   private async checkIfCanDelete() {
+    if(!this.dialog) {
+      return false;
+    }
+
     const chat = await this.managers.appChatsManager.getChat(this.peerId.toChatId());
     if(chat?._ === 'channel' && chat?.pFlags?.monoforum && (chat?.pFlags?.left || chat?.pFlags?.creator)) return false;
 
@@ -333,6 +487,21 @@ export default class DialogsContextMenu {
 
   private onPinClick = () => {
     const {peerId, filterId, threadId, dialog} = this;
+    if(this.isCommunityDialog) {
+      this.managers.appCommunitiesManager.toggleCommunityPin(
+        this.communityId,
+        !this.communityDialog?.pFlags.pinned
+      ).catch((err: ApiError) => {
+        if(
+          err.type === 'PINNED_DIALOGS_TOO_MUCH' ||
+          err.type === 'PINNED_TOO_MUCH'
+        ) {
+          showLimitPopup('pin');
+        }
+      });
+      return;
+    }
+
     const isSaved = isSavedDialog(dialog);
     this.managers.appMessagesManager.toggleDialogPin({
       peerId,
@@ -356,11 +525,24 @@ export default class DialogsContextMenu {
   };
 
   private onUnmuteClick = () => {
+    if(this.isCommunityDialog) {
+      this.managers.appCommunitiesManager.muteCommunity(
+        this.communityId,
+        0
+      );
+      return;
+    }
+
     this.managers.appMessagesManager.togglePeerMute({peerId: this.peerId, mute: false, threadId: this.threadId});
   };
 
   private onMuteClick = () => {
-    PopupElement.createPopup(PopupMute, this.peerId, this.threadId);
+    PopupElement.createPopup(
+      PopupMute,
+      this.isCommunityDialog ? undefined : this.peerId,
+      this.threadId,
+      this.isCommunityDialog ? this.communityId : undefined
+    );
   };
 
   private onPreviewClick = () => {
@@ -374,6 +556,13 @@ export default class DialogsContextMenu {
 
   private onUnreadClick = async() => {
     const {peerId, dialog} = this;
+    if(this.isCommunityDialog) {
+      await this.managers.appCommunitiesManager.markCommunityRead(
+        this.communityId
+      );
+      return;
+    }
+
     if(!isDialog(dialog) && !isForumTopic(dialog) && !isMonoforumDialog(dialog)) return;
 
     if(this.monoforumParentPeerId) {
@@ -412,6 +601,51 @@ export default class DialogsContextMenu {
       await openRemoveFeePopup({peerId, parentPeerId, requirePayment, managers: this.managers})
     } catch{}
   }
+
+  private onRemoveFromCommunityClick = async() => {
+    const communityId = this.communityId;
+    const peerId = this.peerId;
+    if(!communityId || !peerId) {
+      return;
+    }
+
+    const title = await getPeerTitle({
+      peerId,
+      plainText: true
+    });
+    try {
+      await confirmationPopup({
+        titleLangKey: 'Community.RemoveChat',
+        descriptionLangKey: 'Community.RemoveChatConfirm',
+        descriptionLangArgs: [title],
+        button: {
+          langKey: 'Remove',
+          isDanger: true
+        }
+      });
+    } catch{
+      return;
+    }
+
+    try {
+      await this.managers.appCommunitiesManager.togglePeerLink({
+        communityId,
+        peerId,
+        action: 'deleted'
+      });
+      toastNew({langPackKey: 'Community.ChatRemoved'});
+    } catch(error) {
+      console.error('remove chat from community error', error);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
+  };
+
+  private onLeaveCommunityClick = () => {
+    void leaveCommunityWithConfirmation({
+      communityId: this.communityId,
+      managers: this.managers
+    });
+  };
 
   private onDeleteClick = () => {
     PopupElement.createPopup(

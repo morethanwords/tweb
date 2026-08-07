@@ -115,7 +115,9 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     const chat = apiManagerProxy.getChat(chatId);
     if(!getPeerActiveUsernames(chat)[0]) {
       const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
-      this.shareUrl = (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
+      this.shareUrl = chatFull._ === 'communityFull' ?
+        undefined :
+        (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
     } else {
       this.shareUrl = getRtmpShareUrl(this.peerId);
     }
@@ -439,7 +441,9 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     const chat = apiManagerProxy.getChat(chatId);
     if(!getPeerActiveUsernames(chat)[0]) {
       const chatFull = await rootScope.managers.appProfileManager.getChatFull(chatId);
-      return (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
+      return chatFull._ === 'communityFull' ?
+        undefined :
+        (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
     } else {
       return getRtmpShareUrl(chatId.toPeerId(true));
     }

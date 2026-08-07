@@ -1,5 +1,5 @@
 import Modes from '@config/modes';
-import {ChatInvite, DataJSON, InputUser, StarsSubscriptionPricing, Updates} from '@layer';
+import {ChatInvite, DataJSON, InputUser, StarsSubscriptionPricing, Update, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 
@@ -14,22 +14,30 @@ function starsSubscriptionPricing(amount: number): StarsSubscriptionPricing {
 export default class AppChatInvitesManager extends AppManager {
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
-      updatePendingJoinRequests: async(update) => {
-        const peerId = getPeerId(update.peer);
-        const state = await this.appStateManager.getState();
-        delete state.hideChatJoinRequests[peerId];
-        this.appStateManager.pushToState('hideChatJoinRequests', state.hideChatJoinRequests);
-        this.rootScope.dispatchEvent('chat_requests', {
-          chatId: peerId.toChatId(),
-          recentRequesters: update.recent_requesters,
-          requestsPending: update.requests_pending
-        });
-      },
+      updatePendingJoinRequests: this.onUpdatePendingJoinRequests,
       updateJoinChatWebViewDecision: (update) => {
         this.rootScope.dispatchEvent('join_chat_webview_decision', update);
       }
     });
   }
+
+  private onUpdatePendingJoinRequests = async(
+    update: Update.updatePendingJoinRequests
+  ) => {
+    if(this.appCommunitiesManager.handlePendingJoinRequestsUpdate(update)) {
+      return;
+    }
+
+    const peerId = getPeerId(update.peer);
+    const state = await this.appStateManager.getState();
+    delete state.hideChatJoinRequests[peerId];
+    this.appStateManager.pushToState('hideChatJoinRequests', state.hideChatJoinRequests);
+    this.rootScope.dispatchEvent('chat_requests', {
+      chatId: peerId.toChatId(),
+      recentRequesters: update.recent_requesters,
+      requestsPending: update.requests_pending
+    });
+  };
 
   public saveChatInvite(hash: string, chatInvite: ChatInvite) {
     if(!chatInvite) {

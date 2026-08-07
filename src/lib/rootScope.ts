@@ -7,7 +7,7 @@ import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {ConnectionStatusChange} from '@lib/mtproto/connectionStatus';
 import type {GroupCallId} from '@appManagers/appGroupCallsManager';
 import type {AppManagers} from '@lib/managers';
-import type {StateSettings} from '@config/state';
+import type {GlobalNotifySettingsKey, StateSettings} from '@config/state';
 import type {Progress} from '@lib/appDownloadManager';
 import type {CallId} from '@appManagers/appCallsManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
@@ -158,7 +158,7 @@ export type BroadcastEvents = {
   'global_privacy_update': GlobalPrivacySettings,
 
   'notify_settings': Update.updateNotifySettings,
-  'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
+  'notify_peer_type_settings': {key: GlobalNotifySettingsKey, settings: PeerNotifySettings},
 
   'notification_reset': string,
   'notification_cancel': `msg_${ActiveAccountNumber}_${PeerId}_${number}` | `story_${ActiveAccountNumber}_${PeerId}_${number}`,

@@ -1846,7 +1846,40 @@ export class AppImManager extends EventListenerBase<{
               break;
             }
 
-            this.managers.appPeersManager.getPeer(peerId).then((peer) => {
+            if(params.community !== undefined && !peerId.isUser()) {
+              this.managers.appCommunitiesManager
+              .getJoinedCommunities()
+              .then((communities) => {
+                const community = communities.find(({id}) => {
+                  return id.toPeerId(true) === peerId;
+                });
+                this.op({
+                  peer: community,
+                  lastMsgId: messageId,
+                  threadId,
+                  call: params.call
+                });
+              })
+              .catch((error) => {
+                this.log.error('open community route error', error);
+              });
+              break;
+            }
+
+            const cachedCommunity = !peerId.isUser() ?
+              apiManagerProxy.getChat(peerId.toChatId()) :
+              undefined;
+            const peerPromise = cachedCommunity ?
+              Promise.resolve(cachedCommunity) :
+              Promise.all([
+                this.managers.appPeersManager.getPeer(peerId),
+                !peerId.isUser() ?
+                  this.managers.appChatsManager.getChat(
+                    peerId.toChatId()
+                  ) :
+                  undefined
+              ]).then(([peer, community]) => community || peer);
+            peerPromise.then((peer) => {
               this.op({
                 peer,
                 lastMsgId: messageId,
@@ -1882,9 +1915,14 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public async open(options: Omit<Parameters<AppImManager['op']>[0], 'peer'> & {peerId: PeerId}) {
+    const community = !options.peerId.isUser() ?
+      apiManagerProxy.getChat(options.peerId.toChatId()) :
+      undefined;
     return this.op({
       ...options,
-      peer: await this.managers.appPeersManager.getPeer(options.peerId)
+      peer: community ||
+        apiManagerProxy.getPeer(options.peerId) ||
+        await this.managers.appPeersManager.getPeer(options.peerId)
     });
   }
 
@@ -1893,6 +1931,17 @@ export class AppImManager extends EventListenerBase<{
   } & Omit<ChatSetPeerOptions, 'peerId'>) {
     if(!options.peer) {
       return;
+    }
+    if(options.peer._ === 'community') {
+      const {CommunityForumTab} = await import(
+        '@components/forumTab/communityForumTab'
+      );
+      return appDialogsManager.toggleForumTabByPeerId(
+        options.peer.id.toPeerId(true),
+        true,
+        false,
+        CommunityForumTab
+      );
     }
 
     const isUser = options.peer._ === 'user';
@@ -2135,6 +2184,9 @@ export class AppImManager extends EventListenerBase<{
     const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
     const next = async() => {
       const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
+      if(chatFull._ === 'communityFull') {
+        return;
+      }
       let call: MyGroupCall;
       if(!chatFull.call) {
         if(!hasRights) {
@@ -2651,7 +2703,7 @@ export class AppImManager extends EventListenerBase<{
 
       const target = e.target as HTMLElement;
       const dialogElement = findUpClassName(target, 'chatlist-chat');
-      if(dialogElement) {
+      if(dialogElement && !dialogElement.dataset.communityId) {
         if(lastDialogElement !== dialogElement) {
           dialogElement.classList.add('is-dragover');
           lastDialogElement = dialogElement;

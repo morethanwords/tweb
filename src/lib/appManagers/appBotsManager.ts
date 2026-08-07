@@ -55,6 +55,12 @@ export default class AppBotsManager extends AppManager {
     });
   }
 
+  public async getAdminedBots() {
+    const users = await this.apiManager.invokeApi('bots.getAdminedBots');
+    this.appUsersManager.saveApiUsers(users);
+    return users;
+  }
+
   public toggleEmojiStatusPermission(botId: BotId, enabled: boolean) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'bots.toggleUserEmojiStatusPermission',

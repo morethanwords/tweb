@@ -18,7 +18,10 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import IS_NOTIFICATION_SUPPORTED from '@environment/notificationSupport';
 
-type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer' | 'inputNotifyForumTopic'>;
+type InputNotifyKey =
+  InputNotifyPeer.inputNotifyUsers['_'] |
+  InputNotifyPeer.inputNotifyChats['_'] |
+  InputNotifyPeer.inputNotifyBroadcasts['_'];
 
 const NotifySection = (props: {
   name: LangPackKey,

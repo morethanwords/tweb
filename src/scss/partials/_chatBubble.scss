@@ -2087,6 +2087,13 @@
     // align-items: center;
     max-width: inherit;
     overflow: inherit;
+
+    &-topic {
+      > .bubble-name-rank,
+      > .bubble-name-first + .bubble-name-boosts {
+        margin-inline-start: auto;
+      }
+    }
   }
 
   &-name {

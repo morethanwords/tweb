@@ -1,0 +1,20 @@
+@use "../../scss/mixins" as *;
+
+.popup {
+  --popup-max-width: 360px;
+}
+
+.header {
+  position: absolute;
+}
+
+.mediaHeader {
+  padding-top: 1.5rem;
+}
+
+.info {
+  @include text-overflow(false);
+
+  padding: 0 1rem;
+  text-align: center;
+}

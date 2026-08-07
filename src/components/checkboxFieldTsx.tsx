@@ -9,6 +9,7 @@ export default function CheckboxFieldTsx(props: {
   text?: LangPackKey
   signal?: Signal<boolean>,
   checked?: boolean,
+  disabled?: boolean,
   toggle?: boolean,
   round?: boolean,
   onChange?: (checked: boolean) => void,
@@ -35,6 +36,10 @@ export default function CheckboxFieldTsx(props: {
 
     setChecked(value);
   }));
+
+  createEffect(() => {
+    checkboxField.toggleDisability(!!props.disabled);
+  });
 
   subscribeOn(checkboxField.input)('change', () => {
     setChecked(checkboxField.input.checked);

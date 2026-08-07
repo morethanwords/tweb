@@ -61,6 +61,10 @@ export async function selectTarget({
     }
   }
 
+  if(!target) {
+    return false;
+  }
+
   if(scrollableX) {
     const containerEl = scrollableX.container;
     // Skip the scroll round-trip when there's no actual scrolling to do:

@@ -12,6 +12,10 @@ import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {AckedResult} from '@lib/superMessagePort';
 import {useAppSettings} from '@stores/appSettings';
+import {
+  useCollapsedCommunityDialogsKey
+} from '@stores/communities';
+import {usePeers} from '@stores/peers';
 import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Ref, Setter, Show} from 'solid-js';
 import {createStore, unwrap} from 'solid-js/store';
 import styles from './archiveDialog.module.scss';
@@ -121,6 +125,7 @@ export const createArchiveDialogState = ({onHasArchiveDialogChanged}: CreateArch
 
 function useArchivedDialogsState() {
   const {rootScope} = useHotReloadGuard();
+  const peers = usePeers();
 
   let initialPromise: Promise<AckedResult<unknown>>;
 
@@ -145,7 +150,21 @@ function useArchivedDialogsState() {
   const fetchedDialogsLength = createMemo(() => isReady() ? fetchedDialogs().dialogs.length : 0);
   const isEnd = createMemo(() => isReady() && fetchedDialogs().isEnd);
 
-  const sortedDialogs = createMemo(() => [...dialogs()].sort((a, b) => getArchivedDialogIndex(b) - getArchivedDialogIndex(a)));
+  const sortedDialogs = createMemo(() => dialogs()
+  .filter((dialog) => {
+    const peer = peers[dialog.peerId];
+    const communityId = (
+      peer?._ === 'channel' ||
+      peer?._ === 'user'
+    ) ? peer.linked_community_id?.toChatId() : undefined;
+    const community = peers[communityId?.toPeerId(true)];
+    return !(
+      community?._ === 'community' &&
+      !community.pFlags.left &&
+      community.pFlags.collapsed_in_dialogs
+    );
+  })
+  .sort((a, b) => getArchivedDialogIndex(b) - getArchivedDialogIndex(a)));
 
   createComputed(() => {
     if(fetchedDialogs.state === 'ready') {
@@ -269,20 +288,20 @@ function useDialogEvents({sortedDialogs, setDialogs, isEnd}: UseDialogEventsArgs
 
 function useTotalUnreadCount() {
   const {rootScope} = useHotReloadGuard();
-
-  const [totalUnreadCount, {mutate}] = createResource(
-    () => rootScope.managers.dialogsStorage.getFolderUnreadCount(FOLDER_ID_ARCHIVE).then(result => result.unreadCount),
-    {
-      initialValue: 0
-    }
+  const projectionKey = useCollapsedCommunityDialogsKey();
+  const [totalUnreadCount, {refetch}] = createResource(
+    projectionKey,
+    () => rootScope.managers.dialogsStorage
+    .getFolderUnreadCount(FOLDER_ID_ARCHIVE, true)
+    .then((result) => result.unreadCount),
+    {initialValue: 0}
   );
 
   const listenerSetter = new ListenerSetter;
 
   listenerSetter.add(rootScope)('folder_unread', (folder) => {
     if(folder.id === FOLDER_ID_ARCHIVE) {
-      const count = folder.unreadPeerIds.size;
-      mutate(count);
+      void refetch();
     }
   });
 

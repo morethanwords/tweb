@@ -663,6 +663,12 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
   });
 
   const title = await webApp.getTitle(true);
+  if(destroy()) {
+    webApp.destroy();
+    options.onClose?.();
+    return;
+  }
+
   webApp.init(() => deferred);
 
   const middlewareHelper = getMiddleware();
@@ -672,6 +678,12 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     middleware: middlewareHelper.get()
   });
   await avatar.readyThumbPromise;
+  if(destroy()) {
+    middlewareHelper.destroy();
+    webApp.destroy();
+    options.onClose?.();
+    return;
+  }
 
   return createRoot((dispose) => {
     const initialState: BrowserPageProps = {
@@ -688,7 +700,10 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
       cacheKey: webApp.cacheKey
     };
 
-    onCleanup(() => webApp.destroy());
+    onCleanup(() => {
+      webApp.destroy();
+      options.onClose?.();
+    });
 
     createEffect(() => {
       if(destroy()) {

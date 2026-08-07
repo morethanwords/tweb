@@ -28,6 +28,7 @@ export default function hasRights(
 
   if(chat._ === 'chatForbidden' ||
       chat._ === 'channelForbidden' ||
+      chat._ === 'communityForbidden' ||
       // (chat as any).pFlags.kicked ||
       (chat.pFlags.left && !(chat as Chat.channel).pFlags.megagroup)) {
     return false;
@@ -40,7 +41,7 @@ export default function hasRights(
     rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
 
     if(!rights) {
-      return false;
+      return chat._ === 'community' && action === 'change_info';
     }
   }
 
@@ -128,6 +129,7 @@ export default function hasRights(
     case 'anonymous':
     case 'post_messages':
     case 'manage_direct_messages':
+    case 'manage_linked_peers':
     case 'edit_messages': {
       return isAdmin && !!myFlags[action];
     }
@@ -138,6 +140,9 @@ export default function hasRights(
     }
 
     case 'view_participants': {
+      if(chat._ === 'community') {
+        return !!(chat.pFlags.creator || isAdmin);
+      }
       return !!(chat._ === 'chat' || !chat.pFlags.broadcast || chat.pFlags.creator || isAdmin);
     }
 

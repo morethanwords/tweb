@@ -27,7 +27,7 @@ type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   exceptionText: LangPackKey
 };
 
-type AdministratorRightsCheckboxFieldsField = CheckboxFieldsField & {
+export type AdministratorRightsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[]
 };
 
@@ -156,6 +156,10 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
       });
     }
 
+    if(this.rights?.pFlags.manage_linked_peers) {
+      rights.pFlags.manage_linked_peers = true;
+    }
+
     return rights;
   }
 }
@@ -183,9 +187,12 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantAdmin | ChannelParticipant.channelParticipantCreator,
     rights?: ChatAdminRights,
-    chat: Chat,
+    chat?: Chat,
     canEdit?: boolean,
-    onSomethingChanged?: () => void
+    onSomethingChanged?: () => void,
+    fields?: AdministratorRightsCheckboxFieldsField[],
+    canGrant?: (right: ChatRights) => boolean,
+    preserveUnhandledRights?: boolean
   }) {
     super({
       listenerSetter: options.listenerSetter,
@@ -199,8 +206,8 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
   public construct() {
     const options = this.options;
     const chat = options.chat as Chat.chat | Chat.channel;
-    const isBroadcast = !!(chat as Chat.channel).pFlags.broadcast;
-    const isForum = !!(chat as Chat.channel).pFlags.forum;
+    const isBroadcast = !!(chat as Chat.channel)?.pFlags.broadcast;
+    const isForum = !!(chat as Chat.channel)?.pFlags.forum;
     const rights = this.rights = options.rights ?? (options.participant ? options.participant.admin_rights : undefined);
 
     const manageMessagesNested: AdministratorRightsCheckboxFieldsField[] = isBroadcast && [
@@ -218,7 +225,10 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     const isCreator = isParticipantCreator(options.participant);
     const manageMessagesNestedKey: ChatRights = 'post_messages_nested' as any;
     const manageStoriesNestedKey: ChatRights = 'post_stories_nested' as any;
-    let v: AdministratorRightsCheckboxFieldsField[] = [
+    let v: AdministratorRightsCheckboxFieldsField[] = options.fields?.map((field) => ({
+      ...field,
+      flags: [...field.flags]
+    })) || [
       {flags: ['change_info'], text: isBroadcast ? 'EditAdminChangeChannelInfo' : 'EditAdminChangeGroupInfo'},
       isBroadcast && {flags: [manageMessagesNestedKey], text: 'AdminRights.ManageMessages', nested: manageMessagesNested},
       isBroadcast && {flags: [manageStoriesNestedKey], text: 'AdminRights.ManageStories', nested: manageStoriesNested},
@@ -241,7 +251,9 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     v.forEach((info) => {
       const mainFlag = info.flags[0];
       map[mainFlag] = info;
-      info.checked ??= hasRights(chat, mainFlag, rights);
+      info.checked ??= options.canGrant ?
+        !!rights?.pFlags[mainFlag as keyof ChatAdminRights['pFlags']] :
+        hasRights(chat, mainFlag, rights);
     });
 
     if(manageMessagesNested) {
@@ -264,7 +276,10 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       const mainFlag = info.flags[0];
       if(!options.canEdit) {
         info.restrictionText = 'EditAdminCantEdit';
-      } else if((isCreator && !CREATOR_EXCEPTIONS.has(mainFlag as ChatRights)) || !hasRights(chat, mainFlag)) {
+      } else if(options.canGrant ?
+        !options.canGrant(mainFlag) :
+        (isCreator && !CREATOR_EXCEPTIONS.has(mainFlag as ChatRights)) || !hasRights(chat, mainFlag)
+      ) {
         info.restrictionText = 'EditCantEditPermissions';
       }
     }
@@ -288,10 +303,15 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
   public takeOut() {
     let rights: ChatAdminRights = {
       _: 'chatAdminRights',
-      pFlags: {}
+      pFlags: this.options.preserveUnhandledRights ?
+        {...this.rights?.pFlags} :
+        {}
     };
 
     for(const info of this.fields) {
+      info.flags.forEach((flag) => {
+        delete rights.pFlags[flag as keyof ChatAdminRights['pFlags']];
+      });
       if(!info.checkboxField.checked) {
         continue;
       }
@@ -302,13 +322,26 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       });
     }
 
+    if(
+      this.rights?.pFlags.manage_linked_peers &&
+      !this.fields.some((field) => {
+        return field.flags.includes('manage_linked_peers');
+      })
+    ) {
+      rights.pFlags.manage_linked_peers = true;
+    }
+
     // * fix missing flags
     if(
-      this.options.chat._ === 'chat' &&
+      this.options.chat?._ === 'chat' &&
       deepEqual(rights, ChatAdministratorRights.CHAT_LEGACY_ADMIN_RIGHTS)
     ) {
       rights = CHAT_LEGACY_ADMIN_RIGHTS;
     }
+
+    // Keep the participant an administrator even when every visible right is
+    // disabled. An actually empty rights object is reserved for dismissal.
+    rights.pFlags.other = true;
 
     return rights;
   }
@@ -341,7 +374,10 @@ export const createSolidTabState = <StateStore extends object>({tab, save, alway
   createEffect(() => {
     if(!saveIcon()) return;
 
-    saveIcon().classList.toggle('appear-zoom--active', hasChanges() || alwaysShowSave);
+    saveIcon().classList.toggle(
+      'appear-zoom--active',
+      hasChanges() || !!alwaysShowSave
+    );
   });
 
   createEffect(() => {

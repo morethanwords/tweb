@@ -1,0 +1,104 @@
+@use "../../scss/variables" as *;
+
+.root {
+  min-height: 100%;
+}
+
+.danger {
+  color: var(--danger-color);
+}
+
+.requestActions {
+  order: 2;
+  display: flex;
+  gap: .5rem;
+  margin-top: .5rem;
+}
+
+.requestAvatarMedia {
+  inset-block-start: .625rem;
+}
+
+.requestAction {
+  width: auto;
+  padding-inline: 1rem;
+  text-transform: none;
+}
+
+.bulkAction {
+  flex: 1;
+  justify-content: center;
+}
+
+// `.btn-transparent` sets `text-transform: unset` and wins over the global
+// `.text-uppercase` utility on equal specificity, so the transparent bulk action
+// needs a doubled class to keep the uppercase label its filled sibling gets
+// from `.btn-primary`.
+.bulkActionUppercase.bulkActionUppercase {
+  text-transform: uppercase;
+}
+
+.requestMetadata {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.requestMetadataPill {
+  display: inline-flex;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: .1875rem;
+  padding: 0 .375rem;
+  border-radius: .75rem;
+  background: var(--light-secondary-text-color);
+  color: var(--secondary-text-color);
+  font-size: var(--font-size-12);
+  line-height: 1;
+}
+
+.requestMetadataIcon {
+  font-size: .875rem;
+}
+
+.stickyBulkActions {
+  position: absolute;
+  z-index: 1;
+  bottom: 0;
+  inset-inline: 0;
+  display: flex;
+  gap: .5rem;
+  padding: .75rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.bulkActionsScrollable {
+  bottom: calc(#{$button-height} + 1.5rem + 1px);
+  height: auto;
+}
+
+.empty {
+  padding: 2rem 1rem;
+  color: var(--secondary-text-color);
+  text-align: center;
+}
+
+.retryAction {
+  margin-top: .75rem;
+}
+
+.loadMoreSentinel {
+  height: 1px;
+}
+
+.captionAction {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary-color);
+  font: inherit;
+  cursor: pointer;
+}

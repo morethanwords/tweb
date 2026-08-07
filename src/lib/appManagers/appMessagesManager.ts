@@ -194,6 +194,11 @@ export type ForumTopic = MTForumTopic.forumTopic;
 export type SavedDialog = MTSavedDialog.savedDialog;
 
 export type MyMessage = Message.message | Message.messageService;
+export type ConversationPreview = {
+  peerId: PeerId,
+  dialog?: Dialog,
+  lastMessage?: MyMessage
+};
 export type MyEphemeralMessage = Message.message & {
   ephemeral_id: number,
   ephemeral_receiver_id: UserId,
@@ -329,6 +334,8 @@ export type RequestHistoryOptions = {
   isCacheableSearch?: boolean,
   hashtagType?: 'this' | 'my' | 'public',
   chatType?: 'all' | 'users' | 'groups' | 'channels',
+  communityId?: ChatId,
+  previewOnly?: boolean,                  // ! FOR INNER USE ONLY
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
@@ -603,6 +610,11 @@ export class AppMessagesManager extends AppManager {
   }> = {};
 
   public sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
+  private conversationPreviewLoadQueue = new LazyLoadQueueBase(4);
+  private conversationPreviewPromises = new Map<
+    PeerId,
+    Promise<ConversationPreview>
+  >();
 
   private needSingleMessages: Map<PeerId, Map<number, CancellablePromise<Message.message | Message.messageService>>> = new Map();
   private fetchSingleMessagesPromise: Promise<void>;
@@ -1079,7 +1091,8 @@ export class AppMessagesManager extends AppManager {
       });
     };
 
-    for(const botInfo of fullChat?.bot_info || []) {
+    const botInfos = fullChat && 'bot_info' in fullChat ? fullChat.bot_info : undefined;
+    for(const botInfo of botInfos || []) {
       addCandidate(+botInfo.user_id as UserId, botInfo.commands);
     }
 
@@ -4602,14 +4615,16 @@ export class AppMessagesManager extends AppManager {
     query,
     offsetTopicId,
     filterType = this.dialogsStorage.getFilterType(folderId),
-    offsetBotforumTopic
+    offsetBotforumTopic,
+    excludeCommunityDialogs = folderId !== FOLDER_ID_ARCHIVE
   }: {
     limit: number,
     folderId: number,
     query?: string,
     offsetTopicId?: ForumTopic['id'],
     filterType?: FilterType,
-    offsetBotforumTopic?: ForumTopic
+    offsetBotforumTopic?: ForumTopic,
+    excludeCommunityDialogs?: boolean
   }) {
     const log = this.log.bindPrefix('getTopMessages-' + nextRandomUint(16));
     // const dialogs = this.dialogsStorage.getFolder(folderId);
@@ -4640,14 +4655,13 @@ export class AppMessagesManager extends AppManager {
 
       log('result', result);
 
-      // can reset pinned order here
-      if(
+      const shouldResetPinnedOrder =
         !peerId &&
         !offsetId &&
         !offsetDate &&
         !offsetPeerId &&
-        folderId !== GLOBAL_FOLDER_ID
-      ) {
+        folderId !== GLOBAL_FOLDER_ID;
+      if(shouldResetPinnedOrder && folderId !== FOLDER_ID_ALL) {
         log('resetting pinned order', folderId);
         this.dialogsStorage.resetPinnedOrder(folderId);
       }
@@ -4665,9 +4679,22 @@ export class AppMessagesManager extends AppManager {
       const noIdsDialogs: BroadcastEvents['dialogs_multiupdate'] = new Map();
       const setFolderId: REAL_FOLDER_ID = folderId === GLOBAL_FOLDER_ID ? FOLDER_ID_ALL : folderId as REAL_FOLDER_ID;
       const saveGlobalOffset = (!!peerId && !isSearch) || folderId === GLOBAL_FOLDER_ID;
-      const items: Array<Dialog | ForumTopic | SavedDialog> =
-        (result as MessagesDialogs.messagesDialogsSlice).dialogs as Dialog[] ||
-        (result as MessagesForumTopics).topics as ForumTopic[];
+      let items: Array<Dialog | ForumTopic | SavedDialog>;
+      if(result._ === 'messages.forumTopics') {
+        items = result.topics as ForumTopic[];
+      } else if(result._ === 'messages.savedDialogs' || result._ === 'messages.savedDialogsSlice') {
+        items = result.dialogs as SavedDialog[];
+      } else {
+        items = this.dialogsStorage.filterDialogsForStorage(
+          result.dialogs,
+          shouldResetPinnedOrder && folderId === FOLDER_ID_ALL ? (order) => {
+            log('seeding pinned order', folderId, order);
+            this.dialogsStorage.handleDialogsPinned(folderId, order);
+            this.appCommunitiesManager.handlePinnedDialogsOrder(folderId);
+          } : undefined
+        );
+      }
+
       log('saving', {setFolderId, saveGlobalOffset, noIdsDialogs, isSearch});
       forEachReverse(items, (dialog, idx, arr) => {
         if(!dialog) {
@@ -4745,7 +4772,15 @@ export class AppMessagesManager extends AppManager {
         // }, 10e3);
       }
 
-      const count = (result as MessagesDialogs.messagesDialogsSlice).count;
+      const rawCount = (result as MessagesDialogs.messagesDialogsSlice).count;
+      const count = (
+        excludeCommunityDialogs &&
+        !isSearch &&
+        filterType === FilterType.Folder
+      ) ? Math.max(
+          0,
+          (rawCount || 0) - this.appCommunitiesManager.getCommunityDialogsCount()
+        ) : rawCount;
 
       // exclude empty draft dialogs
       const folderDialogs = this.dialogsStorage.getFolderDialogs(folderId, false);
@@ -5632,6 +5667,10 @@ export class AppMessagesManager extends AppManager {
         this.dialogsStorage.applyDialogs(result);
 
         result.dialogs.forEach((dialog) => {
+          if(dialog._ !== 'dialog') {
+            return;
+          }
+
           const peerId = dialog.peerId;
           if(!peerId) {
             return;
@@ -5654,6 +5693,78 @@ export class AppMessagesManager extends AppManager {
     });
 
     return promise || this.reloadConversationsPromise;
+  }
+
+  public getConversationPreviews(
+    peerIds: PeerId[]
+  ): ConversationPreview[] {
+    return filterUnique(peerIds).map((peerId) => {
+      const dialog = this.getDialogOnly(peerId);
+      const historyTopMessage = this.getHistoryStorage(peerId).maxId;
+      const dialogLastMessage = dialog?.top_message ?
+        this.getMessageByPeer(peerId, dialog.top_message) :
+        undefined;
+      return {
+        peerId,
+        dialog,
+        lastMessage: dialogLastMessage || (historyTopMessage ?
+          this.getMessageByPeer(peerId, historyTopMessage) :
+          undefined)
+      };
+    });
+  }
+
+  private loadConversationPreview(
+    peerId: PeerId
+  ): Promise<ConversationPreview> {
+    const currentPromise = this.conversationPreviewPromises.get(peerId);
+    if(currentPromise) {
+      return currentPromise;
+    }
+
+    let resolvePreview: (preview: ConversationPreview) => void;
+    const promise = new Promise<ConversationPreview>((resolve) => {
+      resolvePreview = resolve;
+    });
+    this.conversationPreviewPromises.set(peerId, promise);
+    this.conversationPreviewLoadQueue.push({
+      load: async() => {
+        try {
+          const result = await this.getHistory({
+            peerId,
+            limit: 1,
+            previewOnly: true
+          });
+          const mid = result.history[0];
+          resolvePreview({
+            peerId,
+            dialog: this.getDialogOnly(peerId),
+            lastMessage: mid ? this.getMessageByPeer(peerId, mid) : undefined
+          });
+        } catch{
+          resolvePreview({
+            peerId,
+            dialog: this.getDialogOnly(peerId)
+          });
+        }
+      }
+    });
+
+    void promise.finally(() => {
+      if(this.conversationPreviewPromises.get(peerId) === promise) {
+        this.conversationPreviewPromises.delete(peerId);
+      }
+    });
+    return promise;
+  }
+
+  public loadConversationPreviews(
+    peerIds: PeerId[]
+  ): Promise<ConversationPreview[]> {
+    peerIds = filterUnique(peerIds);
+    return Promise.all(peerIds.map((peerId) => {
+      return this.loadConversationPreview(peerId);
+    }));
   }
 
   public doFlushHistory({
@@ -6889,32 +7000,54 @@ export class AppMessagesManager extends AppManager {
       return this.updatePinnedForumTopic(peerId, topicOrSavedId, pinned);
     }
 
-    let promise: Promise<boolean>;
     if(isSaved) {
-      promise = this.apiManager.invokeApi('messages.toggleSavedDialogPin', {
+      return this.apiManager.invokeApi('messages.toggleSavedDialogPin', {
         peer: this.appPeersManager.getInputDialogPeerById(topicOrSavedId),
         pinned
-      });
-    } else {
-      promise = this.apiManager.invokeApi('messages.toggleDialogPin', {
-        peer: this.appPeersManager.getInputDialogPeerById(peerId),
-        pinned
+      }).then(() => {
+        this.apiUpdatesManager.saveUpdate({
+          _: 'updateSavedDialogPinned',
+          peer: this.appPeersManager.getDialogPeer(topicOrSavedId),
+          pFlags: pinned ? {pinned} : {}
+        });
       });
     }
 
-    return promise.then(() => {
-      const pFlags: (Update.updateDialogPinned | Update.updateSavedDialogPinned)['pFlags'] = pinned ? {pinned} : {};
-      const dialogPeer = this.appPeersManager.getDialogPeer(isSaved ? topicOrSavedId : peerId);
-      this.apiUpdatesManager.saveUpdate(isSaved ? {
-        _: 'updateSavedDialogPinned',
-        peer: dialogPeer,
-        pFlags
-      } : {
-        _: 'updateDialogPinned',
-        peer: dialogPeer,
-        folder_id: filterId,
-        pFlags
-      });
+    return this.setDialogPin({
+      peerId,
+      pinned: !!pinned,
+      folderId: filterId as REAL_FOLDER_ID
+    });
+  }
+
+  public setDialogPin(options: {
+    peerId: PeerId,
+    pinned: boolean,
+    folderId: REAL_FOLDER_ID,
+    applyUpdate?: boolean
+  }) {
+    const {peerId, pinned, folderId, applyUpdate = true} = options;
+    return this.apiManager.invokeApi('messages.toggleDialogPin', {
+      peer: this.appPeersManager.getInputDialogPeerById(peerId),
+      pinned: pinned || undefined
+    }).then(() => {
+      if(applyUpdate) {
+        this.applyDialogPinUpdate({peerId, pinned, folderId});
+      }
+    });
+  }
+
+  public applyDialogPinUpdate(options: {
+    peerId: PeerId,
+    pinned: boolean,
+    folderId: REAL_FOLDER_ID
+  }) {
+    const {peerId, pinned, folderId} = options;
+    this.apiUpdatesManager.saveUpdate({
+      _: 'updateDialogPinned',
+      peer: this.appPeersManager.getDialogPeer(peerId),
+      folder_id: folderId,
+      pFlags: pinned ? {pinned: true} : {}
     });
   }
 
@@ -9060,11 +9193,11 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     // this.log('updateDialogUnreadMark', update);
-    if((update.peer as any)._ === 'dialogPeerCommunity') {
+    if(update.peer._ !== 'dialogPeer') {
       return;
     }
 
-    const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
+    const peerId = this.appPeersManager.getPeerId(update.peer.peer);
     const monoforumThreadId = this.getMonoforumThreadId(peerId, update.saved_peer_id);
 
     const dialog = this.getDialogOnly(peerId);
@@ -9663,10 +9796,8 @@ export class AppMessagesManager extends AppManager {
   private onUpdateChannel = (update: Update.updateChannel) => {
     const channelId = update.channel_id;
     const peerId = channelId.toPeerId(true);
-    const channel = this.appChatsManager.getChat(channelId) as Chat.channel;
-    if(!channel) {
-      // Layer 228 communities reuse updateChannel, but are intentionally
-      // quarantined until their dialog and peer model is supported.
+    const channel = this.appChatsManager.getChat(channelId);
+    if(channel?._ !== 'channel') {
       return;
     }
 
@@ -10665,7 +10796,9 @@ export class AppMessagesManager extends AppManager {
 
     const {historyStorage, limit, addOffset, offsetId, offsetPeerId, needRealOffsetIdOffset} = options;
 
-    const isPeerRestrictedPromise = this.appPeersManager.isPeerRestricted(options.peerId);
+    const isPeerRestrictedPromise = options.peerId ?
+      this.appPeersManager.isPeerRestricted(options.peerId) :
+      false;
     if(isPeerRestrictedPromise instanceof Promise) {
       return isPeerRestrictedPromise.then(() => this.getHistory(options));
     } else if(isPeerRestrictedPromise) {
@@ -10962,7 +11095,9 @@ export class AppMessagesManager extends AppManager {
       requestPeerId = migration.prev;
     }
 
-    peerId = options.peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    if(peerId) {
+      peerId = options.peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    }
 
     const isRequestingLegacy = requestPeerId !== peerId;
     const isRequestingGlobalCacheable = options.searchType === 'cached' && options.isCacheableSearch;
@@ -11032,7 +11167,10 @@ export class AppMessagesManager extends AppManager {
         if(historyStorage.maxId !== newMaxId) {
           historyStorage._maxId = slice[0]; // ! WARNING
 
-          this.reloadConversation(peerId); // when top_message is deleted but cached
+          if(!options.previewOnly) {
+            // when top_message is deleted but cached
+            this.reloadConversation(peerId);
+          }
         }
       }
     }
@@ -11230,11 +11368,13 @@ export class AppMessagesManager extends AppManager {
     maxDate,
     historyType = this.getHistoryType(peerId, {threadId}),
     chatType,
+    communityId,
     fromPeerId,
     savedReaction,
     isPublicHashtag,
     isPublicPosts,
-    allowStars
+    allowStars,
+    previewOnly
   }: RequestHistoryOptions) {
     const fetchTargetedMessage = FETCH_TARGETED_MESSAGE && !addOffset;
     if(fetchTargetedMessage) {
@@ -11283,7 +11423,7 @@ export class AppMessagesManager extends AppManager {
 
       method = 'channels.searchPosts';
       options = searchOptions;
-    } else if(inputFilter && peerId && !nextRate && folderId === undefined/*  || !query */) {
+    } else if(inputFilter && peerId && !communityId && !nextRate && folderId === undefined/*  || !query */) {
       const savedPeerIdInput = monoforumThreadId ?
         this.appPeersManager.getInputPeerById(monoforumThreadId) :
         historyType === HistoryType.Saved ?
@@ -11313,7 +11453,8 @@ export class AppMessagesManager extends AppManager {
         max_date: maxDate,
         offset_rate: nextRate,
         offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId),
-        folder_id: folderId,
+        folder_id: communityId ? undefined : folderId,
+        community: communityId ? this.appChatsManager.getChannelInput(communityId) : undefined,
         users_only: chatType === 'users' || undefined,
         groups_only: chatType === 'groups' || undefined,
         broadcasts_only: chatType === 'channels' || undefined
@@ -11418,6 +11559,10 @@ export class AppMessagesManager extends AppManager {
     }, (error: ApiError) => {
       switch(error.type) {
         case 'CHANNEL_PRIVATE':
+          if(previewOnly) {
+            break;
+          }
+
           let channel = this.appChatsManager.getChat(peerId.toChatId());
           if(channel._ === 'channel') {
             channel = {

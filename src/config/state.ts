@@ -1,7 +1,7 @@
 import type {LiteModeKey} from '@helpers/liteMode';
 import type {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
 import type {TopPeerType, MyTopPeer} from '@appManagers/appUsersManager';
-import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTheme, BotCommand, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '@layer';
+import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTheme, BotCommand, Dialog, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '@layer';
 import type DialogsStorage from '@lib/storages/dialogs';
 import type FiltersStorage from '@lib/storages/filters';
 import type {AuthState, Modify} from '@types';
@@ -22,6 +22,11 @@ const TINTED_DEFAULT_PRESET = getAccentPresetsForBase('baseThemeTinted')[0];
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
+
+export type GlobalNotifySettingsKey =
+  NotifyPeer.notifyUsers['_'] |
+  NotifyPeer.notifyChats['_'] |
+  NotifyPeer.notifyBroadcasts['_'];
 
 // ! DEPRECATED
 export type Background = {
@@ -187,6 +192,8 @@ type CacheSomething<T> = {
 export type State = {
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
   pinnedOrders: DialogsStorage['pinnedOrders'],
+  communityDialogs: {[communityId: string]: Dialog.dialogCommunity},
+  joinedCommunityIds: ChatId[] | null,
   botCommands: {[peerId: PeerId]: {[botId: string]: BotCommand[]}},
   // contactsList: UserId[],
   contactsListCachedTime: number,
@@ -216,7 +223,7 @@ export type State = {
   hideChatJoinRequests: {[peerId: PeerId]: number},
   botConnectionReviews: BotConnectionReview[],
   // stateId?: number, // ! DEPRECATED
-  notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
+  notifySettings: {[k in GlobalNotifySettingsKey]?: PeerNotifySettings.peerNotifySettings},
   confirmedWebViews: BotId[],
   hiddenSimilarChannels: number[],
   appConfig: MTAppConfig,
@@ -558,6 +565,8 @@ export const SETTINGS_INIT: StateSettings = {
 export const STATE_INIT: State = {
   allDialogsLoaded: {},
   pinnedOrders: {},
+  communityDialogs: {},
+  joinedCommunityIds: null,
   botCommands: {},
   // contactsList: [],
   contactsListCachedTime: 0,

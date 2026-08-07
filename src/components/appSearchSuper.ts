@@ -127,7 +127,7 @@ export type SearchSuperContext = {
   nextRate?: number,
   minDate?: number,
   maxDate?: number
-} & Pick<RequestHistoryOptions, 'chatType'>;
+} & Pick<RequestHistoryOptions, 'chatType' | 'communityId'>;
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
@@ -1126,7 +1126,6 @@ export default class AppSearchSuper {
       autonomous: isSaved,
       fromName: !peerId ? getFwdFromName(message.fwd_from) : undefined
     });
-
     const setLastMessagePromise = appDialogsManager.setLastMessageN({
       dialog: {
         _: 'dialog',
@@ -1573,7 +1572,7 @@ export default class AppSearchSuper {
     }
 
     const query = this.searchContext.query;
-    if(query && !this.searchContext.peerId) {
+    if(query && !this.searchContext.peerId && !this.searchContext.communityId) {
       const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
         const peer = await this.managers.appPeersManager.getPeer(peerId);
         if(peerId === rootScope.myId) {
@@ -1624,7 +1623,6 @@ export default class AppSearchSuper {
             },
             withStories: true
           });
-
           return {dom, peerId};
         }).filter(Boolean).forEach(async({dom, peerId}) => addDialogSubtitle(dom, peerId));
 
@@ -1727,7 +1725,7 @@ export default class AppSearchSuper {
           }
         })
       ]);
-    } else if(!this.searchContext.peerId && !this.searchContext.minDate) {
+    } else if(!this.searchContext.peerId && !this.searchContext.communityId && !this.searchContext.minDate) {
       const [appState] = useAppState();
       const renderRecentSearch = (setActive = true) => {
         if(!middleware()) {
@@ -1754,7 +1752,6 @@ export default class AppSearchSuper {
                 },
                 withStories: true
               });
-
               (async() => {
                 dom.lastMessageSpan.append(await (peerId.isUser() ?
                   Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
@@ -2099,7 +2096,6 @@ export default class AppSearchSuper {
           },
           loadPromises
         });
-
         dom.lastMessageSpan.append(await getChatMembersString(chat.id, this.managers, chat));
 
         return Promise.all(loadPromises);
@@ -2232,7 +2228,6 @@ export default class AppSearchSuper {
           middleware
         }
       });
-
       const peer = await this.managers.appPeersManager.getPeer(peerId);
       const username = await this.managers.appPeersManager.getPeerUsername(peerId);
 
@@ -2514,7 +2509,12 @@ export default class AppSearchSuper {
         this.loadedChats = true;
       }
 
-      if(!this.searchContext.query.trim() && !this.searchContext.peerId && !this.searchContext.minDate) {
+      if(
+        !this.searchContext.query.trim() &&
+        !this.searchContext.peerId &&
+        !this.searchContext.communityId &&
+        !this.searchContext.minDate
+      ) {
         this.loaded[type] = true;
         return Promise.resolve();
       }
@@ -3136,7 +3136,7 @@ export default class AppSearchSuper {
     return context;
   }
 
-  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate, chatType}: {
+  public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate, chatType, communityId}: {
     peerId: PeerId,
     query?: string,
     threadId?: number,
@@ -3144,7 +3144,7 @@ export default class AppSearchSuper {
     folderId?: number,
     minDate?: number,
     maxDate?: number
-  } & Pick<RequestHistoryOptions, 'chatType'>) {
+  } & Pick<RequestHistoryOptions, 'chatType' | 'communityId'>) {
     this.searchContext = {
       peerId,
       query: query || '',
@@ -3153,7 +3153,8 @@ export default class AppSearchSuper {
       folderId,
       minDate,
       maxDate,
-      chatType
+      chatType,
+      communityId
     };
 
     this.historyStorage = historyStorage ?? {};

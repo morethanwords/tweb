@@ -1,3 +1,4 @@
+import {createEffect, createRoot} from 'solid-js';
 import {Dialog} from '@appManagers/appMessagesManager';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
@@ -9,7 +10,13 @@ import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants'
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
 import Scrollable from '@components/scrollable';
 import SetTransition from '@components/singleTransition';
-import SortedDialogList, {CustomPinnedDialog} from '@components/sortedDialogList';
+import SortedDialogList, {
+  CustomPinnedDialog,
+  CustomSortedDialog
+} from '@components/sortedDialogList';
+import {
+  createCommunityDialogListElement
+} from '@components/communities/communityDialog';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import namedPromises from '@helpers/namedPromises';
 import noop from '@helpers/noop';
@@ -19,16 +26,70 @@ import {AppDialogsManager, DialogDom} from '@lib/appDialogsManager';
 import rootScope from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
+import {useCommunityDialogs} from '@stores/communities';
+import {usePeers} from '@stores/peers';
 
 
 type ConstructorArgs = BaseConstructorArgs & {
   filterId: number;
 };
 
+type CommunityProjection = {
+  communityId: ChatId,
+  dialogs: Array<{
+    peerId: PeerId,
+    folderId: number,
+    filterIndex?: number
+  }>,
+  pinned: boolean,
+  pinnedOrderIndex: number,
+  pinnedOrderLength: number,
+  sortDate: number
+};
+
+// A hidden peer that only moves between folders shifts a real folder's count:
+// it leaves the count of the folder it came from and joins the one it went to.
+// Peers that appear or disappear from the projection are already accounted for
+// by the total-count offset, so they contribute nothing here.
+export function getCommunityProjectionFolderCountDelta(
+  previousPeerFolderIds: ReadonlyMap<PeerId, number>,
+  nextPeerFolderIds: ReadonlyMap<PeerId, number>,
+  folderId: number
+) {
+  let delta = 0;
+  for(const [peerId, previousFolderId] of previousPeerFolderIds) {
+    const nextFolderId = nextPeerFolderIds.get(peerId);
+    if(
+      nextFolderId === undefined ||
+      nextFolderId === previousFolderId
+    ) {
+      continue;
+    }
+
+    if(previousFolderId === folderId) {
+      --delta;
+    }
+    if(nextFolderId === folderId) {
+      ++delta;
+    }
+  }
+
+  return delta;
+}
+
 export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   protected filterId: number;
   private archiveDialogState?: DisposableArchiveDialogState;
   private customPinnedDialog?: CustomPinnedDialog;
+  private communityProjectionDispose?: () => void;
+  private communityProjectionRows = new Map<ChatId, CustomSortedDialog>();
+  private communityProjectionSnapshot: CommunityProjection[] = [];
+  private communityProjectionPromise = Promise.resolve();
+  private communityProjectionGeneration = 0;
+  private projectedPeerIds = new Set<PeerId>();
+  private projectedPeerFolderIds = new Map<PeerId, number>();
+  private filterPinnedPeerIds = new Set<PeerId>();
+  private communityProjectionDestroyed = false;
 
   constructor({filterId, ...args}: ConstructorArgs) {
     super(args);
@@ -122,7 +183,16 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
         return;
       }
 
-      this.deleteDialogByKey(this.getDialogKey(dialog));
+      const key = this.getDialogKey(dialog);
+      if(
+        REAL_FOLDERS.has(this.filterId) &&
+        this.projectedPeerIds.has(dialog.peerId) &&
+        !this.sortedList.has(key)
+      ) {
+        this.sortedList.adjustTotalCount(-1);
+      } else {
+        this.deleteDialogByKey(key);
+      }
       this.appDialogsManager.processContact?.(dialog.peerId);
     });
 
@@ -157,6 +227,10 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     });
 
     this.listenerSetter.add(rootScope)('filter_update', async(filter) => {
+      if(filter.id === this.filterId && !REAL_FOLDERS.has(filter.id)) {
+        this.filterPinnedPeerIds = new Set(filter.pinnedPeerIds);
+        await this.scheduleCommunityProjection();
+      }
       if(this.isActive && filter.id === this.filterId && !REAL_FOLDERS.has(filter.id)) {
         const dialogs = await this.managers.dialogsStorage.getCachedDialogs(true);
         await this.validateListForFilter();
@@ -206,6 +280,10 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
 
   public generateScrollable(filter: Parameters<AppDialogsManager['addFilter']>[0]) {
     const filterId = filter.id;
+    const pinnedPeerIds = (
+      filter as typeof filter & {pinnedPeerIds?: PeerId[]}
+    ).pinnedPeerIds;
+    this.filterPinnedPeerIds = new Set(pinnedPeerIds || []);
     const scrollable = new Scrollable(null, 'CL', 500);
     scrollable.container.dataset.filterId = '' + filterId;
 
@@ -230,6 +308,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     this.sortedList = sortedDialogList;
     this.setIndexKey(indexKey);
     this.bindScrollable();
+    this.setupCommunityProjection();
 
     // list.classList.add('hide');
     // scrollable.container.style.backgroundColor = '#' + (Math.random() * (16 ** 6 - 1) | 0).toString(16);
@@ -238,6 +317,17 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   }
 
   public testDialogForFilter(dialog: Dialog) {
+    const collapsedCommunityId = this.getCollapsedCommunityId(dialog.peerId);
+    if(
+      collapsedCommunityId &&
+      (
+        REAL_FOLDERS.has(this.filterId) ||
+        !this.filterPinnedPeerIds.has(dialog.peerId)
+      )
+    ) {
+      return false;
+    }
+
     if(!REAL_FOLDERS.has(this.filterId) ? getDialogIndex(dialog, this.indexKey) === undefined : this.filterId !== dialog.folder_id) {
       return false;
     }
@@ -249,15 +339,26 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     const isFirstLoad = !offsetIndex;
 
     const unblock = isFirstLoad ? this.sortedList.blockAnimation() : noop;
+    try {
+      const {result} = await namedPromises({
+        result: super.loadDialogsInner({
+          offsetIndex,
+          removePlaceholder: false,
+          canFinish
+        }),
+        _ignore: this.ensureArchiveDialogHydrated()
+      });
 
-    const {result} = await namedPromises({
-      result: super.loadDialogsInner({offsetIndex, removePlaceholder: false, canFinish}),
-      _ignore: this.ensureArchiveDialogHydrated()
-    }).finally(unblock);
+      await this.scheduleCommunityProjection();
+      this.placeholder?.detach(this.sortedList.itemsLength());
 
-    this.placeholder?.detach(this.sortedList.itemsLength());
-
-    return result;
+      return {
+        ...result,
+        totalCount: this.sortedList.itemsLength()
+      };
+    } finally {
+      unblock();
+    }
   }
 
   private async ensureArchiveDialogHydrated() {
@@ -275,6 +376,258 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     return ackedResult.result;
   }
 
+  private setupCommunityProjection() {
+    if(this.communityProjectionDispose) {
+      return;
+    }
+
+    this.communityProjectionDispose = createRoot((dispose) => {
+      const peers = usePeers();
+      const communityDialogs = useCommunityDialogs();
+
+      createEffect(() => {
+        const projection: CommunityProjection[] = [];
+        for(const id of Object.keys(communityDialogs)) {
+          const communityId = id.toChatId();
+          const community = peers[communityId.toPeerId(true)];
+          const dialog = communityDialogs[communityId];
+          if(
+            !dialog ||
+            community?._ !== 'community' ||
+            community.pFlags.left ||
+            !community.pFlags.collapsed_in_dialogs
+          ) {
+            continue;
+          }
+
+          projection.push({
+            communityId,
+            dialogs: dialog.dialogs
+            .filter((dialog) => {
+              return dialog.migratedTo === undefined;
+            })
+            .map((dialog) => ({
+              peerId: dialog.peerId,
+              folderId: dialog.folder_id,
+              filterIndex: getDialogIndex(dialog, this.indexKey)
+            })),
+            pinned: !!dialog.pFlags.pinned,
+            pinnedOrderIndex: dialog.pinnedOrderIndex,
+            pinnedOrderLength: dialog.pinnedOrderLength,
+            sortDate: dialog.sortDate
+          });
+        }
+
+        this.communityProjectionSnapshot = projection;
+        void this.scheduleCommunityProjection().catch(noop);
+      });
+
+      return dispose;
+    });
+  }
+
+  private getCollapsedCommunityId(peerId: PeerId) {
+    const peer = apiManagerProxy.getPeer(peerId);
+    const communityId = peer?._ === 'channel' || peer?._ === 'user' ?
+      peer.linked_community_id?.toChatId() :
+      undefined;
+    if(!communityId) {
+      return;
+    }
+
+    const community = apiManagerProxy.getChat(communityId);
+    const communityDialog = apiManagerProxy.getCommunityDialog(communityId);
+    return community?._ === 'community' &&
+      !community.pFlags.left &&
+      !!communityDialog &&
+      community.pFlags.collapsed_in_dialogs ?
+      communityId :
+      undefined;
+  }
+
+  private scheduleCommunityProjection() {
+    if(
+      this.communityProjectionDestroyed ||
+      !this.sortedList
+    ) {
+      return Promise.resolve();
+    }
+
+    const generation = this.communityProjectionGeneration;
+    const canFinish = () => {
+      return !this.communityProjectionDestroyed &&
+        generation === this.communityProjectionGeneration;
+    };
+    this.communityProjectionPromise = this.communityProjectionPromise
+    .catch(noop)
+    .then(async() => {
+      if(!canFinish()) {
+        return;
+      }
+
+      const unblock = this.sortedList.blockAnimation();
+      try {
+        await this.applyCommunityProjection(
+          this.communityProjectionSnapshot,
+          canFinish
+        );
+      } finally {
+        unblock();
+      }
+    });
+
+    return this.communityProjectionPromise;
+  }
+
+  private async applyCommunityProjection(
+    projection: CommunityProjection[],
+    canFinish: () => boolean
+  ) {
+    if(!canFinish()) {
+      return;
+    }
+
+    const hasCommunityRows = this.filterId === FOLDER_ID_ALL;
+    if(hasCommunityRows) {
+      const projectedCommunityIds = new Set(
+        projection.map(({communityId}) => communityId)
+      );
+      for(const [communityId, row] of this.communityProjectionRows) {
+        if(projectedCommunityIds.has(communityId)) {
+          continue;
+        }
+
+        this.sortedList.delete(row, false);
+        row.destroy();
+        this.communityProjectionRows.delete(communityId);
+      }
+    }
+
+    const hiddenPeerIds = new Set<PeerId>();
+    const peerFolderIds = new Map<PeerId, number>();
+    for(const item of projection) {
+      if(hasCommunityRows) {
+        let row = this.communityProjectionRows.get(item.communityId);
+        if(!row) {
+          row = this.createCommunityProjectionRow(item.communityId);
+          this.communityProjectionRows.set(item.communityId, row);
+        }
+
+        if(this.sortedList.has(row)) {
+          await this.sortedList.update(row, canFinish);
+        } else {
+          await this.sortedList.add(row, canFinish);
+        }
+        if(!canFinish()) {
+          return;
+        }
+      }
+
+      for(const {peerId, folderId, filterIndex} of item.dialogs) {
+        peerFolderIds.set(peerId, folderId);
+        const hiddenInFilter = REAL_FOLDERS.has(this.filterId) ?
+          folderId === this.filterId :
+          filterIndex !== undefined &&
+            !this.filterPinnedPeerIds.has(peerId);
+        if(!hiddenInFilter) {
+          continue;
+        }
+
+        hiddenPeerIds.add(peerId);
+        if(this.sortedList.has(peerId)) {
+          this.sortedList.delete(peerId, false);
+        }
+      }
+    }
+
+    for(const peerId of this.projectedPeerIds) {
+      if(hiddenPeerIds.has(peerId)) {
+        continue;
+      }
+
+      const dialog = await this.managers.appMessagesManager
+      .getDialogOnly(peerId);
+      if(!canFinish()) {
+        return;
+      }
+      if(
+        dialog &&
+        this.testDialogForFilter(dialog) &&
+        this.canUpdateDialog(dialog) &&
+        !this.sortedList.has(peerId)
+      ) {
+        await this.sortedList.add(peerId, canFinish);
+        if(!canFinish()) {
+          return;
+        }
+      }
+    }
+
+    const folderCountDelta = REAL_FOLDERS.has(this.filterId) ?
+      getCommunityProjectionFolderCountDelta(
+        this.projectedPeerFolderIds,
+        peerFolderIds,
+        this.filterId
+      ) :
+      0;
+    this.projectedPeerIds = hiddenPeerIds;
+    this.projectedPeerFolderIds = peerFolderIds;
+    // Community rows join the list, their hidden ordinary peers leave it.
+    const communityRowsCount = hasCommunityRows ? projection.length : 0;
+    this.sortedList.setTotalCountOffset(
+      communityRowsCount - hiddenPeerIds.size,
+      folderCountDelta
+    );
+  }
+
+  private createCommunityProjectionRow(communityId: ChatId) {
+    let dialogElement: ReturnType<typeof createCommunityDialogListElement>;
+    return new CustomSortedDialog({
+      render: () => {
+        dialogElement ||= createCommunityDialogListElement(
+          this.appDialogsManager,
+          communityId
+        );
+        const element = dialogElement.dom.listEl;
+        if(
+          this.appDialogsManager.forumTab?.peerId ===
+          communityId.toPeerId(true)
+        ) {
+          element.classList.add('is-forum-open');
+        }
+        return element;
+      },
+      destroy: () => dialogElement?.destroy(),
+      getIndex: () => {
+        const dialog = apiManagerProxy.getCommunityDialog(communityId);
+        if(!dialog) {
+          return 0;
+        }
+
+        if(!dialog.pFlags.pinned) {
+          return dialog.sortDate * 0x10000;
+        }
+
+        const reversePinnedIndex = dialog.pinnedOrderIndex === -1 ?
+          dialog.pinnedOrderLength :
+          dialog.pinnedOrderLength - 1 - dialog.pinnedOrderIndex;
+        const pinnedDate = 0x7fff0000 + (reversePinnedIndex & 0xFFFF);
+        return pinnedDate * 0x10000;
+      }
+    });
+  }
+
+  public getListElement(peerId: PeerId) {
+    const dialogElement = this.getDialogElement(peerId);
+    if(dialogElement) {
+      return dialogElement.dom.listEl;
+    }
+
+    return this.communityProjectionRows
+    .get(peerId.toChatId())
+    ?.getElement();
+  }
+
   /**
    * Удалит неподходящие чаты из списка, но не добавит их(!)
    */
@@ -282,12 +635,38 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     this.sortedList.getAllDialogElementsMap().forEach(async(_, key) => {
       const dialog = await rootScope.managers.appMessagesManager.getDialogOnly(key);
       if(!this.testDialogForFilter(dialog)) {
-        this.deleteDialog(dialog);
+        if(
+          REAL_FOLDERS.has(this.filterId) &&
+          this.getCollapsedCommunityId(dialog.peerId)
+        ) {
+          this.sortedList.delete(dialog.peerId, false);
+        } else {
+          this.deleteDialog(dialog);
+        }
       }
     });
   }
 
   public updateDialog(dialog: Dialog) {
+    const collapsedCommunityId = this.getCollapsedCommunityId(dialog.peerId);
+    if(
+      collapsedCommunityId &&
+      (
+        REAL_FOLDERS.has(this.filterId) ||
+        !this.filterPinnedPeerIds.has(dialog.peerId)
+      )
+    ) {
+      if(
+        REAL_FOLDERS.has(this.filterId) &&
+        this.sortedList.has(dialog.peerId)
+      ) {
+        this.sortedList.delete(dialog.peerId, false);
+      } else if(this.getDialogElement(dialog.peerId)) {
+        this.deleteDialog(dialog);
+      }
+      return;
+    }
+
     if(!this.testDialogForFilter(dialog)) {
       if(this.getDialogElement(dialog.peerId)) {
         this.deleteDialog(dialog);
@@ -413,7 +792,22 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     }
   }
 
+  public clear(): void {
+    ++this.communityProjectionGeneration;
+    this.communityProjectionPromise = Promise.resolve();
+    for(const row of this.communityProjectionRows.values()) {
+      row.destroy();
+    }
+    this.communityProjectionRows.clear();
+    this.projectedPeerIds.clear();
+    this.projectedPeerFolderIds.clear();
+    super.clear();
+  }
+
   public destroy(): void {
+    this.communityProjectionDestroyed = true;
+    this.communityProjectionDispose?.();
+    this.communityProjectionDispose = undefined;
     super.destroy();
     this.archiveDialogState?.dispose();
   }

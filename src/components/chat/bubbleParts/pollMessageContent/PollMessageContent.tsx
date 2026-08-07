@@ -140,9 +140,13 @@ export const PollMessageContent =
       const peerId = restrictionPeerId();
       if(!peerId?.isAnyChat()) return;
 
-      const chat = restrictionPeer() as Chat;
+      const chat = restrictionPeer() as Exclude<Chat, Chat.chatEmpty>;
       if(!chat) return;
-      if(chat._ === 'channelForbidden' || chat._ === 'chatForbidden' || chat._ === 'chatEmpty') return false;
+      if(
+        chat._ === 'channelForbidden' ||
+        chat._ === 'chatForbidden' ||
+        chat._ === 'communityForbidden'
+      ) return false;
 
       return !chat.pFlags.left && !(chat._ === 'chat' && chat.pFlags.deactivated);
     });

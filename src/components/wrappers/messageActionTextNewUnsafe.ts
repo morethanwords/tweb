@@ -28,6 +28,9 @@ import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSpli
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import getStarGiftMessageTextDetails from '@appManagers/utils/gifts/getStarGiftMessageTextDetails';
 import {truncateTextWithEntities} from '@lib/richTextProcessor/truncateTextWithEntities';
+import getCommunityServiceMessageKey, {
+  getCommunityServiceTitle
+} from '@components/wrappers/getCommunityServiceMessageKey';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -1020,6 +1023,70 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       case 'messageActionManagedBotCreated': {
         langPackKey = 'CreateBot.BotWasCreated';
         args = [getNameDivHTML(action.bot_id.toPeerId(), plain)];
+        break;
+      }
+      case 'messageActionChangeCommunity': {
+        const communityId = action.community_id &&
+          action.community_id !== '0' &&
+          action.community_id !== 0 ?
+          action.community_id.toChatId() :
+          undefined;
+        const community = communityId ?
+          apiManagerProxy.getChat(communityId) :
+          undefined;
+        const communityTitle = getCommunityServiceTitle(community);
+        const peer = apiManagerProxy.getPeer(message.peerId);
+        const peerKind = message.peerId.isUser() ?
+          'bot' as const :
+          (
+            (
+              peer?._ === 'channel' ||
+              peer?._ === 'channelForbidden'
+            ) && !peer.pFlags.megagroup ?
+              'channel' as const :
+              'group' as const
+          );
+        const authorKind = message.fromId === rootScope.myId ?
+          'self' as const :
+          (message.fromId?.isUser() ? 'user' as const : 'unknown' as const);
+
+        langPackKey = getCommunityServiceMessageKey({
+          isAdded: !!communityId,
+          peerKind,
+          authorKind
+        });
+
+        args = [];
+        if(
+          peerKind === 'group' &&
+          authorKind !== 'self' &&
+          (!communityId || authorKind === 'user')
+        ) {
+          if(authorKind === 'unknown') {
+            args.push('');
+          } else if(noLinks && !plain) {
+            args.push(getPeerTitle({
+              peerId: message.fromId,
+              plainText: true
+            }).then((title) => {
+              const bold = document.createElement('b');
+              bold.textContent = title;
+              return bold;
+            }));
+          } else {
+            args.push(getNameDivHTML(message.fromId, plain));
+          }
+        }
+
+        if(communityId) {
+          if(plain) {
+            args.push(communityTitle || '');
+          } else {
+            const bold = document.createElement('b');
+            bold.textContent = communityTitle || '';
+            args.push(bold);
+          }
+        }
         break;
       }
       default:

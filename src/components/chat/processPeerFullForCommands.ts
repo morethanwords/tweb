@@ -3,11 +3,12 @@ import SearchIndex from '@lib/searchIndex';
 
 export default function processPeerFullForCommands(
   peerId: PeerId,
-  full: ChatFull.chatFull | ChatFull.channelFull | UserFull.userFull,
+  full: ChatFull | UserFull.userFull,
   query?: string
 ) {
-  const botInfos: BotInfo.botInfo[] = full.bot_info ?
-    (Array.isArray(full.bot_info) ? full.bot_info : [full.bot_info]) :
+  const botInfo = 'bot_info' in full ? full.bot_info : undefined;
+  const botInfos: BotInfo.botInfo[] = botInfo ?
+    (Array.isArray(botInfo) ? botInfo : [botInfo]) :
     [];
   let index: SearchIndex<number>;
 

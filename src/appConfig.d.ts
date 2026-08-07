@@ -164,6 +164,8 @@ export interface MTAppConfig {
   aicompose_tone_examples_num?:               number;
   aicompose_tone_saved_limit_default?:        number;
   aicompose_tone_saved_limit_premium?:        number;
+  community_peers_limit?:                     number;
+  community_bot_peers_limit?:                 number;
 }
 
 export interface EmojiesSendDiceSuccess {
