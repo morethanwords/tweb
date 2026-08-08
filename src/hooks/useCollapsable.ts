@@ -146,9 +146,12 @@ export function useCollapsable(props: {
       return;
     }
 
-    const wheelDeltaY = (e as any).wheelDeltaY as number;
-    const delta: number = -wheelDeltaY;
-    onMove(delta, e);
+    // * `wheelDeltaY` is a non-standard WebKit/Blink property that Firefox has never had, so
+    // * `-wheelDeltaY` came back NaN there and `NaN < 0` made every wheel resolve to
+    // * STATE_FOLDED — the collapsible could never be unfolded, and a folded stories list is
+    // * `pointer-events: none`, so clicking a story did nothing. `deltaY` is the standard
+    // * equivalent and carries the same sign, which is all `onMove` reads off it.
+    onMove(e.deltaY, e);
   };
   subscribeOn(props.listenWheelOn)('wheel', onWheel, {passive: false});
 
