@@ -46,6 +46,11 @@ const historiesStorage: {
   }
 } = {};
 
+const MEDIA_COUNTER_LANG_KEYS: {[key in keyof SearchSuperMediaCounters]: LangPackKey} = {
+  photos: 'Photos',
+  videos: 'Videos'
+};
+
 const SharedMedia: Component = () => {
   const [tab] = useSuperTab<typeof AppSharedMediaTab>();
   const {HotReloadGuard, apiManagerProxy, appImManager} = useHotReloadGuard();
@@ -432,15 +437,16 @@ const SharedMedia: Component = () => {
       return;
     }
 
+    const enabled = (Object.keys(MEDIA_COUNTER_LANG_KEYS) as (keyof SearchSuperMediaCounters)[])
+    .filter((key) => mediaFilters[key]);
+    // don't mention a type that has nothing, but never end up with an empty subtitle
+    const nonEmpty = enabled.filter((key) => mediaCounters[key]);
     const parts: Node[] = [];
-    if(mediaFilters.photos) {
-      parts.push(i18n('Photos', [mediaCounters.photos]));
-    }
-    if(mediaFilters.videos) {
+    for(const key of nonEmpty.length ? nonEmpty : enabled.slice(0, 1)) {
       if(parts.length) {
         parts.push(document.createTextNode(', '));
       }
-      parts.push(i18n('Videos', [mediaCounters.videos]));
+      parts.push(i18n(MEDIA_COUNTER_LANG_KEYS[key], [mediaCounters[key]]));
     }
 
     mediaSubtitle.replaceChildren(...parts);
