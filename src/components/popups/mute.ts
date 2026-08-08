@@ -3,7 +3,8 @@ import {LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import {RadioFormFromValues} from '@components/row';
 import PopupPeer from '@components/popups/peer';
-import apiManagerProxy from '@lib/apiManagerProxy';
+import createCommunityAvatarElement
+from '@components/communities/communityAvatarElement';
 
 const ONE_HOUR = 3600;
 const times: {value: number | string, langPackKey: LangPackKey, checked?: boolean}[] = [{
@@ -33,13 +34,15 @@ export default class PopupMute extends PopupPeer {
     threadId?: number,
     communityId?: ChatId
   ) {
-    const community = communityId ?
-      apiManagerProxy.getChat(communityId) :
+    // a Community can't go through `peerId`: its avatar is the decorated one, built here
+    // so the popup looks like every other mute popup instead of a bare title
+    const communityAvatar = communityId ?
+      createCommunityAvatarElement(communityId, 32) :
       undefined;
     super('popup-mute', {
       peerId: communityId ? undefined : peerId,
-      title: community?.title,
-      titleLangKey: community?.title ? undefined : 'Notifications',
+      avatar: communityAvatar?.element,
+      titleLangKey: 'Notifications',
       buttons: [{
         langKey: 'ChatList.Context.Mute',
         callback: () => {
@@ -62,6 +65,10 @@ export default class PopupMute extends PopupPeer {
       }],
       body: true
     });
+
+    if(communityAvatar) {
+      this.addEventListener('closeAfterTimeout', communityAvatar.dispose);
+    }
 
     let time: number;
     const radioForm = RadioFormFromValues(times, (value) => {

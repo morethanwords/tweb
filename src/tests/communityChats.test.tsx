@@ -251,6 +251,9 @@ describe('CommunityChats', () => {
     .not.toBeNull();
     expect(tab.title.textContent).toBe('Community');
     expect(tab.subtitle.textContent).toBe('Community.ChatsCount:5');
+    // no wrapper element around either — it would break the header text-overflow
+    expect(tab.title.children).toHaveLength(0);
+    expect(tab.subtitle.children).toHaveLength(0);
 
     const sections = [...container.querySelectorAll(
       '.sidebar-left-section-container'

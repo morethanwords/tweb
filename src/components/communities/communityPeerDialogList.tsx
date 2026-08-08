@@ -44,6 +44,10 @@ export type CommunityPeerDialogListProps<T> = {
   getCommunity?: (item: T) => Chat.community | Chat.communityForbidden,
   onClick?: (item: T, event: MouseEvent) => void,
   getContextMenu?: (item: T) => CommunityPeerDialogContextMenu,
+  // hand the rows to the shared dialog context menu (DialogsContextMenu), which reads
+  // what it needs off the row — see `getDataset`
+  withDialogContextMenu?: boolean,
+  getDataset?: (item: T) => Record<string, string>,
   class?: string,
   getClass?: (item: T) => string,
   avatarSize?: DialogElementSize,
@@ -151,7 +155,8 @@ export default function CommunityPeerDialogList<T>(
 
   appDialogsManager.setListClickListener({
     list,
-    onFound: () => false
+    onFound: () => false,
+    withContext: props.withDialogContextMenu
   });
   props.listRef?.(list);
 
@@ -255,6 +260,20 @@ export default function CommunityPeerDialogList<T>(
           element.removeAttribute('role');
           element.removeAttribute('tabindex');
         }
+      });
+
+      let itemDatasetKeys: string[] = [];
+      createEffect(() => {
+        const next = props.getDataset?.(item()) || {};
+        for(const key of itemDatasetKeys) {
+          if(!(key in next)) {
+            delete element.dataset[key];
+          }
+        }
+        for(const [key, value] of Object.entries(next)) {
+          element.dataset[key] = value;
+        }
+        itemDatasetKeys = Object.keys(next);
       });
 
       let itemClassTokens: string[] = [];

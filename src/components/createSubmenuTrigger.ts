@@ -14,17 +14,19 @@ export type CreateSubmenuArgs = {
   middleware: Middleware;
 };
 
-type CreateSubmenuTriggerArgs = {
-  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'regularText' | 'icon' | 'verify' | 'separator' | 'separatorDown' | 'onClose'>;
+// `T` carries the menu-specific fields its owner puts on every one of its buttons
+// (DialogsContextMenu's community mode, and the like) straight through to the result
+type CreateSubmenuTriggerArgs<T> = {
+  options: Pick<ButtonMenuItemOptionsVerifiable, 'text' | 'regularText' | 'icon' | 'verify' | 'separator' | 'separatorDown' | 'onClose'> & T;
   createSubmenu: (args: CreateSubmenuArgs) => MaybePromise<HTMLElement>;
   direction?: FloatingButtonMenuDirection;
 };
 
-export default function createSubmenuTrigger({
+export default function createSubmenuTrigger<T = {}>({
   options,
   createSubmenu,
   direction = 'right-start'
-}: CreateSubmenuTriggerArgs) {
+}: CreateSubmenuTriggerArgs<T>) {
   let
     isDisabled = false,
     currentMiddleware: MiddlewareHelper
@@ -63,7 +65,7 @@ export default function createSubmenuTrigger({
     isDisabled = false;
   };
 
-  const menuBtnOptions: ButtonMenuItemOptionsVerifiable = {
+  const menuBtnOptions: ButtonMenuItemOptionsVerifiable & T = {
     ...options,
 
     // * fix langpack

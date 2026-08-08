@@ -10,7 +10,8 @@ import {InputFieldTsx} from '@components/inputFieldTsx';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {toastNew} from '@components/toast';
-import getPeerTitle from '@components/wrappers/getPeerTitle';
+import removeChatFromCommunityWithConfirmation
+from '@components/communities/removeChatFromCommunity';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {
@@ -178,32 +179,13 @@ function EditCommunityForm(props: {
       return;
     }
 
-    const title = await getPeerTitle({peerId, plainText: true});
-    try {
-      await confirmationPopup({
-        titleLangKey: 'Community.RemoveChat',
-        descriptionLangKey: 'Community.RemoveChatConfirm',
-        descriptionLangArgs: [title],
-        button: {
-          langKey: 'Remove',
-          isDanger: true
-        }
-      });
-    } catch{
-      return;
-    }
-
     setRemovingPeerId(peerId);
     try {
-      await tab.managers.appCommunitiesManager.togglePeerLink({
+      await removeChatFromCommunityWithConfirmation({
         communityId,
         peerId,
-        action: 'deleted'
+        managers: tab.managers
       });
-      toastNew({langPackKey: 'Community.ChatRemoved'});
-    } catch(error) {
-      console.error('remove chat from community error', error);
-      toastNew({langPackKey: 'Error.AnError'});
     } finally {
       setRemovingPeerId(undefined);
     }
@@ -430,7 +412,7 @@ function EditCommunityForm(props: {
           )}
           getContextMenu={(linkedPeer) => canManageChats() ? {
             buttons: [{
-              icon: 'delete',
+              icon: 'crossround',
               text: 'Community.RemoveChat',
               onClick: () => {
                 void removePeer(getPeerId(linkedPeer.peer));

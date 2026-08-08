@@ -28,17 +28,36 @@ import {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import canRemoveCommunityPeer from '@appManagers/utils/communities/canRemovePeer';
-import confirmationPopup from '@components/confirmationPopup';
-import getPeerTitle from '@components/wrappers/getPeerTitle';
+import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedCommunity';
+import type {
+  CommunityLinkedPeerKind
+} from '@appManagers/utils/communities/getCommunityLinkedPeerKind';
 import type {
   CommunityDialog
 } from '@appManagers/appCommunitiesManager';
 import leaveCommunityWithConfirmation, {
   canLeaveCommunity
 } from '@components/communities/leaveCommunity';
+import removeChatFromCommunityWithConfirmation
+from '@components/communities/removeChatFromCommunity';
+import {
+  showCommunityMutePopup,
+  unmuteCommunity
+} from '@components/communities/communityMute';
+
+/**
+ * What an item does on a chat row inside a Community panel (`data-community-chat-kind`),
+ * on top of its own `verify`:
+ * - `undefined` — nothing special, the item behaves as it does for any other dialog
+ * - `'only'` — the item exists for Community chats only
+ * - `'expanded'` — the item acts on the chat's place in OUR chat list, so it is offered
+ *   only while the Community isn't folded into a single row (where those chats have no
+ *   place of their own)
+ */
+type CommunityChatMode = 'only' | 'expanded';
 
 type DialogContextMenuButton = ButtonMenuItemOptionsVerifiable & {
-  communityMode?: 'joined' | 'all'
+  communityChat?: CommunityChatMode
 };
 
 export default class DialogsContextMenu {
@@ -55,7 +74,8 @@ export default class DialogsContextMenu {
   private communityId?: ChatId;
   private communityDialog?: CommunityDialog;
   private isCommunityDialog = false;
-  private communityChatKind?: 'joined' | 'viewable';
+  private communityChatKind?: CommunityLinkedPeerKind;
+  private isCommunityCollapsed = false;
   private li: HTMLElement;
   private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
 
@@ -75,13 +95,15 @@ export default class DialogsContextMenu {
           (+li.dataset.communityId).toChatId() :
           undefined;
         this.communityChatKind = li.dataset.communityChatKind as
-          'joined' | 'viewable' | undefined;
+          CommunityLinkedPeerKind | undefined;
         this.isCommunityDialog = !!this.communityId &&
           !this.communityChatKind &&
           this.peerId.toChatId() === this.communityId;
         this.communityDialog = this.isCommunityDialog ?
           apiManagerProxy.getCommunityDialog(this.communityId) :
           undefined;
+        this.isCommunityCollapsed = !!this.communityChatKind &&
+          isCollapsedCommunity(apiManagerProxy.getChat(this.communityId));
         this.threadId = +li.dataset.threadId || undefined;
         this.monoforumParentPeerId = +li.dataset.monoforumParentPeerId || undefined;
 
@@ -128,6 +150,7 @@ export default class DialogsContextMenu {
         this.communityDialog = undefined;
         this.isCommunityDialog = false;
         this.communityChatKind = undefined;
+        this.isCommunityCollapsed = false;
       },
       findElement: (e) => {
         return findDialogListElement(e.target);
@@ -148,7 +171,9 @@ export default class DialogsContextMenu {
         appDialogsManager.openDialogInNewTab(this.li);
         cancelEvent(e);
       },
-      verify: () => IS_SHARED_WORKER_SUPPORTED && !this.monoforumParentPeerId
+      verify: () => IS_SHARED_WORKER_SUPPORTED &&
+        !this.monoforumParentPeerId &&
+        this.canOpenCommunityChat()
     }, {
       icon: 'topics',
       text: 'Community.View',
@@ -164,7 +189,9 @@ export default class DialogsContextMenu {
       icon: 'eye',
       text: 'ChatList.Context.Preview',
       onClick: this.onPreviewClick,
-      verify: () => !!this.dialog
+      // a Community chat we only watch has no dialog of its own, but its history is
+      // right there in the row — and shift+click already previews it
+      verify: () => !!this.dialog || this.communityChatKind === 'viewable'
     }, {
       icon: 'topics',
       text: 'TopicViewAsTopics',
@@ -211,6 +238,7 @@ export default class DialogsContextMenu {
       options: {
         icon: 'folder',
         text: 'AddToFolder',
+        communityChat: 'expanded',
         onClose: () => {
           this.addToFolderMenu?.controls.closeTooltip?.();
         },
@@ -220,6 +248,7 @@ export default class DialogsContextMenu {
     }), {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
+      communityChat: 'expanded',
       onClick: this.onPinClick,
       verify: async() => {
         if(this.isCommunityDialog) {
@@ -244,6 +273,7 @@ export default class DialogsContextMenu {
     }, {
       icon: 'unpin',
       text: 'ChatList.Context.Unpin',
+      communityChat: 'expanded',
       onClick: this.onPinClick,
       verify: async() => {
         if(this.isCommunityDialog) {
@@ -268,12 +298,12 @@ export default class DialogsContextMenu {
     }, {
       icon: 'mute',
       text: 'ChatList.Context.Mute',
-      communityMode: 'joined',
       onClick: this.onMuteClick,
       verify: async() => {
         if(this.isCommunityDialog) {
-          return !this.managers.appCommunitiesManager
-          .isCommunityMuted(this.communityId);
+          // await it: the managers are async proxies, and `!promise` is always false
+          return !(await this.managers.appCommunitiesManager
+          .isCommunityMuted(this.communityId));
         }
         return !!this.dialog &&
           !this.monoforumParentPeerId &&
@@ -286,7 +316,6 @@ export default class DialogsContextMenu {
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
-      communityMode: 'joined',
       onClick: this.onUnmuteClick,
       verify: () => {
         if(this.isCommunityDialog) {
@@ -304,6 +333,7 @@ export default class DialogsContextMenu {
     }, {
       icon: 'archive',
       text: 'Archive',
+      communityChat: 'expanded',
       onClick: this.onArchiveClick,
       verify: () => isDialog(this.dialog) &&
         !this.threadId &&
@@ -313,6 +343,7 @@ export default class DialogsContextMenu {
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
+      communityChat: 'expanded',
       onClick: this.onArchiveClick,
       verify: () => isDialog(this.dialog) &&
         !this.threadId &&
@@ -372,10 +403,12 @@ export default class DialogsContextMenu {
       onClick: () => this.onToggleFeeClick(false),
       verify: () => this.verifyToggleFee(false)
     }, {
-      icon: 'delete',
+      // NOT the trash: this unlinks the chat, it doesn't delete it — and the Delete item
+      // right below would otherwise wear the very same icon
+      icon: 'crossround',
       className: 'danger',
       text: 'Community.RemoveChat',
-      communityMode: 'all',
+      communityChat: 'only',
       onClick: this.onRemoveFromCommunityClick,
       verify: () => this.canRemoveFromCommunity
     }, {
@@ -386,19 +419,17 @@ export default class DialogsContextMenu {
       verify: () => this.canDelete
     }].filter(Boolean) as DialogContextMenuButton[];
 
+    // a chat row inside a Community panel is a dialog row like any other, so the items
+    // stay the ones every dialog gets — only those that make no sense there are dropped
     for(const button of this.buttons) {
       const verify = button.verify;
       button.verify = () => {
         if(this.communityChatKind) {
-          if(!button.communityMode) {
+          if(button.communityChat === 'expanded' && this.isCommunityCollapsed) {
             return false;
           }
-          if(
-            button.communityMode === 'joined' &&
-            this.communityChatKind !== 'joined'
-          ) {
-            return false;
-          }
+        } else if(button.communityChat === 'only') {
+          return false;
         }
 
         return verify ? verify() : true;
@@ -434,6 +465,17 @@ export default class DialogsContextMenu {
   };
 
   public hasAddToFolderOpen = () => !!this.addToFolderMenu;
+
+  /**
+   * A Community lists chats we can't open at all: one that would take a join request, or
+   * one hidden behind a private link. Those rows still get the items that act on the LINK
+   * (removing the chat from the Community), never the ones that open or read the chat.
+   */
+  private canOpenCommunityChat = () => {
+    return !this.communityChatKind ||
+      this.communityChatKind === 'joined' ||
+      this.communityChatKind === 'viewable';
+  };
 
   private hasFilters = memoizeAsyncWithTTL(async() => {
     const filters = await this.managers.filtersStorage.getDialogFilters();
@@ -528,10 +570,7 @@ export default class DialogsContextMenu {
 
   private onUnmuteClick = () => {
     if(this.isCommunityDialog) {
-      this.managers.appCommunitiesManager.muteCommunity(
-        this.communityId,
-        0
-      );
+      unmuteCommunity(this.communityId, this.managers);
       return;
     }
 
@@ -539,12 +578,12 @@ export default class DialogsContextMenu {
   };
 
   private onMuteClick = () => {
-    PopupElement.createPopup(
-      PopupMute,
-      this.isCommunityDialog ? undefined : this.peerId,
-      this.threadId,
-      this.isCommunityDialog ? this.communityId : undefined
-    );
+    if(this.isCommunityDialog) {
+      showCommunityMutePopup(this.communityId);
+      return;
+    }
+
+    PopupElement.createPopup(PopupMute, this.peerId, this.threadId);
   };
 
   private onPreviewClick = () => {
@@ -604,42 +643,18 @@ export default class DialogsContextMenu {
     } catch{}
   }
 
-  private onRemoveFromCommunityClick = async() => {
+  private onRemoveFromCommunityClick = () => {
     const communityId = this.communityId;
     const peerId = this.peerId;
     if(!communityId || !peerId) {
       return;
     }
 
-    const title = await getPeerTitle({
+    void removeChatFromCommunityWithConfirmation({
+      communityId,
       peerId,
-      plainText: true
+      managers: this.managers
     });
-    try {
-      await confirmationPopup({
-        titleLangKey: 'Community.RemoveChat',
-        descriptionLangKey: 'Community.RemoveChatConfirm',
-        descriptionLangArgs: [title],
-        button: {
-          langKey: 'Remove',
-          isDanger: true
-        }
-      });
-    } catch{
-      return;
-    }
-
-    try {
-      await this.managers.appCommunitiesManager.togglePeerLink({
-        communityId,
-        peerId,
-        action: 'deleted'
-      });
-      toastNew({langPackKey: 'Community.ChatRemoved'});
-    } catch(error) {
-      console.error('remove chat from community error', error);
-      toastNew({langPackKey: 'Error.AnError'});
-    }
   };
 
   private onLeaveCommunityClick = () => {

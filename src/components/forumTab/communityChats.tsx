@@ -33,6 +33,7 @@ import {
   getCommunityPeerSubtitle
 } from '@components/communities/communityPeerStatus';
 import hasRights from '@appManagers/utils/chats/hasRights';
+import InlinePortal from '@helpers/solid/inlinePortal';
 import {
   CommunityLinkedChat,
   CommunityLinkedChatKind,
@@ -96,6 +97,13 @@ function CommunityPeerSection(props: {
           items={props.items}
           middleware={props.tab.middlewareHelper.get()}
           getPeerId={(item) => item.peerId}
+          // these rows are chats of the Community too, so they get the same menu — it is
+          // the item verifies that whittle it down to what a chat we're not in can do
+          withDialogContextMenu
+          getDataset={(item) => ({
+            communityId: '' + props.tab.peerId.toChatId(),
+            communityChatKind: item.kind
+          })}
           getSubtitle={(item) => getCommunityPeerSubtitle(
             apiManagerProxy.getPeer(item.peerId)
           )}
@@ -302,14 +310,16 @@ export default function CommunityChats(props: {
           size={32}
         />
       </Portal>
-      <Portal mount={props.tab.title}>
+      {/* not a Portal: its container div would nest inside the header rows and
+          break their text-overflow */}
+      <InlinePortal mount={props.tab.title}>
         {community()?.title || i18n('Community.Chats')}
-      </Portal>
-      <Portal mount={props.tab.subtitle}>
+      </InlinePortal>
+      <InlinePortal mount={props.tab.subtitle}>
         {chatsCount() === undefined ?
           i18n('Community.Title') :
           i18n('Community.ChatsCount', [chatsCount()])}
-      </Portal>
+      </InlinePortal>
       <Show
         when={
           full() ||

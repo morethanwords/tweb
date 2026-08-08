@@ -16,6 +16,9 @@ export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: C
 export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial<{
   peerId: PeerId,
   threadId: number,
+  // for a peer the plain avatar can't draw on its own (a Community and its decoration);
+  // the caller owns it and its teardown
+  avatar: HTMLElement,
   title: string | HTMLElement | DocumentFragment,
   titleLangKey: LangPackKey,
   titleLangArgs: any[],
@@ -41,7 +44,9 @@ export default class PopupPeer extends PopupElement {
       buttons: options.buttons && addCancelButton(options.buttons)
     });
 
-    if(options.peerId) {
+    if(options.avatar) {
+      this.header.prepend(options.avatar);
+    } else if(options.peerId) {
       const isSavedDialog = !!(options.peerId === rootScope.myId && options.threadId);
       const {node} = avatarNew({
         middleware: this.middlewareHelper.get(),

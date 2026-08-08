@@ -1,6 +1,7 @@
 import {createEffect, createRoot} from 'solid-js';
 import {render} from 'solid-js/web';
-import CommunityAvatar from '@components/communities/communityAvatar';
+import createCommunityAvatarElement
+from '@components/communities/communityAvatarElement';
 import CommunityChildBadge from '@components/communities/communityChildBadge';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {i18n} from '@lib/langPack';
@@ -16,31 +17,12 @@ import {
 } from '@stores/communities';
 import styles from '@components/communities/communityDialog.module.scss';
 
-function createCommunityAvatarElement(communityId: ChatId) {
-  const mount = document.createElement('div');
-  const dispose = render(() => {
-    const community = useCommunity(() => communityId);
-    return (
-      <CommunityAvatar
-        community={community()}
-        title={community()?.title}
-        size={54}
-      />
-    );
-  }, mount);
-
-  return {
-    dispose,
-    element: mount.firstElementChild as HTMLElement
-  };
-}
-
 export function createCommunityDialogListElement(
   manager: Pick<AppDialogsManager, 'addDialogNew' | 'setLastMessageN'>,
   communityId: ChatId
 ): DialogElement {
   const peerId = communityId.toPeerId(true);
-  const avatar = createCommunityAvatarElement(communityId);
+  const avatar = createCommunityAvatarElement(communityId, 54);
   const dialogElement = manager.addDialogNew({
     peerId,
     avatarElement: avatar.element,

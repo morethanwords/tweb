@@ -75,6 +75,7 @@ from '@components/communities/communityPeerDialogList';
 type Item = {
   peerId: PeerId,
   subtitle: string,
+  kind?: string,
   class?: string,
   rightInteractive?: boolean,
   overlayPeerId?: PeerId,
@@ -427,6 +428,42 @@ describe('CommunityPeerDialogList', () => {
     dispose = undefined;
     expect(resizeObserverInstances[0].unobserve).toHaveBeenCalledOnce();
     expect(resizeObserverInstances[0].disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('hands rows to the shared dialog menu with what it reads off them', () => {
+    const peerId = (7 as ChatId).toPeerId(true);
+    const [items, setItems] = createSignal<Item[]>([{
+      peerId,
+      subtitle: 'Chat',
+      kind: 'requestable'
+    }]);
+    const container = document.createElement('div');
+    document.body.append(container);
+
+    dispose = render(() => (
+      <CommunityPeerDialogList
+        items={items()}
+        middleware={{} as any}
+        getPeerId={(item) => item.peerId}
+        getSubtitle={(item) => item.subtitle}
+        withDialogContextMenu
+        getDataset={(item) => ({
+          communityId: '5',
+          communityChatKind: item.kind
+        })}
+      />
+    ), container);
+
+    expect(mocks.setListClickListener).toHaveBeenCalledWith(
+      expect.objectContaining({withContext: true})
+    );
+    const row = mocks.dialogs.get(peerId).dom.listEl as HTMLElement;
+    expect(row.dataset.communityId).toBe('5');
+    expect(row.dataset.communityChatKind).toBe('requestable');
+
+    // the kind follows the item, and a dropped key leaves nothing stale behind
+    setItems([{peerId, subtitle: 'Chat', kind: 'hidden'}]);
+    expect(row.dataset.communityChatKind).toBe('hidden');
   });
 
   it('renders Community chat counts with a title fallback', () => {

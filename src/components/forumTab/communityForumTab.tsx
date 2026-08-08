@@ -28,6 +28,10 @@ import {
   useCommunityDialog,
   useJoinedCommunities
 } from '@stores/communities';
+import {
+  showCommunityMutePopup,
+  unmuteCommunity
+} from '@components/communities/communityMute';
 import openCommunityPendingRequests
 from '@components/communities/openCommunityPendingRequests';
 import openCommunityLinkedChat
@@ -105,6 +109,16 @@ export class CommunityForumTab extends ForumTab {
       text: 'Community.Edit',
       onClick: this.openEdit,
       verify: this.canEditCommunity
+    }, {
+      icon: 'mute',
+      text: 'ChatList.Context.Mute',
+      onClick: this.openMute,
+      verify: async() => !(await this.isMuted())
+    }, {
+      icon: 'unmute',
+      text: 'ChatList.Context.Unmute',
+      onClick: this.unmute,
+      verify: this.isMuted
     }];
     const menu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -115,8 +129,12 @@ export class CommunityForumTab extends ForumTab {
     const communityId = this.peerId.toChatId();
     this.menuDispose = createRoot((dispose) => {
       const community = useCommunity(() => communityId);
-      // our rights in the Community decide whether the menu has anything to show
-      createEffect(on(community, () => updateMenuVisibility()));
+      const communityDialog = useCommunityDialog(() => communityId);
+      // our rights in the Community and its notify settings decide what the menu can show
+      createEffect(on(
+        [community, communityDialog],
+        () => updateMenuVisibility()
+      ));
       return dispose;
     });
 
@@ -194,6 +212,20 @@ export class CommunityForumTab extends ForumTab {
     return this.managers.appCommunitiesManager.canEditCommunity(
       this.peerId.toChatId()
     );
+  };
+
+  private isMuted = () => {
+    return this.managers.appCommunitiesManager.isCommunityMuted(
+      this.peerId.toChatId()
+    );
+  };
+
+  private openMute = () => {
+    showCommunityMutePopup(this.peerId.toChatId());
+  };
+
+  private unmute = () => {
+    void unmuteCommunity(this.peerId.toChatId(), this.managers);
   };
 
   private openEdit = async() => {
