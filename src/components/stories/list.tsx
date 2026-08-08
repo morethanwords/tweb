@@ -309,6 +309,11 @@ function _StoriesList(props: {
     disableHoverWhenFolded: true
   });
 
+  // * declared before `r`: creating it maps `peers()` through `Item` right away, so a list
+  // * that already has its peers (a provider constructed with them) would read this memo
+  // * before initialization
+  const shouldStoriesSegmentsBeFolded = createMemo(() => progress() !== STATE_UNFOLDED);
+
   const r = (
     <div
       ref={container}
@@ -436,8 +441,6 @@ function _StoriesList(props: {
       }
     });
   });
-
-  const shouldStoriesSegmentsBeFolded = createMemo(() => progress() !== STATE_UNFOLDED);
 
   return (
     <>
