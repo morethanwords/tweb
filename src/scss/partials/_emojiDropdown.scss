@@ -51,7 +51,12 @@ $menu-search-translateY: -#{$menu-height};
     transform-origin: calc(9rem * var(--reflect)) 4.625rem;
     transform: scale(.85);
     bottom: auto;
-    inset-inline-start: auto;
+    // Physical `right`, not `inset-inline-start`: --top/--left are physical viewport
+    // coordinates measured in JS, and the build lowers logical inset properties into
+    // `:lang()`-scoped rules emitted after this block with a higher specificity. An
+    // `inset-inline-start: auto` here becomes `left: auto` in the bundle, beating the
+    // `left` below and pinning the panel to the base rule's `inset-inline-end: 0`.
+    right: auto;
     top: string.unquote('min(100vh - var(--height) - .5rem, var(--top))');
     left: string.unquote('min(100vw - var(--width) - .5rem, max(.5rem, var(--left)))');
   }
