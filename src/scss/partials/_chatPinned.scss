@@ -249,6 +249,10 @@
 .pinned-container {
   --container-height: var(--pinned-container-height);
   --pc-button-height: 2.5rem;
+  // Width of a pill centred between two button slots — one at each end of the
+  // plate, whether or not both actually carry a button (`.pinned-translation`,
+  // `.pinned-requests`).
+  --pc-centered-button-width: calc(100% - var(--pc-button-height) * 2 - 1rem);
   position: relative;
   inset-inline: 0;
   margin: 0;
@@ -673,18 +677,35 @@
 }
 
 .pinned-requests {
-  &-title {
-    color: var(--primary-color);
-    font-weight: var(--font-weight-bold);
+  color: var(--primary-color);
+  justify-content: center;
+
+  // Stretched and centred exactly like the translation plate's pill.
+  &-primary-button {
+    width: var(--pc-centered-button-width);
   }
 
-  &-title,
+  // The faces take the start slot exactly the way the close button takes the
+  // end one — out of flow, so neither of them shifts the centred label. Same
+  // .25rem inset: an avatar is `--pc-button-height` tall, like that button.
   .stacked-avatars {
+    position: absolute;
+    inset-inline-start: .25rem;
     pointer-events: none;
+
+    // A phone's plate is too narrow for the full-size stack: the label is
+    // centred on the plate, so it would run under the faces. Same trade-off as
+    // `.pinned-group-call` — shrink the stack (the avatars are still rendered
+    // at full size, so they stay sharp) rather than give up the centring.
+    // `!important` because StackedAvatars writes the var as an inline style.
+    @include respond-to(handhelds) {
+      --avatar-size: 2rem !important;
+    }
   }
 
-  &-wrapper {
-    justify-content: space-between;
+  &-close {
+    position: absolute;
+    inset-inline-end: .25rem;
   }
 }
 
@@ -771,7 +792,7 @@
   justify-content: center;
 
   &-primary-button {
-    width: calc(100% - var(--pc-button-height) * 2 - 1rem);
+    width: var(--pc-centered-button-width);
     gap: .375rem;
 
     &-icon {
