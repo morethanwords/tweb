@@ -1,2 +1,0 @@
-import{n as e,t}from"./peerTypeSection-BRDabAS3.js";var n=e(e=>{let n=t(`photo`,`AutoDownloadPhotosTitle`,e.listenerSetter);e.scrollable.append(n.container)});export{n as default};
-//# sourceMappingURL=photo-B_Ippv8h.js.map

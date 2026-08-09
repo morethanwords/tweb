@@ -1,2 +1,0 @@
-import{I as e,f as t,m as n}from"./solid-C3SSzulL.js";var r=n({collect:()=>{}}),i=e=>t(r.Provider,{get value(){return{collect:e.onCollect}},get children(){return e.children}});i.createHelper=()=>{let e=[],t=t=>{e.push(t)};return{onCollect:e=>t(e),await:()=>(t=()=>{},Promise.all(e))}};var a=()=>e(r);export{a as n,i as t};
-//# sourceMappingURL=promiseCollector-DkZbSbVm.js.map

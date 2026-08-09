@@ -1,0 +1,5 @@
+import{p as e}from"./userAgent-CAySW5Wl.js";import{r as t}from"./index-CQTwOXTj.js";function n(e,t=!1){let n=`
+  <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
+  <circle class="preloader-path" cx="50" cy="50" r="20" fill="none" stroke-miterlimit="10"/>
+  </svg>`;if(t){let t=document.createElement(`div`);return t.classList.add(`preloader`),t.innerHTML=n,e&&e.appendChild(t),t}return e.insertAdjacentHTML(`beforeend`,n),e.lastElementChild}e.putPreloader=n;function r(e,t=`check`){let r=e.querySelector(`.tgico`);return r?.remove(),e.disabled=!0,n(e),()=>{e.replaceChildren(),r&&e.append(r),e.removeAttribute(`disabled`)}}function i(e){let r=document.createElement(`div`);return r.className=t(`preloader`,e?.class),n(r),r}export{n,r,i as t};
+//# sourceMappingURL=putPreloader-XE7cUCCo.js.map

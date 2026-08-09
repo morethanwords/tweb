@@ -1,0 +1,2 @@
+import{lt as e}from"./apiManagerProxy-fZ7kKCtg.js";function t({doc:t,row:n,size:r,managers:i}){let a=n.media,o=n.createMedia(`small`);a&&o.classList.add(`hide`);let s=a?[]:void 0,c=r===`small`?32:48,l=e({div:o,doc:t,width:c,height:c,loadPromises:s,managers:i}).then(({render:e})=>e);return s&&Promise.all(s).then(()=>{o.classList.remove(`hide`),a.remove()}),l}export{t};
+//# sourceMappingURL=stickerToRow-BXPOubla.js.map

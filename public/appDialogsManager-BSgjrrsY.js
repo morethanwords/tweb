@@ -1,2 +1,0 @@
-import{t as e}from"./rolldown-runtime-QTnfLwEv.js";import{F as t,I as n,L as r,R as i,z as a}from"./buttonMenu-DA5tnf4q.js";var o=e(((e,t)=>{t.exports={}}));export{t as AppDialogsManager,n as DIALOG_LIST_ELEMENT_TAG,r as DialogElement,i as default,a as findDialogListElement,o as t};
-//# sourceMappingURL=appDialogsManager-BSgjrrsY.js.map
