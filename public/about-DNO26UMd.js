@@ -1,0 +1,2 @@
+import{t as e}from"./privacyTab-CCS8yV4m.js";import{t}from"./privacySection-DD1okhtw.js";var n=`Privacy.BioCaption`,r=e(`privacy-about`,e=>{new t({tab:e,title:`Privacy.Bio`,inputKey:`inputPrivacyKeyAbout`,captions:[n,n,n],exceptionTexts:[`PrivacySettingsController.NeverAllow`,`PrivacySettingsController.AlwaysAllow`],appendTo:e.scrollable,managers:e.managers})});export{r as default};
+//# sourceMappingURL=about-DNO26UMd.js.map

@@ -42,7 +42,7 @@ const lang = {
   'ChatAutomation.BotPlaceholder': 'Bot Username',
   'ChatAutomation.BotDescription': 'Enter the username or URL of the Telegram bot that you want to automatically process your chats.',
   'ChatAutomation.BotNotFound': 'Chatbot not found',
-  'ChatAutomation.BotUnsupported': 'This bot doesn\'t support Telegram Business yet.',
+  'ChatAutomation.BotUnsupported': 'This bot doesn\'t support Secretary Mode yet.',
   'ChatAutomation.Searching': 'Searching for bots...',
   'ChatAutomation.SearchFailed': 'Couldn\'t search for bots. Try again.',
   'ChatAutomation.SetupNotCompletedTitle': 'No Bot Added',
