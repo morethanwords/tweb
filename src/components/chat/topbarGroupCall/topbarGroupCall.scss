@@ -1,0 +1,44 @@
+@use "../../../scss/mixins/respondTo" as *;
+
+.pinned-group-call {
+  height: var(--pinned-group-call-height) !important;
+  gap: .25rem;
+
+  // Equal-basis columns on both sides — that is what puts the avatar stack on
+  // the plate's centre and keeps it there no matter how long the title is.
+  &-side {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+
+    // Auto min-width is deliberate here: the end column may not shrink below
+    // the join button, only the text column is allowed to collapse.
+    &.is-end {
+      min-width: auto;
+      justify-content: flex-end;
+    }
+  }
+
+  &-content {
+    min-width: 0;
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
+    padding-inline: .5rem;
+  }
+
+  .stacked-avatars {
+    flex: 0 0 auto;
+    pointer-events: none;
+
+    // Holding the centre costs the side columns width, and on a phone that is
+    // enough to clip the participants counter. Shrink the stack (the avatars
+    // are still rendered at full size, so they stay sharp) instead of giving
+    // up the centring. `!important` because StackedAvatars writes the var as
+    // an inline style, which a plain rule can never outrank.
+    @include respond-to(handhelds) {
+      --avatar-size: 1.5rem !important;
+    }
+  }
+}

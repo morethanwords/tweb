@@ -11,10 +11,12 @@ import type Chat from '@components/chat/chat';
 import type ChatTopbar from '@components/chat/topbar';
 import {AppManagers} from '@lib/managers';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
+import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import createChatRequestsPlate, {ChatRequestsPlate} from '@components/chat/requests';
 import createChatActionsPlate, {ChatActionsPlate} from '@components/chat/actions';
 import createChatRemoveFeePlate, {ChatRemoveFeePlate} from '@components/chat/removeFee';
 import createChatLivePlate, {ChatLivePlate} from '@components/chat/topbarLive/container';
+import createChatGroupCallPlate, {ChatGroupCallPlate} from '@components/chat/topbarGroupCall/container';
 import createChatTranslationPlate, {ChatTranslationPlate} from '@components/chat/translation';
 import createChatSponsoredPlate, {ChatSponsoredPlate} from '@components/chat/topbarSponsored';
 import {TopbarPlateController} from '@components/chat/topbarPlate';
@@ -26,6 +28,7 @@ export type TopbarPlates = {
   automation: ChatAutomationPlate,
   removeFee: ChatRemoveFeePlate,
   live: ChatLivePlate | undefined,
+  groupCall: ChatGroupCallPlate | undefined,
   translation: ChatTranslationPlate,
   sponsored: ChatSponsoredPlate,
   /** Ordered list of all constructed plates. Used by `topbar.setFloating`. */
@@ -44,12 +47,13 @@ export function createTopbarPlates(
   const automation = createChatAutomationPlate(topbar, chat, managers);
   const actions = createChatActionsPlate(topbar, chat, managers, automation);
   const live = IS_LIVE_STREAM_SUPPORTED ? createChatLivePlate(topbar, chat, managers) : undefined;
+  const groupCall = IS_GROUP_CALL_SUPPORTED ? createChatGroupCallPlate(topbar, chat, managers) : undefined;
   const translation = createChatTranslationPlate(topbar, chat, managers);
   const removeFee = createChatRemoveFeePlate(topbar, chat, managers);
   const sponsored = createChatSponsoredPlate(topbar, chat, managers);
 
   // Order matches the visual stack inside `floatingPlatesWrapper`.
-  const all = [requests, actions, automation, live, translation, removeFee, sponsored].filter(Boolean);
+  const all = [requests, actions, automation, live, groupCall, translation, removeFee, sponsored].filter(Boolean);
 
   return {
     requests,
@@ -57,6 +61,7 @@ export function createTopbarPlates(
     automation,
     removeFee,
     live,
+    groupCall,
     translation,
     sponsored,
     all,

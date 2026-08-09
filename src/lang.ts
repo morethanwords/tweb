@@ -4242,6 +4242,7 @@ const lang = {
   'VoiceChat.Chat.StartNew': 'Video chat ended. Start a new one?',
   'VoiceChat.Chat.StartNew.OK': 'Start',
   'VoiceChat.Chat.Ended': 'Video chat ended.',
+  'VoiceChat.Topbar.Join': 'Join',
   'VoiceChat.Invite.InviteMembers': 'Invite members',
   'VoiceChat.Status.Connecting': 'Connecting...',
   'VoiceChat.Status.Members': {

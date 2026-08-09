@@ -33,6 +33,7 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
 	--pinned-message-height: var(--pinned-container-height);
   --pinned-translation-height: var(--pinned-container-height);
   --pinned-live-height: var(--pinned-container-height);
+  --pinned-group-call-height: var(--pinned-container-height);
   --pinned-fee-height: 4.625rem;
 
   min-height: var(--chat-topbar-height) !important;

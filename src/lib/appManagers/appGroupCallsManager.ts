@@ -330,6 +330,34 @@ export class AppGroupCallsManager extends AppManager {
   }
 
   /**
+   * The call plus the first `limit` participant peers — everything the chat
+   * topbar plate needs to render (title, counter, avatar stack) in one hop,
+   * without shipping the whole participants map across the worker boundary.
+   *
+   * `getGroupCallFull` short-circuits on an already-cached call, so the roster
+   * can still be empty after it resolves — fall back to an explicit fetch then.
+   */
+  public async getGroupCallPreview(id: GroupCallId, limit: number) {
+    const call = await this.getGroupCallFull(id);
+    if(call._ !== 'groupCall') {
+      return {call, peerIds: [] as PeerId[]};
+    }
+
+    let participants = this.getCachedParticipants(id);
+    if(!participants.size) {
+      ({participants} = await this.getGroupCallParticipants(id));
+    }
+
+    const peerIds: PeerId[] = [];
+    for(const peerId of participants.keys()) {
+      if(peerIds.length >= limit) break;
+      peerIds.push(peerId);
+    }
+
+    return {call, peerIds};
+  }
+
+  /**
    * Re-fetch the full SFU participant list and reconcile it against our cache.
    *
    * Conferences (TdE2E) don't get reliable `updateGroupCallParticipants` pushes
