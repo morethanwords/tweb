@@ -183,6 +183,14 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
+    // `es2020` says nothing about browsers, so lightningcss falls back to a target old enough to
+    // lower every logical property into a pair of `:lang()` rules — 13680 of them, emitted after
+    // the block they came from and with a higher specificity, so a physical `left`/`margin-left`
+    // authored alongside `inset-inline-*` silently loses (that is what pinned the emoji panel to
+    // the window edge in a built bundle only). These are the versions that support logical
+    // properties natively, so lightningcss leaves them alone; RTL runs off `documentElement.dir`,
+    // which index.ts sets on every language, not off `:lang()`.
+    cssTarget: ['chrome87', 'edge87', 'firefox78', 'safari14.1'],
     sourcemap: true,
     assetsDir: '',
     copyPublicDir: false,

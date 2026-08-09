@@ -909,14 +909,21 @@ const Stories = (props: {
 
   peerTitleElement.classList.add(styles.ViewerStoryHeaderName);
 
-  const bindOnAnyPopupClose = (wasPlaying = !stories.paused) => () => onAnyPopupClose(wasPlaying);
+  // * `wasPlaying` is resolved in the body, not as a parameter default: the production
+  // * minifier binds a closure variable read from a parameter default to the wrong symbol
+  const wasPlayingOr = (wasPlaying?: boolean) => wasPlaying ?? !stories.paused;
+  const bindOnAnyPopupClose = (wasPlaying?: boolean) => {
+    const _wasPlaying = wasPlayingOr(wasPlaying);
+    return () => onAnyPopupClose(_wasPlaying);
+  };
   const onAnyPopupClose = (wasPlaying: boolean) => {
     if(wasPlaying) {
       actions.play();
     }
   };
 
-  const onShareClick = (wasPlaying = !stories.paused) => {
+  const onShareClick = (_wasPlaying?: boolean) => {
+    const wasPlaying = wasPlayingOr(_wasPlaying);
     actions.pause();
     handleShareStory({
       story: currentStory(),

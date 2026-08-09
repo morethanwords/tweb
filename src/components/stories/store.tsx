@@ -130,10 +130,16 @@ export const createStoriesStore = (props: {
   const getNearestStory = (
     next: boolean,
     loop?: boolean,
-    offsetIndex = state.index,
-    offsetPeer = state.peers[offsetIndex],
-    offsetStoryIndex = offsetPeer?.index
+    _offsetIndex?: number,
+    _offsetPeer?: StoriesContextPeerState,
+    _offsetStoryIndex?: number
   ): ChangeStoryParams => {
+    // * these are resolved in the body, not as parameter defaults: the production minifier
+    // * binds a closure variable read from a parameter default to the wrong symbol
+    const offsetIndex = _offsetIndex ?? state.index;
+    const offsetPeer = _offsetPeer ?? state.peers[offsetIndex];
+    const offsetStoryIndex = _offsetStoryIndex ?? offsetPeer?.index;
+
     if(!offsetPeer) { // * the index doesn't address a peer (an empty or a rebuilt list)
       return;
     }
