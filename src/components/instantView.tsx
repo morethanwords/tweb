@@ -60,6 +60,56 @@ const InstantViewContext = createContext<InstantViewContextValue>();
 // (after wrapUrl prepends the missing scheme to a bare fragment).
 const FRAGMENT_HREF_RE = /^(?:[a-z]+:\/\/)?(#[^#?]+)$/i;
 
+// An embed block carries third-party provider markup (GitHub Gist, Twitter, YouTube, ...).
+// Without a sandbox the frame keeps every capability it is given by default, and an
+// `html` embed additionally inherits this origin, so its scripts would run as
+// web.telegram.org with access to the parent document and its storage.
+const EMBED_SANDBOX_ATTRIBUTES = [
+  'allow-scripts',
+  'allow-popups',
+  'allow-popups-to-escape-sandbox', // links inside the embed must open as normal pages
+  'allow-forms',
+  'allow-modals'
+].join(' ');
+
+// A cross-origin `url` embed already loads under the provider's own origin, so keeping it
+// costs nothing here and preserves the provider's cookies and storage.
+const EMBED_URL_SANDBOX_ATTRIBUTES = EMBED_SANDBOX_ATTRIBUTES + ' allow-same-origin';
+
+// An `html` embed is a wrapper document whose canonical link points at Telegram's own embed host
+// (embed.telegra.ph), which serves the very same markup. Pointing the frame at that URL is what
+// isolates it: the frame lands on a real, non-Telegram origin instead of inheriting this one.
+// Rendering the markup inline would work too, but only in an opaque origin, and provider widgets
+// need storage there — Twitter's createTweet() resolves to null and draws nothing.
+function extractEmbedUrl(html: string) {
+  try {
+    const href = new DOMParser().parseFromString(html, 'text/html') // does not run scripts
+    .querySelector('link[rel~="canonical" i]')
+    ?.getAttribute('href')
+    ?.trim();
+    const url = href && new URL(href);
+    return url && (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : undefined;
+  } catch(err) {
+    return undefined;
+  }
+}
+
+function getEmbedSandbox(html: string, url: string) {
+  if(html) { // srcdoc — allow-same-origin would hand it this origin, which is the whole problem
+    return EMBED_SANDBOX_ATTRIBUTES;
+  }
+
+  let isCrossOrigin: boolean;
+  try {
+    isCrossOrigin = new URL(url, location.href).origin !== location.origin;
+  } catch(err) {
+    isCrossOrigin = false;
+  }
+
+  // a same-origin frame with allow-same-origin can reach into the parent and lift its own sandbox
+  return isCrossOrigin ? EMBED_URL_SANDBOX_ATTRIBUTES : EMBED_SANDBOX_ATTRIBUTES;
+}
+
 function onClick(context: InstantViewContextValue, e: MouseEvent) {
   // Code block header buttons (copy / wrap toggle) — same affordance as chat bubbles, since IV
   // reuses wrapRichText's `messageEntityPre` markup for highlighted code.
@@ -868,8 +918,15 @@ function Block(props: {
         undefined;
 
       const [height, setHeight] = createSignal(0);
-      const webView = block.html || block.url ?
-        new TelegramWebView({html: block.html, url: block.url}) :
+      // prefer the canonical URL, and only render the markup inline when there is none
+      const embedUrl = block.url || (block.html ? extractEmbedUrl(block.html) : undefined);
+      const embedHtml = embedUrl ? undefined : block.html;
+      const webView = embedHtml || embedUrl ?
+        new TelegramWebView({
+          html: embedHtml,
+          url: embedUrl,
+          sandbox: getEmbedSandbox(embedHtml, embedUrl)
+        }) :
         undefined;
       if(webView) {
         webView.iframe.classList.add(styles.EmbedIframe);
