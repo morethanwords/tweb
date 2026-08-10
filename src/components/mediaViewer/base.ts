@@ -70,6 +70,7 @@ import {ButtonMenuItemWithAuxiliaryText} from '@lib/mediaPlayer/qualityLevelsSwi
 import formatBytes from '@helpers/formatBytes';
 import getMediaViewerClipPath from '@components/mediaViewer/clipPath';
 import getMediaViewerSnapshotSize from '@components/mediaViewer/snapshotSize';
+import shouldSnapshotImage from '@components/mediaViewer/shouldSnapshotImage';
 import getMediaViewerDocumentSize from '@components/mediaViewer/documentSize';
 import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
@@ -1544,12 +1545,17 @@ export default class AppMediaViewerBase<
       if(elements.length) {
         const snapshotSource = elements.pop();
         target = snapshotSource;
-        // A rendered image can reuse the browser's already-decoded resource. Canvas
+        // A rendered image can reuse the browser's already-decoded resource, so canvas
         // snapshots are reserved for video/canvas frames (and the blurred live-stream
-        // background), and their backing store is bounded to the displayed size. The
-        // old intrinsic-size copy synchronously allocated and painted multi-megapixel
-        // canvases immediately before the very first transition.
-        if(this.live || !(snapshotSource instanceof HTMLImageElement)) {
+        // background) plus images whose blob URL the worker already dropped — see
+        // shouldSnapshotImage. Their backing store is bounded to the displayed size:
+        // the old intrinsic-size copy synchronously allocated and painted
+        // multi-megapixel canvases immediately before the very first transition.
+        if(
+          this.live ||
+          !(snapshotSource instanceof HTMLImageElement) ||
+          shouldSnapshotImage(snapshotSource)
+        ) {
           const sourceWidth = snapshotSource instanceof HTMLImageElement ? snapshotSource.naturalWidth :
             snapshotSource instanceof HTMLVideoElement ? snapshotSource.videoWidth : snapshotSource.width;
           const sourceHeight = snapshotSource instanceof HTMLImageElement ? snapshotSource.naturalHeight :
