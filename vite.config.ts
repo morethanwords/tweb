@@ -191,7 +191,7 @@ export default defineConfig({
   },
   server: serverOptions,
   define: {
-    'import.meta.env.VITE_APP_ORIGIN': JSON.stringify(APP_ORIGIN),
+    'import.meta.env.VITE_APP_ORIGIN': JSON.stringify(APP_ORIGIN)
   },
   base: '',
   // Pin the dep-optimizer's scan to the real entry (index.html → src/index.ts).

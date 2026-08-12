@@ -12,7 +12,7 @@ import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import addAnchorListener from '@helpers/addAnchorListener';
 import assumeType from '@helpers/assumeType';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '@layer';
+import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice, AiComposeTone} from '@layer';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {PHONE_NUMBER_REG_EXP} from '@lib/richTextProcessor';
 import {isWebAppNameValid} from '@lib/richTextProcessor/validators';
@@ -724,7 +724,7 @@ export class InternalLinkProcessor {
           case 'contact':
             return showCreateContactPopup();
           case 'channel':
-            return appSidebarLeft.createTab(AppNewChannelTab).open();
+            return appSidebarLeft.createTab(AppNewChannelTab).open({});
           case 'group':
             return createNewGroupTab(appSidebarLeft);
           default:
@@ -989,8 +989,8 @@ export class InternalLinkProcessor {
       });
       if(!tone) throw new Error();
 
-      const savedTones = tones.filter((t) => t._ === 'aiComposeTone').length;
-      const isSaved = !tone.pFlags.creator && tones.some((t) => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
+      const savedTones = tones.filter((t: AiComposeTone) => t._ === 'aiComposeTone').length;
+      const isSaved = !tone.pFlags.creator && tones.some((t: AiComposeTone) => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
 
       showViewTonePopup({
         tone,
