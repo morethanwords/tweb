@@ -269,7 +269,8 @@ export default function showStickersPopup(
         icon: 'copy',
         text: 'CopyLink',
         onClick: () => {
-          const prefix = `https://t.me/${isEmojis ? 'addemoji' : 'addstickers'}/`;
+          const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+          const prefix = `https://${shortDomain}/${isEmojis ? 'addemoji' : 'addstickers'}/`;
           const text = rawSets.map((set) => prefix + set.set.short_name).join('\n');
           copyTextToClipboard(text);
         }

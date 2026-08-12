@@ -37,8 +37,9 @@ export default class PopupPaymentVerification extends PopupElement<{
     telegramWebView.addEventListener('web_app_open_tg_link', (e) => {
       this.dispatchEvent('finish');
       this.hide();
+      const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
       if(this.openPathAfter) {
-        appImManager.openUrl('https://t.me' + e.path_full);
+        appImManager.openUrl(`https://${shortDomain}` + e.path_full);
       }
     });
 

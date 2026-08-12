@@ -21,6 +21,22 @@ interface ImportMetaEnv {
   // injected via `define` by vite.preview.config.ts when start-preview.sh is
   // invoked with --no-worker; Modes.noWorker honours it without ?noWorker=1.
   readonly VITE_NO_WORKER?: boolean;
+  // Custom globally configured DC options
+  readonly VITE_DC_HOST?: string;
+  readonly VITE_DC_PORT?: string;
+  readonly VITE_BASE_DC_ID?: string;
+  // Custom globally configured hosts
+  readonly VITE_ALLOWED_HOSTS?: string;
+  readonly VITE_APP_ORIGIN?: string;
+  // RSA public key configurations for production and test environments
+  readonly VITE_RSA_MODULUS?: string;
+  readonly VITE_RSA_EXPONENT?: string;
+  readonly VITE_RSA_TEST_MODULUS?: string;
+  readonly VITE_RSA_TEST_EXPONENT?: string;
+  // Custom app properties
+  readonly VITE_APP_NAME?: string;
+  readonly VITE_APP_PROTOCOL?: string;
+  readonly VITE_SHORT_DOMAIN?: string;
 }
 
 interface ImportMeta {

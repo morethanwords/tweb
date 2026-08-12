@@ -941,7 +941,12 @@ export class AppSidebarLeft extends SidebarSlider {
           sessionStorage.set({kz_version: 'Z'}),
           sessionStorage.delete('tgme_sync')
         ]).then(() => {
-          appNavigationController.navigateToUrl('https://web.telegram.org/a/');
+          const primaryHost = (import.meta.env.VITE_ALLOWED_HOSTS || 'web.telegram.org')
+            .split(',')[0]
+            .replace(/^https?:\/\//, '')
+            .replace(/\/$/, '')
+            .trim();
+          appNavigationController.navigateToUrl(`https://${primaryHost}/a/`);
         });
       },
       separator: App.isMainDomain,
@@ -1742,7 +1747,8 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
+  const appName = import.meta.env.VITE_APP_NAME || 'Telegram';
+  t.textContent = `${appName} Web${App.suffix} ${App.version} (${App.build})`;
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

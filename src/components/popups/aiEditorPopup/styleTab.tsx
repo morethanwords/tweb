@@ -299,7 +299,8 @@ const useShareTone = ({tone}: UseShareToneArgs) => {
 
         if(preparedPaymentResult === PaidMessagesInterceptor.PaymentRejectedSymbol) throw new Error();
 
-        const link = 'https://t.me/addstyle/' + tone.slug;
+        const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+        const link = `https://${shortDomain}/addstyle/` + tone.slug;
         rootScope.managers.appMessagesManager.sendText({
           peerId: peer.peerId,
           threadId: peer.threadId,

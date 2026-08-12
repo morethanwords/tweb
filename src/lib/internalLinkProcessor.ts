@@ -53,6 +53,8 @@ import getBotAddToChatScope from '@appManagers/utils/bots/getBotAddToChatScope';
 import parseBotAdminRights from '@appManagers/utils/bots/parseBotAdminRights';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+
 export class InternalLinkProcessor {
   protected managers: AppManagers;
   private processingAddAiStyleSlugs: Set<string> = new Set();
@@ -181,7 +183,7 @@ export class InternalLinkProcessor {
         }
       }>({
         name,
-        protocol: 'tg',
+        protocol: customProtocol,
         callback: ({uriParams}) => {
           const link = this.makeLink(type, uriParams);
           return this.processInternalLink(link);
@@ -234,7 +236,7 @@ export class InternalLinkProcessor {
         uriParams: Omit<InternalLink.InternalLinkVoiceChat, '_'>
       }>({
         name: 'voicechat',
-        protocol: 'tg',
+        protocol: customProtocol,
         callback: ({uriParams}) => {
           const link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams);
           return this.processInternalLink(link);
@@ -261,7 +263,7 @@ export class InternalLinkProcessor {
       // tg://call?slug=<slug>
       addAnchorListener<{uriParams: {slug: string}}>({
         name: 'call',
-        protocol: 'tg',
+        protocol: customProtocol,
         callback: ({uriParams}) => {
           if(!uriParams.slug) return;
           const link = this.makeLink(INTERNAL_LINK_TYPE.CONFERENCE_CALL, uriParams);
@@ -422,7 +424,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'resolve',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams, element, masked}) => {
         let link: InternalLink;
         if(uriParams.voicechat !== undefined || uriParams.videochat !== undefined || uriParams.livestream !== undefined) {
@@ -464,7 +466,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'privatepost',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.PRIVATE_POST, uriParams);
         return this.processInternalLink(link);
@@ -478,7 +480,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'invoice',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.INVOICE, uriParams);
         return this.processInternalLink(link);
@@ -492,7 +494,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'addlist',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.ADD_LIST, uriParams);
         return this.processInternalLink(link);
@@ -506,7 +508,7 @@ export class InternalLinkProcessor {
         }
       }>({
         name,
-        protocol: 'tg',
+        protocol: customProtocol,
         callback: ({uriParams}) => {
           const link = this.makeLink(INTERNAL_LINK_TYPE.JOIN_CHAT, uriParams);
           return this.processInternalLink(link);
@@ -522,7 +524,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'boost',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.BOOST, uriParams);
         return this.processInternalLink(link);
@@ -549,7 +551,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'premium_offer',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.PREMIUM_FEATURES, uriParams);
         return this.processInternalLink(link);
@@ -577,7 +579,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'giftcode',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams, element}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.GIFT_CODE, uriParams);
         link.stack = appImManager.getStackFromElement(element);
@@ -605,7 +607,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'message',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.BUSINESS_CHAT, uriParams);
         return this.processInternalLink(link);
@@ -620,7 +622,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'stars_topup',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.STARS_TOPUP, uriParams);
         return this.processInternalLink(link);
@@ -648,7 +650,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'msg_url',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.SHARE,
@@ -680,7 +682,7 @@ export class InternalLinkProcessor {
       }
     }>({
       name: 'nft',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.UNIQUE_STAR_GIFT, uriParams);
         return this.processInternalLink(link);
@@ -694,7 +696,7 @@ export class InternalLinkProcessor {
       },
     }>({
       name: 'iv',
-      protocol: 'tg',
+      protocol: customProtocol,
       noCancelEvent: true,
       callback: ({element, event}) => {
         if((event as MouseEvent).ctrlKey || (event as MouseEvent).metaKey) {
@@ -715,14 +717,14 @@ export class InternalLinkProcessor {
       pathnameParams: [InternalLink.InternalLinkNew['type'] | '']
     }>({
       name: 'new',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({pathnameParams}) => {
         const [type] = pathnameParams;
         switch(type) {
           case 'contact':
             return showCreateContactPopup();
           case 'channel':
-            return appSidebarLeft.createTab(AppNewChannelTab).open({});
+            return appSidebarLeft.createTab(AppNewChannelTab).open();
           case 'group':
             return createNewGroupTab(appSidebarLeft);
           default:
@@ -735,7 +737,7 @@ export class InternalLinkProcessor {
       pathnameParams: string[]
     }>({
       name: 'settings',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({pathnameParams, event}) => {
         const path = pathnameParams.join('/');
         switch(path) {
@@ -780,7 +782,7 @@ export class InternalLinkProcessor {
       pathnameParams: [InternalLink.InternalLinkContacts['type'] | '']
     }>({
       name: 'contacts',
-      protocol: 'tg',
+      protocol: customProtocol,
       callback: ({pathnameParams}) => {
         const [type] = pathnameParams;
         switch(type) {

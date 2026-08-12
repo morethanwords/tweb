@@ -40,6 +40,7 @@ export default function wrapTelegramRichText(
   return textWithEntities;
 }
 
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
 function processRichText(richText: RichText, options: Options): TextWithEntities {
   switch(richText._) {
     case 'textEmpty':
@@ -109,7 +110,7 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         offset,
         length,
         url: richText.webpage_id ?
-          'tg://iv?url=' + encodeURIComponent(richText.url) :
+          `${customProtocol}://iv?url=` + encodeURIComponent(richText.url) :
           richText.url,
         safe: !!richText.webpage_id
       }), options);

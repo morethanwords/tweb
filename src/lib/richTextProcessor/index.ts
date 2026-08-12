@@ -65,8 +65,10 @@ export const FULL_REG_EXP = new RegExp('(^| )(@)(' + USERNAME_REG_EXP + ')|(' + 
 export const EMAIL_REG_EXP = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 // const markdownTestRegExp = /[`_*@~]/;
 export const MARKDOWN_REG_EXP = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s|\x01)(`|~~|\*\*|__|_-_|\|\|)([^\n]+?)\7([\x01\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+const appName = import.meta.env.VITE_APP_NAME || 'Telegram';
 export const SITE_HASHTAGS: {[siteName: string]: string} = {
-  'Telegram': 'tg://search_hashtag?hashtag={1}',
+  [appName]: `${customProtocol}://search_hashtag?hashtag={1}`,
   'Twitter': 'https://twitter.com/hashtag/{1}',
   'Instagram': 'https://instagram.com/explore/tags/{1}/',
   'Google Plus': 'https://plus.google.com/explore/{1}'

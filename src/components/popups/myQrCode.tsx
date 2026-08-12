@@ -32,6 +32,8 @@ import styles from './myQrCode.module.scss';
 import {FontFamily, FontWeightBold} from '@config/font';
 import Button from '@components/buttonTsx';
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+
 // Geometry numbers are lifted from Telegram-iOS' ChatQrCodeScreen.swift so the
 // card layout matches the iOS sheet 1:1. Source lines are noted next to each
 // constant below.
@@ -112,8 +114,8 @@ function createSharedState(self: User.user, peerId: PeerId = rootScope.myId, ove
     const tokenUrl = contactTokenUrl();
     if(tokenUrl) return tokenUrl;
     if(username()) return buildTelegramUserQrUrl(username());
-    if(peerId.isUser()) return `https://t.me/+${(self as User.user).phone ?? ''}`;
-    return `https://t.me/c/${peerId.toChatId()}`;
+    if(peerId.isUser()) return `https://${shortDomain}/+${(self as User.user).phone ?? ''}`;
+    return `https://${shortDomain}/c/${peerId.toChatId()}`;
   });
 
   // The fallback brightness must stay reactive to a GLOBAL theme change while the

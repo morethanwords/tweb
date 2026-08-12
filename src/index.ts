@@ -95,7 +95,12 @@ function randomlyChooseVersionFromSearch() {
       const version = localStorage.getItem('kz_version');
       if(version === 'Z' || nextRandomUint(8) > 127) {
         localStorage.setItem('kz_version', 'Z');
-        appNavigationController.navigateToUrl('https://web.telegram.org/a/');
+        const primaryHost = (import.meta.env.VITE_ALLOWED_HOSTS || 'web.telegram.org')
+          .split(',')[0]
+          .replace(/^https?:\/\//, '')
+          .replace(/\/$/, '')
+          .trim();
+        appNavigationController.navigateToUrl(`https://${primaryHost}/a/`);
       } else {
         localStorage.setItem('kz_version', 'K');
       }
@@ -103,12 +108,13 @@ function randomlyChooseVersionFromSearch() {
   } catch(err) {}
 }
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
 async function checkLastActiveAccountFromTMe() {
   try {
     if(
       App.isMainDomain &&
       document.referrer &&
-      /^(t|telegram)\.me/i.test(new URL(document.referrer).host)
+      new URL(document.referrer).host === shortDomain
     ) {
       const [totalAccounts, {accountNumber}] = await Promise.all([
         AccountController.getUnencryptedTotalAccounts(),
