@@ -1820,7 +1820,8 @@ const Stories = (props: {
   );
 
   const copyLink = () => {
-    copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(peer)[0]}/s/${currentStory().id}`);
+    const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+    copyTextToClipboard(`https://${shortDomain}/${getPeerActiveUsernames(peer)[0]}/s/${currentStory().id}`);
     toastNew({
       langPackKey: 'LinkCopied'
     });

@@ -1,29 +1,48 @@
 # Base image
-FROM node:24
+FROM node:24 AS builder
 
 # Set the working directory in the container
 WORKDIR /app
 
 # copy src
-COPY .. .
+COPY . .
 
 # install pnpm
 RUN npm install -g pnpm@11.16.0
 
-# install initial depenancies
+# install initial dependencies
 RUN pnpm install
 
-# install production depencancies
-RUN pnpm install --production
+# declare build arguments
+ARG VITE_RSA_MODULUS
+ARG VITE_RSA_TEST_MODULUS
+ARG VITE_BASE_DC_ID
+ARG VITE_DC_HOST
+ARG VITE_DC_PORT
+ARG VITE_ALLOWED_HOSTS
+ARG VITE_APP_NAME
+ARG VITE_APP_PROTOCOL
+ARG VITE_SHORT_DOMAIN
+
+# convert to environment variables for the compiler
+ENV VITE_RSA_MODULUS=$VITE_RSA_MODULUS
+ENV VITE_RSA_TEST_MODULUS=$VITE_RSA_TEST_MODULUS
+ENV VITE_BASE_DC_ID=$VITE_BASE_DC_ID
+ENV VITE_DC_HOST=$VITE_DC_HOST
+ENV VITE_DC_PORT=$VITE_DC_PORT
+ENV VITE_ALLOWED_HOSTS=$VITE_ALLOWED_HOSTS
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_APP_PROTOCOL=$VITE_APP_PROTOCOL
+ENV VITE_SHORT_DOMAIN=$VITE_SHORT_DOMAIN
 
 # build
 RUN node build
 
-
-#pull nginx as webser and load balancer
+# pull nginx as webser and load balancer
 FROM nginx:stable-alpine3.20-slim
 
 RUN apk update && apk upgrade --no-cache
 
-# copy the build files to nginx entry point
-COPY ./public /usr/share/nginx/html
+# copy the compiled distribution folder from the builder stage, NOT the host
+# Note: If your project builds into 'dist' instead of 'public', change '/app/public' to '/app/dist'
+COPY --from=builder /app/public /usr/share/nginx/html

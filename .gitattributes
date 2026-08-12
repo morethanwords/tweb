@@ -1,0 +1,29 @@
+# Line endings: LF in the repo AND in the working tree, on every platform.
+#
+# Without this file, a Windows checkout with core.autocrlf=true (the Git for
+# Windows default) smudges every text file to CRLF. The repo is LF-only
+# (.editorconfig `end_of_line = LF`, oxlint `style/linebreak-style: unix`), so
+# the editor then reports one lint error per line of every file — ~418k
+# problems in `src` alone — none of which reproduce on Linux/macOS. The `eol`
+# attribute takes precedence over core.autocrlf/core.eol, so this fixes the
+# checkout without asking every contributor to change their Git config.
+* text=auto eol=lf
+
+# Binary assets: never convert, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp3 binary
+*.mp4 binary
+*.ogg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.wasm binary
+*.zip binary
+*.pdf binary
+*.tgs binary

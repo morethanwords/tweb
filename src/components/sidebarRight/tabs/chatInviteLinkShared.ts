@@ -54,7 +54,8 @@ export class ChatInviteLink extends InviteLink {
   public setChatInvite(chatInvite: ChatInvite | string) {
     const isUsername = typeof(chatInvite) === 'string';
     const username = typeof(chatInvite) === 'string' ? chatInvite : undefined;
-    this.setUrl(isUsername ? 't.me/' + username : chatInvite.link);
+    const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+    this.setUrl(isUsername ? `${shortDomain}/` + username : chatInvite.link);
 
     if(this.subtitle) {
       if(!isUsername && chatInvite?.usage) {

@@ -1,11 +1,17 @@
 const fs = require('fs');
 const path = require('path');
-const {spawn, execSync} = require('child_process');
+const {execFileSync} = require('child_process');
 
 const LANG_FILE_PATH = path.join(__dirname, 'src', 'lang.ts');
 const LANG_SIGN_FILE_PATH = path.join(__dirname, 'src', 'langSign.ts');
 const EDIT_FILE_PATH = path.join(__dirname, 'src', 'langPackLocalVersion.ts');
-const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
+// Run the codegen script directly instead of shelling out to `npm run format-lang`.
+// pnpm exports its own settings as npm_config_* env vars, so an npm child process
+// inherits npm_config_manage_package_manager_versions and warns "Unknown env config"
+// on every dev-server start. This repo is pnpm-only anyway (see `preinstall`), and
+// format_lang.js is cwd-independent, so invoking it with the current node binary is
+// both quieter and faster than going through a package manager.
+const FORMAT_LANG_PATH = path.join(__dirname, 'src', 'scripts', 'format_lang.js');
 
 // Function to read current version from App.ts
 const getCurrentVersion = () => {
@@ -28,7 +34,7 @@ const updateVersion = (newVersion) => {
     fs.writeFileSync(EDIT_FILE_PATH, appContent, 'utf8');
     console.log(`✅ Version updated to ${newVersion}`);
 
-    execSync(`${npmCmd} run format-lang`);
+    execFileSync(process.execPath, [FORMAT_LANG_PATH], {stdio: 'inherit'});
   } catch(error) {
     console.error('❌ Error updating App.ts:', error.message);
   }

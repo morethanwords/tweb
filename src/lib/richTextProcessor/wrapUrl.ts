@@ -4,6 +4,9 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
 import {T_ME_PREFIXES} from '@appManagers/constants';
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+
 export default function wrapUrl(url: string, safe?: boolean) {
   if(!matchUrlProtocol(url)) {
     url = 'https://' + url;
@@ -12,9 +15,7 @@ export default function wrapUrl(url: string, safe?: boolean) {
   const out: {url: string, onclick?: Parameters<typeof addAnchorListener>[0]['name']} = {url};
   let tgMeMatch, telescoPeMatch, tgMatch;
   let onclick: typeof out['onclick'];
-  /* if(unsafe === 2) {
-    url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?(?:(?:web|k|z|a)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
+  if((tgMeMatch = url.match(new RegExp(`^(?:${customProtocol}:(?:\\/\\/)?|(?:https?:\\/\\/)?(?:www\\.)?${shortDomain.replace(/\./g, '\\.')}\\/)(.+?)(?:\\?|$)`, 'i')))) {
     const u = new URL(url);
     let prefix = tgMeMatch[1];
     if(prefix && T_ME_PREFIXES.has(tgMeMatch[1])) {
@@ -61,7 +62,7 @@ export default function wrapUrl(url: string, safe?: boolean) {
     }
   } else if((telescoPeMatch = url.match(/^(?:https?:\/\/)?telesco\.pe\/([^/?]+)\/(\d+)/))) {
     onclick = 'im';
-  } else if((tgMatch = url.match(/tg:(?:\/\/)?(.+?)(?:\?|$)/))) {
+  } else if((tgMatch = url.match(new RegExp(`${customProtocol}:(?:\\/\\/)?(.+?)(?:\\?|$)`)))) {
     onclick = 'tg_' + tgMatch[1].split('/')[0] as any;
 
     switch(tgMatch[1]) {

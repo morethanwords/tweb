@@ -286,7 +286,8 @@ function BotFatherButton(props: {
   icon: Icon,
   text: LangPackKey
 }) {
-  const url = 't.me/botfather?start=' + props.username +
+  const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+  const url = `${shortDomain}/botfather?start=` + props.username +
     (props.suffix ? '-' + props.suffix : '');
   const wrapped = wrapUrl(url);
 

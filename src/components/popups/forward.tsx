@@ -171,7 +171,8 @@ export default async function showForwardPopup(
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
     const username = await rootScope.managers.appPeersManager.getPeerUsername(fromPeerId);
     const msgId = getServerMessageId(mid);
-    let url = 'https://t.me/';
+    const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+    let url = `https://${shortDomain}/`;
     if(username) {
       url += username + '/' + msgId;
     } else {

@@ -2,52 +2,56 @@ const fs = require('fs');
 const path = require('path');
 
 const f = (key, value, plural) => {
+  if (typeof value !== 'string') return '';
   value = value
-  .replace(/\n/g, '\\n')
-  .replace(/"/g, '\\"');
+    .replace(/\n/g, '\\n')
+    .replace(/"/g, '\\"');
   return `"${key}${plural ? '_' + plural.replace('_value', '') : ''}" = "${value}";\n`;
 };
 
 let out = '';
 
+const shortDomain = process.env.VITE_SHORT_DOMAIN || 't.me';
+const appName = process.env.VITE_APP_NAME || 'Telegram';
+
 ['lang', 'langSign'].forEach(part => {
   const filePath = path.join(__dirname, `../${part}.ts`);
+  let code = fs.readFileSync(filePath, 'utf8');
 
-  let str = fs.readFileSync(filePath).toString()
-  .replace(/\s+\/\/.+/g, '')
-  // .replace(/\\'/g, '')
-  .replace(/"/g, `\\"`)
-  // .replace(/'/g, '"')
-  .replace(/([^\\])'/g, '$1"')
-  .replace(/\\'/g, '\'')
-  // .replace(/"(.+?)(?:")(.*?)"/g, '"$1\"$2"');
-  {
-    const pattern = '= {';
-    str = str.slice(str.indexOf(pattern) + pattern.length - 1);
-  }
+  // 1. Remove imports and export keywords
+  code = code
+    .replace(/import\s+[^;]+;/g, '')
+    .replace(/export\s+default\s+/g, 'return ')
+    .replace(/export\s+const\s+\w+\s*:\s*[^=]+=\s*/g, 'return ')
+    .replace(/export\s+const\s+\w+\s*=\s*/g, 'return ');
 
-  {
-    const pattern = '};';
-    str = str.slice(0, str.indexOf(pattern) + pattern.length - 1);
-  }
+  // 2. Strip existing const/let/var declarations of shortDomain & appName so new Function() doesn't throw redeclaration errors
+  code = code
+    .replace(/(?:const|let|var)\s+shortDomain\s*=[^;]+;/g, '')
+    .replace(/(?:const|let|var)\s+appName\s*=[^;]+;/g, '');
 
-  // console.log(`'${str}'`);
-  // var idx = 21865;
-  // idx -= 1;
-  // console.log(str.slice(idx, idx + 100));
-  const json = JSON.parse(str);
-  // console.log(json);
+  try {
+    const parseLangObj = new Function('shortDomain', 'appName', code);
+    const json = parseLangObj(shortDomain, appName);
 
-  for(const key in json) {
-    const value = json[key];
-    if(typeof(value) === 'string') {
-      out += f(key, value);
-    } else {
-      for(const plural in value) {
-        out += f(key, value[plural], plural);
+    for (const key in json) {
+      const value = json[key];
+      if (typeof value === 'string') {
+        out += f(key, value);
+      } else if (typeof value === 'object' && value !== null) {
+        for (const plural in value) {
+          out += f(key, value[plural], plural);
+        }
       }
     }
+  } catch (err) {
+    console.error(`Error parsing ${part}.ts:`, err.message);
   }
 });
 
-fs.writeFileSync(path.join(__dirname, './out/langPack.strings'), out);
+const outDir = path.join(__dirname, './out');
+if (!fs.existsSync(outDir)) {
+  fs.mkdirSync(outDir, { recursive: true });
+}
+
+fs.writeFileSync(path.join(outDir, 'langPack.strings'), out);

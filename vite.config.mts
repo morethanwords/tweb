@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 import solidPlugin from 'vite-plugin-solid';
 // @ts-ignore no type declarations
 import handlebars from 'vite-plugin-handlebars';
@@ -8,12 +8,19 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync} from 'fs';
-import {ServerOptions} from 'vite';
+// `import type`, not a value import: Vite's `configLoader: 'native'` hands this
+// file to Node's type stripper, which erases annotations but does NOT elide
+// unused value imports — a plain `import {ServerOptions}` would become a real
+// runtime import of an export that only exists in the type world.
+import type {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import devChecks from './scripts/dev-checks.mjs';
 import path from 'path';
 
-const rootDir = resolve(__dirname);
+// `import.meta.dirname`, not `__dirname`: this file is ESM (.mts), so the CJS
+// global does not exist under `configLoader: 'native'`. Vite's current bundle
+// loader rewrites it to an injected constant, so both loaders work.
+const rootDir = resolve(import.meta.dirname);
 const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
 const LANG_PACK_LOCAL_FILE_PATH = path.join(rootDir, 'src', 'langPackLocalVersion.ts');
@@ -31,12 +38,25 @@ if(isDEV) {
   watchLangFile();
 }
 
+const mode = process.env.NODE_ENV || 'development';
+const currentEnv = loadEnv(mode, process.cwd(), '');
+
+const primaryHost = (currentEnv.VITE_ALLOWED_HOSTS || 'web.telegram.org')
+  .split(',')[0]
+  .replace(/^https?:\/\//, '')
+  .replace(/\/$/, '')
+  .trim();
+
+const APP_ORIGIN = `https://${primaryHost}/`;
+const APP_URL = `${APP_ORIGIN}k/`;
+const appName = process.env.VITE_APP_NAME || 'Telegram';
+
 const handlebarsPlugin = handlebars({
   context: {
-    title: 'Telegram Web',
-    description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
-    url: 'https://web.telegram.org/k/',
-    origin: 'https://web.telegram.org/'
+    title: `${appName} Web`,
+    description: `A private, self-hosted messaging app for ${appName}.`,
+    url: APP_URL,
+    origin: APP_ORIGIN
   }
 });
 
@@ -49,7 +69,7 @@ const USE_SELF_SIGNED_CERTS = USE_SSL && false;
 // * chmod 644 web.telegram.org-key.pem
 // * nano /etc/hosts
 // * 127.0.0.1 web.telegram.org
-const host = USE_SSL ? 'web.telegram.org' : 'localhost';
+const host = USE_SSL ? primaryHost : 'localhost';
 
 // HTTP/2 for `pnpm start`. Vite serves dev modules unbundled — one request per module —
 // and over http/1.1 the browser's ~6-connections-per-origin cap serialises the hundreds
@@ -68,6 +88,11 @@ const USE_DEV_HTTP2 = !USE_SSL && !process.env.TWEB_PREVIEW && !process.env.VITE
 const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
+  // Configure dynamically assigned security hosts straight from the root
+  allowedHosts: (currentEnv.VITE_ALLOWED_HOSTS || '')
+    .split(',')
+    .map(host => host.replace(/^https?:\/\//, '').replace(/\/$/, '').trim())
+    .filter(Boolean),
   watch: {
     // NB: anchor on rootDir. A worktree checkout's own path contains
     // ".claude/worktrees/<name>/", so a bare '**/.claude/**' glob would also match
@@ -172,6 +197,9 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts']
   },
   server: serverOptions,
+  define: {
+    'import.meta.env.VITE_APP_ORIGIN': JSON.stringify(APP_ORIGIN)
+  },
   base: '',
   // Pin the dep-optimizer's scan to the real entry (index.html → src/index.ts).
   // Otherwise Vite auto-globs every *.html (stats.html, public/*.html, the icomoon

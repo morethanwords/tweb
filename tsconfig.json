@@ -10,7 +10,11 @@
     // "checkJs": true,                       /* Report errors in .js files. */
     "jsx": "preserve",                        /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
     "jsxImportSource": "solid-js",
-    // "allowImportingTsExtensions": false,
+    /* vite.preview.config.mts imports './vite.config.mts' by its real path. The
+       alternative, './vite.config.mjs', relies on TS's .mjs→.mts mapping and on
+       the bundler re-applying it, which Vite's `configLoader: 'native'` (Node's
+       type stripper) does not do. Safe here because noEmit is true. */
+    "allowImportingTsExtensions": true,
     // "declaration": true,                   /* Generates corresponding '.d.ts' file. */
     // "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
     "sourceMap": true,                        /* Generates corresponding '.map' file. */

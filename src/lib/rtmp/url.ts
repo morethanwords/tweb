@@ -9,14 +9,15 @@ export function getRtmpStreamUrl(call: InputGroupCall): string {
   return `${base}?t=${Date.now()}`;
 }
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
 export function getRtmpShareUrl(peerId: PeerId) {
   const chat = apiManagerProxy.getChat(peerId);
   if(chat._ !== 'channel') throw new Error('Not a channel');
 
   if(chat.username || chat.usernames?.length) {
     const username = chat.username || chat.usernames[0];
-    return `https://t.me/${username}?livestream`;
+    return `https://${shortDomain}/${username}?livestream`;
   }
 
-  return `https://t.me/c/${chat.id}?livestream`;
+  return `https://${shortDomain}/c/${chat.id}?livestream`;
 }

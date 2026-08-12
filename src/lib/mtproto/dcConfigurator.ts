@@ -31,6 +31,12 @@ const TEST_SUFFIX = Modes.test ? '_test' : '';
 const PREMIUM_SUFFIX = '_premium';
 const RETRY_TIMEOUT_CLIENT = 3000;
 const RETRY_TIMEOUT_DOWNLOAD = 3000;
+const ENV_HOST = import.meta.env.VITE_DC_HOST || 'localhost';
+const ENV_PORT = import.meta.env.VITE_DC_PORT ? parseInt(import.meta.env.VITE_DC_PORT, 10) : 2398;
+const ENV_BASE_DC = import.meta.env.VITE_BASE_DC_ID ? parseInt(import.meta.env.VITE_BASE_DC_ID, 10) : 2;
+const DC_OPTIONS = [
+  {id: ENV_BASE_DC, host: ENV_HOST, port: ENV_PORT}
+];
 
 export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
   return connectionType === 'client' ? '' : '-1';
@@ -57,6 +63,16 @@ export function constructTelegramWebSocketUrl(_dcId: DcId, connectionType: Conne
   const dcId = assertValidDcId(_dcId);
   const suffix = getTelegramConnectionSuffix(connectionType);
   const path = connectionType !== 'client' ? 'apiws' + TEST_SUFFIX + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
+  // Prioritize the use of custom DC servers
+  const customDc = DC_OPTIONS.find((option) => option.id === dcId);
+  if(customDc) {
+    const isHttps = location.protocol === 'https:';
+    const protocol = isHttps ? 'wss' : 'ws';
+    // HTTPS pages must access the back-end WebSocket through the same domain Nginx proxy, otherwise Mixed Content will intercept ws://
+    const host = isHttps ? location.host : `${customDc.host}:${customDc.port}`;
+    return `${protocol}://${host}/${path}`;
+  }
+
   const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
 
   return chosenServer;
@@ -65,19 +81,7 @@ export function constructTelegramWebSocketUrl(_dcId: DcId, connectionType: Conne
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
 
-  private dcOptions = Modes.test ?
-    [
-      {id: 1, host: '149.154.175.10',  port: 80},
-      {id: 2, host: '149.154.167.40',  port: 80},
-      {id: 3, host: '149.154.175.117', port: 80}
-    ] :
-    [
-      {id: 1, host: '149.154.175.50',  port: 80},
-      {id: 2, host: '149.154.167.50',  port: 80},
-      {id: 3, host: '149.154.175.100', port: 80},
-      {id: 4, host: '149.154.167.91',  port: 80},
-      {id: 5, host: '149.154.171.5',   port: 80}
-    ];
+  private dcOptions = DC_OPTIONS;
 
   public chosenServers: Servers = {} as any;
 
@@ -88,6 +92,8 @@ export class DcConfigurator {
 
     const chosenServer = constructTelegramWebSocketUrl(dcId, connectionType, premium);
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
+    // For debugging: confirm the actual connection address of the WebSocket
+    console.error('[DEBUG] WebSocket chosenServer:', chosenServer, 'dcId:', dcId, 'connectionType:', connectionType);
 
     const retryTimeout = connectionType === 'client' ? RETRY_TIMEOUT_CLIENT : RETRY_TIMEOUT_DOWNLOAD;
 
@@ -107,7 +113,15 @@ export class DcConfigurator {
     }
 
     let chosenServer: string;
-    if(Modes.ssl || !Modes.http) {
+    // Prioritize the use of custom DC servers
+    const customDc = DC_OPTIONS.find((option) => option.id === dcId);
+    if(customDc) {
+      const isHttps = location.protocol === 'https:';
+      const protocol = isHttps ? 'https' : 'http';
+      // HTTPS pages must access the back-end WebSocket through the same domain Nginx proxy, otherwise Mixed Content will intercept ws://
+      const host = isHttps ? location.host : `${customDc.host}:${customDc.port}`;
+      chosenServer = `${protocol}://${host}/apiw1`;
+    } else if(Modes.ssl || !Modes.http) {
       const suffix = getTelegramConnectionSuffix(connectionType);
       const subdomain = this.sslSubdomains[dcId - 1] + suffix;
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
@@ -120,6 +134,8 @@ export class DcConfigurator {
         }
       }
     }
+    // For debugging: confirm the actual HTTP connection address
+    console.error('[DEBUG] HTTP chosenServer:', chosenServer, 'dcId:', dcId, 'connectionType:', connectionType);
 
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
     return new HTTP(dcId, chosenServer, logSuffix);

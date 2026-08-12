@@ -295,7 +295,7 @@ import {Message, Chat, User, InputPeer} from '@layer';
 | `src/config/state.ts` | Application state schema |
 | `src/config/app.ts` | App constants |
 | `src/lib/rootScope.ts` | Global event emitter |
-| `vite.config.ts` | Build configuration |
+| `vite.config.mts` | Build configuration |
 | `.oxlintrc.json` | oxlint config (style rules via `@stylistic/eslint-plugin` jsPlugin) |
 
 ## Agent Workflow

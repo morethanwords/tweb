@@ -40,6 +40,8 @@ import {toastNew} from '@components/toast';
 import {Latex, hydrateInlineMath} from '@components/instantViewMath';
 import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
 
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+
 type InstantViewContextValue = {
   webPageId: Long,
   page: Page.page,
@@ -313,6 +315,10 @@ function _onMediaResult(
   height: number,
   paddings: number
 ) {
+  if(Number.isFinite(width) && width > 0) {
+    ref.style.setProperty('--iv-media-width', width + 'px');
+  }
+
   ref.style.setProperty(
     '--aspect-ratio',
     '' + (width / height)
@@ -438,7 +444,7 @@ async function onMediaClick({
         offset: string.length,
         length: url.length,
         url: webPageId ?
-          'tg://iv?url=' + encodeURIComponent(url) :
+          `${customProtocol}://iv?url=` + encodeURIComponent(url) :
           url,
         safe: !!webPageId
       });
@@ -809,7 +815,7 @@ function Block(props: {
             <RichTextRenderer text={block.title} />
           </div>
           <For each={block.articles}>{(article, idx) => {
-            const wrapped = wrapUrl('tg://iv?url=' + encodeURIComponent(article.url));
+            const wrapped = wrapUrl(`${customProtocol}://iv?url=` + encodeURIComponent(article.url));
             const photo = article.photo_id ?
               unwrap(useContext(InstantViewContext).page.photos.find((photo) => photo.id === article.photo_id)) :
               undefined;

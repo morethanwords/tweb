@@ -771,7 +771,8 @@ class ApiUpdatesManager {
             .then((res) => (res.status === 200 && res.ok && res.text()) || Promise.reject())
             .then((text) => {
               const langStr = strs[lang] || strs.en;
-              const pre = `**Telegram Web${App.suffix} ${langStr} ${newVersion}**\n\n`;
+              const appName = import.meta.env.VITE_APP_NAME || 'Telegram';
+              const pre = `**${appName} Web${App.suffix} ${langStr} ${newVersion}**\n\n`;
 
               text = pre + text;
 

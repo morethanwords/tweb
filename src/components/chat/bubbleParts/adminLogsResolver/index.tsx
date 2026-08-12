@@ -24,6 +24,7 @@ import {MinimalBubbleMessageContent} from '@components/chat/bubbleParts/minimalB
 import {Reply} from '@components/chat/bubbleParts/adminLogsResolver/reply';
 import {CopyTextResult, createMessageCopyText, createMessageWithPreviousCopyText, createMultiLineCopyText, createPreviousValueCopyText, createSimpleServiceCopyText, createTwoPeerCopyText, extractAdminChanges, extractBanChanges, extractDefaultRightsChanges, formatDurationAsText, getDateTextForCopy, getMessageTextForCopy} from '@components/chat/bubbleParts/adminLogsResolver/copyTextHelpers';
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
 
 type RenderArgs = {
   channelId: ChatId;
@@ -301,7 +302,7 @@ const adminLogsMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>}
       Content: () => {
         const anchor = (() => {
           if(!action.new_value) return;
-          const link = `t.me/${action.new_value}`;
+          const link = `${shortDomain}/${action.new_value}`;
           const anchor = wrapTelegramUrlToAnchor(link);
           anchor.textContent = link;
           return anchor;
@@ -324,7 +325,7 @@ const adminLogsMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>}
                 <Reply
                   colorPeerId={peerId}
                   title={i18n('AdminRecentActions.PreviousLink')}
-                  text={`https://t.me/${action.prev_value}`}
+                  text={`https://${shortDomain}/${action.prev_value}`}
                 />
               </Show>
             </MinimalBubbleMessageContent>
@@ -338,10 +339,10 @@ const adminLogsMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>}
           const previousLabel = I18n.format('AdminRecentActions.PreviousLink', true);
           const lines = [`${I18n.format(key, true, [peerTitle])} [${dateText}]`];
           if(action.new_value) {
-            lines.push(`https://t.me/${action.new_value}`);
+            lines.push(`https://${shortDomain}/${action.new_value}`);
           }
           if(action.prev_value) {
-            lines.push(`${previousLabel}: https://t.me/${action.prev_value}`);
+            lines.push(`${previousLabel}: https://${shortDomain}/${action.prev_value}`);
           }
           return lines;
         }

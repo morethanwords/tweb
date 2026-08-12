@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 /*
- * Preview config: extends vite.config.ts and injects a script that seeds
+ * Preview config: extends vite.config.mts and injects a script that seeds
  * localStorage from a freshly minted preview authorization, so the preview
  * boots already logged in — without ever reusing the original seed keys live.
  *
@@ -15,11 +15,11 @@
 import {mergeConfig} from 'vite';
 import {readFileSync} from 'fs';
 import {basename, resolve} from 'path';
-import baseConfig from './vite.config';
+import baseConfig from './vite.config.mts';
 
 const seedPath = process.env.PREVIEW_SEED ?
   resolve(process.env.PREVIEW_SEED) :
-  resolve(__dirname, 'tmp/seed-preview.json');
+  resolve(import.meta.dirname, 'tmp/seed-preview.json');
 const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
 
 // per-seed cache dir so simultaneous preview servers don't clobber each other

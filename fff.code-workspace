@@ -5,8 +5,13 @@
 		}
 	],
 	"settings": {
-    "typescript.tsdk": "node_modules/typescript/lib",
-    "files.eol": "\n",
-    "js/ts.tsdk.path": "node_modules/typescript/lib"
+		// `typescript.tsdk` used to point at node_modules/typescript/lib, which this
+		// repo does not have: TypeScript is installed as `@typescript/native`
+		// (typescript@7), and TS 7 native ships only `tsc` — no tsserver.js — so no
+		// tsdk path can serve it. VS Code silently fell back to its bundled
+		// TypeScript, which is a different compiler from the one `pnpm typecheck`
+		// runs. For editor/CLI parity install the "TypeScript (Native Preview)"
+		// extension instead of setting a tsdk.
+		"files.eol": "\n"
 	}
 }

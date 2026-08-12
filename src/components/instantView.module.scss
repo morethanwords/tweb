@@ -56,6 +56,15 @@
   min-height: 0;
   font-size: inherit;
   line-height: inherit;
+  // Inline rich messages live in chat bubbles, outside the in-app browser that
+  // normally defines --browser-width. Use the media wrapper's measured width
+  // and aspect ratio so photo/video blocks retain a real layout box.
+  .Media {
+    --width: var(--iv-media-width);
+    max-width: 100%;
+    height: auto !important;
+    aspect-ratio: var(--aspect-ratio);
+  }
 }
 
 .RichMessageWrapper {
