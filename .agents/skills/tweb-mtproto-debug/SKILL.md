@@ -5,7 +5,7 @@ description: Debug and test the tweb (Telegram Web K) MTProto stack from Node.js
 
 # tweb MTProto debug & test harness
 
-This skill packages the methodology used to debug and verify MTProto-stack bugs in tweb (Telegram Web K, Solid.js + TS, MTProto over WebSocket). The repo lives at `morethanwords/tweb`; entry directory is the project root containing `pnpm-lock.yaml`, `vite.config.ts`, and `src/`.
+This skill packages the methodology used to debug and verify MTProto-stack bugs in tweb (Telegram Web K, Solid.js + TS, MTProto over WebSocket). The repo lives at `morethanwords/tweb`; entry directory is the project root containing `pnpm-lock.yaml`, `vite.config.mts`, and `src/`.
 
 ## When to invoke
 

@@ -8,12 +8,19 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync} from 'fs';
-import {ServerOptions} from 'vite';
+// `import type`, not a value import: Vite's `configLoader: 'native'` hands this
+// file to Node's type stripper, which erases annotations but does NOT elide
+// unused value imports — a plain `import {ServerOptions}` would become a real
+// runtime import of an export that only exists in the type world.
+import type {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import devChecks from './scripts/dev-checks.mjs';
 import path from 'path';
 
-const rootDir = resolve(__dirname);
+// `import.meta.dirname`, not `__dirname`: this file is ESM (.mts), so the CJS
+// global does not exist under `configLoader: 'native'`. Vite's current bundle
+// loader rewrites it to an injected constant, so both loaders work.
+const rootDir = resolve(import.meta.dirname);
 const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
 const LANG_PACK_LOCAL_FILE_PATH = path.join(rootDir, 'src', 'langPackLocalVersion.ts');
