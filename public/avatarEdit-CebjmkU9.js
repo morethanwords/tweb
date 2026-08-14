@@ -1,1 +1,0 @@
-import{sn as e}from"./appDialogsManager-DfYnPIJ2.js";export{e as editAndSetOwnAvatar};
