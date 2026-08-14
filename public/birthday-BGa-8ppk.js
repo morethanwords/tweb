@@ -1,0 +1,2 @@
+import{t as e}from"./privacyTab-Cor72btW.js";import{t}from"./privacySection-Bzl1Hd3_.js";var n=`Privacy.BirthdayCaption`,r=e(`privacy-birthday`,e=>{new t({tab:e,title:`Privacy.Birthday`,inputKey:`inputPrivacyKeyBirthday`,captions:[n,n,n],exceptionTexts:[`PrivacySettingsController.NeverAllow`,`PrivacySettingsController.AlwaysAllow`],appendTo:e.scrollable,managers:e.managers})});export{r as default};
+//# sourceMappingURL=birthday-BGa-8ppk.js.map
