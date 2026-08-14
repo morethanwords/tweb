@@ -3236,8 +3236,8 @@ export class AppImManager extends EventListenerBase<{
 
     // * asked for every dialog element that gets built, so the cheap check that
     // * answers "no" for almost every peer goes first
-    const typings = await this.managers.appProfileManager.getPeerTypings(peerId, threadId);
-    if(!typings?.length) {
+    const allTypings = await this.managers.appProfileManager.getPeerTypings(peerId, threadId);
+    if(!allTypings?.length) {
       // log('have no typing');
       return;
     }
@@ -3245,6 +3245,16 @@ export class AppImManager extends EventListenerBase<{
     const isUser = peerId.isUser();
     if(isUser && await this.managers.appUsersManager.isBot(peerId)) {
       // log('a bot');
+      return;
+    }
+
+    // * a peer that hasn't reached the mirror yet has no title to render and would be
+    // * named "Deleted", so it doesn't get counted either — a private chat never names anyone
+    const typings = isUser ?
+      allTypings :
+      allTypings.filter(({userId}) => !!apiManagerProxy.getPeer(userId.toPeerId(false)));
+    if(!typings.length) {
+      // log('have no loaded peer to name');
       return;
     }
 

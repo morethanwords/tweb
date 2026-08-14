@@ -27,6 +27,9 @@ const NOT_IMPLEMENTED_ERROR = new Error('not implemented');
  * Shows the peer's ongoing activity in place of the last message. Applied both
  * from the `peer_typings` event and when a dialog element is (re)built, since a
  * row created while the peer is already typing gets no event of its own.
+ *
+ * Returns whether the row is left showing an activity that can no longer be
+ * rendered, i.e. the caller has to put the last message back.
  */
 export async function setDialogTyping({dom, peerId, threadId}: {
   dom: DialogDom,
@@ -35,10 +38,17 @@ export async function setDialogTyping({dom, peerId, threadId}: {
 }) {
   const oldTypingElement = dom.lastMessageSpan.querySelector('.peer-typing-container') as HTMLElement;
   const newTypingElement = await appImManager.getPeerTyping(peerId, oldTypingElement, threadId);
-  if(!oldTypingElement && newTypingElement) {
-    replaceContent(dom.lastMessageSpan, newTypingElement);
-    dom.lastMessageSpan.classList.add('user-typing');
+  if(newTypingElement) {
+    if(!oldTypingElement) {
+      replaceContent(dom.lastMessageSpan, newTypingElement);
+      dom.lastMessageSpan.classList.add('user-typing');
+    }
+
+    return false;
   }
+
+  // * the row shows an activity that can no longer be rendered — its last message has to come back
+  return !!oldTypingElement;
 }
 
 type DialogKey = any;
@@ -323,11 +333,15 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
       return;
     }
 
-    return setDialogTyping({
+    const needsLastMessage = await setDialogTyping({
       dom,
       peerId: dialog.peerId,
       threadId: isForumTopic(dialog) ? dialog.id : undefined
     });
+
+    if(needsLastMessage) {
+      this.unsetTyping(dialog);
+    }
   }
 
   public unsetTyping(dialog: T) {
