@@ -200,7 +200,7 @@ describe('pin limit ignores members of a folded Community', () => {
     setOrder(storage, FOLDER_ID_ALL, [100 as PeerId, -200 as PeerId, -300 as PeerId]);
     stubCollapsed(storage, {[FOLDER_ID_ALL]: [-200 as PeerId, -300 as PeerId]});
 
-    expect(storage.getPinnedOrdersCount(FOLDER_ID_ALL)).toEqual(1);
+    expect(storage.getVisiblePinnedCount(FOLDER_ID_ALL)).toEqual(1);
     // * the order itself stays server-truth, so the pins come back when the Community unfolds
     expect(storage.getPinnedOrders(FOLDER_ID_ALL)).toHaveLength(3);
   });
@@ -210,7 +210,7 @@ describe('pin limit ignores members of a folded Community', () => {
     setOrder(storage, FOLDER_ID_ALL, [100 as PeerId, -200 as PeerId]);
     stubCollapsed(storage, {});
 
-    expect(storage.getPinnedOrdersCount(FOLDER_ID_ALL)).toEqual(2);
+    expect(storage.getVisiblePinnedCount(FOLDER_ID_ALL)).toEqual(2);
   });
 
   test('does not exclude anything in a virtual filter', () => {
@@ -220,6 +220,6 @@ describe('pin limit ignores members of a folded Community', () => {
     setOrder(storage, filterId, [100 as PeerId, -200 as PeerId]);
     stubCollapsed(storage, {[filterId]: [-200 as PeerId]});
 
-    expect(storage.getPinnedOrdersCount(filterId)).toEqual(2);
+    expect(storage.getVisiblePinnedCount(filterId)).toEqual(2);
   });
 });

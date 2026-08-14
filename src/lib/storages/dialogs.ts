@@ -408,7 +408,7 @@ export default class DialogsStorage extends AppManager {
    * list when the Community folds (Entry::removeFromChatList), so its limit ignores them
    * too — the server still has the last word on the actual request.
    */
-  public getPinnedOrdersCount(folderId: number) {
+  public getVisiblePinnedCount(folderId: number) {
     const orders = this.getPinnedOrders(folderId);
     if(!REAL_FOLDERS.has(folderId)) {
       return orders.length;
