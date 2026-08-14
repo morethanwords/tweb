@@ -41,7 +41,7 @@ import {setSendingStatus} from '@components/sendingStatus';
 import {SortedElementBase} from '@helpers/sortedList';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '@appManagers/constants';
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
-import {ChatlistsChatlistUpdates, DialogFilter, Message, MessageMedia, MessageReplyHeader} from '@layer';
+import {ChatlistsChatlistUpdates, DialogFilter, Message, MessageMedia, MessageReplyHeader, Photo} from '@layer';
 import mediaSizes from '@helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
@@ -151,6 +151,22 @@ export type DialogDom = {
 
   titleWrapOptions?: WrapSomethingOptions;
 
+  /**
+   * Signature of the last successfully rendered subtitle. Every dialog event
+   * (read, mark unread, notify settings, filter update) runs the whole
+   * `setLastMessage` pipeline, so without it the subtitle is torn down and
+   * rebuilt — custom emoji, media thumbs and all — for updates that cannot
+   * have changed a single character of it.
+   */
+  lastMessageRenderKey?: string,
+  /**
+   * The nodes that signature was rendered as. Plenty of other places
+   * (community dialogs, search results, sidebar pickers) write their own
+   * subtitle into `lastMessageSpan`, so a matching key alone does not mean the
+   * rendered subtitle is still the one in the DOM.
+   */
+  lastMessageRenderParts?: HTMLElement[],
+
   setLastMessagePromise?: CancellablePromise<void>,
   setUnreadMessagePromise?: CancellablePromise<void>
 };
@@ -174,6 +190,20 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
 
   const middleware = middlewarePromise(() => (obj[key] as any) === deferred);
   return {deferred, middleware};
+}
+
+/**
+ * Whether the subtitle in the DOM is still exactly what `setLastMessage` put
+ * there — anyone else writing into `lastMessageSpan` (a community dialog
+ * falling back to its chat count, a search result, a sidebar picker) has to
+ * invalidate the skip.
+ */
+function isRenderedSubtitleIntact(dom: DialogDom) {
+  const parts = dom.lastMessageRenderParts;
+  const {childNodes} = dom.lastMessageSpan;
+  return !!parts &&
+    parts.length === childNodes.length &&
+    parts.every((part, idx) => part === childNodes[idx]);
 }
 
 function getFolderTitleTextColor(active: boolean) {
@@ -228,11 +258,20 @@ export type DialogElementBadgeState = {
   transitionDuration?: number
 };
 
+type DialogElementAppliedBadgeState = {
+  [key in Parameters<DialogElement['toggleBadgeByKey']>[0]]: boolean
+} & {
+  hasOnlyPinnedBadge: boolean,
+  unreadText?: string,
+  unreadAvatarText?: string
+};
+
 export class DialogElement extends Row {
   public dom: DialogDom;
   public isMainList: boolean;
   public middlewareHelper: MiddlewareHelper;
   private peerTitle: PeerTitle;
+  private lastBadgeState: DialogElementAppliedBadgeState;
 
   constructor({
     peerId,
@@ -517,6 +556,8 @@ export class DialogElement extends Row {
     const transitionDuration = options.transitionDuration || 0;
     this.setMuted(options.muted, transitionDuration);
 
+    const previous = this.lastBadgeState;
+
     const mounted = {
       pinnedBadge: !!this.dom.pinnedBadge,
       unreadBadge: !!this.dom.unreadBadge,
@@ -539,12 +580,19 @@ export class DialogElement extends Row {
       options.reactions,
       options.pollVotes
     ].filter(Boolean).length;
-    SetTransition({
-      element: this.subtitleRow,
-      className: 'has-only-pinned-badge',
-      forwards: options.pinned && subtitleBadgesLength === 1,
-      duration: transitionDuration
-    });
+    const hasOnlyPinnedBadge = options.pinned && subtitleBadgesLength === 1;
+    // * `SetTransition` keeps `animating` on the element for the whole duration,
+    // * and `.has-only-pinned-badge:not(.animating)` drops the subtitle's trailing
+    // * margin while it is there. Replaying it for an unchanged state makes the
+    // * subtitle of every pinned row widen and snap back — a visible blink.
+    if(!previous || previous.hasOnlyPinnedBadge !== hasOnlyPinnedBadge) {
+      SetTransition({
+        element: this.subtitleRow,
+        className: 'has-only-pinned-badge',
+        forwards: hasOnlyPinnedBadge,
+        duration: transitionDuration
+      });
+    }
 
     const states: Array<[
       Parameters<DialogElement['toggleBadgeByKey']>[0],
@@ -561,11 +609,17 @@ export class DialogElement extends Row {
       if(!this.dom[key]) {
         continue;
       }
+
+      // an already mounted badge that keeps its visibility needs no transition
+      if(mounted[key] && previous?.[key] === visible) {
+        continue;
+      }
+
       this.toggleBadgeByKey(key, visible, mounted[key], !transitionDuration);
     }
 
     if(options.unread && this.dom.unreadBadge) {
-      if(options.unreadText !== undefined) {
+      if(options.unreadText !== undefined && options.unreadText !== previous?.unreadText) {
         this.dom.unreadBadge.innerText = options.unreadText;
       }
       this.dom.unreadBadge.classList.add('unread');
@@ -573,12 +627,24 @@ export class DialogElement extends Row {
     }
 
     if(options.unreadAvatar && this.dom.unreadAvatarBadge) {
-      if(options.unreadAvatarText !== undefined) {
+      if(options.unreadAvatarText !== undefined && options.unreadAvatarText !== previous?.unreadAvatarText) {
         this.dom.unreadAvatarBadge.innerText = options.unreadAvatarText;
       }
       this.dom.unreadAvatarBadge.classList.add('unread');
       this.dom.unreadAvatarBadge.classList.toggle('mention', !!options.unreadMention);
     }
+
+    this.lastBadgeState = {
+      pinnedBadge: options.pinned,
+      unreadBadge: options.unread,
+      unreadAvatarBadge: options.unreadAvatar,
+      mentionsBadge: options.mentions,
+      reactionsBadge: options.reactions,
+      pollVotesBadge: options.pollVotes,
+      hasOnlyPinnedBadge,
+      unreadText: options.unreadText,
+      unreadAvatarText: options.unreadAvatarText
+    };
   }
 
   public toggleBadgeByKey(
@@ -2283,6 +2349,54 @@ export class AppDialogsManager {
     return {lastMessage, draftMessage};
   }
 
+  /**
+   * Everything the subtitle is rendered from, flattened into a comparable string.
+   * `textColor` is deliberately left out: `setDialogActiveStatus` recolors the
+   * already rendered custom emoji itself, so becoming (in)active must not cost
+   * a re-render.
+   */
+  private getLastMessageRenderKey(options: {
+    peerId: PeerId,
+    isSaved: boolean,
+    lastMessage?: Message.message | Message.messageService,
+    draftMessage?: MyDraftMessage,
+    highlightWord?: string,
+    noForwardIcon?: boolean,
+    subtitlePeerId?: PeerId,
+    isRestricted?: boolean,
+    isSensitive?: boolean
+  }) {
+    const {lastMessage, draftMessage} = options;
+    const message = lastMessage as Message.message;
+    const media = lastMessage && getMediaFromMessage(lastMessage, true);
+    const messageMedia = message?.media as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument;
+
+    return [
+      options.peerId,
+      options.isSaved,
+      options.highlightWord,
+      options.noForwardIcon,
+      options.subtitlePeerId,
+      options.isRestricted,
+      options.isSensitive,
+      draftMessage?.date,
+      draftMessage?.message,
+      lastMessage?._,
+      lastMessage?.peerId,
+      lastMessage?.mid,
+      lastMessage?.date,
+      message?.edit_date,
+      message?.fromId,
+      message?.fwdFromId,
+      message?.reply_to?._,
+      (media as Photo.photo | MyDocument)?.id,
+      (media as MyDocument)?.type,
+      messageMedia?.pFlags?.spoiler,
+      (messageMedia as MessageMedia.messageMediaPhoto)?.ttl_seconds,
+      message?.message
+    ].join('\x01');
+  }
+
   private async setLastMessage({
     dialog,
     lastMessage: _lastMessage,
@@ -2326,7 +2440,32 @@ export class AppDialogsManager {
       this.setUnreadMessagesN({dialog, dialogElement, isBatch, setLastMessagePromise: promise});
     }
 
+    const isRestricted = !!lastMessage && isMessageRestricted(lastMessage as Message.message);
+    const isSensitive = !!lastMessage && isMessageSensitive(lastMessage as Message.message);
+
+    const renderKey = this.getLastMessageRenderKey({
+      peerId,
+      isSaved,
+      lastMessage,
+      draftMessage,
+      highlightWord,
+      noForwardIcon,
+      subtitlePeerId,
+      isRestricted,
+      isSensitive
+    });
+    // * the key is dropped for the whole render and only restored once the new
+    // * subtitle is in the DOM, so a render interrupted by the middleware can
+    // * never leave a stale key behind
+    const previousRenderParts = dom.lastMessageRenderParts;
+    const canSkipRender = dom.lastMessageRenderKey === renderKey &&
+      isRenderedSubtitleIntact(dom);
+    delete dom.lastMessageRenderKey;
+    delete dom.lastMessageRenderParts;
+
     if(!lastMessage && !draftMessage && !subtitlePeerId/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
+      // * not guarded by the key: the placeholder also depends on the peer being a
+      // * botforum / community dialog, and rendering it costs a single element
       const emptySubtitle = this.getEmptySubtitle(peerId, dom.listEl);
 
       dom.lastMessageSpan.replaceChildren(...(emptySubtitle ? [emptySubtitle] : []));
@@ -2347,10 +2486,9 @@ export class AppDialogsManager {
       }
     }
 
-    const isRestricted = !!lastMessage && isMessageRestricted(lastMessage as Message.message);
-    const isSensitive = !!lastMessage && isMessageSensitive(lastMessage as Message.message);
+    let renderedParts = canSkipRender ? previousRenderParts : undefined;
 
-    /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
+    /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ if(!canSkipRender) {
       let mediaContainer: HTMLElement;
       const mediaParts: (Promise<HTMLElement> | HTMLElement)[] = [];
 
@@ -2421,13 +2559,18 @@ export class AppDialogsManager {
       });
       dom.lastMessageSpan.classList.add('dialog-subtitle-flex');
       dom.lastMessageSpan.replaceChildren(...parts);
+      renderedParts = parts;
     }
 
+    // * the label is relative to the current day, so it is refreshed even when
+    // * the subtitle itself was left alone
     if(lastMessage || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
       const date = draftMessage ? Math.max(draftMessage.date, lastMessage?.date || 0) : lastMessage.date;
       replaceContent(dom.lastTimeSpan, formatDateAccordingToTodayNew(new Date(date * 1000)));
     } else dom.lastTimeSpan.textContent = '';
 
+    dom.lastMessageRenderKey = renderKey;
+    dom.lastMessageRenderParts = renderedParts;
     promise.resolve();
   }
 
