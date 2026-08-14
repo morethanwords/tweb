@@ -196,8 +196,14 @@ ul.chatlist {
       }
     }
 
+    // Everything that lives in the avatar's bottom-right corner has to give way
+    // to whatever the row paints over the avatar itself — the unread badge of a
+    // narrow list (collapsed sidebar / open forum tab) or the group call icon.
+    // Same rule as tdesktop's `Row::updateCornerBadgeShown`, which drops the
+    // corner badge to `kNoneLayer` once `hasUnreadBadgesAbove`.
     &:has(.avatar-badge), &.has-group-call-icon {
-      .avatar-auto-delete-timer {
+      .avatar-auto-delete-timer,
+      .dialog-avatar-corner-badge {
         transform: scale(0);
       }
     }
