@@ -169,6 +169,9 @@ export default class ListLoader<T extends {}, P extends {}> {
       const processedArr: (Promise<any> | any)[] = [];
       const method = older && !this.reverse ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
       method((item: any) => {
+        // * the loader can return holes (a mid without a message behind it), don't feed them to processItem
+        if(!item) return;
+
         const processed = this.processItem ? this.processItem(item) : item;
 
         if(!processed) return;

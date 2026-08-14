@@ -143,6 +143,9 @@ const createSearchLoader = (options: LoadOptions) => {
       messages = result.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid)) as Message.message[];
     }
 
+    // * a mid can have no message behind it (deleted, or a synthetic bound), skip such holes
+    messages = messages.filter(Boolean);
+
     const rendered = await renderHistoryResult({...options, fromSavedDialog, messages});
     if(!middleware()) {
       return;

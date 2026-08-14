@@ -146,8 +146,11 @@ export default class AppSearch {
       let {count, messages, history} = res;
 
       if(!messages) {
-        messages = res.messages = history.map((mid) => apiManagerProxy.getMessageByPeer(this.peerId, mid));
+        messages = history.map((mid) => apiManagerProxy.getMessageByPeer(this.peerId, mid));
       }
+
+      // * a mid can have no message behind it (deleted, or a synthetic bound), skip such holes
+      messages = res.messages = messages.filter(Boolean);
 
       if(messages.length && messages[0].mid === this.minMsgId) {
         messages.shift();

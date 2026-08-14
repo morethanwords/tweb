@@ -11124,8 +11124,8 @@ export class AppMessagesManager extends AppManager {
     if(isRequestingGlobalCacheable && historyStorage.nextRate) {
       const last = historyStorage.searchHistory.last;
       const [peerId, mid] = last[last.length - 1].split('_');
-      const lastMessage = this.getMessageByPeer(peerId.toPeerId(), +mid) as MyMessage;
-      options.offsetId = lastMessage.mid;
+      // * the key already holds the mid, don't look up a message that can be gone by now
+      options.offsetId = +mid;
       options.offsetPeerId = peerId.toPeerId();
       options.nextRate = historyStorage.nextRate;
     }

@@ -44,16 +44,17 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
             this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
           } */
 
+          // * a cached (non-global) search returns only mids, resolve them before filtering
+          if(!value.messages) {
+            value.messages = value.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
+          }
+
           if(this.searchContext.inputFilter._ === 'inputMessagesFilterChatPhotos') {
             filterChatPhotosMessages(value);
           }
 
           if(value.nextRate) {
             this.searchContext.nextRate = value.nextRate;
-          }
-
-          if(!value.messages) {
-            value.messages = value.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
           }
 
           return {count: value.count, items: value.messages};
