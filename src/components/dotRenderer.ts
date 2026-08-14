@@ -7,11 +7,15 @@ import deferredPromise from '@helpers/cancellablePromise';
 import {Middleware} from '@helpers/middleware';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
+import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
+import {drawImageFromSource} from '@components/messageSpoilerOverlay/drawImageFromSource';
+import {adjustSpaceBetweenCloseRects, getInnerCustomRect, toDOMRectArray} from '@components/messageSpoilerOverlay/utils';
+import {observeResize} from '@components/resizeObserver';
 import {retainSpoilerRenderer, SpoilerRendererConnection} from '@components/spoilerRendererConnection';
-import type {SpoilerOverlayUpdate} from '@components/spoilerRenderer.worker';
+import type {SpoilerOverlayRect, SpoilerOverlayUpdate} from '@components/spoilerRenderer.worker';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
 import {CancellablePromise} from '@helpers/cancellablePromise';
 
@@ -574,12 +578,16 @@ export default class DotRenderer implements AnimationItemWrapper {
     middleware,
     animationGroup,
     canvas,
-    draw
+    draw,
+    observeElement = canvas,
+    onDestroy
   }: {
     canvas: HTMLCanvasElement,
     draw: () => void,
-    middleware: Middleware,
+    middleware?: Middleware,
     animationGroup: AnimationItemGroup,
+    observeElement?: HTMLElement,
+    onDestroy?: () => void
   }) {
     const instance = this.getTextSpoilerInstance();
 
@@ -601,13 +609,14 @@ export default class DotRenderer implements AnimationItemWrapper {
           instance.remove();
           this.textSpoilerInstance = undefined;
         }
+        onDestroy?.();
       }
     });
 
     animationIntersector.addAnimation({
       animation,
       group: animationGroup,
-      observeElement: canvas,
+      observeElement,
       controlled: middleware,
       type: 'dots'
     });
@@ -628,11 +637,15 @@ export default class DotRenderer implements AnimationItemWrapper {
   public static attachTextSpoilerOverlay({
     canvas,
     middleware,
-    animationGroup
+    animationGroup,
+    observeElement = canvas,
+    onDestroy
   }: {
     canvas: HTMLCanvasElement,
-    middleware: Middleware,
-    animationGroup: AnimationItemGroup
+    middleware?: Middleware,
+    animationGroup: AnimationItemGroup,
+    observeElement?: HTMLElement,
+    onDestroy?: () => void
   }) {
     const connection = this.retainConnection();
     this.initTextSim();
@@ -648,13 +661,14 @@ export default class DotRenderer implements AnimationItemWrapper {
       onDestroy: () => {
         this.connection?.postMessage({type: 'overlay-detach', id});
         this.releaseConnection();
+        onDestroy?.();
       }
     });
 
     animationIntersector.addAnimation({
       animation,
       group: animationGroup,
-      observeElement: canvas,
+      observeElement,
       controlled: middleware,
       type: 'dots'
     });
@@ -676,77 +690,144 @@ export default class DotRenderer implements AnimationItemWrapper {
   public static attachBluffTextSpoilerTarget(element: HTMLElement) {
     BluffSpoilerController.observeReconnection(element, (el) => this.attachBluffTextSpoilerTarget(el));
 
-    ++BluffSpoilerController.instancesCount;
+    const canvas = element.querySelector<HTMLCanvasElement>('.bluff-spoiler-canvas');
+    if(!canvas) return;
 
-    // The whole rendering (simulation + encoding) runs inside a worker, the main
-    // thread only receives ready mask URLs
     if(BluffSpoilerController.isWorkerSimSupported()) {
-      const dpr = Math.min(2, window.devicePixelRatio);
-      BluffSpoilerController.setupWorkerSim({
-        width: TEXT_SPOILER_WIDTH,
-        height: TEXT_SPOILER_HEIGHT,
-        dpr,
-        config: buildDotRendererConfig(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT, dpr, getTextSpoilerConfig(dpr)),
-        vertexURL: new URL(SHADER_URLS.vertex, window.location.href).href,
-        fragmentURL: new URL(SHADER_URLS.fragment, window.location.href).href
-      });
+      this.attachBluffTextSpoilerTargetWithWorker(element, canvas);
+    } else {
+      this.attachBluffTextSpoilerTargetOnMain(element, canvas);
+    }
+  }
 
-      const animation = new AnimationItemNested({
-        onPlay: () => BluffSpoilerController.activate(element),
-        onPause: () => BluffSpoilerController.deactivate(element),
-        onDestroy: () => {
-          if(!--BluffSpoilerController.instancesCount) {
-            BluffSpoilerController.destroy();
-          }
-        }
-      });
+  private static inlineAppearanceUpdateCallbacks = new Set<() => void>();
+  private static onInlineAppearanceUpdate = () => this.inlineAppearanceUpdateCallbacks.forEach((callback) => callback());
 
-      animationIntersector.addAnimation({
-        animation,
-        group: 'BLUFF-SPOILER',
-        // controlled: true, // should not be controlled! elements might reappear in the DOM after being removed
-        observeElement: element,
-        type: 'dots'
-      });
-
-      return;
+  private static watchInlineSpoiler(element: HTMLElement, update: () => void) {
+    const unobserve = observeResize(element, update);
+    const wasEmpty = !this.inlineAppearanceUpdateCallbacks.size;
+    this.inlineAppearanceUpdateCallbacks.add(update);
+    if(wasEmpty) {
+      rootScope.addEventListener('theme_changed', this.onInlineAppearanceUpdate);
+      rootScope.addEventListener('chat_background_set', this.onInlineAppearanceUpdate);
     }
 
-    const instance = this.getTextSpoilerInstance();
+    return () => {
+      unobserve();
+      this.inlineAppearanceUpdateCallbacks.delete(update);
+      if(!this.inlineAppearanceUpdateCallbacks.size) {
+        rootScope.removeEventListener('theme_changed', this.onInlineAppearanceUpdate);
+        rootScope.removeEventListener('chat_background_set', this.onInlineAppearanceUpdate);
+      }
+    };
+  }
 
-    ++instance.targetCanvasesCount;
+  private static getBluffTextSpoilerState(element: HTMLElement, canvas: HTMLCanvasElement, dpr: number) {
+    const bounds = element.getBoundingClientRect();
+    if(!bounds.width || !bounds.height) return;
 
-    const animation = new AnimationItemNested({
-      onPlay: () => {
-        instance.drawCallbacks.set(element, () => BluffSpoilerController.draw(element, instance.canvas));
-        instance.play();
-      },
-      onPause: () => {
-        instance.drawCallbacks.delete(element);
-        if(!instance.drawCallbacks.size) {
-          instance.pause();
-        }
-      },
+    canvas.style.width = bounds.width + 'px';
+    canvas.style.height = bounds.height + 'px';
+
+    const canvasBounds = canvas.getBoundingClientRect();
+    const currentLeft = parseFloat(canvas.style.left) || 0;
+    const currentTop = parseFloat(canvas.style.top) || 0;
+    canvas.style.left = currentLeft + bounds.left - canvasBounds.left + 'px';
+    canvas.style.top = currentTop + bounds.top - canvasBounds.top + 'px';
+
+    const rects: SpoilerOverlayRect[] = adjustSpaceBetweenCloseRects(
+      toDOMRectArray(element.getClientRects()).map((rect) => getInnerCustomRect(bounds, rect))
+    );
+
+    return {
+      width: Math.round(bounds.width * dpr),
+      height: Math.round(bounds.height * dpr),
+      rects,
+      backgroundColor: 'transparent',
+      particleColor: getComputedStyle(element).color
+    };
+  }
+
+  private static attachBluffTextSpoilerTargetWithWorker(element: HTMLElement, canvas: HTMLCanvasElement) {
+    let destroyed = false;
+    const target = this.attachTextSpoilerOverlay({
+      canvas,
+      animationGroup: 'BLUFF-SPOILER',
+      observeElement: element,
       onDestroy: () => {
-        if(!--instance.targetCanvasesCount) {
-          instance.remove();
-          this.textSpoilerInstance = undefined;
-        }
-        if(!--BluffSpoilerController.instancesCount) {
-          BluffSpoilerController.destroy();
-        }
+        destroyed = true;
+        unwatch?.();
+        element.classList.remove('is-visible');
+        canvas.replaceWith(canvas.cloneNode(false));
       }
     });
 
-    animationIntersector.addAnimation({
-      animation,
-      group: 'BLUFF-SPOILER',
-      // controlled: true, // should not be controlled! elements might reappear in the DOM after being removed
-      observeElement: element,
-      type: 'dots'
+    const update = () => {
+      const state = this.getBluffTextSpoilerState(element, canvas, target.dpr);
+      if(state) target.overlay.update(state);
+    };
+    const unwatch = this.watchInlineSpoiler(element, update);
+
+    callbackify(target.readyResult, () => {
+      if(destroyed) return;
+      update();
+      requestAnimationFrame(() => !destroyed && element.classList.add('is-visible'));
     });
 
-    instance.init();
+    requestAnimationFrame(() => !destroyed && update());
+  }
+
+  private static attachBluffTextSpoilerTargetOnMain(element: HTMLElement, canvas: HTMLCanvasElement) {
+    const context = canvas.getContext('2d');
+    let state: Omit<SpoilerOverlayUpdate, 'type' | 'id'>;
+    let destroyed = false;
+
+    const draw = () => {
+      const {sourceCanvas, dpr} = target;
+      if(!state || !sourceCanvas) return;
+
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      for(const rect of state.rects) {
+        const x = rect.left * dpr;
+        const y = rect.top * dpr;
+        const width = rect.width * dpr;
+        const height = rect.height * dpr;
+
+        drawImageFromSource(context, sourceCanvas, x, y, width, height, x, y, width, height);
+        applyColorOnContext(context, state.particleColor, x, y, width, height);
+      }
+
+      element.classList.add('is-visible');
+    };
+
+    const update = () => {
+      const newState = this.getBluffTextSpoilerState(element, canvas, target.dpr);
+      if(!newState) return;
+
+      state = newState;
+      if(canvas.width !== state.width || canvas.height !== state.height) {
+        canvas.width = state.width;
+        canvas.height = state.height;
+      }
+      draw();
+    };
+    const target = this.attachTextSpoilerTarget({
+      canvas,
+      draw,
+      animationGroup: 'BLUFF-SPOILER',
+      observeElement: element,
+      onDestroy: () => {
+        destroyed = true;
+        unwatch?.();
+        element.classList.remove('is-visible');
+      }
+    });
+    const unwatch = this.watchInlineSpoiler(element, update);
+
+    callbackify(target.readyResult, () => !destroyed && update());
+
+    requestAnimationFrame(() => !destroyed && update());
   }
 }
 

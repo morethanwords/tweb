@@ -3,7 +3,7 @@ import {logger} from '@lib/logger';
 import type {SpoilerRendererInMessage, SpoilerRendererOutMessage} from '@components/spoilerRenderer.worker';
 
 export type SpoilerRendererConnection = {
-  postMessage: (message: SpoilerRendererInMessage | ImageBitmap, transfer?: Transferable[]) => void,
+  postMessage: (message: SpoilerRendererInMessage, transfer?: Transferable[]) => void,
   release: () => void
 };
 
