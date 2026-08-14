@@ -400,6 +400,33 @@ export default class DialogsStorage extends AppManager {
     return orders;
   }
 
+  /**
+   * How many pins the user can actually see in the folder, which is what the pin limit is
+   * about. A member chat of a folded Community is hidden from the real folders (see
+   * AutonomousDialogList.testDialogForFilter), so its pin holds a slot that can neither be
+   * seen nor unpinned there. tdesktop drops such a history from the folder's local pinned
+   * list when the Community folds (Entry::removeFromChatList), so its limit ignores them
+   * too — the server still has the last word on the actual request.
+   */
+  public getPinnedOrdersCount(folderId: number) {
+    const orders = this.getPinnedOrders(folderId);
+    if(!REAL_FOLDERS.has(folderId)) {
+      return orders.length;
+    }
+
+    const hiddenPeerIds = new Set(
+      this.appCommunitiesManager.getCollapsedCommunityPeerIds(folderId)
+    );
+    let count = 0;
+    for(const peerId of orders) {
+      if(!hiddenPeerIds.has(peerId)) {
+        ++count;
+      }
+    }
+
+    return count;
+  }
+
   public isDialogPinned(peerId: PeerId, folderId: number) {
     const filter = this.filtersStorage.getFilter(folderId);
     let isPinned: boolean;

@@ -180,3 +180,46 @@ describe('pinned orders are folder-scoped', () => {
     expect(pushToState).not.toHaveBeenCalled();
   });
 });
+
+describe('pin limit ignores members of a folded Community', () => {
+  const setOrder = (storage: DialogsStorage, folderId: number, order: PeerId[]) => {
+    const _order = storage.getPinnedOrders(folderId);
+    _order.splice(0, _order.length, ...order);
+  };
+
+  const stubCollapsed = (storage: DialogsStorage, byFolder: {[folderId: number]: PeerId[]}) => {
+    Object.assign(storage as any, {
+      appCommunitiesManager: {
+        getCollapsedCommunityPeerIds: (folderId: number) => byFolder[folderId] || []
+      }
+    });
+  };
+
+  test('counts only the pins visible in a real folder', () => {
+    const storage = createStorage();
+    setOrder(storage, FOLDER_ID_ALL, [100 as PeerId, -200 as PeerId, -300 as PeerId]);
+    stubCollapsed(storage, {[FOLDER_ID_ALL]: [-200 as PeerId, -300 as PeerId]});
+
+    expect(storage.getPinnedOrdersCount(FOLDER_ID_ALL)).toEqual(1);
+    // * the order itself stays server-truth, so the pins come back when the Community unfolds
+    expect(storage.getPinnedOrders(FOLDER_ID_ALL)).toHaveLength(3);
+  });
+
+  test('counts every pin when no Community is folded', () => {
+    const storage = createStorage();
+    setOrder(storage, FOLDER_ID_ALL, [100 as PeerId, -200 as PeerId]);
+    stubCollapsed(storage, {});
+
+    expect(storage.getPinnedOrdersCount(FOLDER_ID_ALL)).toEqual(2);
+  });
+
+  test('does not exclude anything in a virtual filter', () => {
+    const storage = createStorage();
+    const filterId = 500 as PeerId;
+    Object.assign(storage as any, {isVirtualFilter: () => true});
+    setOrder(storage, filterId, [100 as PeerId, -200 as PeerId]);
+    stubCollapsed(storage, {[filterId]: [-200 as PeerId]});
+
+    expect(storage.getPinnedOrdersCount(filterId)).toEqual(2);
+  });
+});
