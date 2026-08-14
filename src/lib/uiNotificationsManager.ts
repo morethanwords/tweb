@@ -59,8 +59,29 @@ export type NotificationSettings = StateSettings['notifications'];
 
 const SHOW_NOTIFICATIONS_FOR_OTHER_ACCOUNT = false;
 
+// * cancels are fired per message, so batch them into a single storage write
+const CANCEL_FLUSH_TIMEOUT = 100;
+const MAX_PENDING_NOTIFICATIONS = 1000;
+
 type Account = {managers: ProxiedManagers};
 type NotificationKey = BroadcastEvents['notification_cancel'];
+type PendingNotifications = Partial<Record<ActiveAccountNumber, NotificationKey[]>>;
+/** peerId -> the message id everything is read up to */
+type CancelledRanges = Map<PeerId, number>;
+
+function matchesCancelledRange(key: NotificationKey, accountNumber: ActiveAccountNumber, ranges: CancelledRanges) {
+  if(!ranges) {
+    return false;
+  }
+
+  const [type, keyAccountNumber, peerId, mid] = key.split('_');
+  if(type !== 'msg' || +keyAccountNumber !== accountNumber) {
+    return false;
+  }
+
+  const maxId = ranges.get(+peerId as PeerId);
+  return maxId !== undefined && +mid <= maxId;
+}
 
 function wrapUserName(user: User.user) {
   let name = user.first_name;
@@ -87,6 +108,10 @@ export class UiNotificationsManager {
 
   private stopped: boolean;
 
+  private cancelledKeys: Set<NotificationKey>;
+  private cancelledRanges: Map<ActiveAccountNumber, CancelledRanges>;
+  private cancelTimeout: number;
+
   private topMessagesDeferred: CancellablePromise<void>;
 
   private setAppBadge: (contents?: any) => Promise<void>;
@@ -103,8 +128,19 @@ export class UiNotificationsManager {
     return this.appSettings.notifications;
   }
 
+  private async getPendingNotifications(): Promise<PendingNotifications> {
+    return (await commonStateStorage.get('pendingNotifications', false)) || {};
+  }
+
   public async getNotificationsCountForAllAccounts(): Promise<Partial<Record<ActiveAccountNumber, number>>> {
-    return (await commonStateStorage.get('notificationsCount', false)) || {};
+    const pending = await this.getPendingNotifications();
+    const count: Partial<Record<ActiveAccountNumber, number>> = {};
+    for(const key in pending) {
+      const accountNumber = +key as ActiveAccountNumber;
+      count[accountNumber] = pending[accountNumber]?.length || 0;
+    }
+
+    return count;
   }
 
   private async getNotificationsCountForAllAccountsForTitle() {
@@ -121,33 +157,96 @@ export class UiNotificationsManager {
     return count;
   }
 
-  private async getNotificationsCount(accountNumber: ActiveAccountNumber) {
-    const notificationsCount = await this.getNotificationsCountForAllAccounts();
-    return notificationsCount?.[accountNumber] || 0;
-  }
-
-  private async setNotificationCount(valueOrFn: number | ((prev: number) => number), accountNumber: ActiveAccountNumber) {
+  private async modifyPendingNotifications(
+    accountNumber: ActiveAccountNumber,
+    modify: (keys: NotificationKey[]) => NotificationKey[]
+  ) {
     // * make it safe to call from multiple tabs
     await navigator.locks.request('notificationsCount', async() => {
-      const notificationsCount = await this.getNotificationsCountForAllAccounts();
+      const pending = await this.getPendingNotifications();
+      const keys = pending[accountNumber] || [];
 
-      let newValue = valueOrFn instanceof Function ?
-        valueOrFn(notificationsCount[accountNumber] || 0) :
-        valueOrFn;
-      newValue = Math.max(0, newValue);
-      if(notificationsCount[accountNumber] === newValue) {
+      let newKeys = modify(keys);
+      if(newKeys.length > MAX_PENDING_NOTIFICATIONS) {
+        newKeys = newKeys.slice(newKeys.length - MAX_PENDING_NOTIFICATIONS);
+      }
+
+      if(newKeys.length === keys.length && newKeys.every((key, idx) => key === keys[idx])) {
         return;
       }
 
       await commonStateStorage.set({
-        notificationsCount: {
-          ...notificationsCount,
-          [accountNumber]: newValue
+        pendingNotifications: {
+          ...pending,
+          [accountNumber]: newKeys
         }
       });
       rootScope.dispatchEvent('notification_count_update');
     });
   }
+
+  private addPendingNotification(key: NotificationKey, accountNumber: ActiveAccountNumber) {
+    return this.modifyPendingNotifications(accountNumber, (keys) => {
+      return keys.includes(key) ? keys : keys.concat(key);
+    });
+  }
+
+  private clearPendingNotifications(accountNumber: ActiveAccountNumber) {
+    return this.modifyPendingNotifications(accountNumber, () => []);
+  }
+
+  /**
+   * The count is kept in a storage shared by every tab, while the notifications themselves are only
+   * known to the tab that has shown them. Cancelling has to go through that storage too, otherwise
+   * the badge stays stuck whenever the messages are read anywhere else — another tab, another
+   * client, or this very tab before a reload.
+   */
+  private queueNotificationCancel(key: NotificationKey) {
+    this.cancelledKeys.add(key);
+    this.scheduleNotificationCancelFlush();
+  }
+
+  private queueNotificationCancelUpTo({accountNumber, peerId, maxId}: BroadcastEvents['notification_cancel_up_to']) {
+    let ranges = this.cancelledRanges.get(accountNumber);
+    if(!ranges) {
+      this.cancelledRanges.set(accountNumber, ranges = new Map());
+    }
+
+    ranges.set(peerId, Math.max(ranges.get(peerId) || 0, maxId));
+    this.scheduleNotificationCancelFlush();
+  }
+
+  private scheduleNotificationCancelFlush() {
+    if(this.cancelTimeout !== undefined) {
+      return;
+    }
+
+    this.cancelTimeout = window.setTimeout(this.flushNotificationCancels, CANCEL_FLUSH_TIMEOUT);
+  }
+
+  private flushNotificationCancels = () => {
+    this.cancelTimeout = undefined;
+
+    const keys = this.cancelledKeys;
+    const ranges = this.cancelledRanges;
+    this.cancelledKeys = new Set();
+    this.cancelledRanges = new Map();
+
+    const accountNumbers = new Set<ActiveAccountNumber>(ranges.keys());
+    for(const key of keys) {
+      const accountNumber = +key.split('_')[1] as ActiveAccountNumber;
+      if(accountNumber) {
+        accountNumbers.add(accountNumber);
+      }
+    }
+
+    for(const accountNumber of accountNumbers) {
+      const peerRanges = ranges.get(accountNumber);
+      this.modifyPendingNotifications(accountNumber, (pendingKeys) => pendingKeys.filter((key) => {
+        return !keys.has(key) && !matchesCancelledRange(key, accountNumber, peerRanges);
+      }));
+    }
+  };
 
   construct() {
     this.notificationsUiSupport = ('Notification' in window) || ('mozNotification' in navigator);
@@ -164,6 +263,9 @@ export class UiNotificationsManager {
     this.titleMiddlewareHelper = getMiddleware();
 
     this.stopped = true;
+
+    this.cancelledKeys = new Set();
+    this.cancelledRanges = new Map();
 
     this.topMessagesDeferred = deferredPromise<void>();
 
@@ -190,6 +292,18 @@ export class UiNotificationsManager {
 
     rootScope.addEventListener('notification_cancel', (str) => {
       this.cancel(str);
+    });
+
+    rootScope.addEventListener('notification_cancel_up_to', (payload) => {
+      const {accountNumber, peerId, maxId} = payload;
+      const ranges: CancelledRanges = new Map([[peerId, maxId]]);
+      for(const key in this.notificationsShown) {
+        if(matchesCancelledRange(key as NotificationKey, accountNumber, ranges)) {
+          this.cancel(key as NotificationKey);
+        }
+      }
+
+      this.queueNotificationCancelUpTo(payload);
     });
 
     if(this.setAppBadge) {
@@ -599,7 +713,7 @@ export class UiNotificationsManager {
       this.constructAndStartNotificationManagerFor(accountNumber);
     }
 
-    this.setNotificationCount(0, getCurrentAccount());
+    this.clearPendingNotifications(getCurrentAccount());
   }
 
   private onTitleInterval = async() => {
@@ -711,15 +825,15 @@ export class UiNotificationsManager {
 
     data.image ||= NOTIFICATION_ICON_PATH;
 
-    if(!data.noIncrement) {
-      this.setNotificationCount((prev) => ++prev, pushData.accountNumber);
-    }
-
-    this.toggleToggler();
-
     const idx = ++this.notificationIndex;
     const key = data.key || 'k' + idx as NotificationKey;
     this.notificationsShown[key] = true;
+
+    if(!data.noIncrement) {
+      this.addPendingNotification(key, pushData.accountNumber);
+    }
+
+    this.toggleToggler();
 
     const now = tsNow();
     if(this.settings.volume > 0 && this.settings.sound && !data.noIncrement) {
@@ -845,10 +959,11 @@ export class UiNotificationsManager {
     const notification = this.notificationsShown[key];
     this.log('cancel', key, notification);
     if(notification) {
-      this.setNotificationCount((prev) => --prev, +key.split('_')[1] as ActiveAccountNumber);
       this.closeNotification(notification);
       delete this.notificationsShown[key];
     }
+
+    this.queueNotificationCancel(key);
   }
 
   private closeNotification(notification: boolean | MyNotification) {
@@ -870,7 +985,7 @@ export class UiNotificationsManager {
     }
 
     this.notificationsShown = {};
-    this.setNotificationCount(0, accountNumber);
+    this.clearPendingNotifications(accountNumber);
 
     webPushApiManager.hidePushNotifications();
   };

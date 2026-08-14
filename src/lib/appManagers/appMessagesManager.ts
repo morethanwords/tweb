@@ -9461,6 +9461,18 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${peerId}_${mid}`);
     }
 
+    // * the loop above can only reach messages that are in memory, which is not the case for a read
+    // * that arrives from another client for a peer whose history hasn't been loaded yet.
+    // * Only a whole-peer read can be applied as a range — a thread one shares the message id space
+    // * with the rest of the peer, so it would cancel notifications of threads nobody has read
+    if(!isOut && !threadId && !monoforumThreadId) {
+      this.rootScope.dispatchEvent('notification_cancel_up_to', {
+        accountNumber: this.getAccountNumber(),
+        peerId,
+        maxId
+      });
+    }
+
     if(isOut) historyStorage.readOutboxMaxId = maxId;
     else historyStorage.readMaxId = maxId;
 
