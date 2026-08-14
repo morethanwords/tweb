@@ -59,12 +59,15 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   public managers: AppManagers;
   protected noMenu: boolean;
   protected additionalStickerViewerClass: string;
-  protected searchFetcher?: (value: string) => Promise<T>;
-  protected groupFetcher?: (group: EmojiGroup) => Promise<T>;
+  // * returning the results directly (not a promise) renders them without a repaint gap
+  protected searchFetcher?: (value: string) => MaybePromise<T>;
+  protected groupFetcher?: (group: EmojiGroup) => MaybePromise<T>;
   protected processSearchResult?: (result: {data: T, searching: boolean, grouping: boolean}) => Promise<HTMLElement>;
   protected searchNoLoader: boolean;
   protected searchPlaceholder?: LangPackKey;
   protected searchType: Parameters<typeof EmoticonsSearch>[0]['type'];
+  protected searchDebounceTime?: number;
+  protected searchVerifyDebounce?: Parameters<typeof EmoticonsSearch>[0]['verifyDebounce'];
 
   constructor(options: {
     managers: AppManagers,
@@ -75,7 +78,9 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
     searchNoLoader?: boolean,
     searchPlaceholder?: LangPackKey,
-    searchType?: Parameters<typeof EmoticonsSearch>[0]['type']
+    searchType?: Parameters<typeof EmoticonsSearch>[0]['type'],
+    searchDebounceTime?: number,
+    searchVerifyDebounce?: EmoticonsTabC<Category, T>['searchVerifyDebounce']
   }) {
     safeAssign(this, options);
     this.categories = {};
@@ -172,9 +177,14 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
 
       createEffect(() => {
         const useData = group() ? groupData : data;
-        if(!useData.loading) {
-          setLoadedData(() => useData());
+        if(useData.loading) {
+          return;
         }
+
+        // * reading a rejected resource throws, which would abort this effect before it
+        // * ever sets the data - the previous query's results would stay on screen with no
+        // * spinner and no error, making every following query look like it never ran
+        setLoadedData(() => useData.error === undefined ? useData() : undefined);
       });
 
       createEffect(() => {
@@ -184,6 +194,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       return EmoticonsSearch({
         type: this.searchType,
         placeholder: this.searchPlaceholder,
+        debounceTime: this.searchDebounceTime,
+        verifyDebounce: this.searchVerifyDebounce,
         loading,
         onValue: setQuery,
         onFocusChange: setFocused,
