@@ -211,14 +211,36 @@ export default class DialogsStorage extends AppManager {
       this.storage = storage;
       this.dialogs = this.storage.getCache();
 
+      // * a dialog can only be pinned in the folder it lives in. Foreign entries used to leak
+      // * in from folder-scoped responses (they come without 'folder_id') and stayed forever,
+      // * silently eating the pin limit
+      const cachedFolderIds: Map<PeerId, number> = new Map();
+      for(const dialog of dialogs) {
+        if(dialog) {
+          cachedFolderIds.set(dialog.peerId, dialog.folder_id ?? FOLDER_ID_ALL);
+        }
+      }
+
+      let hasForeignPinned = false;
       for(const folderId of REAL_FOLDERS) {
         const order = state.pinnedOrders[folderId];
         if(!order) {
           continue;
         }
 
+        const filtered = order.filter((peerId) => {
+          const cachedFolderId = cachedFolderIds.get(peerId);
+          return cachedFolderId === undefined || cachedFolderId === folderId;
+        });
+
+        hasForeignPinned ||= filtered.length !== order.length;
+
         const _order = this.getPinnedOrders(folderId);
-        _order.splice(0, _order.length, ...order);
+        _order.splice(0, _order.length, ...filtered);
+      }
+
+      if(hasForeignPinned) {
+        this.savePinnedOrders();
       }
 
       if(dialogs.length) {
@@ -1248,7 +1270,9 @@ export default class DialogsStorage extends AppManager {
 
   public applyDialogs(
     result: MessagesPeerDialogs | MessagesForumTopics | ({_: 'messages.savedDialogs', dialogs: SavedDialog[]} & Parameters<AppMessagesManager['saveApiResult']>[0]),
-    peerId?: PeerId
+    peerId?: PeerId,
+    // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
+    folderId?: REAL_FOLDER_ID
   ) {
     // * В эту функцию попадут только те диалоги, в которых есть read_inbox_max_id и read_outbox_max_id, в отличие от тех, что будут в getTopMessages
 
@@ -1307,7 +1331,7 @@ export default class DialogsStorage extends AppManager {
       }
 
       if(topMid || (dialog as Dialog | ForumTopic).draft?._ === 'draftMessage') {
-        if(this.saveDialog({dialog})) {
+        if(this.saveDialog({dialog, folderId})) {
           const cache = getUpdateCache(peerId);
 
           if(isForum) {
@@ -2404,7 +2428,7 @@ export default class DialogsStorage extends AppManager {
             changedCommunityIds
           );
         }
-        this.applyDialogs(result);
+        this.applyDialogs(result, undefined, isSaved ? undefined : folderId as REAL_FOLDER_ID);
 
         this.handleDialogsPinned(folderId, order);
         this.appCommunitiesManager.handlePinnedDialogsOrder(folderId as REAL_FOLDER_ID);

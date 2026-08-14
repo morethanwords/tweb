@@ -4704,6 +4704,8 @@ export class AppMessagesManager extends AppManager {
 
         this.dialogsStorage.saveDialog({
           dialog,
+          // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
+          folderId: peerId ? undefined : setFolderId,
           ignoreOffsetDate: !isSearch,
           saveGlobalOffset
         });
