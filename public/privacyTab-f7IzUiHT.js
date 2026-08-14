@@ -1,0 +1,2 @@
+import{j as e}from"./solid-WnanT5kq.js";import{si as t}from"./appDialogsManager-BnqnCi3Y.js";var n=(n,r)=>()=>{let[i]=t();return e(()=>{i.container.classList.add(`privacy-tab`,n),r(i)}),null};export{n as t};
+//# sourceMappingURL=privacyTab-f7IzUiHT.js.map

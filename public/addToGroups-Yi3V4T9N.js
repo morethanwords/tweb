@@ -1,2 +1,0 @@
-import{t as e}from"./privacyTab-DPzal5NN.js";import{t}from"./privacySection-CT2UjnJb.js";var n=`PrivacySettingsController.GroupDescription`,r=e(`privacy-add-to-groups`,e=>{new t({tab:e,title:`WhoCanAddMe`,inputKey:`inputPrivacyKeyChatInvite`,captions:[n,n,n],exceptionTexts:[`PrivacySettingsController.NeverAllow`,`PrivacySettingsController.AlwaysAllow`],appendTo:e.scrollable,managers:e.managers})});export{r as default};
-//# sourceMappingURL=addToGroups-Yi3V4T9N.js.map
