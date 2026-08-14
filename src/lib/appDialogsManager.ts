@@ -101,7 +101,7 @@ import {useHasFolders} from '@stores/foldersSidebar';
 import {useAppState} from '@stores/appState';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
-import {PossibleDialog} from '@components/autonomousDialogList/base';
+import {PossibleDialog, setDialogTyping} from '@components/autonomousDialogList/base';
 import {ForumTab} from '@components/forumTab/forumTab';
 import findForumTabByPeerId from '@components/forumTab/findForumTabByPeerId';
 import shouldOpenForumAsNavigationTab from '@components/forumTab/communityOpenMode';
@@ -2857,7 +2857,18 @@ export class AppDialogsManager {
         setUnread: true
       }));
 
-      return Promise.all(promises);
+      const allPromise = Promise.all(promises);
+
+      // * a row built while the peer is already typing gets no `peer_typings` event
+      // * of its own, so the indicator has to be restored here — after the subtitle
+      // * is rendered, and off the returned promise so it never delays the row
+      allPromise.then(() => setDialogTyping({
+        dom: dialogElement.dom,
+        peerId,
+        threadId: isForumTopic(dialog) ? dialog.id : undefined
+      })).catch(noop);
+
+      return allPromise;
     });
 
     return promise;

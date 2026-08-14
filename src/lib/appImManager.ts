@@ -3234,15 +3234,17 @@ export class AppImManager extends EventListenerBase<{
     // const log = this.log.bindPrefix('getPeerTyping-' + peerId);
     // log('getting peer typing');
 
-    const isUser = peerId.isUser();
-    if(isUser && await this.managers.appUsersManager.isBot(peerId)) {
-      // log('a bot');
-      return;
-    }
-
+    // * asked for every dialog element that gets built, so the cheap check that
+    // * answers "no" for almost every peer goes first
     const typings = await this.managers.appProfileManager.getPeerTypings(peerId, threadId);
     if(!typings?.length) {
       // log('have no typing');
+      return;
+    }
+
+    const isUser = peerId.isUser();
+    if(isUser && await this.managers.appUsersManager.isBot(peerId)) {
+      // log('a bot');
       return;
     }
 
