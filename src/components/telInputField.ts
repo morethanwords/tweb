@@ -4,6 +4,11 @@ import {IS_APPLE, IS_ANDROID, IS_APPLE_MOBILE} from '@environment/userAgent';
 import {HelpCountry, HelpCountryCode} from '@layer';
 import InputField, {InputFieldOptions} from '@components/inputField';
 
+// Longest number the field accepts, in digits — same limit as tdesktop
+// (kMaxPhoneCodeLength + kMaxPhoneTailLength). E.164 tops out at 15, so this
+// only cuts off junk input, which would otherwise grow the field line by line.
+const MAX_DIGITS = 4 + 32;
+
 export default class TelInputField extends InputField {
   private pasted = false;
   // Country-code-aware value computed in the `paste` handler and applied on the
@@ -58,6 +63,11 @@ export default class TelInputField extends InputField {
         // the country-code-aware merge computed in the paste handler, then format below.
         this.setValueSilently(this.pastedValue);
         this.pastedValue = undefined;
+      }
+
+      const digits = this.value.replace(/\D/g, '');
+      if(digits.length > MAX_DIGITS) {
+        this.setValueSilently('+' + digits.slice(0, MAX_DIGITS));
       }
 
       const value = this.value;
