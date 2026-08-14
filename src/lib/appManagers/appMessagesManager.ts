@@ -4613,17 +4613,15 @@ export class AppMessagesManager extends AppManager {
     limit,
     folderId,
     query,
-    offsetTopicId,
+    offsetTopic,
     filterType = this.dialogsStorage.getFilterType(folderId),
-    offsetBotforumTopic,
     excludeCommunityDialogs = folderId !== FOLDER_ID_ARCHIVE
   }: {
     limit: number,
     folderId: number,
     query?: string,
-    offsetTopicId?: ForumTopic['id'],
+    offsetTopic?: ForumTopic,
     filterType?: FilterType,
-    offsetBotforumTopic?: ForumTopic,
     excludeCommunityDialogs?: boolean
   }) {
     const log = this.log.bindPrefix('getTopMessages-' + nextRandomUint(16));
@@ -4835,14 +4833,22 @@ export class AppMessagesManager extends AppManager {
 
     let promise: Promise<ReturnType<typeof processResult>>, method: string, params: any;
     if(filterType === FilterType.Forum) {
+      // ! topics are paginated by the offsets of the LAST topic of the previous page, not by the
+      // ! folder's global offset date: the latter is never filled for forums (it comes from the
+      // ! peer's own history, which topics don't share), so paging with it repeats the first page
+      // ! forever and the list freezes after ~100 topics.
+      // ! the top message is read from the peer's own storage: a botforum's peer is a user, so its
+      // ! mids are legacy ones and a by-id lookup could pick another chat's message
+      const offsetTopicMessage = offsetTopic &&
+        this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), offsetTopic.top_message);
       promise = this.apiManager.invokeApiSingleProcess({
         method: method = 'messages.getForumTopics',
         params: params = {
           peer: this.appPeersManager.getInputPeerById(peerId),
           limit: useLimit,
-          offset_date: offsetBotforumTopic?.date || (offsetTopicId ? undefined : offsetDate),
-          offset_id: offsetId,
-          offset_topic: offsetTopicId,
+          offset_date: offsetTopicMessage?.date || offsetTopic?.date || 0,
+          offset_id: offsetTopic ? getServerMessageId(offsetTopic.top_message) : 0,
+          offset_topic: offsetTopic ? getServerMessageId(offsetTopic.id) : 0,
           q: query
         },
         options: requestOptions,

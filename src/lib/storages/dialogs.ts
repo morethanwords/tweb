@@ -1165,7 +1165,10 @@ export default class DialogsStorage extends AppManager {
     this.processDialogForFilters(dialog);
     // }
 
-    if(offsetDate && !dialog.pFlags.pinned) {
+    // ! a topic's offset date would come from the FORUM's history (topics have no history of their
+    // ! own here), which has nothing to do with the topic list's own ordering — forum topics are
+    // ! paginated by the last topic's offsets instead, so no global offset date is kept for them
+    if(offsetDate && !dialog.pFlags.pinned && !isForumTopic(dialog)) {
       if(_isDialog && saveGlobalOffset) {
         const savedGlobalOffsetDate = this.dialogsOffsetDate[GLOBAL_FOLDER_ID];
         if(!savedGlobalOffsetDate || offsetDate < savedGlobalOffsetDate) {
@@ -1869,8 +1872,7 @@ export default class DialogsStorage extends AppManager {
       limit,
       folderId: realFolderId,
       query,
-      offsetTopicId: isForum && query ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic)?.id : undefined,
-      offsetBotforumTopic: isBotforum ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic) : undefined,
+      offsetTopic: isForum || isBotforum ? curDialogStorage[curDialogStorage.length - 1] as ForumTopic : undefined,
       excludeCommunityDialogs: filterType === FilterType.Folder && filterId === FOLDER_ID_ALL
     }).then((result) => {
       if(query) {
