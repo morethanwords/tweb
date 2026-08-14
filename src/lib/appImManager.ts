@@ -3251,7 +3251,7 @@ export class AppImManager extends EventListenerBase<{
     const typing = typings[0];
 
     const langPackKeys: {
-      [peerType in 'private' | 'chat' | 'multi']?: Partial<{[action in SendMessageAction['_']]: LangPackKey}>
+      [peerType in 'private' | 'chat' | 'multi' | 'pair']?: Partial<{[action in SendMessageAction['_']]: LangPackKey}>
     } = {
       private: {
         'sendMessageTypingAction': 'Peer.Activity.User.TypingText',
@@ -3293,10 +3293,25 @@ export class AppImManager extends EventListenerBase<{
         'sendMessageRecordRoundAction': 'Peer.Activity.Chat.Multi.RecordingVideo1',
         'sendMessageGamePlayAction': 'Peer.Activity.Chat.Multi.PlayingGame1',
         'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Multi.ChoosingSticker1'
+      },
+      pair: {
+        'sendMessageTypingAction': 'Peer.Activity.Chat.Pair.TypingText',
+        'sendMessageUploadAudioAction': 'Peer.Activity.Chat.Pair.SendingFile',
+        'sendMessageUploadDocumentAction': 'Peer.Activity.Chat.Pair.SendingFile',
+        'sendMessageUploadPhotoAction': 'Peer.Activity.Chat.Pair.SendingPhoto',
+        'sendMessageUploadVideoAction': 'Peer.Activity.Chat.Pair.SendingVideo',
+        'sendMessageUploadRoundAction': 'Peer.Activity.Chat.Pair.SendingVideo',
+        'sendMessageRecordVideoAction': 'Peer.Activity.Chat.Pair.RecordingVideo',
+        'sendMessageRecordAudioAction': 'Peer.Activity.Chat.Pair.RecordingAudio',
+        'sendMessageRecordRoundAction': 'Peer.Activity.Chat.Pair.RecordingVideo',
+        'sendMessageGamePlayAction': 'Peer.Activity.Chat.Pair.PlayingGame',
+        'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Pair.ChoosingSticker'
       }
     };
 
-    const mapa = isUser ? langPackKeys.private : (typings.length > 1 ? langPackKeys.multi : langPackKeys.chat);
+    // * with exactly two typings there's no point in hiding the second one behind "1 other"
+    const isPair = typings.length === 2;
+    const mapa = isUser ? langPackKeys.private : (isPair ? langPackKeys.pair : (typings.length > 1 ? langPackKeys.multi : langPackKeys.chat));
     let action = typing.action;
 
     if(typings.length > 1) {
@@ -3320,17 +3335,20 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    let peerTitlePromise: Promise<any>;
     let args: any[];
     if(peerId.isAnyChat()) {
-      const peerTitle = new PeerTitle();
-      peerTitlePromise = peerTitle.update({peerId: typing.userId.toPeerId(false), onlyFirstName: true});
-      args = [
-        peerTitle.element,
-        typings.length - 1
-      ];
+      const peerTitles = typings.slice(0, isPair ? 2 : 1).map((typing) => {
+        const peerTitle = new PeerTitle();
+        const promise = peerTitle.update({peerId: typing.userId.toPeerId(false), onlyFirstName: true});
+        return {peerTitle, promise};
+      });
 
-      await peerTitlePromise;
+      args = peerTitles.map(({peerTitle}) => peerTitle.element);
+      if(!isPair) {
+        args.push(typings.length - 1);
+      }
+
+      await Promise.all(peerTitles.map(({promise}) => promise));
     }
 
     if(!container) {
