@@ -76,7 +76,10 @@ export function pickLanguage<T extends boolean>(
     }
   });
 
-  if(selected) {
+  // Only in multi-select: `addInitial` in single-select mode counts as a user
+  // pick and instantly resolves + closes the popup, and the `add` override is
+  // dead anyway (chips are rendered by the selector only when multi is on).
+  if(multi && selected) {
     const _add = popup.selector.add.bind(popup.selector);
     popup.selector.add = ({key, scroll}) => {
       const ret = _add({

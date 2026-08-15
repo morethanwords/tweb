@@ -650,9 +650,19 @@ export async function showPickUser2Popup<T extends boolean = false>({
       peerType,
       placeholder: placeholder || 'SelectChat',
       onSelect: (chosen) => {
+        // The footer button stays clickable with an empty selection — treat
+        // that as a cancel (onClose rejects) instead of resolving with [].
+        if(!chosen.length) {
+          return;
+        }
+
         resolved = true;
         resolve((multiSelect ? chosen.map((c) => c.peerId) : chosen[0].peerId) as any);
       },
+      multiSelect,
+      // The batch is confirmed via the floating footer button, which needs a
+      // label — an unlabeled FooterButton renders as an empty bar.
+      footerButtonProps: multiSelect ? {langKey: 'Send'} : undefined,
       filterPeerTypeBy,
       chatRightsActions,
       titleLangKey,

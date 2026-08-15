@@ -81,6 +81,7 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
         });
       },
       onChange: onCountUpdate,
+      multiSelect: true,
       titleLangKey: hasPremiumSection ? 'InviteViaLink.Premium' : 'InviteViaLink.Title',
       initial,
       headerSearch: false,
