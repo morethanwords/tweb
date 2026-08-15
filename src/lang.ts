@@ -51,7 +51,7 @@ const lang = {
   'ChatAutomation.Add': 'Add',
   'ChatAutomation.RemoveBot': 'Remove Bot',
   'ChatAutomation.AccessibleChats': 'Chats the bot can access',
-  'ChatAutomation.AllExcept': 'All 1-to-1 Chats Except...',
+  'ChatAutomation.AllExcept': 'All Private Chats Except...',
   'ChatAutomation.OnlySelected': 'Only Selected Chats',
   'ChatAutomation.ExcludedChats': 'Excluded Chats',
   'ChatAutomation.IncludedChats': 'Included Chats',
