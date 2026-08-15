@@ -535,6 +535,9 @@ export default class InputField {
 
       input = this.container.firstElementChild as HTMLElement;
       input.contentEditable = '' + !!canBeEdited;
+      // * browser & extension translators rewrite the text nodes right inside the contenteditable,
+      // * so the value read back from the DOM is the translated one — with broken entities and custom emojis
+      input.translate = false;
       // const observer = new MutationObserver(() => {
       //   //checkAndSetRTL(input);
 

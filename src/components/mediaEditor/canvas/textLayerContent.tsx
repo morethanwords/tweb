@@ -170,10 +170,12 @@ export default function TextLayerContent(props: ResizableLayerProps) {
         '--align-items': flexAlignMap[props.layer.textInfo.alignment]
       }}
     >
+      {/* * translate="no": the typed text is read back out of this element and baked into the image */}
       <div
         ref={contentEditable}
         class="media-editor__text-layer-layout"
         contenteditable
+        translate="no"
         onInput={() => updateBackground()}
         onFocus={onFocus}
       >

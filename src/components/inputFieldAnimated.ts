@@ -37,6 +37,7 @@ export default class InputFieldAnimated extends InputField {
     this.inputFake = document.createElement('div');
     // this.inputFake.contentEditable = 'true';
     this.inputFake.contentEditable = 'true';
+    this.inputFake.translate = false; // * keep the height mirror in sync with the untranslated input
     this.inputFake.tabIndex = -1;
     this.inputFake.className = this.input.className + ' input-field-input-fake';
   }
