@@ -830,7 +830,8 @@ export default class DialogsStorage extends AppManager {
         !!(toggle && wasUnreadCount),
         !!(toggle && wasUnreadCount && wasUnmuted),
         !!(toggle && wasUnreadMentionsCount),
-        dialog
+        dialog,
+        !toggle
       );
       return;
     }
@@ -858,12 +859,21 @@ export default class DialogsStorage extends AppManager {
     toggleDialog: boolean,
     toggleUnmuted: boolean,
     toggleMentions: boolean,
-    dialog: Dialog | ForumTopic
+    dialog: Dialog | ForumTopic,
+    removing?: boolean
   ) {
     const {peerId} = dialog;
     const isForum = this.appPeersManager.isForum(peerId);
     const isTopic = isForumTopic(dialog);
-    if(isForum && !isTopic && !(dialog as Dialog).pFlags.view_forum_as_messages) {
+    // * a forum's unread state lives in its topics, not in its dialog
+    const isForumAggregate = isForum && !isTopic && !(dialog as Dialog).pFlags.view_forum_as_messages;
+    if(isForumAggregate && removing) {
+      // * the forum is leaving this folder (deleted, left, archived) — its topics are still cached
+      // * and still unread, so recomputing the aggregate here would re-add the very peer that's
+      // * being removed. No messages were ever counted for a forum either, hence the zero.
+      addMessagesCount = 0;
+      toggleDialog = toggleUnmuted = toggleMentions = false;
+    } else if(isForumAggregate) {
       const forumUnreadCount = this.getForumUnreadCount(peerId);
       if(forumUnreadCount instanceof Promise) {
         forumUnreadCount.then(({count, hasUnmuted}) => {
