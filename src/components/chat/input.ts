@@ -4261,14 +4261,20 @@ export default class ChatInput {
     return this.inputState.canPaste();
   }
 
+  // Flags that apply to a single send only. Every send path must drop them,
+  // otherwise the next message silently inherits the schedule date / silence.
+  public resetSendingFlags() {
+    this.scheduleDate = undefined;
+    this.scheduleRepeatPeriod = undefined;
+    this.sendSilent = undefined;
+  }
+
   public onMessageSent(clearInput = true, clearReply?: boolean, skipReadHistory = false) {
     if(!skipReadHistory && !PEER_EXCEPTIONS.has(this.chat.type)) {
       this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
     }
 
-    this.scheduleDate = undefined;
-    this.scheduleRepeatPeriod = undefined;
-    this.sendSilent = undefined;
+    this.resetSendingFlags();
 
     const {totalEntities} = this.getValueAndEntities(this.messageInput);
     let nextOffset = 0;

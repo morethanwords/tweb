@@ -901,7 +901,19 @@ export default class PopupNewMedia extends PopupElement {
     return this.wrapMediaEditorBlobInFile(params.file as File, editResult.blob, params.editResult?.isVideo);
   }
 
+  // * the send menu stamps the one-shot flags (schedule date / silent) onto the
+  // * ChatInput and only then delegates here, and this path never goes through
+  // * onMessageSent — so drop them once the attempt is over, sent or rejected,
+  // * otherwise the next message inherits them
   private async send(force = false) {
+    try {
+      return await this.performSend(force);
+    } finally {
+      this.chat.input.resetSendingFlags();
+    }
+  }
+
+  private async performSend(force = false) {
     if(this.fileConversions.size) { // * the file to send doesn't exist yet
       return;
     }
