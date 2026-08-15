@@ -211,9 +211,9 @@ export default class DialogsStorage extends AppManager {
       this.storage = storage;
       this.dialogs = this.storage.getCache();
 
-      // * a dialog can only be pinned in the folder it lives in. Foreign entries used to leak
-      // * in from folder-scoped responses (they come without 'folder_id') and stayed forever,
-      // * silently eating the pin limit
+      // * repair orders persisted before saveDialog started cleaning the folder a pinned dialog
+      // * left: a dialog can only be pinned in the folder it lives in, and a foreign entry stays
+      // * forever, silently eating the pin limit
       const cachedFolderIds: Map<PeerId, number> = new Map();
       for(const dialog of dialogs) {
         if(dialog) {
@@ -1300,9 +1300,7 @@ export default class DialogsStorage extends AppManager {
 
   public applyDialogs(
     result: MessagesPeerDialogs | MessagesForumTopics | ({_: 'messages.savedDialogs', dialogs: SavedDialog[]} & Parameters<AppMessagesManager['saveApiResult']>[0]),
-    peerId?: PeerId,
-    // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
-    folderId?: REAL_FOLDER_ID
+    peerId?: PeerId
   ) {
     // * В эту функцию попадут только те диалоги, в которых есть read_inbox_max_id и read_outbox_max_id, в отличие от тех, что будут в getTopMessages
 
@@ -1361,7 +1359,7 @@ export default class DialogsStorage extends AppManager {
       }
 
       if(topMid || (dialog as Dialog | ForumTopic).draft?._ === 'draftMessage') {
-        if(this.saveDialog({dialog, folderId})) {
+        if(this.saveDialog({dialog})) {
           const cache = getUpdateCache(peerId);
 
           if(isForum) {
@@ -1500,12 +1498,10 @@ export default class DialogsStorage extends AppManager {
    */
   public saveDialog({
     dialog,
-    folderId,
     ignoreOffsetDate,
     saveGlobalOffset
   }: {
     dialog: AnyDialog | MTDialog.dialogCommunity,
-    folderId?: REAL_FOLDER_ID,
     ignoreOffsetDate?: boolean,
     saveGlobalOffset?: boolean
   }) {
@@ -1529,9 +1525,9 @@ export default class DialogsStorage extends AppManager {
     const topicId = isTopic ?
       dialog.id = this.appMessagesIdsManager.generateMessageId(dialog.id, channelId) :
       (isSaved ? savedPeerId : undefined);
-    if(_isDialog) {
-      folderId ??= dialog.folder_id ?? FOLDER_ID_ALL;
-    }
+    // * the server stamps 'folder_id' on every dialog that lives outside the main folder, in
+    // * folder-scoped answers too, so its absence always means the main folder
+    const folderId: REAL_FOLDER_ID = _isDialog ? (dialog.folder_id ?? FOLDER_ID_ALL) : undefined;
 
     if(!peerId) {
       this.log.error('saveConversation no peerId???', dialog, folderId);
@@ -1637,11 +1633,21 @@ export default class DialogsStorage extends AppManager {
 
     if(_isDialog && dialog.folder_id === undefined) {
       if(dialog._ === 'dialog') {
-        // ! СЛОЖНО ! СМОТРИ В getTopMessages
-        dialog.folder_id = wasDialogBefore ? (wasDialogBefore as typeof dialog).folder_id : folderId;
+        dialog.folder_id = folderId;
       }/*  else if(dialog._ === 'dialogFolder') {
         dialog.folder_id = dialog.folder.id;
       } */
+    }
+
+    // * a dialog can only be pinned in the folder it lives in. When the move is learned from a
+    // * dialogs answer instead of 'updateFolderPeers' (offline while it happened, another device),
+    // * nothing drops the peer from the old folder's order — and the order is persisted, so the
+    // * dead entry silently eats a slot of that folder's pin limit forever
+    if(_isDialog && wasDialogBefore) {
+      const wasFolderId = (wasDialogBefore as typeof dialog).folder_id ?? FOLDER_ID_ALL;
+      if(wasFolderId !== folderId && indexOfAndSplice(this.getPinnedOrders(wasFolderId), peerId) !== undefined) {
+        this.savePinnedOrders();
+      }
     }
 
     if(!isSaved) {
@@ -2314,7 +2320,8 @@ export default class DialogsStorage extends AppManager {
       const dialog = this.dropDialogFromFolders(peerId, undefined, true)[0] as Dialog;
       if(dialog) {
         if(dialog.pFlags?.pinned) {
-          this.handleDialogUnpinning(dialog, folder_id);
+          // * the pin belongs to the folder the dialog is LEAVING, not to the one it moves to
+          this.handleDialogUnpinning(dialog, dialog.folder_id ?? FOLDER_ID_ALL);
         }
 
         (dialog as Dialog).folder_id = folder_id as REAL_FOLDER_ID;
@@ -2457,7 +2464,7 @@ export default class DialogsStorage extends AppManager {
             changedCommunityIds
           );
         }
-        this.applyDialogs(result, undefined, isSaved ? undefined : folderId as REAL_FOLDER_ID);
+        this.applyDialogs(result);
 
         this.handleDialogsPinned(folderId, order);
         this.appCommunitiesManager.handlePinnedDialogsOrder(folderId as REAL_FOLDER_ID);

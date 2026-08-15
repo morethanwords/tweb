@@ -4700,10 +4700,10 @@ export class AppMessagesManager extends AppManager {
           return;
         }
 
+        // ! никогда не передавать сюда folderId: ответ по папке 1 содержит ещё и закреплённые
+        // ! диалоги папки 0 (см. комментарий у запроса), а folder_id сервер проставляет сам
         this.dialogsStorage.saveDialog({
           dialog,
-          // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
-          folderId: peerId ? undefined : setFolderId,
           ignoreOffsetDate: !isSearch,
           saveGlobalOffset
         });

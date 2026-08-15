@@ -46,6 +46,9 @@ const createStorage = () => {
     appNotificationsManager: {
       savePeerSettings: () => {}
     },
+    appStateManager: {
+      pushToState: () => {}
+    },
     apiUpdatesManager: {
       addChannelState: () => {},
       addMultipleEventsListeners: () => {}
@@ -91,19 +94,10 @@ const makeDialog = (userId: number): MTDialog.dialog => ({
 } as any);
 
 describe('pinned orders are folder-scoped', () => {
-  // * responses to a folder-scoped messages.getDialogs / messages.getPinnedDialogs come
-  // * without 'folder_id', so without the explicit folderId archived dialogs used to be
-  // * filed into folder 0 (and their pins into pinnedOrders[0], eating the pin limit)
-  test('saveDialog files a folder-scoped dialog into the requested folder', () => {
-    const storage = createStorage();
-    const dialog = makeDialog(100);
-
-    storage.saveDialog({dialog: dialog as any, folderId: FOLDER_ID_ARCHIVE});
-
-    expect((dialog as any).folder_id).toEqual(FOLDER_ID_ARCHIVE);
-  });
-
-  test('saveDialog defaults to the main folder without a requested folder', () => {
+  // * the server stamps 'folder_id' on every dialog outside the main folder — in the answer to a
+  // * folder-scoped messages.getDialogs too, whose dialogs are NOT all in the requested folder:
+  // * an answer for folder 1 also carries the pinned dialogs of folder 0, unmarked
+  test('saveDialog files a dialog the server left unmarked into the main folder', () => {
     const storage = createStorage();
     const dialog = makeDialog(100);
 
@@ -112,14 +106,47 @@ describe('pinned orders are folder-scoped', () => {
     expect((dialog as any).folder_id).toEqual(FOLDER_ID_ALL);
   });
 
-  test('saveDialog keeps the known folder of an already cached dialog', () => {
+  test('saveDialog keeps the folder the server stamped', () => {
     const storage = createStorage();
-    storage.saveDialog({dialog: makeDialog(100) as any, folderId: FOLDER_ID_ALL});
+    const dialog = Object.assign(makeDialog(100), {folder_id: FOLDER_ID_ARCHIVE});
+
+    storage.saveDialog({dialog: dialog as any});
+
+    expect((dialog as any).folder_id).toEqual(FOLDER_ID_ARCHIVE);
+  });
+
+  test('saveDialog takes a cached dialog out of the archive when the server stops marking it', () => {
+    const storage = createStorage();
+    storage.saveDialog({dialog: Object.assign(makeDialog(100), {folder_id: FOLDER_ID_ARCHIVE}) as any});
 
     const dialog = makeDialog(100);
-    storage.saveDialog({dialog: dialog as any, folderId: FOLDER_ID_ARCHIVE});
+    storage.saveDialog({dialog: dialog as any});
 
     expect((dialog as any).folder_id).toEqual(FOLDER_ID_ALL);
+  });
+
+  // * moving a pinned dialog between folders is usually learned from 'updateFolderPeers', but not
+  // * when it happened elsewhere while this client was offline — then only the dialogs answer says so
+  test('saveDialog drops the pin of the folder the dialog left', () => {
+    const storage = createStorage();
+    storage.saveDialog({dialog: makeDialog(100) as any});
+    const order = storage.getPinnedOrders(FOLDER_ID_ALL);
+    order.splice(0, order.length, 100 as PeerId, 200 as PeerId);
+
+    storage.saveDialog({dialog: Object.assign(makeDialog(100), {folder_id: FOLDER_ID_ARCHIVE}) as any});
+
+    expect(storage.getPinnedOrders(FOLDER_ID_ALL)).toEqual([200]);
+  });
+
+  test('saveDialog keeps the pin of a dialog that stayed in its folder', () => {
+    const storage = createStorage();
+    storage.saveDialog({dialog: makeDialog(100) as any});
+    const order = storage.getPinnedOrders(FOLDER_ID_ALL);
+    order.splice(0, order.length, 100 as PeerId, 200 as PeerId);
+
+    storage.saveDialog({dialog: makeDialog(100) as any});
+
+    expect(storage.getPinnedOrders(FOLDER_ID_ALL)).toEqual([100, 200]);
   });
 
   test('drops pinned entries belonging to another folder on load', async() => {
