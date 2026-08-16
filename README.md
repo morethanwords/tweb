@@ -22,9 +22,16 @@ Run `node build` to build the minimized production version of the app. Copy `pub
 ### Running in docker
 
 #### Quick Start (Production Prebuilt Image — No build required):
+
+Create folder:
+```bash
+mkdir -p /opt/webk
+cd /opt/webk
+```
+
 Download the configuration files:
 ```bash
-curl -o docker-compose.yml https://raw.githubusercontent.com/roon9e/webk/master/docker-compose.yml
+curl -o docker-compose.yaml https://raw.githubusercontent.com/roon9e/webk/master/docker-compose.yaml
 curl -o .env https://raw.githubusercontent.com/roon9e/webk/master/.env.example
 ```
 
