@@ -167,6 +167,7 @@ import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMes
 import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
 import TranslatableMessage from '@components/translatableMessage';
 import getUnreadReactions from '@appManagers/utils/messages/getUnreadReactions';
+import isUnreadByReadCursor from '@appManagers/utils/messages/isUnreadByReadCursor';
 import {setPeerLanguageLoaded} from '@stores/peerLanguage';
 import ButtonIcon from '@components/buttonIcon';
 import showAboutAdPopup from '@components/popups/aboutAd';
@@ -671,13 +672,13 @@ export default class ChatBubbles {
 
   private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
 
-  // Coalesces the per-bubble getReadMaxIdIfUnread cross-worker round-trip:
-  // every non-unread bubble in a group/channel render burst asks for the SAME
-  // peer/thread read cursor, so memoize the in-flight promise for the burst and
-  // reuse it. TTL 0 → the entry is dropped on the next macrotask after the fetch
-  // settles, so a later, distinct render pass re-reads a fresh value.
+  // Coalesces the per-bubble read-cursor cross-worker round-trip: every non-unread
+  // bubble in a group/channel render burst asks for the SAME peer/thread read
+  // cursor, so memoize the in-flight promise for the burst and reuse it. TTL 0 →
+  // the entry is dropped on the next macrotask after the fetch settles, so a
+  // later, distinct render pass re-reads a fresh value.
   private getRenderReadMaxId = memoizeAsyncWithTTL(
-    (peerId: PeerId, threadId?: number) => this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId),
+    (peerId: PeerId, threadId?: number) => this.managers.appMessagesManager.getInboxReadMaxId(peerId, threadId),
     ([peerId, threadId]) => peerId + '_' + (threadId || ''),
     0
   );
@@ -6842,9 +6843,18 @@ export default class ChatBubbles {
     const unreadMention = isMentionUnread(message);
     const unreadReactions = getUnreadReactions(message);
 
-    if(!isEphemeral && !previewOnly && !context.isInUnread && this.chat.peerId.isAnyChat()) {
+    // A group/channel message loaded without its dialog carries no `unread` flag, so fall
+    // back to the peer's inbox read cursor — only a message ABOVE it is still unread. Our
+    // own messages never are: the inbox cursor tracks incoming ones and stays below them.
+    if(
+      !isEphemeral &&
+      !previewOnly &&
+      !message.pFlags.out &&
+      !context.isInUnread &&
+      this.chat.peerId.isAnyChat()
+    ) {
       const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
-      if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
+      if(isUnreadByReadCursor(readMaxId, maxBubbleMid)) {
         context.isInUnread = true;
       }
     }

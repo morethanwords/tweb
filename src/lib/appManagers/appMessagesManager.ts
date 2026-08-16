@@ -4587,25 +4587,42 @@ export class AppMessagesManager extends AppManager {
     return outDialogs;
   } */
 
+  // Forum topics (channel.pFlags.forum) AND botforum topics (user.pFlags.bot_forum_view)
+  // both have their own per-topic historyStorage.readMaxId. Only legacy reply-thread
+  // discussions in plain channels use the read cursor merged with the parent chat's.
+  private isMergedReadCursorThread(peerId: PeerId, threadId?: number) {
+    if(!threadId) {
+      return false;
+    }
+
+    return !this.appChatsManager.isForum(peerId.toChatId()) && !this.appPeersManager.isBotforum(peerId);
+  }
+
+  /**
+   * The inbox read cursor itself: every message above it has not been read yet.
+   * Unlike {@link getReadMaxIdIfUnread} it does not collapse to 0 once the chat has
+   * nothing left unread — that answer only makes sense for the unread delimiter and
+   * the jump target; used to decide whether a single message is unread it would mark
+   * EVERY message of a fully read chat as unread.
+   */
+  public getInboxReadMaxId(peerId: PeerId, threadId?: number) {
+    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    if(this.isMergedReadCursorThread(peerId, threadId)) {
+      const chatHistoryStorage = this.getHistoryStorage(peerId);
+      return Math.max(chatHistoryStorage.readMaxId ?? 0, historyStorage.readMaxId);
+    }
+
+    // return peerId.isUser() ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
+    return historyStorage.readMaxId;
+  }
+
   public getReadMaxIdIfUnread(peerId: PeerId, threadId?: number) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
-    // Forum topics (channel.pFlags.forum) AND botforum topics (user.pFlags.bot_forum_view)
-    // both fall through to the "topic" branch — they have their own per-topic
-    // historyStorage.readMaxId. Only legacy reply-thread discussions in plain
-    // channels use the merged-with-parent read cursor.
-    const isAnyForum = this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId);
-    if(threadId && !isAnyForum) {
-      const chatHistoryStorage = this.getHistoryStorage(peerId);
-      const readMaxId = Math.max(chatHistoryStorage.readMaxId ?? 0, historyStorage.readMaxId);
-      const message = this.getMessageByPeer(peerId, historyStorage.maxId); // usually message is missing, so pFlags.out won't be there anyway
-      return !message?.pFlags?.out && readMaxId < historyStorage.maxId ? readMaxId : 0;
-    } else {
-      const message = this.getMessageByPeer(peerId, historyStorage.maxId);
-      // const readMaxId = peerId.isUser() ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
-      const readMaxId = historyStorage.readMaxId;
-      // readMaxId can be 4294967295 (0)
-      return !message?.pFlags?.out && readMaxId < historyStorage.maxId && getServerMessageId(readMaxId) ? readMaxId : 0;
-    }
+    const readMaxId = this.getInboxReadMaxId(peerId, threadId);
+    const message = this.getMessageByPeer(peerId, historyStorage.maxId); // usually message is missing, so pFlags.out won't be there anyway
+    // readMaxId can be 4294967295 (0) — a chat where nothing has been read yet has no cursor to point at
+    const hasCursor = this.isMergedReadCursorThread(peerId, threadId) || !!getServerMessageId(readMaxId);
+    return !message?.pFlags?.out && readMaxId < historyStorage.maxId && hasCursor ? readMaxId : 0;
   }
 
   // public lolSet = new Set();
