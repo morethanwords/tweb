@@ -21,16 +21,29 @@ Run `node build` to build the minimized production version of the app. Copy `pub
 
 ### Running in docker
 
-#### Developing: 
-* Install dependencies `docker-compose up tweb.dependencies`.
-* Run develop container `docker-compose up tweb.develop `.
-* Open http://localhost:8080/ in your browser. 
+#### Quick Start (Production Prebuilt Image — No build required):
+Download the configuration files:
+```bash
+curl -o docker-compose.yml https://raw.githubusercontent.com/roon9e/webk/master/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/roon9e/webk/master/.env.example
+```
 
-#### Production:
-* Run `docker-compose up tweb.production -d` nginx image and container to serve the build
-* Open http://localhost:80/ in your browser.
+Run the container and check logs:
+```bash
+docker compose up -d
+docker compose logs -f
+```
+Open http://localhost:80/ in your browser.
 
-You can use `docker build -f ./.docker/Dockerfile_production -t {dockerhub-username}/{imageName}:{latest} .` to build your production ready image.
+#### Developing / Building locally:
+To develop or build from source, uncomment the development services or `build:` section in `docker-compose.yml`:
+* Install dependencies: `docker compose up tweb.dependencies`
+* Run develop container: `docker compose up tweb.develop`
+* Open http://localhost:8080/ in your browser.
+* Or build the production image manually:
+  ```bash
+  docker build -f ./.docker/Dockerfile_production -t ghcr.io/roon9e/webk:latest .
+  ```
 
 ### Dependencies
 * [BigInteger.js](https://github.com/peterolson/BigInteger.js) ([Unlicense](https://github.com/peterolson/BigInteger.js/blob/master/LICENSE))
