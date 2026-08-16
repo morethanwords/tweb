@@ -26,7 +26,6 @@ import {CodeLanguageAliases, highlightCode} from '@/codeLanguages';
 import callbackify from '@helpers/callbackify';
 import findIndexFrom from '@helpers/array/findIndexFrom';
 import {observeResize} from '@components/resizeObserver';
-import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import DotRenderer from '@components/dotRenderer';
 import isMixedScriptUrl from '@helpers/string/isMixedScriptUrl';
 import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
@@ -687,7 +686,16 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           if(!IS_FIREFOX) { // Firefox has very poor performance when drawing on canvas
             element = document.createElement('span');
             element.className = 'bluff-spoiler';
-            element.append(...partText.split('').map((encodedLetter) => createElementFromMarkup(`<span class="bluff-spoiler-letter">${encodedLetter}</span>`)))
+            element.append(...partText.split('').map((encodedLetter) => {
+              const letter = document.createElement('span');
+              letter.className = 'bluff-spoiler-letter';
+              letter.textContent = encodedLetter;
+              return letter;
+            }));
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'bluff-spoiler-canvas';
+            element.append(canvas);
             fragment.append(element);
 
             DotRenderer.attachBluffTextSpoilerTarget(element);

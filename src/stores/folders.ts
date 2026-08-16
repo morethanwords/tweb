@@ -152,18 +152,23 @@ const useFoldersStore = createRoot(() => {
     setFolderItems(items);
   }
 
-  let hydrated = false;
+  let lastHydrationId = 0;
+  let listenersInited = false;
   async function hydrateFilters(filters: MyDialogFilter[]) {
-    if(hydrated) {
-      return;
-    }
-
-    hydrated = true;
+    const hydrationId = ++lastHydrationId;
     const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
     const items = await Promise.all(folderFilters.map(makeFolderItemPayload));
     const orderedItems = await getFolderItemsInOrder(items, rootScope.managers);
+
+    if(hydrationId !== lastHydrationId) {
+      return;
+    }
+
     setFolderItems(orderedItems);
-    initListeners();
+    if(!listenersInited) {
+      listenersInited = true;
+      initListeners();
+    }
   }
 
   function initListeners() {
@@ -177,10 +182,13 @@ const useFoldersStore = createRoot(() => {
       updateFolderNotifications(filter.id);
     });
 
-    rootScope.addEventListener('filter_update', (filter) => {
+    const onFilterUpsert = (filter: MyDialogFilter) => {
       if(REAL_FOLDERS.has(filter.id)) return;
-      updateOrAddFolder(filter);
-    });
+      return updateOrAddFolder(filter);
+    };
+
+    rootScope.addEventListener('filter_update', onFilterUpsert);
+    rootScope.addEventListener('filter_new', onFilterUpsert);
 
     rootScope.addEventListener('filter_delete', (filter) => {
       deleteFolder(filter.id);

@@ -1,2 +1,0 @@
-import{r as e,u as t}from"./apiManagerProxy-fZ7kKCtg.js";import{h as n}from"./solid-WnanT5kq.js";function r(e){let{community:t}=e;return t?._===`communityForbidden`||t?._===`community`&&t.pFlags.left?!0:e.joinedCommunities!==null&&!e.joinedCommunities.some(t=>t.id.toChatId()===e.communityId)}function i(i,a){if(!a)return;let o=e(()=>a),s=t(),c=!1;n(()=>{c||!r({communityId:a,community:o(),joinedCommunities:s()})||(c=!0,queueMicrotask(()=>i.close()))})}export{i as t};
-//# sourceMappingURL=useCommunityTabGuard-r8uesKMN.js.map

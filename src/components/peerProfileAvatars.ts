@@ -4,6 +4,7 @@ import findAndSplice from '@helpers/array/findAndSplice';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import filterChatPhotosMessages from '@helpers/filterChatPhotosMessages';
+import getChatPhotosCount from '@helpers/getChatPhotosCount';
 import ListenerSetter from '@helpers/listenerSetter';
 import ListLoader from '@helpers/listLoader';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
@@ -489,6 +490,7 @@ export default class PeerProfileAvatars {
 
             filterChatPhotosMessages(value);
 
+            let count = value.count;
             if(!listLoader.current) {
               const chatFull = result[0];
               const chatPhoto = chatFull?.chat_photo;
@@ -496,12 +498,13 @@ export default class PeerProfileAvatars {
                 return ((message as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatPhoto?.id;
               }) as Message.messageService;
 
-              listLoader.current = message || (chatPhoto && await this.managers.appMessagesManager.generateFakeAvatarMessage(this.peerId, chatPhoto));
+              const current = listLoader.current = message || (chatPhoto && await this.managers.appMessagesManager.generateFakeAvatarMessage(this.peerId, chatPhoto));
+              count = getChatPhotosCount(value.count, messages.length, !message && !!current);
             }
 
             // console.log('avatars loaded:', value);
             return {
-              count: value.count,
+              count,
               items: messages
             };
           });

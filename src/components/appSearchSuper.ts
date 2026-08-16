@@ -2532,7 +2532,8 @@ export default class AppSearchSuper {
           used += ids.length;
           slicedLength += ids.length;
 
-          const notFilteredMessages = ids.map((m) => apiManagerProxy.getMessageByPeer(m.peerId, m.mid));
+          // * a mid can have no message behind it (deleted, or a synthetic bound), skip such holes
+          const notFilteredMessages = ids.map((m) => apiManagerProxy.getMessageByPeer(m.peerId, m.mid)).filter(Boolean);
           // const notFilteredMessages = await Promise.all(promises);
 
           messages.push(...this.filterMessagesByType(notFilteredMessages, inputFilter));
@@ -2574,6 +2575,9 @@ export default class AppSearchSuper {
       if(!messages && value.history/*  && mediaTab.type === 'saved' */) {
         messages = value.history.map((mid) => apiManagerProxy.getMessageByPeer(options.peerId, mid));
       }
+
+      // * a mid can have no message behind it (deleted, or a synthetic bound), skip such holes
+      messages = messages.filter(Boolean);
 
       history.push(...messages.map((m) => ({mid: m.mid, peerId: m.peerId})));
 

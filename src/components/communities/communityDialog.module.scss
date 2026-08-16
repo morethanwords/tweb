@@ -19,6 +19,9 @@
   font-size: .625rem;
   line-height: 1;
   pointer-events: auto;
+  // Scaled away by `.dialog-avatar-corner-badge` in `_chatlist.scss` whenever
+  // the row paints something else over the avatar.
+  transition: transform var(--chatlist-badge-transition-in);
 
   &:focus-visible {
     outline: 2px solid var(--primary-color);

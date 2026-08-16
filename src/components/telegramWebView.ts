@@ -42,11 +42,14 @@ export default class TelegramWebView extends EventListenerBase<{
   }
 
   public onMount() {
+    // ! the WindowProxy stays the same object across the srcdoc navigation, so registering
+    // ! the callback before assigning it keeps the bridge working and avoids missing an
+    // ! early event from the frame
     weakMap.set(this.iframe.contentWindow, this.onTelegramWebViewEvent);
     if(this.html) {
-      this.iframe.contentWindow.document.open();
-      this.iframe.contentWindow.document.write(this.html);
-      this.iframe.contentWindow.document.close();
+      // ! never write into contentWindow.document — a no-src iframe inherits this origin,
+      // ! which would run the embedded third-party scripts as web.telegram.org
+      this.iframe.srcdoc = this.html;
     }
   }
 

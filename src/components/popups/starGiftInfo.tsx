@@ -578,6 +578,12 @@ export default class PopupStarGiftInfo extends PopupElement {
       setIsWearing(wearingGiftId === gift.id);
     })
 
+    const openPeer = (peerId: PeerId) => {
+      appImManager.setInnerPeer({peerId})
+      this.onClickAway?.()
+      this.hide()
+    }
+
     const handleAttributeClick = (attribute: StarGiftAttribute.starGiftAttributeModel | StarGiftAttribute.starGiftAttributeBackdrop | StarGiftAttribute.starGiftAttributePattern) => {
       if(this.onAttributeClick) {
         this.onAttributeClick(attribute);
@@ -648,11 +654,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             'StarGiftOwner',
             <TablePeer
               peerId={getPeerId(gift.owner_id)}
-              onClick={() => {
-                appImManager.setInnerPeer({peerId: getPeerId(gift.owner_id)})
-                this.onClickAway?.()
-                this.hide()
-              }}
+              onClick={() => openPeer(getPeerId(gift.owner_id))}
             />
           ]);
         } else if(gift.owner_name) {
@@ -752,7 +754,10 @@ export default class PopupStarGiftInfo extends PopupElement {
         rows.push([
           'StarGiftFromShort',
           <>
-            <TablePeer peerId={fromId} />
+            <TablePeer
+              peerId={fromId}
+              onClick={() => openPeer(fromId)}
+            />
             <TableButton
               text="StarGiftSendInline"
               onClick={() => {
@@ -843,10 +848,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             <PeerTitleTsx
               peerId={peerId}
               onlyFirstName
-              onClick={() => {
-                appImManager.setInnerPeer({peerId})
-                this.hide()
-              }}
+              onClick={() => openPeer(peerId)}
             />
           );
         };
@@ -1111,10 +1113,7 @@ export default class PopupStarGiftInfo extends PopupElement {
                       <PeerTitleTsx
                         peerId={getPeerId(gift.released_by)}
                         username
-                        onClick={() => {
-                          appImManager.setInnerPeer({peerId: getPeerId(gift.released_by)})
-                          this.hide()
-                        }}
+                        onClick={() => openPeer(getPeerId(gift.released_by))}
                       />
                     ]}
                   /> :

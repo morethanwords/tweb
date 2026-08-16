@@ -970,6 +970,10 @@ not screen and (                min-resolution: 2dppx) {
   outline: none;
   cursor: text;
   white-space: pre-wrap;
+  // * Blink/WebKit set this on editables in their UA stylesheet, Gecko doesn't:
+  // * without it an unbreakable run (a long digit sequence, a word) overflows the
+  // * field in Firefox instead of wrapping (bugs.telegram.org/c/63932)
+  overflow-wrap: break-word;
 
   .custom-emoji {
     display: inline-block;

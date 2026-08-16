@@ -5273,7 +5273,7 @@ export default class ChatBubbles {
 
         if(/* dialog.unread_count */
           readMaxId &&
-          !samePeer &&
+          (!samePeer || (sameSearch && !this.shouldJumpToEndInsteadOfUnread(readMaxId))) &&
           (!dialog || (!isSavedDialog(dialog) && dialog.unread_count !== 1))
         ) {
           const foundSlice = historyStorage.history.findSliceOffset(readMaxId);
@@ -5315,8 +5315,16 @@ export default class ChatBubbles {
         bubble = this.findNextMountedBubbleByMsgId(lastMsgFullMid, false) || this.findNextMountedBubbleByMsgId(lastMsgFullMid, true);
       }
 
+      // * `lastMsgFullMid` is the read cursor here, but we have to land on the delimiter after it
+      if(followingUnread) {
+        bubble = this.getFirstUnreadBubble(readMaxId) || bubble;
+      }
+
       if(bubble) {
-        if(isTarget) {
+        if(followingUnread) {
+          this.scrollToBubble(bubble, 'start');
+          this.chat.dispatchEvent('setPeer', lastMsgId, false);
+        } else if(isTarget) {
           this.scrollToBubble(bubble, 'center');
           this.highlightBubble(bubble);
           this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
@@ -11860,6 +11868,38 @@ export default class ChatBubbles {
     return {cached, promise, waitPromise};
   }
 
+  /** The first rendered incoming message past the read cursor — where the unread delimiter goes */
+  private findFirstUnreadFullMid(readMaxId: number) {
+    return this.getRenderedHistory('asc', true).find((fullMid) => {
+      const bubble = this.getBubble(fullMid);
+      return splitFullMid(fullMid).mid > readMaxId && bubble && !bubble.classList.contains('is-out');
+    });
+  }
+
+  /**
+   * The bubble the unread delimiter sits on (or would sit on), i.e. tdesktop's
+   * `History::firstUnreadMessage()`. Falls back to a scan when the delimiter itself hasn't been
+   * attached yet (or has been sliced out of the viewport).
+   */
+  private getFirstUnreadBubble(readMaxId: number) {
+    if(this.firstUnreadBubble?.parentElement) {
+      return this.firstUnreadBubble;
+    }
+
+    const fullMid = this.findFirstUnreadFullMid(readMaxId);
+    return fullMid ? this.getBubble(fullMid) : undefined;
+  }
+
+  /**
+   * tdesktop's `HistoryWidget::insideJumpToEndInsteadOfToUnread` — in an already opened chat the
+   * go-down button (and re-clicking the open dialog in the chat list) jumps to the first unread
+   * message, and only goes to the very end once that message is no longer below the viewport.
+   */
+  private shouldJumpToEndInsteadOfUnread(readMaxId: number) {
+    const bubble = this.getFirstUnreadBubble(readMaxId);
+    return !!bubble && bubble.getBoundingClientRect().top <= this.chat.bubblesViewport.getBoundingClientRect().bottom;
+  }
+
   public async setUnreadDelimiter() {
     if(!(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
       return;
@@ -11869,7 +11909,8 @@ export default class ChatBubbles {
       return;
     }
 
-    if(this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
+    // * the aggregated monoforum admin view has no single unread cursor to draw a delimiter for
+    if(this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId) {
       return;
     }
 
@@ -11878,19 +11919,16 @@ export default class ChatBubbles {
     const {peerId, threadId, monoforumThreadId} = this.chat;
 
     const historyMaxId = this.chat.getHistoryMaxId();
-    let readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
+    const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
     if(!readMaxId || !middleware()) return;
 
-    readMaxId = this.getRenderedHistory('asc', true)
-    .filter((fullMid) => !this.getBubble(fullMid).classList.contains('is-out'))
-    .map((fullMid) => splitFullMid(fullMid).mid)
-    .find((mid) => mid > readMaxId);
-
-    if(!readMaxId) {
+    const firstUnreadFullMid = this.findFirstUnreadFullMid(readMaxId);
+    if(!firstUnreadFullMid) {
       return;
     }
 
-    const bubble = this.getBubble(peerId, readMaxId);
+    const firstUnreadMid = splitFullMid(firstUnreadFullMid).mid;
+    const bubble = this.getBubble(peerId, firstUnreadMid);
     if(!bubble) {
       return;
     }
@@ -11900,7 +11938,7 @@ export default class ChatBubbles {
       this.firstUnreadBubble = null;
     }
 
-    if(readMaxId !== historyMaxId) {
+    if(firstUnreadMid !== historyMaxId) {
       bubble.classList.add('is-first-unread');
     }
 

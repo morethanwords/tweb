@@ -419,6 +419,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       'notification_count_update',
       'account_logged_in',
       'notification_cancel',
+      'notification_cancel_up_to',
       'toggle_using_passcode'
     ]);
 

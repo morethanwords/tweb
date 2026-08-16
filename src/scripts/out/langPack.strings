@@ -50,7 +50,7 @@
 "ChatAutomation.Add" = "Add";
 "ChatAutomation.RemoveBot" = "Remove Bot";
 "ChatAutomation.AccessibleChats" = "Chats the bot can access";
-"ChatAutomation.AllExcept" = "All 1-to-1 Chats Except...";
+"ChatAutomation.AllExcept" = "All Private Chats Except...";
 "ChatAutomation.OnlySelected" = "Only Selected Chats";
 "ChatAutomation.ExcludedChats" = "Excluded Chats";
 "ChatAutomation.IncludedChats" = "Included Chats";
@@ -3528,6 +3528,14 @@
 "Peer.Activity.Chat.Multi.RecordingAudio1" = "%@ and %d others are recording voice";
 "Peer.Activity.Chat.Multi.SendingFile1" = "%@ and %d others are sending files";
 "Peer.Activity.Chat.Multi.ChoosingSticker1" = "%@ and %d others are choosing stickers";
+"Peer.Activity.Chat.Pair.PlayingGame" = "%1$@ and %2$@ are playing a game";
+"Peer.Activity.Chat.Pair.TypingText" = "%1$@ and %2$@ are typing";
+"Peer.Activity.Chat.Pair.SendingPhoto" = "%1$@ and %2$@ are sending photos";
+"Peer.Activity.Chat.Pair.RecordingVideo" = "%1$@ and %2$@ are recording video";
+"Peer.Activity.Chat.Pair.SendingVideo" = "%1$@ and %2$@ are sending videos";
+"Peer.Activity.Chat.Pair.RecordingAudio" = "%1$@ and %2$@ are recording voice";
+"Peer.Activity.Chat.Pair.SendingFile" = "%1$@ and %2$@ are sending files";
+"Peer.Activity.Chat.Pair.ChoosingSticker" = "%1$@ and %2$@ are choosing stickers";
 "Peer.ServiceNotifications" = "service notifications";
 "Peer.RepliesNotifications" = "Reply Notifications";
 "Peer.Status.justNow" = "last seen just now";

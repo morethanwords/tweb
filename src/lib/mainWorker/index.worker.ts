@@ -291,7 +291,7 @@ let isFirst = true;
 
 function resetNotificationsCount() {
   commonStateStorage.set({
-    notificationsCount: {}
+    pendingNotifications: {}
   });
 }
 

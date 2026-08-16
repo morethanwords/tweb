@@ -492,7 +492,9 @@ export class ChatReactionsMenu {
     emoticonsDropdown.onButtonClick();
   };
 
-  private async splitAvailableEffects(availableEffects: AvailableEffect[]): ReturnType<EmojiTab['searchFetcher']> {
+  private async splitAvailableEffects(
+    availableEffects: AvailableEffect[]
+  ): Promise<Awaited<ReturnType<EmojiTab['searchFetcher']>>> {
     const [stickers, customEmojis] = partition(availableEffects, (availableEffect) => !availableEffect.effect_animation_id);
     const docIds = stickers.map((availableEffect) => availableEffect.effect_sticker_id);
     const docs = await Promise.all(docIds.map((docId) => this.managers.appDocsManager.getDoc(docId)));

@@ -1,7 +1,7 @@
 {
     "name": "Telegram Web",
     "short_name": "Telegram Web",
-    "id": "./",
+    "id": "/k/",
     "start_url": "./",
     "scope": "./",
     "scope_extensions": [
