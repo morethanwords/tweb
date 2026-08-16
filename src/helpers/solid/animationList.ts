@@ -1,4 +1,5 @@
 import liteMode from '@helpers/liteMode';
+import noop from '@helpers/noop';
 import {resolveElements} from '@solid-primitives/refs';
 import {createListTransition} from '@vendor/createListTransition';
 import {JSX} from 'solid-js';
@@ -72,7 +73,10 @@ export function AnimationList(props: {
           promises.push(animation.finished);
         });
 
-        Promise.all(promises).then(() => finishRemoved(removed));
+        // * `finished` rejects when an animation is cancelled - without catching it the
+        // * exiting elements are never released, so every later replacement stacks on top
+        // * of them instead of taking their place
+        Promise.all(promises).catch(noop).then(() => finishRemoved(removed));
       });
     }
   }) as unknown as JSX.Element;

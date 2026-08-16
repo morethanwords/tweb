@@ -6,6 +6,9 @@ import {ReferenceContext} from '@lib/storages/references';
 import {AppManager} from '@appManagers/manager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 
+// * used only until help.getConfig arrives with the real one
+const GIF_SEARCH_USERNAME = 'gif';
+
 export default class AppGifsManager extends AppManager {
   private gifs: MaybePromise<Document.document[]>;
   // private TEST_REFERENCE = false;
@@ -45,7 +48,9 @@ export default class AppGifsManager extends AppManager {
   }
 
   public async searchGifs(query: string, nextOffset?: string) {
-    const user = await this.appUsersManager.resolveUsername('gif');
+    // * the bot that answers GIF search is named by the server config, it is not always @gif
+    const config = await this.apiManager.getConfig();
+    const user = await this.appUsersManager.resolveUsername(config.gif_search_username || GIF_SEARCH_USERNAME);
     const gifBotPeerId = user.id.toPeerId(false);
     const {results, next_offset} = await this.appInlineBotsManager.getInlineResults(
       NULL_PEER_ID,

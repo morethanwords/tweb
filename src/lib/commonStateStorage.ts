@@ -1,3 +1,4 @@
+import type {BroadcastEvents} from '@lib/rootScope';
 import {LangPackDifference} from '@layer';
 import {CommonDatabase, getCommonDatabaseState} from '@config/databases/state';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -29,7 +30,11 @@ export type PasscodeStorageValue = {
 type AppStorageValue = {
   langPack: LangPackDifference;
   settings: StateSettings;
-  notificationsCount: Partial<Record<ActiveAccountNumber, number>>;
+  /**
+   * Keys of the notifications that haven't been read yet, per account. Shared by every tab, so the
+   * badge survives a reload and can be cancelled by whichever tab learns about the read first
+   */
+  pendingNotifications: Partial<Record<ActiveAccountNumber, BroadcastEvents['notification_cancel'][]>>;
   passcode: PasscodeStorageValue;
 };
 

@@ -33,8 +33,6 @@ export type SpoilerOverlayUpdate = {
 
 export type SpoilerRendererInMessage =
   ({type: 'text-init'} & SpoilerRendererSimInit) |
-  {type: 'bluff-play'} |
-  {type: 'bluff-pause'} |
   ({type: 'media-init'} & SpoilerRendererSimInit) |
   {type: 'media-attach', id: number, canvas: OffscreenCanvas, x: number, y: number, color?: string} |
   {type: 'media-play' | 'media-pause' | 'media-detach', id: number} |
@@ -47,7 +45,6 @@ export type SpoilerRendererInMessage =
   {type: 'bye'};
 
 export type SpoilerRendererOutMessage =
-  {type: 'bluff-mask', url: string} |
   {type: 'text-inited'} |
   {type: 'media-inited'} |
   {type: 'connection-error'}; // synthesized by spoilerRendererConnection, never sent from here
@@ -55,9 +52,6 @@ export type SpoilerRendererOutMessage =
 const ctx = self as any;
 
 const FRAME_INTERVAL = 1000 / 60;
-const ENCODE_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
-
-let reader: FileReaderSync;
 
 type MediaTarget = {
   canvas: OffscreenCanvas,
@@ -106,7 +100,6 @@ type Port = {postMessage: (message: any, transfer?: Transferable[]) => void};
 type PortState = {
   port: Port,
   textDpr?: number,
-  bluffPlaying?: boolean,
   mediaDpr?: number,
   mediaTargets: Map<number, MediaTarget>,
   overlayTargets: Map<number, OverlayTarget>
@@ -117,8 +110,7 @@ const ports = new Set<PortState>();
 // Tabs may live on displays with different pixel ratios — each ratio gets its own
 // simulation, in practice there is one
 type Sim = {core: DotRendererCore, canvas: OffscreenCanvas};
-type TextSim = Sim & {encoding?: boolean, lastEncodeTime: number};
-const textSims = new Map<number, TextSim>(); // feeds both the bluff masks and the bubble overlays
+const textSims = new Map<number, Sim>();
 const mediaSims = new Map<number, Sim>();
 
 let timerId: number;
@@ -129,26 +121,6 @@ const createSim = (init: SpoilerRendererSimInit): Sim => {
   core.resize(init.width, init.height, init.dpr, init.config);
   core.init();
   return {core, canvas};
-};
-
-const encodeBluffMask = (sim: TextSim, dpr: number) => {
-  sim.encoding = true;
-  // webp is pixel-identical here at less than half the png size; unsupporting
-  // browsers (Safari) silently encode png instead
-  sim.canvas.convertToBlob({type: 'image/webp', quality: 1}).then((blob) => {
-    sim.encoding = false;
-    // data: URLs resolve synchronously when referenced from CSS; blob: URLs load
-    // asynchronously on every swap (even when predecoded) and flicker the mask
-    reader ??= new FileReaderSync();
-    const url = reader.readAsDataURL(blob);
-    ports.forEach((state) => {
-      if(state.bluffPlaying && state.textDpr === dpr) {
-        state.port.postMessage({type: 'bluff-mask', url});
-      }
-    });
-  }, () => {
-    sim.encoding = false;
-  });
 };
 
 const drawMediaTarget = (sim: Sim, target: MediaTarget, dpr: number) => {
@@ -260,7 +232,6 @@ const isOverlayTargetActive = (target: OverlayTarget) =>
 
 const needsFrame = () => {
   for(const state of ports) {
-    if(state.bluffPlaying) return true;
     for(const target of state.mediaTargets.values()) {
       if(isMediaTargetActive(target)) return true;
     }
@@ -272,34 +243,13 @@ const needsFrame = () => {
 };
 
 const frame = () => {
-  // the text simulation feeds the bluff masks and the bubble overlays
   const textDprsNeeded = new Set<number>();
   ports.forEach((state) => {
-    if(state.bluffPlaying) textDprsNeeded.add(state.textDpr);
     for(const target of state.overlayTargets.values()) {
       if(isOverlayTargetActive(target)) textDprsNeeded.add(target.dpr);
     }
   });
   textDprsNeeded.forEach((dpr) => textSims.get(dpr)?.core.draw());
-
-  textSims.forEach((sim, dpr) => {
-    if(!textDprsNeeded.has(dpr) || sim.encoding || !sim.core.inited) return;
-
-    let anyBluffPlaying = false;
-    for(const state of ports) {
-      if(state.bluffPlaying && state.textDpr === dpr) {
-        anyBluffPlaying = true;
-        break;
-      }
-    }
-    if(!anyBluffPlaying) return;
-
-    const now = Date.now();
-    if((now - sim.lastEncodeTime) >= ENCODE_INTERVAL) {
-      sim.lastEncodeTime = now;
-      encodeBluffMask(sim, dpr);
-    }
-  });
 
   const mediaDprsNeeded = new Set<number>();
   ports.forEach((state) => {
@@ -373,47 +323,14 @@ const removePort = (state: PortState) => {
   pruneSims();
 };
 
-// legacy mode for browsers without WebGL in OffscreenCanvas: the simulation runs
-// on the main thread, this worker only encodes the received frames
-let encodeCanvas: OffscreenCanvas;
-let encodeContext: ImageBitmapRenderingContext;
-const encodeBitmap = (state: PortState, bitmap: ImageBitmap) => {
-  if(!encodeCanvas || encodeCanvas.width !== bitmap.width || encodeCanvas.height !== bitmap.height) {
-    encodeCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    encodeContext = encodeCanvas.getContext('bitmaprenderer');
-  }
-
-  encodeContext.transferFromImageBitmap(bitmap);
-  encodeCanvas.convertToBlob({type: 'image/webp', quality: 1}).then((blob) => {
-    reader ??= new FileReaderSync();
-    state.port.postMessage({type: 'bluff-mask', url: reader.readAsDataURL(blob)});
-  });
-};
-
-const handleMessage = (state: PortState, message: SpoilerRendererInMessage | ImageBitmap) => {
-  if(message instanceof ImageBitmap) {
-    encodeBitmap(state, message);
-    return;
-  }
-
+const handleMessage = (state: PortState, message: SpoilerRendererInMessage) => {
   switch(message.type) {
     case 'text-init': {
       state.textDpr = message.dpr;
       let sim = textSims.get(message.dpr);
-      if(!sim) textSims.set(message.dpr, sim = {...createSim(message), lastEncodeTime: 0});
+      if(!sim) textSims.set(message.dpr, sim = createSim(message));
       pruneSims();
       callbackify(sim.core.init(), () => state.port.postMessage({type: 'text-inited'}));
-      break;
-    }
-
-    case 'bluff-play': {
-      state.bluffPlaying = true;
-      ensureLoop();
-      break;
-    }
-
-    case 'bluff-pause': {
-      state.bluffPlaying = false;
       break;
     }
 

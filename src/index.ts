@@ -130,7 +130,7 @@ async function checkLastActiveAccountFromTMe() {
 
 function setManifest() {
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
-  if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=n8V4qL2pRs`;
+  if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=p9R6mT3xKv`;
 }
 
 function setViewportHeightListeners() {

@@ -348,8 +348,9 @@ export class AppUsersManager extends AppManager {
 
     username = username.toLowerCase();
     const peerId = this.usernames[username];
-    if(peerId) {
-      return this.appPeersManager.getPeer(peerId);
+    const peer = peerId && this.appPeersManager.getPeer(peerId);
+    if(peer && !(peer as User | Chat.channel).pFlags.min) {
+      return peer;
     }
 
     return this.apiManager.invokeApiSingleProcess({

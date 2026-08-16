@@ -50,6 +50,8 @@ import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {openBotPrivacyPolicy} from '@helpers/getBotPrivacyPolicy';
+import canReportBot from '@appManagers/utils/bots/canReportBot';
+import {showPeerReport} from '@components/popups/reportAd';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -427,6 +429,13 @@ export default class WebApp {
         this.managers.appMessagesManager.sendText({peerId: botPeerId, text: '/privacy'});
       }),
       verify: async() => !!(await this.getBotInfo())
+    }, {
+      icon: 'flag',
+      text: 'ReportChat',
+      onClick: () => {
+        showPeerReport(botPeerId);
+      },
+      verify: async() => canReportBot(botPeerId, await this.managers.appUsersManager.getUser(botId))
     }, /* {
       icon: 'plusround',
       text: 'WebApp.InstallBot',

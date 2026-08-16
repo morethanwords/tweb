@@ -101,6 +101,10 @@ export default class SortedDialogList {
       onItemUnmount: (item) => {
         if(item.type === 'dialog') {
           this.unmountedDialogElements.set(item.value, true);
+          // the nodes survive the unmount but their custom emoji do not, so the
+          // re-init below must rebuild the subtitle rather than recognize it as
+          // already rendered
+          delete item.value.dom.lastMessageRenderKey;
         }
       },
       onListShrinked: options.onListShrinked,

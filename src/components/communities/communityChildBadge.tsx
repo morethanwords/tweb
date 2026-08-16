@@ -2,6 +2,7 @@ import {createMemo, Show} from 'solid-js';
 import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
 import {IconTsx} from '@components/iconTsx';
 import {i18n} from '@lib/langPack';
+import classNames from '@helpers/string/classNames';
 import {usePeer} from '@stores/peers';
 import styles from '@components/communities/communityDialog.module.scss';
 
@@ -34,7 +35,10 @@ export default function CommunityChildBadge(props: {
     <Show when={communityId()}>
       <button
         type="button"
-        class={styles.ChildBadge}
+        class={/* @once */ classNames(
+          styles.ChildBadge,
+          'dialog-avatar-corner-badge'
+        )}
         data-dialog-list-action="true"
         aria-label={i18n('Community.Chats').textContent}
         on:mousedown={(event) => event.stopPropagation()}

@@ -132,6 +132,11 @@ function addSearchCategories(props: {
 export default function EmoticonsSearch(props: {
   type: 'emoji' | 'stickers' | 'gifs'
   placeholder?: LangPackKey,
+  // * defaults to 0 - local searches (emoji, stickers) can run on every keystroke,
+  // * server-backed ones must not or the API floods the client out
+  debounceTime?: number,
+  // * return false to answer a value right away, e.g. one the tab already has results for
+  verifyDebounce?: ConstructorParameters<typeof InputSearch>[0]['verifyDebounce'],
   loading?: Accessor<boolean>,
   onValue: (value: string) => void,
   onFocusChange?: ConstructorParameters<typeof InputSearch>[0]['onFocusChange'],
@@ -152,7 +157,8 @@ export default function EmoticonsSearch(props: {
     onDebounce: setDebounced,
     noBorder: true,
     noFocusEffect: true,
-    debounceTime: 0
+    debounceTime: props.debounceTime ?? 0,
+    verifyDebounce: props.verifyDebounce
   });
   inputSearch.container.classList.add('emoticons-search-input-container');
   inputSearch.input.classList.add('emoticons-search-input');
