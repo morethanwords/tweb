@@ -1,40 +1,42 @@
 services:
-  tweb.dependencies:
-    container_name: tweb.dependencies
-    build:
-      context: .
-      dockerfile: .docker/Dockerfile_dependencies
-    volumes:
-      - "./node_modules:/app/node_modules"
-    command: pnpm install
+  # tweb.dependencies:
+  #   container_name: tweb.dependencies
+  #   build:
+  #     context: .
+  #     dockerfile: .docker/Dockerfile_dependencies
+  #   volumes:
+  #     - "./node_modules:/app/node_modules"
+  #   command: pnpm install
 
-  tweb.develop:
-    container_name: tweb.develop
-    build:
-      context: .
-      dockerfile: .docker/Dockerfile_develop
-    volumes:
-      - "./:/app"
-    ports:
-      - 8080:8080
-    command: pnpm start-in-docker
+  # tweb.develop:
+  #   container_name: tweb.develop
+  #   build:
+  #     context: .
+  #     dockerfile: .docker/Dockerfile_develop
+  #   volumes:
+  #     - "./:/app"
+  #   ports:
+  #     - 8080:8080
+  #   command: pnpm start-in-docker
 
   tweb.production:
     container_name: tweb.production
+    image: ghcr.io/roon9e/webk:latest
+    restart: unless-stopped
     env_file:
       - .env
-    build:
-      context: .
-      dockerfile: .docker/Dockerfile_production
-      args:
-        - VITE_RSA_MODULUS=${VITE_RSA_MODULUS}
-        - VITE_RSA_TEST_MODULUS=${VITE_RSA_TEST_MODULUS}
-        - VITE_BASE_DC_ID=${VITE_BASE_DC_ID}
-        - VITE_DC_HOST=${VITE_DC_HOST}
-        - VITE_DC_PORT=${VITE_DC_PORT}
-        - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS}
-        - VITE_APP_NAME=${VITE_APP_NAME}
-        - VITE_APP_PROTOCOL=${VITE_APP_PROTOCOL}
-        - VITE_SHORT_DOMAIN=$VITE_SHORT_DOMAIN
+    # build:
+    #   context: .
+    #   dockerfile: .docker/Dockerfile_production
+    #   args:
+    #     - VITE_RSA_MODULUS=${VITE_RSA_MODULUS}
+    #     - VITE_RSA_TEST_MODULUS=${VITE_RSA_TEST_MODULUS}
+    #     - VITE_BASE_DC_ID=${VITE_BASE_DC_ID}
+    #     - VITE_DC_HOST=${VITE_DC_HOST}
+    #     - VITE_DC_PORT=${VITE_DC_PORT}
+    #     - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS}
+    #     - VITE_APP_NAME=${VITE_APP_NAME}
+    #     - VITE_APP_PROTOCOL=${VITE_APP_PROTOCOL}
+    #     - VITE_SHORT_DOMAIN=$VITE_SHORT_DOMAIN
     ports:
       - "${PRODUCTION_PORT:-80}:80"
