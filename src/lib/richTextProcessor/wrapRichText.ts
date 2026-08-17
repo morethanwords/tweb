@@ -27,7 +27,7 @@ import callbackify from '@helpers/callbackify';
 import findIndexFrom from '@helpers/array/findIndexFrom';
 import {observeResize} from '@components/resizeObserver';
 import DotRenderer from '@components/dotRenderer';
-import isMixedScriptUrl from '@helpers/string/isMixedScriptUrl';
+import isSuspiciousUrl from '@helpers/string/isSuspiciousUrl';
 import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
 import formatFormattedDate from '@helpers/date/formatFormattedDate';
 import formatRelativeTime from '@helpers/date/formatRelativeTime';
@@ -576,7 +576,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
               masked = true;
             }
           } else {
-            masked = isMixedScriptUrl(url);
+            masked = isSuspiciousUrl(url);
             // inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 
