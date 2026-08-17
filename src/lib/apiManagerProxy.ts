@@ -1,6 +1,6 @@
 import type {ModifyFunctionsToAsync} from '@types';
 import {type State} from '@config/state';
-import type {Chat, ChatFull, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '@layer';
+import type {Chat, ChatFull, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, Reaction, User, UserProfilePhoto} from '@layer';
 import type {CryptoMethods} from '@lib/crypto/crypto_methods';
 import type ThumbsStorage from '@lib/storages/thumbs';
 import type {ThumbStorageMedia} from '@lib/storages/thumbs';
@@ -152,8 +152,18 @@ export type NotificationBuildStoryTaskPayload = {
   isOtherTabActive?: boolean
 };
 
-// * discriminated union: `'story' in payload` narrows to the story variant
-export type NotificationBuildTaskPayload = NotificationBuildMessageTaskPayload | NotificationBuildStoryTaskPayload;
+export type NotificationBuildStoryReactionTaskPayload = {
+  // * peerId is the one who reacted, storyId is our own story they reacted to
+  storyReaction: {peerId: PeerId, storyId: number, reaction: Reaction, showPreview: boolean},
+  accountNumber: ActiveAccountNumber,
+  isOtherTabActive?: boolean
+};
+
+// * discriminated union: `'story' in payload` / `'storyReaction' in payload` narrow to their variant
+export type NotificationBuildTaskPayload =
+  NotificationBuildMessageTaskPayload |
+  NotificationBuildStoryTaskPayload |
+  NotificationBuildStoryReactionTaskPayload;
 
 export type TabState = {
   chatPeerIds: PeerId[],

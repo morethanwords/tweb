@@ -80,7 +80,9 @@ export default class AppStoriesManager extends AppManager {
 
       updateReadStories: this.onUpdateReadStories,
 
-      updateStoriesStealthMode: this.onUpdateStoriesStealthMode
+      updateStoriesStealthMode: this.onUpdateStoriesStealthMode,
+
+      updateNewStoryReaction: this.onUpdateNewStoryReaction
     });
 
     this.rootScope.addEventListener('app_config', this.setChangelogPeerIdFromAppConfig);
@@ -1636,6 +1638,42 @@ export default class AppStoriesManager extends AppManager {
     const port = MTProtoMessagePort.getInstance<false>();
     port.invokeVoid('notificationBuild', {
       story: {peerId, storyId: story.id},
+      accountNumber: this.getAccountNumber(),
+      isOtherTabActive: tab ? !!tab.state.idleStartTime : true
+    }, tab?.source);
+  }
+
+  protected onUpdateNewStoryReaction = (update: Update.updateNewStoryReaction) => {
+    this.notifyAboutStoryReaction(update);
+  };
+
+  // * someone reacted to one of our own stories — unlike a new story, this is gated by the
+  // * global reactions settings (account.getReactionsNotifySettings), not by the peer's mute
+  private async notifyAboutStoryReaction(update: Update.updateNewStoryReaction) {
+    const {reaction, story_id: storyId} = update;
+    if(reaction._ === 'reactionEmpty') { // * the reaction was removed
+      return;
+    }
+
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    if(peerId === this.appPeersManager.peerId) {
+      return;
+    }
+
+    if(await this.appPeersManager.isPeerRestricted(peerId)) {
+      return;
+    }
+
+    const notifySettings = await this.appNotificationsManager.getStoryReactionNotifySettings(peerId);
+    if(!notifySettings) {
+      return;
+    }
+
+    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
+
+    const port = MTProtoMessagePort.getInstance<false>();
+    port.invokeVoid('notificationBuild', {
+      storyReaction: {peerId, storyId, reaction, showPreview: notifySettings.showPreview},
       accountNumber: this.getAccountNumber(),
       isOtherTabActive: tab ? !!tab.state.idleStartTime : true
     }, tab?.source);

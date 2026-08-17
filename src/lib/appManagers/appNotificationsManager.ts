@@ -172,6 +172,25 @@ export class AppNotificationsManager extends AppManager {
     .then((settings) => this.reactionsNotifySettings = settings);
   }
 
+  // * whether a reaction to our own story from this peer should be notified about,
+  // * and whether it may reveal who reacted with what
+  public async getStoryReactionNotifySettings(fromPeerId: PeerId) {
+    const settings = await this.getReactionsNotifySettings();
+    const from = settings?.stories_notify_from;
+    if(!from) {
+      return;
+    }
+
+    if(
+      from._ === 'reactionNotificationsFromContacts' &&
+      !(fromPeerId.isUser() && this.appUsersManager.isContact(fromPeerId.toUserId()))
+    ) {
+      return;
+    }
+
+    return {showPreview: settings.show_previews};
+  }
+
   public setReactionsNotifySettings(settings: ReactionsNotifySettings) {
     this.reactionsNotifySettings = settings;
     return this.apiManager.invokeApi('account.setReactionsNotifySettings', {settings})

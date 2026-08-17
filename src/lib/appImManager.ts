@@ -751,7 +751,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     apiManagerProxy.addEventListener('notificationBuild', async(options) => {
-      if(!('story' in options)) {
+      if('message' in options) {
         const {accountNumber} = options;
         const managers = createProxiedManagersForAccount(accountNumber);
         const isForum = await managers.appPeersManager.isForum(options.message.peerId);
@@ -1527,8 +1527,8 @@ export class AppImManager extends EventListenerBase<{
 
   // * opens the peer's full story ring positioned at the first unread story
   // * (like tapping their avatar), matching how Android opens a story notification
-  public openStoriesForPeer(peerId: PeerId) {
-    return createStoriesViewerWithPeer({peerId});
+  public openStoriesForPeer(peerId: PeerId, storyId?: number) {
+    return createStoriesViewerWithPeer({peerId, id: storyId});
   }
 
   public getStackFromElement(element: HTMLElement): ChatSetPeerOptions['stack'] {
@@ -1866,7 +1866,8 @@ export class AppImManager extends EventListenerBase<{
           default: { // peerId
             const peerId = postId ? p.toPeerId(true) : p.toPeerId();
             if(params.story !== undefined) { // open the peer's stories (e.g. from a cross-account story notification)
-              this.openStoriesForPeer(peerId);
+              // * story_id opens that exact story instead of the peer's whole ring
+              this.openStoriesForPeer(peerId, params.story_id !== undefined ? +params.story_id : undefined);
               break;
             }
 

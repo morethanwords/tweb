@@ -161,7 +161,9 @@ export type BroadcastEvents = {
   'notify_peer_type_settings': {key: GlobalNotifySettingsKey, settings: PeerNotifySettings},
 
   'notification_reset': string,
-  'notification_cancel': `msg_${ActiveAccountNumber}_${PeerId}_${number}` | `story_${ActiveAccountNumber}_${PeerId}_${number}`,
+  'notification_cancel': `msg_${ActiveAccountNumber}_${PeerId}_${number}` |
+    `story_${ActiveAccountNumber}_${PeerId}_${number}` |
+    `storyReaction_${ActiveAccountNumber}_${PeerId}_${number}`,
   // * `notification_cancel` can only be fired for messages that are in memory, this one covers
   // * the whole read range (e.g. a read that came from another client after a restart)
   'notification_cancel_up_to': {accountNumber: ActiveAccountNumber, peerId: PeerId, maxId: number},
