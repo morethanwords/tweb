@@ -103,16 +103,20 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         offset,
         length
       }), options);
-    case 'textUrl':
+    case 'textUrl': {
+      // fetchLong only returns a number for longs inside the safe-integer range — a bare truthy
+      // check would take a stringified '0' for a real webpage
+      const hasWebPage = !!richText.webpage_id && richText.webpage_id !== '0';
       return wrapEntity(richText.text, (offset, length) => ({
         _: 'messageEntityTextUrl',
         offset,
         length,
-        url: richText.webpage_id ?
+        url: hasWebPage ?
           'tg://iv?url=' + encodeURIComponent(richText.url) :
           richText.url,
-        safe: !!richText.webpage_id
+        safe: hasWebPage
       }), options);
+    }
     case 'textEmail':
       return wrapEntity(richText.text, (offset, length) => ({
         _: 'messageEntityEmail',

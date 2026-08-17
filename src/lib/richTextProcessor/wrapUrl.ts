@@ -72,7 +72,14 @@ export default function wrapUrl(url: string, safe?: boolean) {
             throw 'unsafe';
           }
 
-          out.url = decodeURIComponent(new URL(url).searchParams.get('url'));
+          // `safe` only means the wire said webpage_id != 0 — the decoded URL itself is unvetted,
+          // so run it through the same protocol filter the incoming url got above
+          let decoded = decodeURIComponent(new URL(url).searchParams.get('url'));
+          if(!matchUrlProtocol(decoded)) {
+            decoded = 'https://' + decoded;
+          }
+
+          out.url = decoded;
         } catch(err) {
           onclick = undefined;
         }
