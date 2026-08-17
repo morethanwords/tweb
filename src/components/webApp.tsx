@@ -190,11 +190,24 @@ export default class WebApp {
     this.forceHide();
   };
 
+  // the origin the bot asked the mini app to stay on, when it asked at all — the bridge is bound to
+  // it, so a document that replaces the mini app after a navigation away can neither reach the
+  // handlers nor receive the answers meant for the mini app
+  private getSameOrigin() {
+    const webViewResultUrl = this.webViewResultUrl;
+    if(!webViewResultUrl?.pFlags?.same_origin) {
+      return;
+    }
+
+    return new URL(webViewResultUrl.url).origin;
+  }
+
   // the url is applied even before the web view exists — `createWebView` reads `webViewResultUrl.url`,
   // so a decision arriving while `init` is still awaiting is not lost
   private loadExternal(url: string) {
     this.webViewResultUrl.url = url;
     this.readyResult = undefined;
+    this.telegramWebView?.setOrigin(this.getSameOrigin());
 
     const iframe = this.telegramWebView?.iframe;
     if(!iframe) {
@@ -1053,6 +1066,7 @@ export default class WebApp {
   protected createWebView() {
     const telegramWebView = this.telegramWebView = new TelegramWebView({
       url: this.getWebViewUrl(this.webViewResultUrl.url), // fixme
+      origin: this.getSameOrigin(),
       sandbox: SANDBOX_ATTRIBUTES,
       allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation; clipboard-write;',
       onLoad: () => this.showWebViewContent()
