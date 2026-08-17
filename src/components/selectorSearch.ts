@@ -7,11 +7,13 @@ import Icon from '@components/icon';
 import Tabs from '@components/tabs';
 import {observeResize} from '@components/resizeObserver';
 import replaceContent from '@helpers/dom/replaceContent';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import liteMode from '@helpers/liteMode';
 import {FocusDirection} from '@helpers/fastSmoothScroll';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 
 export default class SelectorSearch {
   public section: SettingSection;
@@ -388,11 +390,10 @@ export default class SelectorSearch {
     if(title) {
       const t = document.createElement('div');
       t.classList.add('selector-user-title');
-      if(typeof(title) === 'string') {
-        t.innerHTML = title;
+      if(typeof(title) === 'string') { // * a plain string here is data (a peer title, a date tip), never markup
+        setInnerHTML(t, wrapEmojiText(title));
       } else {
         replaceContent(t, title);
-        t.append(title);
       }
       div.append(t);
     }

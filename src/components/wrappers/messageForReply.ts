@@ -64,8 +64,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
       parts.push(part);
     } else {
       const el = document.createElement('span');
-      if(typeof(part) === 'string') el.innerHTML = part;
-      else el.append(part);
+      el.append(part); // * every rich part is already a node — a string here is plain text, never markup
       parts.push(el);
     }
   };
