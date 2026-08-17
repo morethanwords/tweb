@@ -7,6 +7,7 @@ import type {CustomEmojiRendererElement} from '@customEmoji/renderer';
 import PopupElement from '@components/popups';
 import PopupElementTsx from '@components/popups/indexTsx';
 import DialogsContextMenu from '@components/dialogsContextMenu';
+import DotRenderer from '@components/dotRenderer';
 import {horizontalMenuObjArgs} from '@components/horizontalMenu';
 import Scrollable from '@components/scrollable';
 import {ScrollableContextValue} from '@components/scrollable2';
@@ -1189,6 +1190,9 @@ export class AppDialogsManager {
     }
 
     changeTitleEmojiColor(listEl, this.getPrimaryColor(active));
+
+    // the subtitle's text spoilers are painted on a canvas — CSS can't recolor them
+    DotRenderer.setInlineSpoilersTextColor(listEl, this.getTextColor(active));
   }
 
   public setDialogActive(listEl: HTMLElement, active: boolean) {

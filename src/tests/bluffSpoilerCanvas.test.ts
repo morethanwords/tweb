@@ -55,6 +55,15 @@ describe('inline bluff spoiler canvas', () => {
     expect(spoiler.querySelector('.bluff-spoiler-letter canvas')).toBeNull();
     expect(spoiler.style.maskImage).toBe('');
     expect(attachBluffTextSpoilerTarget).toHaveBeenCalledOnce();
-    expect(attachBluffTextSpoilerTarget).toHaveBeenCalledWith(spoiler);
+    expect(attachBluffTextSpoilerTarget).toHaveBeenCalledWith(spoiler, undefined);
+  });
+
+  test('passes the text color down to the renderer', () => {
+    const text = 'secret';
+    const entities: MessageEntity[] = [{_: 'messageEntitySpoiler', offset: 0, length: text.length}];
+    const fragment = wrapRichText(text, {entities, noTextFormat: true, textColor: 'white'});
+    const spoiler = fragment.querySelector<HTMLElement>('.bluff-spoiler');
+
+    expect(attachBluffTextSpoilerTarget).toHaveBeenCalledWith(spoiler, 'white');
   });
 });

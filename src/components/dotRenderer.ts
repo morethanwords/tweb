@@ -4,8 +4,10 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {animate} from '@helpers/animation';
 import callbackify from '@helpers/callbackify';
 import deferredPromise from '@helpers/cancellablePromise';
+import customProperties, {CustomProperty} from '@helpers/dom/customProperties';
 import {Middleware} from '@helpers/middleware';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
+import readValue, {ValueOrGetter} from '@helpers/solid/readValue';
 import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
@@ -687,8 +689,12 @@ export default class DotRenderer implements AnimationItemWrapper {
     };
   }
 
-  public static attachBluffTextSpoilerTarget(element: HTMLElement) {
+  public static attachBluffTextSpoilerTarget(element: HTMLElement, textColor?: ValueOrGetter<CustomProperty>) {
+    // * a reconnect must repaint with the CURRENT color, so it re-attaches without one
     BluffSpoilerController.observeReconnection(element, (el) => this.attachBluffTextSpoilerTarget(el));
+    if(textColor !== undefined) {
+      this.inlineSpoilerTextColors.set(element, textColor);
+    }
 
     const canvas = element.querySelector<HTMLCanvasElement>('.bluff-spoiler-canvas');
     if(!canvas) return;
@@ -700,13 +706,16 @@ export default class DotRenderer implements AnimationItemWrapper {
     }
   }
 
-  private static inlineAppearanceUpdateCallbacks = new Set<() => void>();
-  private static onInlineAppearanceUpdate = () => this.inlineAppearanceUpdateCallbacks.forEach((callback) => callback());
+  // * the color outlives the target it was rendered on: the element can be detached and
+  // * reconnected (see BluffSpoilerController), the recolored spoiler must survive that
+  private static inlineSpoilerTextColors = new WeakMap<HTMLElement, ValueOrGetter<CustomProperty>>();
+  private static inlineSpoilerUpdates = new Map<HTMLElement, () => void>();
+  private static onInlineAppearanceUpdate = () => this.inlineSpoilerUpdates.forEach((update) => update());
 
   private static watchInlineSpoiler(element: HTMLElement, update: () => void) {
+    const wasEmpty = !this.inlineSpoilerUpdates.size;
+    this.inlineSpoilerUpdates.set(element, update);
     const unobserve = observeResize(element, update);
-    const wasEmpty = !this.inlineAppearanceUpdateCallbacks.size;
-    this.inlineAppearanceUpdateCallbacks.add(update);
     if(wasEmpty) {
       rootScope.addEventListener('theme_changed', this.onInlineAppearanceUpdate);
       rootScope.addEventListener('chat_background_set', this.onInlineAppearanceUpdate);
@@ -714,12 +723,34 @@ export default class DotRenderer implements AnimationItemWrapper {
 
     return () => {
       unobserve();
-      this.inlineAppearanceUpdateCallbacks.delete(update);
-      if(!this.inlineAppearanceUpdateCallbacks.size) {
+      this.inlineSpoilerUpdates.delete(element);
+      if(!this.inlineSpoilerUpdates.size) {
         rootScope.removeEventListener('theme_changed', this.onInlineAppearanceUpdate);
         rootScope.removeEventListener('chat_background_set', this.onInlineAppearanceUpdate);
       }
     };
+  }
+
+  /**
+   * Recolor the already rendered spoilers inside `container` — for text that is
+   * repainted by CSS alone (e.g. a chat list row becoming active), the same way
+   * `CustomEmojiRendererElement.setTextColor` recolors the custom emoji next to them.
+   */
+  public static setInlineSpoilersTextColor(container: HTMLElement, textColor: ValueOrGetter<CustomProperty>) {
+    this.inlineSpoilerUpdates.forEach((update, element) => {
+      if(this.inlineSpoilerTextColors.get(element) === textColor || !container.contains(element)) {
+        return;
+      }
+
+      this.inlineSpoilerTextColors.set(element, textColor);
+      update();
+    });
+  }
+
+  private static getInlineSpoilerParticleColor(element: HTMLElement) {
+    // * without a color passed down, fall back to whatever the text around it ended up being
+    const property = readValue(this.inlineSpoilerTextColors.get(element));
+    return property ? customProperties.getPropertyAsColor(property) : getComputedStyle(element).color;
   }
 
   private static getBluffTextSpoilerState(element: HTMLElement, canvas: HTMLCanvasElement, dpr: number) {
@@ -744,7 +775,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       height: Math.round(bounds.height * dpr),
       rects,
       backgroundColor: 'transparent',
-      particleColor: getComputedStyle(element).color
+      particleColor: this.getInlineSpoilerParticleColor(element)
     };
   }
 

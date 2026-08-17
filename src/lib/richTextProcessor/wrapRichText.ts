@@ -694,7 +694,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             element.append(canvas);
             fragment.append(element);
 
-            DotRenderer.attachBluffTextSpoilerTarget(element);
+            DotRenderer.attachBluffTextSpoilerTarget(element, options.textColor);
 
             usedText = true;
           }
