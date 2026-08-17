@@ -3,7 +3,7 @@ name: Docker Image Build CI
 on:
   push:
     tags:
-      - 'tag/build-docker-image/*'
+      - 'v*'
 
 permissions:
   contents: read
