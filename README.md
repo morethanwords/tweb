@@ -1,17 +1,17 @@
-## Teleram Web K
-Based on Telegram Web K, patched and improved. Available for everyone here: https://web.teleram.ru
+## Telesrv Web K
+Based on Telegram Web K, patched and improved. Available for everyone here: https://webk.telesrv.net
 
 ### Production deployment
 Create folder:
 ```bash
-mkdir -p /opt/webk
-cd /opt/webk
+mkdir -p /opt/gramsrv-tweb
+cd /opt/gramsrv-tweb
 ```
 
 Download the configuration files:
 ```bash
-curl -o docker-compose.yaml https://raw.githubusercontent.com/roon9e/webk/master/docker-compose.yaml
-curl -o .env https://raw.githubusercontent.com/roon9e/webk/master/.env.example
+curl -o docker-compose.yaml https://raw.githubusercontent.com/iamxvbaba/gramsrv-tweb/dev/docker-compose.yaml
+curl -o .env https://raw.githubusercontent.com/iamxvbaba/gramsrv-tweb/dev/.env.example
 ```
 
 Run the container and check logs:
