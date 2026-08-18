@@ -30,6 +30,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import replaceContent from '@helpers/dom/replaceContent';
+import highlightText, {TextHighlight} from '@helpers/dom/textHighlight';
 import ConnectionStatusComponent from '@components/connectionStatus';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {fastRafPromise} from '@helpers/schedulers';
@@ -167,6 +168,8 @@ export type DialogDom = {
    * rendered subtitle is still the one in the DOM.
    */
   lastMessageRenderParts?: HTMLElement[],
+  /** search-result rows: the query lit up inside the rendered message text */
+  textHighlight?: TextHighlight,
 
   setLastMessagePromise?: CancellablePromise<void>,
   setUnreadMessagePromise?: CancellablePromise<void>
@@ -191,6 +194,11 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
 
   const middleware = middlewarePromise(() => (obj[key] as any) === deferred);
   return {deferred, middleware};
+}
+
+function disposeTextHighlight(dom: DialogDom) {
+  dom.textHighlight?.dispose();
+  dom.textHighlight = undefined;
 }
 
 /**
@@ -471,6 +479,7 @@ export class DialogElement extends Row {
 
   public destroy() {
     this.middlewareHelper?.destroy();
+    disposeTextHighlight(this.dom);
   }
 
   public updateTitle(fromName: string) {
@@ -2111,12 +2120,14 @@ export class AppDialogsManager {
       const lastMsgId = +elem.dataset.mid || undefined;
       const threadId = +elem.dataset.threadId || undefined;
       const monoforumParentPeerId = +elem.dataset.monoforumParentPeerId || undefined;
+      const searchQuery = lastMsgId ? elem.dataset.searchQuery : undefined;
 
       const openChat = () => setPeerFunc({
         peerId: monoforumParentPeerId || peerId,
         monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
         lastMsgId,
-        threadId: threadId
+        threadId: threadId,
+        highlight: searchQuery ? {type: 'search', query: searchQuery} : undefined
       });
 
       const isSponsored = elem.dataset.sponsored === 'true';
@@ -2472,9 +2483,11 @@ export class AppDialogsManager {
       // * botforum / community dialog, and rendering it costs a single element
       const emptySubtitle = this.getEmptySubtitle(peerId, dom.listEl);
 
+      disposeTextHighlight(dom);
       dom.lastMessageSpan.replaceChildren(...(emptySubtitle ? [emptySubtitle] : []));
       dom.lastTimeSpan.replaceChildren();
       delete dom.listEl.dataset.mid;
+      delete dom.listEl.dataset.searchQuery;
 
       promise.resolve();
       return;
@@ -2489,6 +2502,11 @@ export class AppDialogsManager {
         dom.listEl.dataset.threadId = '' + getMessageThreadId(lastMessage);
       }
     }
+
+    // * the click on the row carries the query on to the chat, so the found text
+    // * lights up in the bubble too
+    if(highlightWord) dom.listEl.dataset.searchQuery = highlightWord;
+    else delete dom.listEl.dataset.searchQuery;
 
     let renderedParts = canSkipRender ? previousRenderParts : undefined;
 
@@ -2549,7 +2567,6 @@ export class AppDialogsManager {
         isSaved,
         lastMessage,
         draftMessage,
-        highlightWord,
         noForwardIcon,
         mediaParts,
         withoutMediaType,
@@ -2562,8 +2579,18 @@ export class AppDialogsManager {
         )
       });
       dom.lastMessageSpan.classList.add('dialog-subtitle-flex');
+      disposeTextHighlight(dom);
       dom.lastMessageSpan.replaceChildren(...parts);
       renderedParts = parts;
+
+      // * the last part is the message text itself (the ones before are the sender, the
+      // * draft label, media thumbs) — that is where the query was matched
+      if(highlightWord && lastMessage) {
+        dom.textHighlight = highlightText({
+          container: parts[parts.length - 1],
+          match: {type: 'search', query: highlightWord}
+        });
+      }
     }
 
     // * the label is relative to the current day, so it is refreshed even when

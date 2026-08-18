@@ -121,16 +121,6 @@ ul.chatlist {
       }
     }
 
-    // i {
-    //   font-style: normal;
-    // }
-
-    .text-highlight {
-      color: var(--primary-text-color);
-      font-weight: var(--font-weight-bold);
-      font-style: normal;
-    }
-
     .premium-icon {
       margin-top: -.125rem;
     }
@@ -225,7 +215,6 @@ ul.chatlist {
         //.user-title:after,
         .user-title,
         .message-status,
-        .text-highlight,
         .premium-icon,
         .verified-icon,
         .sending-status-icon,

@@ -28,6 +28,7 @@ import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import disableTransition from '@helpers/dom/disableTransition';
+import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import replaceContent from '@helpers/dom/replaceContent';
 import whichChild from '@helpers/dom/whichChild';
@@ -174,6 +175,8 @@ export type ChatSetPeerOptions = {
   peerId: PeerId,
   lastMsgId?: number,
   pollOption?: string | Uint8Array,
+  /** text to light up inside the `lastMsgId` bubble: the search query it was found by, or the quote that led here */
+  highlight?: TextHighlightMatch,
   lastMsgPeerId?: PeerId,
   threadId?: number,
   monoforumThreadId?: PeerId,

@@ -875,10 +875,12 @@ export default function TopbarSearch(props: {
         setShowingSmallResults(false);
 
         const message = messages()[idx];
+        const query = value().trim();
         deferSideEffect(() => {
           appImManager.chat.setMessageId({
             lastMsgId: message.mid,
-            lastMsgPeerId: message.peerId
+            lastMsgPeerId: message.peerId,
+            highlight: query ? {type: 'search', query} : undefined
           });
         });
       },

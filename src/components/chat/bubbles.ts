@@ -43,6 +43,7 @@ import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/d
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '@helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
+import highlightText, {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import whichChild from '@helpers/dom/whichChild';
 import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
 import assumeType from '@helpers/assumeType';
@@ -339,6 +340,13 @@ const BIG_EMOJI_SIZES: {[size: number]: number} = {
 };
 const BIG_EMOJI_SIZES_LENGTH = Object.keys(BIG_EMOJI_SIZES).length;
 
+// * the bubble flash and the found text inside it: the flash goes first, the text part stays
+// * on a while longer and fades (tdesktop: activeFadeIn + fadeWrap + activeFadeOut)
+const BUBBLE_HIGHLIGHT_DURATION = 2000;
+const BUBBLE_TEXT_HIGHLIGHT_DURATION = 4000;
+// * parts of `.message` that are not the message text (link preview / fact-check boxes included)
+const BUBBLE_TEXT_HIGHLIGHT_SKIP = '.time, .reactions, .reply, .code-header, .webpage';
+
 const TOPIC_ICON_SIZE = makeMediaSize(64, 64);
 
 const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
@@ -540,6 +548,8 @@ export default class ChatBubbles {
   private needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number, peerId: PeerId, logId?: string | number}[] = []; // if need wrapSingleMessage
 
   private bubbles: {[fullMid: string]: HTMLElement} = {};
+  /** bubble → cancel of its active text highlight (search query / quote), see `highlightBubbleText` */
+  private bubbleTextHighlights = new WeakMap<HTMLElement, () => void>();
   public skippedMids: Set<string> = new Set();
   public bubblesNewByGroupedId: {[groupId: string]: Bubble} = {};
   public bubblesNew: {[mid: string]: Bubble} = {};
@@ -3689,6 +3699,12 @@ export default class ChatBubbles {
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
           pollOption: replyTo.poll_option,
+          // * only a manual quote points at a specific part of the message
+          highlight: replyTo.pFlags.quote && replyTo.quote_text ? {
+            type: 'quote',
+            text: replyTo.quote_text,
+            offset: replyTo.quote_offset
+          } : undefined,
           type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
           monoforumThreadId: this.chat.monoforumThreadId
@@ -4942,7 +4958,7 @@ export default class ChatBubbles {
     }
   }
 
-  public highlightBubble(element: HTMLElement) {
+  public highlightBubble(element: HTMLElement, textHighlight?: TextHighlightMatch) {
     const datasetKey = 'highlightTimeout';
     if(element.dataset[datasetKey]) {
       clearTimeout(+element.dataset[datasetKey]);
@@ -4954,7 +4970,46 @@ export default class ChatBubbles {
     element.dataset[datasetKey] = '' + setTimeout(() => {
       element.classList.remove('is-highlighted');
       delete element.dataset[datasetKey];
-    }, 2000);
+    }, BUBBLE_HIGHLIGHT_DURATION);
+
+    this.highlightBubbleText(element, textHighlight);
+  }
+
+  /**
+   * Lights up the search query / the quote inside the bubble text. Together with the flash
+   * above it looks the way tdesktop does it: the whole bubble flashes, the flash "collapses"
+   * onto the found text, which stays a while and fades away.
+   */
+  private highlightBubbleText(element: HTMLElement, match?: TextHighlightMatch) {
+    this.bubbleTextHighlights.get(element)?.();
+    this.bubbleTextHighlights.delete(element);
+    if(!match) {
+      return;
+    }
+
+    // * `element` is either the bubble or an album/document item inside it
+    const container = element.classList.contains('bubble') ? element.querySelector<HTMLElement>('.message') : element;
+    if(!container) {
+      return;
+    }
+
+    // * `.message` is positioned and paints below `.bubble-content` background — full line boxes,
+    // * appearing iOS-style: the whole text selected, then narrowing down onto the match
+    const highlight = highlightText({container, match, skip: BUBBLE_TEXT_HIGHLIGHT_SKIP, lineBoxes: true, animateIn: true});
+    if(!highlight.found) {
+      highlight.dispose();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      this.bubbleTextHighlights.delete(element);
+      highlight.fadeOut();
+    }, BUBBLE_TEXT_HIGHLIGHT_DURATION);
+
+    this.bubbleTextHighlights.set(element, () => {
+      clearTimeout(timeout);
+      highlight.dispose();
+    });
   }
 
   private createDateBubble(timestamp: number, date: Date = new Date(timestamp * 1000)) {
@@ -5187,7 +5242,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption, highlight} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -5326,9 +5381,13 @@ export default class ChatBubbles {
           this.scrollToBubble(bubble, 'start');
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(isTarget) {
-          this.scrollToBubble(bubble, 'center');
-          this.highlightBubble(bubble);
-          this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
+          // * the highlight waits for the scroll to settle (iOS does the same) — otherwise it
+          // * plays while the message is still travelling
+          this.scrollToBubble(bubble, 'center').then(() => {
+            if(!middleware()) return;
+            this.highlightBubble(bubble, highlight);
+            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
+          });
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessageFullMid !== EMPTY_FULL_MID && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -5630,8 +5689,12 @@ export default class ChatBubbles {
           }
 
           if(!followingUnread && isTarget && foundTarget) {
-            this.highlightBubble(bubble);
-            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
+            // * after the scroll settles, see the same-peer branch above
+            promise.then(() => {
+              if(!middleware()) return;
+              this.highlightBubble(bubble, highlight);
+              this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
+            });
           }
         }
 

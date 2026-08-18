@@ -21,7 +21,6 @@ export default async function renderDialogSubtitleParts(options: {
   isSaved: boolean,
   lastMessage?: MyMessage,
   draftMessage?: MyDraftMessage,
-  highlightWord?: string,
   noForwardIcon?: boolean,
   mediaParts?: (Promise<HTMLElement> | HTMLElement)[],
   withoutMediaType?: boolean,
@@ -36,7 +35,6 @@ export default async function renderDialogSubtitleParts(options: {
     isSaved,
     lastMessage,
     draftMessage,
-    highlightWord,
     noForwardIcon,
     middleware,
     textColor
@@ -139,14 +137,7 @@ export default async function renderDialogSubtitleParts(options: {
   > = {textColor};
   let fragment: DocumentFragment;
   let wrapResult: ReturnType<typeof wrapMessageForReply>;
-  if(highlightWord && lastMessage?._ === 'message' && lastMessage.message) {
-    wrapResult = wrapMessageForReply({
-      ...wrapOptions,
-      message: lastMessage,
-      highlightWord,
-      withoutMediaType: options.withoutMediaType
-    });
-  } else if(draftMessage) {
+  if(draftMessage) {
     wrapResult = wrapMessageForReply({
       ...wrapOptions,
       message: draftMessage

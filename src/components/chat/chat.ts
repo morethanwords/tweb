@@ -1162,13 +1162,9 @@ export default class Chat extends EventListenerBase<{
     tab.destroy();
   }
 
-  public setMessageId(options: Partial<{
-    lastMsgId: number,
-    lastMsgPeerId: PeerId,
-    mediaTimestamp: number,
-    pollOption?: string | Uint8Array,
-    type: ChatType
-  } & ChatSearchKeys> = {}) {
+  public setMessageId(options: Partial<Pick<ChatSetPeerOptions,
+    'lastMsgId' | 'lastMsgPeerId' | 'mediaTimestamp' | 'pollOption' | 'highlight' | 'type'
+  > & ChatSearchKeys> = {}) {
     return this.setPeer({
       peerId: this.peerId,
       threadId: this.threadId,

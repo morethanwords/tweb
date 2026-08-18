@@ -92,5 +92,10 @@ fi
 
 echo "[start-preview] id=$ID  port=$PORT  seed=$SEED  no-worker=$NO_WORKER"
 echo "[start-preview] preview: http://localhost:$PORT"
-exec env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER" pnpm exec vite \
+# `verify-deps-before-run` is off on purpose: in a git worktree node_modules is
+# a symlink into the main checkout, and pnpm's pre-run check would try to
+# purge + reinstall it (aborting without a TTY, or wiping the main checkout's
+# modules with one).
+exec env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER" \
+  pnpm --config.verify-deps-before-run=false exec vite \
   --config vite.preview.config.ts --port "$PORT" --strictPort

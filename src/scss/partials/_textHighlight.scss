@@ -1,0 +1,61 @@
+@use "../shared" as *;
+
+// Text highlights painted through the CSS Custom Highlight API — the ranges are registered by
+// helpers/dom/textHighlight.ts. Only color / background-color / text-decoration / text-shadow
+// take effect inside ::highlight(); custom properties are inherited from the originating
+// element, which is how the per-bubble selection color and the fade-out
+// (`--text-highlight-opacity`, set on the container by `fadeOut()`) reach the paint.
+
+// The text-selection tint, which is already tuned per theme and per bubble side (accent-hued
+// tints vanish on an accent-colored outgoing bubble).
+::highlight(tg-search),
+::highlight(tg-quote) {
+  background-color: color-mix(in srgb, var(--selection-background-color) calc(100% * var(--text-highlight-opacity, 1)), transparent);
+}
+
+// `lineBoxes` mode (a search match jumped to in the history, the quoted part of a message):
+// one box per line stretched to the full line height, painted below the text and above the
+// bubble background — a contiguous block like a selection, without the inter-line gaps of
+// glyph-high `::highlight()` boxes.
+.text-highlight-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  user-select: none;
+  opacity: var(--text-highlight-opacity, 1);
+
+  &-box {
+    position: absolute;
+    background-color: var(--selection-background-color);
+    transform-origin: 0 0;
+  }
+
+  // `animateIn`: the whole-text selection fades in, then narrows down onto the match
+  // (durations must match NARROW_APPEAR / NARROW_DURATION in helpers/dom/textHighlight.ts)
+  &.is-intro {
+    transition: opacity .2s ease;
+  }
+
+  &.is-appearing {
+    opacity: 0;
+  }
+
+  &.is-narrowing &-box {
+    transition: transform .4s cubic-bezier(.22, 1, .36, 1), opacity .4s ease;
+  }
+}
+
+// Search matches in chat-list rows (global search, in-chat search results): accent-colored
+// text like tdesktop / Android, no background.
+.chatlist-chat ::highlight(tg-search) {
+  background-color: transparent;
+  color: var(--primary-color);
+}
+
+@include respond-to(not-handhelds) {
+  .chatlist-chat.active ::highlight(tg-search) {
+    background-color: rgba(255, 255, 255, .24);
+    color: #fff;
+  }
+}

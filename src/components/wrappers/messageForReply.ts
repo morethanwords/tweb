@@ -3,7 +3,6 @@ import assumeType from '@helpers/assumeType';
 import {formatDate} from '@helpers/date';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {getRestrictionReason} from '@helpers/restrictions';
-import escapeRegExp from '@helpers/string/escapeRegExp';
 import limitSymbols from '@helpers/string/limitSymbols';
 import {Message, DocumentAttribute, DraftMessage, MessageMedia, Document, Photo} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
@@ -33,7 +32,6 @@ export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
 }> & {
   text?: string,
   usingMids?: number[],
-  highlightWord?: string,
   withoutMediaType?: boolean,
   canTranslate?: boolean
 };
@@ -42,11 +40,8 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   options: T
 ): Promise<T['plain'] extends true ? string : DocumentFragment> {
   options.text ??= (options.message as Message.message).message;
-  if(!options.plain && options.highlightWord) {
-    options.highlightWord = options.highlightWord.trim();
-  }
 
-  const {message, usingMids, plain, highlightWord, withoutMediaType} = options;
+  const {message, usingMids, plain, withoutMediaType} = options;
 
   const parts: (Node | string)[] = [];
 
@@ -379,21 +374,6 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
       parts.push(wrapPlainText(options.text, entities));
     } else {
       // let entities = parseEntities(text.replace(/\n/g, ' '));
-
-      if(highlightWord) {
-        let found = false;
-        let match: any;
-        const regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
-        entities = entities.slice(); // fix leaving highlight entity
-        while((match = regExp.exec(options.text)) !== null) {
-          entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
-          found = true;
-        }
-
-        if(found) {
-          sortEntities(entities);
-        }
-      }
 
       const messagePeerId = (message as Message.message).peerId;
       const shouldHideCode = [SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID].includes(messagePeerId);

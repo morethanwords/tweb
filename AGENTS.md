@@ -268,6 +268,13 @@ consciously:
   blob URL to the worker (`setSharedObjectURL` accepts worker-minted URLs
   only — a tab's URL dies with the tab).
 
+### Highlighting text in rendered DOM
+
+**Strict rule — never wrap matched text in `<span>`/`<mark>` or synthesize
+`messageEntityHighlight` entities to point at a piece of rendered text. Use
+`highlightText()` from `@helpers/dom/textHighlight`** (options and modes are
+documented in the file; styles in `scss/partials/_textHighlight.scss`).
+
 ### Imports from `@layer`
 
 All MTProto types come from `@layer`:
