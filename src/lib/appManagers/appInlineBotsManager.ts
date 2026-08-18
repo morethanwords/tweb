@@ -278,6 +278,15 @@ export class AppInlineBotsManager extends AppManager {
       options.replyMarkup = inlineResult.send_message.reply_markup;
     }
 
+    // picking a gif out of an inline bot's results counts as using it, exactly like sending one
+    // from the panel does — tdesktop and iOS catch both at the sent message, Android at each
+    // send path. A game is left out of it the same way they do: its animation is not a gif the
+    // user picked (tdesktop's MediaGame has no document at all for checkSavedGif to look at)
+    const inlineDocument = (inlineResult as BotInlineResult.botInlineMediaResult).document as MyDocument;
+    if(inlineResult.type !== 'game' && inlineDocument?.type === 'gif') {
+      this.appGifsManager.addRecentGif(inlineDocument.id);
+    }
+
     if(inlineResult.send_message._ === 'botInlineMessageText') {
       this.appMessagesManager.sendText({
         ...options,

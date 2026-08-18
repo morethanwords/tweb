@@ -4592,6 +4592,9 @@ export default class ChatInput {
 
     if(document.type === 'sticker') {
       this.managers.appStickersManager.saveRecentSticker(document.id);
+    } else if(document.type === 'gif') {
+      // every official client moves a gif that was just sent to the front of the saved ones
+      this.managers.appGifsManager.addRecentGif(document.id);
     }
 
     return true;

@@ -10,6 +10,7 @@ import {onCleanup} from 'solid-js';
 import {Middleware} from '@helpers/middleware';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import rootScope from '@lib/rootScope';
+import {MyDocument} from '@appManagers/appDocsManager';
 
 // * a query keeps its results (and the pages scrolled into them) for as long as the search
 // * lasts, so going back to an earlier query is instant and costs no inline bot request
@@ -156,18 +157,31 @@ export default class GifsTab extends EmoticonsTabC<any, GifsSearchResults> {
   }
 
   public init() {
+    super.init();
+
     const middleware = this.middlewareHelper.get();
     const {masonry, container} = this.createMasonry(middleware);
     this.categoriesContainer.append(container);
     const preloader = putPreloader(this.content, true);
 
+    let rendered = 0;
+    const onGifsUpdated = (gifs: MyDocument[]) => {
+      masonry.update(gifs);
+      rendered = gifs.length;
+    };
+
     this.managers.appGifsManager.getGifs().then((docs) => {
       masonry.addBatch(docs);
+      rendered = docs.length;
       preloader.remove();
     });
 
+    const onGifsUpdatedPostponed = this.postponedEvent(onGifsUpdated);
     rootScope.addEventListener('gifs_updated', (gifs) => {
-      masonry.update(gifs);
+      // a shorter list means a gif was taken out of the saved ones — the user did that and has
+      // to see it go; a list of the same length is the reorder that follows using one, which
+      // waits for the panel to hide
+      (gifs.length < rendered ? onGifsUpdated : onGifsUpdatedPostponed)(gifs);
     });
 
     this.attachHelpers({

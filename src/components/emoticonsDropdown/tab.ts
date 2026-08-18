@@ -445,9 +445,15 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     this.disposeSearch?.();
   }
 
+  /**
+   * Holds an event back until the panel is off screen. The check is `isDisplayed` rather than
+   * `isActive`: sending closes the dropdown, which drops the `active` class right away while
+   * the panel keeps fading out for another animation frame or two — an update landing in that
+   * window would be seen rearranging the panel, which is exactly what postponing avoids.
+   */
   protected postponedEvent = <K>(cb: (...args: K[]) => void) => {
     return (...args: K[]) => {
-      if(this.emoticonsDropdown.isActive()) {
+      if(this.emoticonsDropdown?.isDisplayed()) {
         this.postponedEvents.push({cb, args});
       } else {
         cb(...args);

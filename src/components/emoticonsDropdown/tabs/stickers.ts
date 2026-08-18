@@ -6,7 +6,7 @@ import {Document, MessagesAllStickers, StickerSet} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {AppManagers} from '@lib/managers';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import rootScope from '@lib/rootScope';
+import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import {putPreloader} from '@components/putPreloader';
 import showStickersPopup from '@components/popups/stickers';
 import findAndSplice from '@helpers/array/findAndSplice';
@@ -382,11 +382,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     this.stickerRenderer = this.createStickerRenderer();
     this.initGroupSet();
 
-    rootScope.addEventListener('sticker_updated', ({type, document, faved}) => {
-      // if(type === 'faved') {
-      //   return;
-      // }
-
+    const onStickerUpdated = ({type, document, faved}: BroadcastEvents['sticker_updated']) => {
       const category = this.categories[type === 'faved' ? 'faved' : 'recent'];
       if(category) {
         if(faved) {
@@ -395,6 +391,15 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           this.deleteSticker(category, document);
         }
       }
+    };
+
+    const onStickerUpdatedPostponed = this.postponedEvent(onStickerUpdated);
+    rootScope.addEventListener('sticker_updated', (data) => {
+      // using a sticker reshuffles the recent row, which must not happen under the cursor —
+      // that waits for the panel to hide; faving and removing are the user's own doing right
+      // there in the panel, so they land at once
+      const postpone = data.type === 'recent' && data.faved;
+      (postpone ? onStickerUpdatedPostponed : onStickerUpdated)(data);
     });
 
     rootScope.addEventListener('stickers_deleted', ({id}) => {
@@ -414,7 +419,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }
     }));
 
-    rootScope.addEventListener('stickers_order', ({type, order}) => {
+    rootScope.addEventListener('stickers_order', this.postponedEvent(({type, order}) => {
       if(type !== 'stickers') {
         return;
       }
@@ -425,13 +430,25 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           this.positionCategory(category, false);
         }
       });
-    });
+    }));
 
-    rootScope.addEventListener('stickers_updated', ({type, stickers}) => {
+    const onStickersUpdated = ({type, stickers}: BroadcastEvents['stickers_updated']) => {
       const category = this.categories[type === 'faved' ? 'faved' : 'recent'];
       if(category) {
         onCategoryStickers(category, stickers);
       }
+    };
+
+    const onStickersUpdatedPostponed = this.postponedEvent(onStickersUpdated);
+    rootScope.addEventListener('stickers_updated', (data) => {
+      const category = this.categories[data.type === 'faved' ? 'faved' : 'recent'];
+      const {limit} = category || {};
+      const length = limit ? Math.min(limit, data.stickers.length) : data.stickers.length;
+      // a list that got shorter means something was taken out of it — clearing the recent
+      // stickers, un-faving one — and the user has to see that happen; a list of the same
+      // length is the reorder that follows using a sticker, which waits for the panel to hide
+      const shrunk = category && length < category.items.length;
+      (shrunk ? onStickersUpdated : onStickersUpdatedPostponed)(data);
     });
 
     rootScope.addEventListener('app_config', () => {

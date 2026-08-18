@@ -65,12 +65,17 @@ export default class AppGifsManager extends AppManager {
     return {documents, nextOffset: next_offset};
   }
 
-  public async saveGif(docId: DocId, unsave?: boolean) {
+  /**
+   * Moves the gif to the front of the saved ones — adding it when it is not among them — and
+   * caps the list at the limit, reporting whether that pushed one out.
+   */
+  private async unshiftGif(docId: DocId, unsave?: boolean) {
     const [limit, gifs] = await Promise.all([
       this.apiManager.getLimit('gifs'),
       this.getGifs()
     ]);
 
+    // resolved after the list, which is what saves the documents it is made of
     const doc = this.appDocsManager.getDoc(docId);
     findAndSplice(gifs as Document.document[], (_doc) => _doc.id === doc.id);
 
@@ -82,6 +87,27 @@ export default class AppGifsManager extends AppManager {
     }
 
     this.rootScope.dispatchEvent('gifs_updated', gifs);
+    return {doc, limitReached};
+  }
+
+  /**
+   * Using a gif puts it back at the front of the saved ones, exactly like tdesktop's
+   * Stickers::addSavedGif, Android's MediaDataController.addRecentGif and iOS' ApplyUpdateMessage
+   * do for a gif that was just sent. Like them it stays local and asks for nothing: the server
+   * reorders the list on its own and `updateSavedGifs` brings the result over.
+   */
+  public async addRecentGif(docId: DocId) {
+    const gifs = await this.getGifs();
+    const doc = this.appDocsManager.getDoc(docId);
+    if(!doc || gifs[0]?.id === doc.id) {
+      return;
+    }
+
+    await this.unshiftGif(docId);
+  }
+
+  public async saveGif(docId: DocId, unsave?: boolean) {
+    const {doc, limitReached} = await this.unshiftGif(docId, unsave);
     this.rootScope.dispatchEvent('gif_updated', {saved: !unsave, document: doc, limitReached});
 
     return this.apiManager.invokeApi('messages.saveGif', {

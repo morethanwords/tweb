@@ -24,6 +24,7 @@ import VisibilityIntersector, {OnVisibilityChangeItem} from '@components/visibil
 import mediaSizes from '@helpers/mediaSizes';
 import {StickerSet} from '@layer';
 import findAndSplice from '@helpers/array/findAndSplice';
+import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import showStickersPopup from '@components/popups/stickers';
 import {hideToast, toastNew} from '@components/toast';
@@ -796,8 +797,17 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
           (item) => item.emoji === emoji.emoji;
       const found = findAndSplice(category.items, verify);
       if(deleted) {
-        // * prevent second invocation
-        findAndSplice(this.postponedEvents, (event) => event.cb === onEmojiRecent && (event.args[0] as BroadcastEvents['emoji_recent']).deleted);
+        // a use of this emoji may be waiting in the queue for the panel to hide — deleting it
+        // now must not let that put it back
+        findAndSpliceAll(this.postponedEvents, (event) => {
+          if(event.cb !== onEmojiRecent) {
+            return false;
+          }
+
+          const other = (event.args[0] as BroadcastEvents['emoji_recent']).emoji;
+          return emoji.docId ? other.docId === emoji.docId : other.emoji === emoji.emoji;
+        });
+
         if(!found) {
           return;
         }
@@ -827,8 +837,13 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       }
     };
 
-    !this.noRegularEmoji && this.listenerSetter.add(rootScope)('emoji_recent', this.postponedEvent(onEmojiRecent));
-    !this.noRegularEmoji && this.listenerSetter.add(rootScope)('emoji_recent', onEmojiRecent);
+    const onEmojiRecentPostponed = this.postponedEvent(onEmojiRecent);
+    !this.noRegularEmoji && this.listenerSetter.add(rootScope)('emoji_recent', (data) => {
+      // using an emoji reshuffles the recent row, so it waits for the panel to hide — the panel
+      // stays open while typing; deleting one is the user's own doing right there in it and
+      // lands at once
+      (data.deleted ? onEmojiRecent : onEmojiRecentPostponed)(data);
+    });
 
     this.toggleCustomCategory();
 

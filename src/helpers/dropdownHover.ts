@@ -274,6 +274,14 @@ export default class DropdownHover extends EventListenerBase<{
     return this.element.classList.contains('active');
   }
 
+  /**
+   * The `active` class comes off when the closing animation starts, but the panel stays on
+   * screen until it ends — anything that must not be seen happening has to wait for `closed`.
+   */
+  public isDisplayed() {
+    return this.element.style.display !== 'none';
+  }
+
   public setIgnoreMouseOut(type: IgnoreMouseOutType, ignore: boolean) {
     ignore ? this.ignoreMouseOut.add(type) : this.ignoreMouseOut.delete(type);
   }
