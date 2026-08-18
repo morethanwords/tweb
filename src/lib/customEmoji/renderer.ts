@@ -66,6 +66,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public middlewareHelper: MiddlewareHelper;
 
   public auto: boolean;
+  public destroyed: boolean;
   public textColor: Accessor<CustomProperty>;
   private _textColor: Accessor<CustomProperty>;
   private _setTextColor: Setter<CustomProperty>;
@@ -112,7 +113,11 @@ export class CustomEmojiRendererElement extends HTMLElement {
   };
 
   public connectedCallback() {
-    if(emojiRenderers.has(this)) {
+    // * Custom element reactions are read off the prototype once, when customElements.define runs, so
+    // * assigning to this.connectedCallback never stopped the browser from calling it again. A renderer
+    // * that got destroyed and then re-inserted used to re-register here with its destroy() already
+    // * nulled out, which left it in emojiRenderers with no way to ever be reclaimed - keep it out.
+    if(this.destroyed || emojiRenderers.has(this)) {
       return;
     }
 
@@ -123,24 +128,31 @@ export class CustomEmojiRendererElement extends HTMLElement {
       observeResize(observeElement, this.onResizeEntry);
     }
     emojiRenderers.add(this);
-
-    this.connectedCallback = undefined;
   }
 
   public disconnectedCallback() {
-    if(this.isConnected || !this.auto) {
+    if(this.isConnected || this.destroyed) {
       return;
     }
 
-    this.destroy?.();
-
-    this.disconnectedCallback = undefined;
+    // * Not auto: the lifetime is delegated to the owner's middleware (see create). Deliberately no
+    // * fallback here - a renderer can be legitimately detached and kept for re-insertion (the chat
+    // * list unmounts rows out of the virtual window and re-mounts them on scroll back), and there is
+    // * no way from here to tell that apart from an owner that was dropped without cleaning. The
+    // * owner has to release it; see SortedDialogList's onItemDiscard.
+    if(this.auto) {
+      this.destroy();
+    }
   }
 
   public destroy() {
-    // if(this.isConnected) {
-    //   return;
-    // }
+    // * Idempotent: the owner's middleware onDestroy and an explicit destroy() can both land here,
+    // * and clean() below re-enters through that same onDestroy
+    if(this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
 
     const observeElement = this.observeResizeElement ?? this.canvas;
     if(observeElement) {
@@ -164,9 +176,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.customEmojis.clear();
     this.textColored.clear();
 
-    this.destroy =
-      this.lastPausedVideo =
-      undefined;
+    this.lastPausedVideo = undefined;
   }
 
   public getOffsets(offsetsMap: Map<CustomEmojiElements, {top: number, left: number, width: number}[]> = new Map()) {

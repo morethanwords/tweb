@@ -98,6 +98,19 @@ export default class SortedDialogList {
 
         return dialogElement.dom.listEl;
       },
+      // * A dropped DialogElement owns a middlewareHelper (getDialogOptions passes controlled: true),
+      // * and everything wrapped under it - the emoji status renderer, its lottie/video players, the
+      // * subtitle's custom emoji - is released only by that helper's destroy. The list used to drop
+      // * elements without it (removeItem, checkShrink's trimmed tail, clear, dispose), so every
+      // * trimmed row leaked its renderer, and the compositor worker kept its OffscreenCanvas forever.
+      // * Only 'dialog' items are ours to destroy: the custom ones are the caller's own objects,
+      // * handed in as the key, and may be re-added later.
+      onItemDiscard: (item) => {
+        if(item.type === 'dialog') {
+          this.unmountedDialogElements.delete(item.value);
+          item.value.destroy();
+        }
+      },
       onItemUnmount: (item) => {
         if(item.type === 'dialog') {
           this.unmountedDialogElements.set(item.value, true);

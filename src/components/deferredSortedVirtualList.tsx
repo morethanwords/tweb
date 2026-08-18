@@ -22,6 +22,11 @@ type CreateDeferredSortedVirtualListArgs<T> = {
   scrollable: HTMLElement,
   getItemElement: (item: T, id: any) => HTMLElement,
   onItemUnmount?: (item: T) => void,
+  // * Unlike onItemUnmount (the row merely left the rendered window and is kept for re-mounting),
+  // * this fires when the list drops the item for good - removed, trimmed by checkShrink, cleared or
+  // * disposed - and the owner will never see it again. Without it an owner that allocates per-item
+  // * resources (middleware, players, canvases) has no point at which to release them.
+  onItemDiscard?: (item: T) => void,
   onListShrinked: () => void,
   requestItemForIdx: (idx: number, itemsLength: number) => void,
   sortWith: (a: number, b: number) => number,
@@ -66,6 +71,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     scrollable,
     getItemElement,
     onItemUnmount,
+    onItemDiscard,
     onListShrinked,
     requestItemForIdx,
     sortWith,
@@ -115,22 +121,36 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     setRevealIdx(items().length);
   }));
 
+  // * Re-adding an id replaces the value behind it, so the previous one is dropped for good - unless
+  // * it is the very same object being re-added, which is the common no-op case
+  const replacedBy = (
+    previous: DeferredSortedVirtualListItem<T>[],
+    newItems: DeferredSortedVirtualListItem<T>[]
+  ) => {
+    const values = new Map(newItems.map(item => [item.id, item.value]));
+    return previous.filter(item => values.has(item.id) && values.get(item.id) !== item.value);
+  };
+
   const addItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
     if(!newItems.length) return;
     const ids = new Set(newItems.map(item => item.id));
+    const replaced = replacedBy(items(), newItems);
     setItems(prev => [
       ...prev.filter(item => !ids.has(item.id)),
       ...newItems
     ]);
+    discard(replaced);
   };
 
   const addPinnedItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
     if(!newItems.length) return;
     const ids = new Set(newItems.map(item => item.id));
+    const replaced = replacedBy(pinnedItems(), newItems);
     setPinnedItems(prev => [
       ...prev.filter(item => !ids.has(item.id)),
       ...newItems
     ]);
+    discard(replaced);
   };
 
   /**
@@ -148,13 +168,22 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     });
   };
 
+  const discard = (discarded: DeferredSortedVirtualListItem<T>[]) => {
+    if(!onItemDiscard) return;
+    for(const item of discarded) onItemDiscard(item.value);
+  };
+
   const removePinnedItem = (id: any) => {
+    const discarded = pinnedItems().filter(item => id === item.id);
     setPinnedItems(prev => prev.filter(item => id !== item.id));
+    discard(discarded);
   };
 
   const removeItem = (id: any) => {
+    const discarded = items().filter(item => id === item.id);
     const hadItem = itemsMap().has(id);
     setItems(prev => prev.filter(item => id !== item.id));
+    discard(discarded);
     return hadItem;
   };
 
@@ -175,6 +204,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   };
 
   const clear = () => {
+    const discarded = [...pinnedItems(), ...items()];
     batch(() => {
       setItems([]);
       setPinnedItems([]);
@@ -184,6 +214,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       blockedAnimationCallbacks.clear();
       setBlockedAnimationCount(0);
     });
+    discard(discarded);
     // onListLengthChange?.();
   };
 
@@ -245,11 +276,14 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     const toKeep = maxVisible - pinnedItems().length + EXTRA_ITEMS_TO_KEEP;
 
     if(itemsLength > toKeep) {
+      // The trimmed tail is dropped for good - hand it to the owner before it goes out of reach
+      const discarded = sortedItems().slice(toKeep);
       batch(() => {
         // Should be sortedItems() here, because the updated cursor is based on the last item from the list, and might skip a few dialogs if wasn't set the right cursor
         setItems(sortedItems().slice(0, toKeep));
         setRevealIdx(toKeep);
       });
+      discard(discarded);
       onListShrinked();
     }
   }
@@ -367,7 +401,11 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   />;
 
   return {
-    dispose,
+    dispose: () => {
+      const discarded = [...pinnedItems(), ...items()];
+      dispose();
+      discard(discarded);
+    },
 
     list,
 
