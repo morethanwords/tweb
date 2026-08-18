@@ -1,2 +1,0 @@
-import{t as e}from"./privacyTab-BG7JEG7c.js";import{t}from"./privacySection-DtAaegMJ.js";var n=`Privacy.SavedMusicCaption`,r=e(`privacy-saved-music`,e=>{new t({tab:e,title:`Privacy.SavedMusic`,inputKey:`inputPrivacyKeySavedMusic`,captions:[n,n,n],exceptionTexts:[`PrivacySettingsController.NeverAllow`,`PrivacySettingsController.AlwaysAllow`],appendTo:e.scrollable,managers:e.managers})});export{r as default};
-//# sourceMappingURL=savedMusic-9R-xrzke.js.map
