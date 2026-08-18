@@ -2,22 +2,6 @@
   padding-bottom: 1rem;
 }
 
-.searchEmpty {
-  padding: 0.5rem 1rem 1rem;
-  color: var(--secondary-text-color);
-  text-align: center;
-}
-
-.searchLoading {
-  position: relative;
-  min-height: 4rem;
-}
-
-.searchPreloader {
-  width: 2rem;
-  height: 2rem;
-}
-
 .accessRadioFocused {
   outline: 2px solid var(--primary-color);
   outline-offset: 3px;

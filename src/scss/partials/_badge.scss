@@ -49,4 +49,26 @@
   &-gray {
     background-color: var(--secondary-color);
   }
+
+  // the default is a pill sized to stand alone; this one is a compact rectangle meant to sit
+  // inline with a heading, so it drops the fixed height and tints instead of filling.
+  // Declared after the colours to win over them when composed.
+  &-rectangle {
+    height: auto;
+    min-width: 0;
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: var(--font-size-12);
+    line-height: 1.25 !important;
+    color: var(--primary-color);
+    background-color: rgba(var(--primary-color-rgb), .2);
+  }
+
+  // pairs an icon with the label; the tighter start padding balances the icon's own bearing
+  &-rectangle-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding-inline-start: 3px;
+  }
 }

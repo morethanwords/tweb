@@ -18,6 +18,9 @@ import AvatarEdit, {AvatarEditPayload} from '@components/avatarEdit';
 import Button from '@components/buttonTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
+import Badge from '@components/badge';
+import {IconTsx} from '@components/iconTsx';
+import openBoosts from '@components/openBoosts';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
@@ -36,6 +39,7 @@ import {
   AppChatTypeTab,
   AppEditChatTab,
   AppGroupPermissionsTab,
+  AppGroupStickersTab,
   AppRemovedUsersTab
 } from '@components/solidJsTabs/tabs';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -145,7 +149,8 @@ function EditChatForm(props: {
     hideToast,
     i18n,
     join,
-    toastNew
+    toastNew,
+    wrapEmojiText
   } = useHotReloadGuard();
   const [chat, setChat] = createSignal<EditChat>(props.data.chat);
   const [chatFull, setChatFull] = createSignal<EditChatFull>(props.data.chatFull);
@@ -204,6 +209,22 @@ function EditChatForm(props: {
   });
   const showDiscussion = createMemo(() => {
     return isAdmin() && (isBroadcast() || !!linkedChatId());
+  });
+  const isMegagroup = () => !!channel()?.pFlags.megagroup;
+  // the server decides when a group is big enough to own a sticker set
+  const showGroupStickers = createMemo(() => {
+    return isMegagroup() && !!channelFull()?.pFlags?.can_set_stickers;
+  });
+  const showGroupEmojiPack = createMemo(() => {
+    return isMegagroup() && canChangeInfo() && isAdmin();
+  });
+  // the entry stays visible below the required level, badged and gated on apply
+  const emojiPackRequiredLevel = () => props.data.appConfig.group_emoji_stickers_level_min ?? 0;
+  const emojiPackLevelMissing = createMemo(() => {
+    return (channel()?.level ?? 0) < emojiPackRequiredLevel();
+  });
+  const hasGroupStickersSection = createMemo(() => {
+    return showGroupStickers() || showGroupEmojiPack();
   });
   const hasMainSettings = createMemo(() => {
     return canChangeType() ||
@@ -264,6 +285,10 @@ function EditChatForm(props: {
       i18n('Stars', [numberThousandSplitterForStars(stars)]) :
       i18n('ChannelDirectMessages.Settings.Free');
   });
+  const groupStickerSetSubtitle = (isEmoji: boolean) => {
+    const set = isEmoji ? channelFull()?.emojiset : channelFull()?.stickerset;
+    return set ? wrapEmojiText(set.title) : i18n('Checkbox.Disabled');
+  };
   const permissionsSubtitle = createMemo(() => {
     const permissions = PERMISSION_FLAGS.reduce((count, flag) => {
       return count + +hasRights(chat(), flag, chat().default_banned_rights);
@@ -404,10 +429,17 @@ function EditChatForm(props: {
       langPackKey: 'ChannelAutotranslationLevelMin',
       langPackArguments: [
         props.data.appConfig.channel_autotranslation_level_min,
-        anchorCallback(async() => {
+        anchorCallback(() => {
           hideToast();
-          const {default: PopupBoost} = await import('@components/popups/boost');
-          PopupElement.createPopup(PopupBoost, peerId());
+          openBoosts({
+            peerId: peerId(),
+            slider: tab.slider,
+            reason: {
+              titleLangKey: 'ChannelAutotranslation.BoostTitle',
+              descriptionLangKey: 'ChannelAutotranslation.BoostDescription',
+              descriptionArgs: [props.data.appConfig.channel_autotranslation_level_min]
+            }
+          });
         })
       ]
     });
@@ -730,6 +762,37 @@ function EditChatForm(props: {
               </Row.CheckboxFieldToggle>
               <Row.Icon icon="topics" />
               <Row.Title>{i18n('Topics')}</Row.Title>
+            </Row>
+          </Show>
+        </Section>
+      </Show>
+
+      <Show when={hasGroupStickersSection()}>
+        <Section name="GroupStickers" caption="GroupStickers.SectionInfo">
+          <Show when={showGroupStickers()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppGroupStickersTab).open({chatId: chatId()});
+            }}>
+              <Row.Icon icon="stickers_face" />
+              <Row.Title>{i18n('GroupStickers')}</Row.Title>
+              <Row.Subtitle>{groupStickerSetSubtitle(false)}</Row.Subtitle>
+            </Row>
+          </Show>
+
+          <Show when={showGroupEmojiPack()}>
+            <Row clickable={() => {
+              tab.slider.createTab(AppGroupStickersTab).open({chatId: chatId(), isEmoji: true});
+            }}>
+              <Row.Icon icon="smile" />
+              <Row.Title titleRight={emojiPackLevelMissing() ? (
+                <Badge tag="span" rectangle class="badge-rectangle-with-icon">
+                  <IconTsx icon="premium_lock" />
+                  {i18n('BoostsLevel', [emojiPackRequiredLevel()])}
+                </Badge>
+              ) : undefined}>
+                {i18n('GroupEmojiPack')}
+              </Row.Title>
+              <Row.Subtitle>{groupStickerSetSubtitle(true)}</Row.Subtitle>
             </Row>
           </Show>
         </Section>

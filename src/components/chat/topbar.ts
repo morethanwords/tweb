@@ -47,7 +47,6 @@ import setBadgeContent from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
-import AppBoostsTab from '@components/sidebarRight/tabs/boosts';
 import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
 import assumeType from '@helpers/assumeType';
 import PopupSendGift from '@components/popups/sendGift';
@@ -71,10 +70,10 @@ import {getCachedFullPeer} from '@stores/fullPeers';
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
-import PopupBoost from '@components/popups/boost';
 import PopupPremium from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
 import showAddBotToChat from '@components/popups/addBotToChat';
+import openBoosts from '@components/openBoosts';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
@@ -455,15 +454,7 @@ export default class ChatTopbar {
       direction: 'left-start'
     });
 
-    const onBoostClick = async() => {
-      const {peerId} = this;
-      if(await this.managers.appProfileManager.canViewStatistics(peerId)) {
-        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
-        this.appSidebarRight.toggleSidebar(true);
-      } else {
-        PopupElement.createPopup(PopupBoost, this.peerId);
-      }
-    };
+    const onBoostClick = () => openBoosts({peerId: this.peerId, slider: this.appSidebarRight});
 
     const getBotAddToChatAction = () => this.peerId.isUser() && getAddBotToChatAction(
       this.chat.peer as User.user,

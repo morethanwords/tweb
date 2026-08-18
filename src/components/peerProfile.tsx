@@ -1,5 +1,6 @@
 import {batch, createContext, createEffect, createMemo, createResource, createSignal, For, JSX, on, onCleanup, Show, untrack, useContext} from 'solid-js';
 import {render} from 'solid-js/web';
+import Badge from '@components/badge';
 import Section from '@components/section';
 import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommunityId';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
@@ -586,11 +587,11 @@ PeerProfile.PersonalChannel = () => {
           <>
             <span class="personal-channel-name">
               {i18n('AccDescrChannel')}
-              <span class="personal-channel-counter">
+              <Badge tag="span" rectangle class="personal-channel-counter">
                 {i18n('Subscribers', [
                   numberThousandSplitter((chat() as Chat.channel).participants_count)
                 ])}
-              </span>
+              </Badge>
             </span>
           </>
         }

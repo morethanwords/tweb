@@ -6,9 +6,9 @@ import {IconTsx} from '@components/iconTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import MediaHeader from '@components/mediaHeader';
 import PeerTitle from '@components/peerTitle';
-import {PreloaderTsx} from '@components/putPreloader';
 import Row from '@components/rowTsx';
 import SaveButton from '@components/saveButton';
+import {SearchEmpty, SearchLoading} from '@components/searchStatus';
 import Section from '@components/section';
 import {AppAddMembersTab, AppChatAutomationTab, type AppAddMembersExtraCategory} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -827,22 +827,15 @@ export default function ChatAutomationTab() {
             />
           </div>
           <Show when={searching()}>
-            <div
-              class={styles.searchLoading}
-              role="status"
-              aria-live="polite"
-              aria-label={I18n.format('ChatAutomation.Searching', true)}
-            >
-              <PreloaderTsx class={styles.searchPreloader} />
-            </div>
+            <SearchLoading aria-label={I18n.format('ChatAutomation.Searching', true)} />
           </Show>
           <BotDialogList userIds={searchResults()} onAdd={selectBot} />
           <Show when={!searching() && searchFinished() && !searchResults().length}>
-            <div class={styles.searchEmpty} role="status" aria-live="polite">
+            <SearchEmpty>
               {i18n(searchFailed() ?
                 'ChatAutomation.SearchFailed' :
                 (unsupportedUserId() ? 'ChatAutomation.BotUnsupported' : 'ChatAutomation.BotNotFound'))}
-            </div>
+            </SearchEmpty>
           </Show>
         </Show>
       </Section>

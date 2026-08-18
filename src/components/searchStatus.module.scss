@@ -1,0 +1,15 @@
+.loading {
+  position: relative;
+  min-height: 4rem;
+}
+
+.preloader {
+  width: 2rem;
+  height: 2rem;
+}
+
+.empty {
+  padding: 0.5rem 1rem 1rem;
+  color: var(--secondary-text-color);
+  text-align: center;
+}

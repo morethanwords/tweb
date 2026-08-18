@@ -72,7 +72,7 @@ export const CPrepaidGiveaway = (props: {
 };
 
 export default class AppBoostsTab extends SliderSuperTabEventable {
-  private peerId: PeerId;
+  public peerId: PeerId;
   private isBroadcast: boolean;
   private targets: Map<HTMLElement, Boost>;
   private canCreateGiveaway: boolean;

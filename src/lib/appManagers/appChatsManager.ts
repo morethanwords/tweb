@@ -8,7 +8,7 @@
 import deepEqual from '@helpers/object/deepEqual';
 import isObject from '@helpers/object/isObject';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
-import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, InputUser, MessagesChats, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '@layer';
+import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsGetAdminedPublicChannels, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, InputUser, MessagesChats, MessagesChatInviteJoinResult, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, StickerSet, Update, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -22,6 +22,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import callbackify from '@helpers/callbackify';
 import {SlicedCachedFetcher} from '@appManagers/utils/chats/slicedCachedFetcher';
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
+import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 export type Channel = Chat.channel;
 export type ChatPhotoUpload = {
@@ -1212,6 +1213,21 @@ export class AppChatsManager extends AppManager {
 
   public toggleAutotranslation(chatId: ChatId, enabled: boolean) {
     return this.toggleSomething(chatId, 'toggleAutotranslation', enabled);
+  }
+
+  /**
+   * Sets (or removes, when `stickerSet` is omitted) the group's sticker set or custom emoji pack.
+   */
+  public async setGroupStickerSet(chatId: ChatId, stickerSet?: StickerSet.stickerSet, isEmoji?: boolean) {
+    await this.apiManager.invokeApi(isEmoji ? 'channels.setEmojiStickers' : 'channels.setStickers', {
+      channel: this.getChannelInput(chatId),
+      stickerset: stickerSet ? getStickerSetInputById(stickerSet) : {_: 'inputStickerSetEmpty'}
+    });
+
+    this.appProfileManager.modifyCachedFullChat<ChatFull.channelFull>(chatId, (channelFull) => {
+      if(isEmoji) channelFull.emojiset = stickerSet;
+      else channelFull.stickerset = stickerSet;
+    });
   }
 
   public getGroupsForDiscussion() {

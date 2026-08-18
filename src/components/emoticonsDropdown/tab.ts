@@ -216,12 +216,19 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
 
   public createCategory({
     stickerSet,
+    id,
     title,
     isLocal,
-    noMenuTab = !stickerSet,
+    noMenuTab = !stickerSet && !id,
     styles
   }: {
     stickerSet?: StickerSet,
+    /**
+     * Overrides the key the category is filed under. The group's own set needs one of these:
+     * keyed by the set id it would fight for the slot with the same set installed by the user,
+     * and with the events (install / delete / reorder) that address installed sets by id.
+     */
+    id?: string,
     title?: HTMLElement | DocumentFragment,
     isLocal?: boolean,
     noMenuTab?: boolean,
@@ -231,8 +238,9 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       noMenuTab = true;
     }
 
+    const categoryId = id ?? '' + stickerSet?.id;
     const category: Category = new StickersTabCategory({
-      id: '' + stickerSet?.id,
+      id: categoryId,
       title,
       overflowElement: this.content,
       getContainerSize: () => {
@@ -263,9 +271,9 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     const container = category.elements.container;
     container.classList.add('hide');
 
-    if(stickerSet) {
+    if(stickerSet || id) {
       category.set = stickerSet;
-      this.categories[stickerSet.id] = category;
+      this.categories[categoryId] = category;
       this.categoriesMap.set(container, category);
       this.categoriesIntersector.observe(container);
     }
@@ -386,6 +394,9 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       category.elements.container.remove();
       category.elements.menuTab?.remove();
       this.categoriesIntersector.unobserve(category.elements.container);
+      // mirrors the observe in createCategory; without it the sticky observer keeps
+      // reporting a container that no longer resolves to a category
+      this.menuOnClickResult?.stickyIntersector?.unobserve(category.elements.container);
       delete this.categories[category.id];
       this.categoriesMap.delete(category.elements.container);
       this.categoriesByMenuTabMap.delete(category.elements.menuTab);

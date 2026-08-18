@@ -4,8 +4,11 @@ import classNames from '@helpers/string/classNames';
 
 export default function Badge(props: {
   tag: 'span' | 'div',
-  size: number,
-  color: 'primary' | 'gray',
+  /** the pill's height; the rectangle variant sizes itself to its text instead */
+  size?: number,
+  color?: 'primary' | 'gray',
+  /** a compact tinted rectangle for badges that sit inline with a heading */
+  rectangle?: boolean,
   children: JSX.Element,
   class?: string
 }) {
@@ -14,8 +17,9 @@ export default function Badge(props: {
       component={props.tag}
       class={classNames(
         'badge',
-        `badge-${props.size}`,
-        `badge-${props.color}`,
+        props.size && `badge-${props.size}`,
+        props.color && `badge-${props.color}`,
+        props.rectangle && 'badge-rectangle',
         !props.children && 'is-badge-empty',
         props.class
       )}

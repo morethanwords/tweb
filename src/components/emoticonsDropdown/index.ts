@@ -53,6 +53,7 @@ export interface EmoticonsTab {
   onOpened?: () => void;
   onClose?: () => void;
   onClosed?: () => void;
+  onPeerChanged?: () => void;
 }
 
 export interface EmoticonsTabConstructable<T extends EmoticonsTab = any> {
@@ -405,6 +406,10 @@ export class EmoticonsDropdown extends DropdownHover {
     };
 
     const onPeerChanged = () => {
+      // tabs track per-chat content (the group's own sticker set), so they are told
+      // about the switch even when the dropdown itself is pinned to one chat input
+      this.tabsToRender.forEach((tab) => tab.onPeerChanged?.());
+
       if(this._chatInput || this.isStandalone) {
         return;
       }
@@ -582,7 +587,8 @@ export class EmoticonsDropdown extends DropdownHover {
       }
 
       const tab = emoticons.getCategoryByContainer(target);
-      if(!tab.elements.menuTab) {
+      // the entry may describe a category deleted since the observer queued it
+      if(!tab?.elements.menuTab) {
         return;
       }
 

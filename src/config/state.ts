@@ -77,7 +77,14 @@ export type StateSettings = {
   stickers: {
     suggest: 'all' | 'installed' | 'none',
     dynamicPackOrder: boolean,
-    loop: boolean
+    loop: boolean,
+    /**
+     * Groups whose own sticker set / emoji pack the user collapsed in the panel, as
+     * `chatId` -> the set id that was collapsed. Keyed by set so that a group swapping
+     * packs brings the section back.
+     */
+    hiddenGroupSets: {[chatId: string]: string},
+    hiddenGroupEmojiSets: {[chatId: string]: string}
   },
   emoji: {
     suggest: boolean,
@@ -456,7 +463,9 @@ export const SETTINGS_INIT: StateSettings = {
   stickers: {
     suggest: 'all',
     dynamicPackOrder: true,
-    loop: true
+    loop: true,
+    hiddenGroupSets: {},
+    hiddenGroupEmojiSets: {}
   },
   emoji: {
     suggest: true,

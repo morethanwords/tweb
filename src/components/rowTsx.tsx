@@ -273,7 +273,7 @@ Row.CheckboxFieldToggle = (props: {
 
 Row.Media = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
   children?: JSX.Element,
-  size: RowMediaSizeType,
+  size?: RowMediaSizeType,
   class?: string
 }) => {
   const [props, restProps] = splitProps(inProps, ['children', 'size', 'class']);

@@ -10,7 +10,7 @@ import rootScope from '@lib/rootScope';
 import {putPreloader} from '@components/putPreloader';
 import showStickersPopup from '@components/popups/stickers';
 import findAndSplice from '@helpers/array/findAndSplice';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import noop from '@helpers/noop';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
@@ -24,11 +24,22 @@ import EmoticonsTabC from '@components/emoticonsDropdown/tab';
 import {i18n} from '@lib/langPack';
 import {onCleanup} from 'solid-js';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
+import GroupSetController, {GROUP_SET_CATEGORY_ID, GroupSetState} from '@components/emoticonsDropdown/groupSet';
+import {
+  createGroupSetHeaderButton,
+  getGroupSetTitle,
+  isGroupSetHidden,
+  openGroupSetTab,
+  setGroupSetHidden
+} from '@components/emoticonsDropdown/groupSetSection';
+import Icon from '@components/icon';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 type StickersTabItem = {element: HTMLElement, document: Document.document};
 export default class StickersTab extends EmoticonsTabC<StickersTabCategory<StickersTabItem>, Document.document[]> {
   private stickerRenderer: SuperStickerRenderer;
+  private groupSetController: GroupSetController;
+  private groupSetHidden: boolean;
 
   constructor(managers: AppManagers) {
     super({
@@ -97,6 +108,111 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     category.limit = limit;
   }
 
+  private initGroupSet() {
+    this.groupSetController = new GroupSetController({
+      managers: this.managers,
+      listenerSetter: this.listenerSetter,
+      getPeerId: () => this.emoticonsDropdown ? this.emoticonsDropdown.chatInput?.chat?.peerId : undefined,
+      isHidden: (chatId, set) => isGroupSetHidden(chatId, set),
+      isInstalled: (set) => !!this.categories[set.id],
+      render: (state) => this.renderGroupSet(state),
+      remove: () => this.deleteCategory(this.categories[GROUP_SET_CATEGORY_ID])
+    });
+
+    if(this.emoticonsDropdown) {
+      this.listenerSetter.add(this.emoticonsDropdown)('opened', () => this.groupSetController.update());
+      // the tab is built on the first open, after that open's event already fired
+      this.groupSetController.update();
+    }
+  }
+
+  /**
+   * Reuses the menu tab's own click: it already handles making the category active and
+   * scrolling the panel to it, including the bookkeeping that keeps the scroll spy quiet.
+   */
+  private scrollToGroupSet() {
+    const menuTab = this.categories[GROUP_SET_CATEGORY_ID]?.elements.menuTab;
+    if(menuTab) {
+      simulateClickEvent(menuTab);
+    }
+  }
+
+  /**
+   * A collapsed section belongs below every other set, but sets keep arriving — the initial
+   * load and later installs both append — so its place has to be reclaimed afterwards.
+   */
+  private repositionGroupSet() {
+    const category = this.categories[GROUP_SET_CATEGORY_ID];
+    if(category && this.groupSetHidden) {
+      this.positionCategory(category, false);
+    }
+  }
+
+  private renderGroupSet(state: GroupSetState) {
+    const {set, canEdit, hidden} = state;
+    this.groupSetHidden = hidden;
+    const chatId = this.groupSetController.getCurrentChatId();
+    const category = this.createCategory({
+      id: GROUP_SET_CATEGORY_ID,
+      stickerSet: set,
+      title: getGroupSetTitle(set),
+      styles: EmoticonsTabStyles.Stickers
+    });
+
+    category.elements.title.append(createGroupSetHeaderButton({
+      canEdit,
+      hidden,
+      onClick: () => {
+        if(canEdit) {
+          openGroupSetTab(chatId, false);
+          return;
+        }
+
+        setGroupSetHidden(chatId, set, false, !hidden);
+        this.groupSetController.update().then(() => {
+          // bringing it back should show it, not just move it up the list
+          if(hidden) this.scrollToGroupSet();
+        });
+      }
+    }));
+
+    // hidden sections sink below the user's own sets, exactly like tdesktop's Hidden place
+    this.positionCategory(category, !hidden);
+
+    if(set) {
+      StickersTab.categoryAppendStickers(
+        this,
+        this.stickerRenderer,
+        set.count,
+        category,
+        this.managers.appStickersManager.getStickerSet(getStickerSetInputById(set))
+        .then((stickerSet) => stickerSet.documents as MyDocument[])
+      );
+
+      this.renderStickerSetThumb({
+        set,
+        menuTabPadding: category.elements.menuTabPadding,
+        middleware: category.middlewareHelper.get()
+      });
+    } else {
+      // nothing configured yet: an empty section whose only job is to lead an admin to setup
+      category.elements.container.classList.remove('hide');
+      category.elements.menuTab.append(Icon('stickers_face'));
+    }
+  }
+
+  public onPeerChanged() {
+    if(!this.groupSetController) {
+      return;
+    }
+
+    this.groupSetController.clear();
+    // an open dropdown has to swap the set right away; a closed one resolves on its next open
+    if(this.emoticonsDropdown?.isActive()) {
+      this.groupSetController.update();
+    }
+  }
+
   public static _onCategoryVisibility = (category: StickersTabCategory<any>, visible: boolean) => {
     category.elements.items.replaceChildren(...(!visible ? [] : category.items.map(({element}) => element)));
     if(visible) {
@@ -108,6 +224,12 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
   private onCategoryVisibility = ({target, visible}: OnVisibilityChangeItem) => {
     const category = this.categoriesMap.get(target);
+    // the set's documents resolve asynchronously, so this can fire for a category that was
+    // already deleted — leaving a chat drops the group's set that way
+    if(!category) {
+      return;
+    }
+
     StickersTab._onCategoryVisibility(category, visible);
   };
 
@@ -244,14 +366,21 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       const recentCategory = this.categories['recent'];
       this.menuOnClickResult.setActive(favedCategory.items.length ? favedCategory : recentCategory);
 
+      this.repositionGroupSet();
+
       rootScope.addEventListener('stickers_installed', (set) => {
         if(!this.categories[set.id]) {
           StickersTab.renderStickerSet(this, this.stickerRenderer, set, true);
+          this.repositionGroupSet();
+          // installing the group's own set gives it a category of its own — the group one
+          // beside it would be a duplicate
+          this.groupSetController?.update();
         }
       });
     });
 
     this.stickerRenderer = this.createStickerRenderer();
+    this.initGroupSet();
 
     rootScope.addEventListener('sticker_updated', ({type, document, faved}) => {
       // if(type === 'faved') {
@@ -271,6 +400,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     rootScope.addEventListener('stickers_deleted', ({id}) => {
       const category = this.categories[id];
       this.deleteCategory(category);
+      // uninstalling may turn a deduped group set into one worth showing on its own
+      this.groupSetController?.update();
     });
 
     rootScope.addEventListener('stickers_top', this.postponedEvent((id) => {

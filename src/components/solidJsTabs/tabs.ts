@@ -439,6 +439,17 @@ export const AppChatMembersTab =
     getComponentModule: () => import('../sidebarRight/tabs/chatMembers')
   });
 
+type AppGroupStickersTabPayload = {
+  chatId: ChatId,
+  isEmoji?: boolean
+};
+
+export const AppGroupStickersTab =
+  scaffoldSolidJSTab<AppGroupStickersTabPayload>({
+    title: ({isEmoji}) => isEmoji ? 'GroupEmojiPack' : 'GroupStickers',
+    getComponentModule: () => import('../sidebarRight/tabs/groupStickers')
+  });
+
 type AppChatAdministratorsTabPayload =
   | {chatId: ChatId}
   | {communityId: ChatId};
