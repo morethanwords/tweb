@@ -347,6 +347,14 @@ const BUBBLE_TEXT_HIGHLIGHT_DURATION = 4000;
 // * parts of `.message` that are not the message text (link preview / fact-check boxes included)
 const BUBBLE_TEXT_HIGHLIGHT_SKIP = '.time, .reactions, .reply, .code-header, .webpage';
 
+/** what a jump is really about inside the message it lands on, see `ChatBubbles.scrollToBubble` */
+type MessageFocus = {
+  /** the search query / the quote about to be lit up in the text */
+  textHighlight?: TextHighlightMatch,
+  /** an element of the bubble: the answer a poll option link points at */
+  element?: HTMLElement
+};
+
 const TOPIC_ICON_SIZE = makeMediaSize(64, 64);
 
 const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
@@ -4833,7 +4841,7 @@ export default class ChatBubbles {
     position: ScrollLogicalPosition,
     forceDirection?: FocusDirection,
     forceDuration?: number,
-    textHighlight?: TextHighlightMatch
+    focusOn?: MessageFocus
   ) {
     const bubble = findUpClassName(element, 'bubble');
 
@@ -4869,10 +4877,13 @@ export default class ChatBubbles {
     // overridable, so compensate via margin to land at viewport.bottom instead.
     const margin = 4 + (position === 'end' ? containerRect.bottom - bubblesViewportRect.bottom : 0);
 
-    // * a bubble that does not fit the screen is centered by its start, so the text we are
-    // * jumping to can stay far below it — center that text instead then
-    const focus = position === 'center' && textHighlight ?
-      this.getTextHighlightFocus(element, textHighlight, bubblesViewportRect.height) :
+    // * a bubble that does not fit the screen is centered by its start, so the part we are
+    // * jumping to can stay far below it — center that part instead then
+    const focus = position === 'center' && focusOn ?
+      this.measureFocus(element, focusOn, bubblesViewportRect.height, {
+        startElement: fallbackToElementStartWhenCentering || element,
+        margin
+      }) :
       undefined;
 
     const isTogglingHelper = this.chat.container.classList.contains('is-toggling-helper');
@@ -4905,10 +4916,10 @@ export default class ChatBubbles {
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
       } : () => bubblesViewportRect.height,
-      // * the position is read again when the scroll starts, the offset of the text inside the
-      // * bubble survives the bubble moving until then
+      // * the position is read again when the scroll starts, the offset of the focused part
+      // * inside the bubble survives the bubble moving until then
       getElementPosition: ({elementRect}) => elementRect.top + (focus?.offset || 0) - bubblesViewportRect.top,
-      // * the fallback would scroll to the date group instead of the text we are centering on
+      // * the fallback would scroll to the date group instead of the part we are centering on
       fallbackToElementStartWhenCentering: focus ? undefined : fallbackToElementStartWhenCentering,
       startCallback: (dimensions) => {
         // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
@@ -5028,28 +5039,52 @@ export default class ChatBubbles {
   }
 
   /**
-   * Where the search query / the quote is inside the bubble (its offset from the bubble's top and
-   * its height), but only when the bubble is too tall to be shown as a whole and its start does
-   * not bring the text into view either (tdesktop: AdjustScrollForRange).
+   * Where the focused part sits inside the bubble (its offset from the bubble's top and its
+   * height), but only when the bubble is too tall to be centered as a whole and the scroll that
+   * happens instead — the start of `plainScroll.startElement` put at the top of the viewport —
+   * does not bring that part into view either (tdesktop: AdjustScrollForRange).
    */
-  private getTextHighlightFocus(element: HTMLElement, match: TextHighlightMatch, viewportHeight: number) {
+  private measureFocus(
+    element: HTMLElement,
+    focusOn: MessageFocus,
+    viewportHeight: number,
+    plainScroll: {startElement: HTMLElement, margin: number}
+  ) {
     // * the same size fastSmoothScroll compares against before it gives up on centering
     if(element.scrollHeight < viewportHeight) {
       return;
     }
 
-    const container = this.getBubbleTextContainer(element);
-    const rect = container && findTextRect(container, match, BUBBLE_TEXT_HIGHLIGHT_SKIP);
+    let rect: DOMRect;
+    if(focusOn.element) {
+      rect = focusOn.element.getBoundingClientRect();
+    } else {
+      const container = this.getBubbleTextContainer(element);
+      rect = container && findTextRect(container, focusOn.textHighlight, BUBBLE_TEXT_HIGHLIGHT_SKIP);
+    }
+
     if(!rect) {
       return;
     }
 
-    const offset = rect.top - element.getBoundingClientRect().top;
-    if(offset + rect.height <= viewportHeight) { // * the bubble's start shows it anyway
+    const {startElement, margin} = plainScroll;
+    if(rect.bottom - startElement.getBoundingClientRect().top + margin <= viewportHeight) { // * shown anyway
       return;
     }
 
-    return {offset, height: rect.height};
+    return {offset: rect.top - element.getBoundingClientRect().top, height: rect.height};
+  }
+
+  /** what the jump is about inside the message: the text about to be lit up, or the poll answer */
+  private getMessageFocus(
+    bubble: HTMLElement,
+    fullMid: FullMid,
+    highlight?: TextHighlightMatch,
+    pollOption?: string | Uint8Array
+  ): MessageFocus {
+    const index = this.getBubblePollAnswerIndex(bubble, fullMid, pollOption);
+    const element = index === -1 ? undefined : bubble.querySelector<HTMLElement>(`[data-poll-option-idx="${index}"]`);
+    return highlight || element ? {textHighlight: highlight, element} : undefined;
   }
 
   private createDateBubble(timestamp: number, date: Date = new Date(timestamp * 1000)) {
@@ -5423,7 +5458,8 @@ export default class ChatBubbles {
         } else if(isTarget) {
           // * the highlight waits for the scroll to settle (iOS does the same) — otherwise it
           // * plays while the message is still travelling
-          this.scrollToBubble(bubble, 'center', undefined, undefined, highlight).then(() => {
+          const focusOn = this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption);
+          this.scrollToBubble(bubble, 'center', undefined, undefined, focusOn).then(() => {
             if(!middleware()) return;
             this.highlightBubble(bubble, highlight);
             this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
@@ -5731,7 +5767,7 @@ export default class ChatBubbles {
               position,
               !samePeer ? FocusDirection.Static : undefined,
               undefined,
-              willHighlight ? highlight : undefined
+              willHighlight ? this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption) : undefined
             );
           }
 
@@ -12238,28 +12274,30 @@ export default class ChatBubbles {
     return entry;
   }
 
-  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string | Uint8Array) {
-    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return;
+  /** the answer a jump points at (a poll option link), -1 when there is none */
+  private getBubblePollAnswerIndex(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string | Uint8Array) {
+    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return -1;
 
     const message = this.chat.getMessage(lastMsgFullMid);
-    if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return;
+    if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return -1;
 
     let option: Uint8Array;
     if(pollOption instanceof Uint8Array) {
       option = pollOption;
     } else {
       const maxLength = 100;
-      if(pollOption.length > maxLength) return; // discard possibly malformed parameter
+      if(pollOption.length > maxLength) return -1; // discard possibly malformed parameter
       option = linkToPollOption(pollOption);
-      if(!option) return;
+      if(!option) return -1;
     }
 
-    const context = this.contexts.get(bubble);
-    if(!context) return;
+    return message.media.poll.answers.findIndex((answer) => answer._ === 'pollAnswer' && compareUint8Arrays(answer.option, option));
+  }
 
-    const pollOptionIndex = message.media.poll.answers.findIndex((answer) => answer._ === 'pollAnswer' && compareUint8Arrays(answer.option, option));
+  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string | Uint8Array) {
+    const pollOptionIndex = this.getBubblePollAnswerIndex(bubble, lastMsgFullMid, pollOption);
     if(pollOptionIndex === -1) return;
 
-    context.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
+    this.contexts.get(bubble)?.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
   }
 }
