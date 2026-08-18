@@ -19,6 +19,7 @@ export enum FocusDirection {
 
 export type ScrollGetNormalSizeCallback = (options: {rect: DOMRect}) => number;
 export type ScrollGetElementPositionCallback = (options: {elementRect: DOMRect, containerRect: DOMRect, elementPosition: number}) => number;
+export type ScrollGetElementSizeCallback = (options: {elementRect: DOMRect}) => number;
 export type ScrollStartCallbackDimensions = {
   scrollSize: number,
   scrollPosition: number,
@@ -41,6 +42,11 @@ export type ScrollOptions = {
   axis?: 'x' | 'y',
   getNormalSize?: ScrollGetNormalSizeCallback,
   getElementPosition?: ScrollGetElementPositionCallback,
+  /**
+   * Centering only: the size of the part of the element that has to end up in the middle,
+   * when it is not the whole element (a quote inside a bubble taller than the screen).
+   */
+  getElementSize?: ScrollGetElementSizeCallback,
   fallbackToElementStartWhenCentering?: HTMLElement,
   startCallback?: (dimensions: ScrollStartCallbackDimensions) => void,
   transitionFunction?: (value: number) => number
@@ -88,7 +94,7 @@ export default function fastSmoothScroll(options: ScrollOptions) {
 }
 
 function scrollWithJs(options: ScrollOptions): Promise<void> {
-  const {element, container, getNormalSize, getElementPosition, transitionFunction, axis, margin, position, forceDirection, maxDistance, forceDuration} = options;
+  const {element, container, getNormalSize, getElementPosition, getElementSize, transitionFunction, axis, margin, position, forceDirection, maxDistance, forceDuration} = options;
   if(!isInDOM(element)) {
     cancelAnimationByKey(container);
     return Promise.resolve();
@@ -109,7 +115,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
 
   const possibleElementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
   const elementPosition = getElementPosition ? getElementPosition({elementRect, containerRect, elementPosition: possibleElementPosition}) : possibleElementPosition;
-  const elementSize = element[elementScrollSizeKey]; // margin is exclusive in DOMRect
+  const elementSize = getElementSize ? getElementSize({elementRect}) : element[elementScrollSizeKey]; // margin is exclusive in DOMRect
 
   /* const containerTrueSize = containerRect[sizeKey];
   const containerNormalSize = getNormalSize ? getNormalSize({rect: containerRect}) : containerTrueSize;

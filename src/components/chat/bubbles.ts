@@ -43,7 +43,7 @@ import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/d
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '@helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
-import highlightText, {TextHighlightMatch} from '@helpers/dom/textHighlight';
+import highlightText, {findTextRect, TextHighlightMatch} from '@helpers/dom/textHighlight';
 import whichChild from '@helpers/dom/whichChild';
 import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
 import assumeType from '@helpers/assumeType';
@@ -4832,7 +4832,8 @@ export default class ChatBubbles {
     element: HTMLElement,
     position: ScrollLogicalPosition,
     forceDirection?: FocusDirection,
-    forceDuration?: number
+    forceDuration?: number,
+    textHighlight?: TextHighlightMatch
   ) {
     const bubble = findUpClassName(element, 'bubble');
 
@@ -4868,6 +4869,12 @@ export default class ChatBubbles {
     // overridable, so compensate via margin to land at viewport.bottom instead.
     const margin = 4 + (position === 'end' ? containerRect.bottom - bubblesViewportRect.bottom : 0);
 
+    // * a bubble that does not fit the screen is centered by its start, so the text we are
+    // * jumping to can stay far below it — center that text instead then
+    const focus = position === 'center' && textHighlight ?
+      this.getTextHighlightFocus(element, textHighlight, bubblesViewportRect.height) :
+      undefined;
+
     const isTogglingHelper = this.chat.container.classList.contains('is-toggling-helper');
     const isChangingHeight = isTogglingHelper || (
       this.chat.input.messageInput &&
@@ -4881,6 +4888,7 @@ export default class ChatBubbles {
       forceDirection,
       forceDuration,
       axis: 'y',
+      getElementSize: focus && (() => focus.height),
       getNormalSize: isChangingHeight ? ({rect}) => {
         // return rect.height;
 
@@ -4897,8 +4905,11 @@ export default class ChatBubbles {
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
       } : () => bubblesViewportRect.height,
-      getElementPosition: ({elementRect}) => elementRect.top - bubblesViewportRect.top,
-      fallbackToElementStartWhenCentering,
+      // * the position is read again when the scroll starts, the offset of the text inside the
+      // * bubble survives the bubble moving until then
+      getElementPosition: ({elementRect}) => elementRect.top + (focus?.offset || 0) - bubblesViewportRect.top,
+      // * the fallback would scroll to the date group instead of the text we are centering on
+      fallbackToElementStartWhenCentering: focus ? undefined : fallbackToElementStartWhenCentering,
       startCallback: (dimensions) => {
         // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
         this.onScroll(true, dimensions);
@@ -4987,8 +4998,7 @@ export default class ChatBubbles {
       return;
     }
 
-    // * `element` is either the bubble or an album/document item inside it
-    const container = element.classList.contains('bubble') ? element.querySelector<HTMLElement>('.message') : element;
+    const container = this.getBubbleTextContainer(element);
     if(!container) {
       return;
     }
@@ -5010,6 +5020,36 @@ export default class ChatBubbles {
       clearTimeout(timeout);
       highlight.dispose();
     });
+  }
+
+  /** the text a highlight applies to — `element` is either the bubble or an album/document item inside it */
+  private getBubbleTextContainer(element: HTMLElement) {
+    return element.classList.contains('bubble') ? element.querySelector<HTMLElement>('.message') : element;
+  }
+
+  /**
+   * Where the search query / the quote is inside the bubble (its offset from the bubble's top and
+   * its height), but only when the bubble is too tall to be shown as a whole and its start does
+   * not bring the text into view either (tdesktop: AdjustScrollForRange).
+   */
+  private getTextHighlightFocus(element: HTMLElement, match: TextHighlightMatch, viewportHeight: number) {
+    // * the same size fastSmoothScroll compares against before it gives up on centering
+    if(element.scrollHeight < viewportHeight) {
+      return;
+    }
+
+    const container = this.getBubbleTextContainer(element);
+    const rect = container && findTextRect(container, match, BUBBLE_TEXT_HIGHLIGHT_SKIP);
+    if(!rect) {
+      return;
+    }
+
+    const offset = rect.top - element.getBoundingClientRect().top;
+    if(offset + rect.height <= viewportHeight) { // * the bubble's start shows it anyway
+      return;
+    }
+
+    return {offset, height: rect.height};
   }
 
   private createDateBubble(timestamp: number, date: Date = new Date(timestamp * 1000)) {
@@ -5383,7 +5423,7 @@ export default class ChatBubbles {
         } else if(isTarget) {
           // * the highlight waits for the scroll to settle (iOS does the same) — otherwise it
           // * plays while the message is still travelling
-          this.scrollToBubble(bubble, 'center').then(() => {
+          this.scrollToBubble(bubble, 'center', undefined, undefined, highlight).then(() => {
             if(!middleware()) return;
             this.highlightBubble(bubble, highlight);
             this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
@@ -5681,14 +5721,21 @@ export default class ChatBubbles {
         if(bubble) {
           const lastBubble = this.getLastBubble();
           const position: ScrollLogicalPosition = followingUnread ? 'start' : (!isJump && !isTarget && lastBubble === bubble ? 'end' : 'center');
+          const willHighlight = !followingUnread && isTarget && foundTarget;
 
           if(position === 'end' && lastBubble === bubble && samePeer) {
             promise = this.scrollToEnd();
           } else {
-            promise = this.scrollToBubble(bubble, position, !samePeer ? FocusDirection.Static : undefined);
+            promise = this.scrollToBubble(
+              bubble,
+              position,
+              !samePeer ? FocusDirection.Static : undefined,
+              undefined,
+              willHighlight ? highlight : undefined
+            );
           }
 
-          if(!followingUnread && isTarget && foundTarget) {
+          if(willHighlight) {
             // * after the scroll settles, see the same-peer branch above
             promise.then(() => {
               if(!middleware()) return;

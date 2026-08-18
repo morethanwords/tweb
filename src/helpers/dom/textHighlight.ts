@@ -339,6 +339,17 @@ export function computeRanges(container: HTMLElement, match: TextHighlightMatch,
 }
 
 /**
+ * Where the match sits on the screen right now, without painting anything: the rect of its
+ * first occurrence (the whole of it, several lines included). For scrolling the text into
+ * view before the highlight is applied to it.
+ */
+export function findTextRect(container: HTMLElement, match: TextHighlightMatch, skip?: string) {
+  const [range] = computeRanges(container, match, skip);
+  const rect = range?.getBoundingClientRect();
+  return rect?.height ? rect : undefined;
+}
+
+/**
  * Turns the ranges' fragment rects into per-line boxes stretched to the line height (glyph rects
  * are only font-high; the missing half-leading is added on both sides), unioned along a line
  * and expressed relative to `origin`.
