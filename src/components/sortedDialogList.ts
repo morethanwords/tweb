@@ -280,7 +280,16 @@ export default class SortedDialogList {
 
   public delete(key: any, adjustTotalCount = true) {
     batch(() => {
-      if(this.virtualList.removeItem(key) && adjustTotalCount) {
+      // * Pinned entries live in their own collection, but every read API merges both - has(),
+      // * getDialogElement() and getAllDialogElementsMap() all see them - so callers routinely
+      // * discover a pinned key and delete it through here (validateListForFilter walks the merged
+      // * map; updateDialog gates on has()). Removing only from the unpinned side left the row on
+      // * screen, took the total count down for a row that never went away, and never reached
+      // * onItemDiscard, so the DialogElement kept its middlewareHelper - and everything under it -
+      // * until the tab was closed. Both sides, so delete means delete.
+      const removedPinned = this.virtualList.removePinnedItem(key);
+      const removedItem = this.virtualList.removeItem(key);
+      if((removedPinned || removedItem) && adjustTotalCount) {
         this.adjustTotalCount(-1);
       }
     });

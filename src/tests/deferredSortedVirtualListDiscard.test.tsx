@@ -46,9 +46,31 @@ describe('deferredSortedVirtualList item discard', () => {
     const {list, onItemDiscard} = setup();
     list.addPinnedItems([item('p', 0)]);
 
-    list.removePinnedItem('p');
-
+    expect(list.removePinnedItem('p')).toBe(true);
     expect(onItemDiscard).toHaveBeenCalledWith('p');
+  });
+
+  it('reports removals truthfully per collection', () => {
+    const {list} = setup();
+    list.addPinnedItems([item('p', 0)]);
+    list.addItems([item('a', 0)]);
+
+    // * Each side answers for itself - removeItem used to answer from the merged map and claim a
+    // * pinned id was removed while leaving it in place
+    expect(list.removeItem('p')).toBe(false);
+    expect(list.removePinnedItem('a')).toBe(false);
+    expect(list.removeItem('a')).toBe(true);
+    expect(list.removePinnedItem('p')).toBe(true);
+  });
+
+  it('does not hand back a pinned item to a plain removeItem', () => {
+    const {list, onItemDiscard} = setup();
+    list.addPinnedItems([item('p', 0)]);
+
+    list.removeItem('p');
+
+    expect(onItemDiscard).not.toHaveBeenCalled();
+    expect(list.has('p')).toBe(true);
   });
 
   it('hands back the value an id used to hold when it is replaced', () => {

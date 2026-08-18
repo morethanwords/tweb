@@ -173,18 +173,27 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     for(const item of discarded) onItemDiscard(item.value);
   };
 
+  // * Both bail before writing when the id is not theirs: the setter would hand back a fresh array
+  // * either way, invalidating the signal and every memo over it (itemsMap, the rendered list) for a
+  // * removal that did not happen. delete() calls both on every key, so one of them always misses.
   const removePinnedItem = (id: any) => {
     const discarded = pinnedItems().filter(item => id === item.id);
+    if(!discarded.length) return false;
+
     setPinnedItems(prev => prev.filter(item => id !== item.id));
     discard(discarded);
+    return true;
   };
 
+  // * Reports what it actually removed. It used to answer from itemsMap(), which merges the pinned
+  // * collection in, so a pinned id got a truthy answer from a call that removed nothing.
   const removeItem = (id: any) => {
     const discarded = items().filter(item => id === item.id);
-    const hadItem = itemsMap().has(id);
+    if(!discarded.length) return false;
+
     setItems(prev => prev.filter(item => id !== item.id));
     discard(discarded);
-    return hadItem;
+    return true;
   };
 
   const updateItem = (id: any, index: number) => {
