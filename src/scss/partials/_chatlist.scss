@@ -481,31 +481,31 @@ ul.chatlist {
   }
 
   &-subtitle {
-    &-flex {
-      display: flex;
-
+    // * the parts (chat name, sender, media thumb, message) are one inline line
+    // * elided once at its end by the row's own text-overflow — a flex row would
+    // * give every part its own ellipsis and truncate them all at once
+    &-parts {
       .has-only-pinned-badge:not(.animating) & {
         margin-inline-end: 1.5rem;
       }
     }
 
     &-span {
-      flex: 0 0 auto;
-      // flex: 0 1 auto;
-      max-width: 100%;
-
-      &-overflow {
-        text-overflow: ellipsis;
-        overflow: hidden;
-        white-space: pre;
-      }
+      unicode-bidi: isolate;
+      // * the prefixes keep their trailing space, the message flattens its own
+      // * newlines into the single preview line
+      white-space: pre;
 
       &-last {
-        flex: unset;
-        max-width: none;
-        // flex: 1;
         white-space: nowrap;
       }
+    }
+
+    // * the arrow that points from a chat name into its message; `.inline-icon`
+    // * carries the alignment of an icon sitting inside a text line
+    &-arrow {
+      margin-inline: .125rem;
+      font-size: .875em;
     }
 
     &-badge {
@@ -572,7 +572,6 @@ ul.chatlist {
       height: 1.25rem;
       line-height: 1.25rem;
       position: relative;
-      flex: 0 0 auto;
       border-radius: .25rem;
       margin-inline-end: 0.375rem;
       display: inline-block;

@@ -2578,7 +2578,7 @@ export class AppDialogsManager {
           dom.listEl.classList.contains('active')
         )
       });
-      dom.lastMessageSpan.classList.add('dialog-subtitle-flex');
+      dom.lastMessageSpan.classList.add('dialog-subtitle-parts');
       disposeTextHighlight(dom);
       dom.lastMessageSpan.replaceChildren(...parts);
       renderedParts = parts;
