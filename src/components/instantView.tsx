@@ -363,6 +363,10 @@ function _onMediaResult(
   height: number,
   paddings: number
 ) {
+  if(Number.isFinite(width) && width > 0) {
+    ref.style.setProperty('--iv-media-width', width + 'px');
+  }
+
   ref.style.setProperty(
     '--aspect-ratio',
     '' + (width / height)
