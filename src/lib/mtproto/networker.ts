@@ -144,6 +144,26 @@ export default class MTPNetworker {
 
   private lastServerMessages: Set<MTLong> = new Set();
 
+  // * Sent-but-unacked requests keep their serialized body alive (an upload part is 512 KB of it),
+  // * so a networker that stops acking is a growing buffer pile - see memoryStats.
+  public getMemoryStats() {
+    let bodyBytes = 0, sent = 0;
+    for(const msgId in this.sentMessages) {
+      ++sent;
+      const body = this.sentMessages[msgId]?.body;
+      bodyBytes += (body as Uint8Array)?.byteLength ?? (body as number[])?.length ?? 0;
+    }
+
+    return {
+      sentMessages: sent,
+      sentMessageBodyBytes: bodyBytes,
+      pendingMessages: Object.keys(this.pendingMessages).length,
+      pendingAcks: this.pendingAcks.length,
+      sentResendReq: this.sentResendReq.size,
+      lastServerMessages: this.lastServerMessages.size
+    };
+  }
+
   private sentMessages: {
     [msgId: MTLong]: MTMessage
   } = {};

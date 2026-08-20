@@ -1,5 +1,6 @@
 import SuperMessagePort from '@lib/superMessagePort';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import type {ThreadMemoryStats} from '@lib/debug/memoryStats';
 
 export type EmojiCompositorMethods = {
   attachRenderer: (p: {rendererId: number, canvas: OffscreenCanvas, dpr: number, fadeEnabled: boolean}) => void, // [canvas] in transfer; the initial color arrives via the immediately-following configRenderer
@@ -22,7 +23,9 @@ export type EmojiCompositorMethods = {
   configSticker: (p: {reqId: number, color?: string}) => void,
   presentSticker: (p: {reqId: number}) => void, // re-blit the latest frame (no-blink ensurePresented / nudgePresent)
 
-  decodePort: (p: {workerId: number}, source: MessageEventSource, event: MessageEvent) => void // MessagePort arrives in event.ports[0]
+  decodePort: (p: {workerId: number}, source: MessageEventSource, event: MessageEvent) => void, // MessagePort arrives in event.ports[0]
+
+  memoryStats: (p: void) => ThreadMemoryStats // see @lib/debug/memoryStats
 };
 
 export type EmojiCompositorEvents = {

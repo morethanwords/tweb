@@ -87,6 +87,12 @@ export class TLottieWasm {
     this.exports = exports;
   }
 
+  // * The wasm heap only ever grows - it never returns pages to the OS, so this is the
+  // * high-water mark of everything this module has ever decoded at once (see memoryStats).
+  public get heapBytes() {
+    return this.exports.memory.buffer.byteLength;
+  }
+
   public static async create(wasmUrl: string) {
     const instance = await instantiate(wasmUrl);
     return new TLottieWasm(instance.exports as TLottieExports);
@@ -151,12 +157,25 @@ export class TLottieWasm {
 }
 
 const tlottiePromises = new Map<string, Promise<TLottieWasm>>();
+const loadedWasms = new Set<TLottieWasm>();
+
+// * Sums the wasm heaps this thread has instantiated; a lottie worker's real cost is mostly here,
+// * not in its JS heap, and it is invisible to performance.memory.
+export function getTLottieHeapBytes() {
+  let bytes = 0;
+  for(const wasm of loadedWasms) {
+    bytes += wasm.heapBytes;
+  }
+
+  return bytes;
+}
 
 export default function loadTLottieWasm(wasmUrl: string) {
   let promise = tlottiePromises.get(wasmUrl);
   if(!promise) {
     promise = TLottieWasm.create(wasmUrl);
     tlottiePromises.set(wasmUrl, promise);
+    promise.then((wasm) => loadedWasms.add(wasm), () => {});
     promise.catch(() => {
       if(tlottiePromises.get(wasmUrl) === promise) {
         tlottiePromises.delete(wasmUrl);

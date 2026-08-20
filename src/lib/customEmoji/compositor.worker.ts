@@ -1,4 +1,5 @@
 import applyColorOnContext, {paintFrameTinted} from '@helpers/canvas/applyColorOnContext';
+import {canvasBytes, readThreadMemory} from '@lib/debug/memoryStats';
 import listenMessagePort from '@helpers/listenMessagePort';
 import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
 import {CUSTOM_EMOJI_FADE_IN_DURATION, CUSTOM_EMOJI_FRAME_INTERVAL} from '@lib/customEmoji/constants';
@@ -375,6 +376,37 @@ compositorMessagePort.addMultipleEventsListeners({
     if(sticker) { // re-blit the staged frame - a commit made while the placeholder was detached can be lost
       paintSticker(sticker);
     }
+  },
+
+  memoryStats: () => {
+    let rendererBytes = 0, groups = 0, stickerBytes = 0, surfaces = 0, frameBytes = 0;
+    for(const renderer of renderers.values()) {
+      rendererBytes += canvasBytes(renderer.canvas);
+      groups += renderer.groups.size;
+    }
+
+    for(const sticker of stickerRenderers.values()) {
+      surfaces += sticker.surfaces.length;
+      for(const {canvas} of sticker.surfaces) {
+        stickerBytes += canvasBytes(canvas);
+      }
+    }
+
+    for(const frame of latestFrames.values()) {
+      frameBytes += canvasBytes(frame);
+    }
+
+    return readThreadMemory('compositor', {
+      renderers: renderers.size,
+      rendererCanvasBytes: rendererBytes,
+      groups,
+      stickerRenderers: stickerRenderers.size,
+      stickerSurfaces: surfaces,
+      stickerCanvasBytes: stickerBytes,
+      latestFrames: latestFrames.size,
+      latestFrameBytes: frameBytes,
+      decodePorts: decodePorts.size
+    });
   },
 
   decodePort: ({workerId}, _, event) => {

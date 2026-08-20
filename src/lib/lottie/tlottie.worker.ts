@@ -6,7 +6,8 @@ import listenMessagePort from '@helpers/listenMessagePort';
 import makeError from '@helpers/makeError';
 import safeAssign from '@helpers/object/safeAssign';
 import lottieMessagePort, {LottieOffscreenInit} from '@lib/lottie/lottieMessagePort';
-import loadTLottieWasm, {TLottieFitzModifier, TLottieHandle, TLottieWasm} from '@lib/lottie/tlottieWasm';
+import loadTLottieWasm, {getTLottieHeapBytes, TLottieFitzModifier, TLottieHandle, TLottieWasm} from '@lib/lottie/tlottieWasm';
+import {canvasBytes, readThreadMemory} from '@lib/debug/memoryStats';
 import SuperMessagePort from '@lib/superMessagePort';
 
 type WorkerFramesCacheEntry = {frames: Map<number, ImageBitmap>, refs: Set<number>};
@@ -585,6 +586,35 @@ lottieMessagePort.addMultipleEventsListeners({
   },
 
   debugTag: () => 'tlottie-simd-4', // bump on worker edits to verify the running bundle
+
+  memoryStats: () => {
+    let cachedFrames = 0, cachedFrameBytes = 0, itemCanvasBytes = 0, orphanedCaches = 0;
+    for(const entry of framesCacheByName.values()) {
+      cachedFrames += entry.frames.size;
+      for(const frame of entry.frames.values()) {
+        cachedFrameBytes += canvasBytes(frame);
+      }
+
+      // * refs empty while the entry is still mapped means every owner died without destroy()
+      if(!entry.refs.size) ++orphanedCaches;
+    }
+
+    const itemsArr = Object.values(items);
+    for(const item of itemsArr) {
+      item.canvases?.forEach((canvas) => itemCanvasBytes += canvasBytes(canvas));
+    }
+
+    return readThreadMemory('lottie', {
+      items: itemsArr.length,
+      tabs: compositorPorts.size,
+      frameCaches: framesCacheByName.size,
+      orphanedFrameCaches: orphanedCaches,
+      cachedFrames,
+      cachedFrameBytes,
+      itemCanvasBytes,
+      wasmHeapBytes: getTLottieHeapBytes()
+    });
+  },
 
   resumeTab: (_, source) => {
     suspendedPorts.delete(source);

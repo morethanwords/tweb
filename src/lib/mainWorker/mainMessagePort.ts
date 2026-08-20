@@ -8,6 +8,7 @@ import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
 import type {ThreadedWorkerType} from '@lib/threadedWorkerTypes';
 import type {LogEntry} from '@lib/debug/logsBuffer';
+import type {ThreadMemoryStats} from '@lib/debug/memoryStats';
 import type {ObjectURLPinUpdate, SharedObjectURLUpdate} from '@helpers/objectUrlUtils';
 import SuperMessagePort from '@lib/superMessagePort';
 import {CacheStorageDbName} from '@lib/files/cacheStorage';
@@ -73,7 +74,10 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   // ring buffer on export, and propagates the enabled flag (prod ?debug=1 isn't
   // visible to the worker's own location.search).
   getLogs: (payload: void) => LogEntry[],
-  setLogBufferEnabled: (enabled: boolean) => void
+  setLogBufferEnabled: (enabled: boolean) => void,
+  // The worker shares the tab's renderer process (Chrome hosts a same-origin SharedWorker in an
+  // existing renderer for that site), so its heap is charged to the tab - see @lib/debug/memoryStats.
+  getMemoryStats: (payload: void) => Promise<ThreadMemoryStats>
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

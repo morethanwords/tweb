@@ -10,6 +10,8 @@ import appManagersManager from '@appManagers/appManagersManager';
 import listenMessagePort from '@helpers/listenMessagePort';
 import {logger} from '@lib/logger';
 import {getLogEntries, setLogBufferEnabled} from '@lib/debug/logsBuffer';
+import {readThreadMemory} from '@lib/debug/memoryStats';
+import {getMemoryWriterStats} from '@lib/files/memoryWriter';
 import toggleStorages from '@helpers/toggleStorages';
 import appTabsManager from '@appManagers/appTabsManager';
 import callbackify from '@helpers/callbackify';
@@ -28,7 +30,7 @@ import pushSingleManager from '@appManagers/pushSingleManager';
 import {createBroadcastChannelWrapper} from '@lib/broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
 import objectUrlRegistry from '@lib/mainWorker/objectUrlRegistry';
-import SharedObjectUrlCache, {resetSharedObjectURLCaches} from '@lib/mainWorker/sharedObjectUrlCache';
+import SharedObjectUrlCache, {getSharedObjectURLCacheStats, resetSharedObjectURLCaches} from '@lib/mainWorker/sharedObjectUrlCache';
 
 
 const log = logger('MTPROTO');
@@ -69,6 +71,78 @@ port.addMultipleEventsListeners({
   },
 
   getLogs: () => getLogEntries(),
+
+  getMemoryStats: async() => {
+    const urls = objectUrlRegistry.getStats();
+    const caches = getSharedObjectURLCacheStats();
+    const cacheStorage = CacheStorageController.getStats();
+
+    // * Summed over accounts: this thread is shared by all of them, and so is the footprint
+    const files = {
+      downloadPromises: 0,
+      uploadPromises: 0,
+      queuedPulls: 0,
+      activeDownloads: 0,
+      filePartReferences: 0,
+      refreshReferencePromises: 0
+    };
+    const net = {
+      networkers: 0,
+      sentMessages: 0,
+      sentMessageBodyBytes: 0,
+      pendingMessages: 0,
+      pendingAcks: 0,
+      sentResendReq: 0,
+      lastServerMessages: 0
+    };
+    const data = {
+      messageStorages: 0,
+      cachedMessages: 0,
+      historyStorages: 0,
+      threadHistoryStorages: 0,
+      searchStorages: 0
+    };
+
+    // * Never force creation from a diagnostic - report zeroes instead if they are not up yet
+    const managersByAccount = appManagersManager.areManagersCreated ?
+      await appManagersManager.getManagersByAccount() :
+      {} as Awaited<ReturnType<typeof appManagersManager.getManagersByAccount>>;
+    for(const accountNumber in managersByAccount) {
+      const managers = managersByAccount[+accountNumber as ActiveAccountNumber];
+      const fileStats = managers.apiFileManager.getMemoryStats();
+      for(const key in fileStats) {
+        files[key as keyof typeof fileStats] += fileStats[key as keyof typeof fileStats];
+      }
+
+      const netStats = managers.apiManager.getMemoryStats();
+      for(const key in netStats) {
+        net[key as keyof typeof netStats] += netStats[key as keyof typeof netStats];
+      }
+
+      const dataStats = managers.appMessagesManager.getMemoryStats();
+      for(const key in dataStats) {
+        data[key as keyof typeof dataStats] += dataStats[key as keyof typeof dataStats];
+      }
+    }
+
+    // * Process-wide, not per account - summing it over accounts would multiply it by their count
+    const writers = getMemoryWriterStats();
+    return readThreadMemory('mtproto', {
+      accounts: Object.keys(managersByAccount).length,
+      downloadBuffers: writers.writers,
+      downloadBufferBytes: writers.bytes,
+      ...urls,
+      cappedCaches: caches.caches,
+      cappedCacheEntries: caches.entries,
+      cappedCacheBytes: caches.bytes,
+      cacheStorages: cacheStorage.storages,
+      cacheStorageInFlight: cacheStorage.inFlightOperations,
+      cacheStorageInFlightBytes: cacheStorage.inFlightSaveBytes,
+      ...files,
+      ...net,
+      ...data
+    });
+  },
 
   setLogBufferEnabled: (enabled) => setLogBufferEnabled(enabled),
 

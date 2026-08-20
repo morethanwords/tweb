@@ -31,6 +31,19 @@ export function releaseSharedObjectURLsWhere(predicate: (owner: ObjectUrlOwner) 
   }
 }
 
+// * Every capped media/thumb/avatar cache in one line, for memoryStats: entries and the bytes
+// * their budgets think they are holding.
+export function getSharedObjectURLCacheStats() {
+  let entries = 0, bytes = 0;
+  for(const cache of caches) {
+    const stats = cache.getStats();
+    entries += stats.entries;
+    bytes += stats.bytes;
+  }
+
+  return {caches: caches.size, entries, bytes};
+}
+
 export function resetSharedObjectURLCaches() {
   for(const cache of caches) {
     cache.reset();
@@ -66,6 +79,10 @@ export default class SharedObjectUrlCache<Key> {
     }
 
     return this.create(key, blob).url;
+  }
+
+  public getStats() {
+    return this.budget.getStats();
   }
 
   public adopt(key: Key, url: string, size = 0, pinned = false): SharedObjectUrlCacheResult {

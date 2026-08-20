@@ -1,4 +1,5 @@
 import type {ThreadedWorkerEvents} from '@lib/mainWorker/mainMessagePort';
+import type {ThreadMemoryStats} from '@lib/debug/memoryStats';
 import SuperMessagePort from '@lib/superMessagePort';
 import {MOUNT_CLASS_TO} from '@config/debug';
 
@@ -28,6 +29,7 @@ export type LottieWorkerMethods = {
   suspendTab: (payload: void, source: MessageEventSource) => void,
   resumeTab: (payload: void, source: MessageEventSource) => void,
   debugTag: (payload: void) => string, // worker-bundle freshness probe (SharedWorkers survive reloads)
+  memoryStats: (payload: void) => ThreadMemoryStats, // see @lib/debug/memoryStats - this pool shares the tab's process
   terminate: (payload: void) => void
 };
 

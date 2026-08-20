@@ -77,6 +77,32 @@ export class ObjectUrlRegistry {
     return this.entries.get(url)?.size;
   }
 
+  // * Blob bytes live in this process until the browser pulls them, so a registry holding
+  // * thousands of URLs is a first-class suspect in a tab's footprint - see memoryStats.
+  public getStats() {
+    let bytes = 0, pinned = 0, pinnedBytes = 0, inGrace = 0, ownerless = 0;
+    for(const entry of this.entries.values()) {
+      bytes += entry.size;
+      if(entry.pins) {
+        ++pinned;
+        pinnedBytes += entry.size;
+      }
+
+      if(entry.graceTimer !== undefined) ++inGrace;
+      if(!entry.owners.size) ++ownerless;
+    }
+
+    return {
+      urls: this.entries.size,
+      urlBytes: bytes,
+      pinnedURLs: pinned,
+      pinnedBytes,
+      urlsInGrace: inGrace,
+      ownerlessURLs: ownerless,
+      pinningTabs: this.pinsBySource.size
+    };
+  }
+
   public hasOwners(url: string) {
     return !!this.entries.get(url)?.owners.size;
   }

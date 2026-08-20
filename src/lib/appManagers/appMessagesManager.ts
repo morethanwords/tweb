@@ -5416,6 +5416,38 @@ export class AppMessagesManager extends AppManager {
     }, port);
   }
 
+  // * The worker keeps the full message cache for every account; the tab only mirrors slices of it.
+  // * Counts only - a per-message byte estimate would cost more than it is worth (see memoryStats).
+  public getMemoryStats() {
+    const countStorages = (byKey: {[key: string]: MessagesStorage}) => {
+      let storages = 0, messages = 0;
+      for(const key in byKey) {
+        ++storages;
+        messages += byKey[key].size;
+      }
+
+      return {storages, messages};
+    };
+
+    const history = countStorages(this.messagesStorageByPeerId);
+    const grouped = countStorages(this.groupedMessagesStorage);
+    const scheduled = countStorages(this.scheduledMessagesStorage);
+    const logs = countStorages(this.logsMessagesStorage);
+
+    let threadHistories = 0;
+    for(const peerId in this.threadsStorage) {
+      threadHistories += Object.keys(this.threadsStorage[peerId]).length;
+    }
+
+    return {
+      messageStorages: history.storages + grouped.storages + scheduled.storages + logs.storages,
+      cachedMessages: history.messages + grouped.messages + scheduled.messages + logs.messages,
+      historyStorages: Object.keys(this.historiesStorage).length,
+      threadHistoryStorages: threadHistories,
+      searchStorages: Object.keys(this.searchesStorage).length
+    };
+  }
+
   public getMessagesStorageByKey(key: MessagesStorageKey) {
     const s = key.split('_');
     const peerId: PeerId = +s[0];

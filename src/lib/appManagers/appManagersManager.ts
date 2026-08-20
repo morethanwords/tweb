@@ -210,6 +210,12 @@ export class AppManagersManager {
     return this.managersByAccount ??= this.createManagers();
   }
 
+  // * For diagnostics only (see memoryStats): reading a report must never be what CREATES the
+  // * managers - getManagersByAccount() would do exactly that.
+  public get areManagersCreated() {
+    return !!this.managersByAccount;
+  }
+
   public get isServiceWorkerOnline() {
     return this._isServiceWorkerOnline;
   }

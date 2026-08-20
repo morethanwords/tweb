@@ -152,6 +152,29 @@ export class ApiManager extends ApiManagerMethods {
     return transportType;
   }
 
+  // * Sums every live networker of this account; the file DCs are where the big bodies sit.
+  public getMemoryStats() {
+    const total = {
+      networkers: 0,
+      sentMessages: 0,
+      sentMessageBodyBytes: 0,
+      pendingMessages: 0,
+      pendingAcks: 0,
+      sentResendReq: 0,
+      lastServerMessages: 0
+    };
+
+    this.iterateNetworkers(({networker}) => {
+      ++total.networkers;
+      const stats = networker.getMemoryStats();
+      for(const key in stats) {
+        total[key as keyof typeof stats] += stats[key as keyof typeof stats];
+      }
+    });
+
+    return total;
+  }
+
   private iterateNetworkers(callback: (o: {networker: MTPNetworker, dcId: DcId, connectionType: ConnectionType, transportType: TransportType, index: number, array: MTPNetworker[]}) => void) {
     for(const transportType in this.cachedNetworkers) {
       const connections = this.cachedNetworkers[transportType as TransportType];

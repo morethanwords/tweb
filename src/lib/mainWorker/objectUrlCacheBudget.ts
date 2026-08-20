@@ -35,6 +35,10 @@ export default class ObjectUrlCacheBudget<Key> {
     return this.trim();
   }
 
+  public getStats() {
+    return {entries: this.entries.size, urls: this.urls.size, bytes: this.totalBytes};
+  }
+
   public touch(key: Key) {
     const entry = this.entries.get(key);
     if(!entry) {

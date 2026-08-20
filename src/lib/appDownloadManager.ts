@@ -40,8 +40,18 @@ export type ProgressCallback = (details: Progress) => void;
 
 type DownloadType = 'url' | 'blob' | 'void' | 'disc';
 
+// * Resolved downloads are kept only to dedup a repeat request for the same media (the media viewer
+// * paging back and forth, a bubble re-rendering). Without a bound they never left `downloads` at
+// * all - only a REJECTED download was cleared - so a day-old tab held every Blob it had ever
+// * downloaded. Sized like the worker-side object-URL caches next door.
+const RESOLVED_DOWNLOAD_LIMIT = 64;
+const RESOLVED_DOWNLOAD_BYTES_LIMIT = 32 * 1024 * 1024;
+
 export class AppDownloadManager {
   private downloads: {[fileName: string]: {main: Download} & {[type in DownloadType]?: Download}} = {};
+  // * Insertion-ordered = LRU order; re-inserting on read moves an entry to the end
+  private resolved: Map<string, {fileName: string, type: DownloadType, size: number}> = new Map();
+  private resolvedBytes = 0;
   // private downloadsToDisc: {[fileName: string]: Download} = {};
   private progress: {[fileName: string]: Progress} = {};
   // private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
@@ -138,10 +148,52 @@ export class AppDownloadManager {
     return deferred;
   }
 
+  private resolvedKey(fileName: string, type: DownloadType) {
+    return type + ':' + fileName;
+  }
+
+  // * Called once a download settles; evicts the coldest resolved entries past the budget.
+  private trackResolved(fileName: string, type: DownloadType, value: any) {
+    if(!this.downloads[fileName]?.[type]) { // already cleared while settling (the 'disc' path does that)
+      return;
+    }
+
+    const key = this.resolvedKey(fileName, type);
+    const size = value instanceof Blob ? value.size : 0;
+    this.forgetResolved(key);
+    this.resolved.set(key, {fileName, type, size});
+    this.resolvedBytes += size;
+
+    while(this.resolved.size > RESOLVED_DOWNLOAD_LIMIT || this.resolvedBytes > RESOLVED_DOWNLOAD_BYTES_LIMIT) {
+      const oldest = this.resolved.keys().next();
+      if(oldest.done || oldest.value === key) { // never evict the entry that just arrived
+        break;
+      }
+
+      const entry = this.resolved.get(oldest.value);
+      this.forgetResolved(oldest.value);
+      this.clearDownload(entry.fileName, entry.type);
+    }
+  }
+
+  private forgetResolved(key: string) {
+    const entry = this.resolved.get(key);
+    if(!entry) {
+      return;
+    }
+
+    this.resolvedBytes -= entry.size;
+    this.resolved.delete(key);
+  }
+
   private clearDownload(fileName: string, type?: DownloadType) {
     const downloads = this.downloads[fileName];
     if(!downloads) {
       return;
+    }
+
+    if(type) {
+      this.forgetResolved(this.resolvedKey(fileName, type));
     }
 
     delete downloads[type];
@@ -149,6 +201,11 @@ export class AppDownloadManager {
     const length = Object.keys(downloads).length;
     if(!length || (downloads.main && length === 1)) {
       delete this.downloads[fileName];
+      // * The record goes as a whole (an upload finalizing clears it without a type), so every
+      // * type still tracked for this file must go with it - otherwise the budget counts ghosts
+      for(const key in downloads) {
+        this.forgetResolved(this.resolvedKey(fileName, key as DownloadType));
+      }
     }
   }
 
@@ -183,6 +240,7 @@ export class AppDownloadManager {
 
     deferred = this.getNewDeferred<Blob>(fileName, type);
     getPromise().then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+    deferred.then((value) => this.trackResolved(fileName, type, value), noop);
     if(type === 'url') {
       const urlDeferred = deferred as CachedDownloadUrl;
       urlDeferred.then((url) => {
@@ -264,7 +322,17 @@ export class AppDownloadManager {
 
   public getDownload(fileName: string, type?: DownloadType) {
     const d = this.downloads[fileName];
-    return d && d[type];
+    const download = d && d[type];
+    if(download) { // a hit is a use: move it back to the warm end of the LRU
+      const key = this.resolvedKey(fileName, type);
+      const entry = this.resolved.get(key);
+      if(entry) {
+        this.resolved.delete(key);
+        this.resolved.set(key, entry);
+      }
+    }
+
+    return download;
   }
 
   // public addProgressCallback(fileName: string, callback: ProgressCallback) {

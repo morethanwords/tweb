@@ -5,6 +5,7 @@ import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
 import {cryptoMethodsRegistry} from '@lib/crypto/cryptoMethodsRegistry';
 import ctx from '@environment/ctx';
 import {IS_WORKER} from '@helpers/context';
+import {readThreadMemory} from '@lib/debug/memoryStats';
 
 console.log('CryptoWorker start');
 
@@ -18,6 +19,8 @@ cryptoMessagePort.addMultipleEventsListeners({
   terminate: () => {
     ctx.close();
   },
+
+  memoryStats: () => readThreadMemory('crypto'),
 
   port: (_, __, event) => {
     cryptoMessagePort.attachPort(event.ports[0]);

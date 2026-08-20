@@ -312,6 +312,28 @@ export class ApiFileManager extends AppManager {
     this.queueId = queueId;
   }
 
+  // * The download side of the worker's footprint, per account. The whole-file buffers those
+  // * downloads hold are process-wide, so memoryStats adds them once, not once per account.
+  public getMemoryStats() {
+    let queuedPulls = 0, activeDownloads = 0;
+    for(const dcId in this.downloadPulls) {
+      queuedPulls += this.downloadPulls[dcId].length;
+    }
+
+    for(const dcId in this.downloadActives) {
+      activeDownloads += this.downloadActives[dcId];
+    }
+
+    return {
+      downloadPromises: Object.keys(this.downloadPromises).length,
+      uploadPromises: Object.keys(this.uploadPromises).length,
+      queuedPulls,
+      activeDownloads,
+      filePartReferences: this.requestFilePartReferences.size,
+      refreshReferencePromises: Object.keys(this.refreshReferencePromises).length
+    };
+  }
+
   private getFileStorage() {
     return this.cacheStorage;
   }
