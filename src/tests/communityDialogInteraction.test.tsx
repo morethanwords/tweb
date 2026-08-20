@@ -141,7 +141,7 @@ describe('Community dialog projection', () => {
       subtitlePeerId: childDialog.peerId
     });
     expect(dialogElement.setBadgeState).toHaveBeenCalledWith({
-      muted: true,
+      muted: false,
       pinned: true,
       unread: true,
       unreadText: '2',
@@ -152,5 +152,38 @@ describe('Community dialog projection', () => {
       pollVotes: true,
       transitionDuration: 0
     });
+    // every unread chat inside is muted, but the Community itself is not:
+    // gray the badge out without claiming the row is muted
+    expect(dialogElement.dom.listEl.classList.contains('no-unmuted-topic'))
+    .toBe(true);
+  });
+
+  it('takes the muted state from the Community itself', () => {
+    const childDialog = {
+      _: 'dialog',
+      peerId: (-10) as PeerId,
+      pFlags: {},
+      top_message: 7
+    };
+    mocks.communityDialog = {
+      pFlags: {},
+      dialogs: [childDialog],
+      lastDialogs: [childDialog],
+      muted: true,
+      unreadCount: 3,
+      unreadMessagesCount: 3,
+      unreadMarked: false,
+      unreadUnmutedCount: 3
+    };
+    const {dialogElement, manager} = createManager();
+
+    createCommunityDialogListElement(manager as any, 123 as ChatId);
+
+    expect(dialogElement.setBadgeState).toHaveBeenCalledWith(
+      expect.objectContaining({muted: true, unread: true, unreadText: '3'})
+    );
+    // `is-muted` already grays the badge out — no need for the topic-level class
+    expect(dialogElement.dom.listEl.classList.contains('no-unmuted-topic'))
+    .toBe(false);
   });
 });

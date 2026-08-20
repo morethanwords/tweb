@@ -88,6 +88,7 @@ export type CommunityDialog = {
     pinned?: true
   }>,
   notifySettings: PeerNotifySettings,
+  muted: boolean,
   dialogs: Dialog[],
   joinedDialogs: Dialog[],
   lastDialogs: Dialog[],
@@ -1354,13 +1355,18 @@ export class AppCommunitiesManager extends AppManager {
         mutedPeerIdSet.has(dialog.peerId)
       );
     });
+    const notifySettings: PeerNotifySettings =
+      this.communityNotifyOverrides.get(communityId) ||
+      sourceDialog?.notify_settings ||
+      {_: 'peerNotifySettings'};
     const dialog: CommunityDialog = {
       _: 'communityDialog',
       communityId,
       pFlags: pinned ? {pinned: true} : {},
-      notifySettings: this.communityNotifyOverrides.get(communityId) ||
-        sourceDialog?.notify_settings ||
-        {_: 'peerNotifySettings'},
+      notifySettings,
+      // a Community is muted as ONE peer, so the row's own mute state comes from
+      // its notify settings — never from the mute state of the chats inside it
+      muted: this.appNotificationsManager.isMuted(notifySettings),
       dialogs,
       joinedDialogs,
       lastDialogs: joinedDialogs.slice(0, 20),
@@ -1499,10 +1505,9 @@ export class AppCommunitiesManager extends AppManager {
   }
 
   public isCommunityMuted(communityId: ChatId) {
-    const settings = this.getCommunityDialog(
-      communityId.toChatId()
-    )?.notifySettings;
-    return !!settings && this.appNotificationsManager.isMuted(settings);
+    // the very flag the chat-list row renders, so the menu item and the row can
+    // never disagree about the mute state
+    return !!this.getCommunityDialog(communityId.toChatId())?.muted;
   }
 
   public muteCommunity(communityId: ChatId, muteUntil: number) {

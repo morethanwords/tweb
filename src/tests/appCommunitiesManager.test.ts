@@ -6,6 +6,7 @@ import {
 } from '@appManagers/appCommunitiesManager';
 import Modes from '@config/modes';
 import {AppChatsManager} from '@appManagers/appChatsManager';
+import {AppNotificationsManager} from '@appManagers/appNotificationsManager';
 import {AppPeersManager} from '@appManagers/appPeersManager';
 import {AppProfileManager} from '@appManagers/appProfileManager';
 import {
@@ -463,6 +464,8 @@ function createHarness(options: {
       })
     },
     appNotificationsManager: {
+      // the real predicate — the Community row's mute state is derived from it
+      isMuted: AppNotificationsManager.prototype.isMuted,
       isPeerLocalMuted: vi.fn(() => false)
     },
     appStateManager: {getState, pushToState},
@@ -3948,6 +3951,7 @@ describe('AppCommunitiesManager collapsed and pinned dialogs', () => {
       communityId: COMMUNITY_ID,
       pFlags: {pinned: true},
       notifySettings,
+      muted: false,
       dialogs: [],
       joinedDialogs: [],
       lastDialogs: [],
@@ -4067,6 +4071,52 @@ describe('AppCommunitiesManager collapsed and pinned dialogs', () => {
       peerId: CHANNEL_PEER_ID,
       respectType: true
     });
+  });
+
+  test('derives the row mute state from the Community\'s own notify settings', () => {
+    const joinedChannel = makeChannel(CHANNEL_ID);
+    joinedChannel.pFlags.megagroup = true;
+    const {manager, getDialogOnly} = createHarness({
+      chats: [joinedChannel]
+    });
+    const linkedDialog = makeDialog(CHANNEL_PEER_ID, 10);
+    getDialogOnly.mockReturnValue(linkedDialog);
+    (manager as any).linkedPeerIds.set(
+      COMMUNITY_ID,
+      new Set([CHANNEL_PEER_ID])
+    );
+
+    manager.saveCommunityDialog({
+      _: 'dialogCommunity',
+      pFlags: {},
+      community_id: COMMUNITY_ID,
+      notify_settings: {_: 'peerNotifySettings'}
+    });
+
+    expect(manager.getCommunityDialog(COMMUNITY_ID)?.muted).toBe(false);
+
+    manager.saveCommunityNotifySettings(COMMUNITY_ID, {
+      _: 'peerNotifySettings',
+      mute_until: Math.floor(Date.now() / 1000) + 3600
+    });
+
+    expect(manager.getCommunityDialog(COMMUNITY_ID)?.muted).toBe(true);
+    expect(manager.isCommunityMuted(COMMUNITY_ID)).toBe(true);
+    expect(mirrorInvokeVoid).toHaveBeenLastCalledWith(
+      'mirror',
+      expect.objectContaining({
+        name: 'communityDialogs',
+        key: '' + COMMUNITY_ID,
+        value: expect.objectContaining({muted: true})
+      })
+    );
+
+    manager.saveCommunityNotifySettings(COMMUNITY_ID, {
+      _: 'peerNotifySettings',
+      mute_until: 0
+    });
+
+    expect(manager.getCommunityDialog(COMMUNITY_ID)?.muted).toBe(false);
   });
 
   test('keeps viewable dialogs out of the grouped preview and unread totals', () => {

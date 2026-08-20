@@ -86,8 +86,16 @@ export function createCommunityDialogListElement(
       const unreadText = !unread ? undefined :
         unreadCount === 1 && unreadMarked ? '' :
         unreadMention ? '@' : formatNumber(unreadCount, 1);
+      // the muted icon follows the Community's own notify settings, exactly like a
+      // forum row follows the forum's; an unmuted Community whose unread chats are
+      // all muted only grays the badge out, the way `no-unmuted-topic` does there
+      const muted = !!value?.muted;
+      dom.listEl.classList.toggle(
+        'no-unmuted-topic',
+        !muted && unread && !value?.unreadUnmutedCount
+      );
       dialogElement.setBadgeState({
-        muted: unread && !value?.unreadUnmutedCount,
+        muted,
         pinned: !!value?.pFlags.pinned,
         unread,
         unreadText,
