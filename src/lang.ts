@@ -2296,6 +2296,22 @@ const lang = {
   'ActionGiftTransferredOutbound': 'You transferred a gift to %s',
   'ActionGiftSold': 'You sold a gift to %s',
   'ActionGiftTransferredSelf': 'You transferred a unique collectible',
+  'ActionGiftSentChannel': {
+    'one_value': '**%2$s** sent a gift to **%3$s** for **%1$d Star**',
+    'other_value': '**%2$s** sent a gift to **%3$s** for **%1$d Stars**'
+  },
+  'ActionGiftSentChannelTon': '**%2$s** sent a gift to **%3$s** for **%1$s Grams**',
+  'ActionGiftSentSelfChannel': {
+    'one_value': 'You sent a gift to **%2$s** for **%1$d Star**',
+    'other_value': 'You sent a gift to **%2$s** for **%1$d Stars**'
+  },
+  'ActionGiftSentSelfChannelTon': 'You sent a gift to **%2$s** for **%1$s Grams**',
+  'ActionGiftUpgradedChannel': '%1$s turned this gift to %2$s into a unique collectible',
+  'ActionGiftUpgradedSelfChannel': 'You turned this gift to %s into a unique collectible',
+  'ActionGiftTransferredChannel': '%1$s transferred a gift to %2$s',
+  'ActionGiftTransferredSelfChannel': 'You transferred a gift to %s',
+  'ActionGiftUpgradedHelped': '%s unpacked the gift that you helped to upgrade.',
+  'ActionGiftUpgradedHelpedSelf': 'You unpacked the gift that %s helped to upgrade.',
   'ActionGiftPremiumTitle2': '%s Premium',
   'ActionGiftPremiumSubtitle2': 'Subscription for exclusive Telegram features.',
   'ChatAdmin': 'admin',
@@ -3369,16 +3385,18 @@ const lang = {
   'GiftStarsSubtitle': 'With Stars, **%s** will be able to unlock content and services on Telegram.',
   'GiftStarsSubtitleLinkName': '**See Examples >**',
   'StarGiftSentMessageIncoming': {
-    'one_value': '**%1$s** sent you a gift for **%2$d Star**',
-    'other_value': '**%1$s** sent you a gift for **%2$d Stars**'
+    'one_value': '**%2$s** sent you a gift for **%1$d Star**',
+    'other_value': '**%2$s** sent you a gift for **%1$d Stars**'
   },
+  'StarGiftSentMessageIncomingTon': '**%2$s** sent you a gift for **%1$s Grams**',
   'StarGiftSentMessageOutgoing': {
     'one_value': '**You** sent a gift for **%d Star**',
     'other_value': '**You** sent a gift for **%d Stars**'
   },
+  'StarGiftSentMessageOutgoingTon': '**You** sent a gift for **%s Grams**',
   'StarGiftSentMessagePrepaidIncoming': {
-    'one_value': '**%s** sent an upgrade worth **%d Star** for your gift',
-    'other_value': '**%s** sent an upgrade worth **%d Stars** for your gift'
+    'one_value': '**%2$s** sent an upgrade worth **%1$d Star** for your gift',
+    'other_value': '**%2$s** sent an upgrade worth **%1$d Stars** for your gift'
   },
   'StarGiftSentMessagePrepaidOutgoing': {
     'one_value': 'You sent an upgrade worth **%d Star**',
@@ -3388,7 +3406,7 @@ const lang = {
     'one_value': 'You bought a gift for **%d Star**',
     'other_value': 'You bought a gift for **%d Stars**'
   },
-  'StarGiftSentMessageSelfTon': 'You bought a gift for **%d Grams**',
+  'StarGiftSentMessageSelfTon': 'You bought a gift for **%s Grams**',
   'StarGiftFrom': 'Gift from %s',
   'StarGiftUpgradeFrom': 'Upgrade from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',

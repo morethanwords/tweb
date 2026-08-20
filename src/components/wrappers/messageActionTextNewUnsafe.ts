@@ -22,11 +22,9 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import Icon from '@components/icon';
-import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
-import {getPriceChangedActionMessageLangParams} from '@lib/lang';
+import {getPriceChangedActionMessageLangParams, getStarGiftActionLangParams} from '@lib/lang';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
-import getStarGiftMessageTextDetails from '@appManagers/utils/gifts/getStarGiftMessageTextDetails';
 import {truncateTextWithEntities} from '@lib/richTextProcessor/truncateTextWithEntities';
 import getCommunityServiceMessageKey, {
   getCommunityServiceTitle
@@ -793,37 +791,19 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [+action.stars];
         break;
       }
-      case 'messageActionStarGift': {
-        const {direction, fromId} = getStarGiftMessageTextDetails(message, action, rootScope.myId);
-        if(direction === 'self') {
-          langPackKey = 'StarGiftSentMessageSelf';
-          args = [(action.gift as StarGift.starGift).stars];
-        } else if(direction === 'outgoing') {
-          langPackKey = action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidOutgoing' : 'StarGiftSentMessageOutgoing';
-          args = [(action.gift as StarGift.starGift).stars];
-        } else {
-          langPackKey = action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidIncoming' : 'StarGiftSentMessageIncoming';
-          args = [getNameDivHTML(fromId, plain), (action.gift as StarGift.starGift).stars];
-        }
+      case 'messageActionStarGift':
+      case 'messageActionStarGiftUnique': {
+        const params = getStarGiftActionLangParams({
+          message,
+          action,
+          myId: rootScope.myId,
+          peerTitle: (peerId) => getNameDivHTML(peerId, plain)
+        });
+
+        langPackKey = params.langPackKey;
+        args = params.args;
         break;
       }
-      case 'messageActionStarGiftUnique':
-        if(!message.pFlags.out && action.resale_amount) {
-          langPackKey = action.resale_amount._ === 'starsTonAmount' ? 'StarGiftSentMessageSelfTon' : 'StarGiftSentMessageSelf';
-          args = [formatStarsAmount(action.resale_amount)];
-        } else if(message.peerId === rootScope.myId) {
-          langPackKey = action.pFlags.upgrade ? 'ActionGiftUpgradedSelf' : 'ActionGiftTransferredSelf';
-        } else {
-          if(action.pFlags.upgrade) {
-            langPackKey = message.pFlags.out ? 'ActionGiftUpgradedOutbound' : 'ActionGiftUpgradedInbound';
-          } else if(message.pFlags.out && action.pFlags.from_offer) {
-            langPackKey = 'ActionGiftSold';
-          } else {
-            langPackKey = message.pFlags.out ? 'ActionGiftTransferredOutbound' : 'ActionGiftTransferredInbound';
-          }
-          args = [getNameDivHTML(message.peerId, plain)];
-        }
-        break;
 
       case 'messageActionTodoAppendTasks': {
         let listMsg = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
