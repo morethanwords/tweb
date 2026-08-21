@@ -75,8 +75,10 @@ if [ ! -f "$SEED" ]; then
   trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
   # vitest can exit non-zero on a harmless transport-teardown race even when the
   # test passed; the real success signal is whether the seed file was written.
+  # `verify-deps-before-run` off for the same reason as the vite run below: in a worktree
+  # node_modules is a symlink and pnpm's pre-run check aborts on it without a TTY.
   TG_API_TEST=1 TG_API_PROD_DC=1 TG_API_SEED="$MASTER_SEED" PREVIEW_SEED_OUT="$SEED" \
-    pnpm test src/tests/api/previewAuth || true
+    pnpm --config.verify-deps-before-run=false test src/tests/api/previewAuth || true
   rmdir "$LOCK" 2>/dev/null || true
   trap - EXIT
   if [ ! -f "$SEED" ]; then echo "[start-preview] mint failed — $SEED not produced" >&2; exit 1; fi
