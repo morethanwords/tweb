@@ -725,8 +725,8 @@ const lang = {
     'other_value': 'boosts expire on %2$s'
   },
   'Boost.GetMoreBoosts': {
-    'one_value': 'To boost **%1$s**, get **%2$d** more boost by gifting **Telegram Premium** to a friend.',
-    'other_value': 'To boost **%1$s**, get **%2$d** more boosts by gifting **Telegram Premium** to a friend.'
+    'one_value': 'To boost **%2$s**, get **%1$d** more boost by gifting **Telegram Premium** to a friend.',
+    'other_value': 'To boost **%2$s**, get **%1$d** more boosts by gifting **Telegram Premium** to a friend.'
   },
   'Boost.Reassign.Description': 'To boost **%1$s**, reassign a previous boost or %2$s to a friend to get %3$s.',
   'Boost.GiftPremium': '**[gift Telegram Premium]()**',
@@ -1062,7 +1062,7 @@ const lang = {
   'MiniApps.Collapsed.One': '%s',
   'MiniApps.Collapsed.Two': '%s & %s',
   'MiniApps.Collapsed.Many': {
-    'other_value': '%s & %d Other'
+    'other_value': '%2$s & %1$d Other'
   },
   'PaidReaction.Sent': {
     'one_value': 'Star sent!',
@@ -3416,8 +3416,8 @@ const lang = {
     'other_value': 'Add this gift to your profile or convert it to %d Stars.'
   },
   'StarGiftDefaultMessageConvertableOut': {
-    'one_value': '%s can add this gift on their profile or convert it to %d Star.',
-    'other_value': '%s can add this gift on their profile or convert it to %d Stars.'
+    'one_value': '%2$s can add this gift on their profile or convert it to %1$d Star.',
+    'other_value': '%2$s can add this gift on their profile or convert it to %1$d Stars.'
   },
   'StarGiftDefaultMessageUpgrade': 'Upgrade this gift to a unique collectible.',
   'StarGiftDefaultMessageUpgradeOut': '%s can turn this gift into a unique collectible.',

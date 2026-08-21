@@ -624,8 +624,8 @@
 "Giveaway.Prepaid.Subtitle_other" = "%2$s subscriptions";
 "BoostsExpiration_one" = "boost expires on %2$s";
 "BoostsExpiration_other" = "boosts expire on %2$s";
-"Boost.GetMoreBoosts_one" = "To boost **%1$s**, get **%2$d** more boost by gifting **Telegram Premium** to a friend.";
-"Boost.GetMoreBoosts_other" = "To boost **%1$s**, get **%2$d** more boosts by gifting **Telegram Premium** to a friend.";
+"Boost.GetMoreBoosts_one" = "To boost **%2$s**, get **%1$d** more boost by gifting **Telegram Premium** to a friend.";
+"Boost.GetMoreBoosts_other" = "To boost **%2$s**, get **%1$d** more boosts by gifting **Telegram Premium** to a friend.";
 "Boost.Reassign.Description" = "To boost **%1$s**, reassign a previous boost or %2$s to a friend to get %3$s.";
 "Boost.GiftPremium" = "**[gift Telegram Premium]()**";
 "Boost.Additional_one" = "**%1$d** additional boost";
@@ -941,7 +941,7 @@
 "MiniApps.Search" = "Search Apps";
 "MiniApps.Collapsed.One" = "%s";
 "MiniApps.Collapsed.Two" = "%s & %s";
-"MiniApps.Collapsed.Many_other" = "%s & %d Other";
+"MiniApps.Collapsed.Many_other" = "%2$s & %1$d Other";
 "PaidReaction.Sent_one" = "Star sent!";
 "PaidReaction.Sent_other" = "Stars sent!";
 "PaidReaction.Sent.Anonymously_one" = "Star sent anonymously!";
@@ -2957,8 +2957,8 @@
 "StarGiftDefaultMessageOut" = "%s can display this gift on their profile.";
 "StarGiftDefaultMessageConvertable_one" = "Add this gift to your profile or convert it to %d Star.";
 "StarGiftDefaultMessageConvertable_other" = "Add this gift to your profile or convert it to %d Stars.";
-"StarGiftDefaultMessageConvertableOut_one" = "%s can add this gift on their profile or convert it to %d Star.";
-"StarGiftDefaultMessageConvertableOut_other" = "%s can add this gift on their profile or convert it to %d Stars.";
+"StarGiftDefaultMessageConvertableOut_one" = "%2$s can add this gift on their profile or convert it to %1$d Star.";
+"StarGiftDefaultMessageConvertableOut_other" = "%2$s can add this gift on their profile or convert it to %1$d Stars.";
 "StarGiftDefaultMessageUpgrade" = "Upgrade this gift to a unique collectible.";
 "StarGiftDefaultMessageUpgradeOut" = "%s can turn this gift into a unique collectible.";
 "StarGiftReceivedTitle" = "Received Gift";

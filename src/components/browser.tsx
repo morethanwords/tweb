@@ -237,7 +237,7 @@ function BrowserHeader(props: {
     } else if(pages.length === 2) {
       return i18n('MiniApps.Collapsed.Two', wrapTitles(pages.slice(0, 2)));
     } else {
-      return i18n('MiniApps.Collapsed.Many', [...wrapTitles([pages[0]]), pages.length - 1]);
+      return i18n('MiniApps.Collapsed.Many', [pages.length - 1, ...wrapTitles([pages[0]])]);
     }
   });
 

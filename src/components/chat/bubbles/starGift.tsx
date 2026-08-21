@@ -83,8 +83,8 @@ export function StarGiftBubble(props: {
         <I18nTsx
           key="StarGiftDefaultMessageConvertableOut"
           args={[
-            <PeerTitleTsx peerId={props.ownerId} />,
-            `${props.gift.raw.convert_stars}`
+            `${props.gift.raw.convert_stars}`,
+            <PeerTitleTsx peerId={props.ownerId} />
           ]}
         />
       );

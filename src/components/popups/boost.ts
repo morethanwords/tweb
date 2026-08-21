@@ -265,8 +265,8 @@ export default class PopupBoost extends PopupPeer {
             titleLangKey: 'BoostingMoreBoostsNeeded',
             descriptionLangKey: 'Boost.GetMoreBoosts',
             descriptionLangArgs: [
-              await wrapPeerTitle({peerId: this.peerId}),
-              appConfig.boosts_per_sent_gift ?? 1
+              appConfig.boosts_per_sent_gift ?? 1,
+              await wrapPeerTitle({peerId: this.peerId})
             ],
             button: {
               langKey: 'GiftPremium'
