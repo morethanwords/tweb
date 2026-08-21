@@ -5,6 +5,7 @@ import MediaHeader from '@components/mediaHeader';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
+import SessionInfoRow from '@components/sidebarLeft/tabs/sessionInfoRow';
 import {
   AppChatAutomationTab,
   AppConnectedBotSessionTab
@@ -18,7 +19,7 @@ import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSignal, Show} from 'solid-js';
 import {toastNew} from '@components/toast';
-import styles from '@components/sidebarLeft/tabs/connectedBotSession.module.scss';
+import styles from '@components/sidebarLeft/tabs/sessionDetails.module.scss';
 
 type AppConnectedBotSessionTabType = typeof AppConnectedBotSessionTab;
 
@@ -86,35 +87,23 @@ export default function ConnectedBotSessionTab() {
       </MediaHeader>
 
       <Section name="ChatAutomation.ConnectedFrom">
-        <Row>
-          <Row.Title
-            titleRight={connectedBot().device || '—'}
-            titleRightClass={`text-overflow-no-wrap ${styles.userAgent}`}
-            titleRightSecondary
-          >
-            {i18n('ChatAutomation.SessionDevice')}
-          </Row.Title>
-        </Row>
+        <SessionInfoRow
+          label={i18n('ChatAutomation.SessionDevice')}
+          value={connectedBot().device}
+          valueClass={styles.deviceValue}
+        />
         <Show when={connectedBot().date}>
           {(date) => (
-            <Row>
-              <Row.Title
-                titleRight={formatDate(new Date(date() * 1000), {withTime: true, shortMonth: true})}
-                titleRightSecondary
-              >
-                {i18n('ChatAutomation.SessionDate')}
-              </Row.Title>
-            </Row>
+            <SessionInfoRow
+              label={i18n('ChatAutomation.SessionDate')}
+              value={formatDate(new Date(date() * 1000), {withTime: true, shortMonth: true})}
+            />
           )}
         </Show>
-        <Row>
-          <Row.Title
-            titleRight={connectedBot().location || '—'}
-            titleRightSecondary
-          >
-            {i18n('ChatAutomation.SessionLocation')}
-          </Row.Title>
-        </Row>
+        <SessionInfoRow
+          label={i18n('ChatAutomation.SessionLocation')}
+          value={connectedBot().location}
+        />
       </Section>
 
       <Section>

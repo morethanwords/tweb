@@ -351,12 +351,31 @@ export const AppPrivacyGiftsTab =
 type AppActiveSessionsTabPayload = {
   authorizations: Authorization.authorization[];
   connectedBot?: ConnectedBot.connectedBot;
+  /** `account.authorizations.authorization_ttl_days` — 0 while unknown. */
+  ttlDays?: number;
 };
 
 export const AppActiveSessionsTab =
   scaffoldSolidJSTabEventable<AppActiveSessionsTabPayload>({
     title: 'SessionsTitle',
     getComponentModule: () => import('../sidebarLeft/tabs/activeSessions')
+  });
+
+type AppSessionTabPayload = {
+  authorization: Authorization.authorization;
+  /**
+   * Confirms + terminates the session; resolves to whether it was terminated.
+   * Absent for the current session, which cannot terminate itself.
+   */
+  onTerminate?: () => Promise<boolean>;
+  /** Reports a flag flipped through account.changeAuthorizationSettings back to the list. */
+  onSettingsChanged?: (authorization: Authorization.authorization) => void;
+};
+
+export const AppSessionTab =
+  scaffoldSolidJSTabEventable<AppSessionTabPayload>({
+    title: 'AuthSessions.View.Device',
+    getComponentModule: () => import('../sidebarLeft/tabs/session')
   });
 
 type AppConnectedBotSessionTabPayload = {

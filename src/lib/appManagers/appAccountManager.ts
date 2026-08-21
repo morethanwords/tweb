@@ -318,6 +318,13 @@ export default class AppAccountManager extends AppManager {
     return promise;
   }
 
+  // Wraps account.setAuthorizationTTL: the server drops any session that stays
+  // inactive for longer than `days`. The current value ships with
+  // account.getAuthorizations as `authorization_ttl_days`.
+  public setAuthorizationTTL(days: number) {
+    return this.apiManager.invokeApi('account.setAuthorizationTTL', {authorization_ttl_days: days});
+  }
+
   public resetAuthorization(hash: string | number) {
     return this.apiManager.invokeApi('account.resetAuthorization', {hash}).then((result) => {
       if(result) {

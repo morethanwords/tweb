@@ -1,331 +1,404 @@
-import {Component, onCleanup, onMount} from 'solid-js';
-import {getOverlayRoot} from '@helpers/appWindow';
-import Button from '@components/button';
-import Row from '@components/row';
-import {Authorization, ConnectedBot} from '@layer';
-import {formatDateAccordingToTodayNew} from '@helpers/date';
-import {ButtonMenuSync} from '@components/buttonMenu';
-import PopupPeer from '@components/popups/peer';
-import findUpClassName from '@helpers/dom/findUpClassName';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import toggleDisability from '@helpers/dom/toggleDisability';
-import findAndSplice from '@helpers/array/findAndSplice';
-import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
-import positionMenu from '@helpers/positionMenu';
-import contextMenuController from '@helpers/contextMenuController';
-import SettingSection from '@components/settingSection';
-import PopupElement from '@components/popups';
-import {toastNew} from '@components/toast';
-import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import {AppConnectedBotSessionTab, type AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
-import {avatarNew} from '@components/avatarNew';
+import {Component, createMemo, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
+import Button from '@components/buttonTsx';
+import InputField from '@components/inputField';
 import PeerTitle from '@components/peerTitle';
-import rootScope from '@lib/rootScope';
+import Section from '@components/section';
+import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {
+  AppConnectedBotSessionTab,
+  AppSessionTab,
+  type AppActiveSessionsTab
+} from '@components/solidJsTabs/tabs';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {formatDateAccordingToTodayNew} from '@helpers/date';
+import {DurationType} from '@helpers/formatDuration';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import getSessionPlatformIcon from '@helpers/sessionPlatformIcon';
+import {Authorization, ConnectedBot} from '@layer';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+
+const TERMINATE_CONNECTED_BOT_KEY = 'ChatAutomation.TerminateConnectedBot';
+/** tdesktop's `kMaxDeviceModelLength`. */
+const MAX_DEVICE_MODEL_LENGTH = 32;
+/** tdesktop's `kShortPollTimeout` — the sessions list has no update to listen to. */
+const REFRESH_INTERVAL = 60e3;
+/** The periods tdesktop offers for `account.setAuthorizationTTL`, in days. */
+const TTL_OPTIONS = [
+  {days: 7, duration: 1, type: DurationType.Weeks},
+  {days: 30, duration: 1, type: DurationType.Months},
+  {days: 90, duration: 3, type: DurationType.Months},
+  {days: 180, duration: 6, type: DurationType.Months},
+  {days: 365, duration: 1, type: DurationType.Years}
+].map((option) => ({
+  value: option.days,
+  label: () => wrapFormattedDuration([option])
+}));
+
+const isSameHash = (a: Authorization.authorization, b: Authorization.authorization) => {
+  return '' + a.hash === '' + b.hash;
+};
+
+/** A server is free to hold a period this list doesn't offer (183 days, say). */
+const nearestTTLOption = (days: number) => TTL_OPTIONS.reduce((nearest, option) => {
+  return Math.abs(days - option.value) < Math.abs(days - nearest.value) ? option : nearest;
+}, TTL_OPTIONS[0]).value;
 
 const ActiveSessions: Component = () => {
   const [tab] = useSuperTab<typeof AppActiveSessionsTab>();
+  const {
+    rootScope,
+    Row,
+    i18n,
+    confirmationPopup,
+    toastNew,
+    useAppSettings,
+    AvatarNewTsx,
+    PeerTitleTsx
+  } = useHotReloadGuard();
+  const [appSettings, setAppSettings] = useAppSettings();
 
-  let menuElement: HTMLElement;
+  const [authorizations, setAuthorizations] = createSignal(tab.payload.authorizations || []);
+  const [connectedBot, setConnectedBot] = createSignal(tab.payload.connectedBot);
+  const [ttlDays, setTtlDays] = createSignal(tab.payload.ttlDays || 0);
+
+  // A renamed device only reaches the server on the next initConnection, so
+  // show the local name right away — as tdesktop does.
+  const currentSession = createMemo(() => {
+    const authorization = authorizations().find((authorization) => authorization.pFlags.current);
+    const customDeviceModel = appSettings.customDeviceModel;
+    if(!authorization || !customDeviceModel) return authorization;
+
+    return {...authorization, device_model: customDeviceModel};
+  });
+
+  // Sessions that entered the right code but never the password have no access
+  // to the account; tdesktop keeps them in their own section.
+  const incompleteSessions = createMemo(() => authorizations().filter((authorization) => {
+    return !authorization.pFlags.current && !!authorization.pFlags.password_pending;
+  }));
+  const otherSessions = createMemo(() => authorizations().filter((authorization) => {
+    return !authorization.pFlags.current && !authorization.pFlags.password_pending;
+  }));
+  const hasOtherSessions = () => !!otherSessions().length ||
+    !!incompleteSessions().length ||
+    !!connectedBot();
+
+  const refresh = () => {
+    return tab.managers.appAccountManager.getAuthorizations().then((result) => {
+      setAuthorizations(result.authorizations as Authorization.authorization[]);
+      setTtlDays(result.authorization_ttl_days || 0);
+    }, () => {});
+  };
+
+  tab.listenerSetter.add(rootScope)('chat_automation_update', (bot) => {
+    setConnectedBot(bot);
+  });
+
+  // A new login neither dispatches a sessions event nor arrives as an update we
+  // could apply, so poll like tdesktop and refresh eagerly on what we do hear.
+  tab.listenerSetter.add(rootScope)('unconfirmed_authorizations_update', () => {
+    refresh();
+  });
 
   onMount(() => {
-    tab.container.classList.add('active-sessions-container');
-
-    const Session = (auth: Authorization.authorization) => {
-      const row = new Row({
-        title: [auth.app_name, auth.app_version].join(' '),
-        subtitle: [auth.ip, auth.country].filter(Boolean).join(' - '),
-        clickable: true,
-        titleRight: auth.pFlags.current ? undefined : formatDateAccordingToTodayNew(new Date(Math.max(auth.date_active, auth.date_created) * 1000))
-      });
-
-      row.container.dataset.hash = '' + auth.hash;
-      if(!auth.pFlags.current) {
-        row.container.setAttribute('role', 'button');
-        row.container.tabIndex = 0;
-      }
-
-      row.midtitle.textContent = [auth.device_model, auth.system_version || auth.platform].filter(Boolean).join(', ');
-
-      return row;
-    };
-
-    const authorizations = tab.payload.authorizations.slice();
-    const authorizationRows: HTMLElement[] = [];
-    let connectedBot = tab.payload.connectedBot;
-    const terminateConnectedBotKey = 'ChatAutomation.TerminateConnectedBot' as const;
-    let renderTerminateButton: () => void;
-
-    const onError = (err: ApiError) => {
-      if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
-        toastNew({langPackKey: 'RecentSessions.Error.FreshReset'});
-      } else {
-        toastNew({langPackKey: 'Error.AnError'});
-      }
-    };
-
-    {
-      const section = new SettingSection({
-        name: 'CurrentSession',
-        caption: 'ClearOtherSessionsHelp'
-      });
-
-      const auth = findAndSplice(authorizations, (auth) => auth.pFlags.current);
-      const session = Session(auth);
-
-      section.content.append(session.container);
-
-      const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
-      renderTerminateButton = () => {
-        if(authorizations.length || connectedBot) {
-          if(!btnTerminate.parentElement) section.content.append(btnTerminate);
-        } else {
-          btnTerminate.remove();
-        }
-      };
-      attachClickEvent(btnTerminate, (e) => {
-        const connectedBotSnapshot = connectedBot;
-        const connectedBotTitle = connectedBotSnapshot && new PeerTitle({
-          peerId: (connectedBotSnapshot.bot_id as UserId).toPeerId(false),
-          username: true
-        });
-        PopupElement.createPopup(PopupPeer, 'revoke-session', {
-          buttons: [{
-            langKey: 'Terminate',
-            isDanger: true,
-            callback: (e, selectedCheckboxes) => {
-              const toggle = toggleDisability([btnTerminate], true);
-              const terminateConnectedBot = !!connectedBotSnapshot &&
-                selectedCheckboxes?.has(terminateConnectedBotKey);
-              tab.managers.appAccountManager.resetAuthorizations().then((value) => {
-                if(!value) {
-                  toastNew({langPackKey: 'Error.AnError'});
-                  return;
-                }
-
-                authorizationRows.forEach((row) => row.remove());
-                authorizationRows.length = 0;
-                authorizations.length = 0;
-                renderTerminateButton();
-                if(terminateConnectedBot) {
-                  return tab.managers.appBusinessManager.updateConnectedBot({
-                    previousBotId: connectedBotSnapshot.bot_id as UserId
-                  });
-                }
-
-                if(!connectedBot) {
-                  otherSection.container.remove();
-                }
-              }).catch(onError).finally(() => {
-                toggle();
-              });
-            }
-          }],
-          titleLangKey: 'AreYouSureSessionsTitle',
-          descriptionLangKey: 'AreYouSureSessions',
-          checkboxes: connectedBotSnapshot ? [{
-            text: terminateConnectedBotKey,
-            textArgs: [connectedBotTitle.element]
-          }] : undefined
-        }).show();
-      }, {listenerSetter: tab.listenerSetter});
-      renderTerminateButton();
-
-      tab.scrollable.append(section.container);
+    if(tab.payload.ttlDays === undefined) {
+      refresh();
     }
 
-    const otherSection = new SettingSection({
-      name: 'OtherSessions',
-      caption: 'SessionsListInfo'
+    const interval = setInterval(refresh, REFRESH_INTERVAL);
+    onCleanup(() => clearInterval(interval));
+  });
+
+  const onError = (err: ApiError) => {
+    toastNew({
+      langPackKey: err?.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN' ?
+        'RecentSessions.Error.FreshReset' :
+        'Error.AnError'
     });
+  };
 
-    const ConnectedBotSession = (bot: ConnectedBot.connectedBot) => {
-      const botId = bot.bot_id as UserId;
-      const title = new PeerTitle({peerId: botId.toPeerId(false)});
-      const row = new Row({
-        title: title.element,
-        subtitleLangKey: 'ChatAutomation.Session',
-        clickable: true,
-        titleRight: bot.date ? formatDateAccordingToTodayNew(new Date(bot.date * 1000)) : undefined
-      });
-      row.container.dataset.businessBot = '' + botId;
-      row.container.setAttribute('role', 'button');
-      row.container.tabIndex = 0;
-      row.midtitle.textContent = [bot.device, bot.location].filter(Boolean).join(', ');
+  const confirmTerminate = () => confirmationPopup({
+    titleLangKey: 'AreYouSureSessionTitle',
+    descriptionLangKey: 'TerminateSessionText',
+    button: {
+      langKey: 'Terminate',
+      isDanger: true
+    }
+  });
 
-      const avatar = avatarNew({
-        middleware: tab.middlewareHelper.get(),
-        peerId: botId.toPeerId(false),
-        size: 40
-      });
-      row.applyMediaElement(avatar.node, '40');
-      return row;
-    };
-
-    let connectedBotRow: HTMLElement;
-    const renderConnectedBot = (bot?: ConnectedBot.connectedBot) => {
-      const newRow = bot && ConnectedBotSession(bot).container;
-      if(connectedBotRow) {
-        if(newRow) connectedBotRow.replaceWith(newRow);
-        else connectedBotRow.remove();
-      } else if(newRow) {
-        otherSection.content.prepend(newRow);
-      }
-
-      connectedBotRow = newRow;
-      connectedBot = bot;
-      renderTerminateButton();
-      if(connectedBot && !otherSection.container.isConnected) {
-        tab.scrollable.append(otherSection.container);
-      } else if(!connectedBot && !authorizations.length) {
-        otherSection.container.remove();
-      }
-    };
-
-    if(connectedBot) {
-      connectedBotRow = ConnectedBotSession(connectedBot).container;
-      otherSection.content.append(connectedBotRow);
+  const terminateSession = async(authorization: Authorization.authorization) => {
+    try {
+      await confirmTerminate();
+    } catch(err) {
+      return false;
     }
 
-    authorizations.forEach((auth) => {
-      const row = Session(auth).container;
-      authorizationRows.push(row);
-      otherSection.content.append(row);
-    });
-
-    if(authorizations.length || connectedBot) {
-      tab.scrollable.append(otherSection.container);
-    }
-
-    let target: HTMLElement;
-    const onTerminateClick = () => {
-      const sessionTarget = target;
-      const businessBotId = sessionTarget.dataset.businessBot;
-      if(businessBotId) {
-        const botId = businessBotId as UserId;
-        PopupElement.createPopup(PopupPeer, 'revoke-session', {
-          buttons: [{
-            langKey: 'Terminate',
-            isDanger: true,
-            callback: () => {
-              tab.managers.appBusinessManager.updateConnectedBot({
-                previousBotId: botId
-              }).catch(onError);
-            }
-          }],
-          titleLangKey: 'AreYouSureSessionTitle',
-          descriptionLangKey: 'TerminateSessionText'
-        }).show();
-        return;
+    try {
+      const terminated = await tab.managers.appAccountManager.resetAuthorization(authorization.hash);
+      if(terminated) {
+        // not identity: a refresh in between swaps every entry for a fresh one
+        setAuthorizations((list) => list.filter((item) => !isSameHash(item, authorization)));
       }
 
-      const hash = sessionTarget.dataset.hash;
+      return terminated;
+    } catch(err) {
+      onError(err as ApiError);
+      return false;
+    }
+  };
 
-      PopupElement.createPopup(PopupPeer, 'revoke-session', {
-        buttons: [{
-          langKey: 'Terminate',
-          isDanger: true,
-          callback: () => {
-            tab.managers.appAccountManager.resetAuthorization(hash)
-            .then((value) => {
-              if(value) {
-                sessionTarget.remove();
-                const authorizationIndex = authorizations.findIndex((auth) => String(auth.hash) === hash);
-                if(authorizationIndex !== -1) authorizations.splice(authorizationIndex, 1);
+  const terminateConnectedBot = async(bot: ConnectedBot.connectedBot) => {
+    try {
+      await confirmTerminate();
+    } catch(err) {
+      return;
+    }
 
-                const rowIndex = authorizationRows.indexOf(sessionTarget);
-                if(rowIndex !== -1) authorizationRows.splice(rowIndex, 1);
-                renderTerminateButton();
+    // The row disappears through `chat_automation_update`.
+    tab.managers.appBusinessManager.updateConnectedBot({
+      previousBotId: bot.bot_id as UserId
+    }).catch(onError);
+  };
 
-                if(!authorizations.length && !connectedBot) {
-                  otherSection.container.remove();
-                }
-              }
-            }, onError);
+  const terminateAll = async() => {
+    const bot = connectedBot();
+    const options = {
+      titleLangKey: 'AreYouSureSessionsTitle',
+      descriptionLangKey: 'AreYouSureSessions',
+      button: {
+        langKey: 'Terminate',
+        isDanger: true
+      }
+    } as const;
+
+    let alsoTerminateBot = false;
+    try {
+      if(bot) {
+        alsoTerminateBot = await confirmationPopup({
+          ...options,
+          checkbox: {
+            text: TERMINATE_CONNECTED_BOT_KEY,
+            textArgs: [new PeerTitle({
+              peerId: (bot.bot_id as UserId).toPeerId(false),
+              username: true
+            }).element]
           }
-        }],
-        titleLangKey: 'AreYouSureSessionTitle',
-        descriptionLangKey: 'TerminateSessionText'
-      }).show();
-    };
+        });
+      } else {
+        await confirmationPopup(options);
+      }
+    } catch(err) {
+      return;
+    }
 
-    const element = menuElement = ButtonMenuSync({
-      buttons: [{
-        icon: 'stop',
-        text: 'Terminate',
-        onClick: onTerminateClick
-      }]
-    });
-    element.id = 'active-sessions-contextmenu';
-    element.classList.add('contextmenu');
-
-    getOverlayRoot().append(element);
-
-    attachContextMenuListener({
-      element: tab.scrollable.container,
-      callback: (e) => {
-        target = findUpClassName(e.target, 'row');
-        if(!target || target.dataset.hash === '0' || (!target.dataset.hash && !target.dataset.businessBot)) {
-          return;
-        }
-
-        if(!('touches' in e)) e.preventDefault(); // cross-realm-safe mouse check (Document PiP window)
-        if(!('touches' in e)) e.cancelBubble = true;
-
-        positionMenu(e, element);
-        contextMenuController.openBtnMenu(element);
-      },
-      listenerSetter: tab.listenerSetter
-    });
-
-    const activateSession = (sessionTarget: HTMLElement) => {
-      if(sessionTarget.dataset.businessBot) {
-        const bot = connectedBot;
-        if(bot && String(bot.bot_id) === sessionTarget.dataset.businessBot) {
-          tab.slider.createTab(AppConnectedBotSessionTab).open({connectedBot: bot});
-        }
+    try {
+      const terminated = await tab.managers.appAccountManager.resetAuthorizations();
+      if(!terminated) {
+        toastNew({langPackKey: 'Error.AnError'});
         return;
       }
 
-      target = sessionTarget;
-      onTerminateClick();
-    };
+      setAuthorizations((list) => list.filter((authorization) => authorization.pFlags.current));
 
-    attachClickEvent(tab.scrollable.container, (e) => {
-      const sessionTarget = findUpClassName(e.target, 'row');
-      if(
-        !sessionTarget ||
-        sessionTarget.dataset.hash === '0' ||
-        (!sessionTarget.dataset.hash && !sessionTarget.dataset.businessBot)
-      ) {
-        return;
+      if(alsoTerminateBot) {
+        await tab.managers.appBusinessManager.updateConnectedBot({
+          previousBotId: bot.bot_id as UserId
+        });
       }
+    } catch(err) {
+      onError(err as ApiError);
+    }
+  };
 
-      activateSession(sessionTarget);
-    }, {listenerSetter: tab.listenerSetter});
-    tab.listenerSetter.add(tab.scrollable.container)('keydown', (e) => {
-      if(e.key !== 'Enter' && e.key !== ' ') return;
-
-      const sessionTarget = findUpClassName(e.target, 'row');
-      if(
-        !sessionTarget ||
-        sessionTarget.dataset.hash === '0' ||
-        (!sessionTarget.dataset.hash && !sessionTarget.dataset.businessBot)
-      ) {
-        return;
-      }
-
-      e.preventDefault();
-      activateSession(sessionTarget);
+  const renameDevice = async() => {
+    const inputField = new InputField({
+      maxLength: MAX_DEVICE_MODEL_LENGTH,
+      label: 'AuthSessions.DeviceName'
     });
+    inputField.value = appSettings.customDeviceModel || '';
 
-    tab.listenerSetter.add(rootScope)('chat_automation_update', renderConnectedBot);
+    try {
+      await confirmationPopup({
+        titleLangKey: 'AuthSessions.RenameDevice',
+        inputField,
+        button: {langKey: 'Save'}
+      });
+    } catch(err) {
+      return;
+    }
+
+    // networkerFactory picks this up and re-inits the connection with the new name
+    setAppSettings('customDeviceModel', inputField.value.trim());
+  };
+
+  const renameAnchor = () => {
+    const anchor = anchorCallback(renameDevice);
+    anchor.append(i18n('AuthSessions.RenameDevice'));
+    return anchor;
+  };
+
+  const setTTL = async(days: number) => {
+    const previous = ttlDays();
+    setTtlDays(days);
+
+    try {
+      await tab.managers.appAccountManager.setAuthorizationTTL(days);
+    } catch(err) {
+      setTtlDays(previous);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
+  };
+
+  const openSession = (authorization: Authorization.authorization) => {
+    tab.slider.createTab(AppSessionTab).open({
+      authorization,
+      onTerminate: authorization.pFlags.current ? undefined : () => terminateSession(authorization),
+      onSettingsChanged: (updated) => setAuthorizations((list) => {
+        return list.map((item) => isSameHash(item, updated) ? {...item, pFlags: updated.pFlags} : item);
+      })
+    });
+  };
+
+  const terminateMenu = (onClick: () => void) => ({
+    buttons: [{
+      icon: 'stop' as Icon,
+      text: 'Terminate' as const,
+      danger: true,
+      onClick
+    }]
   });
 
-  onCleanup(() => {
-    menuElement?.remove();
-  });
+  const TTLRow = () => {
+    const [rowEl, setRowEl] = createSignal<HTMLElement>();
+    const [isOpen, setIsOpen] = createSignal(false);
+    const selected = createMemo(() => nearestTTLOption(ttlDays()));
 
-  return null;
+    return (
+      <Row ref={setRowEl} clickable={() => setIsOpen(true)}>
+        <Row.Title>{i18n('AuthSessions.TerminateIfAwayFor')}</Row.Title>
+        <Row.RightContent>
+          <InlineSelect
+            value={selected()}
+            isOpen={isOpen()}
+            onClose={() => setIsOpen(false)}
+            options={TTL_OPTIONS}
+            onChange={(days: number) => {
+              setIsOpen(false);
+              if(days !== selected()) setTTL(days);
+            }}
+            parent={rowEl()}
+          />
+        </Row.RightContent>
+      </Row>
+    );
+  };
+
+  const SessionRow = (props: {authorization: Authorization.authorization}) => {
+    const authorization = () => props.authorization;
+    const isCurrent = () => !!authorization().pFlags.current;
+    const lastActive = () => formatDateAccordingToTodayNew(
+      new Date(Math.max(authorization().date_active, authorization().date_created) * 1000)
+    );
+
+    return (
+      <Row
+        class="session-row"
+        clickable={() => openSession(authorization())}
+        role="button"
+        tabIndex={0}
+        contextMenu={isCurrent() ? undefined : terminateMenu(() => {
+          terminateSession(authorization());
+        })}
+      >
+        <Row.Icon icon={getSessionPlatformIcon(authorization())} />
+        <Row.Title titleRight={isCurrent() ? undefined : lastActive()}>
+          {[authorization().app_name, authorization().app_version].filter(Boolean).join(' ')}
+        </Row.Title>
+        <Row.Midtitle>
+          {[authorization().device_model, authorization().system_version || authorization().platform].filter(Boolean).join(', ')}
+        </Row.Midtitle>
+        <Row.Subtitle>
+          {[authorization().ip, authorization().country].filter(Boolean).join(' - ')}
+        </Row.Subtitle>
+      </Row>
+    );
+  };
+
+  const ConnectedBotRow = (props: {connectedBot: ConnectedBot.connectedBot}) => {
+    const bot = () => props.connectedBot;
+    const peerId = () => (bot().bot_id as UserId).toPeerId(false);
+
+    return (
+      <Row
+        class="session-row"
+        clickable={() => tab.slider.createTab(AppConnectedBotSessionTab).open({connectedBot: bot()})}
+        role="button"
+        tabIndex={0}
+        contextMenu={terminateMenu(() => {
+          terminateConnectedBot(bot());
+        })}
+      >
+        <Row.Media size="40">
+          <AvatarNewTsx peerId={peerId()} size={40} />
+        </Row.Media>
+        <Row.Title titleRight={bot().date ? formatDateAccordingToTodayNew(new Date(bot().date * 1000)) : undefined}>
+          <PeerTitleTsx peerId={peerId()} />
+        </Row.Title>
+        <Row.Midtitle>
+          {[bot().device, bot().location].filter(Boolean).join(', ')}
+        </Row.Midtitle>
+        <Row.Subtitle>{i18n('ChatAutomation.Session')}</Row.Subtitle>
+      </Row>
+    );
+  };
+
+  return (
+    <>
+      <Section
+        name="CurrentSession"
+        nameRight={renameAnchor()}
+        caption={hasOtherSessions() ? 'ClearOtherSessionsHelp' : undefined}
+      >
+        <Show when={currentSession()}>
+          {(authorization) => <SessionRow authorization={authorization()} />}
+        </Show>
+        <Show when={hasOtherSessions()}>
+          <Button
+            class="btn-primary btn-transparent danger"
+            icon="stop"
+            text="TerminateAllSessions"
+            onClick={terminateAll}
+          />
+        </Show>
+      </Section>
+
+      <Show when={incompleteSessions().length}>
+        <Section name="AuthSessions.IncompleteAttempts" caption="AuthSessions.IncompleteAttemptsInfo">
+          <For each={incompleteSessions()}>
+            {(authorization) => <SessionRow authorization={authorization} />}
+          </For>
+        </Section>
+      </Show>
+
+      <Show when={otherSessions().length || connectedBot()}>
+        <Section name="OtherSessions" caption="SessionsListInfo">
+          <Show when={connectedBot()}>
+            {(bot) => <ConnectedBotRow connectedBot={bot()} />}
+          </Show>
+          <For each={otherSessions()}>
+            {(authorization) => <SessionRow authorization={authorization} />}
+          </For>
+        </Section>
+      </Show>
+
+      <Show when={ttlDays()}>
+        <Section name="AuthSessions.TerminateIfAwayTitle">
+          <TTLRow />
+        </Section>
+      </Show>
+    </>
+  );
 };
 
 export default ActiveSessions;

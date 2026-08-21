@@ -16,6 +16,7 @@ import {getEnvironment} from '@environment/utils';
 export class NetworkerFactory extends AppManager {
   private networkers: MTPNetworker[] = [];
   public language = navigator.language || App.langPackCode;
+  private customDeviceModel = '';
   public updatesProcessor: (obj: any) => void = null;
   // public onConnectionStatusChange: (status: ConnectionStatusChange) => void = null;
   public akStopped = false;
@@ -23,6 +24,18 @@ export class NetworkerFactory extends AppManager {
   constructor() {
     super();
     this.name = 'NET-FACTORY';
+  }
+
+  protected after() {
+    this.rootScope.addEventListener('settings_updated', ({key, settings}) => {
+      if(key === 'settings.customDeviceModel') {
+        this.setDeviceModel(settings.customDeviceModel);
+      }
+    });
+
+    return this.appStateManager.getState().then((state) => {
+      this.setDeviceModel(state.settings?.customDeviceModel);
+    });
   }
 
   public removeNetworker(networker: MTPNetworker) {
@@ -42,7 +55,7 @@ export class NetworkerFactory extends AppManager {
       timeManager: this.timeManager,
       getInitConnectionParams: () => ({
         id: App.id,
-        deviceModel: getEnvironment().USER_AGENT || 'Unknown UserAgent',
+        deviceModel: this.customDeviceModel || getEnvironment().USER_AGENT || 'Unknown UserAgent',
         systemVersion: navigator.platform || 'Unknown Platform',
         version: App.version + (App.isMainDomain ? ' ' + App.suffix : ''),
         systemLangCode: navigator.language || 'en',
@@ -90,6 +103,24 @@ export class NetworkerFactory extends AppManager {
     }
 
     this.language = langCode;
+    this.resetConnectionInited();
+  }
+
+  /**
+   * The name this device shows up under in everyone's Active Sessions. Only
+   * initConnection carries it, so re-init the client networkers to push it.
+   */
+  public setDeviceModel(deviceModel: string) {
+    deviceModel ||= '';
+    if(this.customDeviceModel === deviceModel) {
+      return;
+    }
+
+    this.customDeviceModel = deviceModel;
+    this.resetConnectionInited();
+  }
+
+  private resetConnectionInited() {
     for(const networker of this.networkers) {
       if(!networker.isFileNetworker) {
         networker.connectionInited = false;

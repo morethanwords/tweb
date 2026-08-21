@@ -1,0 +1,50 @@
+@use "../../../scss/mixins" as *;
+
+.heroHeader {
+  padding-bottom: 1rem;
+}
+
+.deviceIcon {
+  width: var(--sticker-size);
+  height: var(--sticker-size);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: calc(var(--sticker-size) / 2);
+}
+
+.deviceName {
+  @include text-overflow(2);
+}
+
+/* Short right-hand values (app name, OS, location). The cap is what the label
+   keeps, not what the value gets, so a long location elides instead of
+   squeezing "Location" down to "Locati…". */
+.value {
+  max-width: calc(100% - 5rem);
+}
+
+/* A free-form device string is a whole user agent: cap it so the label stays. */
+.deviceValue {
+  max-width: 60%;
+}
+
+.profileLink {
+  padding: 0;
+  border: 0;
+  color: var(--primary-color);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.manageRow {
+  color: var(--primary-color);
+}

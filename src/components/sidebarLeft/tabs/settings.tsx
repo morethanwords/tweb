@@ -137,6 +137,7 @@ const Settings = () => {
   // ── Devices row + active sessions fetch (we wait on this so the tab opens
   //    with the device count already filled in).
   let authorizations: Authorization.authorization[] | undefined;
+  let authorizationTTLDays: number | undefined;
   let connectedBot: ConnectedBot.connectedBot | undefined;
   let getAuthorizationsPromise: Promise<AccountAuthorizations.accountAuthorizations> | undefined;
   const [authCount, setAuthCount] = createSignal('');
@@ -167,6 +168,7 @@ const Settings = () => {
       }, () => {})
     ]).then(([auths]) => {
       authorizations = auths.authorizations;
+      authorizationTTLDays = auths.authorization_ttl_days;
       updateAuthCount();
     });
   };
@@ -197,10 +199,11 @@ const Settings = () => {
     const subTab = tab.slider.createTab(AppActiveSessionsTab);
     subTab.eventListener.addEventListener('destroy', () => {
       authorizations = undefined;
+      authorizationTTLDays = undefined;
       connectedBot = undefined;
       updateActiveSessions(true);
     }, {once: true});
-    subTab.open({authorizations, connectedBot});
+    subTab.open({authorizations, connectedBot, ttlDays: authorizationTTLDays});
   };
 
   // ── Premium section. Signal-backed so `<Show>` re-evaluates when the
