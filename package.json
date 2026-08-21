@@ -26,7 +26,8 @@
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
     "build:solid": "node ./src/scripts/build_solid.js",
-    "format-lang": "node ./src/scripts/format_lang.js"
+    "format-lang": "node ./src/scripts/format_lang.js",
+    "lottie-to-svg": "node ./src/scripts/lottie_to_svg.js"
   },
   "author": "",
   "license": "GPL-3.0-only",
