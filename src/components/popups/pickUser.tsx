@@ -32,6 +32,7 @@ import type DialogsStorage from '@lib/storages/dialogs';
 import type MonoforumDialogsStorage from '@lib/storages/monoforumDialogs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {Accessor, createSignal, JSX, Show, untrack, useContext} from 'solid-js';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import {AppManagers} from '@lib/managers';
 import {REAL_FOLDERS} from '@lib/appManagers/constants';
@@ -180,6 +181,21 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     await finalize();
   };
 
+  // The header button both reflects and drives the selector the user is currently looking at, so
+  // every selector reports its mode back here — the peer list and, once opened, the topic list.
+  const trackMultiSelectMode = (sel: AppSelectPeers) => {
+    const originalSetMultiSelectMode = sel.setMultiSelectMode.bind(sel);
+    sel.setMultiSelectMode = (mode) => {
+      originalSetMultiSelectMode(mode);
+      setMultiSelectMode(mode);
+    };
+    setMultiSelectMode(sel.multiSelect);
+  };
+
+  const enableMultiSelect = () => {
+    (canGoBack() ? forumSelector : selector)?.setMultiSelectMode('enabled');
+  };
+
   const onBackClick = () => {
     if(forumSelector) {
       const selected = forumSelector.getSelected();
@@ -298,6 +314,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     });
 
     fs.setMultiSelectMode(selector.multiSelect);
+    trackMultiSelectMode(fs);
     fs.addInitial(selected);
     fs.container.classList.add('tabs-tab');
     fs.container.middlewareHelper = fsMiddlewareHelper;
@@ -483,12 +500,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     });
     selector.container.classList.add('tabs-tab');
 
-    const originalSetMultiSelectMode = selector.setMultiSelectMode.bind(selector);
-    selector.setMultiSelectMode = (mode) => {
-      originalSetMultiSelectMode(mode);
-      setMultiSelectMode(mode);
-    };
-    setMultiSelectMode(selector.multiSelect);
+    trackMultiSelectMode(selector);
 
     const loadPromises: Promise<any>[] = [];
     if(options.showTopPeers) {
@@ -599,6 +611,15 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
             onBackClick={onBackClick}
           />
           <PopupElement.Title title={options.titleLangKey} />
+          {/* 'hidden' is the only mode where multiselect is available but off — 'disabled' has none
+              to offer and 'enabled' is already selecting, so the button belongs to that state alone */}
+          <Show when={multiSelectMode() === 'hidden'}>
+            <ButtonIconTsx
+              icon="checkround"
+              class="popup-forward-multiselect"
+              onClick={enableMultiSelect}
+            />
+          </Show>
         </PopupElement.Header>
         <PopupElement.Body>
           <Inner />
