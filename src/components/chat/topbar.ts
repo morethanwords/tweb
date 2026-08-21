@@ -1490,13 +1490,16 @@ export default class ChatTopbar {
       else titleEl = i18n('PinnedMessagesCount', [count]);
 
       if(count === undefined) {
-        this.managers.appMessagesManager.getSearchCounters(
-          peerId,
-          [{_: 'inputMessagesFilterPinned'}],
-          false
-        ).then((result) => {
+        // Not `messages.getSearchCounters`: for some peers the server answers it
+        // with an `inexact` count that undercounts badly — in Saved Messages it
+        // returns 5 while 17 messages are pinned (an exact answer there needs
+        // `saved_peer_id`, which the peer-wide pinned tab has no business
+        // sending). `getPinnedMessage` reads the count off the very
+        // `inputMessagesFilterPinned` search this tab's list is built from, so
+        // the title can't disagree with what's rendered under it — the same
+        // source the official clients use for this counter.
+        this.managers.appMessagesManager.getPinnedMessage(peerId).then(({count}) => {
           if(!middleware()) return;
-          const count = result[0].count;
           this.setTitle(count);
 
           // ! костыль х2, это нужно делать в другом месте
@@ -1550,6 +1553,15 @@ export default class ChatTopbar {
     }
 
     return () => {
+      // A newer `setTitleManual` destroyed our helper, so it owns the title now.
+      // Without this the pinned tab could end up stuck on 'Loading': the count
+      // resolves from cache before the caller gets around to invoking this
+      // callback, and the stale 'Loading' element would overwrite the count
+      // that the inner `setTitle(count)` already painted.
+      if(!middleware()) {
+        return;
+      }
+
       replaceContent(this.title, titleEl);
       // if(icons) {
       //   this.title.append(...icons);
