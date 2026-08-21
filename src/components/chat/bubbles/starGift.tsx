@@ -151,7 +151,7 @@ export function StarGiftBubble(props: {
         <Button
           class={/* @once */ classNames('bubble-service-button', styles.upgradeButton)}
           onClick={props.onViewClick}
-          iconAfter="unpack"
+          iconAfter="unpack_filled"
         >
           <Sparkles mode="button" isDiv />
           <I18nTsx key="ActionGiftPremiumUnpack" />

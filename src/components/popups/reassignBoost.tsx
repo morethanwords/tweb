@@ -96,7 +96,7 @@ export default class PopupReassignBoost extends PopupPeer {
               style={`--offset: ${diff() * -offset}px`}
             >
               {element}
-              <IconTsx icon="boostcircle" class={classNames(`${className}-avatars-avatar-icon`, !diff() && 'is-visible')} />
+              <IconTsx icon="boostcircle_filled" class={classNames(`${className}-avatars-avatar-icon`, !diff() && 'is-visible')} />
             </div>
           );
         }}</For>

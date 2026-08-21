@@ -500,7 +500,7 @@ export class DialogElement extends Row {
     }
 
     if(isMuted && !dom.mutedIcon) {
-      dom.mutedIcon = Icon('nosound', 'dialog-muted-icon');
+      dom.mutedIcon = Icon('nosound_filled', 'dialog-muted-icon');
       dom.titleSpanContainer.append(dom.mutedIcon);
     }
 
@@ -2554,7 +2554,7 @@ export class AppDialogsManager {
             }));
 
             if(videoTypes.has((media as MyDocument).type)) {
-              const playIcon = Icon('play', 'dialog-subtitle-media-play');
+              const playIcon = Icon('play_filled', 'dialog-subtitle-media-play');
               mediaContainer.append(playIcon);
             }
           }

@@ -247,13 +247,13 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
 
             <Section>
               <Row clickable={onPickSpeaker}>
-                <Row.Icon icon="speaker" />
+                <Row.Icon icon="speaker_filled" />
                 <Row.Title titleRight={labelFor('audiooutput', speakerId())} titleRightSecondary>
                   {i18n('CallSettings.Speakers')}
                 </Row.Title>
               </Row>
               <Row clickable={onPickMicrophone}>
-                <Row.Icon icon="microphone" />
+                <Row.Icon icon="microphone_filled" />
                 <Row.Title titleRight={labelFor('audioinput', microphoneId())} titleRightSecondary>
                   {i18n('CallSettings.Microphone')}
                 </Row.Title>
@@ -280,7 +280,7 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
             <Show when={isGroupCall}>
               <Section>
                 <Row clickable={onShareInviteLink}>
-                  <Row.Icon icon="forward" />
+                  <Row.Icon icon="forward_filled" />
                   <Row.Title>{i18n('CallSettings.ShareInviteLink')}</Row.Title>
                 </Row>
               </Section>

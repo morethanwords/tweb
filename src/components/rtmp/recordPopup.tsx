@@ -103,11 +103,11 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
           {i18n('Rtmp.RecordPopup.RecordingHint')}
         </div>
 
-        <Row>
-          <Row.Title>{i18n('Rtmp.RecordPopup.AlsoRecordVideo')}</Row.Title>
-          <Row.CheckboxField>{recordVideoCheck.label}</Row.CheckboxField>
-          <Row.Icon icon="videocamera" />
-        </Row>
+          <Row>
+            <Row.Title>{i18n('Rtmp.RecordPopup.AlsoRecordVideo')}</Row.Title>
+            <Row.CheckboxFieldToggle>{recordVideoCheck.label}</Row.CheckboxFieldToggle>
+            <Row.Icon icon="videocamera_filled" />
+          </Row>
       </div>
 
       <div class={cnPopup('-preview')}>

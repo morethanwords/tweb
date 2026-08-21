@@ -44,7 +44,7 @@ export default function createChatAudio(
   const [title, setTitle] = createSignal<JSX.Element>();
   const [subtitle, setSubtitle] = createSignal<JSX.Element>();
   const [timeText, setTimeText] = createSignal('');
-  const [playIcon, setPlayIcon] = createSignal<Icon>('play');
+  const [playIcon, setPlayIcon] = createSignal<Icon>('play_filled');
   const [repeatIcon, setRepeatIcon] = createSignal<Icon>('audio_repeat');
 
   // Refs to JSX-rendered buttons that need imperative classList toggles or
@@ -88,7 +88,7 @@ export default function createChatAudio(
         <TopbarPlate.Body noRipple>
           <Button.Icon
             ref={prevEl}
-            icon="fast_rewind"
+            icon="fast_rewind_filled"
             class="active"
             noRipple
             onClick={(e) => { cancelEvent(e); appMediaPlaybackController.previous(); }}
@@ -101,7 +101,7 @@ export default function createChatAudio(
           />
           <Button.Icon
             ref={nextEl}
-            icon="fast_forward"
+            icon="fast_forward_filled"
             class="active"
             noRipple
             onClick={(e) => { cancelEvent(e); appMediaPlaybackController.next(); }}
@@ -250,11 +250,11 @@ export default function createChatAudio(
 
     setSubtitle(subtitleSpan);
 
-    setPlayIcon(media.paused ? 'play' : 'pause');
+    setPlayIcon(media.paused ? 'play_filled' : 'pause_filled');
     toggle(false);
   };
 
-  const onPause = () => setPlayIcon('play');
+  const onPause = () => setPlayIcon('play_filled');
   const onStop = () => toggle(true);
 
   const toggleActivity = (active: boolean) => {

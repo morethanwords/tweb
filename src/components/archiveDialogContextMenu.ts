@@ -136,12 +136,12 @@ function openFeatureDetails() {
     })]),
     rows: [
       {
-        icon: 'archive',
+        icon: 'archive_filled',
         title: i18n('ArchiveFeatureDetails.HowTo.Title'),
         subtitle: i18n('ArchiveFeatureDetails.HowTo.Subtitle', [i18n('Archive'), i18n('Unarchive')])
       },
       {
-        icon: 'eyecross_outline',
+        icon: 'eyecross',
         title: i18n('ArchiveFeatureDetails.Hide.Title'),
         subtitle: i18n('ArchiveFeatureDetails.Hide.Subtitle', [i18n('Archive.HideFromChatList')])
       },

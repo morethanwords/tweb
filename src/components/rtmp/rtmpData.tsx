@@ -79,7 +79,7 @@ export const RtmpData = (props: RtmpDataProps) => {
             {i18n('Rtmp.StreamPopup.StreamKey')}
 
             <ButtonIconTsx
-              icon={keyVisible() ? 'eye2' : 'eye1'}
+              icon={keyVisible() ? 'eye2_filled' : 'eye1_filled'}
               onClick={toggleKeyVisible}
               class={cnRtmpData('-row-item-show')}
             />

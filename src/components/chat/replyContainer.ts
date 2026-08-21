@@ -179,7 +179,7 @@ export async function wrapReplyDivAndCaption(options: {
 
     replaceContent(titleEl, wrappedTitle);
   } else if(options.isStoryExpired) {
-    const icon = Icon('bomb', 'expired-story-icon');
+    const icon = Icon('bomb_filled', 'expired-story-icon');
     titleEl.append(icon, i18n('ExpiredStory'));
   }
 
@@ -227,7 +227,7 @@ export async function wrapReplyDivAndCaption(options: {
   } else if(storyItem && options.storyItem) {
     subtitleEl.replaceChildren(i18n('Story'));
   } else if(options.isStoryExpired) {
-    const icon = Icon('bomb', 'expired-story-icon');
+    const icon = Icon('bomb_filled', 'expired-story-icon');
     subtitleEl.replaceChildren(icon, i18n('ExpiredStory'));
   } else if(quote) {
     const fragment = wrapRichText(limitSymbols(quote.text, 200), {
@@ -279,7 +279,7 @@ export default class ReplyContainer extends DivAndCaption<(options: WrapReplyOpt
       });
 
       if(options.isStoryExpired) {
-        // this.mediaEl.classList.add('is-expired-story', 'tgico-clock');
+    // this.mediaEl.classList.add('is-expired-story', 'tgico-clock_filled');
         this.container.classList.add('is-expired-story');
       }
 

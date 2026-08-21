@@ -291,7 +291,7 @@ export default class VideoPlayer extends ControlsHover {
 
     this.wrapper.classList.toggle('is-playing', isPlaying);
     this.toggles.forEach((toggle) => {
-      toggle.replaceChildren(Icon(isPlaying ? 'pause' : 'play'));
+      toggle.replaceChildren(Icon(isPlaying ? 'pause_filled' : 'play_filled'));
     });
   }
 
@@ -308,7 +308,7 @@ export default class VideoPlayer extends ControlsHover {
     const onPlayCallbacks: (() => void)[] = [], onPauseCallbacks: (() => void)[] = [];
     if(skin === 'default') {
       if(this.canPause) {
-        const mainToggle = this.mainToggle = Button(`${skin}__button--big toggle`, {noRipple: true, icon: 'play'});
+        const mainToggle = this.mainToggle = Button(`${skin}__button--big toggle`, {noRipple: true, icon: 'play_filled'});
         wrapper.firstElementChild.after(mainToggle);
       }
 

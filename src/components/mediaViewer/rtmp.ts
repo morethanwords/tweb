@@ -136,7 +136,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
         player.updateLiveViewersCount(getCall().call.participants_count);
         if(!IS_SAFARI || params.isAdmin) {
           player.setupLiveMenu([{
-            icon: 'volume_up',
+            icon: 'volume_up_filled',
             text: 'Rtmp.MediaViewer.Menu.OutputDevice',
             onClick: () => showOutputDevicePopup({
               kind: 'audiooutput',

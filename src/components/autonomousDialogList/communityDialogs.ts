@@ -333,7 +333,7 @@ export class AutonomousCommunityDialogList
 
     if(!icon) {
       icon = Icon(
-        'eye2',
+        'eye2_filled',
         'inline-icon',
         'inline-icon-right',
         styles.HiddenPeerIcon

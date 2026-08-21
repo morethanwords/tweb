@@ -2102,7 +2102,7 @@ hr {
   position: absolute;
   // top: 3.5rem;
   top: 3.25rem;
-  width: calc(100% - 4.5rem - 1rem);
+  width: calc(100% - 4.5rem - .125rem);
   pointer-events: none;
   opacity: 0;
 
@@ -2120,10 +2120,8 @@ hr {
     }
 
     .row-icon {
-      top: .75rem !important;
+      top: calc((56px - 30px) / 2) !important;
       transform: none !important;
-      font-size: 2rem !important;
-      margin-inline-start: -.3125rem;
     }
 
     &.is-expanded {

@@ -58,7 +58,7 @@ const PasskeyItem = (passkey: Passkey) => {
       }}
     >
       <Show when={!passkey.software_emoji_id}>
-        <Row.Icon icon="key" />
+        <Row.Icon icon="key_filled" />
       </Show>
       <Row.Title class="text-bold">{wrapEmojiText(passkey.name)}</Row.Title>
       <Row.Subtitle>{subtitle()}</Row.Subtitle>

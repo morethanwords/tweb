@@ -112,9 +112,9 @@ export default function TextTab() {
         </div>
 
         <div class="media-editor__toggle-group">
-          {toggleButton('fontframe', 'normal', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
-          {toggleButton('fontframe_outline', 'outline', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
-          {toggleButton('fontframe_bg', 'background', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+          {toggleButton('fontframe_filled', 'normal', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+          {toggleButton('fontframe', 'outline', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+          {toggleButton('fontframe_bg_filled', 'background', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
         </div>
       </div>
 

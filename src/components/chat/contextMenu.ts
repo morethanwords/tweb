@@ -1229,12 +1229,12 @@ export default class ChatContextMenu {
       }/* ,
       cancelEvent: true */
     }, {
-      icon: 'statistics',
+      icon: 'statistics_filled',
       text: 'ViewStatistics',
       onClick: this.onStatisticsClick,
       verify: this.canViewMessageStatistics
     }, {
-      icon: 'statistics',
+      icon: 'statistics_filled',
       text: 'PollStats.View',
       onClick: this.onPollStatisticsClick,
       verify: async() => this.canViewPollStatistics() && !await this.canViewMessageStatistics()

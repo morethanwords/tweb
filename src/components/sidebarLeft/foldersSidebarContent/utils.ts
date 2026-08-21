@@ -36,7 +36,7 @@ export function getIconForFilter(filter: MyDialogFilter): Icon {
   const matchedIcons: Icon[] = [];
 
   assumeType<DialogFilter.dialogFilter>(filter);
-  if(filter.pFlags.contacts) matchedIcons.push('person');
+  if(filter.pFlags.contacts) matchedIcons.push('person_filled');
   if(filter.pFlags.bots) matchedIcons.push('bot_filled');
   if(filter.pFlags.broadcasts) matchedIcons.push('channel_filled');
   if(filter.pFlags.groups) matchedIcons.push('group_filled');

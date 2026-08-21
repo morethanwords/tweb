@@ -281,7 +281,7 @@ export const PollOption = (props: {
                   <div class={styles.pollOptionMediaDim}>
                     <Show when={props.video.type === 'gif'} fallback={
                       <div class={styles.pollOptionMediaPlay}>
-                        <IconTsx icon='play' />
+                        <IconTsx icon='play_filled' />
                       </div>
                     }>
                       <div class={styles.pollOptionMediaGifLabel}>

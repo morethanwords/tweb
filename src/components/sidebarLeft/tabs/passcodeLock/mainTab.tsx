@@ -268,7 +268,7 @@ const PasscodeSetContent: Component<{
           <Row.Title>{i18n('PasscodeLock.TurnOff.Title')}</Row.Title>
         </Row>
         <Row clickable={onPasscodeChange}>
-          <Row.Icon icon="key" />
+          <Row.Icon icon="key_filled" />
           <Row.Title>{i18n('PasscodeLock.ChangePasscode')}</Row.Title>
         </Row>
       </Section>

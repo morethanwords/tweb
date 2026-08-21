@@ -597,7 +597,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
       createContextMenu({
         buttons: [{
-          icon: 'statistics',
+          icon: 'statistics_filled',
           text: 'ViewStatistics',
           onClick: onOpenClick
         }, {

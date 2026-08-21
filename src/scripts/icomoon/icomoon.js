@@ -187,31 +187,51 @@ async function pipeline(options = {}) {
     const iconInput = await page.waitForSelector(PAGE.ICON_INPUT);
     const iconPaths = icons.map(getAbsolutePath);
     await iconInput.uploadFile(...iconPaths);
-    let haveStrokes = false;
+    await page.waitForFunction(
+      expectedCount => document.querySelectorAll('#set0 .miBox').length === expectedCount,
+      {timeout: DEFAULT_TIMEOUT * 2},
+      iconPaths.length
+    );
     try {
-      await Promise.race([
-        sleep(1000).then(() => {
-          throw 0;
-        }),
-        page.waitForSelector(PAGE.STROKE_TO_FILL_URL)
-      ]);
+      await page.waitForSelector(PAGE.STROKE_TO_FILL_URL, {timeout: 5000});
+      await page.waitForSelector(PAGE.CLOSE_STROKE_OVERLAY, {visible: true});
       await page.click(PAGE.CLOSE_STROKE_OVERLAY);
-      haveStrokes = true;
       logger('Have wrong strokes');
     } catch(err) {
 
     }
 
     await page.waitForSelector(PAGE.FIRST_ICON_BOX);
-    await page.click(PAGE.SELECT_ALL_BUTTON);
+    await page.evaluate(selector => {
+      const button = document.querySelector(selector);
+      (/** @type {HTMLElement} */ (button)).click();
+    }, PAGE.SELECT_ALL_BUTTON);
+    await page.waitForFunction(
+      expectedCount => document.querySelectorAll('#set0 .miBox.mi-selected').length === expectedCount,
+      {timeout: DEFAULT_TIMEOUT},
+      iconPaths.length
+    );
     logger('Uploaded and selected all new icons');
-    await page.click(PAGE.GENERATE_LINK);
-    await page.waitForSelector(PAGE.GLYPH_SET);
-
-    if(haveStrokes) try {
+    await page.evaluate(selector => {
+      const link = Array.from(document.querySelectorAll(selector)).find(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+      (/** @type {HTMLElement} */ (link)).click();
+    }, PAGE.GENERATE_LINK);
+    try {
+      await page.waitForSelector(PAGE.STROKE_CONTINUE, {visible: true, timeout: 10000});
       await page.click(PAGE.STROKE_CONTINUE);
+      logger('Confirmed stroke conversion warning');
     } catch(err) {
 
+    }
+    try {
+      await page.waitForSelector(PAGE.GLYPH_SET, {timeout: DEFAULT_TIMEOUT * 2});
+    } catch(err) {
+      await page.screenshot({path: path.join(outputDir, 'icomoon-error.png'), fullPage: true});
+      fs.writeFileSync(path.join(outputDir, 'icomoon-error.html'), await page.content());
+      throw err;
     }
 
     await page.click(PAGE.PREFERENCES);

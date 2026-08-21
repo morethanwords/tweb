@@ -90,7 +90,7 @@ const OptionsSection: Component<{
             />
           </Row.CheckboxField>
         )}
-        {!isPremium() && <Row.Icon icon="premium_lock" />}
+        {!isPremium() && <Row.Icon icon="premium_lock_filled" />}
         <Row.Title>{i18n('Privacy.ContactsAndPremium')}</Row.Title>
       </Row>
       <Row
@@ -106,7 +106,7 @@ const OptionsSection: Component<{
             <StaticRadio floating checked={props.isPaid} />
           </Row.CheckboxField>
         )}
-        {!isPremium() && <Row.Icon icon="premium_lock" />}
+        {!isPremium() && <Row.Icon icon="premium_lock_filled" />}
         <Row.Title>{i18n('PaidMessages.ChargeForMessages')}</Row.Title>
       </Row>
     </Section>

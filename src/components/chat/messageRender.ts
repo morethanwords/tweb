@@ -275,7 +275,7 @@ export namespace MessageRender {
         postViewsSpan.classList.add('post-views');
         postViewsSpan.textContent = formatNumber(message.views, 1);
 
-        const channelViews = Icon('channelviews', 'time-icon', 'time-part', 'time-icon-views');
+        const channelViews = Icon('channelviews_filled', 'time-icon', 'time-part', 'time-icon-views');
 
         title += '\n' + I18n.format('ViewsTooltip', true, [numberThousandSplitter(message.views)]);
         if(message.forwards) {

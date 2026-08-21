@@ -83,7 +83,7 @@ export default function showStarsRatingPopup(props: {
                 )}
               </div>
             )}
-            hintIcon={isNegativeLevel() ? 'warning' : 'crownalt'}
+            hintIcon={isNegativeLevel() ? 'warning_filled' : 'crownalt_filled'}
             hintJustIcon={true}
           />
 
@@ -144,7 +144,7 @@ export default function showStarsRatingPopup(props: {
 
           <div class={styles.list}>
             <Row class={styles.row}>
-              <Row.Icon class={styles.rowIcon} icon="gift" />
+              <Row.Icon class={styles.rowIcon} icon="gift_filled" />
               <Row.Title class="text-bold">
                 <I18nTsx key="StarsRating.Row1Title" />
               </Row.Title>
@@ -179,7 +179,7 @@ export default function showStarsRatingPopup(props: {
         </PopupElement.Body>
         <PopupElement.FooterButton
           class={styles.popupButton}
-          iconLeft="okay"
+          iconLeft="okay_filled"
           langKey="StarsRating.Understood"
         />
       </PopupElement>

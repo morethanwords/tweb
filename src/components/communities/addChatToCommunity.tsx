@@ -112,7 +112,7 @@ export default function AddChatToCommunity() {
           }
         }}
       >
-        <Row.Icon icon="newgroup" />
+        <Row.Icon icon="newgroup_filled" />
         <Row.Title>{i18n('NewGroup')}</Row.Title>
       </Row>
       <Row
@@ -126,7 +126,7 @@ export default function AddChatToCommunity() {
           }
         }}
       >
-        <Row.Icon icon="newchannel" />
+        <Row.Icon icon="newchannel_filled" />
         <Row.Title>{i18n('NewChannel')}</Row.Title>
       </Row>
     </Section>

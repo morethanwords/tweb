@@ -1814,7 +1814,7 @@ const Stories = (props: {
     <ButtonIconTsx
       ref={muteButtonButton}
       classList={{[styles.noSound]: noSound()}}
-      icon={stories.muted || noSound() ? 'speakerofffilled' : 'speakerfilled'}
+      icon={stories.muted || noSound() ? 'speakeroff_filled' : 'speaker_filled'}
       onClick={toggleMute}
     />
   );
@@ -2169,7 +2169,7 @@ const Stories = (props: {
         return !!(story?._ === 'storyItem' && !story.pFlags.noforwards && rootScope.premium);
       }
     }, {
-      icon: 'eyecross_outline',
+      icon: 'eyecross',
       text: 'Stories.StealthMode.View',
       onClick: () => {
         ignoreOnClose = true;
@@ -2203,7 +2203,7 @@ const Stories = (props: {
       onClick: () => togglePeerHidden(false),
       verify: () => isPeerArchived(false)
     }, {
-      icon: 'statistics',
+      icon: 'statistics_filled',
       text: 'ViewStatistics',
       onClick: () => {
         const storyId = currentStory().id;
@@ -2474,7 +2474,7 @@ const Stories = (props: {
         <>
           <div class={styles.ViewerStoryFooterLeft}>
             <span class={styles.ViewerStoryFooterIcon}>
-              {Icon('eye1', styles.ViewerStoryFooterIconIcon)}
+              {Icon('eye1_filled', styles.ViewerStoryFooterIconIcon)}
               {formatNumber((currentStory() as StoryItem.storyItem).views?.views_count || 1, 1)}
             </span>
           </div>
@@ -2708,7 +2708,7 @@ const Stories = (props: {
             <div class={styles.ViewerStoryHeaderRight}>
               {privacyType() && privacyIcon}
               <ButtonIconTsx
-                icon={stories.paused && !stories.playAfterGesture ? 'play' : 'pause'}
+                icon={stories.paused && !stories.playAfterGesture ? 'play_filled' : 'pause_filled'}
                 onClick={() => actions.toggle()}
               />
               {videoDuration() && muteButton}

@@ -111,7 +111,7 @@ function CommunityPeerSection(props: {
             <Show when={item.linked.visible === false}>
               <IconTsx
                 class={`inline-icon inline-icon-right ${styles.HiddenPeerIcon}`}
-                icon="eye2"
+                icon="eye2_filled"
               />
             </Show>
           )}

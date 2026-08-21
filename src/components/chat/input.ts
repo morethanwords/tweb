@@ -1335,7 +1335,7 @@ export default class ChatInput {
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
 
-    this.btnCancelRecord = this.createButtonIcon('binfilled btn-circle btn-record-cancel chat-input-secondary-button chat-secondary-button');
+    this.btnCancelRecord = this.createButtonIcon('bin_filled btn-circle btn-record-cancel chat-input-secondary-button chat-secondary-button');
 
     this.btnSendContainer = document.createElement('div');
     this.btnSendContainer.classList.add('btn-send-container');
@@ -1347,7 +1347,7 @@ export default class ChatInput {
       ['schedule', 'schedule'],
       ['check', 'edit'],
       ['microphone_filled', 'record'],
-      ['recordround', 'record-video'],
+      ['recordround_filled', 'record-video'],
       ['forward_filled', 'forward']
     ];
     this.btnSend.append(...icons.map(([name, type]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type)));
@@ -4911,7 +4911,7 @@ export default class ChatInput {
       if(this.replyIsEphemeral && newReply) {
         newReply.classList.add('is-ephemeral-reply');
         newReply.querySelector('.reply-title')?.prepend(
-          Icon('eyecross_outline', 'reply-title-ephemeral-icon')
+          Icon('eyecross', 'reply-title-ephemeral-icon')
         );
       }
       this.setReplyTo(replyTo);

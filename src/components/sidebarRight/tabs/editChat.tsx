@@ -660,7 +660,7 @@ function EditChatForm(props: {
                 p: AppChatInviteLinksTab.getInitArgs(chatId())
               });
             }}>
-              <Row.Icon icon="link" />
+              <Row.Icon icon="link_filled" />
               <Row.Title>{i18n('InviteLinks')}</Row.Title>
               <Row.Subtitle>1</Row.Subtitle>
             </Row>
@@ -680,7 +680,7 @@ function EditChatForm(props: {
             <Row clickable={() => {
               tab.slider.createTab(AppChatReactionsTab).open({chatId: chatId()});
             }}>
-              <Row.Icon icon="reactions" />
+              <Row.Icon icon="reactions_filled" />
               <Row.Title>{i18n('Reactions')}</Row.Title>
               <Row.Subtitle>{reactionsSubtitle()}</Row.Subtitle>
             </Row>
@@ -760,7 +760,7 @@ function EditChatForm(props: {
                   onChange={(value) => void toggleTopics(value)}
                 />
               </Row.CheckboxFieldToggle>
-              <Row.Icon icon="topics" />
+              <Row.Icon icon="topics_filled" />
               <Row.Title>{i18n('Topics')}</Row.Title>
             </Row>
           </Show>
@@ -802,14 +802,14 @@ function EditChatForm(props: {
         <Row clickable={() => {
           tab.slider.createTab(AppChatAdministratorsTab).open({chatId: chatId()});
         }}>
-          <Row.Icon icon="admin" />
+          <Row.Icon icon="admin_filled" />
           <Row.Title>{i18n('PeerInfo.Administrators')}</Row.Title>
           <Row.Subtitle>{administratorsCount()}</Row.Subtitle>
         </Row>
         <Row clickable={() => {
           tab.slider.createTab(AppChatMembersTab).open(chatId());
         }}>
-          <Row.Icon icon="newgroup" />
+          <Row.Icon icon="newgroup_filled" />
           <Row.Title>{i18n(isBroadcast() ? 'PeerInfo.Subscribers' : 'GroupMembers')}</Row.Title>
           <Row.Subtitle>{membersCount()}</Row.Subtitle>
         </Row>
@@ -894,7 +894,7 @@ function EditChatForm(props: {
           communities={props.data.joinedCommunities}
           middleware={tab.middlewareHelper.get()}
           caption="Community.Description"
-          addIcon="newgroup"
+          addIcon="newgroup_filled"
           addText={isBroadcast() ?
             'Community.AddChannel' :
             'Community.AddGroup'}

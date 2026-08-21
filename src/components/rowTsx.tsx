@@ -5,6 +5,7 @@ import RippleElement from '@components/rippleElement';
 import createComponentContext, {ComponentContextValue} from '@helpers/solid/createComponentContext';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import ListenerSetter from '@helpers/listenerSetter';
+import {getRowIconBackgroundImage} from '@helpers/rowIconBackground';
 
 export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger' | '40';
 
@@ -242,7 +243,18 @@ Row.Icon = (props: {
   class?: string
 }) => {
   return useContext(RowContext).register('icon', (
-    <IconTsx icon={props.icon} class={classNames('row-icon', props.class)} />
+    <span
+      class={classNames(
+        'row-icon',
+        'row-icon-colored',
+        props.class
+      )}
+      style={{
+        'background-image': getRowIconBackgroundImage(props.icon)
+      }}
+    >
+      <IconTsx icon={props.icon} class="row-icon-icon" />
+    </span>
   ));
 };
 

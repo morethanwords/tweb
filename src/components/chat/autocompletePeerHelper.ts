@@ -122,7 +122,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     div.append(node, name);
 
     if(options.ephemeral) {
-      const ephemeral = Icon('eyecross_outline', BASE + '-ephemeral', options.className + '-ephemeral');
+      const ephemeral = Icon('eyecross', BASE + '-ephemeral', options.className + '-ephemeral');
       const tooltip = I18n.format('Ephemeral.CommandTooltip', true);
       ephemeral.title = tooltip;
       ephemeral.setAttribute('aria-label', tooltip);

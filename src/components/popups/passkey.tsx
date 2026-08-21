@@ -33,7 +33,7 @@ export async function createPasskey() {
 export default function showPasskeyPopup(onCreation?: (passkey: Passkey) => void) {
   showFeatureDetailsPopup({
     rows: [
-      {icon: 'key', title: i18n('Passkey.Row1.Title'), subtitle: i18n('Passkey.Row1.Subtitle')},
+      {icon: 'key_filled', title: i18n('Passkey.Row1.Title'), subtitle: i18n('Passkey.Row1.Subtitle')},
       {icon: 'faceid', title: i18n('Passkey.Row2.Title'), subtitle: i18n('Passkey.Row2.Subtitle')},
       {icon: 'lock', title: i18n('Passkey.Row3.Title'), subtitle: i18n('Passkey.Row3.Subtitle')}
     ],

@@ -17,7 +17,7 @@ const a: {[type in ApiLimitType]?: {
     description: 'LimitReachedPinDialogs',
     descriptionPremium: 'LimitReachedPinDialogsPremium',
     descriptionLocked: 'LimitReachedPinDialogsLocked',
-    icon: 'limit_pin'
+    icon: 'limit_pin_filled'
   },
   folders: {
     title: 'LimitReached',
@@ -45,14 +45,14 @@ const a: {[type in ApiLimitType]?: {
     description: 'LimitReachedPinDialogs',
     descriptionPremium: 'LimitReachedPinDialogsPremium',
     descriptionLocked: 'LimitReachedPinDialogsLocked',
-    icon: 'limit_pin'
+    icon: 'limit_pin_filled'
   },
   channels: {
     title: 'LimitReached',
     description: 'LimitReachedCommunities',
     descriptionPremium: 'LimitReachedCommunitiesPremium',
     descriptionLocked: 'LimitReachedCommunitiesLocked',
-    icon: 'limit_chat'
+    icon: 'limit_chat_filled'
   }
 };
 
@@ -77,7 +77,7 @@ class P extends PopupPeer {
         callback: () => {
           PopupPremium.show({feature: options.feature});
         },
-        iconRight: 'premium_double'
+        iconRight: 'premium_double_filled'
       }, {
         langKey: 'Cancel',
         isCancel: true

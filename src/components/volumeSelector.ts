@@ -11,7 +11,7 @@ import RangeSelector from '@components/rangeSelector';
 const className = 'player-volume';
 
 export default class VolumeSelector extends RangeSelector {
-  private static ICONS: Icon[] = ['volume_off', 'volume_mute', 'volume_down', 'volume_up'];
+  private static ICONS: Icon[] = ['volume_off_filled', 'volume_mute_filled', 'volume_down_filled', 'volume_up_filled'];
   public btn: HTMLElement;
   protected icon: HTMLSpanElement;
   protected listenerSetter: ListenerSetter;

@@ -115,7 +115,7 @@ export const PollSettingsSectionContent = (props: {
           title='NewPoll.ShowWhoVoted'
           subtitle='NewPoll.ShowWhoVotedSubtitle'
           mediaStyle={getGradientStyle(0)}
-          icon='eye1'
+          icon='eye1_filled'
           checked={context.store.showWhoVoted}
           onClick={() => {
             if(context.store.showWhoVoted) {
@@ -135,7 +135,7 @@ export const PollSettingsSectionContent = (props: {
         title='NewPoll.AllowMultipleAnswers'
         subtitle='NewPoll.AllowMultipleAnswersSubtitle'
         mediaStyle={getGradientStyle(1)}
-        icon='poll_multiple_answers'
+        icon='poll_multiple_answers_filled'
         checked={context.store.allowMultipleAnswers}
         onClick={handleSettingsFlag('allowMultipleAnswers')}
       />
@@ -222,7 +222,7 @@ export const PollSettingsSectionContent = (props: {
         title='NewPoll.LimitDuration'
         subtitle='NewPoll.LimitDurationSubtitle'
         mediaStyle={getGradientStyle(8)}
-        icon='timer'
+        icon='timer_filled'
         checked={context.store.durationLimited}
         onClick={handleSettingsFlag('durationLimited')}
       />

@@ -23,7 +23,7 @@ const LEVELS_PATHS = new Map<number, string>([
 
 export function wrapStarsRatingLevel(level: number) {
   if(level < 0) {
-    const icon = Icon('warning')
+    const icon = Icon('warning_filled')
     icon.classList.add('stars-rating-icon', 'stars-rating-icon-warning')
     return icon
   }

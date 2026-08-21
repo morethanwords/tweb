@@ -346,13 +346,13 @@ export const StorageQuota = (props: Props) => {
       </Row>
 
       <Row>
-        <Row.Icon icon='image' />
+        <Row.Icon icon='photo_filled' />
         <Row.Title><I18nTsx key='StorageQuota.Images' /></Row.Title>
         <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['images']} /></Row.Subtitle>
       </Row>
 
       <Row>
-        <Row.Icon icon='play' />
+        <Row.Icon icon='play_filled' />
         <Row.Title><I18nTsx key='StorageQuota.VideoFiles' /></Row.Title>
         <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['videos']} /></Row.Subtitle>
       </Row>
@@ -364,7 +364,7 @@ export const StorageQuota = (props: Props) => {
       </Row>
 
       <Row>
-        <Row.Icon icon='limit_file' />
+        <Row.Icon icon='limit_file_filled' />
         <Row.Title><I18nTsx key='StorageQuota.Other' /></Row.Title>
         <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['other']} /></Row.Subtitle>
       </Row>

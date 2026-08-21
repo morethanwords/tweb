@@ -734,7 +734,7 @@ export const AvatarNew = (props: {
 
     if(peerId === myId && isDialog) {
       set({
-        icon: props.meAsNotes ? 'mynotes' : 'saved',
+        icon: props.meAsNotes ? 'mynotes' : 'saved_filled',
         isForum: !props.meAsNotes && appSettings.savedAsForum
       });
 
@@ -789,7 +789,7 @@ export const AvatarNew = (props: {
     }
 
     if(peerId !== NULL_PEER_ID && peerId.isUser() && (peer as User.user)?.pFlags?.deleted) {
-      set({color: 'archive', icon: 'deletedaccount'});
+      set({color: 'archive', icon: 'deletedaccount_filled'});
       return;
     }
 

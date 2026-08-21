@@ -195,6 +195,21 @@ export function mixColors(color1: ColorRgb, color2: ColorRgb, weight: number) {
   return out;
 }
 
+/**
+ * Applies the plus-lighter compositing formula to an opaque backdrop.
+ * `sourceOpacity` is kept separate so callers can reproduce an alpha gradient
+ * without relying on CSS blend modes.
+ */
+export function mixColorsPlusLighter(
+  backdrop: ColorRgb,
+  source: ColorRgb,
+  sourceOpacity: number
+): ColorRgb {
+  return backdrop.map((value, index) => {
+    return clamp(Math.round(value + source[index] * sourceOpacity), 0, 255);
+  }) as ColorRgb;
+}
+
 export function computePerceivedBrightness(color: ColorRgb) {
   return (color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722) / 255;
 }

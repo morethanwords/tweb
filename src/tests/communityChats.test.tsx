@@ -294,14 +294,14 @@ describe('CommunityChats', () => {
     )?.textContent).toBe('Members:7');
     expect(container.querySelector(
       `[data-peer-id="${hiddenPeerId}"] ` +
-      '[data-testid="peer-title-accessory"] [data-icon="eye2"]'
+      '[data-testid="peer-title-accessory"] [data-icon="eye2_filled"]'
     )).not.toBeNull();
     expect(container.querySelector(
       `[data-peer-id="${hiddenPeerId}"] ` +
-      '[data-testid="peer-right"] [data-icon="eye2"]'
+      '[data-testid="peer-right"] [data-icon="eye2_filled"]'
     )).toBeNull();
     expect(container.querySelector(
-      `[data-peer-id="${requestablePeerId}"] [data-icon="eye2"]`
+      `[data-peer-id="${requestablePeerId}"] [data-icon="eye2_filled"]`
     )).toBeNull();
     expect(container.querySelectorAll(
       '[data-avatar-size="abitbigger"]'

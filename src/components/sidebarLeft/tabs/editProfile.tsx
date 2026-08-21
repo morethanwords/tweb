@@ -362,7 +362,7 @@ const EditProfileForm = (props: {
               }
             });
           }}>
-            <Row.Icon icon="gift" />
+            <Row.Icon icon="gift_filled" />
             <Row.Title>{i18n('EditProfile.AddBirthdayRow')}</Row.Title>
           </Row>
         </Show>
@@ -395,7 +395,7 @@ const EditProfileForm = (props: {
         caption="EditProfile.PersonalChannel.Description"
       >
         <Row clickable={openPersonalChannelPicker}>
-          <Row.Icon icon="newchannel" />
+          <Row.Icon icon="newchannel_filled" />
           <Row.Title titleRight={!personalChannelId() && <span class="primary">{personalChannelTitle()}</span>}>
             {personalChannelId() ? personalChannelTitle() : i18n('EditProfile.PersonalChannel.Label')}
           </Row.Title>

@@ -5,14 +5,31 @@ const fs = require('fs');
 const path = require('path');
 
 const iconsPath = path.join(__dirname, '../../../assets/icons/');
+const tsOutPath = path.join(__dirname, '../../icons.ts');
 const files = fs.readdirSync(iconsPath);
-const icons = files.filter(file => file.endsWith('.svg')).map(file => iconsPath + file);
+const currentIconOrder = new Map(
+  Array.from(fs.readFileSync(tsOutPath, 'utf8').matchAll(/^\s+([a-zA-Z0-9_]+):/gm))
+  .map((match, index) => [match[1], index])
+);
+const generatedIconNameOverrides = {
+  '1check.svg': 'check',
+  '2checks.svg': 'checks',
+  'check.svg': 'check1'
+};
+const getGeneratedIconName = file => generatedIconNameOverrides[file] || path.basename(file, '.svg').replace(/^\d+/, '');
+const icons = files
+.filter(file => file.endsWith('.svg'))
+.sort((left, right) => {
+  const leftOrder = currentIconOrder.get(getGeneratedIconName(left)) ?? currentIconOrder.size;
+  const rightOrder = currentIconOrder.get(getGeneratedIconName(right)) ?? currentIconOrder.size;
+  return leftOrder - rightOrder || left.localeCompare(right);
+})
+.map(file => iconsPath + file);
 
 function moveFiles(outPath) {
   // const path = './out/';
 
   const stylesOutPath = path.join(__dirname, '../../scss/tgico/_');
-  const tsOutPath = path.join(__dirname, '../../icons.ts');
 
   let styleText = fs.readFileSync(outPath + 'style.scss').toString();
   styleText = styleText

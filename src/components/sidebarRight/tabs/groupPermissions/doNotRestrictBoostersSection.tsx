@@ -71,7 +71,7 @@ export default function createDoNotRestrictBoostersSection(props: {
                       .map((value) => [
                         (
                           <>
-                            <IconTsx icon={value === 1 ? 'boost' : 'boosts'} class="inline-icon" />
+                            <IconTsx icon={value === 1 ? 'boost_filled' : 'boosts_filled'} class="inline-icon" />
                             {value.toString()}
                           </>
                         ),

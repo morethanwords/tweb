@@ -909,7 +909,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       // if(!options.wrappingDraft) {
-      //   const i = Icon('quote', 'quote-icon');
+  //   const i = Icon('quote_filled', 'quote-icon');
       //   element.textContent = partText;
       //   usedText = true;
       //   element.prepend(i);

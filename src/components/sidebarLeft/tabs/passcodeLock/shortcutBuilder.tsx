@@ -22,7 +22,7 @@ const ShortcutBuilder: Component<{
 
   const getKeyContent = (key: ShortcutKey): JSX.Element => {
     if(key === 'Meta') {
-      return <IconTsx icon={IS_APPLE ? 'mac_command_key' : 'win_key'} />;
+      return <IconTsx icon={IS_APPLE ? 'mac_command_key' : 'win_key_filled'} />;
     }
     return <span>{key}</span>;
   };

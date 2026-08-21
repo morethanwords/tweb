@@ -352,7 +352,7 @@ function EditCommunityForm(props: {
 
       <Section>
         <CommunityManagementRow
-          icon="admin"
+          icon="admin_filled"
           title="PeerInfo.Administrators"
           right={String(full().admins_count ?? 0)}
           rightSecondary
@@ -406,7 +406,7 @@ function EditCommunityForm(props: {
             linkedPeer.visible === false ?
               <IconTsx
                 class={`inline-icon inline-icon-right ${communitySharedStyles.hiddenPeerIcon}`}
-                icon="eye2"
+                icon="eye2_filled"
               /> :
               undefined
           )}

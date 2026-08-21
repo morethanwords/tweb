@@ -98,7 +98,7 @@ export default function AddGroupToCommunity() {
             }
           }}
         >
-          <Row.Icon icon="newgroup" />
+          <Row.Icon icon="newgroup_filled" />
           <Row.Title>{i18n('Community.Create')}</Row.Title>
         </Row>
       </Section>

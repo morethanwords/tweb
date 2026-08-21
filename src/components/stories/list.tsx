@@ -401,7 +401,7 @@ function _StoriesList(props: {
         verify: () => !isSelf && rootScope.managers.appNotificationsManager.isPeerStoriesMuted(peer.peerId),
         multiline: true
       }, {
-        icon: 'eyecross_outline',
+        icon: 'eyecross',
         text: 'Stories.StealthMode.View',
         onClick: () => {
           const {peerId} = peer;

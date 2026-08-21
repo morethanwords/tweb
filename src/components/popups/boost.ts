@@ -158,7 +158,7 @@ export default class PopupBoost extends PopupPeer {
     const limitLine = new LimitLine({
       progress: true,
       hint: {
-        icon: 'boost',
+        icon: 'boost_filled',
         noStartEnd: true
       }
     });
@@ -196,7 +196,7 @@ export default class PopupBoost extends PopupPeer {
         isCancel: true
       } : {
         langKey: isBroadcast ? 'BoostChannel' : 'BoostGroup',
-        iconLeft: 'boost',
+        iconLeft: 'boost_filled',
         callback: onClick
       }]));
     };

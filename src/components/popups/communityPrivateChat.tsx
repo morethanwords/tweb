@@ -82,7 +82,7 @@ export default function showCommunityPrivateChat(options: {
         <div class={styles.info}>
           <IconTsx
             class="inline-icon inline-icon-left"
-            icon="eye2"
+            icon="eye2_filled"
           />
           <span>{i18n(infoKey())}</span>
         </div>

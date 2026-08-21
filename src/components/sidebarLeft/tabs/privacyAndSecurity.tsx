@@ -182,7 +182,7 @@ const PrivacyAndSecurity: Component = () => {
 
         let passwordState: AccountPassword;
         const twoFactorRowOptions: ConstructorParameters<typeof Row>[0] = {
-          icon: 'lock',
+          icon: 'two_factor_auth_filled',
           titleLangKey: 'TwoStepVerification' as LangPackKey,
           subtitleLangKey: SUBTITLE,
           clickable: (e: Event) => {
@@ -235,7 +235,7 @@ const PrivacyAndSecurity: Component = () => {
         const emailRow = new Row({
           titleLangKey: 'LoginEmail',
           subtitle: SUBTITLE,
-          icon: 'email',
+          icon: 'email_filled',
           clickable: () => {
             tab.slider.createTab(ChangeLoginEmailTab).open({
               isInitialSetup: passwordState.login_email_pattern.includes(' ')
@@ -246,7 +246,7 @@ const PrivacyAndSecurity: Component = () => {
         emailRow.freezed = true;
 
         const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
-          icon: 'key',
+          icon: 'key_filled',
           titleLangKey: 'PasscodeLock.Item.Title',
           subtitleLangKey: SUBTITLE,
           clickable: () => {
@@ -273,7 +273,7 @@ const PrivacyAndSecurity: Component = () => {
         passcodeLockRow.freezed = true;
 
         websitesRow = new Row({
-          icon: 'mention',
+          icon: 'mention_filled',
           titleLangKey: 'OtherWebSessions',
           subtitleLangKey: SUBTITLE,
           clickable: () => {

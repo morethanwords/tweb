@@ -85,7 +85,7 @@ function StarGiftGridItem(props: {
           }
         },
         {
-          icon: 'gem_transfer_outline',
+          icon: 'gem_transfer',
           text: 'StarGiftTransferFull',
           verify: () => isEditableUniqueGift,
           onClick: () => {
@@ -132,7 +132,7 @@ function StarGiftGridItem(props: {
           }
         }),
         {
-          icon: isWearing ? 'crownoff_outline' : 'crown_outline',
+          icon: isWearing ? 'crownoff' : 'crown',
           text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
           verify: () => isEditableUniqueGift,
           onClick: async() => {
@@ -158,7 +158,7 @@ function StarGiftGridItem(props: {
           }
         },
         {
-          icon: saved.pFlags.unsaved ? 'eye' : 'eyecross_outline',
+          icon: saved.pFlags.unsaved ? 'eye' : 'eyecross',
           text: saved.pFlags.unsaved ? 'Show' : 'Hide',
           verify: () => isIncoming || isEditableUniqueGift,
           onClick: () => {
@@ -221,11 +221,11 @@ function StarGiftGridItem(props: {
       )}
 
       {isPinned() && !props.item.resellOnlyTon && (
-        <IconTsx icon="pin2" class={/* @once */ styles.itemPin} />
+        <IconTsx icon="pin2_filled" class={/* @once */ styles.itemPin} />
       )}
 
       {isLocked() && (
-        <IconTsx icon="time_lock" class={/* @once */ styles.itemLock} />
+        <IconTsx icon="time_lock_filled" class={/* @once */ styles.itemLock} />
       )}
 
       {props.item.resellOnlyTon && props.view !== 'transfer' && (

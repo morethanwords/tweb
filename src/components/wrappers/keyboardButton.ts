@@ -133,7 +133,7 @@ export function getKeyboardButtonHandler({
       }
 
       classNamesArr.push('is-buy');
-      icon = 'card';
+      icon = 'card_filled';
 
       if(mediaInvoice?.receipt_msg_id) {
         text = i18n('Message.ReplyActionButtonShowReceipt');
@@ -214,7 +214,7 @@ export function getKeyboardButtonHandler({
 
     case 'keyboardButtonGame': {
       classNamesArr.push('is-game');
-      icon = 'play';
+      icon = 'play_filled';
 
       onClick = () => {
         if(!message) return;

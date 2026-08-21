@@ -126,7 +126,7 @@ export function createStarGiftUpgradePricePopup(props: {
         <PopupElement.Footer class={styles.popupFooter}>
           <PopupElement.FooterButton
             class={styles.popupButton}
-            iconLeft="okay"
+            iconLeft="okay_filled"
             langKey="StarGiftUpgradePriceUnderstood"
             callback={() => setShow(false)}
           />

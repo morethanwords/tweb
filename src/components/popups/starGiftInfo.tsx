@@ -561,7 +561,7 @@ export default class PopupStarGiftInfo extends PopupElement {
         if(event.wearing !== undefined) {
           setIsWearing(event.wearing);
           createSnackbar({
-            icon: event.wearing ? 'crown' : 'crownoff',
+            icon: event.wearing ? 'crown_filled' : 'crownoff_filled',
             textElement: event.wearing ?
               i18n('SetAsEmojiStatusInfo') :
               i18n('StarGiftWearStopped', [getCollectibleName(gift as StarGift.starGiftUnique)])
@@ -925,7 +925,7 @@ export default class PopupStarGiftInfo extends PopupElement {
         });
         await this.managers.appGiftsManager.updateResalePrice(input, null);
         createSnackbar({
-          icon: 'tag_alt_crossed',
+          icon: 'tag_alt_crossed_filled',
           textElement: i18n('StarGiftResaleRemoved', [getCollectibleName(gift as StarGift.starGiftUnique)])
         })
         return
@@ -944,7 +944,7 @@ export default class PopupStarGiftInfo extends PopupElement {
       popup.addEventListener('finish', (result) => {
         if(result !== 'cancel') {
           createSnackbar({
-            icon: result === 'list' ? 'tag_alt' : 'tag_alt_crossed',
+            icon: result === 'list' ? 'tag_alt_filled' : 'tag_alt_crossed_filled',
             textElement: i18n(
               result === 'list' ? 'StarGiftResaleListed' : 'StarGiftResaleRemoved',
               [getCollectibleName(gift as StarGift.starGiftUnique)]
@@ -1039,13 +1039,13 @@ export default class PopupStarGiftInfo extends PopupElement {
                 }
               },
               {
-                icon: 'tag_alt_outline',
+                icon: 'tag_alt',
                 text: 'StarGiftChangePrice',
                 verify: () => isEditableUniqueGift && isListed(),
                 onClick: () => handleSell(true)
               },
               {
-                icon: 'tag_alt_outline',
+                icon: 'tag_alt',
                 text: 'StarGiftOffer.CreateOffer',
                 verify: () => gift._ === 'starGiftUnique' && gift.offer_min_stars !== undefined,
                 onClick: () => showCreateStarGiftOfferPopup({
@@ -1132,7 +1132,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               <Button
                 noRipple
                 class="popup-star-gift-info-action"
-                icon="gem_transfer"
+                icon="gem_transfer_filled"
                 text="StarGiftTransfer"
                 onClick={() => transferStarGift(this.gift).then((ok) => {
                   if(ok) {
@@ -1143,7 +1143,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               <Button
                 noRipple
                 class="popup-star-gift-info-action"
-                icon={isWearing() ? 'crownoff' : 'crown'}
+                icon={isWearing() ? 'crownoff_filled' : 'crown_filled'}
                 text={isWearing() ? 'StarGiftWearStop' : 'StarGiftWear'}
                 onClick={async() => {
                   if(ownerPeerId === undefined) return;
@@ -1171,7 +1171,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               <Button
                 noRipple
                 class="popup-star-gift-info-action"
-                icon={isListed() ? 'tag_alt_crossed' : 'tag_alt'}
+                icon={isListed() ? 'tag_alt_crossed_filled' : 'tag_alt_filled'}
                 text={isListed() ? 'StarGiftUnlistButton' : 'StarGiftSell'}
                 onClick={() => handleSell()}
               />
@@ -1238,7 +1238,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     } else if(this.canUpgrade) {
       this.btnConfirm.replaceChildren(
         i18n(this.gift.saved?.prepaid_upgrade_hash ? 'StarGiftGiftUpgrade' : 'StarGiftStatusUpgrade'),
-        Icon('arrow_up_circle_fill')
+        Icon('arrow_up_circle_filled')
       )
     }
 

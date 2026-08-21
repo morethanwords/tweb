@@ -12,7 +12,7 @@ const BotforumNewTopic = defineSolidElement({
     return (
       <div class={styles.Container}>
         <div class={styles.IconContainer}>
-          <IconTsx class={styles.Icon} icon='add_chat' />
+          <IconTsx class={styles.Icon} icon='add_chat_filled' />
         </div>
 
         <div class={styles.Title}>

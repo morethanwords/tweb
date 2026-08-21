@@ -248,7 +248,7 @@ const VideoControls: Component<{}> = () => {
             }}
             tabIndex={-1}
           >
-            <IconTsx icon={mediaState.videoMuted ? 'volume_off' : 'volume_up'} />
+            <IconTsx icon={mediaState.videoMuted ? 'volume_off_filled' : 'volume_up_filled'} />
           </button>
         )}
 

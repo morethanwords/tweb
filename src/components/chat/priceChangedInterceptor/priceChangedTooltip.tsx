@@ -31,6 +31,6 @@ export default function showPriceChangedTooltip({chat, starsAmount, onResend}: S
       </Button>
     ),
     class: styles.Tooltip,
-    icon: 'sendingerror'
+    icon: 'sendingerror_filled'
   });
 }

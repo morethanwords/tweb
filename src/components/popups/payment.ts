@@ -582,7 +582,7 @@ export default class PopupPayment extends PopupElement<{
     const setCardSubtitle = (card: PaymentCardDetailsResult) => {
       const {brand, str, icon} = PopupPayment.getCardDetailsInfo(card);
 
-      const outlineIcon = methodRow.container.querySelector(`.${_tgico('card_outline')}`);
+      const outlineIcon = methodRow.container.querySelector(`.${_tgico('card')}`);
       outlineIcon?.remove();
       setRowIcon(methodRow, icon || brand.toLowerCase());
       setRowTitle(methodRow, str);
@@ -626,7 +626,7 @@ export default class PopupPayment extends PopupElement<{
     const methodRow = PopupPayment.createRow({
       titleLangKey: 'PaymentCheckoutMethod',
       clickable: isReceipt ? undefined : onMethodClick,
-      icon: 'card_outline'
+      icon: 'card'
     });
 
     methodRow.container.classList.add(className + '-method-row');
@@ -759,7 +759,7 @@ export default class PopupPayment extends PopupElement<{
 
     if(invoice.pFlags.name_requested) {
       shippingNameRow = PopupPayment.createRow({
-        icon: 'newprivate',
+        icon: 'newprivate_filled',
         titleLangKey: 'PaymentCheckoutName',
         clickable: !isReceipt && onShippingAddressClick.bind(null, 'name')
       });
@@ -767,7 +767,7 @@ export default class PopupPayment extends PopupElement<{
 
     if(invoice.pFlags.email_requested) {
       shippingEmailRow = PopupPayment.createRow({
-        icon: 'mention',
+        icon: 'mention_filled',
         titleLangKey: 'PaymentShippingEmailPlaceholder',
         clickable: !isReceipt && onShippingAddressClick.bind(null, 'email')
       });
@@ -775,7 +775,7 @@ export default class PopupPayment extends PopupElement<{
 
     if(invoice.pFlags.phone_requested) {
       shippingPhoneRow = PopupPayment.createRow({
-        icon: 'phone',
+        icon: 'phone_filled',
         titleLangKey: 'PaymentCheckoutPhoneNumber',
         clickable: !isReceipt && onShippingAddressClick.bind(null, 'phone')
       });

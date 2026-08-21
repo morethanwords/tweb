@@ -245,7 +245,7 @@ class StoriesContextMenu {
         return !!story.pFlags.public && (!story.pFlags.noforwards || !!username)
       }
     }, {
-      icon: 'eyecross_outline',
+      icon: 'eyecross',
       text: 'Stories.StealthMode.View',
       onClick: () => {
         const {peerId} = this;
@@ -562,7 +562,7 @@ function StoriesGrid(props: {
       }
 
       if(element.parentElement && props.pinned && !stories.albumId && (storyItem as StoryItem.storyItem).pinnedIndex !== undefined) {
-        icon ??= Icon('pin2', 'grid-item-pin');
+        icon ??= Icon('pin2_filled', 'grid-item-pin');
         element.parentElement.append(icon);
       } else if(icon) {
         icon.remove();

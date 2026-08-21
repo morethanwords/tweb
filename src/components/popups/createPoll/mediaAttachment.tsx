@@ -890,7 +890,7 @@ export const MediaAttachment = (props: {
             <div class={styles.videoAttachmentBadge}>
               {attachedMedia.isAnimated ?
                 'GIF' :
-                <IconTsx icon='play' class={styles.videoAttachmentBadgeIcon} />}
+                <IconTsx icon='play_filled' class={styles.videoAttachmentBadgeIcon} />}
             </div>
           </div>
         )}

@@ -109,7 +109,7 @@ export function UnknownUserBubble(props: {
         </div>
         {!props.user.pFlags.verified && !props.user.pFlags.support && !props.user.bot_verification_icon && (
           <Footer
-            icon={<IconTsx icon="info2" />}
+            icon={<IconTsx icon="info2_filled" />}
             text={<I18nTsx key="UnknownUserUnofficial" />}
           />
         )}

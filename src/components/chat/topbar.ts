@@ -664,7 +664,7 @@ export default class ChatTopbar {
       onClick: () => this.onDirectMessagesClick(),
       verify: () => this.chat.isChannel && this.chat.canManageDirectMessages && !this.chat.isMonoforum && !!(this.chat.peer as MTChat.channel).linked_monoforum_id && this.chat.type !== ChatType.Logs
     }, {
-      icon: 'statistics',
+      icon: 'statistics_filled',
       text: 'Statistics',
       onClick: () => {
         this.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId());

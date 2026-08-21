@@ -15,7 +15,7 @@ $row-border-radius: $border-radius-medium;
 
   &.no-subtitle,
   &.row-small {
-    min-height: 3rem;
+    min-height: 3.375rem;
     padding-top: .1875rem;
     padding-bottom: .1875rem;
   }
@@ -236,8 +236,15 @@ $row-border-radius: $border-radius-medium;
     /* .row-title */
     .row-icon {
       position: absolute;
-      inset-inline-start: 1rem;
+      inset-inline-start: .75rem;
+      width: 1.875rem;
+      height: 1.875rem;
+      border-radius: .625rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 1.5rem;
+      line-height: 1;
       color: var(--secondary-text-color);
       pointer-events: none;
       z-index: 1;
@@ -245,6 +252,15 @@ $row-border-radius: $border-radius-medium;
       // margin-top: -.125rem;
       top: 50%;
       transform: translateY(-50%);
+
+      &-icon {
+        font-size: inherit;
+        line-height: inherit;
+      }
+
+      &-colored {
+        color: #fff;
+      }
 
       &-premium-color {
         color: var(--primary-color);
@@ -369,11 +385,6 @@ $row-border-radius: $border-radius-medium;
       white-space: pre-wrap;
       overflow: unset;
       text-overflow: unset;
-    }
-
-    &-toggle {
-      margin-inline: .125rem .125rem;
-      padding: 0;
     }
 
     &-absolute {

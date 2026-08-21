@@ -136,7 +136,7 @@ describe('Community private chat sheet', () => {
     expect(container.textContent).not.toContain(
       'Community.SuggestedChannel'
     );
-    const infoIcon = container.querySelector('[data-icon="eye2"]');
+    const infoIcon = container.querySelector('[data-icon="eye2_filled"]');
     expect(infoIcon).not.toBeNull();
     expect(infoIcon.classList).toContain('inline-icon');
     expect(infoIcon.classList).toContain('inline-icon-left');

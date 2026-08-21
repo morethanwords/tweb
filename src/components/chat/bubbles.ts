@@ -6704,7 +6704,7 @@ export default class ChatBubbles {
       }
 
       let icon: Icon;
-      if(status === 'error') icon = 'sendingerror';
+      if(status === 'error') icon = 'sendingerror_filled';
       else if(status === 'sending') icon = 'sending';
       else if(status === 'sent') icon = 'check';
       else icon = 'checks';
@@ -7541,7 +7541,7 @@ export default class ChatBubbles {
           let elem: HTMLElement;
           if(isMyStory) elem = i18n('ExpiredStoryMentionYou', [await wrapPeerTitle({peerId: message.peerId})]);
           else elem = i18n('ExpiredStoryMention');
-          const icon = Icon('bomb', 'expired-story-icon');
+          const icon = Icon('bomb_filled', 'expired-story-icon');
           s.append(icon, elem);
         } else {
           s.classList.add('bubble-story-mention-wrapper');
@@ -7834,7 +7834,7 @@ export default class ChatBubbles {
       onError: (error) => {
         if(error.type === 'SUMMARY_FLOOD_PREMIUM') {
           const {hide} = showChatToast({
-            icon: 'premium_speed',
+            icon: 'premium_speed_filled',
             title: i18n('Summary.Limited'),
             textElement: i18n('Summary.Limited.Text', [
               anchorCallback(() => {
@@ -8352,7 +8352,7 @@ export default class ChatBubbles {
           if(webPage.cached_page) {
             const span = document.createElement('span');
             span.append(
-              Icon('boost', 'inline-icon', 'inline-icon-left'),
+              Icon('boost_filled', 'inline-icon', 'inline-icon-left'),
               i18n('WebPage.InstantView')
             );
             props.footer = {
@@ -10350,7 +10350,7 @@ export default class ChatBubbles {
     if(boosts) {
       boostsElement = document.createElement('span');
       boostsElement.classList.add('bubble-name-boosts');
-      boostsElement.append(Icon('boosts', 'inline-icon', 'bubble-name-boosts-icon'), '' + boosts);
+      boostsElement.append(Icon('boosts_filled', 'inline-icon', 'bubble-name-boosts-icon'), '' + boosts);
     }
     title.classList.add('bubble-name-first');
     container.append(...[title, wrappedRank, boostsElement].filter(Boolean));
@@ -10394,7 +10394,7 @@ export default class ChatBubbles {
     badge.classList.add('ephemeral-badge');
     badge.setAttribute('role', 'note');
     badge.title = I18n.format('Ephemeral.About', true);
-    badge.append(Icon('eyecross_outline', 'ephemeral-badge-icon'));
+    badge.append(Icon('eyecross', 'ephemeral-badge-icon'));
 
     if(message.pFlags.out) {
       const receiverPeerId = message.ephemeral_receiver_id.toPeerId(false);
@@ -11047,7 +11047,7 @@ export default class ChatBubbles {
     } else if(type === 'premiumRequired') {
       const stickerDiv = document.createElement('div');
       stickerDiv.classList.add(BASE_CLASS + '-sticker');
-      stickerDiv.append(Icon('premium_restrict'));
+      stickerDiv.append(Icon('premium_restrict_filled'));
 
       const subtitle = i18n('Chat.PremiumRequired', [await wrapPeerTitle({peerId: this.peerId, onlyFirstName: true})]);
       subtitle.classList.add('center', BASE_CLASS + '-subtitle');
@@ -11061,7 +11061,7 @@ export default class ChatBubbles {
     } else if(type === 'paidMessages') {
       const stickerDiv = document.createElement('div');
       stickerDiv.classList.add(BASE_CLASS + '-sticker');
-      stickerDiv.append(Icon('premium_restrict'));
+      stickerDiv.append(Icon('premium_restrict_filled'));
 
       const starsAmount = await this.managers.appPeersManager.getStarsAmount(this.peerId); // should be cached probably here
 

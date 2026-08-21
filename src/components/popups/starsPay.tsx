@@ -299,7 +299,7 @@ export default class PopupStarsPay extends PopupElement<{
       if(!this.transaction.id) {
         subtitle = (
           <span class="popup-stars-pay-boosts">
-            <IconTsx icon="boost" />
+            <IconTsx icon="boost_filled" />
             {i18n('BoostingBoostsCountTitle', [this.boost.multiplier || 1])}
           </span>
         );

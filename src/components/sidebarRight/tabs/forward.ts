@@ -20,7 +20,7 @@ export {};
 //     }
 
 //     this.sendBtn.innerHTML = '';
-//     this.sendBtn.classList.add('tgico-send');
+//     this.sendBtn.classList.add('tgico-send_filled');
 //     this.sendBtn.classList.remove('is-visible');
 //     this.sendBtn.disabled = false;
 //   }
@@ -34,7 +34,7 @@ export {};
 //       let peerIds = this.selector.getSelected().map((s) => s.toPeerId());
 
 //       if(this.mids.length && peerIds.length) {
-//         this.sendBtn.classList.remove('tgico-send');
+//         this.sendBtn.classList.remove('tgico-send_filled');
 //         this.sendBtn.disabled = true;
 //         putPreloader(this.sendBtn);
 //         this.selector.freezed = true;

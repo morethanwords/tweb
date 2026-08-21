@@ -64,7 +64,7 @@ export const CPrepaidGiveaway = (props: {
   if(stars) {
     avatar.set({icon: 'star', color: 'stars'});
   } else {
-    avatar.set({icon: 'gift_premium', color: getColorByMonths(months)});
+    avatar.set({icon: 'gift_premium_filled', color: getColorByMonths(months)});
   }
   media.append(avatar.node);
 
@@ -86,7 +86,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     const limitLine = new LimitLine({
       progress: true,
       hint: {
-        icon: 'boost',
+        icon: 'boost_filled',
         noStartEnd: true
       }
     });
@@ -116,7 +116,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
       url
     });
 
-    const boostsViaGiftsButton = Button('btn-primary btn-transparent primary', {icon: 'gift_premium', text: 'BoostingGetBoostsViaGifts'});
+    const boostsViaGiftsButton = Button('btn-primary btn-transparent primary', {icon: 'gift_premium_filled', text: 'BoostingGetBoostsViaGifts'});
     attachClickEvent(boostsViaGiftsButton, () => {
       PopupElement.createPopup(PopupBoostsViaGifts, this.peerId);
     }, {listenerSetter: this.listenerSetter});
@@ -315,7 +315,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     if(boosts > 1) {
       badge = document.createElement('span');
       badge.classList.add('boosts-user-boosts', 'boosts-user-badge');
-      badge.append(Icon('boost'), ` ${boosts}`);
+      badge.append(Icon('boost_filled'), ` ${boosts}`);
     }
 
     let title: HTMLElement;
@@ -346,7 +346,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
       rightContent = document.createElement('span');
       rightContent.classList.add('boosts-user-badge-right', 'boosts-user-badge');
       rightContent.append(
-        Icon(boost.pFlags.giveaway ? 'gift_premium' : 'gift'),
+        Icon(boost.pFlags.giveaway ? 'gift_premium_filled' : 'gift'),
         i18n(boost.pFlags.giveaway ? 'BoostingGiveaway' : 'BoostingGift')
       );
 

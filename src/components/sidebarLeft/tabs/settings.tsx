@@ -113,13 +113,13 @@ const Settings = () => {
 
   // ── Sub-tab rows (notifications/data/privacy/general/folders/stickers).
   const subTabConfigs: SubTabConfig[] = [
-    makeSubTabConfig('unmute', 'AccountSettings.Notifications', AppNotificationsTab, tab),
-    makeSubTabConfig('data', 'DataSettings', AppDataAndStorageTab, tab),
-    makeSubTabConfig('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),
-    makeSubTabConfig('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab, tab),
-    makeSubTabConfig('folder', 'AccountSettings.Filters', AppChatFoldersTab, tab),
-    makeSubTabConfig('stickers_face', 'StickersName', AppStickersAndEmojiTab, tab),
-    makeSubTabConfig('videocamera', 'AccountSettings.SpeakersAndCamera', AppSpeakersAndCameraTab, tab)
+    makeSubTabConfig('bell_filled', 'AccountSettings.Notifications', AppNotificationsTab, tab),
+    makeSubTabConfig('data_filled', 'DataSettings', AppDataAndStorageTab, tab),
+    makeSubTabConfig('key_filled', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),
+    makeSubTabConfig('general_filled', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab, tab),
+    makeSubTabConfig('limit_folders_filled', 'AccountSettings.Filters', AppChatFoldersTab, tab),
+    makeSubTabConfig('reactions_filled', 'StickersName', AppStickersAndEmojiTab, tab),
+    makeSubTabConfig('speaker_filled', 'AccountSettings.SpeakersAndCamera', AppSpeakersAndCameraTab, tab)
   ];
 
   const onSubTabClick = (item: SubTabConfig) => async() => {
@@ -260,19 +260,19 @@ const Settings = () => {
             )}
           </For>
           <Row clickable={onDevicesClick}>
-            <Row.Icon icon="activesessions" />
+            <Row.Icon icon="devices_filled" />
             <Row.Title titleRight={<span>{authCount()}</span>} titleRightSecondary>
               {i18n('Devices')}
             </Row.Title>
           </Row>
           <Row clickable={() => tab.slider.createTab(AppLanguageTab).open()}>
-            <Row.Icon icon="language" />
+            <Row.Icon icon="web_filled" />
             <Row.Title titleRight={i18n('LanguageName')} titleRightSecondary>
               {i18n('AccountSettings.Language')}
             </Row.Title>
           </Row>
           <Row clickable={() => tab.slider.createTab(AppKeyboardShortcutsTab).open()}>
-            <Row.Icon icon="keyboard" />
+            <Row.Icon icon="keyboard_filled" />
             <Row.Title>{i18n('KeyboardShortcuts.Title')}</Row.Title>
           </Row>
         </div>
@@ -280,12 +280,12 @@ const Settings = () => {
       <Show when={!premiumBlocked()}>
         <Section>
           <Row clickable={() => PopupPremium.show()}>
-            <Row.Icon icon="star" class="row-icon-premium-color" />
+            <Row.Icon icon="premium_badge" />
             <Row.Title>{i18n('Premium.Boarding.Title')}</Row.Title>
           </Row>
           <Show when={!!stars()}>
             <Row clickable={() => PopupElement.createPopup(PopupStars)}>
-              <Row.Icon icon="star" class="row-icon-stars-color" />
+              <Row.Icon icon="star_circle_filled" />
               <Row.Title titleRight={'' + stars()} titleRightSecondary>
                 {i18n('MenuTelegramStars')}
               </Row.Title>
@@ -293,14 +293,14 @@ const Settings = () => {
           </Show>
           <Show when={hasTonTransactions() || String(starsTon()) !== '0'}>
             <Row clickable={() => PopupElement.createPopup(PopupStars, {ton: true})}>
-              <Row.Icon icon="ton" />
+              <Row.Icon icon="gram_filled" />
               <Row.Title titleRight={formatNanoton(starsTon())} titleRightSecondary>
                 {i18n('MenuTelegramStarsTon')}
               </Row.Title>
             </Row>
           </Show>
           <Row clickable={onSendGiftClick}>
-            <Row.Icon icon="gift" />
+            <Row.Icon icon="gift_filled" />
             <Row.Title>{i18n('Chat.Menu.SendGift')}</Row.Title>
           </Row>
         </Section>

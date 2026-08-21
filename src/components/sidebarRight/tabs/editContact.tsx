@@ -190,7 +190,7 @@ const EditContact: Component = () => {
         if(!fullUser?.birthday) {
           suggestBirthdayRow = new Row({
             title: i18n('SuggestBirthdayRow'),
-            icon: 'gift',
+            icon: 'gift_filled',
             clickable: () => {
               showBirthdayPopup({
                 suggestForPeer: peerId,
@@ -270,7 +270,7 @@ const EditContact: Component = () => {
           const user = await tab.managers.appUsersManager.getUser(userId);
 
           const phoneRow = new Row({
-            icon: 'phone',
+            icon: 'phone_filled',
             titleLangKey: user.phone ? undefined : 'MobileHidden',
             title: user.phone ? formatUserPhone(user.phone) : undefined,
             subtitleLangKey: user.phone ? 'Phone' : 'MobileHiddenExceptionInfo',

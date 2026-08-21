@@ -71,8 +71,8 @@ export default class VoiceRecordingPanel {
     this.dotEl.classList.add('voice-recording-dot');
 
     this.btnPlayToggle = Button('btn-icon voice-recording-play');
-    this.playPlayIcon = Icon('play', 'voice-recording-play-icon', 'voice-recording-play-icon--play');
-    this.playPauseIcon = Icon('pause', 'voice-recording-play-icon', 'voice-recording-play-icon--pause');
+    this.playPlayIcon = Icon('play_filled', 'voice-recording-play-icon', 'voice-recording-play-icon--play');
+    this.playPauseIcon = Icon('pause_filled', 'voice-recording-play-icon', 'voice-recording-play-icon--pause');
     this.btnPlayToggle.append(this.playPlayIcon, this.playPauseIcon);
 
     this.leadEl.append(this.dotEl, this.btnPlayToggle);
@@ -84,7 +84,7 @@ export default class VoiceRecordingPanel {
     this.timerEl.textContent = '0:00,0';
 
     this.btnPauseToggle = Button('btn-icon voice-recording-pause-toggle');
-    this.pauseIconRecord = Icon('pause', 'voice-recording-pause-icon', 'voice-recording-pause-icon--pause');
+    this.pauseIconRecord = Icon('pause_filled', 'voice-recording-pause-icon', 'voice-recording-pause-icon--pause');
     this.pauseIconMic = Icon('microphone', 'voice-recording-pause-icon', 'voice-recording-pause-icon--mic');
     this.btnPauseToggle.append(this.pauseIconRecord, this.pauseIconMic);
 

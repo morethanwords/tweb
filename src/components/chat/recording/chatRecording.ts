@@ -876,7 +876,7 @@ export default class ChatRecording {
         onClick: () => this.setRecordingMediaType('voice'),
         verify: () => this.canSwitchRecordingMode() && this.getActiveRecordingMediaType() !== 'voice'
       }, {
-        icon: 'recordround',
+        icon: 'recordround_filled',
         text: 'Chat.Input.Record.Video',
         onClick: () => this.setRecordingMediaType('video'),
         verify: () => this.canSwitchRecordingMode() && this.getActiveRecordingMediaType() !== 'video'

@@ -150,7 +150,7 @@ describe('CommunityPendingRequestRow', () => {
 
     const titleRight = container.querySelector('[data-testid="title-right"]');
     expect(titleRight.querySelector('[data-icon="group_filled"]')).not.toBeNull();
-    expect(titleRight.querySelector('[data-icon="eye2"]')).not.toBeNull();
+    expect(titleRight.querySelector('[data-icon="eye2_filled"]')).not.toBeNull();
   });
 
   it('keeps Add and Decline below the subtitle without opening the request', () => {

@@ -147,7 +147,7 @@ export function CommunityPendingRequestRow(props: {
               >
                 <IconTsx
                   class={styles.requestMetadataIcon}
-                  icon="eye2"
+                  icon="eye2_filled"
                   aria-hidden="true"
                 />
               </span>

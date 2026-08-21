@@ -187,7 +187,7 @@ export default async function wrapMediaSpoiler(
   if(sensitive) {
     const div = document.createElement('div');
     div.classList.add('sensitive-content-warning');
-    div.replaceChildren(Icon('eyecross_outline'), i18n('18Plus'));
+    div.replaceChildren(Icon('eyecross'), i18n('18Plus'));
     container.prepend(div);
     container.dataset.isSensitive = 'true';
     sensitiveSpoilers.add(container);

@@ -537,7 +537,7 @@ export class AppImManager extends EventListenerBase<{
 
     rootScope.addEventListener('file_speed_limited', ({increaseTimes, isUpload}) => {
       const {hide} = showChatToast({
-        icon: 'premium_speed',
+        icon: 'premium_speed_filled',
         title: i18n(isUpload ? 'UploadSpeedLimited' : 'DownloadSpeedLimited'),
         textElement: i18n(isUpload ? 'Chat.UploadLimit.Text' : 'Chat.DownloadLimit.Text', [
           anchorCallback(() => {
@@ -676,7 +676,7 @@ export class AppImManager extends EventListenerBase<{
               });
 
               const {hide} = showChatToast({
-                icon: 'saved',
+                icon: 'saved_filled',
                 textElement: i18n('ReminderScheduled', [
                   anchorCallback(() => {
                     hide();

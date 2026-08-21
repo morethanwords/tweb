@@ -44,7 +44,7 @@ import showPickCountryPopup from '@components/popups/pickCountry';
 export const BoostsBadge = (props: {boosts: number}) => {
   return (
     <span class="popup-boosts-badge">
-      <IconTsx icon="boost" class="popup-boosts-badge-icon" />
+      <IconTsx icon="boost_filled" class="popup-boosts-badge-icon" />
       {props.boosts}
     </span>
   );
@@ -58,7 +58,7 @@ export const BoostsConfirmButton = (props: {
 }) => {
   let s: HTMLSpanElement, ssss: HTMLSpanElement;
   const ss = (<span ref={s} class="popup-boosts-button-text">{i18n(props.langKey(), props.langArgs?.())}</span>);
-  const sss = (<span ref={ssss} class={classNames('popup-boosts-button-badge', !props.boosts() && 'hide')}><IconTsx icon="boost" class="popup-boosts-button-badge-icon" />{props.boosts()}</span>);
+  const sss = (<span ref={ssss} class={classNames('popup-boosts-button-badge', !props.boosts() && 'hide')}><IconTsx icon="boost_filled" class="popup-boosts-button-badge-icon" />{props.boosts()}</span>);
   props.button.classList.add('popup-boosts-button');
   props.button.append(s, ssss);
 };
@@ -242,7 +242,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
       const createMedia = createRow.createMedia('abitbigger');
       const createAvatar = AvatarNew({size: 42});
-      createAvatar.set({icon: 'gift_premium', color: 'premium'});
+      createAvatar.set({icon: 'gift_premium_filled', color: 'premium'});
       createMedia.append(createAvatar.node);
       createRowContainer = createRow.container;
 

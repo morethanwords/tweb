@@ -19,7 +19,7 @@ export default class GroupCallParticipantStatusElement {
   public setState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE, participant: GroupCallParticipant) {
     const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
     const icons = this.withIcons.filter((type) => !!participant[type]).map((type) => {
-      const iconClassName: Icon = `${type === 'presentation' ? 'listscreenshare' : 'videocamera_filled'}`;
+      const iconClassName: Icon = `${type === 'presentation' ? 'listscreenshare_filled' : 'videocamera_filled'}`;
       const i = Icon(iconClassName, className + '-icon', className + '-icon-' + type);
       return i;
     });

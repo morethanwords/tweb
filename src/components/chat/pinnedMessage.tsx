@@ -183,7 +183,7 @@ export default function createChatPinnedMessage(
       },
       verify: () => managers.appPeersManager.canPinMessage(chat.peerId)
     }, {
-      icon: 'eyecross_outline',
+      icon: 'eyecross',
       text: 'Popup.Unpin.HideTitle',
       onClick: () => {
         PopupElement.createPopup(PopupPinMessage, chat.peerId, 0, true);

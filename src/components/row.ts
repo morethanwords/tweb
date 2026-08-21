@@ -12,6 +12,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import Button from '@components/button';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import Icon from '@components/icon';
+import {setRowIconBackground} from '@helpers/rowIconBackground';
 
 type K = string | HTMLElement | DocumentFragment | true;
 
@@ -200,11 +201,11 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     if(options.icon) {
       havePadding = true;
       // this.title.classList.add('tgico', 'tgico-' + options.icon);
-      if(options.iconClasses?.length) {
-        this.container.append(Icon(options.icon, 'row-icon', ...options.iconClasses));
-      } else {
-        this.container.append(Icon(options.icon, 'row-icon'));
-      }
+      const iconContainer = document.createElement('span');
+      iconContainer.classList.add('row-icon', ...(options.iconClasses || []));
+      iconContainer.append(Icon(options.icon, 'row-icon-icon'));
+      setRowIconBackground(iconContainer, options.icon);
+      this.container.append(iconContainer);
       this.container.classList.add('row-with-icon');
     }
 

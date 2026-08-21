@@ -132,7 +132,7 @@ export default class RepliesElement extends HTMLElement {
     } else {
       this.classList.add('bubble-beside-button');
       this.innerHTML = `<span class="replies-beside-text">${replies?.replies ? formatNumber(replies.replies, 0) : ''}</span>`;
-      this.prepend(Icon('commentssticker'));
+      this.prepend(Icon('commentssticker_filled'));
     }
 
     if(replies && !this.updated && !this.message.pFlags.is_outgoing) {

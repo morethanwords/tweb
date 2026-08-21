@@ -40,7 +40,7 @@ const StickersAndEmoji: Component = () => {
       const section = new SettingSection({caption: 'LoopAnimatedStickersInfo'});
 
       const suggestStickersRow = new Row({
-        icon: 'lamp',
+        icon: 'lamp_filled',
         titleLangKey: 'Stickers.SuggestStickers',
         clickable: true,
         listenerSetter: tab.listenerSetter,
@@ -144,7 +144,7 @@ const StickersAndEmoji: Component = () => {
       const section = new SettingSection({name: 'Emoji'});
 
       const suggestEmojiRow = new Row({
-        icon: 'lamp',
+        icon: 'lamp_filled',
         titleLangKey: 'GeneralSettings.EmojiPrediction',
         checkboxField: new CheckboxField({
           name: 'suggest-emoji',

@@ -2110,7 +2110,7 @@ export default class AppSearchSuper {
     const createPaywall = (limit: number) => {
       const wall = document.createElement('div');
       wall.classList.add('similar-channels-paywall');
-      const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock', text: 'UnlockSimilar'});
+      const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock_filled', text: 'UnlockSimilar'});
       btn.classList.add('similar-channels-paywall-button');
       const onClick = () => PopupPremium.show();
       const anchor = anchorCallback(onClick);

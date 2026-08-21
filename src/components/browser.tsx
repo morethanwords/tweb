@@ -1184,7 +1184,7 @@ export function openInstantViewInAppBrowser({
         },
         verify: () => !!url
       }],
-      icon: <IconTsx icon="boostcircle" />,
+      icon: <IconTsx icon="boostcircle_filled" />,
       dispose,
       content: (
         <Show when={pageResource()}>
