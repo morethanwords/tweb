@@ -7584,7 +7584,19 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
+  // * shared media counters are cached in the worker for a long time, so any message that can land
+  // * in one of the filters (i.e. any non-service message) has to invalidate them
+  private clearSearchCountersCache(peerId: PeerId) {
+    this.apiManager.clearCache('messages.getSearchCounters', (params) => {
+      return this.appPeersManager.getPeerId(params.peer) === peerId;
+    });
+  }
+
   private handleNewMessage(message: MyMessage) {
+    if(message._ === 'message') {
+      this.clearSearchCountersCache(message.peerId);
+    }
+
     this.rootScope.dispatchEvent('history_multiappend', message);
   }
 
@@ -9734,9 +9746,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    this.apiManager.clearCache('messages.getSearchCounters', (params) => {
-      return this.appPeersManager.getPeerId(params.peer) === peerId;
-    });
+    this.clearSearchCountersCache(peerId);
 
     const
       threadKeys = new Set<string>(),

@@ -1,6 +1,6 @@
 import {Component, createRoot} from 'solid-js';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
-import AppSearchSuper, {SearchSuperMediaCounters, SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
+import AppSearchSuper, {isCounterDrivenMediaTab, SearchSuperMediaCounters, SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
 import {getSharedMediaFilters, getSharedMediaInputFilter, SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import TransitionSlider from '@components/transition';
 import {AppEditBotTab, AppEditChatTab, AppEditContactTab, AppEditTopicTab} from '@components/solidJsTabs/tabs';
@@ -232,6 +232,17 @@ const SharedMedia: Component = () => {
       const inputFilter = mediaTab.inputFilter;
       const history = historyStorage[inputFilter];
       if(!history) {
+        // * an empty tab stays hidden and never gets loaded, so count the message right here to reveal
+        // * the tab — its content will be loaded once it gets selected
+        if(
+          isCounterDrivenMediaTab(mediaTab) &&
+          tab.peerId === peerId &&
+          tab.threadId === threadId &&
+          tab.searchSuper.filterMessagesByType([message], inputFilter).length
+        ) {
+          tab.searchSuper.setCounter(mediaTab.type, (tab.searchSuper.counters[mediaTab.type] || 0) + 1);
+        }
+
         continue;
       }
 
@@ -334,6 +345,16 @@ const SharedMedia: Component = () => {
 
         // can have element in different tabs somehow
         // break;
+      }
+    }
+
+    // * a tab that has never been loaded (an empty one stays hidden, and a hidden one never loads) has
+    // * no history to look the deleted mids up in — refresh its counter from the server instead
+    if(tab.peerId === peerId && tab.threadId === threadId) {
+      for(const mediaTab of tab.searchSuper.mediaTabs) {
+        if(isCounterDrivenMediaTab(mediaTab) && !historyStorage[mediaTab.inputFilter]) {
+          notFound.add(mediaTab);
+        }
       }
     }
 
