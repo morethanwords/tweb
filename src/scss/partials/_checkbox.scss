@@ -1,30 +1,99 @@
 @use "../shared" as *;
 
-.checkbox-field {
-  --size: 1.25rem;
-  --offset-left: 0px;
-  margin: 1.5rem 1.1875rem;
-  display: block;
-  text-align: start;
-  position: relative;
-  cursor: pointer;
-  min-width: var(--size);
-  min-height: var(--size);
+.checkbox {
+  &-field {
+    --size: 1.25rem;
+    --offset-left: 0px;
+    margin: 1.5rem 1.1875rem;
+    display: block;
+    text-align: start;
+    position: relative;
+    cursor: pointer;
+    min-width: var(--size);
+    min-height: var(--size);
 
-  @include animation-level(2) {
-    transition: .2s opacity;
+    @include animation-level(2) {
+      transition: .2s opacity;
+    }
+
+    &.checkbox-disabled {
+      pointer-events: none !important;
+      opacity: var(--disabled-opacity);
+    }
+
+    @include respond-to(handhelds) {
+      margin-bottom: 27px;
+    }
+
+    &.hover-effect {
+      display: flex;
+      align-items: center;
+      height: 3.5rem;
+      padding: 0 1.1875rem;
+      margin-left: 0;
+      margin-right: 0;
+
+      .checkbox-box {
+        inset-inline-start: auto;
+      }
+    }
+
+    .anchor-url {
+      pointer-events: all;
+    }
+
+    &-round {
+      --size: 1.5rem;
+
+      .checkbox-box {
+        border-radius: 50%;
+        overflow: auto;
+
+        &-background {
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
+        }
+
+        &-border {
+          border: 2px solid var(--secondary-color);
+          z-index: 1;
+        }
+
+        &-check {
+          --offset: calc(var(--size) - (var(--size) / 2 + .125rem));
+        }
+
+        html.is-safari & {
+          -webkit-mask-image: none;
+        }
+      }
+
+      &.checkbox-color-white {
+        background: #fff;
+        border-radius: 50%;
+
+        &::before {
+          --inner-size: .125rem;
+          content: " ";
+          position: absolute;
+          width: calc(var(--size) - (var(--inner-size) * 2));
+          height: calc(var(--size) - (var(--inner-size) * 2));
+          left: var(--inner-size);
+          top: var(--inner-size);
+          border: 2px solid var(--secondary-color);
+          border-radius: inherit;
+        }
+
+        .checkbox-box-border {
+          border-color: #fff;
+        }
+      }
+    }
   }
 
-  &.checkbox-disabled {
-    pointer-events: none !important;
-    opacity: var(--disabled-opacity);
-  }
-
-  @include respond-to(handhelds) {
-    margin-bottom: 27px;
-  }
-
-  .checkbox-box {
+  &-box {
     position: absolute;
     inset-inline-start: var(--offset-left);
     top: 50%;
@@ -93,7 +162,7 @@
     }
   }
 
-  .checkbox-caption {
+  &-caption {
     position: relative;
     padding-inline-start: 3.375rem;
     transition: .2s opacity;
@@ -108,80 +177,13 @@
     }
   }
 
-  &.hover-effect {
-    display: flex;
-    align-items: center;
-    height: 3.5rem;
-    padding: 0 1.1875rem;
-    margin-left: 0;
-    margin-right: 0;
+  &-ripple {
+    overflow: hidden;
+    border-radius: $border-radius-medium;
 
-    .checkbox-box {
-      inset-inline-start: auto;
-    }
-  }
-
-  .anchor-url {
-    pointer-events: all;
-  }
-}
-
-.checkbox-ripple {
-  overflow: hidden;
-  border-radius: $border-radius-medium;
-
-  .checkbox-box,
-  .checkbox-caption {
-    pointer-events: none;
-  }
-}
-
-.checkbox-field-round {
-  --size: 1.5rem;
-
-  .checkbox-box {
-    border-radius: 50%;
-    overflow: auto;
-
-    &-background {
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-    }
-
-    &-border {
-      border: 2px solid var(--secondary-color);
-      z-index: 1;
-    }
-
-    &-check {
-      --offset: calc(var(--size) - (var(--size) / 2 + .125rem));
-    }
-
-    html.is-safari & {
-      -webkit-mask-image: none;
-    }
-  }
-
-  &.checkbox-color-white {
-    background: #fff;
-    border-radius: 50%;
-
-    &::before {
-      --inner-size: .125rem;
-      content: " ";
-      position: absolute;
-      width: calc(var(--size) - (var(--inner-size) * 2));
-      height: calc(var(--size) - (var(--inner-size) * 2));
-      left: var(--inner-size);
-      top: var(--inner-size);
-      border: 2px solid var(--secondary-color);
-      border-radius: inherit;
-    }
-
-    .checkbox-box-border {
-      border-color: #fff;
+    .checkbox-box,
+    .checkbox-caption {
+      pointer-events: none;
     }
   }
 }

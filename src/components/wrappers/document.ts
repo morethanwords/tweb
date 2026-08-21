@@ -23,7 +23,7 @@ import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
 import rootScope from '@lib/rootScope';
 import type {ThumbCache} from '@lib/storages/thumbs';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
-import AudioElement from '@components/audio';
+import createAudioElement, {AudioElement} from '@components/audio';
 import {emptyMediaListLoaderFactory} from '@components/emptyMediaListLoader';
 import confirmationPopup from '@components/confirmationPopup';
 import LazyLoadQueue from '@components/lazyLoadQueue';
@@ -64,6 +64,7 @@ export default async function wrapDocument({
   getSize,
   canTranscribeVoice,
   isOut,
+  clickable,
   uploadingFileName,
   shouldWrapAsVoice,
   customAudioToTextButton,
@@ -88,6 +89,9 @@ export default async function wrapDocument({
   getSize?: () => number,
   canTranscribeVoice?: boolean,
   isOut?: boolean,
+  /** Keep the duration out of the subtitle until the row plays. See `AudioElementOptions`. */
+  /** Give an audio row the hover of a clickable Row. See `AudioElementOptions`. */
+  clickable?: boolean,
   uploadingFileName?: string,
   customAudioToTextButton?: HTMLElement,
   shouldWrapAsVoice?: boolean,
@@ -114,41 +118,32 @@ export default async function wrapDocument({
   const doc = docOverride ?? (((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument);
   uploadingFileName ??= message?.uploadingFileName?.[0];
   if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
-    const audioElement = new AudioElement();
-    audioElement.withTime = withTime;
-    audioElement.message = message;
-    if(docOverride) audioElement.doc = docOverride;
-    if(slot !== undefined) {
-      audioElement.mediaSlot = slot;
-      // Slotted audio (e.g. poll description / explanation) should not
-      // participate in any chat-wide playlist. Use an empty list loader
-      // so next/previous navigation is a no-op.
-      audioElement.listLoaderFactory = emptyMediaListLoaderFactory;
-    }
-    audioElement.noAutoDownload = noAutoDownload;
-    audioElement.lazyLoadQueue = lazyLoadQueue;
-    audioElement.loadPromises = loadPromises;
-    audioElement.uploadingFileName = uploadingFileName;
-    audioElement.shouldWrapAsVoice = shouldWrapAsVoice;
-    audioElement.customAudioToTextButton = customAudioToTextButton;
-    audioElement.middleware = middleware;
-
-    audioElement.audio = globalMedia as any;
-    if(globalMedia) audioElement.dataset.toBeSkipped = '1';
-
-    if(canTranscribeVoice && doc.type === 'voice') audioElement.transcriptionState = 0;
-    (audioElement as any).getSize = getSize;
-
-    if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
-    if(searchContext) audioElement.searchContext = searchContext;
-    if(showSender) audioElement.showSender = showSender;
-
-    audioElement.dataset.fontWeight = '' + fontWeight;
-    audioElement.dataset.fontSize = '' + fontSize;
-    audioElement.dataset.sizeType = sizeType;
-    if(isOut) audioElement.classList.add('is-out');
-    await audioElement.render();
-    return audioElement;
+    return createAudioElement({
+      message,
+      middleware,
+      doc: docOverride,
+      // Slotted audio (e.g. poll description / explanation) should not participate in any chat-wide
+      // playlist. Use an empty list loader so next/previous navigation is a no-op.
+      ...(slot !== undefined ? {mediaSlot: slot, listLoaderFactory: emptyMediaListLoaderFactory} : {}),
+      withTime,
+      voiceAsMusic,
+      searchContext,
+      showSender,
+      noAutoDownload,
+      clickable,
+      lazyLoadQueue,
+      loadPromises,
+      uploadingFileName,
+      shouldWrapAsVoice,
+      customAudioToTextButton,
+      globalMedia,
+      isOut,
+      canTranscribe: canTranscribeVoice && doc.type === 'voice',
+      fontWeight,
+      fontSize,
+      sizeType,
+      getSize
+    });
   }
 
   const extSplitted = doc.file_name ? doc.file_name.split('.') : '';

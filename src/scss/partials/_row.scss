@@ -34,7 +34,7 @@ $row-border-radius: $border-radius-medium;
       opacity: var(--disabled-opacity);
     }
 
-    .checkbox-field-toggle {
+    .row-checkbox-field-toggle {
       --primary-color: var(--secondary-color);
     }
   }
@@ -105,7 +105,7 @@ $row-border-radius: $border-radius-medium;
       align-self: flex-start;
     }
 
-    .checkbox-field {
+    .row-checkbox-field {
       --offset-left: 0 !important;
       grid-area: left;
       width: 3.5rem;
@@ -351,30 +351,30 @@ $row-border-radius: $border-radius-medium;
     }
   }
 
-  .radio-field-main, 
-  .checkbox-field {
+  .row-radio-field .radio-field-main, 
+  .row-checkbox-field {
     padding-inline-start: 3.375rem;
     margin-inline-start: -3.375rem;
   }
 
-  .radio-field,
-  .radio-field:not(.radio-field-right) .radio-field-main,
-  .checkbox-field {
+  .row-radio-field,
+  .row-radio-field:not(.radio-field-right) .radio-field-main,
+  .row-checkbox-field {
     position: unset;
   }
   
-  .radio-field,
-  .checkbox-field,
+  .row-radio-field,
+  .row-checkbox-field,
   .offset-left {
     --offset-left: 1rem;
   }
 
-  .radio-field {
+  .row-radio-field {
     margin-top: 0;
     margin-bottom: 0;
   }
 
-  .checkbox-field {
+  .row-checkbox-field {
     margin-top: 0;
     margin-inline-end: 0;
     margin-bottom: 0;
@@ -387,14 +387,15 @@ $row-border-radius: $border-radius-medium;
       text-overflow: unset;
     }
 
-    &-absolute {
+    // variants of the checkbox itself rather than of the row's hold on it, so they combine
+    &.checkbox-field-absolute {
       position: absolute;
       margin: 0 !important;
       padding: 0 !important;
       left: 0;
     }
 
-    &-round {
+    &.checkbox-field-round {
       .checkbox-box-border {
         z-index: unset;
       }
@@ -459,7 +460,7 @@ $row-border-radius: $border-radius-medium;
   }
 
   &.accordion-toggler {
-    .checkbox-field-toggle {
+    .row-checkbox-field-toggle {
       pointer-events: all !important;
     }
   }

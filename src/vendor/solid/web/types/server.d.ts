@@ -160,7 +160,7 @@ export function setProperty(node: Element, name: string, value: any): void;
 /** @deprecated not supported on the server side */
 export function className(node: Element, value: string): void;
 /** @deprecated not supported on the server side */
-export function assign(node: Element, props: any, isSVG?: Boolean, skipChildren?: Boolean): void;
+export function assign(node: Element, props: any, isSVG?: Boolean, skipChildren?: Boolean, prevProps?: any, skipRef?: Boolean): void;
 
 /** @deprecated not supported on the server side */
 export function hydrate(

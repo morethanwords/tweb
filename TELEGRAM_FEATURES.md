@@ -588,7 +588,8 @@ Legend:
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Audio player (music) | ✅ | `audio.ts` |
-| Saved music | ✅ | `savedMusic.tsx` |
+| Saved music (profile playlist) | ✅ | `savedMusic.tsx`, `appSavedMusicManager.ts`; add/remove/reorder |
+| Music in stories | ❌ | `storyItem.music`, `stories.sendStory#music` unused |
 | Video player (inline & fullscreen) | ✅ | |
 | Media viewer (photos/videos) | ✅ | `appMediaViewer.ts` |
 | RTMP media viewer | ✅ | `appMediaViewerRtmp.ts` |

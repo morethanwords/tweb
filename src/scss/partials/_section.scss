@@ -83,18 +83,6 @@
       }
     }
 
-    .checkbox-field,
-    .radio-field {
-      margin: 0;
-    }
-
-    .checkbox-field {
-      display: flex;
-      align-items: center;
-      height: 3.5rem;
-      padding: 0 1.125rem;
-    }
-
     &-disabled {
       pointer-events: none !important;
       opacity: .25;

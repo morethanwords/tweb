@@ -188,8 +188,7 @@
   }
 }
 
-.document, 
-.audio {
+.document {
   --padding: 0px;
   --icon-size: 3.375rem;
   --icon-margin: .875rem;
@@ -244,21 +243,5 @@
     margin-top: calc(var(--icon-size) - var(--size) + var(--margin-top));
     top: auto;
     left: auto;
-  }
-}
-
-.audio {
-  &-ico {
-    display: flex;
-    justify-content: center;
-  }
-
-  .preloader-circular {
-    background-color: transparent !important;
-  }
-
-  .preloader-container:not(.preloader-streamable) {
-    width: 100%;
-    height: 100%;
   }
 }

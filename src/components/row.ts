@@ -13,6 +13,7 @@ import Button from '@components/button';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import Icon from '@components/icon';
 import {setRowIconBackground} from '@helpers/rowIconBackground';
+import {ROW_CHECKBOX_FIELD_CLASS, ROW_CHECKBOX_FIELD_TOGGLE_CLASS, ROW_RADIO_FIELD_CLASS} from '@components/rowFieldClasses';
 
 type K = string | HTMLElement | DocumentFragment | true;
 
@@ -130,15 +131,19 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     if(options.radioField || options.checkboxField) {
       if(options.radioField) {
         this.radioField = options.radioField;
+        this.radioField.label.classList.add(ROW_RADIO_FIELD_CLASS);
         this.container.append(this.radioField.label);
         havePadding = true;
       }
 
       if(options.checkboxField) {
         this.checkboxField = options.checkboxField;
+        // mark it as the row's own — see `rowFieldClasses`
+        this.checkboxField.label.classList.add(ROW_CHECKBOX_FIELD_CLASS);
 
         const isToggle = options.checkboxField.label.classList.contains('checkbox-field-toggle');
         if(isToggle) {
+          this.checkboxField.label.classList.add(ROW_CHECKBOX_FIELD_TOGGLE_CLASS);
           this.container.classList.add('row-with-toggle');
           options.titleRight = this.checkboxField.label;
         } else {

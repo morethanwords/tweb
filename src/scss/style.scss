@@ -45,7 +45,6 @@
 @use "partials/preloader";
 @use "partials/avatar";
 @use "partials/document";
-@use "partials/audio";
 @use "partials/quizHint";
 @use "partials/peerTyping";
 @use "partials/poll";
@@ -80,6 +79,7 @@
 @use "partials/starsBadge";
 @use "partials/starGift";
 @use "partials/simpleMessageInput";
+@use "partials/audio";
 
 @use "partials/popups/popup";
 @use "partials/popups/editAvatar";

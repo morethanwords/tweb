@@ -1223,6 +1223,7 @@ export default class AppSearchSuper {
       withTime: !showSender,
       fontWeight: 400,
       voiceAsMusic: true,
+      clickable: true,
       showSender,
       searchContext: this.copySearchContext(inputFilter, this.nextRates.files, false),
       lazyLoadQueue: this.lazyLoadQueue,

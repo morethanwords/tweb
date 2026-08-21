@@ -1,7 +1,6 @@
 import {createRenderEffect, createSignal, onCleanup, Ref, splitProps, ValidComponent} from 'solid-js';
 import {DynamicProps} from 'solid-js/web';
 import ripple from '@components/ripple';
-import classNames from '@helpers/string/classNames';
 import Passthrough from '@helpers/solid/passthrough';
 ripple; // keep
 
@@ -26,16 +25,19 @@ export default function RippleElement<T extends ValidComponent>(props: DynamicPr
 
   (props.ref as Ref<any>)?.(el);
 
+  // every class goes through `classList`, which toggles key by key. Handing `class` a joined string
+  // instead would make Solid assign `className`, wiping whatever the element picked up from outside
+  // — `audio-48` / `search-super-item` on a playlist row, say.
   return (
     <Passthrough
       element={el}
       {...rest as any}
-      class={classNames(
-        local.class,
-        !local.noRipple && 'rp',
-        !local.noRipple && local.rippleSquare && 'rp-square',
-        ...Object.entries(local.classList || {}).map(([key, value]) => value ? key : undefined)
-      )}
+      classList={{
+        [local.class]: !!local.class,
+        'rp': !local.noRipple,
+        'rp-square': !local.noRipple && !!local.rippleSquare,
+        ...(local.classList || {})
+      }}
     >
       {rippleElement()}
       {local.children}

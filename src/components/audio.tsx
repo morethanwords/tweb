@@ -23,32 +23,34 @@ import clamp from '@helpers/number/clamp';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import MediaProgressLine from '@components/mediaProgressLine';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
-import {AppManagers} from '@lib/managers';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapSenderToPeer from '@components/wrappers/senderToPeer';
 import wrapSentTime from '@components/wrappers/sentTime';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import appDownloadManager from '@lib/appDownloadManager';
 import wrapPhoto from '@components/wrappers/photo';
-import {doubleRaf} from '@helpers/schedulers';
 import safePlay from '@helpers/dom/safePlay';
-import {_tgico} from '@helpers/tgico';
-import Icon from '@components/icon';
+import Row from '@components/rowTsx';
+import createAudioTranscription from '@components/audioTranscription';
+import {createPlayPauseIcon} from '@components/audioAnimatedIcon';
+import {children, createRoot, JSX, Show} from 'solid-js';
+import {createStore, SetStoreFunction} from 'solid-js/store';
 import setCurrentTime from '@helpers/dom/setCurrentTime';
 import makeError from '@helpers/makeError';
-import {hideToast, toastNew} from '@components/toast';
-import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupPremium from '@components/popups/premium';
 import {Middleware} from '@helpers/middleware';
 
 
 const UNMOUNT_PRELOADER = true;
+const SUBTITLE_SEPARATOR = ' • ';
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {
     const attr = `[data-mid="${mid}"][data-peer-id="${peerId}"]`;
-    (Array.from(document.querySelectorAll(`audio-element.is-unread${attr}, .media-round.is-unread${attr}`)) as AudioElement[]).forEach((elem) => {
-      elem.classList.remove('is-unread');
+    (Array.from(document.querySelectorAll(`.audio.is-unread${attr}, .media-round.is-unread${attr}`)) as HTMLElement[]).forEach((elem) => {
+      // an audio row keeps `is-unread` in its store — stripping the class here would only last until
+      // the next reactive update put it back.
+      if(isAudioElement(elem)) elem.setUnread(false);
+      else elem.classList.remove('is-unread');
     });
   });
 });
@@ -146,14 +148,90 @@ function createWaveformBars(waveform: Uint8Array, duration: number) {
   return {svg, container, availW};
 }
 
-async function wrapVoiceMessage(audioEl: AudioElement) {
-  audioEl.classList.add('is-voice');
+/**
+ * Every class the row puts on itself. Solid owns `class` on the root once the row is rendered, so a
+ * `classList.add` there would be undone by the next reactive update — these flags are the way in.
+ */
+type AudioRowState = {
+  isVoice: boolean,
+  isOut: boolean,
+  canTranscribe: boolean,
+  isUnread: boolean,
+  isOutgoing: boolean,
+  withThumb: boolean,
+  cornerDownload: boolean,
+  downloading: boolean,
+  /** Music only: the row swaps its description for the progress line while it plays. */
+  showProgress: boolean,
+  progressLine: HTMLElement
+};
 
-  const message = audioEl.message;
-  const doc = audioEl.doc ?? (getMediaFromMessage(message) as MyDocument);
+/**
+ * What the two type-specific wrappers get to work with. `element` is filled in the moment the row is
+ * rendered — the wrappers only ever reach for it from callbacks, which all run later.
+ */
+type AudioRowContext = {
+  options: AudioElementOptions,
+  doc: MyDocument,
+  timeEl: HTMLElement,
+  state: AudioRowState,
+  setState: SetStoreFunction<AudioRowState>,
+  element: AudioElement,
+  listenerSetter: ListenerSetter,
+  readyPromise: CancellablePromise<void>,
+  addAudioListener: HTMLMediaElement['addEventListener'],
+  togglePlay: (e?: Event, paused?: boolean) => void
+};
 
+/** What a wrapper hands back: markup Row evaluates itself, plus the playback wiring. */
+type WrappedAudio = {
+  content: () => JSX.Element,
+  onLoad: () => () => void
+};
+
+function AudioRow(props: {
+  state: AudioRowState,
+  content: () => JSX.Element,
+  clickable: boolean,
+  ref: (toggle: HTMLElement) => void,
+  playIconRef: (container: HTMLElement) => void
+}) {
+  return (
+    <Row
+      noRipple
+      clickable={props.clickable}
+      classList={{
+        'audio': true,
+        'audio-details': true,
+        'is-voice': props.state.isVoice,
+        'is-out': props.state.isOut,
+        'can-transcribe': props.state.canTranscribe,
+        'is-unread': props.state.isUnread,
+        'is-outgoing': props.state.isOutgoing,
+        'audio-with-thumb': props.state.withThumb,
+        'corner-download': props.state.cornerDownload,
+        'downloading': props.state.downloading,
+        'audio-show-progress': props.state.showProgress
+      }}
+    >
+      {/* The play button IS the row's media: same 48x48 slot every other Row puts an avatar in. */}
+      <Row.Media size="big" class="audio-toggle" ref={props.ref}>
+        <div class="audio-play-icon" ref={props.playIconRef} />
+      </Row.Media>
+      {/* Row.Title / Row.Subtitle read RowContext, so their JSX has to be evaluated inside Row —
+        hence a factory rather than ready-made nodes. */}
+      {props.content()}
+    </Row>
+  );
+}
+
+async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
+  const {options, doc, setState} = ctx;
+  const message = options.message;
+
+  setState('isVoice', true);
   if(message.pFlags.out) {
-    audioEl.classList.add('is-out');
+    setState('isOut', true);
   }
 
   let waveform = (doc.attributes.find((attribute) => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio)?.waveform || new Uint8Array([]);
@@ -168,76 +246,35 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     svgContainer.classList.add('audio-waveform-background');
   }
 
-  const waveformContainer = document.createElement('div');
-  waveformContainer.classList.add('audio-waveform-container');
+  const waveformContainer = (
+    <div class="audio-waveform-container">
+      {svgContainer && [svgContainer, fakeSvgContainer]}
+    </div>
+  ) as HTMLElement;
 
-  if(svgContainer) {
-    waveformContainer.append(svgContainer, fakeSvgContainer);
+  let transcribeButton: () => JSX.Element;
+  if(options.customAudioToTextButton) {
+    // a round video expanded into voice form brings its own button — it transcribes itself
+    setState('canTranscribe', true);
+    const customButton = options.customAudioToTextButton;
+    transcribeButton = () => customButton;
+  } else if(options.canTranscribe) {
+    setState('canTranscribe', true);
+    transcribeButton = createAudioTranscription({
+      listenerSetter: ctx.listenerSetter,
+      getRow: () => ctx.element
+    }).button;
   }
 
-  const timeDiv = document.createElement('div');
-  timeDiv.classList.add('audio-time');
-  audioEl.append(waveformContainer, timeDiv);
-
-  if(audioEl.customAudioToTextButton) {
-    audioEl.classList.add('can-transcribe');
-    audioEl.append(audioEl.customAudioToTextButton);
-  } else if(audioEl.transcriptionState !== undefined) {
-    audioEl.classList.add('can-transcribe');
-    const speechRecognitionDiv = document.createElement('div');
-    speechRecognitionDiv.classList.add('audio-to-text-button');
-    const speechRecognitionIcon = Icon('transcribe');
-    const speechRecognitionLoader = document.createElement('div');
-    speechRecognitionLoader.classList.add('loader');
-    speechRecognitionLoader.innerHTML = '<svg class="audio-transcribe-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><rect class="audio-transcribe-outline-rect" fill="transparent" stroke-width="3" stroke-linejoin="round" rx="6" ry="6" stroke="var(--message-primary-color)" stroke-dashoffset="1" stroke-dasharray="32,68" width="32" height="24"></rect></svg>'
-    speechRecognitionDiv.append(speechRecognitionIcon);
-
-    speechRecognitionDiv.onclick = () => {
-      const speechTextDiv = (findUpClassName(audioEl, 'document-wrapper') || findUpClassName(audioEl, 'quote-text')).querySelector<HTMLElement>('.audio-transcribed-text');
-      if(audioEl.transcriptionState === 0) {
-        if(speechTextDiv) {
-          speechTextDiv.classList.remove('hide');
-          speechRecognitionIcon.classList.remove(_tgico('transcribe'));
-          speechRecognitionIcon.classList.add(_tgico('up'));
-          // TODO: State to enum
-          audioEl.transcriptionState = 2;
-        } else {
-          const message = audioEl.message;
-          if(message.pFlags.is_outgoing) {
-            return;
-          }
-          if(!rootScope.getPremium()) {
-            toastNew({
-              langPackKey: 'AudioAndVideoTranscription.PremiumAlert',
-              langPackArguments: [anchorCallback(() => {
-                hideToast();
-                PopupPremium.show({feature: 'voice_to_text'});
-              })]
-            });
-            return;
-          }
-
-          audioEl.transcriptionState = 1;
-          !speechRecognitionLoader.parentElement && speechRecognitionDiv.append(speechRecognitionLoader);
-          doubleRaf().then(() => {
-            if(audioEl.transcriptionState === 1) {
-              speechRecognitionLoader.classList.add('active');
-            }
-          });
-
-          audioEl.managers.appMessagesManager.transcribeAudio(message).catch(noop);
-        }
-      } else if(audioEl.transcriptionState === 2) {
-        // Hide transcription
-        speechTextDiv.classList.add('hide');
-        speechRecognitionIcon.classList.remove(_tgico('up'));
-        speechRecognitionIcon.classList.add(_tgico('transcribe'));
-        audioEl.transcriptionState = 0;
-      }
-    };
-
-    audioEl.append(speechRecognitionDiv);
-  }
+  // Same two lines as the music variant: the waveform reads as the row's title and the clock as its
+  // subtitle. The transcribe button hangs off the row itself — it sits outside both.
+  const content = () => (
+    <>
+      <Row.Title class="audio-title">{waveformContainer}</Row.Title>
+      <Row.Subtitle class="audio-subtitle">{ctx.timeEl}</Row.Subtitle>
+      {transcribeButton?.()}
+    </>
+  );
 
   let progress = svg as any as HTMLElement, progressLine: MediaProgressLine;
   if(!progress) {
@@ -247,14 +284,14 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
   }
 
   const onLoad = () => {
-    let audio = audioEl.audio;
+    let audio = ctx.element.audio;
 
     const setAnimation = () => {
       animateSingle(() => {
         if(!audio) return false;
         onTimeUpdate();
         return !audio.paused;
-      }, audioEl);
+      }, ctx.element);
     };
 
     const onTimeUpdate = () => {
@@ -268,15 +305,15 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     }
 
     const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
-    audioEl.addAudioListener('timeupdate', throttledTimeUpdate);
-    audioEl.addAudioListener('ended', throttledTimeUpdate);
-    audioEl.addAudioListener('play', setAnimation);
+    ctx.addAudioListener('timeupdate', throttledTimeUpdate);
+    ctx.addAudioListener('ended', throttledTimeUpdate);
+    ctx.addAudioListener('play', setAnimation);
 
-    progress && audioEl.readyPromise.then(() => {
+    progress && ctx.readyPromise.then(() => {
       let mousedown = false, mousemove = false;
       progress.addEventListener('mouseleave', (e) => {
         if(mousedown) {
-          audioEl.togglePlay(undefined, true);
+          ctx.togglePlay(undefined, true);
           mousedown = false;
         }
         mousemove = false;
@@ -289,7 +326,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
         e.preventDefault();
         if(e.button !== 0) return;
         if(!audio.paused) {
-          audioEl.togglePlay(undefined, false);
+          ctx.togglePlay(undefined, false);
         }
 
         scrub(e);
@@ -297,7 +334,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       });
       progress.addEventListener('mouseup', (e) => {
         if(mousemove && mousedown) {
-          audioEl.togglePlay(undefined, true);
+          ctx.togglePlay(undefined, true);
           mousedown = false;
         }
       });
@@ -336,14 +373,12 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     };
   };
 
-  return onLoad;
+  return {content, onLoad};
 }
 
-async function wrapAudio(audioEl: AudioElement) {
-  const withTime = audioEl.withTime;
-
-  const message = audioEl.message;
-  const doc = audioEl.doc ?? (getMediaFromMessage(message) as MyDocument);
+async function wrapAudio(ctx: AudioRowContext): Promise<WrappedAudio> {
+  const {options, doc, setState} = ctx;
+  const message = options.message;
 
   const isVoice = doc.type === 'voice' || doc.type === 'round';
   const descriptionEl = document.createElement('div');
@@ -351,96 +386,76 @@ async function wrapAudio(audioEl: AudioElement) {
 
   const audioAttribute = doc.attributes?.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
 
+  // the performer rides in the title next to the track name, so the description is what is left
+  const performer = !isVoice && audioAttribute?.performer;
+
+  // the duration sits in front of the description, so the description opens with a separator
   if(!isVoice) {
-    const parts: (Node | string)[] = [];
-    if(audioAttribute?.performer) {
-      parts.push(wrapEmojiText(audioAttribute.performer));
-    }
+    const parts: (Node | string)[] = [
+      options.withTime ? formatFullSentTime(message.date) : formatBytes(doc.size)
+    ];
 
-    if(withTime) {
-      parts.push(formatFullSentTime(message.date));
-    } else if(!parts.length) {
-      parts.push(formatBytes(doc.size));
-    }
-
-    if(audioEl.showSender) {
+    if(options.showSender) {
       parts.push(await wrapSenderToPeer(message));
     }
 
-    descriptionEl.append(' • ', ...joinElementsWith(parts, ' • '));
+    descriptionEl.append(SUBTITLE_SEPARATOR, ...joinElementsWith(parts, SUBTITLE_SEPARATOR));
   }
 
-  const html = `
-  <div class="audio-details">
-    <div class="audio-title"></div>
-    <div class="audio-subtitle"><div class="audio-time"></div></div>
-  </div>`;
-  audioEl.insertAdjacentHTML('beforeend', html);
-
-  const titleEl = audioEl.querySelector('.audio-title') as HTMLElement;
-
   const middleEllipsisEl = new MiddleEllipsisElement();
-  middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
-  middleEllipsisEl.dataset.fontSize = audioEl.dataset.fontSize;
-  middleEllipsisEl.dataset.sizeType = audioEl.dataset.sizeType;
-  (middleEllipsisEl as any).getSize = (audioEl as any).getSize;
+  middleEllipsisEl.dataset.fontWeight = '' + options.fontWeight;
+  middleEllipsisEl.dataset.fontSize = '' + options.fontSize;
+  middleEllipsisEl.dataset.sizeType = options.sizeType;
+  (middleEllipsisEl as any).getSize = options.getSize;
   if(isVoice) {
     middleEllipsisEl.append(await wrapSenderToPeer(message));
   } else {
     setInnerHTML(middleEllipsisEl, wrapEmojiText(audioAttribute?.title ?? doc.file_name));
   }
 
-  titleEl.append(middleEllipsisEl);
+  const sentTime = options.showSender && wrapSentTime(message);
 
-  if(audioEl.showSender) {
-    titleEl.append(wrapSentTime(message));
-  }
-
-  const subtitleDiv = audioEl.querySelector('.audio-subtitle') as HTMLDivElement;
-  subtitleDiv.append(descriptionEl);
+  const content = () => (
+    <>
+      <Row.Title class="audio-title" titleRight={sentTime} titleRightSecondary>
+        {/* one box for the name and the performer, so the title ellipsises as a whole */}
+        <span class="audio-title-text">
+          {performer && [<span class="audio-performer text-bold">{wrapEmojiText(performer)}</span>, ' — ']}
+          {middleEllipsisEl}
+        </span>
+      </Row.Title>
+      <Row.Subtitle class="audio-subtitle">
+        {ctx.timeEl}
+        {ctx.state.showProgress ? ctx.state.progressLine : descriptionEl}
+      </Row.Subtitle>
+    </>
+  );
 
   const onLoad = () => {
-    let launched = false;
-
-    let progressLine = new MediaProgressLine();
+    const progressLine = new MediaProgressLine();
     progressLine.setMedia({
-      media: audioEl.audio,
+      media: ctx.element.audio,
       streamable: doc.supportsStreaming,
       duration: doc.duration
     });
 
-    audioEl.addAudioListener('ended', () => {
-      audioEl.classList.remove('audio-show-progress');
-      // Reset subtitle
-      subtitleDiv.lastChild.replaceWith(descriptionEl);
-      launched = false;
-    });
+    setState('progressLine', progressLine.container);
 
-    const onPlay = () => {
-      if(!launched) {
-        audioEl.classList.add('audio-show-progress');
-        launched = true;
+    ctx.addAudioListener('ended', () => setState('showProgress', false));
+    ctx.addAudioListener('play', () => setState('showProgress', true));
 
-        if(progressLine) {
-          subtitleDiv.lastChild.replaceWith(progressLine.container);
-        }
-      }
-    };
-
-    audioEl.addAudioListener('play', onPlay);
-
-    if(!audioEl.audio.paused || audioEl.audio.currentTime > 0) {
-      onPlay();
+    const audio = ctx.element.audio;
+    if(!audio.paused || audio.currentTime > 0) {
+      setState('showProgress', true);
     }
 
     return () => {
       progressLine.removeListeners();
-      progressLine.container.remove();
-      progressLine = null;
+      setState({showProgress: false, progressLine: undefined});
     };
   };
 
-  return onLoad;
+  return {content, onLoad};
 }
 
 function constructDownloadPreloader(tryAgainOnFail = true) {
@@ -497,380 +512,463 @@ export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useS
   return [prev, next];
 };
 
-export default class AudioElement extends HTMLElement {
-  public audio: HTMLMediaElement;
-  public preloader: ProgressivePreloader;
-  public message: Message.message;
+export type AudioElementOptions = {
+  message: Message.message,
+  middleware: Middleware,
   /**
-   * Optional pre-extracted document. When set, it overrides extraction
-   * from `message.media`. Useful when the audio document lives in a
-   * sibling field of the message (e.g. poll `solution_media`).
+   * Optional pre-extracted document. When set, it overrides extraction from `message.media`.
+   * Useful when the audio document lives in a sibling field of the message (e.g. poll
+   * `solution_media`).
    */
-  public doc?: MyDocument;
+  doc?: MyDocument,
   /**
-   * Optional storage-key disambiguator. See `AddMediaArgs.slot`.
-   * Required when two AudioElements share the same `(peerId, mid)` but
-   * render different documents (e.g. poll description + explanation).
-   *
-   * NOTE: cannot be named `slot` because `HTMLElement.slot` already exists
-   * and is typed as `string`.
+   * Optional storage-key disambiguator. See `AddMediaArgs.slot`. Required when two rows share the
+   * same `(peerId, mid)` but render different documents (e.g. poll description + explanation).
    */
-  public mediaSlot?: number;
-  public withTime = false;
-  public voiceAsMusic = false;
-  public searchContext: MediaSearchContext;
-  public showSender = false;
-  public noAutoDownload: boolean;
-  public lazyLoadQueue: LazyLoadQueue;
-  public loadPromises: Promise<any>[];
-  public managers: AppManagers;
-  public transcriptionState: number;
-  public uploadingFileName: string;
-  public shouldWrapAsVoice?: boolean;
-  public customAudioToTextButton?: HTMLElement;
-  public listLoaderFactory?: MediaListLoaderFactory;
-  public middleware: Middleware;
+  mediaSlot?: number,
+  withTime?: boolean,
+  voiceAsMusic?: boolean,
+  searchContext?: MediaSearchContext,
+  showSender?: boolean,
+  noAutoDownload?: boolean,
+  /**
+   * Keeps the duration out of the subtitle until the row plays. The profile playlist reads as
+   * `Artist — Title` over the file size alone, with the clock only while it runs.
+   */
+  /**
+   * Gives the row the hover a Row normally gets from being clickable. Off inside a bubble, where the
+   * row is a piece of the message rather than something to point at.
+   */
+  clickable?: boolean,
+  lazyLoadQueue?: LazyLoadQueue,
+  loadPromises?: Promise<any>[],
+  /** Whether the row offers to transcribe itself. Voice messages only. */
+  canTranscribe?: boolean,
+  uploadingFileName?: string,
+  shouldWrapAsVoice?: boolean,
+  customAudioToTextButton?: HTMLElement,
+  listLoaderFactory?: MediaListLoaderFactory,
+  /** An already-playing media element to bind to instead of adding a new one. */
+  globalMedia?: HTMLMediaElement,
+  isOut?: boolean,
+  fontWeight?: number,
+  fontSize?: number,
+  sizeType?: string,
+  getSize?: () => number
+};
 
-  private listenerSetter = new ListenerSetter();
-  private onTypeDisconnect: () => void;
-  public onLoad: (autoload?: boolean) => void;
-  public readyPromise: CancellablePromise<void>;
-  public load: (shouldPlay: boolean, controlledAutoplay?: boolean) => void;
+/**
+ * An audio/voice row. It is a plain `div.audio` carrying its own API rather than a custom element:
+ * the DOM node IS the handle, which is what every caller (bubbles, selection, round videos) already
+ * relies on.
+ */
+export interface AudioElement extends HTMLDivElement {
+  message: Message.message;
+  audio: HTMLMediaElement;
+  listLoaderFactory: MediaListLoaderFactory;
 
-  public async render() {
-    this.classList.add('audio');
-    this.managers = rootScope.managers;
+  /** Swaps the temporary outgoing message for the sent one and starts the playback wiring. */
+  replaceMessage(message: Message.message): void;
+  setUnread(unread: boolean): void;
+  togglePlay(e?: Event, paused?: boolean): void;
+  playWithTimestamp(timestamp: number): void;
+}
 
-    this.dataset.mid = '' + this.message.mid;
-    this.dataset.peerId = '' + this.message.peerId;
+/**
+ * A row that holds back its playback wiring until its outgoing message is actually sent — the audio
+ * row and the round-video bubble (`wrappers/video.ts`) both play by this contract.
+ */
+export interface DeferredMediaElement extends HTMLElement {
+  onLoad: (autoload?: boolean) => void;
+}
 
-    const doc = this.doc ?? (getMediaFromMessage(this.message) as MyDocument);
-    const isRealVoice = doc.type === 'voice';
-    const isVoice = !this.voiceAsMusic && isRealVoice;
-    const isOutgoing = this.message.pFlags.is_outgoing;
-    const uploadingFileName = this.uploadingFileName ?? this.message?.uploadingFileName?.[0];
+export function isAudioElement(element: unknown): element is AudioElement {
+  return element instanceof HTMLElement && element.classList.contains('audio');
+}
 
-    const getDurationStr = () => {
-      const duration = this.audio && this.audio.readyState >= this.audio.HAVE_CURRENT_DATA ? this.audio.duration : doc.duration;
-      return toHHMMSS(duration | 0);
-    };
+export default async function createAudioElement(options: AudioElementOptions): Promise<AudioElement> {
+  const {middleware} = options;
+  const doc = options.doc ?? (getMediaFromMessage(options.message) as MyDocument);
+  const isRealVoice = doc.type === 'voice';
+  const isVoice = !options.voiceAsMusic && isRealVoice;
+  const isOutgoing = options.message.pFlags.is_outgoing;
+  const uploadingFileName = options.uploadingFileName ?? options.message?.uploadingFileName?.[0];
 
-    this.innerHTML = `
-    <div class="audio-toggle audio-ico">
-      <div class="audio-play-icon">
-        <div class="part one" x="0" y="0" fill="#fff"></div>
-        <div class="part two" x="0" y="0" fill="#fff"></div>
-      </div>
-    </div>`;
+  let listenerSetter = new ListenerSetter();
+  let onTypeDisconnect: () => void;
+  let dispose: () => void;
+  let load: (shouldPlay: boolean, controlledAutoplay?: boolean) => void;
+  let onLoad: (autoload?: boolean) => void;
 
-    const toggle = this.firstElementChild as HTMLElement;
+  const [state, setState] = createStore<AudioRowState>({
+    isVoice: false,
+    isOut: !!options.isOut,
+    canTranscribe: false,
+    isUnread: !!(doc.type !== 'audio' && options.message && options.message.pFlags.media_unread),
+    isOutgoing: !!uploadingFileName,
+    withThumb: false,
+    cornerDownload: false,
+    downloading: false,
+    showProgress: false,
+    progressLine: undefined
+  });
 
-    const downloadDiv = document.createElement('div');
-    downloadDiv.classList.add('audio-download');
+  const getDurationStr = () => {
+    const audio = ctx.element?.audio;
+    const duration = audio && audio.readyState >= audio.HAVE_CURRENT_DATA ? audio.duration : doc.duration;
+    return toHHMMSS(duration | 0);
+  };
 
-    const isUnread = doc.type !== 'audio' && this.message && this.message.pFlags.media_unread;
-    if(isUnread) {
-      this.classList.add('is-unread');
+  let toggle: HTMLElement;
+  let playIconContainer: HTMLElement;
+
+  const downloadDiv = (<div class="audio-download" />) as HTMLElement;
+  // The clock writes into a text node of its own so the unread dot beside it survives every update.
+  const timeText = document.createTextNode('');
+  const timeEl = (
+    <div class="audio-time">
+      {timeText}
+      <Show when={state.isVoice && state.isUnread}>
+        <span class="audio-unread-dot" />
+      </Show>
+    </div>
+  ) as HTMLElement;
+
+  const ctx: AudioRowContext = {
+    options,
+    doc,
+    timeEl,
+    state,
+    setState,
+    element: undefined,
+    listenerSetter,
+    readyPromise: undefined,
+    addAudioListener: ((...args: any[]) => (listenerSetter.add(ctx.element.audio) as any)(...args)) as any,
+    togglePlay: (e, paused) => ctx.element.togglePlay(e, paused)
+  };
+
+  const {content, onLoad: onTypeLoad} = await (isVoice || options.shouldWrapAsVoice ? wrapVoiceMessage(ctx) : wrapAudio(ctx));
+
+  const el = createRoot((d) => {
+    dispose = d;
+    return children(() => (
+      <AudioRow
+        state={state}
+        content={content}
+        clickable={!!options.clickable}
+        ref={(el) => toggle = el}
+        playIconRef={(el) => playIconContainer = el}
+      />
+    ))() as any as AudioElement;
+  });
+
+  ctx.element = el;
+  const setPlayIcon = createPlayPauseIcon(() => playIconContainer);
+
+  /**
+   * The glyph is a function of the media, not of the click: it morphs on every transition of
+   * `paused`, whoever caused it — this button, the topbar plate, another row playing the same
+   * track, the playlist advancing, the OS media keys. Reading the media rather than trusting which
+   * event fired also survives a `play`/`pause` pair that arrives late or out of order when the
+   * button is hit twice quickly. `animate: false` is for the two moments that are a mount rather
+   * than a transition — building the row, and resolving its media — where there is no one to
+   * perform the morph for.
+   */
+  const syncPlayState = (animate?: boolean) => {
+    const playing = !!el.audio && !el.audio.paused;
+    toggle.classList.toggle('playing', playing);
+    setPlayIcon(playing, animate);
+  };
+
+  el.message = options.message;
+  el.audio = options.globalMedia;
+  el.listLoaderFactory = options.listLoaderFactory;
+  el.dataset.mid = '' + options.message.mid;
+  el.dataset.peerId = '' + options.message.peerId;
+  if(options.globalMedia) el.dataset.toBeSkipped = '1';
+
+  timeText.textContent = getDurationStr();
+  syncPlayState(false);
+
+  const destroy = () => {
+    if(onTypeDisconnect) {
+      onTypeDisconnect();
+      onTypeDisconnect = null;
     }
 
-    if(uploadingFileName) {
-      this.classList.add('is-outgoing');
-      this.append(downloadDiv);
+    if(ctx.readyPromise) {
+      ctx.readyPromise.reject();
     }
 
-    const onTypeLoad = await (isVoice || this.shouldWrapAsVoice ? wrapVoiceMessage(this) : wrapAudio(this));
-
-    const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
-    audioTimeDiv.textContent = getDurationStr();
-
-    this.middleware.onDestroy(() => this.destroy());
-
-    const onLoad = this.onLoad = (autoload: boolean) => {
-      this.onLoad = undefined;
-
-      const audio = this.audio ??= appMediaPlaybackController.addMedia({
-        message: this.message,
-        autoload,
-        doc: this.doc,
-        slot: this.mediaSlot,
-        middleware: this.middleware
-      }) as HTMLMediaElement;
-
-      const readyPromise = this.readyPromise = deferredPromise<void>();
-      if(this.audio.readyState >= this.audio.HAVE_CURRENT_DATA) readyPromise.resolve();
-      else {
-        this.addAudioListener('canplay', () => readyPromise.resolve(), {once: true});
-      }
-
-      this.onTypeDisconnect = onTypeLoad();
-
-      const getTimeStr = () => toHHMMSS(audio.currentTime | 0) + (isVoice ? (' / ' + getDurationStr()) : '');
-
-      const onPlay = () => {
-        audioTimeDiv.innerText = getTimeStr();
-        toggle.classList.toggle('playing', !audio.paused);
-      };
-
-      if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
-        onPlay();
-      }
-
-      const onToggleClick = (e: MouseEvent) => {
-        this.togglePlay(e);
-      };
-
-      toggle.addEventListener('click', onToggleClick);
-      // attachClickEvent(toggle, onToggleClick, {listenerSetter: this.listenerSetter});
-
-      this.addAudioListener('ended', () => {
-        toggle.classList.remove('playing');
-        audioTimeDiv.innerText = getDurationStr();
-      });
-
-      this.addAudioListener('timeupdate', () => {
-        if((!audio.currentTime && audio.paused) || appMediaPlaybackController.isSafariBuffering(audio)) return;
-        audioTimeDiv.innerText = getTimeStr();
-      });
-
-      this.addAudioListener('pause', () => {
-        toggle.classList.remove('playing');
-      });
-
-      this.addAudioListener('play', onPlay);
-    };
-
-    if(doc.thumbs?.length) {
-      const imgs: HTMLElement[] = [];
-      const wrapped = await wrapPhoto({
-        photo: doc,
-        message: null,
-        container: toggle,
-        boxWidth: 48,
-        boxHeight: 48,
-        loadPromises: this.loadPromises,
-        withoutPreloader: true,
-        lazyLoadQueue: this.lazyLoadQueue,
-        middleware: this.middleware
-      });
-      toggle.style.width = toggle.style.height = '';
-      if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
-      if(wrapped.images.full) imgs.push(wrapped.images.full);
-
-      this.classList.add('audio-with-thumb');
-      imgs.forEach((img) => img.classList.add('audio-thumb'));
+    if(listenerSetter) {
+      listenerSetter.removeAll();
+      listenerSetter = null;
     }
 
-    if(!isOutgoing) {
-      let preloader: ProgressivePreloader = this.preloader;
-
-      const autoDownload = doc.type !== 'audio'/*  || !this.noAutoDownload */;
-      onLoad(autoDownload);
-
-      const r = this.load = (shouldPlay: boolean, controlledAutoplay?: boolean) => {
-        this.load = undefined;
-
-        if(this.audio.src) {
-          return;
-        }
-
-        appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid, this.message.pFlags.is_scheduled, this.mediaSlot);
-
-        this.onDownloadInit(shouldPlay);
-
-        if(!preloader) {
-          if(doc.supportsStreaming) {
-            this.classList.add('corner-download');
-
-            let pauseListener: Listener;
-            const onPlay = () => {
-              const preloader = constructDownloadPreloader(false);
-              const deferred = deferredPromise<void>();
-              deferred.notifyAll({done: 75, total: 100});
-              deferred.catch(() => {
-                this.audio.pause();
-                appMediaPlaybackController.willBePlayed(undefined);
-              });
-              deferred.cancel = () => {
-                deferred.cancel = noop;
-                deferred.reject(makeError('CANCELED'));
-              };
-              preloader.attach(downloadDiv, false, deferred);
-
-              pauseListener = this.addAudioListener('pause', () => {
-                deferred.cancel();
-              }, {once: true}) as any;
-
-              this.onDownloadInit(shouldPlay);
-            };
-
-            /* if(!this.audio.paused) {
-              onPlay();
-            } */
-
-            const playListener: any = this.addAudioListener('play', onPlay);
-            this.readyPromise.then(() => {
-              this.listenerSetter.remove(playListener);
-              pauseListener && this.listenerSetter.remove(pauseListener);
-            });
-          } else {
-            preloader = constructDownloadPreloader();
-
-            if(!shouldPlay) {
-              this.readyPromise = deferredPromise();
-            }
-
-            const load = () => {
-              this.onDownloadInit(shouldPlay);
-
-              const download = appDownloadManager.downloadMediaURL({media: doc});
-
-              if(!shouldPlay) {
-                download.then(() => {
-                  this.readyPromise.resolve();
-                });
-              }
-
-              preloader.attach(downloadDiv, false, download);
-              return {download};
-            };
-
-            preloader.setDownloadFunction(load);
-            load();
-          }
-        }
-
-        if(this.classList.contains('corner-download')) {
-          toggle.append(downloadDiv);
-        } else {
-          this.append(downloadDiv);
-        }
-
-        this.classList.add('downloading');
-
-        this.readyPromise.then(() => {
-          if(UNMOUNT_PRELOADER) {
-            this.classList.remove('downloading');
-            downloadDiv.classList.add('downloaded');
-            setTimeout(() => {
-              downloadDiv.remove();
-            }, 200);
-          }
-
-          // setTimeout(() => {
-          // release loaded audio
-          if(!controlledAutoplay && appMediaPlaybackController.willBePlayedMedia === this.audio) {
-            safePlay(this.audio);
-            appMediaPlaybackController.willBePlayed(undefined);
-          }
-          // }, 10e3);
-        });
-      };
-
-      if(!this.audio?.src) {
-        if(autoDownload) {
-          r(false);
-        } else {
-          attachClickEvent(toggle, () => {
-            r(true);
-          }, {once: true, listenerSetter: this.listenerSetter});
-        }
-      }
-    } else if(uploadingFileName) {
-      this.classList.add('downloading');
-      this.preloader = constructDownloadPreloader(false);
-      const promise = appDownloadManager.getUpload(uploadingFileName);
-      this.preloader.attachPromise(promise);
-      this.dataset.isOutgoing = '1';
-      this.preloader.attach(downloadDiv, false);
-      promise.then(() => {
-        this.classList.remove('downloading');
-        downloadDiv.classList.add('downloaded');
-        setTimeout(() => {
-          downloadDiv.remove();
-        }, 200);
-      });
-      // onLoad();
+    if(dispose) {
+      dispose();
+      dispose = null;
     }
-  }
+  };
 
-  private onDownloadInit(shouldPlay: boolean) {
+  middleware.onDestroy(destroy);
+
+  const onDownloadInit = (shouldPlay: boolean) => {
     if(shouldPlay) {
-      appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
+      appMediaPlaybackController.willBePlayed(el.audio); // prepare for loading audio
 
-      if(IS_SAFARI && !this.audio.autoplay) {
-        this.audio.autoplay = true;
+      if(IS_SAFARI && !el.audio.autoplay) {
+        el.audio.autoplay = true;
       }
     }
-  }
+  };
 
-  public togglePlay(e?: Event, paused = this.audio.paused) {
+  onLoad = (autoload: boolean) => {
+    onLoad = undefined;
+
+    const audio = el.audio ??= appMediaPlaybackController.addMedia({
+      message: el.message,
+      autoload,
+      doc: options.doc,
+      slot: options.mediaSlot,
+      middleware
+    }) as HTMLMediaElement;
+
+    const readyPromise = ctx.readyPromise = deferredPromise<void>();
+    if(audio.readyState >= audio.HAVE_CURRENT_DATA) readyPromise.resolve();
+    else {
+      ctx.addAudioListener('canplay', () => readyPromise.resolve(), {once: true});
+    }
+
+    onTypeDisconnect = onTypeLoad();
+
+    const getTimeStr = () => toHHMMSS(audio.currentTime | 0) + (isVoice ? (' / ' + getDurationStr()) : '');
+
+    // the row can be built while its track is already playing — scrolled back into view, or a list
+    // opened mid-playback — so take that state instead of morphing into it
+    syncPlayState(false);
+
+    if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
+      timeText.textContent = getTimeStr();
+    }
+
+    toggle.addEventListener('click', (e: MouseEvent) => {
+      el.togglePlay(e);
+    });
+
+    ctx.addAudioListener('ended', () => {
+      syncPlayState();
+      timeText.textContent = getDurationStr();
+    });
+
+    ctx.addAudioListener('timeupdate', () => {
+      if((!audio.currentTime && audio.paused) || appMediaPlaybackController.isSafariBuffering(audio)) return;
+      timeText.textContent = getTimeStr();
+    });
+
+    ctx.addAudioListener('pause', () => syncPlayState());
+
+    // `emptied` is the controller dropping the media out from under the row (track swapped, list
+    // cleaned): the row stopped playing without ever being paused
+    ctx.addAudioListener('emptied', () => syncPlayState());
+
+    ctx.addAudioListener('play', () => {
+      timeText.textContent = getTimeStr();
+      syncPlayState();
+    });
+  };
+
+  el.setUnread = (unread) => setState('isUnread', unread);
+
+  el.replaceMessage = (message) => {
+    el.message = message;
+    el.dataset.mid = '' + message.mid;
+    delete el.dataset.isOutgoing;
+    onLoad?.(true);
+  };
+
+  el.togglePlay = (e?: Event, paused = el.audio.paused) => {
     e && cancelEvent(e);
 
     if(paused) {
-      this.setTargetsIfNeeded();
-      safePlay(this.audio);
+      setTargetsIfNeeded();
+      safePlay(el.audio);
     } else {
-      this.audio.pause();
+      el.audio.pause();
     }
-  }
+  };
 
-  public setTargetsIfNeeded() {
-    const hadSearchContext = !!this.searchContext;
-    const searchContextChanged = appMediaPlaybackController.setSearchContext(this.searchContext || {
+  el.playWithTimestamp = (timestamp: number) => {
+    load?.(true);
+    setCurrentTime(el.audio, timestamp);
+    el.togglePlay(undefined, true);
+  };
+
+  const setTargetsIfNeeded = () => {
+    const hadSearchContext = !!options.searchContext;
+    const searchContextChanged = appMediaPlaybackController.setSearchContext(options.searchContext || {
       peerId: NULL_PEER_ID,
       inputFilter: {_: 'inputMessagesFilterEmpty'},
       useSearch: false
     });
-    const loaderFactoryChanged = this.listLoaderFactory && appMediaPlaybackController.getListLoaderFactory() !== this.listLoaderFactory;
+    const loaderFactoryChanged = el.listLoaderFactory && appMediaPlaybackController.getListLoaderFactory() !== el.listLoaderFactory;
     if(searchContextChanged || loaderFactoryChanged) {
-      const thisTarget = this.dataset.toBeSkipped ? this.audio.parentElement : this;
-      const [prev, next] = !hadSearchContext ? [] : findMediaTargets(thisTarget, this.message.mid/* , this.searchContext.useSearch */);
-      appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next, this.listLoaderFactory);
+      const thisTarget = el.dataset.toBeSkipped ? el.audio.parentElement : el;
+      const [prev, next] = !hadSearchContext ? [] : findMediaTargets(thisTarget, el.message.mid/* , options.searchContext.useSearch */);
+      appMediaPlaybackController.setTargets({peerId: el.message.peerId, mid: el.message.mid}, prev, next, el.listLoaderFactory);
     }
+  };
+
+  if(uploadingFileName) {
+    el.append(downloadDiv);
   }
 
-  public playWithTimestamp(timestamp: number) {
-    this.load?.(true);
-    setCurrentTime(this.audio, timestamp);
-    this.togglePlay(undefined, true);
-    // appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
-    // this.readyPromise.then(() => {
-    //   if(appMediaPlaybackController.willBePlayedMedia !== this.audio && this.audio.paused) {
-    //     return;
-    //   }
+  if(doc.thumbs?.length) {
+    const imgs: HTMLElement[] = [];
+    const wrapped = await wrapPhoto({
+      photo: doc,
+      message: null,
+      container: toggle,
+      boxWidth: 48,
+      boxHeight: 48,
+      loadPromises: options.loadPromises,
+      withoutPreloader: true,
+      lazyLoadQueue: options.lazyLoadQueue,
+      middleware
+    });
+    toggle.style.width = toggle.style.height = '';
+    if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
+    if(wrapped.images.full) imgs.push(wrapped.images.full);
 
-    //   appMediaPlaybackController.willBePlayed(undefined);
-
-    //   this.audio.currentTime = timestamp;
-    //   this.togglePlay(undefined, true);
-    // });
+    setState('withThumb', true);
+    imgs.forEach((img) => img.classList.add('audio-thumb'));
   }
 
-  get addAudioListener() {
-    return this.listenerSetter.add(this.audio);
+  if(!isOutgoing) {
+    let preloader: ProgressivePreloader;
+
+    const autoDownload = doc.type !== 'audio'/*  || !options.noAutoDownload */;
+    onLoad(autoDownload);
+
+    const r = load = (shouldPlay: boolean, controlledAutoplay?: boolean) => {
+      load = undefined;
+
+      if(el.audio.src) {
+        return;
+      }
+
+      appMediaPlaybackController.resolveWaitingForLoadMedia(el.message.peerId, el.message.mid, el.message.pFlags.is_scheduled, options.mediaSlot);
+
+      onDownloadInit(shouldPlay);
+
+      if(!preloader) {
+        if(doc.supportsStreaming) {
+          setState('cornerDownload', true);
+
+          let pauseListener: Listener;
+          const onPlay = () => {
+            const preloader = constructDownloadPreloader(false);
+            const deferred = deferredPromise<void>();
+            deferred.notifyAll({done: 75, total: 100});
+            deferred.catch(() => {
+              el.audio.pause();
+              appMediaPlaybackController.willBePlayed(undefined);
+            });
+            deferred.cancel = () => {
+              deferred.cancel = noop;
+              deferred.reject(makeError('CANCELED'));
+            };
+            preloader.attach(downloadDiv, false, deferred);
+
+            pauseListener = ctx.addAudioListener('pause', () => {
+              deferred.cancel();
+            }, {once: true}) as any;
+
+            onDownloadInit(shouldPlay);
+          };
+
+          const playListener: any = ctx.addAudioListener('play', onPlay);
+          ctx.readyPromise.then(() => {
+            listenerSetter.remove(playListener);
+            pauseListener && listenerSetter.remove(pauseListener);
+          });
+        } else {
+          preloader = constructDownloadPreloader();
+
+          if(!shouldPlay) {
+            ctx.readyPromise = deferredPromise();
+          }
+
+          const startDownload = () => {
+            onDownloadInit(shouldPlay);
+
+            const download = appDownloadManager.downloadMediaURL({media: doc});
+
+            if(!shouldPlay) {
+              download.then(() => {
+                ctx.readyPromise.resolve();
+              });
+            }
+
+            preloader.attach(downloadDiv, false, download);
+            return {download};
+          };
+
+          preloader.setDownloadFunction(startDownload);
+          startDownload();
+        }
+      }
+
+      // the streaming preloader rides on the toggle, the plain one sits at the end of the row
+      if(state.cornerDownload) {
+        toggle.append(downloadDiv);
+      } else {
+        el.append(downloadDiv);
+      }
+
+      setState('downloading', true);
+
+      ctx.readyPromise.then(() => {
+        if(UNMOUNT_PRELOADER) {
+          setState('downloading', false);
+          downloadDiv.classList.add('downloaded');
+          setTimeout(() => {
+            downloadDiv.remove();
+          }, 200);
+        }
+
+        // release loaded audio
+        if(!controlledAutoplay && appMediaPlaybackController.willBePlayedMedia === el.audio) {
+          safePlay(el.audio);
+          appMediaPlaybackController.willBePlayed(undefined);
+        }
+      });
+    };
+
+    if(!el.audio?.src) {
+      if(autoDownload) {
+        r(false);
+      } else {
+        attachClickEvent(toggle, () => {
+          r(true);
+        }, {once: true, listenerSetter});
+      }
+    }
+  } else if(uploadingFileName) {
+    setState('downloading', true);
+    const preloader = constructDownloadPreloader(false);
+    const promise = appDownloadManager.getUpload(uploadingFileName);
+    preloader.attachPromise(promise);
+    el.dataset.isOutgoing = '1';
+    preloader.attach(downloadDiv, false);
+    promise.then(() => {
+      setState('downloading', false);
+      downloadDiv.classList.add('downloaded');
+      setTimeout(() => {
+        downloadDiv.remove();
+      }, 200);
+    });
   }
 
-  private destroy() {
-    if(this.onTypeDisconnect) {
-      this.onTypeDisconnect();
-      this.onTypeDisconnect = null;
-    }
-
-    if(this.readyPromise) {
-      this.readyPromise.reject();
-    }
-
-    if(this.listenerSetter) {
-      this.listenerSetter.removeAll();
-      this.listenerSetter = null;
-    }
-
-    if(this.preloader) {
-      this.preloader = null;
-    }
-  }
-}
-
-if(!customElements.get('audio-element')) {
-  customElements.define('audio-element', AudioElement);
+  return el;
 }

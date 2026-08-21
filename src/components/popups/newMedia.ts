@@ -1746,6 +1746,7 @@ export default class PopupNewMedia extends PopupElement {
         }
       } as any,
       middleware: params.middlewareHelper.get(),
+      clickable: true,
       cacheContext
     });
 

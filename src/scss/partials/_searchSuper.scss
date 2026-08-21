@@ -131,19 +131,24 @@
     }
   }
 
-  .document-name, 
-  .audio-title, 
+  .document-name,
   .title {
     display: flex;
     justify-content: space-between;
   }
 
+  // A row that puts its time in Row's own right slot (audio, links) already gets the placement and
+  // the colour from there — only the size is left to say.
   .sent-time {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+  }
+
+  // the document name is a plain flex line, so its time still has to place itself
+  .document-name .sent-time {
     flex: 0 0 auto;
     margin-inline-start: 8px;
     margin-top: 3px;
-    font-size: 12px;
-    color: var(--secondary-text-color);
   }
 
   &-content-media {
@@ -315,16 +320,7 @@
   &-content-music,
   &-content-voice {
     .audio {
-      justify-content: unset;
-      margin-bottom: 1.5rem;
-
-      @include respond-to(not-handhelds) {
-        max-width: 377px;
-      }
-
-      &.audio-show-progress .audio-subtitle {
-        overflow: visible;
-      }
+      border-radius: $border-radius-medium;
     }
   }
 

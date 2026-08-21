@@ -160,6 +160,7 @@ export interface MTAppConfig {
   poll_countries_max?:                        number;
   phone_country_iso2?:                        string;
   no_forwards_request_expire_period?:         number;
+  music_search_username?:                     string;
   aicompose_tone_title_length_max?:           number;
   aicompose_tone_prompt_length_max?:          number;
   aicompose_tone_examples_num?:               number;

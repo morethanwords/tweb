@@ -133,7 +133,8 @@ export namespace ReferenceContext {
 
   export type referenceContextSavedMusic = {
     type: 'savedMusic',
-    userId: UserId
+    userId: UserId,
+    docId: DocId
   };
 }
 
@@ -296,7 +297,9 @@ export class ReferencesStorage extends AppManager {
         });
 
       case 'savedMusic':
-        return this.appProfileManager.getSavedMusic(context.userId, 0, 100);
+        // Ask for the exact document rather than re-reading page 0 — a track that sits deeper in
+        // the playlist would never be covered by the first page.
+        return this.appSavedMusicManager.getSavedMusicByIds(context.userId, [context.docId]);
 
       default: {
         this.log.warn('not implemented context', context);

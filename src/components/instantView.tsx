@@ -766,6 +766,7 @@ function Block(props: {
             class={classNames(styles.Padding, styles.Audio)}
             message={message}
             withTime={false}
+            clickable
             autoDownloadSize={10 * 1024 * 1024} // 10MB auto-download limit
           />
           <CaptionC caption={block.caption} />

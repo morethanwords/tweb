@@ -1404,6 +1404,15 @@
 "SharedLinksTab2" = "Links";
 "SharedMusicTab2" = "Music";
 "SavedMusicTab" = "Playlist";
+"SavedMusicTabMine" = "Your Playlist";
+"SavedMusic.AddToProfile" = "Add to Profile";
+"SavedMusic.RemoveFromProfile" = "Remove from Profile";
+"SavedMusic.Sort" = "Sort";
+"SavedMusic.Added" = "Audio added to your Profile.";
+"SavedMusic.Removed" = "Audio removed from your Profile.";
+"SavedMusic.RemoveConfirm" = "Do you want to remove this file from your profile?";
+"MusicSearch.Profile" = "Profile Music";
+"MusicSearch.Global" = "Global Search";
 "SharedVoiceTab2" = "Voice";
 "NewPoll" = "New Poll";
 "PollOptions" = "Poll options";

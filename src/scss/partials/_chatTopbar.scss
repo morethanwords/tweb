@@ -17,6 +17,24 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
 
 .pinned-call,
 .pinned-audio {
+  // the transport glyphs are svgs now, sized like the icon-font buttons they replaced
+  .pinned-audio-play-icon,
+  .audio-animated-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // The glyph is drawn with padding inside its own box, so at the shared icon size it reads smaller
+  // than the icon-font buttons beside it. Scaling the glyph rather than its slot leaves the plate's
+  // spacing exactly where it was — and it is the svg alone, or the play button's box would scale it
+  // a second time.
+  .audio-animated-icon {
+    scale: 1.25;
+  }
+
   @include animation-level(2) {
     transition: transform var(--transition-standard-out);
   }

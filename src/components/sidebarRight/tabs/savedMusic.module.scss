@@ -1,6 +1,4 @@
 .container {
-  background: var(--surface-color);
-
   :global(.sidebar-content) {
     display: flex;
     flex-direction: column;
@@ -13,11 +11,15 @@
 }
 
 .list {
-  padding-inline: 1rem;
-  padding-bottom: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+
+  // No `gap` here: a row's box height IS the distance between two rows, which is what the
+  // drag-to-reorder math measures and shifts siblings by. The rest of the drag — the row's lift and
+  // the transition its neighbours slide with — comes with `row-sortable` (`.row-sortable` in
+  // _row.scss), which the rows are given as they are built. It has to be that rule and not one here:
+  // `animation-level()` writes a `body.animation-level-2` prefix, and a module hashes that class
+  // into one that matches nothing, so the transition never applied.
 }
 
 .empty {

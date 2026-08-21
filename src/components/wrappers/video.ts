@@ -32,7 +32,7 @@ import rootScope from '@lib/rootScope';
 import {ThumbCache} from '@lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appMediaPlaybackController, {AppMediaPlaybackController, MediaSearchContext} from '@components/appMediaPlaybackController';
-import AudioElement, {findMediaTargets} from '@components/audio';
+import {DeferredMediaElement, findMediaTargets} from '@components/audio';
 import Button from '@components/button';
 import Icon from '@components/icon';
 import {createProgressRing, getProgressRingCircumference} from '@components/progressRing';
@@ -395,7 +395,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     if(message.pFlags.is_outgoing) {
       // ! WARNING ! just to type-check
-      (divRound as any as AudioElement).onLoad = onLoad;
+      (divRound as any as DeferredMediaElement).onLoad = onLoad;
       divRound.dataset.isOutgoing = '1';
     } else {
       onLoad();

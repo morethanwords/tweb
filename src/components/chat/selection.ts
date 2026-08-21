@@ -635,8 +635,8 @@ export class SearchSelection extends AppSelection {
   /* public appendCheckbox(element: HTMLElement, checkboxField: CheckboxField) {
     checkboxField.label.classList.add('bubble-select-checkbox');
 
-    if(element.classList.contains('document') || element.tagName === 'AUDIO-ELEMENT') {
-      element.querySelector('.document, audio-element').append(checkboxField.label);
+    if(element.classList.contains('document') || element.classList.contains('audio')) {
+      element.querySelector('.document, .audio').append(checkboxField.label);
     } else {
       super.appendCheckbox(bubble, checkboxField);
     }
@@ -863,7 +863,7 @@ export default class ChatSelection extends AppSelection {
     checkboxField.label.classList.add('bubble-select-checkbox');
 
     if(bubble.classList.contains('document-container')) {
-      bubble.querySelector('.document, audio-element').append(checkboxField.label);
+      bubble.querySelector('.document, .audio').append(checkboxField.label);
     } else {
       super.appendCheckbox(bubble, checkboxField);
     }

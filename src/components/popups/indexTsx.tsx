@@ -317,9 +317,11 @@ const PopupElement = (props: {
       }
     }));
   } else {
-    setTimeout(() => {
-      show();
-    }, 0);
+    // Same doubleRaf as the reactive branch above: the open transition only runs if the browser
+    // paints the popup in its hidden state BEFORE `active` lands. A `setTimeout(0)` doesn't
+    // guarantee that frame — a popup whose content renders fast enough gets `active` within the
+    // same frame as its insertion and simply pops into place.
+    doubleRaf().then(show);
   }
 
   let mouseDownTarget: Element;

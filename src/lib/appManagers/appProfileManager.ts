@@ -7,7 +7,7 @@
 
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import tsNow from '@helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab} from '@layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document} from '@layer';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -189,6 +189,11 @@ export class AppProfileManager extends AppManager {
       if(userFull.saved_music) {
         userFull.saved_music = this.appDocsManager.saveDoc(userFull.saved_music, referenceContext);
       }
+
+      this.appSavedMusicManager.applyTopSavedMusic(
+        peerId.toUserId(),
+        userFull.saved_music as Document.document
+      );
     } else {
       const fullChat = fullPeer as ChatFull;
       if(fullChat._ === 'communityFull') {
@@ -278,26 +283,6 @@ export class AppProfileManager extends AppManager {
     const intro = profile?.business_intro;
 
     return intro && (intro.title || intro.description || intro.sticker);
-  }
-
-  public async getSavedMusic(userId: UserId, offset: number = 0, limit: number = 50) {
-    const result = await this.apiManager.invokeApi('users.getSavedMusic', {
-      id: this.appUsersManager.getUserInput(userId),
-      offset,
-      limit,
-      hash: 0
-    });
-
-    if(result._ === 'users.savedMusicNotModified') {
-      return {count: result.count, documents: []};
-    }
-
-    const referenceContext: ReferenceContext = {type: 'savedMusic', userId};
-    const documents = result.documents
-    .map((doc) => this.appDocsManager.saveDoc(doc, referenceContext))
-    .filter(Boolean);
-
-    return {count: result.count, documents};
   }
 
   public getProfileByPeerId(peerId: PeerId, override?: boolean) {

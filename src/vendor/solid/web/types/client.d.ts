@@ -29,7 +29,7 @@ export function spread<T>(
   isSVG?: Boolean,
   skipChildren?: Boolean
 ): void;
-export function assign(node: Element, props: any, isSVG?: Boolean, skipChildren?: Boolean): void;
+export function assign(node: Element, props: any, isSVG?: Boolean, skipChildren?: Boolean, prevProps?: any, skipRef?: Boolean): void;
 export function setAttribute(node: Element, name: string, value: string): void;
 export function setAttributeNS(node: Element, namespace: string, name: string, value: string): void;
 export function setBoolAttribute(node: Element, name: string, value: any): void;

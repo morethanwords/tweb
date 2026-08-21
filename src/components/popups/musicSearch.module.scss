@@ -1,0 +1,20 @@
+.popup {
+  --popup-width: 25rem;
+  --popup-height: 36rem;
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.empty,
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  color: var(--secondary-text-color);
+  min-height: 8rem;
+}

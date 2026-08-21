@@ -1239,80 +1239,16 @@
     margin-bottom: #{-$message-padding-top} !important;
   }
 
-  // &.must-have-name,
-  // &:not(.hide-name).is-group-first {
-  //   .message.mt-off {
-  //     margin-top: 0;
-  //   }
-  // }
-
-  // @include respond-to(handhelds) {
-  //   .document,
-  //   .audio {
-  //     --icon-size: 2.25rem;
-  //   }
-  // }
-
-  .audio {
-    $parent: ".audio";
-    #{$parent} {
-      &-title {
-        font-weight: var(--font-weight-bold);
-      }
-
-      &-ico {
-        font-size: 0;
-      }
-
-      &-toggle {
-        .part {
-          background-color: var(--message-icon-text-color);
-        }
-      }
-    }
-
-    // @include respond-to(handhelds) {
-    //   height: 2.375rem;
-    //   --icon-margin: .6875rem;
-
-    //   .audio-details {
-    //     margin-top: 2px;
-    //     margin-bottom: 0;
-    //   }
-
-    //   .audio-to-text-button {
-    //     margin-top: -.875rem;
-    //   }
-
-    //   .audio-subtitle {
-    //     margin-top: -1px;
-    //   }
-
-    //   /* &.corner-download .audio-download {
-    //     margin: 1.375rem 1.375rem 0;
-    //   } */
-    // }
-  }
-
   &.audio-message {
     --max-content-width: 335px;
 
     .audio {
       width: var(--max-content-width);
-      max-width: 100%;
     }
-
-    // @include respond-to(handhelds) {
-    //   --max-content-width: 280px;
-    // }
   }
 
   &.voice-message {
     --max-content-width: 364px;
-
-    // @include respond-to(handhelds) {
-    //   --max-content-width: 300px;
-    // }
 
     .document-message {
       max-width: fit-content;
@@ -1328,34 +1264,46 @@
   &.audio-message,
   &.voice-message,
   &.document-message {
-    // .message {
-    //   margin: 8px !important;
-    // }
-
-    // .time-inner {
-    //   margin-bottom: -3px !important;
-    // }
-
     .bubble-content > .name {
       margin-bottom: -.25rem;
     }
   }
 
   &.is-single-document {
-    .document,
-    .audio {
+    .document {
       margin-top: .5rem;
       margin-bottom: .5rem;
-    }
-
-    .document-message {
-      margin-top: -.125rem;
     }
 
     .document {
       .time-inner {
         margin-bottom: -3px;
       }
+    }
+  }
+
+  .audio {
+    --padding-left: 4rem;
+    // * offset the .message inner padding
+    margin: -.25rem -.5rem;
+    user-select: none; // * because it's inside of .message that has user-select: text;
+
+    &-title {
+      font-weight: var(--font-weight-bold);
+    }
+
+    &-ico {
+      font-size: 0;
+    }
+
+    &-animated-icon {
+      color: var(--message-icon-text-color) !important;
+    }
+
+    .time {
+      position: absolute;
+      bottom: 4px;
+      right: 8px;
     }
   }
 
@@ -1581,38 +1529,7 @@
         }
       }
 
-      .bubble-select-checkbox {
-        --margin-top: .25rem;
-        --margin-left: .125rem;
-        left: auto;
-        top: auto;
-        background: #fff;
-        border-radius: 50%;
-        margin-left: calc(var(--padding-left) * -1 + var(--icon-size) - var(--size) + var(--margin-left));
-        margin-top: calc(var(--icon-size) - var(--size) + var(--margin-top));
-
-        @include respond-to(handhelds) {
-          --size: 1.125rem;
-          // left: 20px;
-          // top: 25px;
-        }
-
-        &:before {
-          --inner-size: .125rem;
-          content: " ";
-          position: absolute;
-          width: calc(var(--size) - (var(--inner-size) * 2));
-          height: calc(var(--size) - (var(--inner-size) * 2));
-          left: var(--inner-size);
-          top: var(--inner-size);
-          border: 2px solid var(--secondary-color);
-          border-radius: inherit;
-        }
-      }
-
       &.is-first {
-        padding-top: .5rem;
-
         .document-selection {
           top: #{-$bubble-overflow}; // * padding inner + half padding outer
         }
@@ -1625,11 +1542,6 @@
 
       &.is-last {
         padding-bottom: $message-padding-bottom;
-
-        .document,
-        .audio {
-          margin-bottom: #{8px - $message-padding-bottom};
-        }
 
         .document-selection {
           bottom: #{-$bubble-overflow};
@@ -1701,7 +1613,6 @@
     // }
   }
 
-  .audio,
   &.poll-message,
   &.contact-message {
     .time {
@@ -1715,12 +1626,6 @@
     .time {
       right: 8px;
       bottom: 5px;
-    }
-  }
-
-  .audio {
-    .time {
-      bottom: -3px;
     }
   }
 
@@ -2202,7 +2107,7 @@
     border-radius: inherit;
   }
 
-  audio-element,
+  .audio,
   poll-element {
     white-space: normal; // * fix due to .message white-space prewrap
   }
@@ -2467,22 +2372,27 @@
     }
 
     .audio-transcribing-dots {
-      position: relative;
-
-      &:before,
-      &:after {
-        content: "...";
-      }
-
-      &:before {
+      // Real dots instead of an animated `content`, which only a pseudo-element can do. They keep
+      // their width while hidden, so the text never shifts and nothing has to be reserved behind
+      // them; each has its own keyframes so they accumulate and reset together rather than blink
+      // out of step, which is what sharing one set with staggered delays would give.
+      &-dot {
         opacity: 0;
-      }
+        animation-duration: 1.5s;
+        animation-iteration-count: infinite;
+        animation-timing-function: steps(1, end);
 
-      &:after {
-        position: absolute;
-        right: 0;
-        left: 0;
-        animation: 1.5s linear audio-dots infinite;
+        &-1 {
+          animation-name: audio-dots-1;
+        }
+
+        &-2 {
+          animation-name: audio-dots-2;
+        }
+
+        &-3 {
+          animation-name: audio-dots-3;
+        }
       }
     }
   }
@@ -3246,21 +3156,33 @@
   }
 }
 
-@keyframes audio-dots {
+@keyframes audio-dots-1 {
   0% {
-    content: "";
+    opacity: 0;
   }
 
-  33% {
-    content: ".";
+  25%, 100% {
+    opacity: 1;
+  }
+}
+
+@keyframes audio-dots-2 {
+  0% {
+    opacity: 0;
   }
 
-  66% {
-    content: "..";
+  50%, 100% {
+    opacity: 1;
+  }
+}
+
+@keyframes audio-dots-3 {
+  0% {
+    opacity: 0;
   }
 
-  100% {
-    content: "...";
+  75%, 100% {
+    opacity: 1;
   }
 }
 

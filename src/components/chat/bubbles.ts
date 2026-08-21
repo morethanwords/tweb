@@ -22,7 +22,7 @@ import {fireMessageEffectByBubble, MessageRender} from '@components/chat/message
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
 import showChatToast from '@components/chat/chatToast';
-import AudioElement from '@components/audio';
+import {AudioElement, DeferredMediaElement, isAudioElement} from '@components/audio';
 import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
@@ -145,7 +145,6 @@ import callbackify from '@helpers/callbackify';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import Icon from '@components/icon';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import {_tgico} from '@helpers/tgico';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import addAnchorListener, {UNSAFE_ANCHOR_LINK_TYPES} from '@helpers/addAnchorListener';
 import {formatDaysDuration, formatMonthsDuration} from '@helpers/date';
@@ -1073,13 +1072,14 @@ export default class ChatBubbles {
             documentContainer.dataset.mid = '' + mid;
           }
 
-          const element = bubble.querySelector(`audio-element[data-mid="${tempId}"], .document[data-doc-id="${tempId}"], .media-round[data-mid="${tempId}"]`) as HTMLElement;
+          const element = bubble.querySelector(`.audio[data-mid="${tempId}"], .document[data-doc-id="${tempId}"], .media-round[data-mid="${tempId}"]`) as HTMLElement;
           if(element) {
-            if(element instanceof AudioElement || element.classList.contains('media-round')) {
+            if(isAudioElement(element)) {
+              element.replaceMessage(message);
+            } else if(element.classList.contains('media-round')) {
               element.dataset.mid = '' + message.mid;
               delete element.dataset.isOutgoing;
-              (element as AudioElement).message = message;
-              (element as AudioElement).onLoad(true);
+              (element as DeferredMediaElement).onLoad(true);
             } else {
               element.dataset.docId = '' + doc.id;
               (element as any).doc = doc;
@@ -1187,71 +1187,6 @@ export default class ChatBubbles {
       const bubble = this.getBubble(makeFullMid(message));
       if(!bubble) return;
       this.setBubbleRepliesCount(bubble, message.replies.replies);
-    });
-
-    this.listenerSetter.add(rootScope)('message_transcribed', ({peerId, mid, text, pending}) => {
-      if(peerId !== this.peerId) return;
-
-      const bubble = this.getBubble(makeFullMid(peerId, mid));
-      if(!bubble) return;
-
-      // TODO: Move it to AudioElement method `finishVoiceTranscription`
-      const audioElement = bubble.querySelector('audio-element') as AudioElement;
-      if(!audioElement) {
-        return;
-      }
-
-      // const scrollSaver = this.createScrollSaver(false);
-      // scrollSaver.save();
-
-      const speechTextDiv = bubble.querySelector('.document-wrapper, .quote-text.has-document') as HTMLElement;
-      const speechRecognitionIcon = audioElement.querySelector('.audio-to-text-button span');
-      const speechRecognitionLoader = audioElement.querySelector('.loader');
-      if(speechTextDiv && speechRecognitionIcon) {
-        let transcribedText = speechTextDiv.querySelector('.audio-transcribed-text');
-        if(!transcribedText) {
-          transcribedText = document.createElement('div');
-          transcribedText.classList.add('audio-transcribed-text');
-          transcribedText.append(document.createTextNode(''));
-
-          if(speechTextDiv.classList.contains('document-wrapper')) {
-            audioElement.after(transcribedText);
-          } else {
-            speechTextDiv.append(transcribedText);
-          }
-
-          if(pending) {
-            const dots = document.createElement('span');
-            dots.classList.add('audio-transcribing-dots');
-            transcribedText.append(dots);
-          }
-        } else if(!pending) {
-          const dots = transcribedText.querySelector('.audio-transcribing-dots');
-          dots?.remove();
-        }
-
-        if(!text && !pending/*  && !transcribedText.classList.contains('has-some-text') */) {
-          transcribedText.replaceChildren(i18n('Chat.Voice.Transribe.Error'));
-          transcribedText.classList.add('is-error');
-        } else if(text) {
-          // transcribedText.classList.add('has-some-text');
-          transcribedText.firstChild.textContent = text;
-        }
-
-        speechRecognitionIcon.classList.remove(_tgico('transcribe'));
-        speechRecognitionIcon.classList.add(_tgico('up'));
-
-        if(!pending && speechRecognitionLoader) {
-          speechRecognitionLoader.classList.remove('active');
-          setTimeout(() => {
-            speechRecognitionLoader.remove();
-          }, 300);
-        }
-
-        audioElement.transcriptionState = 2;
-      }
-
-      // scrollSaver.restore();
     });
 
     this.listenerSetter.add(rootScope)('grouped_edit', ({peerId, messages, deletedMids}) => {

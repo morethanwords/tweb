@@ -20,9 +20,14 @@ export default function Passthrough<E extends Element>(props: PassthroughProps<E
   // re-applies the other props.
   insert(element, resolved);
 
+  // `assign` needs to see what it applied last time, or it cannot undo anything: a `classList` key
+  // that goes false is never taken off the element, and a listener is re-added on every run instead
+  // of being swapped. Defaulting `prevProps` to a fresh `{}` each run threw all of that away.
+  const prevProps = {};
+
   createEffect(() => {
     const [_, others] = splitProps(props, ['element', 'children']);
-    assign(element, others, element instanceof SVGElement, true);
+    assign(element, others, element instanceof SVGElement, true, prevProps);
   });
 
   return element;

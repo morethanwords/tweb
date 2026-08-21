@@ -244,6 +244,7 @@ export type BroadcastEvents = {
   },
   'pinned_stargifts': {peerId: PeerId, gifts: InputSavedStarGift[]},
   'star_gift_list_update': {peerId: PeerId},
+  'saved_music_update': {peerId: PeerId},
   'star_gift_upgrade': {gift: MyStarGift, savedId?: Long, fromMsgId?: number},
 
   'insufficent_stars_for_message': {messageCount: number, requestId: number, invokeApiArgs: Parameters<ApiManager['invokeApi']>, reservedStars?: number};

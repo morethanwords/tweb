@@ -13,6 +13,7 @@ import {AppManagers} from '@lib/managers';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import {PlaybackRateButton} from '@components/playbackRateButton';
+import createAudioAnimatedIcon, {createPlayPauseIcon} from '@components/audioAnimatedIcon';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {doubleRaf} from '@helpers/schedulers';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -22,7 +23,7 @@ import type {AppImManager} from '@lib/appImManager';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import appSidebarRight from '../sidebarRight';
-import AppSavedMusicTab from '../sidebarRight/tabs/savedMusic';
+import {openSavedMusicTab} from '@components/savedMusicActions';
 import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';
 import Button from '@components/buttonTsx';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
@@ -44,7 +45,31 @@ export default function createChatAudio(
   const [title, setTitle] = createSignal<JSX.Element>();
   const [subtitle, setSubtitle] = createSignal<JSX.Element>();
   const [timeText, setTimeText] = createSignal('');
-  const [playIcon, setPlayIcon] = createSignal<Icon>('play_filled');
+  // the seek glyphs rest on their finished frame and replay on every press
+  const rewindIcon = createAudioAnimatedIcon('rewind');
+  const forwardIcon = createAudioAnimatedIcon('forward');
+  let playIconContainer!: HTMLDivElement;
+  const setPlayIcon = createPlayPauseIcon(() => playIconContainer);
+
+  // The controller announces a play one task late (see its `onPlay`), so a press that lands inside
+  // that gap is told about a play that is already over, and the glyph sits out the change. The media
+  // itself is never late, so the plate follows it directly — the same rule the row's button follows.
+  const mediaListenerSetter = new ListenerSetter();
+  let playingMedia: HTMLMediaElement;
+  const syncPlayIcon = () => setPlayIcon(!!playingMedia && !playingMedia.paused);
+
+  const followMedia = (media: HTMLMediaElement) => {
+    if(playingMedia !== media) {
+      mediaListenerSetter.removeAll();
+      playingMedia = media;
+      (['play', 'pause', 'emptied'] as const).forEach((event) => {
+        mediaListenerSetter.add(media)(event, syncPlayIcon);
+      });
+    }
+
+    syncPlayIcon();
+  };
+
   const [repeatIcon, setRepeatIcon] = createSignal<Icon>('audio_repeat');
 
   // Refs to JSX-rendered buttons that need imperative classList toggles or
@@ -86,26 +111,32 @@ export default function createChatAudio(
     render: () => (
       <>
         <TopbarPlate.Body noRipple>
-          <Button.Icon
+          <Button
             ref={prevEl}
-            icon="fast_rewind_filled"
-            class="active"
+            class="btn-icon active"
             noRipple
-            onClick={(e) => { cancelEvent(e); appMediaPlaybackController.previous(); }}
-          />
-          <Button.Icon
-            icon={playIcon()}
-            class="active pinned-audio-ico"
+            aria-label="Previous"
+            onClick={(e) => { cancelEvent(e); rewindIcon.play(); appMediaPlaybackController.previous(); }}
+          >
+            {rewindIcon.element}
+          </Button>
+          <Button
+            class="btn-icon active pinned-audio-ico"
             noRipple
+            aria-label="Play"
             onClick={(e) => { cancelEvent(e); appMediaPlaybackController.toggle(); }}
-          />
-          <Button.Icon
+          >
+            <div class="pinned-audio-play-icon" ref={playIconContainer} />
+          </Button>
+          <Button
             ref={nextEl}
-            icon="fast_forward_filled"
-            class="active"
+            class="btn-icon active"
             noRipple
-            onClick={(e) => { cancelEvent(e); appMediaPlaybackController.next(); }}
-          />
+            aria-label="Next"
+            onClick={(e) => { cancelEvent(e); forwardIcon.play(); appMediaPlaybackController.next(); }}
+          >
+            {forwardIcon.element}
+          </Button>
           <TopbarPlate.Content class="hover-effect" ripple>
             <TopbarPlate.Title>{title()}</TopbarPlate.Title>
             <TopbarPlate.Subtitle>
@@ -157,17 +188,7 @@ export default function createChatAudio(
     const peerId = plate.container.dataset.peerId.toPeerId();
     const savedMusicDocId = plate.container.dataset.savedMusicDocId;
     if(savedMusicDocId) {
-      const prevTab = appSidebarRight.getTab(AppSavedMusicTab);
-      if(prevTab?.peerId === peerId) {
-        appSidebarRight.toggleSidebar(true);
-        return;
-      }
-
-      const tab = appSidebarRight.createTab(AppSavedMusicTab);
-      tab.peerId = peerId;
-      tab.open();
-      appSidebarRight.toggleSidebar(true);
-      if(prevTab) setTimeout(() => prevTab.close(), 300);
+      openSavedMusicTab(appSidebarRight, peerId);
       return;
     }
 
@@ -250,11 +271,11 @@ export default function createChatAudio(
 
     setSubtitle(subtitleSpan);
 
-    setPlayIcon(media.paused ? 'play_filled' : 'pause_filled');
+    followMedia(media);
     toggle(false);
   };
 
-  const onPause = () => setPlayIcon('play_filled');
+  const onPause = () => syncPlayIcon();
   const onStop = () => toggle(true);
 
   const toggleActivity = (active: boolean) => {
@@ -283,6 +304,7 @@ export default function createChatAudio(
     destroy: () => {
       progressLine?.removeListeners();
       listenerSetter.removeAll();
+      mediaListenerSetter.removeAll();
       plate.destroy();
     }
   };

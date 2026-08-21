@@ -1094,6 +1094,25 @@ export default class ChatInput {
       verify: () => canUploadAsWhenEditing({asWhat: 'document', message: this.editMessage})
       // verify: () => this.chat.canSend('send_docs')
     }, {
+      icon: 'music_filled',
+      text: 'SharedMusicTab2',
+      onClick: async() => {
+        const {default: showMusicSearchPopup} = await import('@components/popups/musicSearch');
+        showMusicSearchPopup({chat: this.chat});
+      },
+      verify: async() => {
+        if(this.editMsgId) return false;
+        // Either half of the picker is reason enough to offer it: the inline-bot search (which the
+        // server gates behind an app-config username) or the user's own profile playlist.
+        // getAppConfig comes off the proxy's warm cache, and the ids list is cached in the worker.
+        const [{music_search_username}, myMusicIds] = await Promise.all([
+          apiManagerProxy.getAppConfig(),
+          this.managers.appSavedMusicManager.getMyIds()
+        ]);
+
+        return !!music_search_username || !!myMusicIds.length;
+      }
+    }, {
       icon: 'brush',
       get text() {
         return inputThis.editMessage?.media?._ === 'messageMediaPhoto' ?

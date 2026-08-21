@@ -42,6 +42,7 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import showStickersPopup from '@components/popups/stickers';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia';
+import {addToProfileMusic, getSavedMusicDocument, removeFromProfileMusic} from '@components/savedMusicActions';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import PopupElement from '@components/popups';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
@@ -296,7 +297,7 @@ export default class ChatContextMenu {
           '.peer-title',
           '.reply',
           '.document',
-          'audio-element',
+          '.audio',
           // 'avatar-element',
           'a',
           '.bubble-beside-button',
@@ -1212,6 +1213,16 @@ export default class ChatContextMenu {
         this.chat.container
       )
     }, {
+      icon: 'note_filled',
+      text: 'SavedMusic.AddToProfile',
+      onClick: () => addToProfileMusic(this.getSavedMusicDocId()),
+      verify: () => this.verifySavedMusic(false)
+    }, {
+      icon: 'delete',
+      text: 'SavedMusic.RemoveFromProfile',
+      onClick: () => removeFromProfileMusic(this.getSavedMusicDocId()),
+      verify: () => this.verifySavedMusic(true)
+    }, {
       icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
       onClick: this.onRetractVote,
@@ -1509,6 +1520,22 @@ export default class ChatContextMenu {
     return ButtonMenu({
       buttons: filteredButtons
     })
+  }
+
+  private getSavedMusicDocId() {
+    return getSavedMusicDocument(
+      this.message,
+      isEphemeralMessage(this.message) ? false : this.noForwards
+    )?.id;
+  }
+
+  private async verifySavedMusic(inProfile: boolean) {
+    const docId = this.getSavedMusicDocId();
+    if(!docId || useIsFrozen()) {
+      return false;
+    }
+
+    return await this.managers.appSavedMusicManager.isInProfile(docId) === inProfile;
   }
 
   public static canDownload(

@@ -1,4 +1,4 @@
-import {children, createMemo, JSX, onCleanup, Ref, Show, splitProps, useContext} from 'solid-js';
+import {children, createMemo, createRenderEffect, JSX, onCleanup, Ref, Show, splitProps, useContext} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
 import RippleElement from '@components/rippleElement';
@@ -6,6 +6,8 @@ import createComponentContext, {ComponentContextValue} from '@helpers/solid/crea
 import createContextMenu from '@helpers/dom/createContextMenu';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getRowIconBackgroundImage} from '@helpers/rowIconBackground';
+import {attachHotClassName} from '@helpers/solid/classname';
+import {ROW_CHECKBOX_FIELD_CLASS, ROW_CHECKBOX_FIELD_TOGGLE_CLASS, ROW_RADIO_FIELD_CLASS} from '@components/rowFieldClasses';
 
 export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger' | '40';
 
@@ -265,22 +267,44 @@ Row.RightContent = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
   ));
 };
 
+/**
+ * Registers a field AND marks it as the row's own, so `_row.scss` lays out this checkbox and not
+ * whatever else happens to sit inside the row. See `rowFieldClasses`.
+ */
+function registerRowField(kind: Kind, classes: string[], element: JSX.Element) {
+  const context = useContext(RowContext);
+  const resolved = children(() => element);
+
+  createRenderEffect(() => {
+    resolved.toArray().forEach((node) => {
+      node instanceof HTMLElement && attachHotClassName(node, ...classes);
+    });
+  });
+
+  return context.register(kind, resolved());
+}
+
 Row.CheckboxField = (props: {
   children: JSX.Element
 }) => {
-  return useContext(RowContext).register('checkboxField', props.children);
+  return registerRowField('checkboxField', [ROW_CHECKBOX_FIELD_CLASS], props.children);
 };
 
 Row.RadioField = (props: {
   children: JSX.Element
 }) => {
-  return useContext(RowContext).register('radioField', props.children);
+  return registerRowField('radioField', [ROW_RADIO_FIELD_CLASS], props.children);
 };
 
 Row.CheckboxFieldToggle = (props: {
   children: JSX.Element
 }) => {
-  return useContext(RowContext).register('checkboxFieldToggle', props.children);
+  // a toggle is a checkbox too, so the row's checkbox rules go on reaching it
+  return registerRowField(
+    'checkboxFieldToggle',
+    [ROW_CHECKBOX_FIELD_CLASS, ROW_CHECKBOX_FIELD_TOGGLE_CLASS],
+    props.children
+  );
 };
 
 Row.Media = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {

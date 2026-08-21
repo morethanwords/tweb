@@ -88,6 +88,13 @@ export default class MediaProgressLine extends RangeSelector {
 
     this.media = media;
     this.streamable = streamable;
+
+    // Before anything draws: both bars divide by `max`, which is still the constructor's 1 until
+    // this runs. A media that is already positioned and paused — reopening a chat on a track you
+    // stopped halfway — never fires an event afterwards to correct a bar drawn against the wrong
+    // max, so it would sit at 100% for good.
+    this.setSeekMax(duration);
+
     if(!media.paused || media.currentTime > 0) {
       this.onPlay();
     }
@@ -95,7 +102,6 @@ export default class MediaProgressLine extends RangeSelector {
     this.setTimestampsClipPath();
 
     let wasPlaying = false;
-    this.setSeekMax(duration);
     this.setListeners();
     this.setHandlers({
       onMouseDown: () => {

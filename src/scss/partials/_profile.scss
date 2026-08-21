@@ -995,21 +995,6 @@
   cursor: pointer;
 }
 
-.saved-music-container {
-  .saved-music-content {
-    .audio {
-      padding: 0.3125rem 1rem;
-
-      &:not(.audio-show-progress) {
-        .audio-time,
-        .audio-description:before {
-          display: none;
-        }
-      }
-    }
-  }
-}
-
 .search-super-content-gifts {
   height: 100%;
 }

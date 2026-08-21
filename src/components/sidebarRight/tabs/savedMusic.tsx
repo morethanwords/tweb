@@ -1,4 +1,4 @@
-import {createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 import {SliderSuperTab} from '@components/slider';
 import {i18n} from '@lib/langPack';
@@ -10,47 +10,40 @@ import {MediaItem, MediaListLoader, MediaListLoaderFactory, MediaListLoaderOptio
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import ListLoader, {ListLoaderResult} from '@helpers/listLoader';
 import rootScope from '@lib/rootScope';
-import type AudioElement from '@components/audio';
+import type {AudioElement} from '@components/audio';
 import Scrollable from '@components/scrollable';
 import {PreloaderTsx} from '@components/putPreloader';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import appDownloadManager from '@lib/appDownloadManager';
-import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import showForwardPopup from '@components/popups/forward';
+import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
+import Sortable from '@helpers/dom/sortable';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import {confirmRemoveFromProfileMusic, removeFromProfileMusic} from '@components/savedMusicActions';
+import createFakeAudioMessage from '@components/wrappers/fakeAudioMessage';
+import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import Section from '@components/section';
 
 import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 import createMiddleware from '@helpers/solid/createMiddleware';
 
-async function createFakeMessage(doc: MyDocument, peerId: PeerId, mid: number): Promise<Message.message> {
-  return {
-    _: 'message',
-    id: mid,
-    mid: mid,
-    peer_id: await rootScope.managers.appPeersManager.getOutputPeer(peerId),
-    peerId: peerId,
-    fromId: peerId,
-    date: doc.date,
-    message: '',
-    pFlags: {
-      local: true,
-      fakeForSavedMusic: true
-    },
-    media: {
-      _: 'messageMediaDocument',
-      document: doc,
-      pFlags: {}
-    }
-  };
-}
+const DOC_ID_ATTRIBUTE = 'data-doc-id';
 
 function SavedMusicContent(props: {
   peerId: PeerId,
-  scrollable: Scrollable
+  scrollable: Scrollable,
+  isMine: boolean,
+  sorting: () => boolean,
+  startSorting: () => void,
+  onLocalMutation: () => void,
+  onLocalMutationFailed: () => void
 }) {
   const [loadedFirst, setLoadedFirst] = createSignal(false);
   const [loaded, setLoaded] = createSignal(false);
+  const [docCount, setDocCount] = createSignal(0);
   let listEl!: HTMLDivElement;
-  let docCount = 0;
 
   const lazyLoadQueue = new LazyLoadQueue();
   onCleanup(() => lazyLoadQueue.clear());
@@ -66,23 +59,26 @@ function SavedMusicContent(props: {
 
   let renderPromise = Promise.resolve();
   savedMusicLoader.onNewDocs = (docs) => {
-    docCount += docs.length;
+    setDocCount((count) => count + docs.length);
     renderPromise = renderPromise.then(async() => {
       const playingDetails = appMediaPlaybackController.getPlayingDetails();
       const playingDocId = playingDetails?.doc?.id;
       const elements = await Promise.all(docs.map(async(doc) => {
-        const message = await createFakeMessage(doc, props.peerId, savedMusicLoader.getFakeMid(doc.id));
+        const message = await createFakeAudioMessage({doc, peerId: props.peerId, mid: savedMusicLoader.getFakeMid(doc.id), savedMusic: true});
         const div = await wrapDocument({
           message,
           middleware,
           fontWeight: 400,
           voiceAsMusic: true,
+          clickable: true,
           lazyLoadQueue,
           autoDownloadSize: 0,
           getSize: () => 320,
           ...(playingDocId === doc.id && playingDetails.media && playingDetails.isSavedMusic ? {globalMedia: playingDetails.media} : {})
         }) as AudioElement;
         div.classList.add('audio-48', 'search-super-item');
+        applySortable(div, props.sorting());
+        div.setAttribute(DOC_ID_ATTRIBUTE, '' + doc.id);
         div.listLoaderFactory = loaderFactory;
         return div;
       }));
@@ -115,12 +111,41 @@ function SavedMusicContent(props: {
   });
 
 
+  /**
+   * The marking every reorderable list in the app uses (see `Row.makeSortable`): the handle, the
+   * row's lift while dragged and the transition its neighbours slide with all hang off
+   * `row-sortable`. `cant-sort` is the other half — it is what keeps `Sortable` off a row while the
+   * list is not in the mode, so a plain tap still plays the track.
+   */
+  const applySortable = (element: HTMLElement, sorting: boolean) => {
+    element.classList.toggle('row-sortable', sorting);
+    element.classList.toggle('cant-sort', !sorting);
+
+    const handle = element.querySelector('.row-sortable-icon');
+    if(sorting && !handle) {
+      element.append(Icon('menu', 'row-sortable-icon'));
+    } else if(!sorting) {
+      handle?.remove();
+    }
+  };
+
+  // rows built later read the mode themselves, so this only has to catch the ones already standing
+  createEffect(() => {
+    const sorting = props.sorting();
+    Array.from(listEl.children).forEach((element) => applySortable(element as HTMLElement, sorting));
+  });
+
+  const getTargetDoc = (target: AudioElement | undefined) => {
+    return target?.message && getMediaFromMessage(target.message, true) as MyDocument;
+  };
+
   onMount(() => {
     savedMusicLoader.load(true);
 
     let contextMenuTarget: AudioElement | undefined;
     createContextMenu({
       listenTo: listEl,
+      middleware,
       buttons: [{
         icon: 'forward',
         text: 'Forward',
@@ -129,15 +154,42 @@ function SavedMusicContent(props: {
           if(!msg) return;
           await rootScope.managers.appMessagesManager.saveMessages([msg]);
           showForwardPopup({[msg.peerId]: [msg.mid]});
-        }
+        },
+        verify: () => !!contextMenuTarget?.message
       }, {
         icon: 'download',
         text: 'MediaViewer.Context.Download',
         onClick: () => {
-          if(!contextMenuTarget) return;
-          const doc = (contextMenuTarget.message?.media as any)?.document;
+          const doc = getTargetDoc(contextMenuTarget);
           if(doc) appDownloadManager.downloadToDisc({media: doc});
-        }
+        },
+        verify: () => !!getTargetDoc(contextMenuTarget)
+      }, {
+        // the handle the rows grow once the mode is on, so the entry looks like what it turns on
+        icon: 'menu',
+        text: 'SavedMusic.Sort',
+        onClick: () => props.startSorting(),
+        verify: () => props.isMine && !props.sorting() && docCount() > 1
+      }, {
+        icon: 'delete',
+        text: 'SavedMusic.RemoveFromProfile',
+        danger: true,
+        onClick: async() => {
+          const element = contextMenuTarget;
+          const doc = getTargetDoc(element);
+          if(!doc || !await confirmRemoveFromProfileMusic()) {
+            return;
+          }
+
+          // The row goes away right here, so the update our own mutation dispatches would only
+          // rebuild an already-correct list — and throw away the scroll position with it. A
+          // failure is the one case where the list IS wrong now, so rebuild it then.
+          props.onLocalMutation();
+          element.remove();
+          setDocCount((count) => count - 1);
+          removeFromProfileMusic(doc.id).catch(() => props.onLocalMutationFailed());
+        },
+        verify: () => props.isMine && !!getTargetDoc(contextMenuTarget)
       }],
       findElement: (e) => {
         const el = (e.target as HTMLElement).closest('.audio') as AudioElement;
@@ -145,6 +197,19 @@ function SavedMusicContent(props: {
         return el;
       }
     });
+
+    if(props.isMine) {
+      new Sortable({
+        list: listEl,
+        middleware,
+        scrollable: props.scrollable,
+        onSort: (prevIdx, newIdx) => {
+          const ids = Array.from(listEl.children).map((el) => el.getAttribute(DOC_ID_ATTRIBUTE));
+          // `after_id` anchors to the track the moved one now follows — absent means "put it first".
+          rootScope.managers.appSavedMusicManager.reorderMusic(ids[newIdx], newIdx > 0 ? ids[newIdx - 1] : undefined);
+        }
+      });
+    }
   });
 
   props.scrollable.onScrolledBottom = () => {
@@ -153,8 +218,8 @@ function SavedMusicContent(props: {
   };
 
   return (
-    <div class={styles.content}>
-      <Show when={loaded() && !docCount}>
+    <>
+      <Show when={loaded() && !docCount()}>
         <div class={styles.empty}>
           {i18n('Chat.Search.NothingFound')}
         </div>
@@ -162,8 +227,71 @@ function SavedMusicContent(props: {
       <Show when={!loadedFirst()}>
         <PreloaderTsx />
       </Show>
-      <div class={styles.list} ref={listEl} />
-    </div>
+      {/* the playlist reads as a settings list, so it sits in the section every other row list does */}
+      <Section noDelimiter>
+        <div class={styles.list} ref={listEl} />
+      </Section>
+    </>
+  );
+}
+
+/**
+ * Rebuilds the list whenever the playlist changes underneath it — a save from another client, or
+ * one of our own mutations that isn't already reflected in the DOM. Remounting is what re-runs the
+ * loader from offset 0; the mutations the tab performs itself opt out via `onLocalMutation`.
+ */
+function SavedMusicList(props: {
+  peerId: PeerId,
+  scrollable: Scrollable,
+  header: HTMLElement
+}) {
+  const [version, setVersion] = createSignal(1);
+  // Sorting is a mode rather than something the rows are always in: dragging and playing are the
+  // same gesture on a row, so the list only becomes reorderable when asked from the menu.
+  const [sorting, setSorting] = createSignal(false);
+
+  // The way out belongs with the tab's own buttons, so it is mounted into the header — and taken
+  // back out the moment the mode ends, which is also when the tab is torn down.
+  createEffect(() => {
+    if(!sorting()) {
+      return;
+    }
+
+    const button = ButtonIcon('checkround');
+    attachClickEvent(button, () => setSorting(false));
+    props.header.append(button);
+    onCleanup(() => button.remove());
+  });
+  const rebuild = () => setVersion((version) => version + 1);
+  let skipUpdates = 0;
+
+  subscribeOn(rootScope)('saved_music_update', ({peerId}) => {
+    if(peerId !== props.peerId) {
+      return;
+    }
+
+    if(skipUpdates) {
+      --skipUpdates;
+      return;
+    }
+
+    rebuild();
+  });
+
+  return (
+    <Show keyed when={version()}>
+      {(_version) => (
+        <SavedMusicContent
+          peerId={props.peerId}
+          scrollable={props.scrollable}
+          isMine={props.peerId === rootScope.myId}
+          sorting={sorting}
+          startSorting={() => setSorting(true)}
+          onLocalMutation={() => ++skipUpdates}
+          onLocalMutationFailed={rebuild}
+        />
+      )}
+    </Show>
   );
 }
 
@@ -200,14 +328,14 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
           return {count: this.count ?? 0, items: []};
         }
 
-        const result = await rootScope.managers.appProfileManager.getSavedMusic(peerId.toUserId(), this.offset, loadCount);
+        const result = await rootScope.managers.appSavedMusicManager.getSavedMusic(peerId.toUserId(), this.offset, loadCount);
         const docs = result.documents as MyDocument[];
 
         this.offset += docs.length;
 
         this.onNewDocs?.(docs);
         const messages: Message.message[] = await Promise.all(
-          docs.map((doc) => createFakeMessage(doc, peerId, this.getFakeMid(doc.id)))
+          docs.map((doc) => createFakeAudioMessage({doc, peerId, mid: this.getFakeMid(doc.id), savedMusic: true}))
         );
 
         return {count: result.count, items: messages} as ListLoaderResult<Message.message>;
@@ -245,7 +373,7 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
   }
 
   private async loadTailChunk(offset: number, count: number): Promise<TailEntry[]> {
-    const result = await rootScope.managers.appProfileManager.getSavedMusic(
+    const result = await rootScope.managers.appSavedMusicManager.getSavedMusic(
       this.peerId.toUserId(),
       offset,
       count
@@ -254,7 +382,7 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
     const entries: TailEntry[] = [];
 
     for(const doc of docs) {
-      const message = await createFakeMessage(doc, this.peerId, this.getFakeMid(doc.id));
+      const message = await createFakeAudioMessage({doc, peerId: this.peerId, mid: this.getFakeMid(doc.id), savedMusic: true});
       const item = this.processItem ? await this.processItem(message) : {peerId: message.peerId, mid: message.mid};
       if(item) {
         entries.push({item: item as MediaItem, doc});
@@ -713,12 +841,13 @@ export default class AppSavedMusicTab extends SliderSuperTab {
 
   public init() {
     this.container.classList.add(styles.container);
-    this.setTitle('SavedMusicTab');
+    this.setTitle(this.peerId === rootScope.myId ? 'SavedMusicTabMine' : 'SavedMusicTab');
 
     this.dispose = render(() => (
-      <SavedMusicContent
+      <SavedMusicList
         peerId={this.peerId}
         scrollable={this.scrollable}
+        header={this.header}
       />
     ), this.scrollable.container);
   }
