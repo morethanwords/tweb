@@ -1,28 +1,10 @@
 @use "../../../scss/variables" as *;
 @use "../../../scss/mixins" as *;
 
+// Layout and docking come from .chat-toast (_chatToast.scss) — only the bits
+// specific to this toast live here.
 .Tooltip {
-  top: 0.25rem;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: max-content;
   gap: 1.5rem;
-
-  :global(.tooltip-notch) {
-    display: none;
-  }
-
-  &:global(.tooltip) {
-    transform: translate(-50%, 0);
-    &:global(.is-visible):not(:global(.backwards)) {
-      transform: translate(-50%, 0);
-    }
-    &:global(.mounted) {
-      transform: translate(-50%, -1rem);
-    }
-  }
 
   &:global(.tooltip-with-icon) :global(.tooltip-text) {
     padding-inline-start: 2rem;

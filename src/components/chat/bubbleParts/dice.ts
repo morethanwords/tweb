@@ -6,6 +6,7 @@ import {makeMediaSize} from '@helpers/mediaSize';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import wrapSticker from '@components/wrappers/sticker';
 import lottieLoader from '@lib/lottie/lottieLoader';
+import noop from '@helpers/noop';
 
 export default function wrapDice(context: BubbleContext) {
   const {emoticon, value} = context.messageMedia as MessageMedia.messageMediaDice;
@@ -200,17 +201,34 @@ export default function wrapDice(context: BubbleContext) {
         withThumb: false,
         needFadeIn: false
       }).then(({render}) => render as Promise<LottiePlayer>);
-      await lottieLoader.waitForFirstFrame(player);
+      const ready = await lottieLoader.waitForFirstFrame(player).then(() => true, () => false);
       if(!context.middleware()) return;
+      if(!ready) return; // * the result failed to load - keep rolling rather than swapping in a dead canvas
 
       const loopedPlayer = await loopedPlayerPromise;
       if(!context.middleware()) return;
+
+      // * the roll's last frame is only known once its own load ack lands, and the server
+      // * can answer sooner than that - playing to an undefined frame would leave the
+      // * bubble stuck on the roll, because the enterFrame callback never matches
+      await lottieLoader.waitForFirstFrame(loopedPlayer).catch(noop);
+      if(!context.middleware()) return;
+
+      const showResult = () => {
+        const rolling = loopedPlayer.canvas[0];
+        if(rolling?.parentNode) rolling.replaceWith(player.canvas[0]);
+        else context.attachmentDiv.append(player.canvas[0]);
+        player.play();
+      };
+
+      if(loopedPlayer.maxFrame === undefined) { // * the roll never loaded - cut straight to the result
+        showResult();
+        return;
+      }
+
       loopedPlayer.playToFrame({
         frame: loopedPlayer.maxFrame,
-        callback: () => {
-          loopedPlayer.canvas[0].replaceWith(player.canvas[0]);
-          player.play();
-        }
+        callback: showResult
       });
     };
   }

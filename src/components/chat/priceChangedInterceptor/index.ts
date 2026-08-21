@@ -25,7 +25,7 @@ type ConstructorArgs = {
 };
 
 type OpenedTooltip = {
-  close: () => void;
+  close: () => void; // * assigned right after showPriceChangedTooltip returns
   withStarsAmount: number;
 };
 
@@ -104,10 +104,7 @@ class PriceChangedInterceptor {
       this.closeTooltip();
     }
 
-    if(!this.openedTooltip) this.openedTooltip = {
-      close: this.openTooltip(starsAmount),
-      withStarsAmount: starsAmount
-    }
+    if(!this.openedTooltip) this.openTooltip(starsAmount);
 
     this.pendingRequests.push({
       id: requestId,
@@ -122,17 +119,26 @@ class PriceChangedInterceptor {
       });
     };
 
-    const {close} = showPriceChangedTooltip({
+    const entry: OpenedTooltip = this.openedTooltip = {
+      close: undefined,
+      withStarsAmount: starsAmount
+    };
+
+    const {hide} = showPriceChangedTooltip({
       starsAmount,
-      chat: this.chat,
-      onResend
+      onResend,
+      // the docked toast can go away on its own (peer change, or a newer toast taking
+      // the dock) - drop our reference so the next repay request opens a fresh one
+      onHide: () => {
+        if(this.openedTooltip === entry) this.openedTooltip = undefined;
+      }
     });
 
-    return close;
+    entry.close = hide;
   }
 
   private closeTooltip() {
-    this.openedTooltip?.close();
+    this.openedTooltip?.close?.();
     this.openedTooltip = undefined;
   }
 
