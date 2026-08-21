@@ -640,7 +640,6 @@
     font-size: 1.5rem;
     width: var(--button-size);
     height: var(--button-size);
-    color: var(--secondary-text-color);
 
     &.danger {
       color: var(--danger-color);
@@ -756,11 +755,6 @@
   transform: none;
 
 	.attach-file {
-		&.menu-open {
-			color: var(--primary-color);
-			background-color: var(--light-primary-color) !important;
-		}
-
 		&.btn-disabled {
 			opacity: var(--disabled-opacity);
 		}
@@ -1050,15 +1044,20 @@
 	.btn-icon {
 		flex: 0 0 auto;
 		font-size: 1.5rem;
-		color: var(--secondary-text-color);
 		// margin-block: 0 0;
     // margin-inline: var(--button-horizontal-margin);
 		padding: 0;
 		width: var(--button-size);
 		height: var(--button-size);
 
+		// * an open panel marks the icon the way an open menu marks .btn-menu-toggle — a gray
+		// * plate, not a primary repaint; overrides the global .btn-icon.active and the primary
+		// * hover tint btn-hoverable gives it
 		&.active {
-			color: var(--primary-color);
+			color: var(--primary-text-color);
+			background-color: var(--light-secondary-text-color);
+
+			@include hover-background-effect();
 		}
 	}
 }

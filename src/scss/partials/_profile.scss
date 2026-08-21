@@ -627,13 +627,6 @@
         }
       }
 
-      .animated-close-icon {
-        &:before,
-        &:after {
-          background-color: currentColor;
-        }
-      }
-
       .sidebar-header__title,
       .btn-icon {
         @include animation-level(2) {

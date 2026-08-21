@@ -126,10 +126,6 @@
     margin: auto;
   }
 
-  &:not(.old) &-close {
-    --secondary-text-color: var(--primary-text-color);
-  }
-
   &-close {
     z-index: 3;
     justify-self: center;
@@ -185,7 +181,6 @@
 
     .btn-icon {
       flex: 0 0 auto;
-      color: var(--primary-text-color);
     }
   }
 
@@ -328,12 +323,6 @@
 
   &.old {
     --popup-background-color: var(--surface-color);
-
-    .popup-header {
-      .btn-icon {
-        color: var(--secondary-text-color);
-      }
-    }
   }
 }
 
