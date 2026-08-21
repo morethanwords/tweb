@@ -97,3 +97,13 @@
     @include hover-background-effect(red);
   }
 }
+
+// An `.active` icon button that must not go primary: it keeps the plain text color and marks itself
+// with the gray plate `.btn-menu-toggle.menu-open` uses, plus the plain gray hover instead of the
+// primary tint `btn-hoverable` gives anything `.active`.
+@mixin btn-icon-active-plate {
+  color: var(--primary-text-color);
+  background-color: var(--light-secondary-text-color);
+
+  @include hover-background-effect();
+}

@@ -88,7 +88,7 @@ export default function createChatAudio(
   volumeProgressLineContainer.append(volumeSelector.container);
   const tunnel = document.createElement('div');
   tunnel.classList.add('pinned-audio-volume-tunnel');
-  volumeSelector.btn.classList.add('pinned-audio-volume', 'active');
+  volumeSelector.btn.classList.add('pinned-audio-volume');
   volumeSelector.btn.prepend(tunnel);
   volumeSelector.btn.append(volumeProgressLineContainer);
 
@@ -113,7 +113,7 @@ export default function createChatAudio(
         <TopbarPlate.Body noRipple>
           <Button
             ref={prevEl}
-            class="btn-icon active"
+            class="btn-icon"
             noRipple
             aria-label="Previous"
             onClick={(e) => { cancelEvent(e); rewindIcon.play(); appMediaPlaybackController.previous(); }}
@@ -121,7 +121,7 @@ export default function createChatAudio(
             {rewindIcon.element}
           </Button>
           <Button
-            class="btn-icon active pinned-audio-ico"
+            class="btn-icon pinned-audio-ico"
             noRipple
             aria-label="Play"
             onClick={(e) => { cancelEvent(e); appMediaPlaybackController.toggle(); }}
@@ -130,7 +130,7 @@ export default function createChatAudio(
           </Button>
           <Button
             ref={nextEl}
-            class="btn-icon active"
+            class="btn-icon"
             noRipple
             aria-label="Next"
             onClick={(e) => { cancelEvent(e); forwardIcon.play(); appMediaPlaybackController.next(); }}
@@ -253,7 +253,7 @@ export default function createChatAudio(
     // Visually mute the next button for slotted playback — there's no
     // next track to advance to. The click handler is a safe no-op on the
     // empty list loader, so we leave the button enabled.
-    nextEl.classList.toggle('active', !isSlotted);
+    nextEl.classList.toggle('pinned-audio-no-next', isSlotted);
 
     plate.container.dataset.peerId = '' + message.peerId;
     plate.container.dataset.mid = '' + message.mid;

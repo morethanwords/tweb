@@ -1054,10 +1054,7 @@
 		// * plate, not a primary repaint; overrides the global .btn-icon.active and the primary
 		// * hover tint btn-hoverable gives it
 		&.active {
-			color: var(--primary-text-color);
-			background-color: var(--light-secondary-text-color);
-
-			@include hover-background-effect();
+			@include btn-icon-active-plate();
 		}
 	}
 }

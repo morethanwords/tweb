@@ -522,6 +522,20 @@
     display: none !important;
   }
 
+  // No glyph on the plate is painted primary — a toggle that is on (repeat, playback rate) takes the
+  // same gray plate the chat input's buttons do.
+  .btn-icon {
+    &.active {
+      @include btn-icon-active-plate();
+    }
+
+    // Slotted playback has no next track to advance to, so the glyph dims to say so. The button
+    // stays enabled — its click is a safe no-op on the empty list loader.
+    &.pinned-audio-no-next {
+      color: var(--secondary-text-color);
+    }
+  }
+
   &-wrapper {
     overflow: visible !important;
     z-index: 1 !important;
