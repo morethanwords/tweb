@@ -13,6 +13,18 @@ export function distance(p1: NumberPair, p2: NumberPair) {
   return Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
 }
 
+/**
+ * Projects `to` onto the closest ray leaving `from` at a multiple of `step` radians — the angle
+ * snapping other graphic editors do while a straight line is being drawn with Shift
+ */
+export function snapToAngle(from: NumberPair, to: NumberPair, step = Math.PI / 4): NumberPair {
+  const dx = to[0] - from[0], dy = to[1] - from[1];
+  const angle = Math.round(Math.atan2(dy, dx) / step) * step;
+  const projection = dx * Math.cos(angle) + dy * Math.sin(angle);
+
+  return [from[0] + Math.cos(angle) * projection, from[1] + Math.sin(angle) * projection];
+}
+
 export function snapToViewport(ratio: number, vw: number, vh: number) {
   if(vw / ratio > vh) vw = vh * ratio;
   else vh = vw / ratio;
@@ -175,5 +187,5 @@ export const textLayerInfoDefaults: TextLayerInfo = {
 export const brushDefaults: MediaEditorState['currentBrush'] = {
   brush: 'pen',
   color: '#fe4438',
-  size: 18
+  size: 12
 };
