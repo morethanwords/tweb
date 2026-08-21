@@ -320,14 +320,17 @@
     }
 
     &.is-highlighted,
-    &.is-selected {
+    &.is-selected,
+    &.is-active {
       &:after {
         top: calc(#{$bubble-overflow} + 30px);
       }
     }
   }
 
-  &.is-selected {
+  // * `is-active` is the context menu's target, `is-selected` is a selected message — same highlight
+  &.is-selected,
+  &.is-active {
     &:after {
       background-color: var(--message-highlighting-color);
     }
@@ -337,7 +340,8 @@
         animation: fade-in-opacity .2s linear forwards;
       }
 
-      &.backwards:after {
+      &.backwards:after,
+      &.is-active-backwards:after {
         animation: fade-in-backwards-opacity .2s linear forwards;
       }
     }
@@ -1005,14 +1009,18 @@
       top: .5rem;
     }
 
-    &.is-selected {
+    // * the selection drives its state with SetTransition (`forwards` while in, `animating` +
+    // * `backwards` while out), the context menu's target with its own pair of classes
+    &.is-selected,
+    &.is-active {
       border-radius: 0;
 
       .album-item-media {
         transform: scale(1);
       }
 
-      &.animating {
+      &.animating,
+      &.is-active-backwards {
         transition: border-radius var(--transition-standard-out);
 
         .album-item-media {
@@ -1020,7 +1028,8 @@
         }
       }
 
-      &.forwards {
+      &.forwards,
+      &.is-active:not(.is-active-backwards) {
         transition: border-radius var(--transition-standard-in);
 
         .album-item-media {
@@ -1520,7 +1529,8 @@
       }
 
       &.is-highlighted,
-      &.is-selected {
+      &.is-selected,
+      &.is-active {
         .document-wrapper {
           &:before {
             content: " ";
@@ -1549,7 +1559,8 @@
         }
       }
 
-      &.is-selected {
+      &.is-selected,
+      &.is-active {
         .document-selection {
           background-color: var(--message-highlighting-color);
         }
@@ -1560,7 +1571,8 @@
             animation: fade-in-opacity .2s linear forwards;
           }
 
-          &.backwards {
+          &.backwards,
+          &.is-active-backwards {
             .document-selection/* ,
             .document-wrapper:before */ {
               animation: fade-in-backwards-opacity .2s linear forwards;

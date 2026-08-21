@@ -10,6 +10,7 @@ import PopupSendNow from '@components/popups/sendNow';
 import {toastNew} from '@components/toast';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
@@ -573,6 +574,10 @@ export default class ChatContextMenu {
 
       const cleanupHighlight = this.highlightPollAnswer();
 
+      // * the menu belongs to a message, not to an avatar — highlight it the way it gets selected
+      const activeElement = bubble && getSelectionElementFromTarget(e.target);
+      activeElement && this.chat.bubbles.toggleActiveBubble(activeElement, true);
+
       // if(reactionsMenu) {
       //   reactionsMenu.widthContainer.style.top = element.style.top;
       //   reactionsMenu.widthContainer.style.left = element.style.left;
@@ -584,6 +589,7 @@ export default class ChatContextMenu {
       contextMenuController.openBtnMenu(element, () => {
         reactionsCallbacks?.onClose();
         cleanupHighlight?.();
+        activeElement && this.chat.bubbles.toggleActiveBubble(activeElement, false);
 
         this.mid = 0;
         this.peerId = undefined;
@@ -2127,7 +2133,7 @@ export default class ChatContextMenu {
   };
 
   private onSelectClick = () => {
-    this.chat.selection.toggleByElement(findUpClassName(this.target, 'grouped-item') || findUpClassName(this.target, 'bubble'));
+    this.chat.selection.toggleByElement(getSelectionElementFromTarget(this.target));
   };
 
   private onClearSelectionClick = () => {

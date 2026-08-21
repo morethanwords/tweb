@@ -126,6 +126,7 @@ import wrapTopicNameButton from '@components/wrappers/topicNameButton';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import liteMode from '@helpers/liteMode';
+import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
 import wrapParticipantRank from '@components/wrappers/participantRank';
@@ -344,6 +345,8 @@ const BIG_EMOJI_SIZES_LENGTH = Object.keys(BIG_EMOJI_SIZES).length;
 // * on a while longer and fades (tdesktop: activeFadeIn + fadeWrap + activeFadeOut)
 const BUBBLE_HIGHLIGHT_DURATION = 2000;
 const BUBBLE_TEXT_HIGHLIGHT_DURATION = 4000;
+// * fade of the "active" highlight, matches the one ChatSelection uses for `is-selected`
+const BUBBLE_ACTIVE_DURATION = 200;
 // * parts of `.message` that are not the message text (link preview / fact-check boxes included)
 const BUBBLE_TEXT_HIGHLIGHT_SKIP = '.time, .reactions, .reply, .code-header, .webpage';
 
@@ -1525,7 +1528,7 @@ export default class ChatBubbles {
 
     if(DEBUG) {
       this.listenerSetter.add(container)('dblclick', (e) => {
-        const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
+        const bubble = getSelectionElementFromTarget(e.target);
         if(bubble) {
           const fullMid = getBubbleFullMid(bubble);
 
@@ -4995,6 +4998,41 @@ export default class ChatBubbles {
     }, BUBBLE_HIGHLIGHT_DURATION);
 
     this.highlightBubbleText(element, textHighlight);
+  }
+
+  /**
+   * Marks the bubble (or a single grouped document inside it) as the active one — the target of an
+   * opened context menu. Paints the very same highlight ChatSelection paints on a selected message,
+   * but never doubles it: an already selected element is left alone.
+   */
+  public toggleActiveBubble(element: HTMLElement, active: boolean) {
+    const datasetKey = 'activeTimeout';
+    if(element.dataset[datasetKey]) {
+      clearTimeout(+element.dataset[datasetKey]);
+      delete element.dataset[datasetKey];
+    }
+
+    if(active) {
+      element.classList.remove('is-active-backwards');
+      element.classList.toggle('is-active', !element.classList.contains('is-selected'));
+      return;
+    }
+
+    if(!element.classList.contains('is-active')) {
+      return;
+    }
+
+    // * the selection has taken the highlight over in the meantime (or there is nothing to animate)
+    if(element.classList.contains('is-selected') || !liteMode.isAvailable('animations')) {
+      element.classList.remove('is-active', 'is-active-backwards');
+      return;
+    }
+
+    element.classList.add('is-active-backwards');
+    element.dataset[datasetKey] = '' + setTimeout(() => {
+      delete element.dataset[datasetKey];
+      element.classList.remove('is-active', 'is-active-backwards');
+    }, BUBBLE_ACTIVE_DURATION);
   }
 
   /**
