@@ -6113,11 +6113,7 @@ export class AppMessagesManager extends AppManager {
       delete s[peerId];
     });
 
-    for(const key in this.pinnedMessages) {
-      if(+key === peerId || key.startsWith(peerId + '_')) {
-        delete this.pinnedMessages[key];
-      }
-    }
+    this.flushPinnedMessagesCache(peerId);
 
     const needSingleMessages = this.needSingleMessages.get(peerId);
     if(needSingleMessages) {
@@ -6171,6 +6167,18 @@ export class AppMessagesManager extends AppManager {
 
   public getPinnedMessagesKey(peerId: PeerId, threadId?: number) {
     return peerId + (threadId ? '_' + threadId : '');
+  }
+
+  // Every cached pin of the peer, thread-scoped entries included: the plate in a
+  // forum topic (or a saved sub-dialog) caches under `${peerId}_${threadId}`, and
+  // `getPinnedMessage` short-circuits on a cached `maxId` forever — so dropping
+  // only the peer-wide key would leave a topic pointing at a pin that's gone.
+  private flushPinnedMessagesCache(peerId: PeerId) {
+    for(const key in this.pinnedMessages) {
+      if(+key === peerId || key.startsWith(peerId + '_')) {
+        delete this.pinnedMessages[key];
+      }
+    }
   }
 
   public getPinnedMessage(peerId: PeerId, threadId?: number) {
@@ -6240,7 +6248,7 @@ export class AppMessagesManager extends AppManager {
         });
 
         this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, unpinAll: true});
-        delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
+        this.flushPinnedMessagesCache(peerId);
 
         return true;
       }
@@ -7449,19 +7457,64 @@ export class AppMessagesManager extends AppManager {
         filters
       });
 
-      return Promise.all([result, legacyResult]).then(([searchCounters, legacySearchCounters]) => {
-        const out: MessagesSearchCounter[] = searchCounters.map((searchCounter, idx) => {
-          return {
-            ...searchCounter,
-            count: searchCounter.count + legacySearchCounters[idx].count
-          };
-        });
-
-        return out;
+      const [searchCounters, legacySearchCounters] = await Promise.all([result, legacyResult]);
+      const out: MessagesSearchCounter[] = searchCounters.map((searchCounter, idx) => {
+        return {
+          ...searchCounter,
+          count: searchCounter.count + legacySearchCounters[idx].count
+        };
       });
+
+      return this.makeSearchCountersExact(peerId, threadId, out);
     }
 
-    return result;
+    return this.makeSearchCountersExact(peerId, threadId, await result);
+  }
+
+  /**
+   * The server may flag a `messages.getSearchCounters` answer as `inexact`, and
+   * for Saved Messages that number is not merely imprecise but plainly wrong: it
+   * reports 5 pinned messages against 17 real ones, 171 photos against 276.
+   * Re-read those counters from the very search the tab lists, so a number can
+   * never contradict the content shown under it — that search merges a migrated
+   * chat's history on its own, so it supersedes the sum above instead of adding
+   * to it, and its result is cached in the search storage the tab reuses.
+   * Counters the server calls exact (channels, groups) are passed through
+   * untouched, and a re-read that fails keeps the server's guess.
+   */
+  private makeSearchCountersExact(
+    peerId: PeerId,
+    threadId: number,
+    counters: MessagesSearchCounter[]
+  ): MaybePromise<MessagesSearchCounter[]> {
+    if(!counters.some((counter) => counter.pFlags?.inexact)) {
+      return counters;
+    }
+
+    return Promise.all(counters.map(async(counter) => {
+      if(!counter.pFlags?.inexact) {
+        return counter;
+      }
+
+      try {
+        const {count} = await this.getHistory({
+          peerId,
+          threadId,
+          inputFilter: counter.filter as {_: MyInputMessagesFilter},
+          offsetId: 0,
+          limit: 1
+        });
+
+        if(typeof(count) !== 'number') {
+          return counter;
+        }
+
+        return {...counter, pFlags: {}, count};
+      } catch(err) {
+        this.log.error('exact search counter error:', peerId, counter.filter._, err);
+        return counter;
+      }
+    }));
   }
 
   // True if the user can revoke (delete-for-everyone) messages in this peer.
@@ -12214,7 +12267,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   private resetPinnedMessagesCache(peerId: PeerId, mids: number[], pinned: boolean) {
-    delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
+    this.flushPinnedMessagesCache(peerId);
     // Also drop the cached `inputMessagesFilterPinned` search storages
     // for this peer. Otherwise a subsequent `getHistory({inputFilter: pinned})`
     // returns the stale pre-update slice, leaving the plate showing a

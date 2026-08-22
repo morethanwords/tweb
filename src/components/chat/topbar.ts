@@ -1522,9 +1522,8 @@ export default class ChatTopbar {
         key: 'Chat.Title.Comments',
         minusFirst: this.chat.isForum
       });
-      if(count === undefined) {
+      if(count === undefined && middleware()) {
         const historyStorage = this.chat.getHistoryStorage();
-        if(!middleware()) return;
         el.compareAndUpdate(typeof(historyStorage.count) !== 'number' ?
           {key: 'Loading', args: undefined} :
           {args: [historyStorage.count - (this.chat.isForum ? 1 : 0)]}
@@ -1546,12 +1545,11 @@ export default class ChatTopbar {
         })
         // generateTitleIcons(peerId)
       ]);
-
-      if(!middleware()) {
-        return;
-      }
     }
 
+    // Always a callback, never `undefined` — `setPeerCallbacks` and `setTitle`
+    // both call the result unconditionally, so bailing out here used to risk a
+    // 'setTitleCallback is not a function' in the middle of a peer change.
     return () => {
       // A newer `setTitleManual` destroyed our helper, so it owns the title now.
       // Without this the pinned tab could end up stuck on 'Loading': the count
