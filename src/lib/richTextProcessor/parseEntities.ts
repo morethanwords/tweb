@@ -84,12 +84,17 @@ export default function parseEntities(text: string) {
           unicode: unified
         });
       }
-    } else if(match[11]) { // Hashtag
-      entities.push({
-        _: 'messageEntityHashtag',
-        offset: matchIndex + (match[10] ? match[10].length : 0),
-        length: match[11].length
-      });
+    } else if(match[11]) { // Hashtag or cashtag
+      const isCashtag = match[11][0] === '$';
+      const cashtag = isCashtag ? match[11].split('@', 1)[0] : undefined;
+
+      if(!cashtag || cashtag === cashtag.toUpperCase()) {
+        entities.push({
+          _: isCashtag ? 'messageEntityCashtag' : 'messageEntityHashtag',
+          offset: matchIndex + (match[10] ? match[10].length : 0),
+          length: match[11].length
+        });
+      }
     } else if(match[13]) { // Bot command
       entities.push({
         _: 'messageEntityBotCommand',

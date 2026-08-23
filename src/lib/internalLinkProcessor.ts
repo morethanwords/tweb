@@ -52,10 +52,21 @@ import showAddBotToChat from '@components/popups/addBotToChat';
 import getBotAddToChatScope from '@appManagers/utils/bots/getBotAddToChatScope';
 import parseBotAdminRights from '@appManagers/utils/bots/parseBotAdminRights';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
+import searchByTag from '@lib/richTextProcessor/searchByTag';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
   private processingAddAiStyleSlugs: Set<string> = new Set();
+  private tagSearchVersion = 0;
+
+  private showUsernameResolveError(err: ApiError) {
+    if(err.type === 'USERNAME_NOT_OCCUPIED') {
+      toastNew({langPackKey: 'NoUsernameFound'});
+    } else if(err.type === 'USERNAME_INVALID') {
+      toastNew({langPackKey: 'Alert.UserDoesntExists'});
+    }
+  }
 
   public construct(managers: AppManagers) {
     this.managers = managers;
@@ -131,7 +142,22 @@ export class InternalLinkProcessor {
           return;
         }
 
-        return appImManager.chat.initSearch({query: '#' + hashtag + ' '});
+        const search = parseChatSpecificTag(hashtag);
+        const version = ++this.tagSearchVersion;
+        return searchByTag({
+          query: search.query + ' ',
+          username: search.username,
+          activateSearch: (query) => appImManager.chat.initSearch({query}),
+          resolveUsername: (username) => this.managers.appUsersManager.resolveUsername(username),
+          openPeer: (peer) => appImManager.setInnerPeer({
+            peerId: peer.id.toPeerId(peer._ !== 'user')
+          }),
+          isCurrent: () => version === this.tagSearchVersion,
+          onResolveError: (err) => {
+            appImManager.chat.resetSearch();
+            this.showUsernameResolveError(err as ApiError);
+          }
+        });
       }
     });
 
@@ -838,11 +864,7 @@ export class InternalLinkProcessor {
 
         await appImManager.openUsername({userName: link.domain});
       }, (err: ApiError) => {
-        if(err.type === 'USERNAME_NOT_OCCUPIED') {
-          toastNew({langPackKey: 'NoUsernameFound'});
-        } else if(err.type === 'USERNAME_INVALID') {
-          toastNew({langPackKey: 'Alert.UserDoesntExists'});
-        }
+        this.showUsernameResolveError(err);
       });
     }
 

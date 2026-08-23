@@ -621,13 +621,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      case 'messageEntityCashtag':
       case 'messageEntityHashtag': {
         const contextUrl = !options.noLinks && SITE_HASHTAGS[contextSite];
         if(contextUrl) {
-          const hashtag = fullEntityText.slice(1);
+          const tag = fullEntityText.slice(1);
+          const linkTag = entity._ === 'messageEntityCashtag' ? '$' + tag : tag;
           element = document.createElement('a');
           element.className = 'anchor-hashtag';
-          (element as HTMLAnchorElement).href = contextUrl.replace('{1}', encodeURIComponent(hashtag));
+          (element as HTMLAnchorElement).href = contextUrl.replace('{1}', encodeURIComponent(linkTag));
           if(contextExternal) {
             setBlankToAnchor(element as HTMLAnchorElement);
           } else {
