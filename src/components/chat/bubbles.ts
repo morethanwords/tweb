@@ -6676,12 +6676,12 @@ export default class ChatBubbles {
     !first && bubble.classList.remove('is-sending', 'is-error', 'is-sent', 'is-read');
     status && bubble.classList.add('is-' + status);
     bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
-      const isReplacingFirst = !!element.querySelector('.time-sending-status');
+      // * the status is not necessarily the first child anymore (the replies counter can be
+      // * prepended after it), so look up the previous status itself instead of assuming
+      // * its position - otherwise the new icon replaces a foreign element and the old status stays
+      const previous = element.querySelector(':scope > .time-sending-status');
       if(!status) {
-        if(isReplacingFirst) {
-          element.firstElementChild.remove();
-        }
-
+        previous?.remove();
         return;
       }
 
@@ -6692,8 +6692,8 @@ export default class ChatBubbles {
       else icon = 'checks';
 
       const newIcon = Icon(icon, 'time-sending-status');
-      if(isReplacingFirst) {
-        element.firstElementChild.replaceWith(newIcon);
+      if(previous) {
+        previous.replaceWith(newIcon);
       } else {
         element.prepend(newIcon);
       }
@@ -6703,7 +6703,7 @@ export default class ChatBubbles {
   private setBubbleRepliesCount(bubble: HTMLElement, count: number) {
     if(this.chat.threadId) return;
     bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
-      let previous = element.querySelector('.time-replies');
+      let previous = element.querySelector(':scope > .time-replies');
       if(!count) {
         previous?.remove();
         return;
