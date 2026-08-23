@@ -26,6 +26,9 @@ export type DotRendererShaderURLs = {
   fragment: string
 };
 
+// * a same-origin shader is a few KB; anything slower than this is a stalled request, not a slow one
+const SHADER_FETCH_TIMEOUT = 15000;
+
 export function getDefaultParticlesCount(width: number, height: number) {
   return clamp(width * height / (500 * 500) * 1000 * (IS_MOBILE ? 5 : 10), 500, 10000);
 }
@@ -139,10 +142,23 @@ export default class DotRendererCore {
 
   private compileShader(type: number, url: string) {
     const shader = this.context.createShader(type);
+    // * the memoization below is keyed by url and never overwritten once set (`??=`), so a fetch
+    // * that hangs or fails would be handed to every later attempt forever. Nothing downstream
+    // * tolerates that: the spoiler worker only answers `*-inited` after `init()` resolves, and
+    // * `wrapMediaSpoiler` awaits that answer — a single stalled request used to make every chat
+    // * containing a spoiler impossible to open for the rest of the session. Bound the request and
+    // * drop the entry on failure so the next spoiler retries instead of inheriting a dead promise.
     const shaderTextResult = DotRendererCore.shaderTexts[url] ??=
-      fetch(url)
+      fetch(url, {signal: AbortSignal.timeout(SHADER_FETCH_TIMEOUT)})
       .then((response) => response.text())
-      .then((text) => DotRendererCore.shaderTexts[url] = text + '\n//' + Math.random());
+      .then((text) => DotRendererCore.shaderTexts[url] = text + '\n//' + Math.random())
+      .catch((err) => {
+        if(DotRendererCore.shaderTexts[url] instanceof Promise) {
+          delete DotRendererCore.shaderTexts[url];
+        }
+
+        throw err;
+      });
     return callbackify(shaderTextResult, (shaderText) => {
       this.context.shaderSource(shader, shaderText);
       this.context.compileShader(shader);
@@ -274,10 +290,26 @@ export default class DotRendererCore {
   }
 
   public init() {
-    return this.initPromise ??= callbackify(this.compileShaders(), (shaders) => {
+    if(this.initPromise !== undefined) {
+      return this.initPromise;
+    }
+
+    const result = callbackify(this.compileShaders(), (shaders) => {
       this._init(...shaders);
       return true;
     });
+
+    // a failed init must not be memoized either — otherwise the sim can never come up again and
+    // every spoiler awaiting it stays unrendered for the rest of the session
+    if(result instanceof Promise) {
+      result.catch(() => {
+        if(this.initPromise === result) {
+          this.initPromise = undefined;
+        }
+      });
+    }
+
+    return this.initPromise = result;
   }
 
   public destroy() {

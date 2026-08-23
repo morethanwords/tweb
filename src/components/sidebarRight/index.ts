@@ -74,7 +74,9 @@ export class AppSidebarRight extends SidebarSlider {
 
         previousTab.container.remove();
       }
-    } else {
+    } else if(tab) {
+      // both undefined means there is nothing to remove and nothing to mount — reaching for
+      // `tab.container` here threw, and the throw aborted whatever peer change was running
       this.tabsContainer.prepend(tab.container);
     }
 

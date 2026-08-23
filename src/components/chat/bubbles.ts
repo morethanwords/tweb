@@ -28,6 +28,7 @@ import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTA
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
+import withTimeout from '@helpers/schedulers/withTimeout';
 import deferredPromise from '@helpers/cancellablePromise';
 import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import RepliesElement from '@components/chat/replies';
@@ -318,6 +319,9 @@ type GenerateLocalMessageType<IsService> = IsService extends true ? Message.mess
 const SPONSORED_MESSAGE_ID_OFFSET = 1;
 export const STICKY_OFFSET = 3;
 const SCROLLED_DOWN_THRESHOLD = 300;
+// * generous enough for slow media on a bad connection, short enough that a promise which will
+// * never settle cannot brick the chat
+const MEDIA_PROMISES_TIMEOUT = 10000;
 const PEER_CHANGED_ERROR = new Error('peer changed');
 
 const DO_NOT_SLICE_VIEWPORT = false;
@@ -6168,7 +6172,12 @@ export default class ChatBubbles {
     promises.push(getHeavyAnimationPromise());
 
     log('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
-    await m(Promise.all([...promises, this.setUnreadDelimiter()]).catch(noop)); // не нашёл места лучше
+    // * `.catch(noop)` only covers a rejection — a promise that simply never settles slips straight
+    // * through it and parks this batch forever. Everything behind the queue then hangs with it
+    // * (`performHistoryResult` → `Chat.setPeerPromise`), which leaves the chat permanently
+    // * unopenable with no error anywhere. Bound the wait: the bubbles are already built, so at
+    // * worst some media finishes loading after mount instead of before it.
+    await m(withTimeout(Promise.all([...promises, this.setUnreadDelimiter()]).catch(noop), MEDIA_PROMISES_TIMEOUT)); // не нашёл места лучше
     await m(fastRafPromise()); // have to be the last
     log('media promises end');
 
