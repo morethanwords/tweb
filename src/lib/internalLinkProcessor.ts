@@ -147,7 +147,7 @@ export class InternalLinkProcessor {
         return searchByTag({
           query: search.query + ' ',
           username: search.username,
-          activateSearch: (query) => appImManager.chat.initSearch({query}),
+          activateSearch: (query) => appImManager.chat.initSearch({query, focus: true}),
           resolveUsername: (username) => this.managers.appUsersManager.resolveUsername(username),
           openPeer: (peer) => appImManager.setInnerPeer({
             peerId: peer.id.toPeerId(peer._ !== 'user')

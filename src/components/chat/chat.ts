@@ -69,6 +69,7 @@ import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {ChatType} from '@components/chat/chatType';
 import {animateSingle} from '@helpers/animation';
+import focusSearchInput from '@components/chat/focusSearchInput';
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];
@@ -1317,10 +1318,13 @@ export default class Chat extends EventListenerBase<{
     this.searchSignal?.(undefined);
   }
 
-  public initSearch(options: {query?: string, filterPeerId?: PeerId, reaction?: Reaction} = {}): void {
+  public initSearch(options: {query?: string, filterPeerId?: PeerId, reaction?: Reaction, focus?: boolean} = {}): void {
     if(!this.peerId) return;
     options.query ||= '';
     this.searchSignal(options);
+    if(options.focus) {
+      focusSearchInput(this.topbar.container);
+    }
   }
 
   public canSend(action?: ChatRights) {
