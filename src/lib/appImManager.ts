@@ -1325,12 +1325,10 @@ export class AppImManager extends EventListenerBase<{
   }) {
     const {peerId, mid, buttonId, url} = options;
 
-    const openWindow = (url: string) => {
-      window.open(url, '_blank');
-    };
-
+    // ! the url comes off a keyboard button, i.e. off the wire, so it opens through the same helper
+    // ! as every other url in the client — protocol filter and lookalike-host confirmation included
     const onUrlAuthResultAccepted = (urlAuthResult: UrlAuthResult.urlAuthResultAccepted) => {
-      openWindow(urlAuthResult.url);
+      safeWindowOpen(urlAuthResult.url);
     };
 
     const onUrlAuthResult = async(urlAuthResult: UrlAuthResult): Promise<void> => {
@@ -1381,7 +1379,7 @@ export class AppImManager extends EventListenerBase<{
         const [logInChecked, allowMessagesChecked] = await confirmationPromise;
 
         if(!logInChecked) {
-          openWindow(url);
+          safeWindowOpen(url);
           return;
         }
 
@@ -1397,7 +1395,7 @@ export class AppImManager extends EventListenerBase<{
       } else if(urlAuthResult._ === 'urlAuthResultAccepted') {
         onUrlAuthResultAccepted(urlAuthResult);
       } else {
-        openWindow(url);
+        safeWindowOpen(url);
       }
     };
 

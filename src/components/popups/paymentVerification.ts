@@ -1,6 +1,7 @@
 import PopupElement from '.';
 import appImManager from '@lib/appImManager';
 import TelegramWebView from '@components/telegramWebView';
+import getWebViewTgLink from '@helpers/getWebViewTgLink';
 
 export function createVerificationIframe(options: ConstructorParameters<typeof TelegramWebView>[0]) {
   const result = new TelegramWebView({
@@ -38,7 +39,7 @@ export default class PopupPaymentVerification extends PopupElement<{
       this.dispatchEvent('finish');
       this.hide();
       if(this.openPathAfter) {
-        appImManager.openUrl('https://t.me' + e.path_full);
+        appImManager.openUrl(getWebViewTgLink(e.path_full));
       }
     });
 

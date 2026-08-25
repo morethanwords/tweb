@@ -17,3 +17,9 @@ export default function matchUrlProtocol(text: string) {
     return null;
   }
 }
+
+// a url with no protocol of its own is meant as an ordinary https one, and a `javascript:` payload
+// must never survive as a navigable url — both end up as https here
+export function normalizeUrlProtocol(url: string) {
+  return matchUrlProtocol(url) ? url : 'https://' + url;
+}

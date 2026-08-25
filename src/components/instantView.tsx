@@ -27,6 +27,7 @@ import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
 import {GeoPoint} from '@layer';
 import GeoPin from '@components/geoPin';
 import ScrollSaver from '@helpers/scrollSaver';
+import windowSize from '@helpers/windowSize';
 import {Message} from '@layer';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import prepareAlbum from '@components/prepareAlbum';
@@ -75,6 +76,11 @@ const EMBED_SANDBOX_ATTRIBUTES = [
 // A cross-origin `url` embed already loads under the provider's own origin, so keeping it
 // costs nothing here and preserves the provider's cookies and storage.
 const EMBED_URL_SANDBOX_ATTRIBUTES = EMBED_SANDBOX_ATTRIBUTES + ' allow-same-origin';
+
+// The height in a `resize_frame` event is authored by the embedded document — a third-party page,
+// and after a navigation away not even the one the block asked for — so it only ever grows the
+// block to something a tall embed could plausibly need, never to an arbitrary size.
+const MAX_EMBED_VIEWPORTS = 4;
 
 // An `html` embed is a wrapper document whose canonical link points at Telegram's own embed host
 // (embed.telegra.ph), which serves the very same markup. Pointing the frame at that URL is what
@@ -963,6 +969,8 @@ function Block(props: {
           if(!height) {
             return;
           }
+
+          height = Math.min(height, windowSize.height * MAX_EMBED_VIEWPORTS);
 
           const scrollSaver = context.savingScroll ? undefined : new ScrollSaver(scrollableContext, undefined, false);
           if(scrollSaver) {
