@@ -48,7 +48,6 @@ import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
 import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
-import assumeType from '@helpers/assumeType';
 import PopupSendGift from '@components/popups/sendGift';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
@@ -76,9 +75,7 @@ import showAddBotToChat from '@components/popups/addBotToChat';
 import openBoosts from '@components/openBoosts';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
-import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
-import handleCommunityChatJoinError
-from '@components/communities/handleCommunityChatJoinError';
+import joinChat from '@components/chat/joinChat';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -1109,35 +1106,10 @@ export default class ChatTopbar {
     const middleware = this.chat.bubbles.getMiddleware();
     button.setAttribute('disabled', 'true');
 
-    const chatId = this.peerId.toChatId();
-    const isChannel = await this.managers.appChatsManager.isChannel(chatId);
-    const promise = handleChannelsTooMuch(() => {
-      return isChannel ?
-        this.managers.appChatsManager.joinChannel(chatId) :
-        this.managers.appChatsManager.addChatUser(chatId, rootScope.myId);
-    });
-
-    promise.then((result) => {
-      if(result?._ === 'chatInviteJoinWebView') {
-        void this.chat.appImManager.openJoinChatWebView(result);
-      }
-    }).catch((err) => {
-      assumeType<ApiError>(err);
-      const chat = this.chat.peer;
-      const isBroadcast = chat?._ === 'channel' &&
-        !!chat.pFlags.broadcast;
-      if(handleCommunityChatJoinError({
-        error: err,
-        isBroadcast,
-        communityId: chat?._ === 'channel' && chat.linked_community_id ?
-          chat.linked_community_id.toChatId() :
-          undefined,
-        managers: this.managers
-      })) {
-        return;
-      }
-
-      throw err;
+    joinChat({
+      peerId: this.peerId,
+      managers: this.managers,
+      appImManager: this.chat.appImManager
     }).finally(() => {
       if(!middleware()) {
         return;

@@ -3990,6 +3990,7 @@ const lang = {
   'ForumTopic.Context.AddMember': 'Add Members',
   'ForumTopic.Context.ShowAsMessages': 'View as Messages',
   'ForumTopic.Context.New': 'Create Topic',
+  'ForumTopic.Context.ApplyToJoin': 'Apply to Join',
   'ForumTopic.Name.Placeholder': 'Topic Name',
   'ForumTopic.Title.Edit': 'Edit Topic',
   'EditAccount.Username': 'Username',

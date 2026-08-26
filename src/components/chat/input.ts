@@ -109,6 +109,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {ChatRights} from '@appManagers/appChatsManager';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import getChatMembershipAction from '@appManagers/utils/chats/getChatMembershipAction';
 import replaceContent from '@helpers/dom/replaceContent';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {FontFull} from '@config/font';
@@ -1937,11 +1938,16 @@ export default class ChatInput {
     }
 
     const chat = this.chat.peer;
-    if(!chat || !(chat as MTChat.channel).pFlags.left || (chat as MTChat.channel).pFlags.broadcast) {
+    const membershipAction = getChatMembershipAction(chat);
+    if(
+      !membershipAction ||
+      membershipAction === 'leave' ||
+      (chat as MTChat.channel).pFlags.broadcast
+    ) {
       return;
     }
 
-    if((chat as MTChat.channel).pFlags.join_request) {
+    if(membershipAction === 'request') {
       return 'request';
     }
 

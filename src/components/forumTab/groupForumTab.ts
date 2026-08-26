@@ -14,6 +14,10 @@ import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import SortedDialogList from '@components/sortedDialogList';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ForumTab} from '@components/forumTab/forumTab';
+import getGroupForumMembershipAction
+from '@components/forumTab/getGroupForumMembershipAction';
+import joinChat from '@components/chat/joinChat';
+import {toastNew} from '@components/toast';
 
 
 export class GroupForumTab extends ForumTab {
@@ -41,6 +45,33 @@ export class GroupForumTab extends ForumTab {
     appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
     this.scrollable.append(list);
     this.xd.bindScrollable();
+
+    const getMembershipAction = () => {
+      return getGroupForumMembershipAction(
+        apiManagerProxy.getChat(this.peerId.toChatId())
+      );
+    };
+
+    let joining = false;
+    const join = async() => {
+      if(joining) {
+        return;
+      }
+
+      joining = true;
+      try {
+        await joinChat({
+          peerId: this.peerId,
+          managers: this.managers,
+          appImManager
+        });
+      } catch(error) {
+        console.error('join forum error', error);
+        toastNew({langPackKey: 'Error.AnError'});
+      } finally {
+        joining = false;
+      }
+    };
 
     const btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -82,7 +113,19 @@ export class GroupForumTab extends ForumTab {
           });
         },
         separator: true,
-        verify: async() => !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId))
+        verify: () => getMembershipAction() === 'leave'
+      }, {
+        icon: 'adduser',
+        text: 'JoinByPeekGroupTitle',
+        onClick: join,
+        separator: true,
+        verify: () => !joining && getMembershipAction() === 'join'
+      }, {
+        icon: 'adduser',
+        text: 'ForumTopic.Context.ApplyToJoin',
+        onClick: join,
+        separator: true,
+        verify: () => !joining && getMembershipAction() === 'request'
       }]
     });
 

@@ -4,7 +4,6 @@ import type {AppManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appImManager from '@lib/appImManager';
 import confirmationPopup from '@components/confirmationPopup';
-import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {i18n} from '@lib/langPack';
 import {toast, toastNew} from '@components/toast';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -13,8 +12,7 @@ import {
   getCommunityLinkedChatKind,
   getCommunityLinkedChatOpenAction
 } from '@components/forumTab/communityChatsModel';
-import handleCommunityChatJoinError
-from '@components/communities/handleCommunityChatJoinError';
+import joinChat from '@components/chat/joinChat';
 
 type CommunityLinkedChatState =
   | {
@@ -70,11 +68,6 @@ export default async function openCommunityLinkedChat(options: {
   }
 
   options.joiningPeerIds.add(options.peerId);
-  const isBroadcast = (
-    peer?._ === 'channel' ||
-    peer?._ === 'channelForbidden'
-  ) && !!peer.pFlags.broadcast;
-
   try {
     try {
       await confirmationPopup({
@@ -90,25 +83,13 @@ export default async function openCommunityLinkedChat(options: {
       return;
     }
 
-    const result = await handleChannelsTooMuch(() => {
-      return options.managers.appChatsManager.joinChannel(
-        options.peerId.toChatId()
-      );
+    await joinChat({
+      peerId: options.peerId,
+      managers: options.managers,
+      appImManager,
+      communityId: options.communityId
     });
-    if(result?._ === 'chatInviteJoinWebView') {
-      void appImManager.openJoinChatWebView(result);
-    }
   } catch(error) {
-    const apiError = error as ApiError;
-    if(handleCommunityChatJoinError({
-      error: apiError,
-      isBroadcast,
-      communityId: options.communityId,
-      managers: options.managers
-    })) {
-      return;
-    }
-
     console.error('join Community chat error', error);
     toastNew({langPackKey: 'Error.AnError'});
   } finally {
