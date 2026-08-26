@@ -4,7 +4,6 @@ import {LangPackKey, i18n} from '@lib/langPack';
 import {PeerSettings} from '@layer';
 import {AppManagers} from '@lib/managers';
 import callbackify from '@helpers/callbackify';
-import ripple from '@components/ripple';
 import confirmationPopup from '@components/confirmationPopup';
 import classNames from '@helpers/string/classNames';
 import {AckedResult} from '@lib/superMessagePort';
@@ -34,43 +33,34 @@ export type ChatActionsPlate = TopbarPlateController & {
 
 function ActionsPlateBody(props: {
   buttons: Accessor<ActionDef[] | undefined>,
-  disabled: Accessor<boolean>,
   onClose: () => void
 }) {
   return (
-    <TopbarPlate.Body class={classNames(props.disabled() && 'is-disabled')}>
+    <>
       <Show when={props.buttons()}>
         {(btns) => (
           <For each={btns()}>
-            {(action, i) => {
-              const total = btns().length;
-              const button = (
-                <div
-                  class={classNames(
-                    'pinned-actions-button',
-                    action.danger ? 'danger' : 'primary',
-                    total > 1 && 'half',
-                    total > 1 && (i() === 0 ? 'is-first' : 'is-last')
-                  )}
-                  onClick={() => action.onClick()}
-                >
-                  {(() => {
-                    const text = i18n(LANG_KEY_MAP[action.key]);
-                    text.classList.add('pinned-actions-button-text');
-                    return text;
-                  })()}
-                </div>
-              ) as HTMLElement;
-              ripple(button);
-              return button;
-            }}
+            {(action) => (
+              <TopbarPlate.PrimaryButton
+                danger={action.danger}
+                onClick={action.onClick}
+              >
+                {(() => {
+                  const text = i18n(LANG_KEY_MAP[action.key]);
+                  text.classList.add(
+                    'pinned-actions-primary-button-text',
+                    'text-overflow-no-wrap',
+                    'text-uppercase'
+                  );
+                  return text;
+                })()}
+              </TopbarPlate.PrimaryButton>
+            )}
           </For>
         )}
       </Show>
-      <div class="pinned-container-wrapper-utils pinned-actions-wrapper-utils">
-        <TopbarPlate.CloseButton onClick={props.onClose} />
-      </div>
-    </TopbarPlate.Body>
+      <TopbarPlate.CloseButton onClick={props.onClose} />
+    </>
   );
 }
 
@@ -149,9 +139,13 @@ export default function createChatActionsPlate(
 
   const plate = createTopbarPlate({
     modifier: 'actions',
-    height: 52,
+    height: 48,
+    class: () => classNames(
+      disabled() && 'is-disabled',
+      buttons()?.length > 1 && 'is-multiple'
+    ),
     onVisibilityChange: () => topbar.setFloating(),
-    render: () => <ActionsPlateBody buttons={buttons} disabled={disabled} onClose={onClose} />
+    render: () => <ActionsPlateBody buttons={buttons} onClose={onClose} />
   });
 
   const unsetOwn = (peerId: PeerId) => {

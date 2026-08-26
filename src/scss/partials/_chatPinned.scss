@@ -690,15 +690,20 @@
   }
 }
 
-.pinned-requests {
+.pinned-requests,
+.pinned-actions,
+.pinned-translation {
   color: var(--primary-color);
   justify-content: center;
+}
 
-  // Stretched and centred exactly like the translation plate's pill.
-  &-primary-button {
-    width: var(--pc-centered-button-width);
-  }
+.pinned-requests-primary-button,
+.pinned-actions-primary-button,
+.pinned-translation-primary-button {
+  width: var(--pc-centered-button-width);
+}
 
+.pinned-requests {
   // The faces take the start slot exactly the way the close button takes the
   // end one — out of flow, so neither of them shifts the centred label. Same
   // .25rem inset: an avatar is `--pc-button-height` tall, like that button.
@@ -724,60 +729,40 @@
 }
 
 .pinned-actions {
-  &-button {
-    flex: 0 0 auto;
-    text-transform: uppercase;
-    font-weight: var(--font-weight-bold);
-    height: 100%;
-    width: 100%;
-    cursor: pointer;
-    line-height: var(--container-height);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  gap: .25rem;
+  opacity: 1;
 
-    &.half {
-      @include respond-to(not-large-screens) {
-        flex: 1 1 auto;
-      }
+  @include animation-level(2) {
+    transition: opacity var(--transition-standard-in);
+  }
 
-      @include respond-to(large-screens) {
-        width: 50%;
-      }
-    }
+  &-primary-button {
+    min-width: 0;
 
     &-text {
-      display: block;
       pointer-events: none;
     }
   }
 
-  &-wrapper {
-    align-items: center;
-    padding: 0 !important;
-    opacity: 1;
+  &-close {
+    position: absolute;
+    inset-inline-end: .25rem;
+  }
 
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in);
+  &.is-multiple {
+    .pinned-actions-primary-button {
+      flex: 1 1 0;
+      width: auto;
     }
 
-    &-utils {
-      margin-inline-end: 1rem;
-
-      @include respond-to(handhelds) {
-        margin-inline-end: .5rem;
-      }
-
-      @include respond-to(large-screens) {
-        // 2.5rem = button size, 1rem = container padding
-        margin-inline: -3.5rem 0;
-      }
+    .pinned-actions-close {
+      position: static;
     }
+  }
 
-    &.is-disabled {
-      pointer-events: none;
-      opacity: var(--disabled-opacity);
-    }
+  &.is-disabled {
+    pointer-events: none;
+    opacity: var(--disabled-opacity);
   }
 }
 
@@ -801,16 +786,13 @@
 
 .pinned-translation {
   height: var(--pinned-translation-height) !important;
-  color: var(--primary-color);
   font-size: var(--font-size);
-  justify-content: center;
 
   &-primary-button {
-    width: var(--pc-centered-button-width);
     gap: .375rem;
 
     &-icon {
-      font-size: 1.25rem;
+      font-size: 1.375rem;
     }
   }
 
