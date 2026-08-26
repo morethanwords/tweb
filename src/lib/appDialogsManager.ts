@@ -639,6 +639,9 @@ export class DialogElement {
     if(options.unread && this.dom.unreadBadge) {
       if(options.unreadText !== undefined && options.unreadText !== previous?.unreadText) {
         this.dom.unreadBadge.innerText = options.unreadText;
+        if(this.dom.unreadAvatarBadge) {
+          this.dom.unreadAvatarBadge.innerText = options.unreadText;
+        }
       }
       this.dom.unreadBadge.classList.add('unread');
       this.dom.unreadBadge.classList.toggle('mention', !!options.unreadMention);
@@ -671,6 +674,13 @@ export class DialogElement {
     justCreated: boolean,
     batch?: boolean
   ) {
+    // * `setBadgeState` skips a badge whose visibility `lastBadgeState` says is unchanged, so
+    // * out-of-band toggles (`toggleAvatarUnreadBadges` on sidebar collapse / forum tab) must
+    // * keep it in sync — otherwise reading the last unread topic can't hide the avatar badge
+    if(this.lastBadgeState) {
+      this.lastBadgeState[key] = hasBadge;
+    }
+
     SetTransition({
       element: this.dom[key],
       className: 'is-visible',
