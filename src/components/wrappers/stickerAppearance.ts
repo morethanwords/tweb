@@ -93,16 +93,16 @@ export default function createStickerAppearance({container, thumbKey, middleware
     underlay = undefined;
     previous.length = 0;
 
-    // an underlay stays fully opaque until the removal below, so fading the canvas in over
-    // one would HIDE the frame that is already rendered behind the placeholder for the whole
-    // animation - the cell shows its loading state AFTER the media became available. Fade
-    // only into an empty cell, or when the caller explicitly asked for it.
+    // Cross-fade the canvas over the lightweight vector silhouette. A raster underlay stays
+    // fully opaque until the removal below, so fading over one would keep showing the loading
+    // state after the media became available. Callers that render an already-settled frame
+    // (such as a read dice) explicitly opt out with needFadeIn=false.
     const fade = needFadeIn !== false &&
-      (needFadeIn || !top) &&
+      (needFadeIn || !top || top.tagName === 'svg') &&
       liteMode.isAvailable('animations');
 
     // the canvas is attached and on top of the thumb by now (the player mounts it before
-    // firstFrame); fade it in over the empty cell on cold start
+    // firstFrame); fade it in over an empty cell or the vector silhouette on cold start
     if(fade && canvas) {
       canvas.classList.add('fade-in');
       await whenAnimationEnd(canvas, 400);

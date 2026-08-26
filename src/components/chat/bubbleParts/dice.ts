@@ -24,6 +24,9 @@ export default function wrapDice(context: BubbleContext) {
     size,
     boxSize,
     initFrame: play ? undefined : Infinity,
+    // * a settled dice renders its final frame directly, so showing the silhouette while that
+    // * frame fades in would make the loading state appear after the result is already ready
+    noFadeIn: play ? undefined : true,
     ...(isSlot ? {
       loop: false,
       play: false,
@@ -79,7 +82,7 @@ export default function wrapDice(context: BubbleContext) {
         ...commonOptions,
         doc: promise as Promise<MyDocument>,
         container: div,
-        noFadeIn: shouldHide
+        noFadeIn: shouldHide || commonOptions.noFadeIn
       }).then(({render}) => render as Promise<LottiePlayer>);
 
       // * keep frame the last child
