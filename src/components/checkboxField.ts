@@ -1,6 +1,5 @@
 import type ListenerSetter from '@helpers/listenerSetter';
-import ripple from '@components/ripple';
-import {LangPackKey, _i18n} from '@lib/langPack';
+import Icon from '@components/icon';
 import getDeepProperty from '@helpers/object/getDeepProperty';
 import rootScope from '@lib/rootScope';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -8,9 +7,12 @@ import simulateEvent from '@helpers/dom/dispatchEvent';
 
 export type CheckboxFieldColor = 'white' | 'secondary';
 
+/**
+ * A checkbox is only ever the control — it carries no label of its own. Anything the user reads
+ * (caption, subtitle, icon) belongs to the `Row` that hosts it: `Row.Title` + `Row.CheckboxField`
+ * in `rowTsx`, or the corresponding options in `rowTsxController` for imperative callers.
+ */
 export type CheckboxFieldOptions = {
-  text?: LangPackKey,
-  textArgs?: any[],
   name?: string,
   round?: boolean,
   color?: CheckboxFieldColor,
@@ -20,20 +22,19 @@ export type CheckboxFieldOptions = {
   stateValueReverse?: boolean,
   disabled?: boolean,
   checked?: boolean,
+  toggleLockIcon?: Icon,
   restriction?: boolean,
-  withRipple?: boolean,
-  withHover?: boolean,
   listenerSetter?: ListenerSetter,
   asRadio?: boolean
 };
 export default class CheckboxField {
   public input: HTMLInputElement;
-  public label: HTMLLabelElement;
-  public span: HTMLSpanElement;
+  public label: HTMLSpanElement;
+  public toggleCircle: HTMLElement;
   public listenerSetter: ListenerSetter;
 
   constructor(options: CheckboxFieldOptions = {}) {
-    const label = this.label = document.createElement('label');
+    const label = this.label = document.createElement('span');
     label.classList.add('checkbox-field');
 
     if(options.restriction && !options.toggle) {
@@ -107,15 +108,6 @@ export default class CheckboxField {
       else input.addEventListener('change', onChange);
     }
 
-    let span: HTMLSpanElement;
-    if(options.text) {
-      span = this.span = document.createElement('span');
-      span.classList.add('checkbox-caption');
-      _i18n(span, options.text, options.textArgs);
-    } else {
-      label.classList.add('checkbox-without-caption');
-    }
-
     label.append(input);
 
     if(options.toggle) {
@@ -127,10 +119,12 @@ export default class CheckboxField {
 
       const toggle = document.createElement('div');
       toggle.classList.add('checkbox-toggle');
-      const circle = document.createElement('div');
+      const circle = this.toggleCircle = document.createElement('div');
       circle.classList.add('checkbox-toggle-circle');
       toggle.append(circle);
       label.append(toggle);
+
+      this.setToggleLockIcon(options.toggleLockIcon);
     } else {
       const box = document.createElement('div');
       box.classList.add('checkbox-box');
@@ -153,18 +147,6 @@ export default class CheckboxField {
 
       label.append(box);
     }
-
-    if(span) {
-      label.append(span);
-    }
-
-    if(options.withRipple) {
-      label.classList.add('checkbox-ripple', 'hover-effect');
-      ripple(label);
-      // label.prepend(input);
-    } else if(options.withHover) {
-      label.classList.add('hover-effect');
-    }
   }
 
   get checked() {
@@ -178,6 +160,17 @@ export default class CheckboxField {
 
     this.setValueSilently(checked);
     simulateEvent(this.input, 'change');
+  }
+
+  /** Puts a lock inside the toggle's circle, or clears it when no icon is given. Toggle-only. */
+  public setToggleLockIcon(icon?: Icon) {
+    const circle = this.toggleCircle;
+    if(!circle) {
+      return;
+    }
+
+    circle.classList.toggle('with-lock', !!icon);
+    circle.replaceChildren(...(icon ? [Icon(icon)] : []));
   }
 
   public setValueSilently(checked: boolean) {

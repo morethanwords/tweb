@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   addListDialog: vi.fn(),
   createChatList: vi.fn(),
   createContextMenu: vi.fn(),
+  communities: {} as Record<ChatId, any>,
   communityFulls: {} as Record<ChatId, any>,
   dialogs: new Map<PeerId, any>(),
   contextMenuDestroys: [] as ReturnType<typeof vi.fn>[],
@@ -37,6 +38,8 @@ vi.mock('@lib/langPack', () => ({
 }));
 
 vi.mock('@stores/communities', () => ({
+  useCommunity: (getCommunityId: () => ChatId) => () =>
+    mocks.communities[getCommunityId()],
   useCommunityFulls: () => mocks.communityFulls
 }));
 
@@ -89,7 +92,7 @@ type Item = {
 
 let dispose: VoidFunction;
 
-function createFakeDialog(peerId: PeerId) {
+function createFakeDialog(peerId: PeerId, avatarElement?: HTMLElement) {
   const element = document.createElement('a');
   element.classList.add('row', 'chatlist-chat');
   element.dataset.peerId = String(peerId);
@@ -106,23 +109,41 @@ function createFakeDialog(peerId: PeerId) {
   const lastMessageSpan = document.createElement('span');
   subtitleEl.append(lastMessageSpan);
 
-  const avatar = document.createElement('span');
+  const avatar = avatarElement || document.createElement('span');
   avatar.classList.add('row-media', 'row-media-abitbigger');
   element.append(titleRow, subtitleEl, avatar);
 
-  const dialog = {
+  const destroyCallbacks: VoidFunction[] = [];
+  const dialog: any = {
     container: element,
     dom: {
-      avatarEl: {node: avatar},
+      avatarEl: avatarElement ? undefined : {node: avatar},
       lastMessageSpan,
       listEl: element,
       titleSpan,
       titleSpanContainer
     },
     media: avatar,
-    remove: vi.fn(() => element.remove()),
+    middlewareHelper: {
+      onDestroy: vi.fn((callback: VoidFunction) => {
+        destroyCallbacks.push(callback);
+      })
+    },
+    remove: vi.fn(() => {
+      destroyCallbacks.splice(0).forEach((callback) => callback());
+      element.remove();
+    }),
+    updateTitle: vi.fn((title: string) => {
+      titleSpan.textContent = title;
+    }),
     titleRight
   };
+  dialog.applyMediaElement = vi.fn((media: HTMLElement, size: string) => {
+    dialog.media.replaceWith(media);
+    dialog.media = media;
+    media.classList.add('row-media', `row-media-${size}`);
+    return media;
+  });
   mocks.dialogs.set(peerId, dialog);
   return dialog;
 }
@@ -130,6 +151,9 @@ function createFakeDialog(peerId: PeerId) {
 beforeEach(() => {
   vi.clearAllMocks();
   resizeObserverInstances.length = 0;
+  for(const key in mocks.communities) {
+    delete mocks.communities[key as unknown as ChatId];
+  }
   for(const key in mocks.communityFulls) {
     delete mocks.communityFulls[key as unknown as ChatId];
   }
@@ -140,9 +164,13 @@ beforeEach(() => {
     list.classList.add('chatlist');
     return list;
   });
-  mocks.addDialogNew.mockImplementation(({peerId}: {peerId: PeerId}) => {
-    return createFakeDialog(peerId);
-  });
+  mocks.addDialogNew.mockImplementation(({
+    peerId,
+    avatarElement
+  }: {
+    peerId: PeerId,
+    avatarElement?: HTMLElement
+  }) => createFakeDialog(peerId, avatarElement));
   mocks.addListDialog.mockImplementation(({
     peerId,
     onInitPromise
@@ -201,6 +229,12 @@ describe('CommunityPeerDialogList', () => {
     const firstPeerId = (1 as ChatId).toPeerId(true);
     const secondPeerId = (2 as ChatId).toPeerId(true);
     const overlayPeerId = (3 as UserId).toPeerId(false);
+    mocks.communities[1 as ChatId] = {
+      _: 'community',
+      id: 1 as ChatId,
+      pFlags: {},
+      title: 'Community One'
+    };
     const [items, setItems] = createSignal<Item[]>([{
       peerId: firstPeerId,
       subtitle: 'First subtitle',
@@ -249,6 +283,7 @@ describe('CommunityPeerDialogList', () => {
     expect(mocks.addDialogNew).toHaveBeenCalledWith(
       expect.objectContaining({
         autonomous: true,
+        avatarElement: expect.any(HTMLElement),
         peerId: firstPeerId
       })
     );
@@ -262,12 +297,16 @@ describe('CommunityPeerDialogList', () => {
     expect(first.dom.listEl.classList.contains('first-row')).toBe(true);
     expect(first.dom.lastMessageSpan.textContent).toBe('First subtitle');
     expect(first.dom.titleSpan.textContent).toBe('Community One');
+    expect(first.updateTitle).toHaveBeenCalledWith('Community One');
     expect(first.dom.titleSpanContainer.textContent)
     .toContain(`${firstPeerId} accessory`);
     expect([...first.dom.titleSpanContainer.children])
     .toEqual([first.dom.titleSpan]);
     expect(first.dom.listEl.querySelector('[data-testid="community-avatar"]'))
     .not.toBeNull();
+    expect(first.applyMediaElement).not.toHaveBeenCalled();
+    expect(first.media.parentElement).toBe(first.dom.listEl);
+    expect(first.middlewareHelper.onDestroy).toHaveBeenCalledOnce();
     expect(first.dom.listEl.querySelector('[data-testid="avatar-overlay"]')
       ?.getAttribute('data-peer-id')).toBe(String(overlayPeerId));
     expect(second.dom.titleSpan.textContent).toBe(`Peer ${secondPeerId}`);
@@ -275,13 +314,19 @@ describe('CommunityPeerDialogList', () => {
     setItems([{
       ...items()[0],
       subtitle: 'Updated subtitle',
-      class: 'updated-row'
+      class: 'updated-row',
+      community: {
+        ...items()[0].community,
+        title: 'Community Updated'
+      }
     }]);
 
     await vi.waitFor(() => {
       expect(first.dom.lastMessageSpan.textContent).toBe('Updated subtitle');
+      expect(first.dom.titleSpan.textContent).toBe('Community Updated');
       expect(second.remove).toHaveBeenCalledOnce();
     });
+    expect(first.updateTitle).toHaveBeenLastCalledWith('Community Updated');
     expect(mocks.addListDialog).not.toHaveBeenCalled();
     expect(first.dom.listEl.classList.contains('first-row')).toBe(false);
     expect(first.dom.listEl.classList.contains('updated-row')).toBe(true);
@@ -498,5 +543,11 @@ describe('CommunityPeerDialogList', () => {
     expect(
       mocks.dialogs.get(second.id.toPeerId(true)).dom.lastMessageSpan.textContent
     ).toBe('Community.Title');
+    const firstDialog = mocks.dialogs.get(first.id.toPeerId(true));
+    expect(firstDialog.dom.listEl.querySelector(
+      '[data-testid="community-avatar"]'
+    )).not.toBeNull();
+    expect(firstDialog.applyMediaElement).not.toHaveBeenCalled();
+    expect(firstDialog.media.parentElement).toBe(firstDialog.dom.listEl);
   });
 });

@@ -68,7 +68,7 @@ export default autoDownloadTab((tab) => {
     setAppSettings('autoDownloadNew', 'file_size_max', sizeMax);
   }, 200, false, true);
 
-  const section = autoDownloadPeerTypeSection('file', 'AutoDownloadFilesTitle', tab.listenerSetter);
+  const section = autoDownloadPeerTypeSection('file', 'AutoDownloadFilesTitle', tab.middlewareHelper.get());
 
   const MIN = 512 * 1024;
   // const MAX = 2 * 1024 * 1024 * 1024;

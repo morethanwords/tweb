@@ -1,16 +1,14 @@
-import {Component, onMount} from 'solid-js';
+import {Component, createSignal, onMount, type Signal} from 'solid-js';
 import PrivacySection from '@components/privacySection';
-import {LangPackKey} from '@lib/langPack';
-import Row from '@components/row';
-import CheckboxField from '@components/checkboxField';
-import SettingSection from '@components/settingSection';
+import {i18n, LangPackKey} from '@lib/langPack';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import Row from '@components/rowTsx';
+import Section from '@components/section';
 import {DisallowedGiftsSettings, GlobalPrivacySettings} from '@layer';
 import rootScope from '@lib/rootScope';
 import PopupPremium from '@components/popups/premium';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import cancelEvent from '@helpers/dom/cancelEvent';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppPrivacyGiftsTab} from '@components/solidJsTabs/tabs';
 
@@ -27,6 +25,29 @@ const GIFT_TYPE_TOGGLES: Array<{flag: GiftTypeFlag, langKey: LangPackKey}> = [
 const PrivacyGifts: Component = () => {
   const [tab] = useSuperTab<typeof AppPrivacyGiftsTab>();
   const globalPrivacy = tab.payload;
+  const typeToggles = GIFT_TYPE_TOGGLES.map((item) => ({
+    ...item,
+    signal: createSignal(!globalPrivacy.disallowed_gifts?.pFlags[item.flag])
+  }));
+  const showIconSignal = createSignal(!!globalPrivacy.pFlags.display_gifts_button);
+
+  const showPremiumToast = () => {
+    toastNew({
+      langPackKey: 'Privacy.GiftsPremiumError',
+      langPackArguments: [
+        anchorCallback(() => {
+          hideToast();
+          PopupPremium.show();
+        })
+      ]
+    });
+  };
+
+  const gatePremiumToggle = (signal: Signal<boolean>) => (checked: boolean) => {
+    if(rootScope.premium) return;
+    signal[1](!checked);
+    showPremiumToast();
+  };
 
   onMount(() => {
     tab.container.classList.add('privacy-tab', 'privacy-gifts');
@@ -43,79 +64,19 @@ const PrivacyGifts: Component = () => {
       allowMiniApps: true
     });
 
-    const showPremiumToast = (e?: Event) => {
-      if(e) cancelEvent(e);
-      toastNew({
-        langPackKey: 'Privacy.GiftsPremiumError',
-        langPackArguments: [
-          anchorCallback(() => {
-            hideToast();
-            PopupPremium.show();
-          })
-        ]
-      });
-    };
-
-    const gatePremiumToggle = (row: Row) => {
-      const input = row.checkboxField.input;
-      tab.listenerSetter.add(input)('change', () => {
-        if(rootScope.premium) return;
-        input.checked = !input.checked;
-        showPremiumToast();
-      });
-    };
-
-    const typesSection = new SettingSection({
-      name: 'Privacy.GiftsAcceptedTypes',
-      caption: 'Privacy.GiftsAcceptedTypesInfo'
-    });
-
-    const typeRows = GIFT_TYPE_TOGGLES.map(({flag, langKey}) => {
-      const row = new Row({
-        titleLangKey: langKey,
-        checkboxField: new CheckboxField({
-          toggle: true,
-          checked: !globalPrivacy.disallowed_gifts?.pFlags[flag]
-        }),
-        listenerSetter: tab.listenerSetter
-      });
-      gatePremiumToggle(row);
-      typesSection.content.append(row.container);
-      return {flag, row};
-    });
-
-    tab.scrollable.append(typesSection.container);
-
-    const showIconSection = new SettingSection({
-      caption: 'Privacy.GiftsShowIconInfo'
-    });
-
-    const showIconRow = new Row({
-      titleLangKey: 'Privacy.GiftsShowIcon',
-      checkboxField: new CheckboxField({
-        toggle: true,
-        checked: !!globalPrivacy.pFlags.display_gifts_button
-      }),
-      listenerSetter: tab.listenerSetter
-    });
-    gatePremiumToggle(showIconRow);
-
-    showIconSection.content.append(showIconRow.container);
-    tab.scrollable.append(showIconSection.container);
-
     tab.eventListener.addEventListener('destroy', () => {
       if(!rootScope.premium) return;
 
       const newDisallowedPFlags: DisallowedGiftsSettings.disallowedGiftsSettings['pFlags'] = {};
       let hasAnyDisallow = false;
-      for(const {flag, row} of typeRows) {
-        if(!row.checkboxField.checked) {
+      for(const {flag, signal: [checked]} of typeToggles) {
+        if(!checked()) {
           newDisallowedPFlags[flag] = true;
           hasAnyDisallow = true;
         }
       }
 
-      const newDisplayGiftsButton = showIconRow.checkboxField.checked;
+      const newDisplayGiftsButton = showIconSignal[0]();
 
       const currentDisallowedPFlags = globalPrivacy.disallowed_gifts?.pFlags || {};
       const sameDisallowed = GIFT_TYPE_TOGGLES.every(({flag}) =>
@@ -145,7 +106,36 @@ const PrivacyGifts: Component = () => {
     });
   });
 
-  return null;
+  return (
+    <>
+      <Section name="Privacy.GiftsAcceptedTypes" caption="Privacy.GiftsAcceptedTypesInfo">
+        {typeToggles.map(({langKey, signal}) => (
+          <Row>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                signal={signal}
+                toggle
+                onChange={gatePremiumToggle(signal)}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n(langKey)}</Row.Title>
+          </Row>
+        ))}
+      </Section>
+      <Section caption="Privacy.GiftsShowIconInfo">
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              signal={showIconSignal}
+              toggle
+              onChange={gatePremiumToggle(showIconSignal)}
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('Privacy.GiftsShowIcon')}</Row.Title>
+        </Row>
+      </Section>
+    </>
+  );
 };
 
 export default PrivacyGifts;

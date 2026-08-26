@@ -9,7 +9,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {i18n, join, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import showPickUserPopup from '@components/popups/pickUser';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
 import Section from '@components/section';
 import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -25,6 +25,7 @@ import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppGroupPermissionsTab} from '@components/solidJsTabs/tabs';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 const GroupPermissions: Component = () => {
   const [tab] = useSuperTab<typeof AppGroupPermissionsTab>();
@@ -202,26 +203,24 @@ const GroupPermissions: Component = () => {
         const participantsCount = (chatFull as ChatFull.channelFull).participants_count ||
           channel.participants_count || 0;
         if(participantsCount >= config.megagroup_size_max - 1000) {
-          const row = new Row({
-            titleLangKey: 'BroadcastGroupConvert',
-            icon: 'newgroup_filled',
-            clickable: () => {
+          const row = wrapSolidComponent(() => (
+            <RowTsx clickable={() => {
               showConvertToGigagroupPopup(chatId);
-            },
-            listenerSetter: tab.listenerSetter
-          });
+            }}>
+              <RowTsx.Icon icon="newgroup_filled" />
+              <RowTsx.Title>{i18n('BroadcastGroupConvert')}</RowTsx.Title>
+            </RowTsx>
+          ), tab.middlewareHelper.get());
 
-          setConvertRow(row.container);
+          setConvertRow(row);
         }
       }
     }
 
     {
-      const addExceptionRow = new Row({
-        titleLangKey: 'ChannelAddException',
-        subtitleLangKey: 'Loading',
-        icon: 'adduser',
-        clickable: () => {
+      let addExceptionSubtitle: HTMLDivElement;
+      const addExceptionRow = wrapSolidComponent(() => (
+        <RowTsx clickable={() => {
           showPickUserPopup({
             titleLangKey: 'Exceptions',
             peerType: ['channelParticipants'],
@@ -234,9 +233,12 @@ const GroupPermissions: Component = () => {
             peerId: -chatId,
             exceptSelf: true
           });
-        },
-        listenerSetter: tab.listenerSetter
-      });
+        }}>
+          <RowTsx.Icon icon="adduser" />
+          <RowTsx.Title>{i18n('ChannelAddException')}</RowTsx.Title>
+          <RowTsx.Subtitle ref={addExceptionSubtitle}>{i18n('Loading')}</RowTsx.Subtitle>
+        </RowTsx>
+      ), tab.middlewareHelper.get());
 
       const openPermissions = async(peerId: PeerId) => {
         let participant = participants.get(peerId);
@@ -251,7 +253,7 @@ const GroupPermissions: Component = () => {
         openUserPermissionsTab(tab.slider, chatId, participant);
       };
 
-      exceptionsAdd.append(addExceptionRow.container);
+      exceptionsAdd.append(addExceptionRow);
 
       const list = appDialogsManager.createChatList({new: true});
       exceptionsList.append(list);
@@ -348,7 +350,7 @@ const GroupPermissions: Component = () => {
 
       const setLength = () => {
         const el = i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]);
-        replaceContent(addExceptionRow.subtitle, el);
+        replaceContent(addExceptionSubtitle, el);
       };
 
       let exceptionsCount = 0;

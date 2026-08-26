@@ -41,7 +41,6 @@ vi.mock('@components/sidebarRight/tabs/groupPermissions/sharedPermissions', () =
   ChatPermissions: class ChatPermissions {}
 }));
 vi.mock('@helpers/animation', () => ({animate: vi.fn()}));
-vi.mock('@components/row', () => ({default: class Row {}}));
 vi.mock('@components/checkboxField', () => ({default: class CheckboxField {}}));
 vi.mock('@components/icon', () => ({default: () => document.createElement('span')}));
 vi.mock('@components/toast', () => ({toastNew: vi.fn()}));

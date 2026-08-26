@@ -14,7 +14,7 @@ import type {AppPasscodeLockTab} from '@components/solidJsTabs';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import Space from '@components/space';
-import StaticSwitch from '@components/staticSwitch';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import commonStyles from '@components/sidebarLeft/tabs/passcodeLock/common.module.scss';
 import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
 import styles from '@components/sidebarLeft/tabs/passcodeLock/mainTab.module.scss';
@@ -296,16 +296,11 @@ const PasscodeSetContent: Component<{
           </Row>
         </Show>
         <Show when={canShowShortcut()}>
-          <Row
-            class={styles.Row}
-            clickable={(e) => {
-              setShortcutEnabled(!shortcutEnabled());
-            }}
-          >
+          <Row>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx toggle checked={shortcutEnabled()} onChange={setShortcutEnabled} />
+            </Row.CheckboxFieldToggle>
             <Row.Title>{i18n('PasscodeLock.EnableLockShortcut')}</Row.Title>
-            <Row.RightContent>
-              <StaticSwitch checked={shortcutEnabled()} />
-            </Row.RightContent>
           </Row>
           <div class={styles.ShortcutBuilderRow} classList={{[styles.collapsed]: !shortcutEnabled()}}>
             <ShortcutBuilder class={styles.ShortcutBuilderRowChild} value={shortcutKeys() || []} onChange={setShortcutKeys} key="L" />

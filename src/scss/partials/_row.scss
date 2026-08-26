@@ -80,7 +80,8 @@ $row-border-radius: $border-radius-medium;
       grid-template-areas: "left title right";
       grid-template-rows: auto;
 
-      .row-title {
+      .row-title,
+      .row-title-row {
         align-self: unset;
       }
     }
@@ -95,9 +96,21 @@ $row-border-radius: $border-radius-medium;
       align-self: flex-end;
     }
 
+    .row-title-row {
+      grid-area: title;
+      align-self: flex-end;
+      min-width: 0;
+    }
+
     .row-subtitle {
       grid-area: subtitle;
       align-self: flex-start;
+    }
+
+    .row-subtitle-row {
+      grid-area: subtitle;
+      align-self: flex-start;
+      min-width: 0;
     }
 
     .row-midtitle {
@@ -105,7 +118,9 @@ $row-border-radius: $border-radius-medium;
       align-self: flex-start;
     }
 
-    .row-checkbox-field {
+    // the row's OWN checkbox, which the grid gives a column of its own — a toggle nested in
+    // `.row-right` or in the title row must keep its natural width
+    > .row-checkbox-field {
       --offset-left: 0 !important;
       grid-area: left;
       width: 3.5rem;
@@ -170,6 +185,12 @@ $row-border-radius: $border-radius-medium;
     @include text-overflow(false);
 
     &-right {
+      &-with-control {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+      }
+
       &-secondary {
         color: var(--secondary-text-color);
       }
@@ -312,6 +333,15 @@ $row-border-radius: $border-radius-medium;
       opacity: 0;
     }
 
+    &-handle {
+      pointer-events: auto;
+      cursor: grab;
+
+      html.is-touch & {
+        opacity: 1;
+      }
+    }
+
     &.cant-sort {
       .row-sortable-icon {
         display: none;
@@ -358,13 +388,11 @@ $row-border-radius: $border-radius-medium;
   }
 
   .row-radio-field,
-  .row-radio-field:not(.radio-field-right) .radio-field-main,
-  .row-checkbox-field {
+  .row-radio-field .radio-field-main {
     position: unset;
   }
   
   .row-radio-field,
-  .row-checkbox-field,
   .offset-left {
     --offset-left: 1rem;
   }
@@ -372,6 +400,22 @@ $row-border-radius: $border-radius-medium;
   .row-radio-field {
     margin-top: 0;
     margin-bottom: 0;
+
+    &.radio-field-right {
+      --offset-left: 0px;
+      width: var(--size);
+      height: var(--size);
+      display: block;
+      flex: none;
+
+      .radio-field-main {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        position: relative;
+      }
+    }
   }
 
   .row-checkbox-field {
@@ -379,21 +423,7 @@ $row-border-radius: $border-radius-medium;
     margin-inline-end: 0;
     margin-bottom: 0;
     height: auto;
-
-    .checkbox-caption {
-      padding-inline-start: 0;
-      white-space: pre-wrap;
-      overflow: unset;
-      text-overflow: unset;
-    }
-
-    // variants of the checkbox itself rather than of the row's hold on it, so they combine
-    &.checkbox-field-absolute {
-      position: absolute;
-      margin: 0 !important;
-      padding: 0 !important;
-      left: 0;
-    }
+    position: absolute;
 
     &.checkbox-field-round {
       .checkbox-box-border {

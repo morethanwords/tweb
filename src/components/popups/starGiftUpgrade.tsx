@@ -243,11 +243,9 @@ export default async function createStarGiftUpgradePopup(props: {
               <div class="popup-star-gift-upgrade-footer">
                 <Row>
                   <Row.CheckboxField>
-                    <CheckboxFieldTsx
-                      text="StarGiftUpgradeKeepInfo"
-                      signal={keepInfoSignal}
-                    />
+                    <CheckboxFieldTsx signal={keepInfoSignal} />
                   </Row.CheckboxField>
+                  <Row.Title>{i18n('StarGiftUpgradeKeepInfo')}</Row.Title>
                 </Row>
               </div>
             )}

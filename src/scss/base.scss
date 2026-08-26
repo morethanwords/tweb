@@ -1522,18 +1522,6 @@ hr {
   }
 }
 
-.quick-reaction-title {
-  display: flex;
-  align-items: center;
-}
-
-.quick-reaction-sticker {
-  width: 32px !important;
-  height: 32px !important;
-  position: relative !important;
-  margin: 0 .5rem 0 0 !important;
-}
-
 .verified-icon {
   &-svg {
     width: 1rem;
@@ -2102,7 +2090,7 @@ hr {
   position: absolute;
   // top: 3.5rem;
   top: 3.25rem;
-  width: calc(100% - 4.5rem - .125rem);
+  width: calc(100% - 5.5rem);
   pointer-events: none;
   opacity: 0;
 

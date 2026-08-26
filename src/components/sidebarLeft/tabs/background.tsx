@@ -13,12 +13,13 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager, {AppDownloadManager} from '@lib/appDownloadManager';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
+import {i18n} from '@lib/langPack';
 import {useAppSettings} from '@stores/appSettings';
 import {unwrap} from 'solid-js/store';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import Button from '@components/buttonTsx';
-import CheckboxField from '@components/checkboxField';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import ProgressivePreloader from '@components/preloader';
 import {AppBackgroundColorTab} from '@components/solidJsTabs/tabs';
 import {AppTheme, AppThemeSettings} from '@config/state';
@@ -291,16 +292,17 @@ const ChatBackground = () => {
   grid.classList.add('search-super-content-media-grid');
 
   const getActiveThemeSettings = () => themeController.getThemeSettings(getTheme());
-
-  const blurCheckboxField = new CheckboxField({
-    text: 'ChatBackground.Blur',
-    name: 'blur',
-    checked: needBlur(getActiveThemeSettings()?.wallpaper, false)
-  });
-
-  const toggleBlurCheckbox = () => {
+  const getBlurDisabled = () => {
     const wallPaper = getActiveThemeSettings()?.wallpaper;
-    blurCheckboxField.toggleDisability(!wallPaper || wallPaper._ === 'wallPaperNoFile' || !!wallPaper?.pFlags?.pattern);
+    return !wallPaper || wallPaper._ === 'wallPaperNoFile' || !!wallPaper.pFlags.pattern;
+  };
+  const blurSignal = createSignal(needBlur(getActiveThemeSettings()?.wallpaper, false));
+  const [blur, setBlur] = blurSignal;
+  const [blurDisabled, setBlurDisabled] = createSignal(getBlurDisabled());
+
+  const syncBlurControl = () => {
+    setBlur(needBlur(getActiveThemeSettings()?.wallpaper, false));
+    setBlurDisabled(getBlurDisabled());
   };
 
   const changeWallPaperBlur = async(wallPaper: WallPaper, blur: boolean) => {
@@ -313,19 +315,19 @@ const ChatBackground = () => {
     wallPaper: WallPaper,
     themeSettings?: AppThemeSettings
   ) => {
-    if(!blurCheckboxField.isDisabled()) {
-      await changeWallPaperBlur(wallPaper, blurCheckboxField.checked);
+    if(!blurDisabled()) {
+      await changeWallPaperBlur(wallPaper, blur());
     }
 
     return AppBackgroundTab.setBackgroundDocument(wallPaper, themeSettings);
   };
 
   const setActive = () => {
+    syncBlurControl();
+
     const active = grid.querySelector('.active');
     const target = elementsByKey.get(getWallPaperKeyFromTheme(getTheme()));
     if(active === target) return;
-
-    toggleBlurCheckbox();
 
     active?.classList.remove('active', ...GRID_CORNER_CLASSES);
     if(target) {
@@ -451,8 +453,25 @@ const ChatBackground = () => {
     // and re-applies the background itself (applyNewTheme → setBackgroundDocument →
     // applyCurrentTheme), so we just refresh the blur checkbox once it settles.
     themeController.resetActiveTheme().then(() => {
-      blurCheckboxField.setValueSilently(needBlur(getActiveThemeSettings()?.wallpaper, false));
+      syncBlurControl();
     });
+  };
+
+  const onBlurChange = async(blur: boolean) => {
+    await changeWallPaperBlur(getActiveThemeSettings().wallpaper, blur);
+
+    // wait for the animation end before re-applying — matches legacy timing
+    setTimeout(() => {
+      const active = grid.querySelector('.active') as HTMLElement;
+      if(!active) return;
+
+      const wallpaper = wallPapersByElement.get(active);
+      if((wallpaper as WallPaper.wallPaper).pFlags.pattern || wallpaper._ === 'wallPaperNoFile') {
+        return;
+      }
+
+      setBackgroundDocument(wallpaper);
+    }, 100);
   };
 
   const onGridClick = (e: MouseEvent | TouchEvent) => {
@@ -529,25 +548,7 @@ const ChatBackground = () => {
 
   onMount(() => {
     attachClickEvent(grid, onGridClick, {listenerSetter});
-    toggleBlurCheckbox();
     tab.container.classList.add('background-container', 'background-image-container');
-
-    listenerSetter.add(blurCheckboxField.input)('change', async() => {
-      await changeWallPaperBlur(getActiveThemeSettings().wallpaper, blurCheckboxField.checked);
-
-      // wait for the animation end before re-applying — matches legacy timing
-      setTimeout(() => {
-        const active = grid.querySelector('.active') as HTMLElement;
-        if(!active) return;
-
-        const wallpaper = wallPapersByElement.get(active);
-        if((wallpaper as WallPaper.wallPaper).pFlags.pattern || wallpaper._ === 'wallPaperNoFile') {
-          return;
-        }
-
-        setBackgroundDocument(wallpaper);
-      }, 100);
-    });
   });
 
   subscribeOn(rootScope)('background_change', setActive);
@@ -573,8 +574,17 @@ const ChatBackground = () => {
           text="Appearance.Reset"
           onClick={onResetClick}
         />
-        <Row>
-          <Row.CheckboxField>{blurCheckboxField.label}</Row.CheckboxField>
+        <Row disabled={blurDisabled()}>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              disabled={blurDisabled()}
+              name="blur"
+              signal={blurSignal}
+              toggle
+              onChange={onBlurChange}
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('ChatBackground.Blur')}</Row.Title>
         </Row>
       </Section>
       <Show when={loaded()}>

@@ -20,6 +20,7 @@ export interface ChatInputStateStore {
 
   // * file input
   isEditing: boolean;
+  isReplacingMedia: boolean;
   isSuggesting: boolean;
 
   // * direct messages
@@ -48,6 +49,7 @@ const DEFAULT_STORE: ChatInputStateStore = {
   starsAmount: 0,
 
   isEditing: false,
+  isReplacingMedia: false,
   isSuggesting: false,
 
   isMonoforumAllChats: false,

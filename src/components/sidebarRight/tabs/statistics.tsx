@@ -18,7 +18,7 @@ import liteMode from '@helpers/liteMode';
 import classNames from '@helpers/string/classNames';
 import Icon from '@components/icon';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
 import {wrapReplyDivAndCaption} from '@components/chat/replyContainer';
 import {formatFullSentTime} from '@helpers/date';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
@@ -36,6 +36,7 @@ import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {avatarNew} from '@components/avatarNew';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -664,24 +665,31 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       subtitleRightFragment.append(e);
     });
 
-    const row = new Row({
-      title: true,
-      titleRight: noLabels ? undefined : i18n('Views', [numberThousandSplitter(postInteractionCounters.views)]),
-      subtitle: true,
-      subtitleRight: noLabels ? undefined : subtitleRightFragment,
-      clickable: true,
-      noWrap: true,
-      asLink: !!(message || storyItem)
-    });
-
-    const {container} = row;
-    container.classList.add('statistics-post');
-
-    row.title.classList.add('statistics-post-title');
-
     const middleware = this.middlewareHelper.get();
     const mediaEl = document.createElement('div');
     mediaEl.classList.add('statistics-post-media');
+    let titleElement: HTMLDivElement;
+    let subtitleElement: HTMLDivElement;
+    const container = wrapSolidComponent(() => (
+      <RowTsx
+        clickable
+        noWrap
+        as={message || storyItem ? 'a' : undefined}
+        class="statistics-post"
+      >
+        <RowTsx.Title
+          ref={titleElement}
+          class="statistics-post-title"
+          titleRight={noLabels ? undefined : i18n('Views', [numberThousandSplitter(postInteractionCounters.views)])}
+        />
+        <RowTsx.Subtitle
+          ref={subtitleElement}
+          subtitleRight={noLabels ? undefined : subtitleRightFragment}
+        />
+        <RowTsx.Media element={mediaEl} size="abitbigger" />
+      </RowTsx>
+    ), middleware);
+
     if(message || storyItem) {
       const {node, readyThumbPromise, setStoriesSegments} = avatarNew({
         middleware,
@@ -690,26 +698,25 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         peerId
       });
 
-      row.container.dataset.peerId = '' + peerId;
+      container.dataset.peerId = '' + peerId;
       if(storyItem) {
         setStoriesSegments([{length: 1, type: 'unread'}]);
-        row.container.dataset.storyId = '' + storyItem.id;
+        container.dataset.storyId = '' + storyItem.id;
       } else {
-        row.container.dataset.mid = '' + message.mid;
+        container.dataset.mid = '' + message.mid;
       }
 
       mediaEl.append(node);
       await readyThumbPromise;
-      row.title.append(await wrapPeerTitle({peerId}));
-      row.subtitle.append(formatFullSentTime(message?.date || storyItem?.date));
-      row.applyMediaElement(mediaEl, 'abitbigger');
+      titleElement.append(await wrapPeerTitle({peerId}));
+      subtitleElement.append(formatFullSentTime(message?.date || storyItem?.date));
     } else if(postInteractionCounters._ === 'postInteractionCountersMessage') {
       container.classList.add('statistics-post-message');
       message ||= this.messages.get(postInteractionCounters.msg_id);
       const isMediaSet = await wrapReplyDivAndCaption({
-        titleEl: row.subtitle,
+        titleEl: subtitleElement,
         title: formatFullSentTime(message.date),
-        subtitleEl: row.title,
+        subtitleEl: titleElement,
         message,
         mediaEl,
         middleware,
@@ -721,13 +728,11 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         mediaEl.append(node);
         await readyThumbPromise;
       }
-
-      row.applyMediaElement(mediaEl, 'abitbigger');
     } else {
       container.classList.add('statistics-post-story');
       storyItem ||= this.stories.get(postInteractionCounters.story_id);
-      row.title.append(i18n('Story'));
-      row.subtitle.append(formatFullSentTime(storyItem.date));
+      titleElement.append(i18n('Story'));
+      subtitleElement.append(formatFullSentTime(storyItem.date));
 
       const border = document.createElement('div');
       border.classList.add('avatar-stories-simple', 'is-unread');
@@ -755,8 +760,6 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
         return deferred;
       });
-
-      row.applyMediaElement(mediaEl, 'abitbigger');
     }
 
     return {container, postInteractionCounters};

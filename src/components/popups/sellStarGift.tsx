@@ -196,12 +196,9 @@ export default class PopupSellStarGift extends PopupElement<{
         <Section caption="StarGiftOnlyAcceptTonInfo">
           <Row disabled={loading()}>
             <Row.CheckboxField>
-              <CheckboxFieldTsx
-                checked={ton()}
-                text="StarGiftOnlyAcceptTon"
-                onChange={setTon}
-              />
+              <CheckboxFieldTsx checked={ton()} disabled={loading()} onChange={setTon} />
             </Row.CheckboxField>
+            <Row.Title>{i18n('StarGiftOnlyAcceptTon')}</Row.Title>
           </Row>
         </Section>
       </>

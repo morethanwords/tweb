@@ -22,7 +22,7 @@ describe('EditChat Solid migration', () => {
     expect(source).not.toContain('SettingSection');
     expect(source).not.toContain('from \'@components/row\'');
     expect(source).not.toContain('from \'@components/button\'');
-    expect(source).not.toContain('new Row(');
+    expect(source).not.toContain('createRow(');
     expect(source).not.toContain('new CheckboxField(');
     expect(source).not.toContain('render(');
     expect(source).not.toContain('replaceChildren(');
@@ -31,5 +31,21 @@ describe('EditChat Solid migration', () => {
     );
     expect(source).not.toContain('from \'@components/popups/boost\'');
     expect(source).not.toContain('from \'@components/popups/deleteDialog\'');
+  });
+
+  it('uses right-aligned toggles for boolean edit settings', () => {
+    expect(source).not.toContain('<Row.CheckboxField>');
+    expect(source).not.toContain('</Row.CheckboxField>');
+
+    for(const signal of ['signMessages', 'showProfiles', 'showChatHistory']) {
+      const signalIndex = source.indexOf(`signal={[${signal},`);
+      const checkboxIndex = source.lastIndexOf('<CheckboxFieldTsx', signalIndex);
+      const rowIndex = source.lastIndexOf('<Row ', signalIndex);
+      const toggleFieldIndex = source.lastIndexOf('<Row.CheckboxFieldToggle>', signalIndex);
+
+      expect(signalIndex).toBeGreaterThan(-1);
+      expect(toggleFieldIndex).toBeGreaterThan(rowIndex);
+      expect(source.slice(checkboxIndex, signalIndex)).toContain('toggle');
+    }
   });
 });

@@ -640,7 +640,7 @@ function EditChatForm(props: {
                 chatFull: chatFull()
               });
             }}>
-              <Row.Icon icon="lock" />
+              <Row.Icon icon="lock_filled" />
               <Row.Title>{i18n(isBroadcast() ? 'ChannelType' : 'GroupType')}</Row.Title>
               <Row.Subtitle>{i18n((() => {
                 const isPublic = !!getPeerActiveUsernames(channel())[0];
@@ -693,7 +693,7 @@ function EditChatForm(props: {
                 tab.slider.createTab(AppDirectMessagesTab).open({chat: value});
               }
             }}>
-              <Row.Icon icon="messageunread" />
+              <Row.Icon icon="message_filled" />
               <Row.Title>{i18n('ChannelDirectMessages.Settings.Title')}</Row.Title>
               <Row.Subtitle>{directMessagesSubtitle()}</Row.Subtitle>
             </Row>
@@ -703,7 +703,7 @@ function EditChatForm(props: {
             <Row clickable={() => {
               tab.slider.createTab(AppGroupPermissionsTab).open({chatId: chatId()});
             }}>
-              <Row.Icon icon="permissions" />
+              <Row.Icon icon="key_filled" />
               <Row.Title>{i18n('ChannelPermissions')}</Row.Title>
               <Row.Subtitle>{permissionsSubtitle()}</Row.Subtitle>
             </Row>
@@ -716,7 +716,7 @@ function EditChatForm(props: {
                 linkedChatId: linkedChatId()
               });
             }}>
-              <Row.Icon icon="comments" />
+              <Row.Icon icon="bubble_filled" />
               <Row.Title>{i18n(isBroadcast() ? 'PeerInfo.Discussion' : 'LinkedChannel')}</Row.Title>
               <Row.Subtitle>
                 <Show when={linkedChatId()} fallback={i18n('PeerInfo.Discussion.Add')}>
@@ -740,18 +740,16 @@ function EditChatForm(props: {
                 });
               }
             }}>
-              <Row.Icon icon="clipboard" />
+              <Row.Icon icon="recent_actions_filled" />
               <Row.Title>{i18n('RecentActions')}</Row.Title>
             </Row>
           </Show>
 
           <Show when={showTopics()}>
-            <Row clickable={(event) => {
-              if(linkedChatId()) {
-                toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
-                cancelEvent(event);
-              }
-            }}>
+            <Row clickable={linkedChatId() ? (event) => {
+              toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
+              cancelEvent(event);
+            } : undefined}>
               <Row.CheckboxFieldToggle>
                 <CheckboxFieldTsx
                   toggle
@@ -773,7 +771,7 @@ function EditChatForm(props: {
             <Row clickable={() => {
               tab.slider.createTab(AppGroupStickersTab).open({chatId: chatId()});
             }}>
-              <Row.Icon icon="stickers_face" />
+              <Row.Icon icon="sticker_filled" />
               <Row.Title>{i18n('GroupStickers')}</Row.Title>
               <Row.Subtitle>{groupStickerSetSubtitle(false)}</Row.Subtitle>
             </Row>
@@ -783,7 +781,7 @@ function EditChatForm(props: {
             <Row clickable={() => {
               tab.slider.createTab(AppGroupStickersTab).open({chatId: chatId(), isEmoji: true});
             }}>
-              <Row.Icon icon="smile" />
+              <Row.Icon icon="emoji_filled" />
               <Row.Title titleRight={emojiPackLevelMissing() ? (
                 <Badge tag="span" rectangle class="badge-rectangle-with-icon">
                   <IconTsx icon="premium_lock" />
@@ -817,7 +815,7 @@ function EditChatForm(props: {
           <Row clickable={() => {
             tab.slider.createTab(AppRemovedUsersTab).open({chatId: chatId()});
           }}>
-            <Row.Icon icon="deleteuser" />
+            <Row.Icon icon="person_crossed_filled" />
             <Row.Title>{i18n('ChannelBlockedUsers')}</Row.Title>
             <Row.Subtitle>{removedUsersSubtitle()}</Row.Subtitle>
           </Row>
@@ -826,12 +824,10 @@ function EditChatForm(props: {
 
       <Show when={isBroadcast() && canChangeInfo()}>
         <Section>
-          <Row clickable={(event) => {
-            if(!canToggleAutotranslation()) {
-              showAutotranslationLevelToast();
-              cancelEvent(event);
-            }
-          }}>
+          <Row clickable={!canToggleAutotranslation() ? (event) => {
+            showAutotranslationLevelToast();
+            cancelEvent(event);
+          } : undefined}>
             <Row.CheckboxFieldToggle>
               <CheckboxFieldTsx
                 toggle
@@ -849,24 +845,26 @@ function EditChatForm(props: {
       <Show when={isBroadcast() && canPostMessages()}>
         <Section caption={showProfiles() ? 'ChannelSignProfilesInfo' : 'ChannelSignMessagesInfo'}>
           <Row disabled={signaturesBusy()}>
-            <Row.CheckboxField>
+            <Row.CheckboxFieldToggle>
               <CheckboxFieldTsx
+                toggle
                 signal={[signMessages, setSignMessages]}
                 disabled={signaturesBusy()}
                 onChange={(value) => void toggleSignMessages(value)}
               />
-            </Row.CheckboxField>
+            </Row.CheckboxFieldToggle>
             <Row.Title>{i18n('ChannelSignMessages')}</Row.Title>
           </Row>
           <Show when={signMessages()}>
             <Row disabled={signaturesBusy()}>
-              <Row.CheckboxField>
+              <Row.CheckboxFieldToggle>
                 <CheckboxFieldTsx
+                  toggle
                   signal={[showProfiles, setShowProfiles]}
                   disabled={signaturesBusy()}
                   onChange={(value) => void toggleShowProfiles(value)}
                 />
-              </Row.CheckboxField>
+              </Row.CheckboxFieldToggle>
               <Row.Title>{i18n('ChannelSignMessagesWithProfile')}</Row.Title>
             </Row>
           </Show>
@@ -876,13 +874,14 @@ function EditChatForm(props: {
       <Show when={!isBroadcast() && canChangeType()}>
         <Section>
           <Row disabled={historyBusy()}>
-            <Row.CheckboxField>
+            <Row.CheckboxFieldToggle>
               <CheckboxFieldTsx
+                toggle
                 signal={[showChatHistory, setShowChatHistory]}
                 disabled={historyBusy()}
                 onChange={(value) => void toggleChatHistory(value)}
               />
-            </Row.CheckboxField>
+            </Row.CheckboxFieldToggle>
             <Row.Title>{i18n('ChatHistory')}</Row.Title>
           </Row>
         </Section>

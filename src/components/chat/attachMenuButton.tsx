@@ -12,7 +12,7 @@ if(import.meta.hot) import.meta.hot.accept();
 
 
 type Props = {
-  isEditing?: boolean;
+  isReplacingMedia?: boolean;
   isLoading?: boolean;
   loadingProgress?: number;
   onCancel?: () => void;
@@ -54,7 +54,7 @@ const AttachMenuButton = defineSolidElement({
             classList={{
               [styles.hidden]: props.isLoading
             }}
-            icon={props.isEditing ? 'attach_edit' : 'attach'}
+            icon={props.isReplacingMedia ? 'replace_squares' : 'attach'}
           />
         </Show>
         <Show when={props.isLoading}>

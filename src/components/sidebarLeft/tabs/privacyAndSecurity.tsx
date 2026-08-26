@@ -1,6 +1,5 @@
-import {Component, createEffect, createRoot, createSignal, onMount} from 'solid-js';
+import {Component, createEffect, createRoot, createSignal, For, JSX, onMount, Show} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
-import Row from '@components/row';
 import {AccountPassword, GlobalPrivacySettings, InputPrivacyKey, Passkey, WebAuthorization} from '@layer';
 import {AppTwoStepVerificationTab, AppTwoStepVerificationEnterPasswordTab, AppTwoStepVerificationEmailConfirmationTab} from '@components/solidJsTabs/tabs';
 import {
@@ -24,9 +23,8 @@ import {
   AppPrivacyVoicesTab
 } from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
-import {i18n, LangPackKey, _i18n} from '@lib/langPack';
-import replaceContent from '@helpers/dom/replaceContent';
-import CheckboxField from '@components/checkboxField';
+import {i18n, LangPackKey} from '@lib/langPack';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import PopupPeer from '@components/popups/peer';
 import Button from '@components/buttonTsx';
 import Section from '@components/section';
@@ -52,6 +50,8 @@ import {findExistingOrCreateCustomOption} from '@components/sidebarLeft/tabs/aut
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
+import Row from '@components/rowTsx';
+import {renderComponent} from '@helpers/solid/renderComponent';
 
 const PrivacyAndSecurity: Component = () => {
   const [tab] = useSuperTab<typeof AppPrivacyAndSecurityTab>();
@@ -59,13 +59,6 @@ const PrivacyAndSecurity: Component = () => {
   const p = tab.payload;
 
   const contentSettings = useContentSettings();
-
-  let websitesRow: Row;
-  let websites: WebAuthorization[];
-
-  let passkeyRow: Row;
-  let passkeys: Passkey[];
-  let setPasskeys: SetStoreFunction<Passkey[]>;
 
   let sessionsContent!: HTMLElement;
   let privacyContent!: HTMLElement;
@@ -77,37 +70,6 @@ const PrivacyAndSecurity: Component = () => {
   const [privacyCaption, setPrivacyCaption] = createSignal<LangPackKey>();
   const [newChatsHidden, setNewChatsHidden] = createSignal(false);
   const [sensitiveHidden, setSensitiveHidden] = createSignal(true);
-
-  const updateActiveWebsites = (promise = tab.managers.appSeamlessLoginManager.getWebAuthorizations()) => {
-    return promise.then((authorizations) => {
-      websitesRow.freezed = false;
-      websites = authorizations;
-      _i18n(websitesRow.subtitle, 'Privacy.Websites', [websites.length]);
-      websitesRow.container.classList.toggle('hide', !websites.length);
-    });
-  };
-
-  const updatePasskeys = () => {
-    passkeyRow.freezed = true;
-    return Promise.all([
-      tab.managers.apiManager.getAppConfig(),
-      tab.managers.appAccountManager.getPasskeys()
-    ]).then(([appConfig, passkeysResult]) => {
-      passkeyRow.freezed = false;
-      [passkeys, setPasskeys] = createStore(passkeysResult.passkeys);
-
-      createRoot((dispose) => {
-        tab.middlewareHelper.onDestroy(dispose);
-        createEffect(() => {
-          _i18n(passkeyRow.subtitle, 'Passkeys', [passkeys.length]);
-          passkeyRow.container.classList.toggle(
-            'hide',
-            !passkeys.length && (!appConfig.settings_display_passkeys || !IS_WEB_AUTHN_SUPPORTED)
-          );
-        });
-      });
-    });
-  };
 
   const onClearClick = () => {
     const options: PopupConfirmationOptions = {
@@ -169,161 +131,193 @@ const PrivacyAndSecurity: Component = () => {
 
       {
         let blockedPeerIds: PeerId[];
-        const blockedUsersRow = new Row({
-          icon: 'deleteuser',
-          titleLangKey: 'BlockedUsers',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppBlockedUsersTab).open({peerIds: blockedPeerIds});
-          },
-          listenerSetter: tab.listenerSetter
-        });
-        blockedUsersRow.freezed = true;
-
         let passwordState: AccountPassword;
-        const twoFactorRowOptions: ConstructorParameters<typeof Row>[0] = {
-          icon: 'two_factor_auth_filled',
-          titleLangKey: 'TwoStepVerification' as LangPackKey,
-          subtitleLangKey: SUBTITLE,
-          clickable: (e: Event) => {
-            if(passwordState.pFlags.has_password) {
-              tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab).open({state: passwordState});
-            } else if(passwordState.email_unconfirmed_pattern) {
-              tab.managers.passwordManager.resendPasswordEmail();
-              tab.slider.createTab(AppTwoStepVerificationEmailConfirmationTab).open({
-                state: passwordState,
-                email: wrapEmailPattern(passwordState.email_unconfirmed_pattern),
-                length: 6,
-                isFirst: true
-              });
-            } else {
-              tab.slider.createTab(AppTwoStepVerificationTab).open({state: passwordState});
-            }
-          },
-          listenerSetter: tab.listenerSetter
-        };
-        const twoFactorRow = new Row(twoFactorRowOptions);
-        twoFactorRow.freezed = true;
+        let passcodeEnabled: boolean;
+        let websites: WebAuthorization[];
+        let passkeys: Passkey[];
+        let setPasskeys: SetStoreFunction<Passkey[]>;
+        let autoDeletePeriod: number;
+
+        const [blockedSubtitle, setBlockedSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [blockedFrozen, setBlockedFrozen] = createSignal(true);
+        const [websitesSubtitle, setWebsitesSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [websitesFrozen, setWebsitesFrozen] = createSignal(true);
+        const [websitesHidden, setWebsitesHidden] = createSignal(false);
+        const [autoDeleteSubtitle, setAutoDeleteSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [autoDeleteFrozen, setAutoDeleteFrozen] = createSignal(true);
+        const [passcodeSubtitle, setPasscodeSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [passcodeFrozen, setPasscodeFrozen] = createSignal(true);
+        const [twoFactorSubtitle, setTwoFactorSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [twoFactorFrozen, setTwoFactorFrozen] = createSignal(true);
+        const [emailSubtitle, setEmailSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [emailFrozen, setEmailFrozen] = createSignal(true);
+        const [emailHidden, setEmailHidden] = createSignal(true);
+        const [passkeysSubtitle, setPasskeysSubtitle] = createSignal<JSX.Element>(i18n(SUBTITLE));
+        const [passkeysFrozen, setPasskeysFrozen] = createSignal(true);
+        const [passkeysHidden, setPasskeysHidden] = createSignal(false);
 
         const openPasskeysTab = () => {
           tab.slider.createTab(AppPasskeysTab).open({
-            passkeys: passkeys,
-            setPasskeys: setPasskeys
+            passkeys,
+            setPasskeys
           });
         };
 
-        passkeyRow = new Row({
-          icon: 'faceid',
-          titleLangKey: 'Privacy.Passkeys',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            if(passkeys.length) {
-              openPasskeysTab();
-              return;
-            }
-
-            showPasskeyPopup((passkey) => {
-              setPasskeys([passkey]);
-              openPasskeysTab();
-            });
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        updatePasskeys();
-
-        const emailRow = new Row({
-          titleLangKey: 'LoginEmail',
-          subtitle: SUBTITLE,
-          icon: 'email_filled',
-          clickable: () => {
-            tab.slider.createTab(ChangeLoginEmailTab).open({
-              isInitialSetup: passwordState.login_email_pattern.includes(' ')
-            });
-          },
-          listenerSetter: tab.listenerSetter
-        });
-        emailRow.freezed = true;
-
-        const passcodeLockRowOptions: ConstructorParameters<typeof Row>[0] = {
-          icon: 'key_filled',
-          titleLangKey: 'PasscodeLock.Item.Title',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            if(passcodeEnabled) {
-              tab.slider.createTab(AppPasscodeEnterPasswordTab)
-              .open({
-                buttonText: 'PasscodeLock.Next',
-                inputLabel: 'PasscodeLock.EnterYourPasscode',
-                onSubmit: async(passcode, _, {isMyPasscode}) => {
-                  const isCorrect = await isMyPasscode(passcode);
-                  passcode = '';
-                  if(!isCorrect) throw {};
-
-                  tab.slider.createTab(AppPasscodeLockTab).open();
-                }
-              })
-            } else {
-              tab.slider.createTab(AppPasscodeLockTab).open();
-            }
-          },
-          listenerSetter: tab.listenerSetter
+        const updateActiveWebsites = (promise = tab.managers.appSeamlessLoginManager.getWebAuthorizations()) => {
+          return promise.then((authorizations) => {
+            websites = authorizations;
+            setWebsitesSubtitle(i18n('Privacy.Websites', [websites.length]));
+            setWebsitesHidden(!websites.length);
+            setWebsitesFrozen(false);
+          });
         };
-        const passcodeLockRow = new Row(passcodeLockRowOptions);
-        passcodeLockRow.freezed = true;
 
-        websitesRow = new Row({
-          icon: 'mention_filled',
-          titleLangKey: 'OtherWebSessions',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            const webTab = tab.slider.createTab(AppActiveWebSessionsTab);
-            webTab.eventListener.addEventListener('destroy', () => {
-              updateActiveWebsites();
+        const updatePasskeys = () => {
+          setPasskeysFrozen(true);
+          return Promise.all([
+            tab.managers.apiManager.getAppConfig(),
+            tab.managers.appAccountManager.getPasskeys()
+          ]).then(([appConfig, passkeysResult]) => {
+            setPasskeysFrozen(false);
+            [passkeys, setPasskeys] = createStore(passkeysResult.passkeys);
+
+            createRoot((dispose) => {
+              tab.middlewareHelper.onDestroy(dispose);
+              createEffect(() => {
+                setPasskeysSubtitle(i18n('Passkeys', [passkeys.length]));
+                setPasskeysHidden(
+                  !passkeys.length && (!appConfig.settings_display_passkeys || !IS_WEB_AUTHN_SUPPORTED)
+                );
+              });
             });
-            webTab.open(websites);
-          },
-          listenerSetter: tab.listenerSetter
-        });
-        websitesRow.freezed = true;
+          });
+        };
 
-        let autoDeletePeriod: number;
+        const openPasscodeLock = () => {
+          if(passcodeEnabled) {
+            tab.slider.createTab(AppPasscodeEnterPasswordTab)
+            .open({
+              buttonText: 'PasscodeLock.Next',
+              inputLabel: 'PasscodeLock.EnterYourPasscode',
+              onSubmit: async(passcode, _, {isMyPasscode}) => {
+                const isCorrect = await isMyPasscode(passcode);
+                passcode = '';
+                if(!isCorrect) throw {};
 
-        const autoDeleteMessagesRowOptions: ConstructorParameters<typeof Row>[0] = {
-          icon: 'auto_delete_circle_clock',
-          titleLangKey: 'AutoDeleteMessages',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            if(isNaN(autoDeletePeriod)) return;
-            tab.slider.createTab(AppMessagesAutoDeleteTab).open({
-              period: autoDeletePeriod,
-              onSaved: (period) => {
-                autoDeletePeriod = period;
-                updateAutoDeleteRow();
+                tab.slider.createTab(AppPasscodeLockTab).open();
               }
-            });
-          },
-          listenerSetter: tab.listenerSetter
+            })
+          } else {
+            tab.slider.createTab(AppPasscodeLockTab).open();
+          }
         };
 
-        const autoDeleteMessagesRow = new Row(autoDeleteMessagesRowOptions);
-        autoDeleteMessagesRow.freezed = true;
+        renderComponent({
+          element: sessionsContent,
+          Component: () => (
+            <>
+              <Row clickable={() => {
+                if(!blockedFrozen()) tab.slider.createTab(AppBlockedUsersTab).open({peerIds: blockedPeerIds});
+              }}>
+                <Row.Icon icon="person_crossed_filled" />
+                <Row.Title>{i18n('BlockedUsers')}</Row.Title>
+                <Row.Subtitle>{blockedSubtitle()}</Row.Subtitle>
+              </Row>
+              <Row
+                classList={{hide: websitesHidden()}}
+                clickable={() => {
+                  if(websitesFrozen()) return;
+                  const webTab = tab.slider.createTab(AppActiveWebSessionsTab);
+                  webTab.eventListener.addEventListener('destroy', () => {
+                    updateActiveWebsites();
+                  });
+                  webTab.open(websites);
+                }}
+              >
+                <Row.Icon icon="mention_filled" />
+                <Row.Title>{i18n('OtherWebSessions')}</Row.Title>
+                <Row.Subtitle>{websitesSubtitle()}</Row.Subtitle>
+              </Row>
+              <Row clickable={() => {
+                if(autoDeleteFrozen() || isNaN(autoDeletePeriod)) return;
+                tab.slider.createTab(AppMessagesAutoDeleteTab).open({
+                  period: autoDeletePeriod,
+                  onSaved: (period) => {
+                    autoDeletePeriod = period;
+                    updateAutoDeleteRow();
+                  }
+                });
+              }}>
+                <Row.Icon icon="auto_delete_filled" />
+                <Row.Title>{i18n('AutoDeleteMessages')}</Row.Title>
+                <Row.Subtitle>{autoDeleteSubtitle()}</Row.Subtitle>
+              </Row>
+              <Row clickable={() => !passcodeFrozen() && openPasscodeLock()}>
+                <Row.Icon icon="key_filled" />
+                <Row.Title>{i18n('PasscodeLock.Item.Title')}</Row.Title>
+                <Row.Subtitle>{passcodeSubtitle()}</Row.Subtitle>
+              </Row>
+              <Row clickable={() => {
+                if(twoFactorFrozen()) return;
+                if(passwordState.pFlags.has_password) {
+                  tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab).open({state: passwordState});
+                } else if(passwordState.email_unconfirmed_pattern) {
+                  tab.managers.passwordManager.resendPasswordEmail();
+                  tab.slider.createTab(AppTwoStepVerificationEmailConfirmationTab).open({
+                    state: passwordState,
+                    email: wrapEmailPattern(passwordState.email_unconfirmed_pattern),
+                    length: 6,
+                    isFirst: true
+                  });
+                } else {
+                  tab.slider.createTab(AppTwoStepVerificationTab).open({state: passwordState});
+                }
+              }}>
+                <Row.Icon icon="two_factor_auth_filled" />
+                <Row.Title>{i18n('TwoStepVerification')}</Row.Title>
+                <Row.Subtitle>{twoFactorSubtitle()}</Row.Subtitle>
+              </Row>
+              <Show when={!emailHidden()}>
+                <Row clickable={() => {
+                  if(emailFrozen()) return;
+                  tab.slider.createTab(ChangeLoginEmailTab).open({
+                    isInitialSetup: passwordState.login_email_pattern.includes(' ')
+                  });
+                }}>
+                  <Row.Icon icon="email_filled" />
+                  <Row.Title>{i18n('LoginEmail')}</Row.Title>
+                  <Row.Subtitle>{emailSubtitle()}</Row.Subtitle>
+                </Row>
+              </Show>
+              <Row
+                classList={{hide: passkeysHidden()}}
+                clickable={() => {
+                  if(passkeysFrozen()) return;
+                  if(passkeys.length) {
+                    openPasskeysTab();
+                    return;
+                  }
 
-        sessionsContent.append(
-          blockedUsersRow.container,
-          websitesRow.container,
-          autoDeleteMessagesRow.container,
-          passcodeLockRow.container,
-          twoFactorRow.container,
-          passkeyRow.container
-        );
+                  showPasskeyPopup((passkey) => {
+                    setPasskeys([passkey]);
+                    openPasskeysTab();
+                  });
+                }}
+              >
+                <Row.Icon icon="faceid_filled" />
+                <Row.Title>{i18n('Privacy.Passkeys')}</Row.Title>
+                <Row.Subtitle>{passkeysSubtitle()}</Row.Subtitle>
+              </Row>
+            </>
+          ),
+          middleware: tab.middlewareHelper.get()
+        });
 
         const setBlockedCount = (count: number) => {
-          if(count) {
-            replaceContent(blockedUsersRow.subtitle, i18n('PrivacySettingsController.UserCount', [count]));
-          } else {
-            replaceContent(blockedUsersRow.subtitle, i18n('BlockedEmpty', [count]));
-          }
+          setBlockedSubtitle(i18n(
+            count ? 'PrivacySettingsController.UserCount' : 'BlockedEmpty',
+            [count]
+          ));
         };
 
         tab.listenerSetter.add(rootScope)('peer_block', () => {
@@ -337,9 +331,9 @@ const PrivacyAndSecurity: Component = () => {
 
         const updateBlocked = () => {
           tab.managers.appUsersManager.getBlocked().then((res) => {
-            blockedUsersRow.freezed = false;
             setBlockedCount(res.count);
             blockedPeerIds = res.peerIds;
+            setBlockedFrozen(false);
           });
         };
 
@@ -347,26 +341,25 @@ const PrivacyAndSecurity: Component = () => {
 
         tab.managers.passwordManager.getState().then((state) => {
           passwordState = state;
-          replaceContent(twoFactorRow.subtitle, i18n(state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
-          twoFactorRow.freezed = false;
+          setTwoFactorSubtitle(i18n(state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
+          setTwoFactorFrozen(false);
 
           if(state.login_email_pattern) {
-            replaceContent(emailRow.subtitle, wrapEmailPattern(state.login_email_pattern));
-            emailRow.freezed = false;
-            twoFactorRow.container.after(emailRow.container);
+            setEmailSubtitle(wrapEmailPattern(state.login_email_pattern));
+            setEmailFrozen(false);
+            setEmailHidden(false);
           }
 
           // console.log('password state', state);
         });
 
-        let passcodeEnabled: boolean;
         const setPasscodeEnabledState = (enabled?: boolean) => {
           passcodeEnabled = enabled;
-          replaceContent(passcodeLockRow.subtitle, i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
+          setPasscodeSubtitle(i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
         };
         tab.managers.appStateManager.getState().then((state) => {
-          passcodeLockRow.freezed = false;
           setPasscodeEnabledState(state.settings?.passcode?.enabled || false);
+          setPasscodeFrozen(false);
         });
         tab.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
           if(key === joinDeepPath('settings', 'passcode', 'enabled'))
@@ -374,10 +367,11 @@ const PrivacyAndSecurity: Component = () => {
         });
 
         promises.push(updateActiveWebsites(p.webAuthorizations));
+        updatePasskeys();
 
 
         function updateAutoDeleteRow() {
-          autoDeleteMessagesRow.subtitle.replaceChildren(
+          setAutoDeleteSubtitle(
             !autoDeletePeriod ?
               i18n('Off') :
               findExistingOrCreateCustomOption(autoDeletePeriod).label()
@@ -387,7 +381,7 @@ const PrivacyAndSecurity: Component = () => {
         (async() => {
           autoDeletePeriod = await tab.managers.appPrivacyManager.getDefaultAutoDeletePeriod();
           updateAutoDeleteRow();
-          autoDeleteMessagesRow.freezed = false;
+          setAutoDeleteFrozen(false);
         })();
       }
 
@@ -396,10 +390,18 @@ const PrivacyAndSecurity: Component = () => {
         setPrivacyCaption(isPremiumFeaturesHidden ? 'GroupsAndChannelsHelp' : 'Privacy.MessagesCaption');
 
         type RowKey = InputPrivacyKey['_'] | (keyof GlobalPrivacySettings['pFlags']);
+        type PrivacyRow = {
+          key: RowKey,
+          title: JSX.Element,
+          clickable: () => void
+        };
 
-        const rowsByKeys: Partial<{
-          [key in RowKey]: Row
-        }> = {};
+        const rowsByKeys: Partial<Record<RowKey, ReturnType<typeof createSignal<JSX.Element>>>> = {};
+        const rows: PrivacyRow[] = [];
+        const addRow = (key: RowKey, title: JSX.Element, clickable: () => void) => {
+          rowsByKeys[key] = createSignal<JSX.Element>(i18n(SUBTITLE));
+          rows.push({key, title, clickable});
+        };
 
         const openTabWithGlobalPrivacy = async(
           constructor: typeof AppPrivacyLastSeenTab,
@@ -414,94 +416,26 @@ const PrivacyAndSecurity: Component = () => {
           });
         };
 
-        const numberVisibilityRow = rowsByKeys['inputPrivacyKeyPhoneNumber'] = new Row({
-          titleLangKey: 'PrivacyPhoneTitle',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyPhoneNumberTab).open();
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyPhoneNumber', i18n('PrivacyPhoneTitle'), () => {
+          tab.slider.createTab(AppPrivacyPhoneNumberTab).open();
         });
-
-        const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
-          titleLangKey: 'LastSeenTitle',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            openTabWithGlobalPrivacy(AppPrivacyLastSeenTab, 'inputPrivacyKeyStatusTimestamp');
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyStatusTimestamp', i18n('LastSeenTitle'), () => {
+          openTabWithGlobalPrivacy(AppPrivacyLastSeenTab, 'inputPrivacyKeyStatusTimestamp');
         });
-
-        const photoVisibilityRow = rowsByKeys['inputPrivacyKeyProfilePhoto'] = new Row({
-          titleLangKey: 'PrivacyProfilePhotoTitle',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyProfilePhotoTab).open();
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyProfilePhoto', i18n('PrivacyProfilePhotoTitle'), () => {
+          tab.slider.createTab(AppPrivacyProfilePhotoTab).open();
         });
-
-        const aboutRow = rowsByKeys['inputPrivacyKeyAbout'] = new Row({
-          titleLangKey: 'Privacy.BioRow',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyAboutTab).open();
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyAbout', i18n('Privacy.BioRow'), () => {
+          tab.slider.createTab(AppPrivacyAboutTab).open();
         });
-
-        const callRow = rowsByKeys['inputPrivacyKeyPhoneCall'] = new Row({
-          titleLangKey: 'WhoCanCallMe',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyCallsTab).open();
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyPhoneCall', i18n('WhoCanCallMe'), () => {
+          tab.slider.createTab(AppPrivacyCallsTab).open();
         });
-
-        const linkAccountRow = rowsByKeys['inputPrivacyKeyForwards'] = new Row({
-          titleLangKey: 'PrivacyForwardsTitle',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyForwardMessagesTab).open();
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyForwards', i18n('PrivacyForwardsTitle'), () => {
+          tab.slider.createTab(AppPrivacyForwardMessagesTab).open();
         });
-
-        const groupChatsAddRow = rowsByKeys['inputPrivacyKeyChatInvite'] = new Row({
-          titleLangKey: 'WhoCanAddMe',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyAddToGroupsTab).open();
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const birthdayRow = rowsByKeys['inputPrivacyKeyBirthday'] = new Row({
-          titleLangKey: 'Privacy.BirthdayRow',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacyBirthdayTab).open();
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const savedMusicRow = rowsByKeys['inputPrivacyKeySavedMusic'] = new Row({
-          titleLangKey: 'Privacy.SavedMusicRow',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            tab.slider.createTab(AppPrivacySavedMusicTab).open();
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        const giftsRow = rowsByKeys['inputPrivacyKeyStarGiftsAutoSave'] = new Row({
-          titleLangKey: 'Privacy.GiftsRow',
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
-            openTabWithGlobalPrivacy(AppPrivacyGiftsTab, 'inputPrivacyKeyStarGiftsAutoSave');
-          },
-          listenerSetter: tab.listenerSetter
+        addRow('inputPrivacyKeyChatInvite', i18n('WhoCanAddMe'), () => {
+          tab.slider.createTab(AppPrivacyAddToGroupsTab).open();
         });
 
         const createPremiumTitle = (langKey: LangPackKey) => {
@@ -516,34 +450,46 @@ const PrivacyAndSecurity: Component = () => {
           return fragment;
         };
 
-        let voicesRow: Row;
-        if(!isPremiumFeaturesHidden) voicesRow = rowsByKeys['inputPrivacyKeyVoiceMessages'] = new Row({
-          title: createPremiumTitle('PrivacyVoiceMessagesTitle'),
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
+        if(!isPremiumFeaturesHidden) {
+          addRow('inputPrivacyKeyVoiceMessages', createPremiumTitle('PrivacyVoiceMessagesTitle'), () => {
             tab.slider.createTab(AppPrivacyVoicesTab).open();
-          },
-          listenerSetter: tab.listenerSetter
-        });
-
-        let messagesRow: Row;
-        if(!isPremiumFeaturesHidden) messagesRow = rowsByKeys['new_noncontact_peers_require_premium'] = new Row({
-          title: createPremiumTitle('PrivacyMessagesTitle'),
-          subtitleLangKey: SUBTITLE,
-          clickable: () => {
+          });
+          addRow('new_noncontact_peers_require_premium', createPremiumTitle('PrivacyMessagesTitle'), () => {
             tab.slider.createTab(AppPrivacyMessagesTab).open({
               onSaved: (updatedPrivacy) => {
                 p.globalPrivacy = updatedPrivacy;
                 updatePrivacyRow('new_noncontact_peers_require_premium');
               }
             });
-          },
-          listenerSetter: tab.listenerSetter
+          });
+        }
+
+        addRow('inputPrivacyKeyBirthday', i18n('Privacy.BirthdayRow'), () => {
+          tab.slider.createTab(AppPrivacyBirthdayTab).open();
+        });
+        addRow('inputPrivacyKeyStarGiftsAutoSave', i18n('Privacy.GiftsRow'), () => {
+          openTabWithGlobalPrivacy(AppPrivacyGiftsTab, 'inputPrivacyKeyStarGiftsAutoSave');
+        });
+        addRow('inputPrivacyKeySavedMusic', i18n('Privacy.SavedMusicRow'), () => {
+          tab.slider.createTab(AppPrivacySavedMusicTab).open();
+        });
+
+        renderComponent({
+          element: privacyContent,
+          Component: () => (
+            <For each={rows}>{(row) => (
+              <Row clickable={row.clickable}>
+                <Row.Title>{row.title}</Row.Title>
+                <Row.Subtitle>{rowsByKeys[row.key][0]()}</Row.Subtitle>
+              </Row>
+            )}</For>
+          ),
+          middleware: tab.middlewareHelper.get()
         });
 
         const updatePrivacyRow = (key: RowKey) => {
-          const row = rowsByKeys[key];
-          if(!row) {
+          const subtitleSignal = rowsByKeys[key];
+          if(!subtitleSignal) {
             return;
           }
 
@@ -566,7 +512,7 @@ const PrivacyAndSecurity: Component = () => {
           if(!key.startsWith('inputPrivacy')) {
             p.globalPrivacy.then((globalPrivacy) => {
               const langKey = getLangKeyForMessagesPrivacy(globalPrivacy);
-              row.subtitle.replaceChildren(i18n(langKey));
+              subtitleSignal[1](i18n(langKey));
             });
             return;
           }
@@ -584,28 +530,13 @@ const PrivacyAndSecurity: Component = () => {
             const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
             const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
 
-            const s = i18n(langKey);
-            row.subtitle.replaceChildren(s);
+            const subtitle: JSX.Element[] = [i18n(langKey)];
             if(disallowLength || allowLength) {
-              row.subtitle.append(` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`);
+              subtitle.push(` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`);
             }
+            subtitleSignal[1](subtitle);
           });
         };
-
-        privacyContent.append(...[
-          numberVisibilityRow,
-          lastSeenTimeRow,
-          photoVisibilityRow,
-          aboutRow,
-          callRow,
-          linkAccountRow,
-          groupChatsAddRow,
-          voicesRow,
-          messagesRow,
-          birthdayRow,
-          giftsRow,
-          savedMusicRow
-        ].filter(Boolean).map((row) => row.container));
 
         for(const key in rowsByKeys) {
           updatePrivacyRow(key as keyof typeof rowsByKeys);
@@ -617,22 +548,29 @@ const PrivacyAndSecurity: Component = () => {
       }
 
       {
-        const checkboxField = new CheckboxField({text: 'ArchiveAndMute'});
-        const row = new Row({
-          checkboxField
+        const archiveAndMuteSignal = createSignal(false);
+        renderComponent({
+          element: newChatsContent,
+          Component: () => (
+            <Row>
+              <Row.CheckboxFieldToggle>
+                <CheckboxFieldTsx signal={archiveAndMuteSignal} toggle />
+              </Row.CheckboxFieldToggle>
+              <Row.Title>{i18n('ArchiveAndMute')}</Row.Title>
+            </Row>
+          ),
+          middleware: tab.middlewareHelper.get()
         });
-
-        newChatsContent.append(row.container);
 
         let enabled: boolean, destroyed: boolean;
         tab.eventListener.addEventListener('destroy', async() => {
           destroyed = true;
-          if(enabled === undefined || enabled === checkboxField.checked) return;
+          if(enabled === undefined || enabled === archiveAndMuteSignal[0]()) return;
           return tab.managers.appPrivacyManager.setGlobalPrivacySettings({
             _: 'globalPrivacySettings',
             pFlags: {
               ...(await p.globalPrivacy).pFlags,
-              archive_and_mute_new_noncontact_peers: checkboxField.checked || undefined
+              archive_and_mute_new_noncontact_peers: archiveAndMuteSignal[0]() || undefined
             }
           });
         }, {once: true});
@@ -653,32 +591,26 @@ const PrivacyAndSecurity: Component = () => {
           onPremiumToggle(rootScope.premium);
 
           enabled = !!settings.pFlags.archive_and_mute_new_noncontact_peers;
-
-          checkboxField.setValueSilently(enabled);
+          archiveAndMuteSignal[1](enabled);
         });
 
         promises.push(promise);
       }
 
       {
-        const checkboxField = new CheckboxField({text: 'PrivacyAndSecurity.SensitiveText'});
-        const row = new Row({
-          checkboxField
-        });
-
+        const sensitiveSignal = createSignal(false);
         let pendingChange = false;
-        checkboxField.input.addEventListener('change', (evt) => {
-          const newEnabled = checkboxField.checked;
+        const onSensitiveChange = (newEnabled: boolean) => {
           if(pendingChange) {
-            checkboxField.input.checked = !newEnabled;
+            sensitiveSignal[1](!newEnabled);
             return;
           }
 
           if(newEnabled && contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
-            checkboxField.input.checked = false;
+            sensitiveSignal[1](false);
             AgeVerificationPopup.create().then((verified) => {
               if(verified) {
-                checkboxField.setValueSilently(true);
+                sensitiveSignal[1](true);
                 clearSensitiveSpoilers();
               }
             })
@@ -691,16 +623,27 @@ const PrivacyAndSecurity: Component = () => {
             sensitive_enabled: newEnabled
           }).catch(() => {
             toastNew({langPackKey: 'Error.AnError'});
-            checkboxField.setValueSilently(!newEnabled);
+            sensitiveSignal[1](!newEnabled);
           }).finally(() => {
             pendingChange = false;
           });
-        })
+        };
 
-        sensitiveContent.append(row.container);
+        renderComponent({
+          element: sensitiveContent,
+          Component: () => (
+            <Row>
+              <Row.CheckboxFieldToggle>
+                <CheckboxFieldTsx signal={sensitiveSignal} toggle onChange={onSensitiveChange} />
+              </Row.CheckboxFieldToggle>
+              <Row.Title>{i18n('PrivacyAndSecurity.SensitiveText')}</Row.Title>
+            </Row>
+          ),
+          middleware: tab.middlewareHelper.get()
+        });
 
         if(contentSettings.sensitiveCanChange()) {
-          checkboxField.setValueSilently(contentSettings.sensitiveEnabled());
+          sensitiveSignal[1](contentSettings.sensitiveEnabled());
           setSensitiveHidden(false);
         }
       }

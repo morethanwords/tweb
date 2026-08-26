@@ -4,7 +4,7 @@ import Section from '@components/section';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {Accessor, createMemo, createRoot, createSignal, For, JSX, onCleanup, Show} from 'solid-js';
 import {render} from 'solid-js/web';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
 import {avatarNew, AvatarNew} from '@components/avatarNew';
 import LimitLine from '@components/limit';
 import {LoadableList, StatisticsOverviewItems, createLoadableList, MoreButton, makeAbsStats} from '@components/sidebarRight/tabs/statistics';
@@ -23,13 +23,13 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import rootScope from '@lib/rootScope';
 import PopupGiftLink from '@components/popups/giftLink';
 import {toastNew} from '@components/toast';
-import ListenerSetter from '@helpers/listenerSetter';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import appImManager from '@lib/appImManager';
 import PopupPayment from '@components/popups/payment';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import PopupBoost from '@components/popups/boost';
 import Tabs from '@components/tabs';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -41,34 +41,33 @@ const getBoostMonths = (from: number, to: number) => Math.round(getBoostsDays(fr
 export const CPrepaidGiveaway = (props: {
   giveaway: PrepaidGiveaway,
   appConfig: MTAppConfig,
-  clickable?: true | (() => void),
-  listenerSetter?: ListenerSetter
+  clickable?: true | (() => void)
 }) => {
   const {quantity} = props.giveaway;
   const stars = (props.giveaway as PrepaidGiveaway.prepaidStarsGiveaway).stars;
   const months = (props.giveaway as PrepaidGiveaway.prepaidGiveaway).months;
   const boosts = stars ? (props.giveaway as PrepaidGiveaway.prepaidStarsGiveaway).boosts : (props.appConfig.giveaway_boosts_per_premium || 1) * quantity;
-  const row = new Row({
-    titleLangKey: stars ? 'Stars' : 'BoostingGiveawayMsgInfoPlural1',
-    titleLangArgs: [stars || quantity],
-    subtitleLangKey: stars ? 'Giveaway.Prepaid.For' : 'Giveaway.Prepaid.Subtitle',
-    subtitleLangArgs: [quantity, i18n('Giveaway.Prepaid.Period', [months])],
-    clickable: props.clickable,
-    listenerSetter: props.listenerSetter,
-    rightContent: BoostsBadge({boosts}) as HTMLElement
-  });
-
-  row.title.classList.add('text-bold');
-  const media = row.createMedia('abitbigger');
   const avatar = AvatarNew({size: 42});
   if(stars) {
     avatar.set({icon: 'star', color: 'stars'});
   } else {
     avatar.set({icon: 'gift_premium_filled', color: getColorByMonths(months)});
   }
-  media.append(avatar.node);
-
-  return row.container;
+  return (
+    <RowTsx clickable={props.clickable}>
+      <RowTsx.Title class="text-bold">
+        {i18n(stars ? 'Stars' : 'BoostingGiveawayMsgInfoPlural1', [stars || quantity])}
+      </RowTsx.Title>
+      <RowTsx.Subtitle>
+        {i18n(stars ? 'Giveaway.Prepaid.For' : 'Giveaway.Prepaid.Subtitle', [
+          quantity,
+          i18n('Giveaway.Prepaid.Period', [months])
+        ])}
+      </RowTsx.Subtitle>
+      <RowTsx.RightContent><BoostsBadge boosts={boosts} /></RowTsx.RightContent>
+      <RowTsx.Media size="abitbigger">{avatar.node}</RowTsx.Media>
+    </RowTsx>
+  );
 };
 
 export default class AppBoostsTab extends SliderSuperTabEventable {
@@ -211,7 +210,6 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
                       }
                     );
                   }}
-                  listenerSetter={this.listenerSetter}
                 />
               );
             }}</For>
@@ -353,27 +351,29 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
       rightContent.classList.toggle('is-gift', !boost.pFlags.giveaway && !!boost.pFlags.gift);
     }
 
-    const row = new Row({
-      title: true,
-      subtitle,
-      clickable: true,
-      noWrap: true,
-      rightContent
-    });
-
-    if(peerId) {
-      row.container.dataset.peerId = '' + peerId;
-    }
-
-    row.title.classList.add('boosts-user-title');
-    row.title.append(...[title, badge].filter(Boolean));
-    const media = row.createMedia('abitbigger');
+    const middleware = this.middlewareHelper.get();
     const avatar = avatarNew({
       peerId,
       size: 42,
-      middleware: this.middlewareHelper.get()
+      middleware
     });
-    media.append(avatar.node);
+    const container = wrapSolidComponent(() => (
+      <RowTsx clickable noWrap>
+        <RowTsx.Title class="boosts-user-title">
+          {title}
+          {badge}
+        </RowTsx.Title>
+        <RowTsx.Subtitle>{subtitle}</RowTsx.Subtitle>
+        <Show when={rightContent}>
+          <RowTsx.RightContent element={rightContent} />
+        </Show>
+        <RowTsx.Media size="abitbigger">{avatar.node}</RowTsx.Media>
+      </RowTsx>
+    ), middleware);
+
+    if(peerId) {
+      container.dataset.peerId = '' + peerId;
+    }
 
     if(peerId) {
       await avatar.readyThumbPromise;
@@ -389,8 +389,8 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
       });
     }
 
-    this.targets.set(row.container, boost);
-    return row.container;
+    this.targets.set(container, boost);
+    return container;
   };
 
   public async init(peerId: PeerId) {

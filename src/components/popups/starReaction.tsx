@@ -110,7 +110,6 @@ export default class PopupStarReaction extends PopupElement {
     }, {listenerSetter: this.listenerSetter});
 
     const checkboxField = new CheckboxField({
-      text: 'StarsReactionShowMeInTopSenders',
       checked: myReactor ? !myReactor.pFlags.anonymous : defaultSendAs?._ !== 'paidReactionPrivacyAnonymous'
     });
     checkboxField.input.addEventListener('change', () => {
@@ -287,6 +286,7 @@ export default class PopupStarReaction extends PopupElement {
         <div class="popup-star-reaction-checkbox">
           <Row class="popup-star-reaction-checkbox-row">
             <Row.CheckboxField>{checkboxField.label}</Row.CheckboxField>
+            <Row.Title>{i18n('StarsReactionShowMeInTopSenders')}</Row.Title>
           </Row>
         </div>
       </>

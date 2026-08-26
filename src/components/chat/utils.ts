@@ -115,6 +115,10 @@ export const getMediaTypeForMessage = (message: Message.message | null | undefin
   return null;
 };
 
+export const shouldUseReplaceMediaIcon = (isEditing: boolean, message: Message.message | null | undefined) => {
+  return isEditing && getMediaTypeForMessage(message) !== null;
+};
+
 export function slowModeTimer(getLeftDuration: () => number) {
   const s = document.createElement('span');
   const dispose = eachSecond(() => {

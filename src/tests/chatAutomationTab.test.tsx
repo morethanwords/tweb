@@ -6,6 +6,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {ConnectedBot, User} from '@layer';
+import ListenerSetter from '@helpers/listenerSetter';
 
 const mocks = vi.hoisted(() => ({
   tab: undefined as any,
@@ -66,36 +67,11 @@ vi.mock('@components/checkboxField', () => ({
     public setValueSilently(value: boolean) {
       this.input.checked = value;
     }
-  }
-}));
 
-vi.mock('@components/row', () => ({
-  default: class Row {
-    public container = document.createElement('div');
-    public titleRow: HTMLDivElement;
-    public title: HTMLDivElement;
-    public checkboxField: any;
-
-    constructor(options: {
-      titleLangKey?: string,
-      checkboxField: any,
-      clickable?: (event: MouseEvent) => void,
-      rightContent?: HTMLElement
-    }) {
-      this.checkboxField = options.checkboxField;
-      this.container.classList.add('row');
-      if(options.titleLangKey) {
-        this.titleRow = document.createElement('div');
-        this.title = document.createElement('div');
-        this.titleRow.classList.add('row-title-row');
-        this.title.classList.add('row-title');
-        this.title.textContent = options.titleLangKey;
-        this.titleRow.append(this.title);
-        this.container.append(this.titleRow);
-      }
-      this.container.append(this.checkboxField.label);
-      if(options.rightContent) this.container.append(options.rightContent);
-      if(options.clickable) this.container.addEventListener('click', options.clickable);
+    public toggleDisability(disabled: boolean) {
+      this.label.classList.toggle('checkbox-disabled', disabled);
+      this.input.disabled = disabled;
+      return () => this.toggleDisability(!disabled);
     }
   }
 }));
@@ -133,22 +109,32 @@ vi.mock('@components/inputFieldTsx', async() => {
 });
 
 vi.mock('@components/rowTsx', async() => {
+  const {createEffect} = await import('solid-js');
   const {insert} = await import('solid-js/web');
-  const Container = (props: any) => {
+  const Container = (props: any, baseClass?: string) => {
     const element = document.createElement('div');
-    if(props.class) element.className = props.class;
-    if(props.role) element.setAttribute('role', props.role);
-    if(props.tabIndex !== undefined) element.tabIndex = props.tabIndex;
+    baseClass && element.classList.add(baseClass);
+    props.ref?.(element);
+    createEffect(() => {
+      if(props.class) element.classList.add(...props.class.split(' ').filter(Boolean));
+      Object.entries(props.classList || {}).forEach(([className, enabled]) => {
+        element.classList.toggle(className, !!enabled);
+      });
+      if(props.role) element.setAttribute('role', props.role);
+      if(props.tabIndex !== undefined) element.tabIndex = props.tabIndex;
+    });
     if(props.clickable) element.addEventListener('click', props.clickable);
     insert(element, () => props.children);
     return element;
   };
-  const Row = Object.assign(Container, {
-    CheckboxField: Container,
-    Media: Container,
-    RightContent: Container,
-    Subtitle: Container,
-    Title: Container
+  const Row = Object.assign((props: any) => Container(props, 'row'), {
+    CheckboxField: (props: any) => Container(props, 'row-checkbox-field'),
+    CheckboxFieldToggle: (props: any) => Container(props, 'row-checkbox-field-toggle'),
+    Media: (props: any) => Container(props, 'row-media'),
+    RadioField: (props: any) => Container(props, 'row-radio-field'),
+    RightContent: (props: any) => Container(props, 'row-right'),
+    Subtitle: (props: any) => Container(props, 'row-subtitle'),
+    Title: (props: any) => Container(props, 'row-title')
   });
 
   return {default: Row};
@@ -230,13 +216,34 @@ vi.mock('@components/iconTsx', () => ({
   IconTsx: () => document.createElement('span')
 }));
 
-vi.mock('@components/staticRadio', () => ({
-  default: () => document.createElement('span')
-}));
+vi.mock('@components/radioFieldTsx', async() => {
+  const {createEffect} = await import('solid-js');
 
-vi.mock('@components/staticSwitch', () => ({
-  default: () => document.createElement('span')
-}));
+  return {
+    default: (props: {
+      checked?: boolean,
+      class?: string,
+      langKey?: string,
+      name: string,
+      value?: string,
+      onChange?: (checked: boolean, event: Event) => void
+    }) => {
+      const label = document.createElement('label');
+      label.classList.add('radio-field', ...(props.class?.split(' ').filter(Boolean) || []));
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = props.name;
+      input.value = props.value || '';
+      input.addEventListener('change', (event) => props.onChange?.(input.checked, event));
+      const main = document.createElement('div');
+      main.classList.add('radio-field-main');
+      main.textContent = props.langKey || '';
+      label.append(input, main);
+      createEffect(() => input.checked = !!props.checked);
+      return label;
+    }
+  };
+});
 
 vi.mock('@components/staticCheckbox', () => ({
   StaticCheckbox: () => document.createElement('span')
@@ -340,11 +347,7 @@ describe('ChatAutomationTab bot input', () => {
     mocks.tab = {
       payload: {connectedBot: makeConnectedBot()},
       header,
-      listenerSetter: {
-        add: (target: EventTarget) => (type: string, listener: EventListener) => {
-          target.addEventListener(type, listener);
-        }
-      },
+      listenerSetter: new ListenerSetter(),
       middlewareHelper: {get: vi.fn()},
       managers: {
         appUsersManager: {getUser},
@@ -436,11 +439,7 @@ describe('ChatAutomationTab bot input', () => {
         })
       },
       header,
-      listenerSetter: {
-        add: (target: EventTarget) => (type: string, listener: EventListener) => {
-          target.addEventListener(type, listener);
-        }
-      },
+      listenerSetter: new ListenerSetter(),
       middlewareHelper: {get: vi.fn()},
       managers: {
         appUsersManager: {
@@ -466,6 +465,11 @@ describe('ChatAutomationTab bot input', () => {
 
     const included = container.querySelector<HTMLElement>('[data-chat-automation-section="included-chats"]');
     const excluded = container.querySelector<HTMLElement>('[data-chat-automation-section="excluded-chats"]');
+    const access = container.querySelector<HTMLElement>('[data-chat-automation-section="access"]');
+    const accessRadioFields = access.querySelectorAll('.row-radio-field');
+    expect(accessRadioFields).toHaveLength(2);
+    expect([...accessRadioFields].every((field) => field.querySelector('.radio-field-main'))).toBe(true);
+    expect(access.querySelector('.row-checkbox-field')).toBeNull();
     expect(included.textContent).toContain('Users');
     expect(excluded.textContent).toContain('Users');
     expect(container.textContent).not.toContain('ChatAutomation.SelectedCount');
@@ -483,11 +487,7 @@ describe('ChatAutomationTab bot input', () => {
     mocks.tab = {
       payload: {connectedBot},
       header,
-      listenerSetter: {
-        add: (target: EventTarget) => (type: string, listener: EventListener) => {
-          target.addEventListener(type, listener);
-        }
-      },
+      listenerSetter: new ListenerSetter(),
       middlewareHelper: {get: vi.fn()},
       managers: {
         appUsersManager: {
@@ -561,11 +561,7 @@ describe('ChatAutomationTab bot input', () => {
     mocks.tab = {
       payload: {connectedBot: makeConnectedBot()},
       header,
-      listenerSetter: {
-        add: (target: EventTarget) => (type: string, listener: EventListener) => {
-          target.addEventListener(type, listener);
-        }
-      },
+      listenerSetter: new ListenerSetter(),
       middlewareHelper: {get: vi.fn()},
       managers: {
         appUsersManager: {

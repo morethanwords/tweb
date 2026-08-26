@@ -1,10 +1,11 @@
 import tsNow from '@helpers/tsNow';
 import {LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
-import {RadioFormFromValues} from '@components/row';
+import RadioFormTsx from '@components/radioFormTsx';
 import PopupPeer from '@components/popups/peer';
 import createCommunityAvatarElement
 from '@components/communities/communityAvatarElement';
+import {createComponent} from 'solid-js';
 
 const ONE_HOUR = 3600;
 const times: {value: number | string, langPackKey: LangPackKey, checked?: boolean}[] = [{
@@ -70,12 +71,13 @@ export default class PopupMute extends PopupPeer {
       this.addEventListener('closeAfterTimeout', communityAvatar.dispose);
     }
 
-    let time: number;
-    const radioForm = RadioFormFromValues(times, (value) => {
-      time = +value;
-    }, true);
-
-    this.body.append(radioForm);
+    let time = +times.find((option) => option.checked).value;
+    this.appendSolid(() => createComponent(RadioFormTsx<number | string>, {
+      values: times,
+      onChange: (value) => {
+        time = +value;
+      }
+    }));
 
     this.show();
   }

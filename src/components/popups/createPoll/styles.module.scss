@@ -193,6 +193,15 @@
   height: 2.5rem;
   cursor: pointer;
 
+  &:global(.row) {
+    min-height: 2.5rem;
+    padding: 0;
+  }
+
+  :global(.row-radio-field) {
+    --offset-left: .5625rem;
+  }
+
   &:hover {
     background: var(--light-filled-secondary-text-color);
   }

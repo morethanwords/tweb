@@ -1,10 +1,9 @@
-import {Component, createSignal, onMount} from 'solid-js';
+import {Component, createSignal, JSX, onMount, Show, Signal} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {DialogFilter, DialogFilterSuggested} from '@layer';
 import {LottieLoader} from '@lib/lottie/lottieLoader';
 import Button from '@components/buttonTsx';
 import rootScope from '@lib/rootScope';
-import Row from '@components/row';
 import Section from '@components/section';
 import {i18n, LangPackKey, join} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -12,19 +11,33 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
-import replaceContent from '@helpers/dom/replaceContent';
 import Sortable from '@helpers/dom/sortable';
 import whichChild from '@helpers/dom/whichChild';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import showLimitPopup from '@components/popups/limit';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
-import RadioField from '@components/radioField';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 import useHasFoldersSidebar from '@stores/foldersSidebar';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
+import Row from '@components/rowTsx';
+import RadioFieldTsx from '@components/radioFieldTsx';
+import {IconTsx} from '@components/iconTsx';
+import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import type {Middleware} from '@helpers/middleware';
+import ListenerSetter from '@helpers/listenerSetter';
+
+type FolderRow = {
+  container: HTMLElement,
+  title: Signal<JSX.Element>,
+  subtitle: Signal<JSX.Element>,
+  buttonRight?: HTMLElement,
+  middleware: Middleware,
+  listenerSetter: ListenerSetter,
+  dispose: VoidFunction
+};
 
 const ChatFolders: Component = () => {
   const [tab] = useSuperTab<typeof AppChatFoldersTab>();
@@ -32,7 +45,8 @@ const ChatFolders: Component = () => {
   const {AppEditFolderTab, appSidebarLeft, lottieLoader, appImManager} = useHotReloadGuard();
   const p = tab.payload;
 
-  const filtersRendered: {[filterId: number]: Row} = {};
+  const filtersRendered: {[filterId: number]: FolderRow} = {};
+  const suggestedRows = new Set<FolderRow>();
   let animation: LottiePlayer;
   let loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
@@ -45,7 +59,7 @@ const ChatFolders: Component = () => {
   const renderFolder = async(
     dialogFilter: DialogFilterSuggested | MyDialogFilter,
     container?: HTMLElement,
-    row?: Row,
+    row?: FolderRow,
     append?: boolean
   ) => {
     let filter: MyDialogFilter;
@@ -90,16 +104,63 @@ const ChatFolders: Component = () => {
 
     if(!row) {
       const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
-      row = new Row({
-        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : await wrapFolderTitle(filter.title, tab.middlewareHelper.get(), false, {textColor: 'primary-text-color'}),
-        subtitle: description,
-        clickable: true,
-        buttonRightLangKey: isSuggested ? 'Add' : undefined
-      });
-
-      if(d.length) {
-        row.subtitle.append(...join(d));
+      const title = createSignal<JSX.Element>(
+        filter.id === FOLDER_ID_ALL && !isSuggested ?
+          i18n('FilterAllChats') :
+          undefined
+      );
+      const subtitle = createSignal<JSX.Element>(description || (d.length ? join(d) : undefined));
+      let buttonRight: HTMLElement;
+      const mounted = mountSolidComponent(() => (
+        <Row
+          class={isSuggested ? undefined : 'row-sortable'}
+          clickable
+        >
+          <Row.Title>{title[0]()}</Row.Title>
+          <Show when={subtitle[0]()}>
+            <Row.Subtitle>{subtitle[0]()}</Row.Subtitle>
+          </Show>
+          <Show when={isSuggested}>
+            <Row.RightContent>
+              <Button
+                ref={buttonRight}
+                class="btn-primary btn-color-primary btn-control-small"
+                text="Add"
+              />
+            </Row.RightContent>
+          </Show>
+          <Show when={!isSuggested}>
+            <IconTsx icon="menu" class="row-sortable-icon" />
+          </Show>
+        </Row>
+      ), tab.middlewareHelper.get());
+      const rowContainer = mounted.element;
+      const listenerSetter = new ListenerSetter();
+      mounted.middleware.onClean(() => listenerSetter.removeAll());
+      if(filter.id !== FOLDER_ID_ALL || isSuggested) {
+        try {
+          title[1](await wrapFolderTitle(
+            filter.title,
+            mounted.middleware,
+            false,
+            {textColor: 'primary-text-color'}
+          ));
+        } catch(err) {
+          mounted.dispose();
+          throw err;
+        }
       }
+
+      (container || (isSuggested ? suggestedContent : list)).append(rowContainer);
+      row = {
+        container: rowContainer,
+        title,
+        subtitle,
+        buttonRight,
+        middleware: mounted.middleware,
+        listenerSetter,
+        dispose: mounted.dispose
+      };
 
       if(!isSuggested) {
         const filterId = filter.id;
@@ -108,20 +169,17 @@ const ChatFolders: Component = () => {
           attachClickEvent(row.container, async() => {
             const filter = await tab.managers.filtersStorage.getFilter(filterId);
             tab.slider.createTab(AppEditFolderTab).open({...initArgs, initFilter: filter});
-          }, {listenerSetter: tab.listenerSetter});
+          }, {listenerSetter: row.listenerSetter});
         }
 
         filtersRendered[filter.id] = row;
-
-        row.makeSortable();
       }
     } else {
       if(filter.id !== FOLDER_ID_ALL) {
-        replaceContent(row.title, await wrapFolderTitle(filter.title, tab.middlewareHelper.get()));
+        row.title[1](await wrapFolderTitle(filter.title, row.middleware));
       }
 
-      row.subtitle.textContent = '';
-      row.subtitle.append(...join(d));
+      row.subtitle[1](d.length ? join(d) : undefined);
     }
 
     const div = row.container;
@@ -157,11 +215,15 @@ const ChatFolders: Component = () => {
   const getSuggestedFilters = () => {
     return tab.managers.filtersStorage.getSuggestedDialogsFilters().then(async(suggestedFilters) => {
       setSuggestedHidden(!suggestedFilters.length);
-      Array.from(suggestedContent.children).slice(1).forEach((el) => el.remove());
+      suggestedRows.forEach((row) => {
+        row.dispose();
+        row.container.remove();
+      });
+      suggestedRows.clear();
 
       for(const filter of suggestedFilters) {
         const row = await renderFolder(filter);
-        suggestedContent.append(row.container);
+        suggestedRows.add(row);
 
         const button = row.buttonRight;
         attachClickEvent(button, async(e) => {
@@ -180,12 +242,14 @@ const ChatFolders: Component = () => {
           f.pinnedPeerIds = [];
 
           tab.managers.filtersStorage.createDialogFilter(f, true).then(() => {
+            suggestedRows.delete(row);
+            row.dispose();
             row.container.remove();
             setSuggestedHidden(suggestedContent.childElementCount === 1);
           }).finally(() => {
             button.removeAttribute('disabled');
           });
-        }, {listenerSetter: tab.listenerSetter});
+        }, {listenerSetter: row.listenerSetter});
       }
     });
   };
@@ -203,14 +267,6 @@ const ChatFolders: Component = () => {
 
   const name = 'theme';
   const stateKey = joinDeepPath('settings', 'tabsInSidebar');
-
-  const onLeftRow = new Row({
-    radioField: new RadioField({langKey: 'FiltersOnLeft', name, value: 'true', valueForState: true, stateKey})
-  });
-
-  const nonTopRow = new Row({
-    radioField: new RadioField({langKey: 'FiltersOnTop', name, value: 'false', valueForState: false, stateKey})
-  });
 
   onMount(() => {
     tab.container.classList.add('chat-folders-container');
@@ -258,6 +314,7 @@ const ChatFolders: Component = () => {
       if(filterRendered) {
         getSuggestedFilters();
 
+        filterRendered.dispose();
         filterRendered.container.remove();
         delete filtersRendered[filter.id];
       }
@@ -345,8 +402,28 @@ const ChatFolders: Component = () => {
       />
       <Section name="FiltersView">
         <form>
-          {onLeftRow.container}
-          {nonTopRow.container}
+          <Row>
+            <Row.RadioField>
+              <RadioFieldTsx
+                name={name}
+                value="true"
+                valueForState={true}
+                stateKey={stateKey}
+              />
+            </Row.RadioField>
+            <Row.Title>{i18n('FiltersOnLeft')}</Row.Title>
+          </Row>
+          <Row>
+            <Row.RadioField>
+              <RadioFieldTsx
+                name={name}
+                value="false"
+                valueForState={false}
+                stateKey={stateKey}
+              />
+            </Row.RadioField>
+            <Row.Title>{i18n('FiltersOnTop')}</Row.Title>
+          </Row>
         </form>
       </Section>
     </>

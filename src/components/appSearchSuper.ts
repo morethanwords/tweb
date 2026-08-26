@@ -26,7 +26,7 @@ import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import showForwardPopup from '@components/popups/forward';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
-import Row from '@components/row';
+import {renderSearchWebPageRow} from '@components/searchWebPageRow';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {SearchSelection} from '@components/chat/selection';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
@@ -80,7 +80,6 @@ import PopupPremium from '@components/popups/premium';
 import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from '@components/slider';
-import setBlankToAnchor from '@richTextProcessor/setBlankToAnchor';
 import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
 import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
@@ -1390,29 +1389,21 @@ export default class AppSearchSuper {
       title.append(wrapPlainText(webPage.display_url.split('/', 1)[0]));
     }
 
-    const row = new Row({
+    const row = renderSearchWebPageRow({
       title,
       titleRight: wrapSentTime(message),
       subtitle: subtitleFragment,
-      havePadding: true,
-      clickable: true,
-      noRipple: true,
-      asLink: aIsAnchor
+      media: previewDiv,
+      link: aIsAnchor ? {
+        href: a.href,
+        onClick: a.getAttribute('onclick'),
+        targetBlank: a.target === '_blank'
+      } : undefined,
+      middleware
     });
 
-    if(aIsAnchor) {
-      (row.container as HTMLAnchorElement).href = a.href;
-      const onClick = a.getAttribute('onclick');
-      onClick && row.container.setAttribute('onclick', onClick);
-      if(a.target === '_blank') {
-        setBlankToAnchor(row.container as HTMLAnchorElement);
-      }
-    }
-
-    row.applyMediaElement(previewDiv, 'big');
-
-    if(row.container.innerText.trim().length) {
-      return {message, element: row.container};
+    if(row.innerText.trim().length) {
+      return {message, element: row};
     }
   }
 

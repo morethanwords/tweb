@@ -26,7 +26,7 @@ describe('EditBot Community section', () => {
     expect(source).not.toContain('generateSection');
     expect(source).not.toContain('EditPeer');
     expect(source).not.toContain('attachClickEvent');
-    expect(source).not.toContain('new Row(');
+    expect(source).not.toContain('createRow(');
     expect(source).not.toContain('replaceChildren(');
     expect(source).not.toContain('toggleDisability(');
     expect(source).not.toContain('add(rootScope)(\'user_update\'');

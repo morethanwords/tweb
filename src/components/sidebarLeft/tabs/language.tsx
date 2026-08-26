@@ -1,4 +1,4 @@
-import {createMemo, onMount} from 'solid-js';
+import {createMemo, createSignal, For, onMount} from 'solid-js';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {randomLong} from '@helpers/random';
 import {LangPackLanguage} from '@layer';
@@ -8,8 +8,7 @@ import usePremium from '@stores/premium';
 import {pickLanguage} from '@components/chat/translation';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import PopupPremium from '@components/popups/premium';
-import RadioField from '@components/radioField';
-import Row, {RadioFormFromRows} from '@components/row';
+import RadioFieldTsx from '@components/radioFieldTsx';
 import RowTsx from '@components/rowTsx';
 import Section from '@components/section';
 import {useAppSettings} from '@stores/appSettings';
@@ -55,12 +54,10 @@ const TranslateSection = () => {
       </RowTsx>
       <RowTsx
         fakeDisabled={!isPremium()}
-        clickable={(e) => {
-          if(!isPremium()) {
-            e.preventDefault();
-            PopupPremium.show({feature: 'translations'});
-          }
-        }}
+        clickable={!isPremium() ? (e) => {
+          e.preventDefault();
+          PopupPremium.show({feature: 'translations'});
+        } : undefined}
       >
         <RowTsx.CheckboxFieldToggle>
           <CheckboxFieldTsx
@@ -100,7 +97,10 @@ const TranslateSection = () => {
 
 const LanguageListSection = () => {
   const promiseCollector = usePromiseCollector();
-  let containerEl!: HTMLDivElement;
+  const [languages, setLanguages] = createSignal<LangPackLanguage[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = createSignal<string>();
+  const radioName = randomLong();
+  let webLangCodes: string[] = [];
 
   promiseCollector.collect((async() => {
     const langs1 = await rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
@@ -109,46 +109,46 @@ const LanguageListSection = () => {
     // macos langpack disabled in legacy tab — kept the structure for parity
     const langs2: LangPackLanguage[] = [];
 
-    const radioRows = new Map<string, Row>();
     const rendered = new Set<string>();
-    const webLangCodes = langs1.map((language) => language.lang_code);
-    const random = randomLong();
-
-    langs1.concat(langs2).forEach((language) => {
-      if(rendered.has(language.lang_code)) return;
+    webLangCodes = langs1.map((language) => language.lang_code);
+    setLanguages(langs1.concat(langs2).filter((language) => {
+      if(rendered.has(language.lang_code)) return false;
       rendered.add(language.lang_code);
-
-      const row = new Row({
-        radioField: new RadioField({
-          text: language.name,
-          name: random,
-          value: language.lang_code
-        }),
-        subtitle: language.native_name
-      });
-
-      radioRows.set(language.lang_code, row);
-    });
-
-    const form = RadioFormFromRows([...radioRows.values()], (value) => {
-      I18n.getLangPackAndApply(value, webLangCodes.includes(value));
-    });
-
-    containerEl.replaceChildren(form);
+      return true;
+    }));
 
     const langPack = await I18n.getCacheLangPackAndApply();
-    const row = radioRows.get(langPack.lang_code);
-    if(!row) {
-      console.error('no row', row, langPack);
+    if(!rendered.has(langPack.lang_code)) {
+      console.error('no language row', langPack);
       return;
     }
 
-    row.radioField.setValueSilently(true);
+    setSelectedLanguage(langPack.lang_code);
   })());
 
   return (
     <Section>
-      <div ref={containerEl} />
+      <form>
+        <For each={languages()}>{(language) => (
+          <RowTsx>
+            <RowTsx.RadioField>
+              <RadioFieldTsx
+                class="disable-hover"
+                checked={selectedLanguage() === language.lang_code}
+                name={radioName}
+                value={language.lang_code}
+                onChange={(checked) => {
+                  if(!checked) return;
+                  setSelectedLanguage(language.lang_code);
+                  I18n.getLangPackAndApply(language.lang_code, webLangCodes.includes(language.lang_code));
+                }}
+              />
+            </RowTsx.RadioField>
+            <RowTsx.Title>{language.name}</RowTsx.Title>
+            <RowTsx.Subtitle>{language.native_name}</RowTsx.Subtitle>
+          </RowTsx>
+        )}</For>
+      </form>
     </Section>
   );
 };

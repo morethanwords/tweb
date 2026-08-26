@@ -2,10 +2,10 @@ import PopupElement from '.';
 import accumulate from '@helpers/array/accumulate';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import {PaymentsPaymentForm, PaymentsValidatedRequestedInfo, ShippingOption} from '@layer';
-import RadioField from '@components/radioField';
-import Row, {RadioFormFromRows} from '@components/row';
-import SettingSection from '@components/settingSection';
 import {PaymentButton} from '@components/popups/payment';
+import RadioFormTsx from '@components/radioFormTsx';
+import Section from '@components/section';
+import {createComponent} from 'solid-js';
 
 export default class PopupPaymentShippingMethods extends PopupElement<{
   finish: (shippingOption: ShippingOption) => void
@@ -27,36 +27,32 @@ export default class PopupPaymentShippingMethods extends PopupElement<{
   }
 
   private d() {
-    const section = new SettingSection({name: 'PaymentCheckoutShippingMethod', noDelimiter: true, noShadow: true});
+    const selectedShippingId = this.shippingOption?.id || this.requestedInfo.shipping_options[0].id;
+    const values = this.requestedInfo.shipping_options.map((shippingOption) => ({
+      checked: shippingOption.id === selectedShippingId,
+      text: shippingOption.title,
+      value: shippingOption.id,
+      subtitle: paymentsWrapCurrencyAmount(
+        accumulate(shippingOption.prices.map(({amount}) => +amount), 0),
+        this.paymentForm.invoice.currency
+      )
+    }));
 
-    const rows = this.requestedInfo.shipping_options.map((shippingOption) => {
-      return new Row({
-        radioField: new RadioField({
-          text: shippingOption.title,
+    let lastShippingId = selectedShippingId;
+    this.appendSolid(() => createComponent(Section, {
+      name: 'PaymentCheckoutShippingMethod',
+      noDelimiter: true,
+      noShadow: true,
+      get children() {
+        return createComponent(RadioFormTsx<string>, {
           name: 'shipping-method',
-          value: shippingOption.id
-        }),
-        subtitle: paymentsWrapCurrencyAmount(
-          accumulate(shippingOption.prices.map(({amount}) => +amount), 0),
-          this.paymentForm.invoice.currency
-        )
-      });
-    });
-
-    let lastShippingId: string;
-    const form = RadioFormFromRows(rows, (value) => {
-      lastShippingId = value;
-    });
-
-    if(this.shippingOption) {
-      rows.find((row) => row.radioField.input.value === this.shippingOption.id).radioField.checked = true;
-    } else {
-      rows[0].radioField.checked = true;
-    }
-
-    section.content.append(form);
-
-    this.scrollable.append(section.container);
+          values,
+          onChange: (value) => {
+            lastShippingId = value;
+          }
+        });
+      }
+    }));
 
     const payButton = PaymentButton({
       key: 'PaymentInfo.Done',

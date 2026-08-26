@@ -2,11 +2,6 @@
   padding-bottom: 1rem;
 }
 
-.accessRadioFocused {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 3px;
-}
-
 .recipientRow {
   grid-template-columns: 0 minmax(0, 1fr) fit-content(50%);
 }

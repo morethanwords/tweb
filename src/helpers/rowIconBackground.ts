@@ -29,10 +29,12 @@ export const ROW_ICON_COLOR_BY_NAME: Partial<Record<Icon, RowIconColorName>> = {
   android_filled: 'green',
   appearance_filled: 'orange',
   apple_filled: 'blue',
+  auto_delete_filled: 'grey',
   bell_filled: 'red',
   bin_filled: 'red',
   birthday_filled: 'purple',
   bot_filled: 'green',
+  bubble_filled: 'pink',
   business_filled: 'green',
   channel_filled: 'orange',
   checkboxblock: 'red',
@@ -44,13 +46,16 @@ export const ROW_ICON_COLOR_BY_NAME: Partial<Record<Icon, RowIconColorName>> = {
   delete_filled: 'red',
   devices_filled: 'blue',
   email_filled: 'purple',
+  emoji_filled: 'orange',
   eye1_filled: 'orange',
+  faceid_filled: 'green',
   faq_filled: 'blue',
   gift_filled: 'orange',
   general_filled: 'grey',
   gram_filled: 'blue',
   group_circle_filled: 'blue',
   group_filled: 'green',
+  info_filled: 'grey',
   key_filled: 'grey',
   keyboard_filled: 'orange',
   lamp_filled: 'purple',
@@ -58,10 +63,14 @@ export const ROW_ICON_COLOR_BY_NAME: Partial<Record<Icon, RowIconColorName>> = {
   limit_folders_filled: 'blue',
   link_filled: 'orange',
   linux_filled: 'orange',
+  lock_filled: 'red',
   location: 'red',
+  location_filled: 'green',
+  message_filled: 'green',
   mention_filled: 'blue',
   newchannel_filled: 'orange',
   newprivate_filled: 'blue',
+  person_crossed_filled: 'grey',
   person_filled: 'blue',
   phone_filled: 'green',
   photo_filled: 'orange',
@@ -72,14 +81,18 @@ export const ROW_ICON_COLOR_BY_NAME: Partial<Record<Icon, RowIconColorName>> = {
   premium_filesize_filled: 'blue',
   premium_lock_filled: 'grey',
   reactions_filled: 'pink',
+  recent_actions_filled: 'green',
   round_chats_filled: 'green',
   saved_filled: 'blue',
   sending: 'orange',
   speaker_filled: 'green',
+  sputnik_filled: 'purple',
   star_circle_filled: 'orange',
   statistics_filled: 'purple',
+  sticker_filled: 'purple',
   stories_filled: 'purple',
   tag_alt_filled: 'blue',
+  time_filled: 'pink',
   timer_filled: 'orange',
   topics_filled: 'purple',
   two_factor_auth_filled: 'green',
@@ -156,9 +169,4 @@ export function getRowIconBackgroundImage(icon: Icon) {
   }
 
   return getRowIconBackground(getRowIconBackgroundColor(icon));
-}
-
-export function setRowIconBackground(element: HTMLElement, icon: Icon) {
-  element.classList.add('row-icon-colored');
-  element.style.backgroundImage = getRowIconBackgroundImage(icon);
 }

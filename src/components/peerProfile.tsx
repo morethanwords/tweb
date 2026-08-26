@@ -61,8 +61,8 @@ import showAddBotToChat from '@components/popups/addBotToChat';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
 import {showPeerReport} from '@components/popups/reportAd';
-import appDialogsManager from '@lib/appDialogsManager';
-import CommunityAvatar from '@components/communities/communityAvatar';
+import CommunityPeerDialogList
+from '@components/communities/communityPeerDialogList';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 keepMe(ripple);
@@ -898,7 +898,7 @@ PeerProfile.Location = () => {
   return (
     <Show when={location()}>
       <Row>
-        <Row.Icon icon="location" />
+        <Row.Icon icon="location_filled" />
         <Row.Title>{location()?.address}</Row.Title>
         <Row.Subtitle>{i18n('ChatLocation')}</Row.Subtitle>
       </Row>
@@ -972,7 +972,7 @@ PeerProfile.Bio = () => {
           }]
         }}
       >
-        <Row.Icon icon="info" />
+        <Row.Icon icon="info_filled" />
         <Row.Title class="pre-wrap">{aboutWrapped()}</Row.Title>
         <Row.Subtitle>{i18n(context.peerId.isUser() ? 'UserBio' : 'Info')}</Row.Subtitle>
       </Row>
@@ -1134,7 +1134,7 @@ PeerProfile.BusinessHours = () => {
 
   return (
     <Show when={hours() && timezones()}>
-      {BusinessHours({hours, timezones}).container}
+      <BusinessHours hours={hours} timezones={timezones} />
     </Show>
   );
 };
@@ -1179,7 +1179,7 @@ PeerProfile.BusinessLocation = () => {
           }]
         }}
       >
-        <Row.Icon icon="location" />
+        <Row.Icon icon="location_filled" />
         <Row.Title>{wrapEmojiText(location().address)}</Row.Title>
         <Row.Subtitle>{i18n('BusinessProfileLocation')}</Row.Subtitle>
         <Show when={location().geo_point}>
@@ -1353,7 +1353,7 @@ PeerProfile.BotPermissions = () => {
                 toggle
               />
             </Row.CheckboxFieldToggle>
-            <Row.Icon icon="smile" />
+            <Row.Icon icon="emoji_filled" />
             <Row.Title>{i18n('BotAllowAccessToEmojiStatus')}</Row.Title>
           </Row>
         </Show>
@@ -1372,7 +1372,7 @@ PeerProfile.BotPermissions = () => {
                 toggle
               />
             </Row.CheckboxFieldToggle>
-            <Row.Icon icon="location" />
+            <Row.Icon icon="location_filled" />
             <Row.Title>{i18n('BotAllowAccessToLocation')}</Row.Title>
           </Row>
         </Show>
@@ -1541,69 +1541,43 @@ function CommunityProfileDialog(props: {
   chatsCount?: number,
   hidden: boolean
 }) {
-  const {i18n} = useHotReloadGuard();
-  const middleware = createMiddleware();
-  const peerId = props.community.id.toPeerId(true);
-  const list = appDialogsManager.createChatList();
-  const loadPromises: Promise<any>[] = [];
-  const dialogElement = appDialogsManager.addDialogNew({
-    peerId,
-    container: list,
-    rippleEnabled: true,
-    avatarSize: 'abitbigger',
-    append: true,
-    fromName: props.community.title,
-    noIcons: true,
-    wrapOptions: {middleware: middleware.get()},
-    withStories: false,
-    loadPromises
-  });
-  const communityAvatar = wrapSolidComponent(() => (
-    <CommunityAvatar
-      community={props.community}
-      title={props.community.title}
-      size={42}
-    />
-  ), middleware.get());
-  communityAvatar.classList.add(
-    'row-media',
-    'row-media-abitbigger',
-    'dialog-avatar'
-  );
-  const avatarNode = dialogElement.dom.avatarEl?.node;
-  if(avatarNode) {
-    avatarNode.replaceWith(communityAvatar);
-  } else {
-    dialogElement.container.append(communityAvatar);
-  }
-  dialogElement.media = communityAvatar;
-  dialogElement.container.classList.add('community-profile-dialog');
-  createEffect(() => {
-    dialogElement.dom.titleSpan.replaceChildren(
-      wrapEmojiText(props.community.title)
-    );
-  });
-  createEffect(() => {
-    const chatsCount = props.chatsCount;
-    dialogElement.dom.lastMessageSpan.replaceChildren(
-      chatsCount === undefined ?
-        i18n('Community.Title') :
-        i18n('Community.ProfileStatus', [chatsCount])
-    );
-  });
-  onCleanup(() => dialogElement.destroy());
+  const {appDialogsManager, appImManager, i18n} = useHotReloadGuard();
+  const middleware = createMiddleware().get();
 
   return (
     <Section
       caption={props.hidden ? 'Community.HiddenInfo' : undefined}
-      ref={(element) => {
-        appDialogsManager.setListClickListener({
-          list: element,
-          autonomous: false
-        });
-      }}
     >
-      {list}
+      <CommunityPeerDialogList
+        items={[props.community]}
+        middleware={middleware}
+        getPeerId={(community) => community.id.toPeerId(true)}
+        getCommunity={(community) => community}
+        getSubtitle={() => {
+          const chatsCount = props.chatsCount;
+          return chatsCount === undefined ?
+            i18n('Community.Title') :
+            i18n('Community.ProfileStatus', [chatsCount]);
+        }}
+        getClass={() => 'community-profile-dialog'}
+        getDataset={(community) => ({
+          communityDialog: 'true',
+          communityId: '' + community.id
+        })}
+        onClick={(community, event) => {
+          if(event.ctrlKey || event.metaKey) {
+            const row = (event.target as HTMLElement)
+            .closest<HTMLElement>('[data-community-peer-dialog]');
+            if(row) {
+              appDialogsManager.openDialogInNewTab(row);
+              cancelEvent(event);
+              return;
+            }
+          }
+
+          void appImManager.op({peer: community});
+        }}
+      />
     </Section>
   );
 }

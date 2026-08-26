@@ -23,14 +23,7 @@
         margin: 0;
       }
 
-      > .checkbox-field {
-        .checkbox-box {
-          inset-inline-start: auto;
-        }
-      }
-
       @include respond-to(handhelds) {
-        > .checkbox-ripple,
         > .btn-primary {
           border-radius: 0;
         }

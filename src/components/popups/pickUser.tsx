@@ -7,7 +7,8 @@ import {IsPeerType} from '@appManagers/appPeersManager';
 import TransitionSlider from '@components/transition';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {ForumTopic} from '@layer';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {avatarNew} from '@components/avatarNew';
 import {makeMediaSize} from '@helpers/mediaSize';
@@ -73,13 +74,8 @@ async function wrapTopicRow({
   middleware: Middleware
 }) {
   const size = makeMediaSize(32, 32);
-  const row = new Row({
-    title: threadId ? await wrapPeerTitle({peerId, threadId}) : i18n('AllMessages'),
-    clickable: true
-  });
-  row.container.dataset.peerId = [peerId, threadId].filter(Boolean).join('_');
-  row.container.classList.add('selector-forum-topic');
-  const media = row.createMedia('abitbigger');
+  const title = threadId ? await wrapPeerTitle({peerId, threadId}) : i18n('AllMessages');
+  let media: JSX.Element;
   if(threadId) {
     const avatar = avatarNew({
       peerId,
@@ -93,13 +89,23 @@ async function wrapTopicRow({
       }
     });
     await avatar.readyThumbPromise;
-    media.append(avatar.node);
+    media = avatar.node;
   } else {
-    media.append(wrapEmojiText('💬'));
-    row.container.classList.add('selector-forum-topic-all');
+    media = wrapEmojiText('💬');
   }
 
-  return row.container;
+  const row = wrapSolidComponent(() => (
+    <RowTsx
+      clickable
+      class="selector-forum-topic"
+      classList={{'selector-forum-topic-all': !threadId}}
+    >
+      <RowTsx.Title>{title}</RowTsx.Title>
+      <RowTsx.Media size="abitbigger">{media}</RowTsx.Media>
+    </RowTsx>
+  ), middleware);
+  row.dataset.peerId = [peerId, threadId].filter(Boolean).join('_');
+  return row;
 }
 
 export default function showPickUserPopup(options: PopupPickUserOptions) {
@@ -277,6 +283,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         };
       },
       renderResultsFunc: async(threadIds, append) => {
+        const middleware = fs.middlewareHelperLoader.get();
         if(firstRender) {
           firstRender = false;
 
@@ -286,9 +293,13 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         }
 
         const promises = threadIds.map((threadId) => {
-          return wrapTopicRow({peerId, threadId, middleware: fsMiddleware});
+          return wrapTopicRow({peerId, threadId, middleware});
         });
         const elements = await Promise.all(promises);
+        if(!middleware()) {
+          return;
+        }
+
         elements.forEach((element) => {
           const sel = fs.selected.has(element.dataset.peerId);
           element.prepend(fs.checkbox(sel));
@@ -636,6 +647,9 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
   return {
     get selector() {
       return selector;
+    },
+    get middleware() {
+      return middleware;
     },
     hide() {
       setShow(false);

@@ -8,7 +8,15 @@ export default function RippleElement<T extends ValidComponent>(props: DynamicPr
   noRipple?: boolean,
   rippleSquare?: boolean
 }) {
-  const [local, rest] = splitProps(props, ['noRipple', 'rippleSquare', 'component', 'children', 'class', 'classList']);
+  const [local, rest] = splitProps(props, [
+    'noRipple',
+    'rippleSquare',
+    'component',
+    'children',
+    'class',
+    'classList',
+    'ref'
+  ]);
   const [rippleElement, setRippleElement] = createSignal<HTMLElement>();
   const el = document.createElement(local.component as string || 'div');
 
@@ -23,7 +31,7 @@ export default function RippleElement<T extends ValidComponent>(props: DynamicPr
     }
   });
 
-  (props.ref as Ref<any>)?.(el);
+  (local.ref as Ref<any>)?.(el);
 
   // every class goes through `classList`, which toggles key by key. Handing `class` a joined string
   // instead would make Solid assign `className`, wiping whatever the element picked up from outside

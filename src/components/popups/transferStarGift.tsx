@@ -11,7 +11,8 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import formatDuration from '@helpers/formatDuration';
 import tsNow from '@helpers/tsNow';
 import PopupElementOld from '@components/popups/index';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import {passwordPopup} from '@components/popups/password';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -304,15 +305,16 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
   });
 
   if(saved.can_export_at !== undefined && saved.can_export_at < now) {
-    const fragmentRow = new Row({
-      titleLangKey: 'StarGiftFragmentTransferItem',
-      icon: 'ton',
-      clickable: () => {
+    const fragmentRow = wrapSolidComponent(() => (
+      <RowTsx clickable={() => {
         handleSelection('fragment');
         popup.hide();
-      }
-    });
-    popup.selector.list.before(fragmentRow.container);
+      }}>
+        <RowTsx.Icon icon="ton" />
+        <RowTsx.Title>{i18n('StarGiftFragmentTransferItem')}</RowTsx.Title>
+      </RowTsx>
+    ), popup.middleware);
+    popup.selector.list.before(fragmentRow);
   }
 
   return deferred;

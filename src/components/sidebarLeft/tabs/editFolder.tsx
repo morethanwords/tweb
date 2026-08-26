@@ -19,7 +19,7 @@ import SettingSection from '@components/settingSection';
 import {DialogFilter, ExportedChatlistInvite} from '@layer';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -36,6 +36,7 @@ import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppEditFolderTab} from '@components/solidJsTabs/tabs';
+import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 type EditFolderButton = {
   icon: Icon,
@@ -542,7 +543,13 @@ const EditFolder: Component = () => {
 
       const content = inviteLinks.generateContentElement();
       const map: Map<HTMLElement, ExportedChatlistInvite> = new Map();
-      const invitesMap: Map<string, Row> = new Map();
+      type InviteRow = {
+        container: HTMLElement,
+        title: HTMLElement,
+        subtitle: HTMLElement,
+        dispose: VoidFunction
+      };
+      const invitesMap: Map<string, InviteRow> = new Map();
 
       const onLinksLengthChange = () => {
         inviteLinksCreate.classList.toggle('hide', map.size >= chatlistInvitesPremiumLimit);
@@ -551,6 +558,7 @@ const EditFolder: Component = () => {
       const onLinkDeletion = (link: ExportedChatlistInvite) => {
         const row = invitesMap.get(link.url);
         if(row) {
+          row.dispose();
           row.container.remove();
           invitesMap.delete(link.url);
           map.delete(row.container);
@@ -558,7 +566,7 @@ const EditFolder: Component = () => {
         }
       };
 
-      const updateLink = (row: Row, chatlistInvite: ExportedChatlistInvite) => {
+      const updateLink = (row: InviteRow, chatlistInvite: ExportedChatlistInvite) => {
         const title = chatlistInvite.title && chatlistInvite.title !== filter.title.text ?
           wrapEmojiText(chatlistInvite.title) :
           chatlistInvite.url.replace(/(.+?):\/\//, '');
@@ -568,18 +576,20 @@ const EditFolder: Component = () => {
       };
 
       const wrapLink = (chatlistInvite: ExportedChatlistInvite) => {
-        const row = new Row({
-          title: true,
-          subtitle: true,
-          clickable: true
-        });
+        let title: HTMLDivElement;
+        let subtitle: HTMLDivElement;
+        const mounted = mountSolidComponent(() => (
+          <RowTsx clickable class={`${CLASS_NAME}-username active`}>
+            <RowTsx.Title ref={title} />
+            <RowTsx.Subtitle ref={subtitle} />
+            <RowTsx.Media size="medium" class={`${CLASS_NAME}-username-icon`}>
+              {Icon('link')}
+            </RowTsx.Media>
+          </RowTsx>
+        ), tab.middlewareHelper.get());
+        const row = {container: mounted.element, title, subtitle, dispose: mounted.dispose};
 
         updateLink(row, chatlistInvite);
-
-        row.container.classList.add(CLASS_NAME + '-username', 'active');
-        const media = row.createMedia('medium');
-        media.classList.add(CLASS_NAME + '-username-icon');
-        media.append(Icon('link'));
 
         content.append(row.container);
         map.set(row.container, chatlistInvite);

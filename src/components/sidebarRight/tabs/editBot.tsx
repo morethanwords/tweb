@@ -22,7 +22,7 @@ import type {AppEditBotTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import UsernameInputFieldTsx from '@components/usernameInputFieldTsx';
 import type {UsernameInputField} from '@components/usernameInputField';
-import UsernamesSectionTsx from '@components/usernamesSectionTsx';
+import UsernamesSection from '@components/usernamesSection';
 import {purchaseUsernameCaption}
 from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import type {User} from '@layer';
@@ -242,6 +242,7 @@ function EditBotForm(props: {data: EditBotData}) {
             managers={tab.managers}
             instanceRef={setUsernameField}
             originalValue={initialUsername}
+            containerClass="disable-hover"
             label="Username"
             name="username"
             plainText
@@ -267,12 +268,10 @@ function EditBotForm(props: {data: EditBotData}) {
 
       <Show when={usernameField()}>
         {(field) => (
-          <UsernamesSectionTsx
+          <UsernamesSection
             peerId={props.data.peerId}
             peer={props.data.user}
-            listenerSetter={tab.listenerSetter}
             usernameInputField={field()}
-            middleware={tab.middlewareHelper.get()}
           />
         )}
       </Show>

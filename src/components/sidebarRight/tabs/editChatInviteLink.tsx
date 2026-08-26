@@ -1,4 +1,4 @@
-import {Component, createSignal, onMount, Show} from 'solid-js';
+import {Component, createSignal, JSX, onMount, Show} from 'solid-js';
 import {formatFullSentTime} from '@helpers/date';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
@@ -8,7 +8,7 @@ import clamp from '@helpers/number/clamp';
 import tsNow from '@helpers/tsNow';
 import {i18n, LangPackKey} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
-import CheckboxField from '@components/checkboxField';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import InputField from '@components/inputField';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import {InputStarsField} from '@components/popups/makePaid';
@@ -16,13 +16,14 @@ import {InputRightNumber} from '@components/popups/payment';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {setButtonLoader} from '@components/putPreloader';
 import RangeStepsSelector from '@components/rangeStepsSelector';
-import Row from '@components/row';
+import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {ChatInvite} from './chatInviteLinkShared';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppEditChatInviteLinkTab} from '@components/solidJsTabs/tabs';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 export function findClosestDifference(array: Array<number>, difference: number) {
   const differences = array.map((value, idx) => {
@@ -40,17 +41,28 @@ const EditChatInviteLink: Component = () => {
   let nameInputField!: InputField;
   let timePeriodSelector: RangeStepsSelector<number | Date>;
   let usersLimitSelector: RangeStepsSelector<number>;
-  let paidLinkCheckboxField: CheckboxField, paidLinkInputField: InputField;
-  let approveNewMembersCheckboxField: CheckboxField;
+  let paidLinkInputField: InputField;
 
   let timePeriodContent!: HTMLDivElement;
   let usersLimitContent!: HTMLDivElement;
   const [isBroadcast, setIsBroadcast] = createSignal(false);
-  const [paidRow, setPaidRow] = createSignal<HTMLElement>();
   const [paidWrapper, setPaidWrapper] = createSignal<HTMLElement>();
-  const [approveContent, setApproveContent] = createSignal<HTMLElement>();
-  const [approveCaption, setApproveCaption] = createSignal<HTMLElement>();
+  const [paidLink, setPaidLink] = createSignal(false);
+  const [paidLinkDisabled, setPaidLinkDisabled] = createSignal(false);
+  const [approveNewMembers, setApproveNewMembers] = createSignal(false);
+  const [approveDisabled, setApproveDisabled] = createSignal(false);
+  const [approveCaption, setApproveCaption] = createSignal<JSX.Element>();
   const [usersLimitHidden, setUsersLimitHidden] = createSignal(false);
+
+  const onPaidLinkChange = (checked: boolean) => {
+    setApproveDisabled(checked);
+    setApproveCaption(i18n(checked ? 'ApproveNewMembersDescription' : 'InviteLink.AdminApproval.Disabled'));
+    paidWrapper()?.classList.toggle('hide', !checked);
+  };
+
+  const onApproveNewMembersChange = (checked: boolean) => {
+    setUsersLimitHidden(checked);
+  };
 
   const build = async() => {
     const confirmBtn = ButtonCorner({className: 'is-visible', icon: 'check'});
@@ -61,7 +73,7 @@ const EditChatInviteLink: Component = () => {
       const expireDateValue = timePeriodSelector.value;
       const expireDate = expireDateValue instanceof Date ? expireDateValue.getTime() / 1000 | 0 : (expireDateValue ? tsNow(true) + expireDateValue : 0);
       const title = nameInputField.value;
-      const requestNeeded = approveNewMembersCheckboxField?.checked;
+      const requestNeeded = approveNewMembers();
       const usageLimit = requestNeeded ? 0 : (usersLimitSelector.value ?? 0);
 
       let chatInvite: ChatInvite;
@@ -83,7 +95,7 @@ const EditChatInviteLink: Component = () => {
           requestNeeded,
           usageLimit,
           expireDate,
-          stars: paidLinkCheckboxField?.checked ? +paidLinkInputField.value : undefined
+          stars: paidLink() ? +paidLinkInputField.value : undefined
         }) as ChatInvite;
       }
 
@@ -99,18 +111,6 @@ const EditChatInviteLink: Component = () => {
     const appConfig = await tab.managers.apiManager.getAppConfig();
 
     if(isBroadcastChat) {
-      const row = new Row({
-        titleLangKey: 'InviteLink.Subscription.Title',
-        checkboxField: paidLinkCheckboxField = new CheckboxField({toggle: true})
-      });
-
-      tab.listenerSetter.add(paidLinkCheckboxField.input)('change', () => {
-        const checked = paidLinkCheckboxField.checked;
-        approveNewMembersCheckboxField.toggleDisability(checked);
-        setApproveCaption(i18n(checked ? 'ApproveNewMembersDescription' : 'InviteLink.AdminApproval.Disabled'));
-        wrapper.classList.toggle('hide', !checked);
-      });
-
       const wrapper = document.createElement('div');
       wrapper.classList.add('input-wrapper');
       const inputField = paidLinkInputField = InputStarsField({
@@ -131,16 +131,22 @@ const EditChatInviteLink: Component = () => {
       wrapper.append(inputField.container);
       inputField.value = '' + 500;
 
-      setPaidRow(row.container);
       setPaidWrapper(wrapper);
 
-      const approveRow = new Row({
-        titleLangKey: 'ApproveNewMembers',
-        checkboxField: approveNewMembersCheckboxField = new CheckboxField({toggle: true})
-      });
-      setApproveContent(approveRow.container);
-
       setIsBroadcast(true);
+
+      const value = !!invite?.subscription_pricing;
+      setPaidLink(value);
+      onPaidLinkChange(value);
+
+      if(value) {
+        paidLinkInputField.value = '' + invite.subscription_pricing?.amount;
+      }
+
+      if(invite) {
+        setPaidLinkDisabled(true);
+        paidLinkInputField.container.classList.add('disable-hover');
+      }
     }
 
     {
@@ -173,28 +179,7 @@ const EditChatInviteLink: Component = () => {
         middleware: tab.middlewareHelper.get()
       });
 
-      const row = new Row({
-        titleLangKey: 'EditInvitation.ExpiryDate',
-        titleRightSecondary: true,
-        clickable: () => {
-          let initDate: Date;
-          const value = range.value;
-          if(value) {
-            initDate = new Date(value instanceof Date ? value : tsNow() + value * 1000);
-          } else {
-            initDate = new Date();
-            initDate.setDate(initDate.getDate() + 7);
-          }
-
-          showDatePickerPopup({
-            initDate,
-            withTime: true,
-            onPick: setCustomTimestamp,
-            btnConfirmLangKey: 'Save'
-          });
-        },
-        listenerSetter: tab.listenerSetter
-      });
+      const [expiryTitle, setExpiryTitle] = createSignal<JSX.Element>(i18n('EditInvitation.Never'));
 
       const setCustomTimestamp = (timestamp: number) => {
         const difference = timestamp - tsNow(true);
@@ -205,11 +190,7 @@ const EditChatInviteLink: Component = () => {
       };
 
       const setExpiry = (timestamp?: number) => {
-        if(!timestamp) {
-          row.titleRight.replaceChildren(i18n('EditInvitation.Never'));
-        } else {
-          row.titleRight.replaceChildren(formatFullSentTime(timestamp));
-        }
+        setExpiryTitle(!timestamp ? i18n('EditInvitation.Never') : formatFullSentTime(timestamp));
       };
 
       const stepValues: number[] = [3600, 86400, 86400 * 7];
@@ -220,7 +201,33 @@ const EditChatInviteLink: Component = () => {
         setCustomTimestamp(invite.expire_date);
       }
 
-      timePeriodContent.append(range.container, row.container);
+      const row = wrapSolidComponent(
+        () => (
+          <Row clickable={() => {
+            let initDate: Date;
+            const value = range.value;
+            if(value) {
+              initDate = new Date(value instanceof Date ? value : tsNow() + value * 1000);
+            } else {
+              initDate = new Date();
+              initDate.setDate(initDate.getDate() + 7);
+            }
+
+            showDatePickerPopup({
+              initDate,
+              withTime: true,
+              onPick: setCustomTimestamp,
+              btnConfirmLangKey: 'Save'
+            });
+          }}>
+            <Row.Title titleRight={expiryTitle()} titleRightSecondary>
+              {i18n('EditInvitation.ExpiryDate')}
+            </Row.Title>
+          </Row>
+        ),
+        tab.middlewareHelper.get()
+      );
+      timePeriodContent.append(range.container, row);
     }
 
     {
@@ -238,26 +245,9 @@ const EditChatInviteLink: Component = () => {
         middleware: tab.middlewareHelper.get()
       });
 
-      const row = new Row({
-        titleLangKey: 'EditInvitation.NumberOfUsers',
-        titleRightSecondary: true,
-        clickable: true,
-        listenerSetter: tab.listenerSetter,
-        noRipple: true
-      });
-
       const inputRightNumber = new InputRightNumber();
       const {input} = inputRightNumber;
-
-      tab.listenerSetter.add(row.container)('mousedown', (e) => {
-        if(!range.value) {
-          setCustomNumber(stepValues[0]);
-        }
-
-        if(!findUpAsChild(e.target as HTMLElement, input)) {
-          placeCaretAtEnd(input);
-        }
-      });
+      const [numberTitle, setNumberTitle] = createSignal<JSX.Element>(i18n('EditInvitation.Unlimited'));
 
       const onInput = () => {
         let originalValue = inputRightNumber.value;
@@ -287,10 +277,10 @@ const EditChatInviteLink: Component = () => {
         }
 
         if(!value) {
-          row.titleRight.replaceChildren(i18n('EditInvitation.Unlimited'));
+          setNumberTitle(i18n('EditInvitation.Unlimited'));
         } else {
           inputRightNumber.value = '' + value;
-          row.titleRight.replaceChildren(input);
+          setNumberTitle(input);
         }
       };
 
@@ -304,32 +294,33 @@ const EditChatInviteLink: Component = () => {
         setCustomNumber(value);
       }
 
-      usersLimitContent.append(range.container, row.container);
-    }
+      const row = wrapSolidComponent(
+        () => (
+          <Row clickable noRipple>
+            <Row.Title titleRight={numberTitle()} titleRightSecondary>
+              {i18n('EditInvitation.NumberOfUsers')}
+            </Row.Title>
+          </Row>
+        ),
+        tab.middlewareHelper.get()
+      );
+      usersLimitContent.append(range.container, row);
 
-    if(approveNewMembersCheckboxField) {
-      tab.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
-        setUsersLimitHidden(approveNewMembersCheckboxField.checked);
+      tab.listenerSetter.add(row)('mousedown', (e) => {
+        if(!range.value) {
+          setCustomNumber(stepValues[0]);
+        }
+
+        if(!findUpAsChild(e.target as HTMLElement, input)) {
+          placeCaretAtEnd(input);
+        }
       });
-
-      if(invite) {
-        approveNewMembersCheckboxField.checked = invite?.pFlags?.request_needed;
-      }
     }
 
-    if(paidLinkCheckboxField) {
-      const value = !!invite?.subscription_pricing;
-      paidLinkCheckboxField.setValueSilently(!value);
-      paidLinkCheckboxField.checked = value;
-
-      if(value) {
-        paidLinkInputField.value = '' + invite.subscription_pricing?.amount;
-      }
-
-      if(invite) {
-        paidLinkCheckboxField.toggleDisability(true);
-        paidLinkInputField.container.classList.add('disable-hover');
-      }
+    if(isBroadcastChat && invite) {
+      const value = !!invite.pFlags?.request_needed;
+      setApproveNewMembers(value);
+      setUsersLimitHidden(value);
     }
   };
 
@@ -350,11 +341,31 @@ const EditChatInviteLink: Component = () => {
       </Section>
       <Show when={isBroadcast()}>
         <Section caption={invite ? 'InviteLink.Subscription.Edit' : 'InviteLink.Subscription.Caption'}>
-          {paidRow()}
+          <Row>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                signal={[paidLink, setPaidLink]}
+                toggle
+                disabled={paidLinkDisabled()}
+                onChange={onPaidLinkChange}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('InviteLink.Subscription.Title')}</Row.Title>
+          </Row>
           {paidWrapper()}
         </Section>
         <Section caption={approveCaption()}>
-          {approveContent()}
+          <Row>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                signal={[approveNewMembers, setApproveNewMembers]}
+                toggle
+                disabled={approveDisabled()}
+                onChange={onApproveNewMembersChange}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('ApproveNewMembers')}</Row.Title>
+          </Row>
         </Section>
       </Show>
       <Section name="LimitByPeriod" caption="TimeLimitHelp">

@@ -4,7 +4,7 @@ import StarRangeInput from '@components/sidebarLeft/tabs/privacy/messages/starsR
 import useStarsCommissionAndWithdrawalPrice from '@components/sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import type {AppDirectMessagesTab} from '@components/solidJsTabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import StaticSwitch from '@components/staticSwitch';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import useIsConfirmationNeededOnClose from '@hooks/useIsConfirmationNeededOnClose';
 import {i18n} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -62,13 +62,13 @@ const ChannelDirectMessages = () => {
     </Portal>
 
     <Section caption='ChannelDirectMessages.Settings.SwitchLabelCaption'>
-      <Row clickable={() => {setEnabled(!enabled())}}>
+      <Row>
+        <Row.CheckboxFieldToggle>
+          <CheckboxFieldTsx toggle checked={enabled()} onChange={setEnabled} />
+        </Row.CheckboxFieldToggle>
         <Row.Title>
           {i18n('ChannelDirectMessages.Settings.SwitchLabel')}
         </Row.Title>
-        <Row.RightContent>
-          <StaticSwitch checked={enabled()} />
-        </Row.RightContent>
       </Row>
     </Section>
 

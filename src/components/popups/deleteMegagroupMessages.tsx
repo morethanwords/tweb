@@ -11,7 +11,7 @@ import getPeerTitle from '@components/wrappers/getPeerTitle';
 import flatten from '@helpers/array/flatten';
 import {avatarNew} from '@components/avatarNew';
 import PeerTitle from '@components/peerTitle';
-import Row from '@components/rowTsx';
+import Row, {createRowTitle} from '@components/rowTsx';
 import {IconTsx} from '@components/iconTsx';
 import classNames from '@helpers/string/classNames';
 import {ChatPermissions} from '@components/sidebarRight/tabs/groupPermissions/sharedPermissions';
@@ -508,7 +508,7 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
 
         const div = document.createElement('div');
         div.classList.add(`${className}-row-title`);
-        const title = row.createTitle();
+        const title = createRowTitle();
 
         const avatar = avatarNew({
           peerId: info.peerId,

@@ -8,10 +8,10 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import SaveButton from '@components/saveButton';
 import Section from '@components/section';
 import SettingsTabLottieAnimation from '@components/settingsTabLottieAnimation';
+import RadioFieldTsx from '@components/radioFieldTsx';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {AppMessagesAutoDeleteTab} from '@components/solidJsTabs/tabs';
 import Space from '@components/space';
-import StaticRadio from '@components/staticRadio';
 import {findExistingOrCreateCustomOption, findMatchingCustomOption, getDefaultOptions, Option} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import AutoDeleteMessagesCustomTimePopup from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup';
 
@@ -98,16 +98,16 @@ const AutoDeleteMessages = () => {
       <Section name='AutoDeleteMessages.SectionTitle' caption='AutoDeleteMessages.SectionCaption'>
         <For each={options()}>
           {(option) => (
-            <Row clickable={[onOptionClick, option]}>
-              <Row.CheckboxField>
-                <StaticRadio
-                  floating
+            <Row>
+              <Row.RadioField>
+                <RadioFieldTsx
                   checked={period() === option.value}
+                  name="auto-delete-period"
+                  value={String(option.value)}
+                  onChange={(checked) => checked && onOptionClick(option)}
                 />
-              </Row.CheckboxField>
-              <Row.Title>
-                {option.label()}
-              </Row.Title>
+              </Row.RadioField>
+              <Row.Title>{option.label()}</Row.Title>
             </Row>
           )}
         </For>

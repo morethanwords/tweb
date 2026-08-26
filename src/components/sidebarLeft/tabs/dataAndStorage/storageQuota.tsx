@@ -358,7 +358,7 @@ export const StorageQuota = (props: Props) => {
       </Row>
 
       <Row>
-        <Row.Icon icon='stickers_face' />
+        <Row.Icon icon='sticker_filled' />
         <Row.Title><I18nTsx key='StorageQuota.StickersEmoji' /></Row.Title>
         <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['stickers']} /></Row.Subtitle>
       </Row>

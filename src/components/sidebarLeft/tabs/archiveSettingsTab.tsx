@@ -2,7 +2,7 @@ import SaveButton from '@components/saveButton';
 import Section from '@components/section';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import StaticSwitch from '@components/staticSwitch';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import deepEqual from '@helpers/object/deepEqual';
 import setBooleanFlag from '@helpers/object/setBooleanFlag';
 import {HeightTransition} from '@helpers/solid/heightTransition';
@@ -82,13 +82,17 @@ export default function ArchiveSettingsTab() {
         <SaveButton hasChanges={hasChanges()} onClick={() => void saveGlobalSettings()} />
       </Portal>
       <Section name='ArchiveSettings.UnmutedChats.Title' caption='ArchiveSettings.UnmutedChats.Description'>
-        <Row clickable={() => setStore('keepArchivedUnmutedChats', prev => !prev)}>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              toggle
+              checked={store.keepArchivedUnmutedChats}
+              onChange={(checked) => setStore('keepArchivedUnmutedChats', checked)}
+            />
+          </Row.CheckboxFieldToggle>
           <Row.Title>
             <I18nTsx key='ArchiveSettings.UnmutedChats.Action' />
           </Row.Title>
-          <Row.RightContent>
-            <StaticSwitch checked={store.keepArchivedUnmutedChats} />
-          </Row.RightContent>
         </Row>
       </Section>
       <Show when={isReady()}> {/* Prevent animation triggering when the store is initialized */}
@@ -96,13 +100,17 @@ export default function ArchiveSettingsTab() {
           <Show when={!store.keepArchivedUnmutedChats}>
             <div style={{overflow: 'hidden'}}> {/* Note: The `overflow: hidden` makes so the margin-bottom of the section is included in the scroll height */}
               <Section name='ArchiveSettings.FolderChats.Title' caption='ArchiveSettings.FolderChats.Description'>
-                <Row clickable={() => setStore('keepArchiveFromFolders', prev => !prev)}>
+                <Row>
+                  <Row.CheckboxFieldToggle>
+                    <CheckboxFieldTsx
+                      toggle
+                      checked={store.keepArchiveFromFolders}
+                      onChange={(checked) => setStore('keepArchiveFromFolders', checked)}
+                    />
+                  </Row.CheckboxFieldToggle>
                   <Row.Title>
                     <I18nTsx key='ArchiveSettings.FolderChats.Action' />
                   </Row.Title>
-                  <Row.RightContent>
-                    <StaticSwitch checked={store.keepArchiveFromFolders} />
-                  </Row.RightContent>
                 </Row>
               </Section>
             </div>
@@ -111,13 +119,17 @@ export default function ArchiveSettingsTab() {
       </Show>
       <Show when={isPremium()}>
         <Section name='ArchiveSettings.NewChats.Title' caption='ArchiveSettings.NewChats.Description'>
-          <Row clickable={() => setStore('archiveNonContactChats', prev => !prev)}>
+          <Row>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                toggle
+                checked={store.archiveNonContactChats}
+                onChange={(checked) => setStore('archiveNonContactChats', checked)}
+              />
+            </Row.CheckboxFieldToggle>
             <Row.Title>
               <I18nTsx key='ArchiveSettings.NewChats.Action' />
             </Row.Title>
-            <Row.RightContent>
-              <StaticSwitch checked={store.archiveNonContactChats} />
-            </Row.RightContent>
           </Row>
         </Section>
       </Show>

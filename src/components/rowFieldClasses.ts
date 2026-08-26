@@ -9,3 +9,4 @@
 export const ROW_CHECKBOX_FIELD_CLASS = 'row-checkbox-field';
 export const ROW_CHECKBOX_FIELD_TOGGLE_CLASS = 'row-checkbox-field-toggle';
 export const ROW_RADIO_FIELD_CLASS = 'row-radio-field';
+export const RADIO_FIELD_RIGHT_CLASS = 'radio-field-right';

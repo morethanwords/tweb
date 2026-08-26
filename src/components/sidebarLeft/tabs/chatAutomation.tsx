@@ -6,13 +6,13 @@ import {IconTsx} from '@components/iconTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import MediaHeader from '@components/mediaHeader';
 import PeerTitle from '@components/peerTitle';
+import RadioFieldTsx from '@components/radioFieldTsx';
 import Row from '@components/rowTsx';
 import SaveButton from '@components/saveButton';
 import {SearchEmpty, SearchLoading} from '@components/searchStatus';
 import Section from '@components/section';
 import {AppAddMembersTab, AppChatAutomationTab, type AppAddMembersExtraCategory} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import StaticRadio from '@components/staticRadio';
 import {toastNew} from '@components/toast';
 import {FontFamily, FontWeightBold} from '@config/font';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -245,28 +245,6 @@ function BotDialogList(props: {userIds: UserId[], onAdd?: (userId: UserId) => vo
   );
 }
 
-function AccessRadio(props: {checked: boolean, onChange: () => void}) {
-  const [focusVisible, setFocusVisible] = createSignal(false);
-
-  return (
-    <>
-      <input
-        type="radio"
-        name="chat-automation-access"
-        checked={props.checked}
-        onChange={props.onChange}
-        onFocus={(event) => setFocusVisible(event.currentTarget.matches(':focus-visible'))}
-        onBlur={() => setFocusVisible(false)}
-      />
-      <StaticRadio
-        classList={{[styles.accessRadioFocused]: focusVisible()}}
-        floating
-        checked={props.checked}
-      />
-    </>
-  );
-}
-
 function BotPermissions(props: {
   rights: Record<RightKey, boolean>,
   confirmPermissionWarning: (warningKey?: LangPackKey) => Promise<boolean>,
@@ -413,8 +391,7 @@ function BotPermissions(props: {
       if(!info.fixed) return;
 
       info.checkboxField.input.disabled = true;
-      row.container.classList.add('is-disabled');
-      row.container.setAttribute('aria-disabled', 'true');
+      row.toggleDisability(true);
     },
     onAnyChange: () => {
       if(changeScheduled) return;
@@ -848,22 +825,28 @@ export default function ChatAutomationTab() {
           'aria-label': I18n.format('ChatAutomation.AccessibleChats', true)
         }}
       >
-        <Row clickable={() => setRecipientMode(true)}>
-          <Row.CheckboxField>
-            <AccessRadio
+        <Row>
+          <Row.RadioField>
+            <RadioFieldTsx
+              class="disable-hover"
               checked={store.excludeSelected}
-              onChange={() => setRecipientMode(true)}
+              name="chat-automation-access"
+              value="all-except"
+              onChange={(checked) => checked && setRecipientMode(true)}
             />
-          </Row.CheckboxField>
+          </Row.RadioField>
           <Row.Title>{i18n('ChatAutomation.AllExcept')}</Row.Title>
         </Row>
-        <Row clickable={() => setRecipientMode(false)}>
-          <Row.CheckboxField>
-            <AccessRadio
+        <Row>
+          <Row.RadioField>
+            <RadioFieldTsx
+              class="disable-hover"
               checked={!store.excludeSelected}
-              onChange={() => setRecipientMode(false)}
+              name="chat-automation-access"
+              value="only-selected"
+              onChange={(checked) => checked && setRecipientMode(false)}
             />
-          </Row.CheckboxField>
+          </Row.RadioField>
           <Row.Title>{i18n('ChatAutomation.OnlySelected')}</Row.Title>
         </Row>
       </Section>

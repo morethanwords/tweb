@@ -1,36 +1,36 @@
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import getDeepProperty from '@helpers/object/getDeepProperty';
-import {LangPackKey, _i18n} from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import Icon from '@components/icon';
+import {RADIO_FIELD_RIGHT_CLASS} from '@components/rowFieldClasses';
 
+/**
+ * The radio control only. Any visible label belongs to the hosting Row.Title.
+ */
 export default class RadioField {
   public input: HTMLInputElement;
-  public label: HTMLLabelElement;
+  public container: HTMLSpanElement;
   public main: HTMLElement;
   public lockIcon: HTMLElement;
 
   constructor(options: {
-    text?: string,
-    textElement?: HTMLElement | DocumentFragment,
-    langKey?: LangPackKey,
     name: string,
     value?: string,
     valueForState?: any,
     stateKey?: string,
     alignRight?: boolean
   }) {
-    const label = this.label = document.createElement('label');
-    label.classList.add('radio-field');
+    const container = this.container = document.createElement('span');
+    container.classList.add('radio-field');
 
     if(options.alignRight) {
-      label.classList.add('radio-field-right');
+      container.classList.add(RADIO_FIELD_RIGHT_CLASS);
     }
 
     const input = this.input = document.createElement('input');
     input.type = 'radio';
-    /* input.id =  */input.name = 'input-radio-' + options.name;
+    input.name = 'input-radio-' + options.name;
 
     if(options.value !== undefined) {
       input.value = options.value;
@@ -51,25 +51,7 @@ export default class RadioField {
     const main = this.main = document.createElement('div');
     main.classList.add('radio-field-main');
 
-    if(options.textElement) {
-      main.append(options.textElement);
-    } else if(options.text) {
-      main.textContent = options.text;
-      /* const caption = document.createElement('div');
-      caption.classList.add('radio-field-main-caption');
-      caption.innerHTML = text;
-
-      if(subtitle) {
-        label.classList.add('radio-field-with-subtitle');
-        caption.insertAdjacentHTML('beforeend', `<div class="radio-field-main-subtitle">${subtitle}</div>`);
-      }
-
-      main.append(caption); */
-    } else if(options.langKey) {
-      _i18n(main, options.langKey);
-    }
-
-    label.append(input, main);
+    container.append(input, main);
   }
 
   get checked() {

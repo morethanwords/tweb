@@ -8,7 +8,7 @@ import {i18n} from '@lib/langPack';
 import useStarsCommissionAndWithdrawalPrice from '@components/sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
 import {PromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import StarRangeInput from '@components/sidebarLeft/tabs/privacy/messages/starsRangeInput';
-import StaticSwitch from '@components/staticSwitch';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 
@@ -46,9 +46,11 @@ const ChargeForMessasgesSection: Component<{
   return (
     <>
       <Section caption='PaidMessages.ChargeForGroupMessagesDescription'>
-        <Row clickable={() => {setChecked(p => !p)}}>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx toggle checked={checked()} onChange={setChecked} />
+          </Row.CheckboxFieldToggle>
           <Row.Title>{i18n('PaidMessages.ChargeForMessages')}</Row.Title>
-          <Row.RightContent><StaticSwitch checked={checked()} /></Row.RightContent>
         </Row>
       </Section>
       <Transition

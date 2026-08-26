@@ -27,6 +27,7 @@ HTMLElement.prototype.addEventListener = function(this, name: string, callback: 
 
 export default class ListenerSetter {
   private listeners: Set<Listener> = new Set();
+  private cleanups: Set<() => void> = new Set();
 
   public add<T extends ListenerElement>(element: T): T['addEventListener'] {
     return ((event: string, callback: Function, options: ListenerOptions) => {
@@ -95,9 +96,16 @@ export default class ListenerSetter {
     }
   }
 
+  public addCleanup(cleanup: () => void) {
+    this.cleanups.add(cleanup);
+    return () => this.cleanups.delete(cleanup);
+  }
+
   public removeAll() {
     this.listeners.forEach((listener) => {
       this.remove(listener);
     });
+    this.cleanups.forEach((cleanup) => cleanup());
+    this.cleanups.clear();
   }
 }

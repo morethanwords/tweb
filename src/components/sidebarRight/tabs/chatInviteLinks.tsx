@@ -19,13 +19,14 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
 import {StarsAmount} from '@components/popups/stars';
 import SettingSection from '@components/settingSection';
-import {UsernameRow} from '@components/usernamesSection';
+import UsernameRow from '@components/usernameRow';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import {ChatInvite, ChatInviteActions, ChatInviteLink, getChatInviteLinksInitArgs, isActiveInvite} from './chatInviteLinkShared';
 import {AppChatInviteLinkTab, AppChatInviteLinksTab, AppEditChatInviteLinkTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 const ChatInviteLinks: Component = () => {
   const [tab] = useSuperTab<typeof AppChatInviteLinksTab>();
@@ -89,7 +90,7 @@ const ChatInviteLinks: Component = () => {
         const editTab = tab.slider.createTab(AppEditChatInviteLinkTab);
         editTab.eventListener.addEventListener('finish', (invite) => {
           _menuItem.destroy();
-          _menuItem.row.container.replaceWith(createRow(invite).container);
+          _menuItem.row.container.replaceWith(createInviteRow(invite).container);
         });
         await editTab.open({
           chatId: chatId,
@@ -128,13 +129,13 @@ const ChatInviteLinks: Component = () => {
 
         if(_menuItem) {
           if(newInvite) {
-            _menuItem.row.container.replaceWith(createRow(newInvite).container);
+            _menuItem.row.container.replaceWith(createInviteRow(newInvite).container);
           }
 
           revokedLinks.content.prepend(_menuItem.row.container);
           _menuItem.update(editedInvite);
         } else {
-          const row = createRow(editedInvite);
+          const row = createInviteRow(editedInvite);
           revokedLinks.content.prepend(row.container);
           primaryInvite = newInvite;
           inviteLink.setChatInvite(primaryInvite);
@@ -203,7 +204,7 @@ const ChatInviteLinks: Component = () => {
         attachClickEvent(btn, () => {
           const editTab = tab.slider.createTab(AppEditChatInviteLinkTab);
           editTab.eventListener.addEventListener('finish', (chatInvite) => {
-            const row = createRow(chatInvite);
+            const row = createInviteRow(chatInvite);
             if(primaryInvite) {
               section.content.prepend(row.container);
             } else {
@@ -367,8 +368,14 @@ const ChatInviteLinks: Component = () => {
       return lottieLoader.waitForFirstFrame(player);
     });
 
+    type InviteRow = {
+      container: HTMLElement,
+      title: HTMLElement,
+      subtitle: HTMLElement,
+      media: HTMLElement
+    };
     type K = {
-      row: UsernameRow,
+      row: InviteRow,
       invite: ChatInvite,
       update: (newInvite?: ChatInvite) => void,
       destroy: (unmount?: boolean) => void
@@ -376,7 +383,8 @@ const ChatInviteLinks: Component = () => {
     const invitesMap: Map<HTMLElement, K> = new Map();
     const updateCallbacks: Set<() => void> = new Set();
 
-    const createRow = (invite: ChatInvite) => {
+    const createInviteRow = (invite: ChatInvite) => {
+      let title: HTMLDivElement, subtitle: HTMLDivElement, media: HTMLDivElement;
       let priceElement: HTMLElement, subtitleRight: HTMLElement;
       if(invite.subscription_pricing) {
         priceElement = StarsAmount({
@@ -385,14 +393,25 @@ const ChatInviteLinks: Component = () => {
         subtitleRight = i18n('Stars.Subscriptions.PerMonth');
       }
 
-      const row = new UsernameRow(
-        true,
-        invite.subscription_pricing ? 'link_paid' : undefined,
-        invite.subscription_pricing ? 'green' : undefined,
-        priceElement,
-        subtitleRight
-      );
-      row.title.replaceChildren(wrapInviteTitle(invite));
+      const mounted = mountSolidComponent(() => (
+        <UsernameRow
+          isLink
+          icon={invite.subscription_pricing ? 'link_paid' : 'limit_link'}
+          color={invite.subscription_pricing ? 'green' : undefined}
+          title={wrapInviteTitle(invite)}
+          titleRight={priceElement}
+          subtitleRight={subtitleRight}
+          titleRef={(element) => title = element}
+          subtitleRef={(element) => subtitle = element}
+          mediaRef={(element) => media = element}
+        />
+      ), middleware);
+      const row: InviteRow = {
+        container: mounted.element,
+        title,
+        subtitle,
+        media
+      };
 
       if(!invite.expire_date && !invite.pFlags.revoked && !invite.subscription_pricing) {
         delete row.media.dataset.color;
@@ -403,6 +422,7 @@ const ChatInviteLinks: Component = () => {
       const destroy = (unmount?: boolean) => {
         onClean?.();
         invitesMap.delete(row.container);
+        mounted.dispose();
         if(unmount) {
           row.container.remove();
         }
@@ -547,7 +567,7 @@ const ChatInviteLinks: Component = () => {
             return;
           }
 
-          const row = createRow(invite);
+          const row = createInviteRow(invite);
           section.content.append(row.container);
         });
       });

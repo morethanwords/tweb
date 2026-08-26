@@ -1,11 +1,13 @@
-import {Component} from 'solid-js';
+import {Component, createSignal} from 'solid-js';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {randomLong} from '@helpers/random';
+import {renderComponent} from '@helpers/solid/renderComponent';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {Chat, ChatFull, ExportedChatInvite} from '@layer';
 import Button from '@components/button';
 import {setButtonLoader} from '@components/putPreloader';
-import RadioField from '@components/radioField';
-import Row, {RadioFormFromRows} from '@components/row';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import RadioFormTsx, {type RadioFormTsxValue} from '@components/radioFormTsx';
+import Row from '@components/rowTsx';
 import {toastNew} from '@components/toast';
 import {UsernameInputField} from '@components/usernameInputField';
 import {i18n} from '@lib/langPack';
@@ -13,7 +15,6 @@ import PopupPeer from '@components/popups/peer';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import CheckboxField from '@components/checkboxField';
 import rootScope from '@lib/rootScope';
 import SettingSection from '@components/settingSection';
 import UsernamesSection from '@components/usernamesSection';
@@ -40,6 +41,20 @@ const ChatType: Component = () => {
 
     const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
     const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;
+    const privacySignal = createSignal<'private' | 'public'>();
+    const joinToSendSignal = createSignal(false);
+    const joinRequestSignal = createSignal(false);
+    const noForwardsSignal = createSignal(false);
+    const noForwardsBusySignal = createSignal(false);
+    const privacyValues: RadioFormTsxValue<'private' | 'public'>[] = [{
+      langPackKey: isBroadcast ? 'ChannelPrivate' : 'MegaPrivate',
+      subtitle: i18n(isBroadcast ? 'ChannelPrivateInfo' : 'MegaPrivateInfo'),
+      value: 'private'
+    }, {
+      langPackKey: isBroadcast ? 'ChannelPublic' : 'MegaPublic',
+      subtitle: i18n(isBroadcast ? 'ChannelPublicInfo' : 'MegaPublicInfo'),
+      value: 'public'
+    }];
 
     tab.title.replaceChildren(i18n(isBroadcast ? 'ChannelType' : 'GroupType'));
 
@@ -47,24 +62,12 @@ const ChatType: Component = () => {
       name: isBroadcast ? 'ChannelType' : 'GroupType'
     });
 
-    const random = randomLong();
-    const privateRow = new Row({
-      radioField: new RadioField({
-        langKey: isBroadcast ? 'ChannelPrivate' : 'MegaPrivate',
-        name: random,
-        value: 'private'
-      }),
-      subtitleLangKey: isBroadcast ? 'ChannelPrivateInfo' : 'MegaPrivateInfo'
-    });
-    const publicRow = new Row({
-      radioField: new RadioField({
-        langKey: isBroadcast ? 'ChannelPublic' : 'MegaPublic',
-        name: random,
-        value: 'public'
-      }),
-      subtitleLangKey: isBroadcast ? 'ChannelPublicInfo' : 'MegaPublicInfo'
-    });
-    const form = RadioFormFromRows([privateRow, publicRow], (value) => {
+    const privateSection = new SettingSection({});
+    const publicContainer = document.createElement('div');
+    let joinRequestSection: SettingSection;
+    let onChange = () => {};
+    const onPrivacyChange = (value: 'private' | 'public') => {
+      privacySignal[1](value);
       const a: HTMLElement[][] = [[privateSection.container], [publicContainer]];
       if(value === 'public') a.reverse();
 
@@ -76,6 +79,18 @@ const ChatType: Component = () => {
       if(joinRequestSection && !linkedChatId && !isBroadcast) {
         joinRequestSection.container.classList.toggle('hide', value !== 'public');
       }
+    };
+
+    renderComponent({
+      element: section.content,
+      Component: () => (
+        <RadioFormTsx
+          selected={privacySignal[0]()}
+          values={privacyValues}
+          onChange={onPrivacyChange}
+        />
+      ),
+      middleware: tab.middlewareHelper.get()
     });
 
     let chat: Chat = apiManagerProxy.getChat(chatId);
@@ -92,18 +107,22 @@ const ChatType: Component = () => {
       }
     });
 
-    section.content.append(form);
+    const inviteLinkSignal = createSignal((chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
 
-    const privateSection = new SettingSection({});
-
-    const linkRow = new Row({
-      title: (chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link,
-      subtitleLangKey: isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp',
-      clickable: () => {
-        copyTextToClipboard((chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
-        toastNew({langPackKey: 'LinkCopied'});
-      },
-      listenerSetter: tab.listenerSetter
+    renderComponent({
+      element: privateSection.content,
+      Component: () => (
+        <Row
+          clickable={() => {
+            copyTextToClipboard(inviteLinkSignal[0]());
+            toastNew({langPackKey: 'LinkCopied'});
+          }}
+        >
+          <Row.Title>{inviteLinkSignal[0]()}</Row.Title>
+          <Row.Subtitle>{i18n(isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp')}</Row.Subtitle>
+        </Row>
+      ),
+      middleware: tab.middlewareHelper.get()
     });
 
     const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});
@@ -117,7 +136,7 @@ const ChatType: Component = () => {
 
             tab.managers.appProfileManager.getChatInviteLink(chatId, true).then((link) => {
               toggle();
-              linkRow.title.textContent = link;
+              inviteLinkSignal[1](link);
             });
           }
         }],
@@ -126,7 +145,7 @@ const ChatType: Component = () => {
       }).show();
     }, {listenerSetter: tab.listenerSetter});
 
-    privateSection.content.append(linkRow.container, btnRevoke);
+    privateSection.content.append(btnRevoke);
 
     const publicSection = new SettingSection({
       caption: true,
@@ -139,11 +158,11 @@ const ChatType: Component = () => {
     const placeholder = 't.me/';
 
     let changedPrivacy: boolean, changedJoinToSend: boolean, changedJoinRequest: boolean;
-    const onChange = () => {
-      changedPrivacy = (privateRow.radioField.checked && (originalValue !== placeholder)) ||
+    onChange = () => {
+      changedPrivacy = (privacySignal[0]() === 'private' && (originalValue !== placeholder)) ||
         (linkInputField.isValidToChange() && linkInputField.input.classList.contains('valid'));
-      changedJoinToSend = !!joinToSendRow && joinToSendRow.checkboxField.checked !== originalJoinToSend;
-      changedJoinRequest = !!joinRequestRow && joinRequestRow.checkboxField.checked !== originalJoinRequest;
+      changedJoinToSend = !isBroadcast && joinToSendSignal[0]() !== originalJoinToSend;
+      changedJoinRequest = joinRequestSignal[0]() !== originalJoinRequest;
       applyBtn.classList.toggle('is-visible', changedPrivacy || changedJoinToSend || changedJoinRequest);
 
       const {error} = linkInputField;
@@ -171,16 +190,17 @@ const ChatType: Component = () => {
       i18n(isBroadcast ? 'Channel.UsernameAboutChannel' : 'Channel.UsernameAboutGroup')
     );
 
-    const usernamesSection = new UsernamesSection({
-      peerId: chatId.toPeerId(true),
-      peer: chat as Chat.channel,
-      listenerSetter: tab.listenerSetter,
-      usernameInputField: linkInputField,
-      middleware: tab.middlewareHelper.get()
-    });
-
-    const publicContainer = document.createElement('div');
-    publicContainer.append(publicSection.container, usernamesSection.container);
+    const usernamesSection = wrapSolidComponent(
+      () => (
+        <UsernamesSection
+          peerId={chatId.toPeerId(true)}
+          peer={chat as Chat.channel}
+          usernameInputField={linkInputField}
+        />
+      ),
+      tab.middlewareHelper.get()
+    );
+    publicContainer.append(publicSection.container, usernamesSection);
 
     const originalValue = placeholder + (getPeerEditableUsername(chat as Chat.channel) || '');
 
@@ -190,7 +210,7 @@ const ChatType: Component = () => {
     const applyBtn = ButtonCorner({icon: 'check', className: 'is-visible'});
     tab.content.append(applyBtn);
 
-    const getUsername = () => publicRow.radioField.checked ? linkInputField.getValue() : '';
+    const getUsername = () => privacySignal[0]() === 'public' ? linkInputField.getValue() : '';
 
     const changePrivacy = async() => {
       const username = getUsername();
@@ -231,8 +251,8 @@ const ChatType: Component = () => {
         }
 
         if(changedJoinToSend || changedJoinRequest) {
-          const joinToSendValue = joinToSendRow?.checkboxField.checked;
-          const joinRequestValue = joinRequestRow.checkboxField.checked;
+          const joinToSendValue = joinToSendSignal[0]();
+          const joinRequestValue = joinRequestSignal[0]();
           const callbacks = [
             changedJoinToSend && (() => tab.managers.appChatsManager.toggleJoinToSend(
               chatId,
@@ -258,7 +278,7 @@ const ChatType: Component = () => {
 
     tab.scrollable.append(section.container, privateSection.container, publicContainer);
 
-    let joinRequestSection: SettingSection, joinToSendRow: Row, joinRequestRow: Row, originalJoinToSend: boolean, originalJoinRequest: boolean;
+    let originalJoinToSend: boolean, originalJoinRequest: boolean;
     // a channel gets the same approval switch: it gates its invite links, and it is the only place
     // where the guard bot behind those approvals can be seen and taken off again
     {
@@ -267,57 +287,61 @@ const ChatType: Component = () => {
         caption: true
       });
 
-      if(!isBroadcast) {
-        joinToSendRow = new Row({
-          titleLangKey: 'ChannelSettingsJoinToSend',
-          checkboxField: new CheckboxField({
-            toggle: true
-          })
-        });
-      }
-
-      joinRequestRow = new Row({
-        titleLangKey: isBroadcast ? 'ChannelSettingsJoinRequestChannel' : 'ChannelSettingsJoinRequest',
-        checkboxField: new CheckboxField({
-          toggle: true
-        })
-      });
-
       const canToggleJoinRequest = () => {
         if(isBroadcast) return true;
-        return linkedChatId ? joinToSendRow.checkboxField.checked : !publicContainer.classList.contains('hide');
+        return linkedChatId ? joinToSendSignal[0]() : privacySignal[0]() === 'public';
       };
 
       const toggleJoinRequestVisibility = () => {
-        const can = canToggleJoinRequest();
-        joinRequestRow.container.classList.toggle('hide', !can);
-        if(!can && joinRequestRow.checkboxField.checked) {
-          joinRequestRow.checkboxField.checked = false;
+        if(!canToggleJoinRequest() && joinRequestSignal[0]()) {
+          joinRequestSignal[1](false);
         }
       };
 
       const onChatUpdate = () => {
         originalJoinToSend = !!(chat as Chat.channel).pFlags.join_to_send;
         originalJoinRequest = !!(chat as Chat.channel).pFlags.join_request;
-        joinToSendRow?.checkboxField.setValueSilently(originalJoinToSend);
-        joinRequestRow.checkboxField.setValueSilently(originalJoinRequest);
+        joinToSendSignal[1](originalJoinToSend);
+        joinRequestSignal[1](originalJoinRequest);
         toggleJoinRequestVisibility();
         onChange();
       };
 
-      [joinToSendRow, joinRequestRow].filter(Boolean).forEach((row) => {
-        tab.listenerSetter.add(row.checkboxField.input)('change', () => {
-          if(joinToSendRow === row) {
-            toggleJoinRequestVisibility();
-          }
-
-          onChange();
-        });
+      renderComponent({
+        element: section.content,
+        Component: () => (
+          <>
+            {!isBroadcast && (
+              <Row classList={{hide: !linkedChatId}}>
+                <Row.CheckboxFieldToggle>
+                  <CheckboxFieldTsx
+                    signal={joinToSendSignal}
+                    toggle
+                    onChange={() => {
+                      toggleJoinRequestVisibility();
+                      onChange();
+                    }}
+                  />
+                </Row.CheckboxFieldToggle>
+                <Row.Title>{i18n('ChannelSettingsJoinToSend')}</Row.Title>
+              </Row>
+            )}
+            <Row classList={{hide: !canToggleJoinRequest()}}>
+              <Row.CheckboxFieldToggle>
+                <CheckboxFieldTsx
+                  signal={joinRequestSignal}
+                  toggle
+                  onChange={onChange}
+                />
+              </Row.CheckboxFieldToggle>
+              <Row.Title>{i18n(
+                isBroadcast ? 'ChannelSettingsJoinRequestChannel' : 'ChannelSettingsJoinRequest'
+              )}</Row.Title>
+            </Row>
+          </>
+        ),
+        middleware: tab.middlewareHelper.get()
       });
-
-      if(!linkedChatId) {
-        joinToSendRow?.container.classList.add('hide');
-      }
 
       addChatUpdateListener(onChatUpdate);
       onChatUpdate();
@@ -356,7 +380,6 @@ const ChatType: Component = () => {
         }
       });
 
-      section.content.append(...[joinToSendRow?.container, joinRequestRow.container].filter(Boolean));
       tab.scrollable.append(section.container);
     }
 
@@ -366,32 +389,40 @@ const ChatType: Component = () => {
         caption: isBroadcast ? 'RestrictSavingContentInfoChannel' : 'RestrictSavingContentInfoGroup'
       });
 
-      const checkboxField = new CheckboxField({toggle: true});
-      const row = new Row({
-        titleLangKey: 'RestrictSavingContent',
-        checkboxField
-      });
-
-      tab.listenerSetter.add(checkboxField.input)('change', () => {
-        const toggle = row.toggleDisability(true);
-        tab.managers.appProfileManager.toggleNoForwards(chatId.toPeerId(true), checkboxField.checked).then(() => {
-          toggle();
-        });
+      renderComponent({
+        element: section.content,
+        Component: () => (
+          <Row disabled={noForwardsBusySignal[0]()}>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                signal={noForwardsSignal}
+                toggle
+                disabled={noForwardsBusySignal[0]()}
+                onChange={(checked) => {
+                  noForwardsBusySignal[1](true);
+                  tab.managers.appProfileManager.toggleNoForwards(chatId.toPeerId(true), checked).finally(() => {
+                    noForwardsBusySignal[1](false);
+                  });
+                }}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('RestrictSavingContent')}</Row.Title>
+          </Row>
+        ),
+        middleware: tab.middlewareHelper.get()
       });
 
       const onChatUpdate = () => {
-        checkboxField.setValueSilently(!!(chat as Chat.channel).pFlags.noforwards);
+        noForwardsSignal[1](!!(chat as Chat.channel).pFlags.noforwards);
       };
 
       addChatUpdateListener(onChatUpdate);
       onChatUpdate();
 
-      section.content.append(row.container);
-
       tab.scrollable.append(section.container);
     }
 
-    (originalValue !== placeholder || getPeerActiveUsernames(chat as Chat.channel).length ? publicRow : privateRow).radioField.checked = true;
+    onPrivacyChange(originalValue !== placeholder || getPeerActiveUsernames(chat as Chat.channel).length ? 'public' : 'private');
     linkInputField.setOriginalValue(originalValue, true);
   })());
 

@@ -10,9 +10,9 @@ export default function useFileInput({instance, store}: ChatInputStateContext) {
     instance.fileInput.multiple = isMultiple();
   });
 
-  createEffect(on(() => store.isEditing, (isEditing) => {
+  createEffect(on(() => store.isReplacingMedia, (isReplacingMedia) => {
     instance.attachMenu.feedProps({
-      isEditing: isEditing
+      isReplacingMedia
     });
   }, {
     defer: true

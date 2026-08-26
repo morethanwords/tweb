@@ -1,7 +1,7 @@
-import {createEffect, JSX, onCleanup} from 'solid-js';
+import {JSX} from 'solid-js';
 import {i18n, LangPackKey} from '@lib/langPack';
 import Row from '@components/rowTsx';
-import RadioField from '@components/radioField';
+import RadioFieldTsx from '@components/radioFieldTsx';
 import styles from '@components/communities/communityShared.module.scss';
 
 export function CommunityRadioOption<T extends string>(props: {
@@ -12,28 +12,17 @@ export function CommunityRadioOption<T extends string>(props: {
   subtitle: LangPackKey,
   onSelect: (value: T) => void
 }) {
-  const radio = new RadioField({
-    langKey: props.title,
-    name: props.name,
-    value: props.value
-  });
-
-  const onChange = () => {
-    if(radio.checked) {
-      props.onSelect(props.value);
-    }
-  };
-  radio.input.addEventListener('change', onChange);
-  createEffect(() => {
-    radio.setValueSilently(props.selected === props.value);
-  });
-  onCleanup(() => {
-    radio.input.removeEventListener('change', onChange);
-  });
-
   return (
     <Row>
-      <Row.RadioField>{radio.label}</Row.RadioField>
+      <Row.RadioField>
+        <RadioFieldTsx
+          checked={props.selected === props.value}
+          name={props.name}
+          value={props.value}
+          onChange={(checked) => checked && props.onSelect(props.value)}
+        />
+      </Row.RadioField>
+      <Row.Title>{i18n(props.title)}</Row.Title>
       <Row.Subtitle>{i18n(props.subtitle)}</Row.Subtitle>
     </Row>
   );

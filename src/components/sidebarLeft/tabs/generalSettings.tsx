@@ -3,8 +3,7 @@ import {GrowHeightReveal} from '@helpers/solid/animations';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import RangeSettingSelector from '@components/rangeSettingSelector';
-import Button from '@components/buttonTsx';
-import RadioField from '@components/radioField';
+import RadioFieldTsx from '@components/radioFieldTsx';
 import {i18n, LangPackKey} from '@lib/langPack';
 import I18n from '@lib/langPack';
 import rootScope from '@lib/rootScope';
@@ -45,7 +44,7 @@ const SettingsSection = () => {
 
   onMount(() => {
     onUpdate();
-    // Warm the Chat Wallpaper picker (one tap away via the button below) so it opens instantly
+    // Warm the Chat Wallpaper picker (one tap away via the row below) so it opens instantly
     // instead of fetching the list + downloading thumbnails only once it's already on screen.
     ChatBackgroundStore.preloadWallPapers(rootScope.managers, appDownloadManager);
   });
@@ -62,14 +61,10 @@ const SettingsSection = () => {
         maxValue={20}
         onChange={(value) => setAppSettings('messagesTextSize', value)}
       />
-      <Button
-        class="btn-primary btn-transparent"
-        icon="image"
-        text="ChatBackground"
-        onClick={() => {
-          tab.slider.createTab(AppChatBackgroundTab).open();
-        }}
-      />
+      <Row clickable={() => tab.slider.createTab(AppChatBackgroundTab).open()}>
+        <Row.Icon icon="appearance_filled" />
+        <Row.Title>{i18n('ChatBackground')}</Row.Title>
+      </Row>
       {/* <Row
         clickable={() => {
           if(liteMode.isEnabled()) {
@@ -87,7 +82,7 @@ const SettingsSection = () => {
         <Row.Title>{i18n('EnableAnimations')}</Row.Title>
       </Row> */}
       <Row clickable={() => tab.slider.createTab(AppPowerSavingTab).open()}>
-        <Row.Icon icon="animations" />
+        <Row.Icon icon="sputnik_filled" />
         <Row.Title titleRight={liteModeStatusEl.element} titleRightSecondary>
           {i18n('LiteMode.EnableText')}
         </Row.Title>
@@ -139,13 +134,6 @@ const ThemeSection = () => {
     }
   });
 
-  // Theme variant rows (day / night / light / tinted / system) — imperative
-  // RadioFields with stateKey for two-way state binding. They share `name`
-  // which radio-groups them in the DOM.
-  const radios = THEME_VARIANTS.map(([value, langKey]) =>
-    new RadioField({langKey, name: 'theme', value, stateKey})
-  );
-
   // Accent-color picker is Dark-only: only `baseThemeTinted` has the per-base wallpaper map and
   // surface-derivation formulas wired up (see themeController + themePresets). For day/night/light
   // the picker would render but selections wouldn't visually behave — hide and grow-height-reveal
@@ -166,9 +154,12 @@ const ThemeSection = () => {
         recenterOnBaseChange
       />
       <form style={{'margin-top': '.5rem'}}>
-        {radios.map((radio) => (
+        {THEME_VARIANTS.map(([value, langKey]) => (
           <Row>
-            <Row.RadioField>{radio.label}</Row.RadioField>
+            <Row.RadioField>
+              <RadioFieldTsx name="theme" value={value} stateKey={stateKey} />
+            </Row.RadioField>
+            <Row.Title>{i18n(langKey)}</Row.Title>
           </Row>
         ))}
       </form>
@@ -281,10 +272,14 @@ const DistanceUnitsSection = () => {
   return (
     <Section name="DistanceUnitsTitle">
       <form>
-        {radios.map(([value, langKey]) => {
-          const field = new RadioField({langKey, name: 'distance-unit', value, stateKey});
-          return <Row><Row.RadioField>{field.label}</Row.RadioField></Row>;
-        })}
+        {radios.map(([value, langKey]) => (
+          <Row>
+            <Row.RadioField>
+              <RadioFieldTsx name="distance-unit" value={value} stateKey={stateKey} />
+            </Row.RadioField>
+            <Row.Title>{i18n(langKey)}</Row.Title>
+          </Row>
+        ))}
       </form>
     </Section>
   );
@@ -301,11 +296,9 @@ const TimeFormatSection = () => {
     ['h23', 'General.TimeFormat.h23']
   ];
 
-  // Pre-create radios so the same instances drive both DOM and subtitle refs.
   const items = formats.map(([format, langKey]) => {
-    const radio = new RadioField({langKey, name: 'time-format', value: format, stateKey});
     const [subtitle, setSubtitle] = createSignal<string>('');
-    return {format, langKey, radio, subtitle, setSubtitle};
+    return {format, langKey, subtitle, setSubtitle};
   });
 
   const updateAll = () => {
@@ -326,9 +319,12 @@ const TimeFormatSection = () => {
   return (
     <Section name="General.TimeFormat">
       <form>
-        {items.map(({radio, subtitle}) => (
+        {items.map(({format, langKey, subtitle}) => (
           <Row>
-            <Row.RadioField>{radio.label}</Row.RadioField>
+            <Row.RadioField>
+              <RadioFieldTsx name="time-format" value={format} stateKey={stateKey} />
+            </Row.RadioField>
+            <Row.Title>{i18n(langKey)}</Row.Title>
             <Row.Subtitle>{subtitle()}</Row.Subtitle>
           </Row>
         ))}

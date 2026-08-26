@@ -176,7 +176,8 @@ describe('community admin rights shared tab', () => {
         type: string,
         listener: EventListenerOrEventListenerObject,
         options?: AddEventListenerOptions
-      ) => target.removeEventListener(type, listener, options)
+      ) => target.removeEventListener(type, listener, options),
+      addCleanup: () => () => true
     };
     const middleware = {
       onDestroy: vi.fn()

@@ -88,7 +88,7 @@ vi.mock('@components/usernameInputFieldTsx', () => ({
   }
 }));
 
-vi.mock('@components/usernamesSectionTsx', () => ({
+vi.mock('@components/usernamesSection', () => ({
   default: (): null => null
 }));
 

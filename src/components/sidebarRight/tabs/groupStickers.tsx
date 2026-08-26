@@ -1,4 +1,4 @@
-import {Component, For, Show, createEffect, createResource, createSignal, on, onCleanup} from 'solid-js';
+import {Component, For, JSX, Show, createEffect, createResource, createSignal, on, onCleanup} from 'solid-js';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -10,9 +10,9 @@ import Button from '@components/buttonTsx';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import openBoosts from '@components/openBoosts';
 import showStickersPopup from '@components/popups/stickers';
+import RadioFieldTsx from '@components/radioFieldTsx';
 import Section from '@components/section';
 import {SearchEmpty, SearchLoading} from '@components/searchStatus';
-import StaticRadio from '@components/staticRadio';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -70,10 +70,12 @@ function StickerSetRow(props: {
   set: StickerSet.stickerSet,
   isEmoji: boolean,
   lazyLoadQueue: LazyLoadQueue,
-  action: () => any,
-  /** the row itself is only reachable by keyboard when the action isn't a button of its own */
-  focusable?: boolean,
-  onClick: () => void
+  action?: () => JSX.Element,
+  radioChecked?: boolean,
+  radioName?: string,
+  radioValue?: string,
+  onRadioChange?: (checked: boolean) => void,
+  onClick?: () => void
 }) {
   const [tab] = useSuperTab<AppGroupStickersTabType>();
   const {Row, i18n, wrapEmojiText} = useHotReloadGuard();
@@ -93,14 +95,31 @@ function StickerSetRow(props: {
   return (
     <Row
       class={styles.setRow}
-      clickable={props.onClick}
-      role={props.focusable ? 'button' : undefined}
-      tabIndex={props.focusable ? 0 : undefined}
+      clickable={props.radioName ? undefined : props.onClick}
     >
+      <Show when={props.radioName}>
+        <Row.RadioField>
+          <RadioFieldTsx
+            alignRight
+            class="disable-hover"
+            checked={props.radioChecked}
+            name={props.radioName}
+            value={props.radioValue}
+            onChange={props.onRadioChange}
+          />
+        </Row.RadioField>
+      </Show>
       <Row.Media>{thumb}</Row.Media>
       <Row.Title>{wrapEmojiText(props.set.title)}</Row.Title>
       <Row.Subtitle>{i18n(props.isEmoji ? 'EmojiCount' : 'Stickers', [props.set.count])}</Row.Subtitle>
-      <Row.RightContent class={styles.setAction}>{props.action()}</Row.RightContent>
+      <Show when={props.action}>
+        <Row.RightContent
+          class={styles.setAction}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {props.action()}
+        </Row.RightContent>
+      </Show>
     </Row>
   );
 }
@@ -127,8 +146,15 @@ function GroupStickersForm(props: {data: GroupStickersData}) {
 
   let searchTimer: number;
   let searchRequestId = 0;
+  let applyRevision = 0;
+  let pendingApplyCount = 0;
+  let applyQueue = Promise.resolve();
+  let confirmedSet = props.data.currentSet;
+  let disposed = false;
 
   onCleanup(() => {
+    disposed = true;
+    ++applyRevision;
     ++searchRequestId;
     window.clearTimeout(searchTimer);
     lazyLoadQueue.clear();
@@ -164,7 +190,10 @@ function GroupStickersForm(props: {data: GroupStickersData}) {
     if(updatedChatId !== chatId) return;
 
     const chatFull = await tab.managers.appProfileManager.getChatFull(chatId);
-    setCurrentSet(getGroupStickerSet(chatFull, isEmoji));
+    confirmedSet = getGroupStickerSet(chatFull, isEmoji);
+    if(!pendingApplyCount) {
+      setCurrentSet(confirmedSet);
+    }
   });
 
   // the level is what gates applying a pack, and boosting the group raises it from under
@@ -204,19 +233,40 @@ function GroupStickersForm(props: {data: GroupStickersData}) {
   };
 
   const applySet = async(set?: StickerSet.stickerSet) => {
+    const previousSet = currentSet();
+    const revision = ++applyRevision;
+    setCurrentSet(set);
+
     if(set && isEmoji && !hasRequiredLevel()) {
       showLevelToast();
+      setCurrentSet(previousSet);
+      --applyRevision;
       return;
     }
+
+    ++pendingApplyCount;
+    const request: Promise<unknown> = applyQueue.then(() => (
+      tab.managers.appChatsManager.setGroupStickerSet(chatId, set, isEmoji)
+    ));
+    applyQueue = request.then((): void => undefined, (): void => undefined);
 
     try {
-      await tab.managers.appChatsManager.setGroupStickerSet(chatId, set, isEmoji);
+      await request;
     } catch(err) {
-      toastNew({langPackKey: 'Error.AnError'});
+      if(!disposed && revision === applyRevision) {
+        setCurrentSet(confirmedSet);
+        toastNew({langPackKey: 'Error.AnError'});
+      }
+      return;
+    } finally {
+      --pendingApplyCount;
+    }
+
+    confirmedSet = set;
+    if(disposed || revision !== applyRevision) {
       return;
     }
 
-    setCurrentSet(set);
     // keep whatever the user typed when it already points at this set, so applying doesn't re-search
     if(extractStickerSetShortName(query()) !== set?.short_name) {
       setQuery(set?.short_name || '');
@@ -308,9 +358,10 @@ function GroupStickersForm(props: {data: GroupStickersData}) {
               set={set}
               isEmoji={isEmoji}
               lazyLoadQueue={lazyLoadQueue}
-              action={() => <StaticRadio checked={isCurrent(set)} />}
-              focusable
-              onClick={() => !isCurrent(set) && applySet(set)}
+              radioChecked={isCurrent(set)}
+              radioName={`group-${isEmoji ? 'emoji' : 'sticker'}-${chatId}`}
+              radioValue={String(set.id)}
+              onRadioChange={(checked) => checked && !isCurrent(set) && applySet(set)}
             />
           )}
         </For>

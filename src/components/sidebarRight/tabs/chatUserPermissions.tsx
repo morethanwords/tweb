@@ -1,4 +1,4 @@
-import {Component, createEffect, createRoot} from 'solid-js';
+import {Component} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant} from '@layer';
@@ -20,7 +20,7 @@ import {
 import {isParticipantAdmin, isParticipantCreator, participantAdminPredicates} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import copy from '@helpers/object/copy';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
-import Row from '@components/row';
+import Row from '@components/rowTsx';
 import formatDuration from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
@@ -37,6 +37,7 @@ import type {AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import limitBotAdminRights from '@appManagers/utils/bots/limitBotAdminRights';
 import attachAdminRightsCaption from './attachAdminRightsCaption';
 import appendPermissionsPeerDialog from './permissionsPeerDialog';
+import {renderComponent} from '@helpers/solid/renderComponent';
 
 const ChatUserPermissions: Component = () => {
   const [tab] = useSuperTab<typeof AppUserPermissionsTab>();
@@ -226,10 +227,15 @@ const ChatUserPermissions: Component = () => {
           checked: true,
           listenerSetter: tab.listenerSetter
         });
-        const addAsAdminRow = new Row({
-          titleLangKey: 'EditAdmin',
-          checkboxField: addAsAdminField,
-          listenerSetter: tab.listenerSetter
+        renderComponent({
+          element: addAsAdminSection.content,
+          Component: () => (
+            <Row>
+              <Row.CheckboxFieldToggle>{addAsAdminField.label}</Row.CheckboxFieldToggle>
+              <Row.Title>{i18n('EditAdmin')}</Row.Title>
+            </Row>
+          ),
+          middleware: tab.middlewareHelper.get()
         });
         const onAddAsAdminChange = () => {
           addAsAdmin = addAsAdminField.checked;
@@ -240,7 +246,6 @@ const ChatUserPermissions: Component = () => {
         };
 
         tab.listenerSetter.add(addAsAdminField.input)('change', onAddAsAdminChange);
-        addAsAdminSection.content.append(addAsAdminRow.container);
         tab.scrollable.append(addAsAdminSection.container);
         onAddAsAdminChange();
       }
@@ -276,10 +281,15 @@ const ChatUserPermissions: Component = () => {
         listenerSetter: tab.listenerSetter
       });
 
-      const row = new Row({
-        titleLangKey: 'GuardBotProcessJoinRequests',
-        checkboxField,
-        listenerSetter: tab.listenerSetter
+      renderComponent({
+        element: section.content,
+        Component: () => (
+          <Row>
+            <Row.CheckboxFieldToggle>{checkboxField.label}</Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('GuardBotProcessJoinRequests')}</Row.Title>
+          </Row>
+        ),
+        middleware: tab.middlewareHelper.get()
       });
 
       solidState.setInitial({processJoinRequests: wasEnabled});
@@ -287,7 +297,6 @@ const ChatUserPermissions: Component = () => {
         solidState.set({processJoinRequests: checkboxField.checked});
       });
 
-      section.content.append(row.container);
       section.container.classList.toggle('hide', !addAsAdmin);
       tab.scrollable.append(section.container);
 
@@ -450,56 +459,44 @@ const ChatUserPermissions: Component = () => {
         return () => chatPermissions.setUntilDate(timestamp);
       };
 
-      const rowDuration = new Row({
-        titleLangKey: 'UserPermissions.Duration',
-        subtitle: true,
-        clickable: (e) => {
-          rowDuration.openContextMenu(e);
+      const durationButtons: ButtonMenuItemOptions[] = [{
+        text: 'UserPermissions.Duration.Forever',
+        onClick: getDurationOnClick(BANNED_RIGHTS_UNTIL_FOREVER, true)
+      }, ...[86400, 86400 * 7, 86400 * 365 / 12].map((duration) => ({
+        regularText: wrapDuration(duration),
+        onClick: getDurationOnClick(duration, false)
+      })), {
+        text: 'UserPermissions.Duration.Custom',
+        onClick: () => {
+          showDatePickerPopup({
+            initDate: new Date(),
+            withTime: true,
+            onPick: (timestamp) => {
+              getDurationOnClick(timestamp, true)();
+            },
+            btnConfirmLangKey: 'Set'
+          });
+        }
+      }];
+
+      renderComponent({
+        element: sectionDuration.content,
+        Component: () => {
+          const getSubtitle = () => {
+            const timestamp = (solidState.store.rights as ChatBannedRights).until_date;
+            return timestamp === BANNED_RIGHTS_UNTIL_FOREVER ?
+              i18n('UserPermissions.Duration.Forever') :
+              formatDate(new Date(timestamp * 1000), {withTime: true});
+          };
+
+          return (
+            <Row contextMenu={{buttons: durationButtons}}>
+              <Row.Title>{i18n('UserPermissions.Duration')}</Row.Title>
+              <Row.Subtitle>{getSubtitle()}</Row.Subtitle>
+            </Row>
+          );
         },
-        contextMenu: {
-          buttons: [{
-            text: 'UserPermissions.Duration.Forever',
-            onClick: getDurationOnClick(BANNED_RIGHTS_UNTIL_FOREVER, true)
-          }, ...[86400, 86400 * 7, 86400 * 365 / 12].map((duration) => {
-            const options: ButtonMenuItemOptions = {
-              regularText: wrapDuration(duration),
-              onClick: getDurationOnClick(duration, false)
-            };
-
-            return options;
-          }), {
-            text: 'UserPermissions.Duration.Custom',
-            onClick: () => {
-              showDatePickerPopup({
-                initDate: new Date(),
-                withTime: true,
-                onPick: (timestamp) => {
-                  getDurationOnClick(timestamp, true)();
-                },
-                btnConfirmLangKey: 'Set'
-              });
-            }
-          }]
-        },
-        listenerSetter: tab.listenerSetter
-      });
-
-      sectionDuration.content.append(rowDuration.container);
-
-      const updateDurationSubtitle = (timestamp: number) => {
-        rowDuration.subtitle.replaceChildren(
-          timestamp === BANNED_RIGHTS_UNTIL_FOREVER ?
-           i18n('UserPermissions.Duration.Forever') :
-           formatDate(new Date(timestamp * 1000), {withTime: true})
-        );
-      };
-
-      createRoot((dispose) => {
-        tab.middlewareHelper.get().onDestroy(dispose);
-
-        createEffect(() => {
-          updateDurationSubtitle((solidState.store.rights as ChatBannedRights).until_date);
-        });
+        middleware: tab.middlewareHelper.get()
       });
 
       const restrictedByPeerId = (participant as ChannelParticipant.channelParticipantBanned)?.kicked_by?.toPeerId(false);

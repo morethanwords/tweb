@@ -4,6 +4,7 @@ import {formatFullSentTime} from '@helpers/date';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import {renderComponent} from '@helpers/solid/renderComponent';
 import tsNow from '@helpers/tsNow';
 import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
@@ -11,9 +12,9 @@ import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '@components/appSelectPeers';
 import {StarsAmount} from '@components/popups/stars';
-import Row from '@components/row';
+import Row from '@components/rowTsx';
 import SettingSection from '@components/settingSection';
-import {UsernameRow} from '@components/usernamesSection';
+import UsernameRow from '@components/usernameRow';
 import {ChatInviteLink, getImportersLoader} from './chatInviteLinkShared';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
@@ -87,26 +88,38 @@ const ChatInviteLinkTab: Component = () => {
     if(chatInvite.subscription_pricing) {
       const section = new SettingSection({name: 'InviteLink.Observe.Fee'});
 
-      const row = new UsernameRow(true, 'link_paid', 'green');
-
       const stars = chatInvite.subscription_pricing.amount;
       const usage = chatInvite.usage ?? 0;
       const title = i18n('InviteLink.Observe.Fee.Title', [StarsAmount({stars}) as HTMLElement, usage]);
       const subtitle = i18n('InviteLink.Observe.Fee.Subtitle', ['$' + (usage * +stars * 0.02).toFixed(2)]);
-      row.title.append(title);
-      row.subtitle.append(subtitle);
-
-      section.content.append(row.container);
+      renderComponent({
+        element: section.content,
+        Component: () => (
+          <UsernameRow
+            isLink
+            icon="link_paid"
+            color="green"
+            title={title}
+            subtitle={subtitle}
+          />
+        ),
+        middleware: tab.middlewareHelper.get()
+      });
 
       tab.scrollable.append(section.container);
     }
 
     if(chatInvite.usage_limit && !chatInvite.usage && (!chatInvite.expire_date || chatInvite.expire_date > tsNow(true))) {
       const section = new SettingSection({});
-      const row = new Row({
-        title: i18n('PeopleCanJoinViaLinkCount', [chatInvite.usage_limit])
+      renderComponent({
+        element: section.content,
+        Component: () => (
+          <Row>
+            <Row.Title>{i18n('PeopleCanJoinViaLinkCount', [chatInvite.usage_limit])}</Row.Title>
+          </Row>
+        ),
+        middleware: tab.middlewareHelper.get()
       });
-      section.content.append(row.container);
       tab.scrollable.append(section.container);
     }
 
@@ -116,26 +129,6 @@ const ChatInviteLinkTab: Component = () => {
         name: 'JoinRequests',
         nameArgs: [chatInvite.requested]
       });
-      // const row = new Row({
-      //   titleLangKey: isBroadcast ? 'SubscribeRequests' : 'MemberRequests',
-      //   clickable: async() => {
-      //     const tab = this.slider.createTab(AppChatRequestsTab);
-      //     tab.eventListener.addEventListener('finish', (changed) => {
-      //       const newLength = chatInvite.requested - changed;
-      //       if(newLength) {
-      //         row.subtitle.textContent = '' + newLength;
-      //       } else {
-      //         section.container.remove();
-      //       }
-      //     });
-      //     await tab.open(chatId, chatInvite.link);
-      //     // this.slider.removeTabFromHistory(this);
-      //   },
-      //   icon: 'adduser',
-      //   listenerSetter: this.listenerSetter,
-      //   subtitle: '' + chatInvite.requested
-      // });
-      // section.content.append(row.container);
       const {importersMap, load} = getImportersLoader({
         chatId,
         managers: tab.managers,

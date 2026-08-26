@@ -3,10 +3,34 @@ import {i18n} from '@lib/langPack';
 import {PaymentsPaymentForm, User} from '@layer';
 import PopupPayment from '@components/popups/payment';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import CheckboxField from '@components/checkboxField';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import PopupPaymentCard, {PaymentCardDetails, PaymentCardDetailsResult} from '@components/popups/paymentCard';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import Row from '@components/row';
+import Row from '@components/rowTsx';
+import {JSX} from 'solid-js';
+
+function PaymentMethodRow(props: {
+  checked?: boolean,
+  onSelect: () => void,
+  title: JSX.Element
+}) {
+  return (
+    <Row
+      class="payment-item-row"
+      noWrap
+    >
+      <Row.Title>{props.title}</Row.Title>
+      <Row.CheckboxField>
+        <CheckboxFieldTsx
+          class="disable-hover"
+          checked={props.checked}
+          round
+          onChange={() => props.onSelect()}
+        />
+      </Row.CheckboxField>
+    </Row>
+  );
+}
 
 export default class PopupPaymentMethods extends PopupElement {
   private promise: CancellablePromise<PopupPaymentCard>;
@@ -35,54 +59,42 @@ export default class PopupPaymentMethods extends PopupElement {
   }
 
   private _construct() {
-    const createRow = (
-      title: HTMLElement | DocumentFragment,
-      onClick: () => PopupPaymentCard,
-      checked?: boolean
-    ) => {
-      return PopupPayment.createRow({
-        title,
-        checkboxField: new CheckboxField({round: true, checked}),
-        clickable: () => {
-          this.hide();
-          this.promise.resolve(onClick());
-        }
-      });
+    const selectMethod = (onClick: () => PopupPaymentCard) => {
+      this.hide();
+      this.promise.resolve(onClick());
     };
 
-    const newCardRow = createRow(i18n('PaymentMethodNewCard'), () => {
-      return PopupElement.createPopup(
-        PopupPaymentCard,
-        this.paymentForm,
-        this.user
-      );
-    });
-
-    let currentCardRow: Row;
-    if(this.savedCard) {
-      const {str} = PopupPayment.getCardDetailsInfo(this.savedCard);
-      const span = document.createElement('span');
-      span.textContent = str;
-      currentCardRow = createRow(span, () => undefined, true);
-    }
-
-    const additionalContainers = this.paymentForm.additional_methods.map((method) => {
-      return createRow(wrapEmojiText(method.title), () => {
-        return PopupElement.createPopup(
-          PopupPaymentCard,
-          this.paymentForm,
-          this.user,
-          undefined,
-          method
-        );
-      }).container;
-    });
+    const savedCardTitle = this.savedCard && PopupPayment.getCardDetailsInfo(this.savedCard).str;
 
     return (
       <>
-        {newCardRow.container}
-        {currentCardRow.container}
-        {additionalContainers}
+        <PaymentMethodRow
+          title={i18n('PaymentMethodNewCard')}
+          onSelect={() => selectMethod(() => PopupElement.createPopup(
+            PopupPaymentCard,
+            this.paymentForm,
+            this.user
+          ))}
+        />
+        {savedCardTitle && (
+          <PaymentMethodRow
+            checked
+            title={savedCardTitle}
+            onSelect={() => selectMethod(() => undefined)}
+          />
+        )}
+        {this.paymentForm.additional_methods.map((method) => (
+          <PaymentMethodRow
+            title={wrapEmojiText(method.title)}
+            onSelect={() => selectMethod(() => PopupElement.createPopup(
+              PopupPaymentCard,
+              this.paymentForm,
+              this.user,
+              undefined,
+              method
+            ))}
+          />
+        ))}
       </>
     );
   }

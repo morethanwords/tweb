@@ -13,9 +13,11 @@ vi.mock('@components/buttonIcon', () => ({default: () => document.createElement(
 vi.mock('@components/checkboxField', () => ({
   default: class CheckboxField {
     public input = document.createElement('input');
-    public label = document.createElement('label');
+    public label = document.createElement('span');
 
     constructor() {
+      this.label.classList.add('checkbox-field');
+      this.input.classList.add('checkbox-field-input');
       this.label.append(this.input);
     }
   }
@@ -113,7 +115,17 @@ describe('chat album pointer drag selection', () => {
     text.dataset.mid = '104';
     text.dataset.peerId = String(peerId);
     text.getBoundingClientRect = () => rect(240);
-    root.append(album, text);
+
+    const documentBubble = document.createElement('div');
+    documentBubble.classList.add('bubble', 'document-container');
+    documentBubble.dataset.mid = '105';
+    documentBubble.dataset.peerId = String(peerId);
+    documentBubble.getBoundingClientRect = () => rect(300);
+    const documentNode = document.createElement('div');
+    documentNode.classList.add('document');
+    documentBubble.append(documentNode);
+
+    root.append(album, text, documentBubble);
     document.body.append(root);
 
     const bubbles = {
@@ -148,7 +160,7 @@ describe('chat album pointer drag selection', () => {
       await flushPromises();
     };
 
-    return {album, firstItem, secondItem, thirdItem, text, selection, drag};
+    return {album, documentBubble, firstItem, secondItem, thirdItem, text, selection, drag};
   };
 
   it('selects album to text and deselects text to album', async() => {
@@ -193,5 +205,23 @@ describe('chat album pointer drag selection', () => {
 
     await drag(secondItem, album, thirdItem);
     expect(selection.getSelectedMids()).toEqual([102, 103, 104]);
+  });
+
+  it('uses the span-based selection checkbox for document bubbles without duplicating it', async() => {
+    const {documentBubble, selection} = createHarness();
+
+    selection.toggleByElement(documentBubble);
+    await flushPromises();
+
+    const input = documentBubble.querySelector('.bubble-select-checkbox > .checkbox-field-input') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.checked).toBe(true);
+    expect(documentBubble.querySelectorAll('.bubble-select-checkbox')).toHaveLength(1);
+
+    selection.toggleByElement(documentBubble);
+    await flushPromises();
+
+    expect(input.checked).toBe(false);
+    expect(documentBubble.querySelectorAll('.bubble-select-checkbox')).toHaveLength(1);
   });
 });

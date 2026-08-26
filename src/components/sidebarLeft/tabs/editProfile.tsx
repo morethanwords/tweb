@@ -379,16 +379,11 @@ const EditProfileForm = (props: {
         }}
       />
 
-      {(() => {
-        const section = new UsernamesSection({
-          peerId: rootScope.myId,
-          peer: user,
-          listenerSetter: tab.listenerSetter,
-          usernameInputField,
-          middleware: tab.middlewareHelper.get()
-        });
-        return section.container;
-      })()}
+      <UsernamesSection
+        peerId={rootScope.myId}
+        peer={user}
+        usernameInputField={usernameInputField}
+      />
 
       <Section
         name="EditProfile.PersonalChannel.Title"
@@ -410,7 +405,7 @@ const EditProfileForm = (props: {
           disabled={!connectedBotLoaded() && !connectedBotLoadFailed()}
           clickable={openChatAutomation}
         >
-          <Row.Icon icon="bots" />
+          <Row.Icon icon="bot_filled" />
           <Row.Title titleRight={!connectedBot() && <span class="primary">{chatAutomationTitle()}</span>}>
             {connectedBot() ? chatAutomationTitle() : i18n('ChatAutomation.ProfileLabel')}
           </Row.Title>

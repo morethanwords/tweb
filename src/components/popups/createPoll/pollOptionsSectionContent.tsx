@@ -3,10 +3,11 @@ import {AutoHeight} from '@components/autoHeight';
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
+import RadioFieldTsx from '@components/radioFieldTsx';
+import Row from '@components/rowTsx';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
-import StaticRadio from '@components/staticRadio';
 import lastItem from '@helpers/array/lastItem';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import focusInput from '@helpers/dom/focusInput';
@@ -230,9 +231,17 @@ const PollOptionFullField = (props: {
         <div class={styles.pollOptionCheckWrapper} classList={{[styles.disabled]: !canBeReordered()}}>
           <Transition name='t-zoom' duration={200} mode='outin'>
             <Show when={!store.allowMultipleAnswers}>
-              <div class={styles.checkButtonWrapper} onClick={onRadioClick}>
-                <StaticRadio checked={props.mappedItem.option.checked} />
-              </div>
+              <Row class={styles.checkButtonWrapper} noRipple>
+                <Row.RadioField>
+                  <RadioFieldTsx
+                    ariaLabel={props.mappedItem.option.text || I18n.format('NewPoll.SetCorrectAnswer', true)}
+                    checked={props.mappedItem.option.checked}
+                    name="new-poll-correct-answer"
+                    value={String(props.mappedItem.id)}
+                    onChange={(checked) => checked && onRadioClick()}
+                  />
+                </Row.RadioField>
+              </Row>
             </Show>
             <Show when={store.allowMultipleAnswers}>
               <div class={styles.checkButtonWrapper} onClick={() => setStore('pollOptions', props.index, 'checked', (v) => !v)}>

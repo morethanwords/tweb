@@ -12,7 +12,8 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Icon from '@components/icon';
 import showPickUserPopup from '@components/popups/pickUser';
 import PopupPremium from '@components/popups/premium';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import Chat from '@components/chat/chat';
 import ChatTopbar from '@components/chat/topbar';
 import {useAppSettings} from '@stores/appSettings';
@@ -38,20 +39,25 @@ export function pickLanguage<T extends boolean>(
   const popup = showPickUserPopup({
     peerType: ['custom'],
     renderResultsFunc: (iso2s) => {
+      const middleware = popup.selector.middlewareHelperLoader.get();
       iso2s.forEach((iso2) => {
         const [name, translated] = map.get(iso2 as any as string);
-        const row = new Row({
-          title: translated,
-          subtitle: name,
-          clickable: true,
-          havePadding: multi
-        });
+        const checkbox = multi ? popup.selector.checkbox(popup.selector.selected.has(iso2)) : undefined;
+        const row = wrapSolidComponent(() => (
+          <RowTsx
+            ref={(element) => {
+              element.dataset.peerId = String(iso2);
+            }}
+            clickable
+            havePadding={multi}
+          >
+            {checkbox}
+            <RowTsx.Title>{translated}</RowTsx.Title>
+            <RowTsx.Subtitle>{name}</RowTsx.Subtitle>
+          </RowTsx>
+        ), middleware);
 
-        if(multi) {
-          row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
-        }
-        row.container.dataset.peerId = '' + iso2;
-        popup.selector.list.append(row.container);
+        popup.selector.list.append(row);
       });
     },
     placeholder: 'Search',

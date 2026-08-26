@@ -27,7 +27,14 @@ import tsNow from '@helpers/tsNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
-import {AttachedMediaType, canUploadAsWhenEditing, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
+import {
+  AttachedMediaType,
+  canUploadAsWhenEditing,
+  generateTail,
+  getMediaTypeForMessage,
+  shouldUseReplaceMediaIcon,
+  slowModeTimer
+} from '@components/chat/utils';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -656,7 +663,7 @@ export default class ChatInput {
         this.replyHover.toggle(false);
       }
     }, this.replyElements.replyInAnother = {
-      icon: 'replace',
+      icon: 'replace_circles',
       text: 'ReplyToAnotherChat',
       onClick: () => this.changeReplyRecipient()
     }, this.replyElements.doNotReply = {
@@ -721,7 +728,7 @@ export default class ChatInput {
         onClick: () => {
           this.changeForwardRecipient();
         },
-        icon: 'replace'
+        icon: 'replace_squares'
       },
       {
         icon: 'delete',
@@ -895,7 +902,7 @@ export default class ChatInput {
   }
 
   private constructScheduledButton() {
-    this.btnScheduled = this.createButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
+    this.btnScheduled = this.createButtonIcon('schedule btn-scheduled float hide', {noRipple: true});
 
     attachClickEvent(this.btnScheduled, (e) => {
       this.appImManager.openScheduled(this.chat.peerId);
@@ -5043,6 +5050,7 @@ export default class ChatInput {
 
     this.inputState.set({
       isEditing: false,
+      isReplacingMedia: false,
       isSuggesting: false
     });
 
@@ -5130,8 +5138,10 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
+    const isEditing = type === 'edit';
     this.inputState.set({
-      isEditing: type === 'edit',
+      isEditing,
+      isReplacingMedia: shouldUseReplaceMediaIcon(isEditing, message),
       isSuggesting: type === 'suggested'
     });
 

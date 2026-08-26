@@ -1,17 +1,19 @@
-import {Component} from 'solid-js';
+import {Component, createSignal} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {makeMediaSize} from '@helpers/mediaSize';
 import copy from '@helpers/object/copy';
 import deepEqual from '@helpers/object/deepEqual';
+import {renderComponent} from '@helpers/solid/renderComponent';
 import {ForumTopic} from '@layer';
 import {GENERAL_TOPIC_ID, TOPIC_COLORS} from '@appManagers/constants';
+import {i18n} from '@lib/langPack';
 import getAbbreviation from '@lib/richTextProcessor/getAbbreviation';
 import ButtonIcon from '@components/buttonIcon';
-import CheckboxField from '@components/checkboxField';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import InputField from '@components/inputField';
-import Row from '@components/row';
+import Row from '@components/rowTsx';
 import SettingSection from '@components/settingSection';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -278,27 +280,34 @@ const EditTopic: Component = () => {
       tab.scrollable.append(section.container);
     } else {
       const section = new SettingSection({caption: 'EditTopicHideInfo'});
+      const hiddenSignal = createSignal(!(topic as ForumTopic.forumTopic).pFlags.hidden);
+      const [busy, setBusy] = createSignal(false);
+      renderComponent({
+        element: section.content,
+        Component: () => (
+          <Row disabled={busy()}>
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                disabled={busy()}
+                signal={hiddenSignal}
+                toggle
+                onChange={(checked) => {
+                  const promise = tab.managers.appMessagesManager.editForumTopic({
+                    peerId,
+                    topicId: threadId,
+                    hidden: !checked
+                  });
 
-      const checkboxField = new CheckboxField({
-        checked: !(topic as ForumTopic.forumTopic).pFlags.hidden,
-        text: 'EditTopicHide'
+                  setBusy(true);
+                  promise.finally(() => setBusy(false));
+                }}
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('EditTopicHide')}</Row.Title>
+          </Row>
+        ),
+        middleware: tab.middlewareHelper.get()
       });
-
-      tab.listenerSetter.add(checkboxField.input)('change', () => {
-        const promise = tab.managers.appMessagesManager.editForumTopic({
-          peerId,
-          topicId: threadId,
-          hidden: !checkboxField.checked
-        });
-
-        row.disableWithPromise(promise);
-      });
-
-      const row = new Row({
-        checkboxField
-      });
-
-      section.content.append(row.container);
 
       tab.scrollable.append(section.container);
     }

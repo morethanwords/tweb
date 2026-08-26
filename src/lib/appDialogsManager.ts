@@ -71,7 +71,7 @@ import filterAsync from '@helpers/array/filterAsync';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import getDialogMentionBadgeState from '@helpers/dialogMentionBadgeState';
-import Row, {RowMediaSizeType} from '@components/row'
+import {attachRowController, RowMediaSizeType, type RowTsxController} from '@components/rowTsxController'
 import SettingSection from '@components/settingSection';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import formatNumber from '@helpers/number/formatNumber';
@@ -122,6 +122,10 @@ import confirmationPopup from '@components/confirmationPopup';
 import ListenerSetter from '@helpers/listenerSetter';
 import type PopupPeer from '@components/popups/peer';
 import {toastNew} from '@components/toast';
+import {
+  renderChatlistTopNotification,
+  type ChatlistTopNotificationController
+} from '@components/sidebarLeft/chatlistTopNotification';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -275,7 +279,9 @@ type DialogElementAppliedBadgeState = {
   unreadAvatarText?: string
 };
 
-export class DialogElement extends Row {
+export interface DialogElement extends RowTsxController {}
+
+export class DialogElement {
   public dom: DialogDom;
   public isMainList: boolean;
   public middlewareHelper: MiddlewareHelper;
@@ -303,7 +309,10 @@ export class DialogElement extends Row {
     autoDeletePeriod,
     avatarElement
   }: DialogElementOptions) {
-    super({
+    const wrapMiddleware = wrapOptions?.middleware;
+    this.middlewareHelper = wrapMiddleware ? wrapOptions.middleware.create() : (controlled ? getMiddleware() : undefined);
+
+    attachRowController(this, {
       clickable: true,
       noRipple: !rippleEnabled,
       havePadding: !threadId && asAllChats !== 'topics',
@@ -312,14 +321,12 @@ export class DialogElement extends Row {
       subtitle: true,
       subtitleRight: true,
       noWrap: true,
-      asLink: true
+      asLink: true,
+      middleware: this.middlewareHelper?.get()
     });
 
     this.isMainList = isMainList;
     this.subtitleRight.remove();
-
-    const wrapMiddleware = wrapOptions?.middleware;
-    this.middlewareHelper = wrapMiddleware ? wrapOptions.middleware.create() : (controlled ? getMiddleware() : undefined);
 
     const newWrapOptions: WrapSomethingOptions = {
       ...wrapOptions
@@ -478,6 +485,7 @@ export class DialogElement extends Row {
   }
 
   public destroy() {
+    this.dispose();
     this.middlewareHelper?.destroy();
     disposeTextHighlight(this.dom);
   }
@@ -684,7 +692,7 @@ type FilterRendered = {
   id: number,
   container: HTMLElement,
   scrollable: Scrollable,
-  topNotification?: Row,
+  topNotification?: ChatlistTopNotificationController,
   topNotificationContainer?: HTMLElement,
   topNotificationData?: {
     _: 'chatlistUpdates',
@@ -1144,6 +1152,7 @@ export class AppDialogsManager {
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
 
+      elements.topNotification?.dispose();
       elements.container.remove();
 
       this.xds[filter.id].destroy();
@@ -1359,8 +1368,8 @@ export class AppDialogsManager {
               const tt = i18n('ChatsNew', [length]);
               tt.classList.add('primary');
               const t = i18n('ChatList.SharedFolder.Title', [tt]);
-              topNotification.title.replaceChildren(t);
-              topNotification.subtitle.replaceChildren(i18n('ChatList.SharedFolder.Subtitle'));
+              topNotification.setTitle(t);
+              topNotification.setSubtitle(i18n('ChatList.SharedFolder.Subtitle'));
             }
 
             this.toggleTopNotification(filterRendered, !!length);
@@ -1392,10 +1401,8 @@ export class AppDialogsManager {
 
     const topNotificationContainer = filterRendered.topNotificationContainer = document.createElement('div');
     topNotificationContainer.classList.add('chatlist-top-notification-container');
-    const topNotification: FilterRendered['topNotification'] = filterRendered.topNotification = new Row({
-      title: true,
-      subtitle: true,
-      clickable: async() => {
+    filterRendered.topNotification = renderChatlistTopNotification(topNotificationContainer, {
+      onClick: async() => {
         const data = filterRendered.topNotificationData;
         if(data._ === 'chatlistUpdates') {
           PopupElement.createPopup(PopupSharedFolderInvite, {
@@ -1422,12 +1429,8 @@ export class AppDialogsManager {
           },
           verify: () => filterRendered.topNotificationData?._ === 'chatlistUpdates'
         }]
-      },
-      icon: 'next'
+      }
     });
-    topNotification.container.classList.add('chatlist-top-notification');
-
-    topNotificationContainer.append(topNotification.container);
   }
 
   private toggleTopNotification(filterRendered: FilterRendered, forwards: boolean) {
@@ -1450,6 +1453,7 @@ export class AppDialogsManager {
       forwards,
       useRafs: isMounted ? 0 : 2,
       onTransitionEnd: forwards ? undefined : () => {
+        filterRendered.topNotification.dispose();
         filterRendered.topNotificationContainer.remove();
         filterRendered.topNotification =
           filterRendered.topNotificationContainer =

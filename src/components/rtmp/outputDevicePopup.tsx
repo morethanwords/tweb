@@ -1,8 +1,9 @@
-import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, createUniqueId, For, onCleanup, onMount, Show} from 'solid-js';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import {RadioFormFromValues} from '@components/row';
 import {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import RadioFieldTsx from '@components/radioFieldTsx';
+import Row from '@components/rowTsx';
 
 import '@components/rtmp/outputDevicePopup.scss';
 import Section from '@components/section';
@@ -28,10 +29,8 @@ export type OutputDevicePopupOptions = {
 
 export default function showOutputDevicePopup(options: OutputDevicePopupOptions): void {
   createPopup(() => {
-    // Tracked outside the JSX render so onPick captures the latest selection
-    // — `RadioFormFromValues` reports changes via callback, not a signal, and
-    // we only need the final value at confirm time.
-    let chosenDeviceId = options.currentId || '';
+    const radioName = createUniqueId();
+    const [chosenDeviceId, setChosenDeviceId] = createSignal(options.currentId || '');
     // Guard against firing `onStaleCurrentId` more than once per popup
     // lifecycle (it's an idempotent prune, but repeated calls would still
     // shadow follow-up user picks made before the popup closes).
@@ -50,11 +49,11 @@ export default function showOutputDevicePopup(options: OutputDevicePopupOptions)
         // the next call attempt would still try the dead id.
         if(
           !prunedStaleId &&
-          chosenDeviceId &&
-          !filtered.some((d) => d.deviceId === chosenDeviceId)
+          chosenDeviceId() &&
+          !filtered.some((d) => d.deviceId === chosenDeviceId())
         ) {
           prunedStaleId = true;
-          chosenDeviceId = '';
+          setChosenDeviceId('');
           options.onStaleCurrentId?.();
         }
       }).catch(() => setDevices([]));
@@ -77,24 +76,35 @@ export default function showOutputDevicePopup(options: OutputDevicePopupOptions)
       // "Default" sentinel below and would otherwise render as a duplicate.
       const filtered = list.filter((d) => d.deviceId && d.deviceId !== 'default');
 
-      const values: Parameters<typeof RadioFormFromValues>[0] = [
+      const values = [
         {
-          textElement: i18n('Rtmp.OutputPopup.Default'),
-          value: '',
-          // @ts-ignore — RadioField's `checked` typing is overly strict; the
-          // value is honoured by setValueSilently regardless.
-          checked: !chosenDeviceId
+          label: i18n('Rtmp.OutputPopup.Default'),
+          value: ''
         },
         ...filtered.map((device) => ({
-          textElement: wrapEmojiText(device.label || device.deviceId),
-          value: device.deviceId,
-          checked: device.deviceId === chosenDeviceId
+          label: wrapEmojiText(device.label || device.deviceId),
+          value: device.deviceId
         }))
       ];
 
-      return RadioFormFromValues(values, (id) => {
-        chosenDeviceId = id;
-      });
+      return (
+        <form>
+          <For each={values}>{({label, value}) => (
+            <Row>
+              <Row.RadioField>
+                <RadioFieldTsx
+                  class="disable-hover"
+                  checked={chosenDeviceId() === value}
+                  name={radioName}
+                  value={value}
+                  onChange={(checked) => checked && setChosenDeviceId(value)}
+                />
+              </Row.RadioField>
+              <Row.Title>{label}</Row.Title>
+            </Row>
+          )}</For>
+        </form>
+      );
     };
 
     const [show, setShow] = createSignal(false);
@@ -123,7 +133,7 @@ export default function showOutputDevicePopup(options: OutputDevicePopupOptions)
             color="primary"
             langKey="Save"
             callback={() => {
-              options.onPick(chosenDeviceId);
+              options.onPick(chosenDeviceId());
             }}
           />
         </PopupElement.Footer>

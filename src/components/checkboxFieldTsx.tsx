@@ -1,32 +1,41 @@
 import {createEffect, createSignal, JSX, on, Signal, untrack} from 'solid-js';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
-import CheckboxField from '@components/checkboxField';
-import {LangPackKey} from '@lib/langPack';
+import CheckboxField, {CheckboxFieldOptions} from '@components/checkboxField';
 import {attachClassName} from '@helpers/solid/classname';
 
-export default function CheckboxFieldTsx(props: {
+/** The control only — put the label in a `Row.Title` next to `Row.CheckboxField` */
+export default function CheckboxFieldTsx(props: Omit<CheckboxFieldOptions, 'toggleLockIcon'> & {
   class?: string,
-  text?: LangPackKey
   signal?: Signal<boolean>,
-  checked?: boolean,
-  disabled?: boolean,
-  toggle?: boolean,
-  round?: boolean,
+  /** Shows a lock inside the toggle's circle. Requires `toggle` */
+  lockIcon?: Icon,
   onChange?: (checked: boolean) => void,
-  stateKey?: string
+  ref?: (checkboxField: CheckboxField) => void
 }): JSX.Element {
   const [checked, setChecked] = props.signal ?? createSignal(props.checked ?? false);
 
   const checkboxField = new CheckboxField({
-    text: props.text,
     toggle: props.toggle,
+    toggleLockIcon: props.lockIcon,
     round: props.round,
+    color: props.color,
+    name: props.name,
+    stateValues: props.stateValues,
+    stateValueReverse: props.stateValueReverse,
+    restriction: props.restriction,
+    listenerSetter: props.listenerSetter,
+    asRadio: props.asRadio,
     stateKey: props.stateKey,
-    checked: checked()
+    ...(props.signal || props.checked !== undefined ? {checked: checked()} : {})
   });
+  props.ref?.(checkboxField);
 
   createEffect(on(checked, () => {
     checkboxField.setValueSilently(checked());
+  }, {defer: true}));
+
+  createEffect(on(() => props.lockIcon, (icon) => {
+    checkboxField.setToggleLockIcon(icon);
   }, {defer: true}));
 
   createEffect(on(() => props.checked, (value) => {
@@ -43,7 +52,7 @@ export default function CheckboxFieldTsx(props: {
 
   subscribeOn(checkboxField.input)('change', () => {
     setChecked(checkboxField.input.checked);
-    untrack(() => props.onChange(checked()));
+    untrack(() => props.onChange?.(checked()));
   });
 
   attachClassName(checkboxField.label, () => props.class);

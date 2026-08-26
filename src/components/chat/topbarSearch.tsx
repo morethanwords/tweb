@@ -25,7 +25,8 @@ import stringMiddleOverflow from '@helpers/string/stringMiddleOverflow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {FontFull} from '@config/font';
-import Row from '@components/row';
+import RowTsx from '@components/rowTsx';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import {avatarNew} from '@components/avatarNew';
@@ -194,23 +195,21 @@ const createParticipantsLoader = (options: LoadOptions) => {
       const title = await wrapPeerTitle({peerId});
       const peer = apiManagerProxy.getPeer(peerId);
       const username = getPeerActiveUsernames(peer)[0];
-      const row = new Row({
-        title: (
+      const size = 40;
+      const avatar = avatarNew({peerId, size, middleware});
+      const row = wrapSolidComponent(() => (
+        <RowTsx clickable class="topbar-search-left-sender">
+          <RowTsx.Title>
           <span>
             <b>{title}</b> {username && <span class="secondary">{`@${username}`}</span>}
           </span>
-        ) as HTMLElement,
-        clickable: true
-      });
-
-      row.container.classList.add('topbar-search-left-sender');
-
-      const size = 40;
-      const avatar = avatarNew({peerId, size, middleware});
-      row.createMedia(`${size}`).append(avatar.node);
+          </RowTsx.Title>
+          <RowTsx.Media size="40">{avatar.node}</RowTsx.Media>
+        </RowTsx>
+      ), middleware);
       await avatar.readyThumbPromise;
 
-      return row.container;
+      return row;
     });
 
     const rendered = await Promise.all(promises);
