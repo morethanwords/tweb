@@ -23,7 +23,6 @@ import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedComm
 import styles from './archiveDialog.module.scss';
 import Badge from './badge';
 import {IconTsx} from './iconTsx';
-import ripple from './ripple';
 import {createStoriesStore, StoriesContextValue} from './stories/store';
 import {createStoriesViewerWithProvider} from './stories/viewer';
 
@@ -46,7 +45,7 @@ export const archiveDialogTagName = 'archive-dialog';
 const ArchiveDialog = defineSolidElement({
   name: archiveDialogTagName,
   component: (props: PassedProps<ArchiveDialogProps>, _, controls: Controls) => {
-    props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'rp', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
+    props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
 
     const [openStoriesTarget, setOpenStoriesTarget] = createSignal<HTMLElement>();
 
@@ -57,8 +56,6 @@ const ArchiveDialog = defineSolidElement({
     // Note: we cannot use createStore on dialogs, because it requires reacting to the whole object change and then sending it into
     // the shared worker thread to compute whether it is unread or not
     const [cachedDialogUnread, setCachedDialogUnread] = createStore<Record<PeerId, boolean>>({});
-
-    ripple(props.element, () => true);
 
     controls.openStory = () => {
       props.state.openArchiveStories(openStoriesTarget());

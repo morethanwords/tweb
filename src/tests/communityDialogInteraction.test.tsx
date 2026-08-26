@@ -98,7 +98,8 @@ describe('Community dialog projection', () => {
       dontSetActive: true,
       fromName: 'Community',
       isMainList: true,
-      peerId: (123 as ChatId).toPeerId(true)
+      peerId: (123 as ChatId).toPeerId(true),
+      rippleEnabled: false
     }));
     expect(dialogElement.dom.listEl.tagName).toBe('A');
     expect(dialogElement.dom.listEl.dataset.communityDialog).toBe('true');

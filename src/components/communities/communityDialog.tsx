@@ -30,6 +30,7 @@ export function createCommunityDialogListElement(
     dontSetActive: true,
     fromName: apiManagerProxy.getChat(communityId)?.title || '',
     isMainList: true,
+    rippleEnabled: false,
     wrapOptions: {}
   });
   const {dom} = dialogElement;
