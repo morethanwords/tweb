@@ -127,47 +127,18 @@ namespace I18n {
     });
   }
 
-  function updateAmPm() {
-    if(timeFormat === 'h12') {
-      try {
-        // * probe the same 2-digit skeleton update() renders — day period position and separator are skeleton-dependent (am: leading in h:mm, trailing in hh:mm)
-        const dateTimeFormat = getDateTimeFormat({hour: '2-digit', minute: '2-digit', hour12: true});
-        const date = new Date();
-        date.setHours(0);
-        const amParts = dateTimeFormat.formatToParts(date);
-        const amIndex = amParts.findIndex((part) => part.type === 'dayPeriod');
-        if(amIndex === -1) {
-          console.error('cannot get am/pm', 'no dayPeriod part');
-          Object.assign(amPmCache, AM_PM_FALLBACK);
-          return;
-        }
-
-        date.setHours(12);
-        // * one formatter has one pattern skeleton, so the pm day period sits at the same index
-        amPmCache.am = normalizeAmPmSpaces(amParts[amIndex].value);
-        amPmCache.pm = normalizeAmPmSpaces(dateTimeFormat.formatToParts(date)[amIndex].value);
-
-        // * some locales put the day period before the time, with (ko: 오전 12:34) or without (zh: 上午12:34) a separator
-        amPmCache.leading = amIndex === 0;
-        const separatorPart = amParts[amIndex + (amPmCache.leading ? 1 : -1)];
-        amPmCache.separator = separatorPart?.type === 'literal' ? normalizeAmPmSpaces(separatorPart.value) : '';
-      } catch(err) {
-        console.error('cannot get am/pm', err);
-        Object.assign(amPmCache, AM_PM_FALLBACK);
-      }
-    }
-  }
-
   export function setTimeFormat(
     format: State['settings']['timeFormat'],
     haveToUpdate = !!timeFormat && timeFormat !== format
   ) {
+    if(timeFormat !== format) {
+      // * drop formatters minted before the first call too — they carry no -u-hc- and would outlive it
+      cachedDateTimeFormats.clear();
+    }
+
     timeFormat = format;
 
-    updateAmPm();
-
     if(haveToUpdate) {
-      cachedDateTimeFormats.clear();
       const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
       elements.forEach((element) => {
         const instance = weakMap.get(element);
@@ -341,7 +312,6 @@ namespace I18n {
 
       lastAppliedLangCode = currentLangCode;
       cachedDateTimeFormats.clear();
-      updateAmPm();
       rootScope.dispatchEvent('language_change', currentLangCode);
     }
 
@@ -612,17 +582,69 @@ namespace I18n {
     const json = JSON.stringify(options);
     let dateTimeFormat = cachedDateTimeFormats.get(json);
     if(!dateTimeFormat) {
-      dateTimeFormat = new Intl.DateTimeFormat(lastRequestedNormalizedLangCode + '-u-hc-' + timeFormat, options);
+      dateTimeFormat = new Intl.DateTimeFormat(lastRequestedNormalizedLangCode + (timeFormat ? '-u-hc-' + timeFormat : ''), options);
       cachedDateTimeFormats.set(json, dateTimeFormat);
     }
 
     return dateTimeFormat;
   }
 
-  const AM_PM_FALLBACK = {am: 'AM', pm: 'PM', leading: false, separator: ' '};
-  // * ICU 72+ emits U+202F/U+00A0 literals in formatToParts where engines normalize format() output to a plain space
-  const normalizeAmPmSpaces = (value: string) => value.replace(/[\u00a0\u202f]/g, ' ');
-  export const amPmCache = {...AM_PM_FALLBACK};
+  // * format() on a cached formatter is still ~20x the cost of string concatenation, and times repeat heavily —
+  // * memoize per minute of day (max 1440 entries); keying by formatter makes the memo die with it on locale/format change
+  const timeStringsCache: WeakMap<Intl.DateTimeFormat, Map<number, string>> = new WeakMap();
+  const TIME_STRING_OPTIONS: Intl.DateTimeFormatOptions = {hour: '2-digit', minute: '2-digit'};
+  const TIME_STRING_OPTIONS_JSON = JSON.stringify(TIME_STRING_OPTIONS);
+  function warmTimeStrings(dateTimeFormat: Intl.DateTimeFormat, timeStrings: Map<number, string>) {
+    // * a later locale/format change orphans this generation — drop the leftover work
+    if(cachedDateTimeFormats.get(TIME_STRING_OPTIONS_JSON) !== dateTimeFormat) {
+      return;
+    }
+
+    const date = new Date();
+    let budget = 240; // * ~0.2ms per chunk, the rest resumes from the next idle period
+    for(let minutesKey = 0; minutesKey < 1440; ++minutesKey) {
+      if(timeStrings.has(minutesKey)) {
+        continue;
+      }
+
+      if(--budget < 0) {
+        scheduleWarmTimeStrings(dateTimeFormat, timeStrings);
+        return;
+      }
+
+      const hours = (minutesKey / 60) | 0, minutes = minutesKey % 60;
+      date.setHours(hours, minutes, 0, 0);
+      // * a DST hole would shift the synthetic date to a different wall time — leave such keys to the lazy path
+      if(date.getHours() === hours && date.getMinutes() === minutes) {
+        timeStrings.set(minutesKey, dateTimeFormat.format(date));
+      }
+    }
+  }
+
+  function scheduleWarmTimeStrings(dateTimeFormat: Intl.DateTimeFormat, timeStrings: Map<number, string>) {
+    const warm = () => warmTimeStrings(dateTimeFormat, timeStrings);
+    self.requestIdleCallback ? self.requestIdleCallback(warm) : setTimeout(warm, 100);
+  }
+
+  function formatTimeString(date: Date) {
+    // * skip getDateTimeFormat's per-call JSON.stringify on this hot path
+    const dateTimeFormat = cachedDateTimeFormats.get(TIME_STRING_OPTIONS_JSON) || getDateTimeFormat(TIME_STRING_OPTIONS);
+    let timeStrings = timeStringsCache.get(dateTimeFormat);
+    if(!timeStrings) {
+      timeStringsCache.set(dateTimeFormat, timeStrings = new Map());
+      // * pre-render the whole day off the critical path so batches of distinct times never pay for Intl
+      scheduleWarmTimeStrings(dateTimeFormat, timeStrings);
+    }
+
+    const minutesKey = date.getHours() * 60 + date.getMinutes();
+    let text = timeStrings.get(minutesKey);
+    if(text === undefined) {
+      timeStrings.set(minutesKey, text = dateTimeFormat.format(date));
+    }
+
+    return text;
+  }
+
   export type IntlDateElementOptions = IntlElementBaseOptions & {
     date?: Date,
     options: Intl.DateTimeFormatOptions
@@ -645,18 +667,8 @@ namespace I18n {
 
       let text: string;
       if(this.options.hour && this.options.minute && Object.keys(this.options).length === 2/*  && false */) {
-        const hours = this.date.getHours();
-        text = ('0' + (timeFormat === 'h12' ? (hours % 12) || 12 : hours)).slice(-2) + ':' + ('0' + this.date.getMinutes()).slice(-2);
-        // if(this.options.second) {
-        //   text += ':' + ('0' + this.date.getSeconds()).slice(-2);
-        // }
-
-        if(timeFormat === 'h12') {
-          const dayPeriod = hours < 12 ? amPmCache.am : amPmCache.pm;
-          text = amPmCache.leading ?
-            dayPeriod + amPmCache.separator + text :
-            text + amPmCache.separator + dayPeriod;
-        }
+        // * no capitalizeFirstLetter here — hu renders 'de. 12:05' and must not become 'De. 12:05'
+        text = formatTimeString(this.date);
       } else {
         // * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
         const dateTimeFormat = getDateTimeFormat(this.options);
