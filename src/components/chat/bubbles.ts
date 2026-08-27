@@ -123,7 +123,6 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import {BatchProcessor} from '@helpers/sortedList';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
-import wrapTopicNameButton from '@components/wrappers/topicNameButton';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import liteMode from '@helpers/liteMode';
@@ -5154,10 +5153,10 @@ export default class ChatBubbles {
   }
 
   public updateStickyIntersectorRootMargin = () => {
-    if(!this.stickyIntersector) return;
     const top = this.chat.chatPaddingTop[0]();
     const bottom = this.chat.chatPaddingBottom[0]();
-    this.stickyIntersector.setRootMargin(`-${top}px 0px -${bottom}px 0px`);
+    this.stickyIntersector?.setRootMargin(`-${top}px 0px -${bottom}px 0px`);
+    this.separatorIntersectorRoot?.setTopOffset(top);
   };
 
   public updateGoDownVisibility = () => {
@@ -7841,7 +7840,7 @@ export default class ChatBubbles {
         })
       ) : undefined;
 
-    let isMessageEmpty = !context.messageMessage && !isSponsored && !factCheck/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
+    let isMessageEmpty = !context.messageMessage && !isSponsored && !factCheck;
     context.mediaRequiresMessageDiv = false;
 
     context.canHaveTail = true;
@@ -7983,33 +7982,6 @@ export default class ChatBubbles {
     }
 
     bubbleContainer.prepend(messageDiv);
-
-    let topicNameButtonContainer: HTMLElement;
-    if(isMessage && (this.chat.isAllMessagesForum || (this.chat.hashtagType === 'my' && isOut))) {
-      const result = await wrapTopicNameButton({
-        peerId: message.peerId,
-        threadId: getMessageThreadId(message, {isForum: this.chat.isForum}),
-        lastMsgId: message.mid,
-        wrapOptions: {
-          middleware
-        },
-        withIcons: true,
-        dialog: true,
-        noLink: this.chat.type === ChatType.Search
-      });
-
-      const {element} = result;
-      // if(isStandaloneMedia) {
-      //   element.classList.add('floating-part');
-      // }
-
-      topicNameButtonContainer = document.createElement('div');
-      topicNameButtonContainer.classList.add(
-        /* 'name',  */'topic-name-button-container',
-        'bubble-name-chip-container'
-      );
-      topicNameButtonContainer.append(element);
-    }
 
     let hasBesideButton = false;
     if(isMessage && message.views) {
@@ -9679,7 +9651,7 @@ export default class ChatBubbles {
       (showNameForVerificationCodes && !replyTo);
 
     let nameDiv: HTMLElement;
-    if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
+    if(needName || fwdFrom || replyTo) { // chat
       let title: HTMLElement;
       let titleVia: typeof title;
       let noColor: boolean;
@@ -9691,7 +9663,7 @@ export default class ChatBubbles {
       const hasTwoTitles = _isForwardOfForward && !isOut && fwdFrom.from_name && fwdFrom.saved_from_name;
 
       let mustHaveName = shouldKeepSenderNameAcrossGroup(isEphemeral, isOut) ||
-        !!(message.viaBotId/*  || topicNameButtonContainer */) ||
+        !!message.viaBotId ||
         storyFromPeerId;
       const isHidden = !!(fwdFrom && (!fwdFrom.from_id || fwdFromName));
       if(message.viaBotId) {
@@ -9900,20 +9872,6 @@ export default class ChatBubbles {
         bubble.classList.remove('hide-name');
       }
 
-      if(topicNameButtonContainer) {
-        if(context.isStandaloneMedia) {
-          topicNameButtonContainer.classList.add('floating-part');
-        } else {
-          if(!nameDiv) {
-            nameDiv = document.createElement('div');
-          }
-
-          nameDiv.append(topicNameButtonContainer);
-
-          bubble.classList.remove('hide-name');
-        }
-      }
-
       if(nameDiv && !bubble.classList.contains('hide-name')) {
         nameDiv.classList.add('name');
         setDirection(nameDiv);
@@ -9981,15 +9939,6 @@ export default class ChatBubbles {
       }/*  else if((message as Message.message).from_boosts_applied) {
         this.wrapTitleAndRank(firstElement, message as Message.message);
       } */
-
-      if(topicNameButtonContainer && context.isStandaloneMedia) {
-        if(!context.attachmentDiv) {
-          this.log.error('no attachment div?', bubble, message);
-          debugger;
-        } else {
-          context.attachmentDiv.after(topicNameButtonContainer);
-        }
-      }
 
       if(mustHaveName) {
         bubble.classList.add('must-have-name');
@@ -10323,9 +10272,6 @@ export default class ChatBubbles {
     // title.after(wrappedRank);
     const container = document.createElement('div');
     container.classList.add('title-flex');
-    if(title.classList.contains('topic-name-button-container')) {
-      container.classList.add('title-flex-topic');
-    }
     title.replaceWith(container);
     let boostsElement: HTMLElement;
     const boosts = message.from_boosts_applied;

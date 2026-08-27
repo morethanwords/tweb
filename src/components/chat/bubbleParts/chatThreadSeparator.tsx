@@ -8,7 +8,6 @@ import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {IconTsx} from '@components/iconTsx';
 import type ChatBubbles from '@components/chat/bubbles';
-import Chat from '@components/chat/chat';
 import styles from '@components/chat/bubbleParts/chatThreadSeparator.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -16,6 +15,7 @@ if(import.meta.hot) import.meta.hot.accept();
 
 const PADDING = 2;
 const SEPARATOR_HEIGHT = 30; // it's actually 29, but let's have it rounded up)
+const SEPARATOR_ROOT_MARGIN_TOP = 2 * PADDING + 2 * SEPARATOR_HEIGHT;
 
 const LIMIT_SYMBOLS = 15;
 
@@ -35,10 +35,11 @@ type ElementMapValue = {
 
 const getThreshold = () => new Array(SEPARATOR_HEIGHT + 1).fill(0).map((_, idx) => idx / SEPARATOR_HEIGHT);
 
-const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose) => {
+const createIntersectorRoot = (rootElement: HTMLElement, initialTopOffset: number) => createRoot((dispose) => {
   const map = new Map<HTMLElement, ElementMapValue>();
+  let topOffset = initialTopOffset;
 
-  const observer = new IntersectionObserver((entries) => {
+  const onEntries = (entries: IntersectionObserverEntry[]) => {
     batch(() => entries.forEach(entry => {
       const element = entry.target as HTMLElement;
       if(!map.has(element)) return;
@@ -66,11 +67,15 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
       }
     })
     );
-  }, {
+  };
+
+  const createObserver = () => new IntersectionObserver(onEntries, {
     root: rootElement,
-    rootMargin: `-${2 * PADDING + 2 * SEPARATOR_HEIGHT}px 0px 0px 0px`,
+    rootMargin: `-${topOffset + SEPARATOR_ROOT_MARGIN_TOP}px 0px 0px 0px`,
     threshold: getThreshold()
   });
+
+  let observer = createObserver();
 
   let cleaned = false;
 
@@ -97,6 +102,14 @@ const createIntersectorRoot = (rootElement: HTMLElement) => createRoot((dispose)
       observer.unobserve(element);
       map.delete(element);
     },
+    setTopOffset(value: number) {
+      if(value === topOffset) return;
+
+      topOffset = value;
+      observer.disconnect();
+      observer = createObserver();
+      map.forEach((_, element) => observer.observe(element));
+    },
     count: 0,
     dispose
   };
@@ -110,7 +123,10 @@ type UseIntersectorArgs = {
 }
 
 function useIntersector({bubbles, element, index}: UseIntersectorArgs) {
-  const root = bubbles.separatorIntersectorRoot ??= createIntersectorRoot(bubbles.scrollable.container);
+  const root = bubbles.separatorIntersectorRoot ??= createIntersectorRoot(
+    bubbles.scrollable.container,
+    bubbles.chat.chatPaddingTop[0]()
+  );
   root.count++;
 
   onCleanup(() => {
@@ -134,10 +150,11 @@ function useIntersector({bubbles, element, index}: UseIntersectorArgs) {
 
 type Props = {
   bubbles: ChatBubbles;
-  chat: Chat;
   peerId: PeerId;
   threadId?: number;
-  lastMsgId?: number;
+  targetPeerId: PeerId;
+  targetThreadId?: number;
+  targetMonoforumThreadId?: PeerId;
   index: number;
 };
 
@@ -147,7 +164,6 @@ const ChatThreadSeparator = defineSolidElement({
     const {appImManager, PeerTitleTsx} = useHotReloadGuard();
     attachHotClassName(props.element, styles.Container);
 
-    let clickTriggerEl: HTMLElement;
     let scaledEl: HTMLElement;
 
     const [serviceMsg, setServiceMsg] = createSignal<HTMLElement>();
@@ -159,12 +175,10 @@ const ChatThreadSeparator = defineSolidElement({
     });
 
     const onClick = () => {
-      const isMonoforum = props.chat.isMonoforum;
-      appImManager.setPeer({
-        peerId: isMonoforum ? props.chat.peerId : props.peerId,
-        monoforumThreadId: isMonoforum ? props.peerId : undefined,
-        threadId: props.threadId,
-        lastMsgId: props.lastMsgId === props.threadId ? undefined : props.lastMsgId
+      appImManager.setInnerPeer({
+        peerId: props.targetPeerId,
+        monoforumThreadId: props.targetMonoforumThreadId,
+        threadId: props.targetThreadId
       });
     };
 
@@ -213,7 +227,7 @@ const ChatThreadSeparator = defineSolidElement({
           }}
           onClick={onClick}
         >
-          <InnerPeerTitle ref={clickTriggerEl} />
+          <InnerPeerTitle />
           <IconTsx icon='arrowhead' class={styles.ArrowIcon} />
         </div>
 
@@ -225,7 +239,7 @@ const ChatThreadSeparator = defineSolidElement({
               [styles.floating]: true
             }}
             style={{
-              '--top': `${SEPARATOR_HEIGHT + 2 * PADDING}px`,
+              '--top': `${props.bubbles.chat.chatPaddingTop[0]() + SEPARATOR_HEIGHT + 2 * PADDING}px`,
               '--scale': scale()
             }}
             onClick={onClick}

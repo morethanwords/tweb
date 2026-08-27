@@ -2309,58 +2309,12 @@
     }
   }
 
-  .topic-name-button {
-    --color: var(--message-primary-color);
-
-    &.has-avatar {
-      font-size: var(--messages-text-size);
-      height: 1.875rem;
-      padding-inline: 0 1.25rem;
-      gap: .375rem;
-
-      .topic-name-button-arrow {
-        position: absolute;
-        inset-inline-end: .125rem;
-        color: currentColor;
-        opacity: .4;
-        font-size: 1rem;
-      }
-
-      .topic-name-button-avatar {
-        position: relative;
-      }
-    }
-  }
-
   .name .bubble-name-chip-container {
     margin: .25rem 0;
   }
 
   &.is-message-empty:not(.is-reply) .name .bubble-name-chip-container {
     margin-bottom: 0;
-  }
-
-  &:not(.is-group-first) .topic-name-button-container {
-    display: none !important;
-  }
-
-  .topic-name-button-container.floating-part {
-    padding-top: 0;
-    padding-bottom: 0;
-    font-size: var(--messages-secondary-text-size);
-
-    .topic-name-button {
-      --color: #fff;
-      padding: 0;
-
-      &:before {
-        content: none;
-      }
-    }
-
-    & + .floating-part {
-      margin-top: 1.75rem;
-    }
   }
 
   .audio-transcribed-text {

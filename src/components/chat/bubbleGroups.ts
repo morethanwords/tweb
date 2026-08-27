@@ -18,13 +18,12 @@ import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import {getGuestChatViaFromId, getMid, isMessage, isMessageForVerificationBot} from '@components/chat/utils';
 import {canHaveSuggestedPostReplyMarkup} from '@components/chat/bubbleParts/suggestedPostReplyMarkup';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import {BubbleElementAddons} from '@components/chat/types';
-import ChatThreadSeparator from '@components/chat/bubbleParts/chatThreadSeparator';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import type {BubbleElementAddons} from '@components/chat/types';
 import {AdminLog} from '@appManagers/appChatsManager';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import compareBubbleTimelineMessages from '@components/chat/compareBubbleTimelineMessages';
 import filterReplyMarkupRows from '@components/chat/bubbleParts/filterReplyMarkupRows';
+import updateChatThreadSeparators from '@components/chat/bubbleParts/updateChatThreadSeparators';
 
 
 type GroupItem = {
@@ -488,55 +487,7 @@ export default class BubbleGroups {
   }
 
   private addChatThreadSeparators() {
-    const isMonoforum = this.chat.isMonoforum && this.chat.canManageDirectMessages && !this.chat.monoforumThreadId;
-    const isBotforum = this.chat.isBotforum && !this.chat.threadId;
-
-    const canHaveSeparators = isMonoforum || isBotforum;
-
-    if(!canHaveSeparators) return;
-
-    let prevKey: number;
-
-    forEachReverse(this.itemsArr, (item, i) => {
-      const message = item.message;
-      if(message._ === 'channelAdminLogEvent') return;
-
-      const savedPeerId = isMonoforum ? getPeerId(message?.saved_peer_id) : undefined;
-      const threadId = isBotforum ? getMessageThreadId(message, {isBotforum: true}) : undefined;
-
-      const key = savedPeerId || threadId;
-      if(!key) return;
-
-      const bubbleAddons = item.bubble as BubbleElementAddons;
-
-      if(prevKey === key) {
-        item.bubble.classList.remove('has-chat-thread-separator');
-        bubbleAddons.chatThreadSeparator?.remove();
-        return;
-      }
-
-      prevKey = key;
-
-      if(bubbleAddons.chatThreadSeparator) {
-        bubbleAddons.chatThreadSeparator.feedProps<false>({
-          index: -i
-        });
-        return;
-      }
-
-      bubbleAddons.chatThreadSeparator = new ChatThreadSeparator;
-      bubbleAddons.chatThreadSeparator.HotReloadGuard = SolidJSHotReloadGuardProvider;
-      bubbleAddons.chatThreadSeparator.feedProps({
-        chat: this.chat,
-        bubbles: this.chat.bubbles,
-        peerId: savedPeerId || this.chat.peerId,
-        threadId: savedPeerId ? undefined : threadId,
-        lastMsgId: message?.mid,
-        index: -i
-      });
-      item.bubble.classList.add('has-chat-thread-separator');
-      item.bubble.prepend(bubbleAddons.chatThreadSeparator);
-    });
+    updateChatThreadSeparators(this.itemsArr, this.chat);
   }
 
   /**

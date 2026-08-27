@@ -26,20 +26,20 @@ describe('ephemeral message presentation', () => {
     expect(isSameMessageSelectionGroup(selected, true)).toBe(true);
   });
 
-  it('places the badge inside the name stack before the topic chip', () => {
+  it('places the badge inside the name stack before the next chip', () => {
     const container = document.createElement('div');
     const name = document.createElement('div');
     const sender = document.createElement('span');
-    const topic = document.createElement('div');
+    const chip = document.createElement('div');
     const content = document.createElement('div');
     const badge = document.createElement('div');
-    topic.classList.add('topic-name-button-container', 'bubble-name-chip-container');
-    name.append(sender, topic);
+    chip.classList.add('bubble-name-chip-container');
+    name.append(sender, chip);
     container.append(name, content);
 
     placeEphemeralBadge(container, name, badge);
 
-    expect([...name.children]).toEqual([sender, badge, topic]);
+    expect([...name.children]).toEqual([sender, badge, chip]);
     expect([...container.children]).toEqual([name, content]);
   });
 
