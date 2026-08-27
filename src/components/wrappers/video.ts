@@ -110,6 +110,9 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   let noAutoDownload = autoDownloadSize === 0;
   const isGroupedItem = !(boxWidth && boxHeight);
   uploadingFileName ??= message?.uploadingFileName?.[0];
+  // * a round video keeps looping its muted preview while it uploads, like the official clients do;
+  // * a regular video would just play under the progress spinner, so it waits for the upload instead
+  const suppressAutoplayWhileUploading = !!uploadingFileName && doc.type !== 'round';
   canAutoplay ??= /* doc.sticker ||  */(
     (
       doc.type !== 'video' || (
@@ -400,7 +403,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     } else {
       onLoad();
     }
-  } else if(!noAutoplayAttribute && !uploadingFileName) {
+  } else if(!noAutoplayAttribute && !suppressAutoplayWhileUploading) {
     video.autoplay = true; // для safari
   }
 
@@ -508,10 +511,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     // * autoplay is suppressed while the upload is in progress, and the bubble
     // * isn't re-rendered on send — resume playback once the upload completes
-    if(!noAutoplayAttribute && doc.type !== 'round') {
+    if(!noAutoplayAttribute && suppressAutoplayWhileUploading) {
       appDownloadManager.getUpload(uploadingFileName).then(() => {
         if(middleware && !middleware()) return;
-        video.play().catch(noop);
+        video.autoplay = true; // * so the intersector resumes it after it scrolls back into view
+        safePlay(video);
       }, noop);
     }
   } else if(!cacheContext.downloaded && !supportsStreaming && !withoutPreloader) {
@@ -571,7 +575,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   video.muted = true;
   video.loop = true;
   // video.play();
-  if(!noAutoplayAttribute && !uploadingFileName) {
+  if(!noAutoplayAttribute && !suppressAutoplayWhileUploading) {
     video.autoplay = true;
   }
 
