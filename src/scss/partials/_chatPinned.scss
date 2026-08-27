@@ -729,10 +729,12 @@
 }
 
 .pinned-actions {
-  // The join-request line wraps, so the plate measures itself; every other state is
-  // a row of buttons and keeps the usual plate height.
+  // The join-request line and the emoji-status note both wrap, so the plate measures
+  // itself; a plain row of buttons still keeps the usual plate height.
   --container-height: auto;
   min-height: var(--pinned-container-height);
+  // a column: the buttons keep their own row, the note goes under it
+  flex-direction: column;
   gap: .25rem;
   opacity: 1;
 
@@ -750,7 +752,36 @@
 
   &-close {
     position: absolute;
+    top: .25rem;
     inset-inline-end: .25rem;
+  }
+
+  &-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    width: 100%;
+  }
+
+  &-text {
+    width: 100%;
+    padding: 0 .75rem;
+
+    // the link carries no `href`, so it gets neither the UA pointer nor a way to beat
+    // the `cursor: default` the plate inherits from `.sidebar-header`
+    a {
+      cursor: pointer;
+    }
+
+    // `.emoji-status` is a `display: flex` box built for the peer title, where it is a
+    // flex item next to the name; inside a sentence it has to stay inline or it breaks
+    // the line, sit on the baseline, and drop the spacing meant for the title
+    .emoji-status {
+      display: inline-flex;
+      vertical-align: sub;
+      margin: 0;
+    }
   }
 
   &-primary-button-icon {
@@ -1070,13 +1101,21 @@
   }
 }
 
+// Explanatory line inside a plate: the fee notice above its button, the emoji-status
+// note below the contact-status buttons.
+.pinned-remove-fee-text,
+.pinned-actions-text {
+  font-size: var(--font-size-14);
+  text-align: center;
+  color: var(--secondary-text-color);
+  line-height: var(--line-height-14);
+  word-break: break-word;
+}
+
 .pinned-remove-fee {
   --container-height: var(--pinned-fee-height);
 
   &-text {
-    font-size: var(--font-size-14);
-    text-align: center;
-    color: var(--secondary-text-color);
     margin-bottom: .125rem;
   }
 

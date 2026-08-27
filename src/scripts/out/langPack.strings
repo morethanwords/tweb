@@ -1752,6 +1752,7 @@
 "RequestToJoinGroupDescription" = "This group accepts new members only after they are approved by its admins.";
 "RequestToJoinChannelDescription" = "This channel accepts new subscribers only after they are approved by its admins.";
 "RequestToJoinSent" = "Join request sent";
+"ReportSpamUserEmojiStatusHint" = "This account uses %1$s as a custom status next to its name. Such emoji statuses are available to all subscribers of %2$s.";
 "ChatWithGroupAdmin" = "**%1$s** is an admin of **%2$s**, a group you requested to join.";
 "ChatWithChannelAdmin" = "**%1$s** is an admin of **%2$s**, a channel you requested to join.";
 "ChatWithAdminGroupTitle" = "Chat with group's admin";
