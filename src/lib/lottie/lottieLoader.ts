@@ -8,14 +8,22 @@ import LottiePlayer, {LottieOptions} from '@lib/lottie/lottiePlayer';
 import blobConstruct from '@helpers/blob/blobConstruct';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import IS_WEB_ASSEMBLY_SIMD_SUPPORTED from '@environment/webAssemblySimdSupport';
+import IS_WEB_ASSEMBLY_BASELINE_SUPPORTED from '@environment/webAssemblyBaselineSupport';
 import makeError from '@helpers/makeError';
 import rootScope from '@lib/rootScope';
 import toArray from '@helpers/array/toArray';
 import lottieMessagePort from '@lib/lottie/lottieMessagePort';
 import SHOULD_RENDER_OFFSCREEN from '@lib/lottie/shouldRenderOffscreen';
 import tlottieWasmAssetUrl from '@vendor/tlottie/tlottie.wasm?url';
+import tlottieNoSimdWasmAssetUrl from '@vendor/tlottie/tlottie.nosimd.wasm?url';
 
-const TLOTTIE_WASM_URL = new URL(tlottieWasmAssetUrl, location.href).href;
+// tlottie builds the same renderer twice - the SIMD build is the fast path, the scalar
+// one keeps stickers animated on browsers without WebAssembly SIMD (Chrome 75-90,
+// Firefox 79-88, Safari 15-16.3). Both render frame-identical output.
+const TLOTTIE_WASM_URL = new URL(
+  IS_WEB_ASSEMBLY_SIMD_SUPPORTED ? tlottieWasmAssetUrl : tlottieNoSimdWasmAssetUrl,
+  location.href
+).href;
 
 export type LottieAssetName =
   | 'EmptyFolder'
@@ -116,7 +124,7 @@ export class LottieLoader {
   }
 
   public loadLottieWorkers() {
-    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+    if(!IS_WEB_ASSEMBLY_BASELINE_SUPPORTED) {
       // This method is also used as a fire-and-forget preload. Unsupported
       // browsers should stay on their static fallback without an unhandled
       // rejection; actual animation loads still reject with NO_WASM below.
@@ -164,7 +172,7 @@ export class LottieLoader {
   public loadAnimationDataFromURL(url: string, method: 'json'): Promise<any>;
   public loadAnimationDataFromURL(url: string, method?: 'blob'): Promise<Blob>;
   public loadAnimationDataFromURL(url: string, method: 'json' | 'blob' = 'blob'): Promise<Blob | any> {
-    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+    if(!IS_WEB_ASSEMBLY_BASELINE_SUPPORTED) {
       return Promise.reject(makeError('NO_WASM'));
     }
 
@@ -223,7 +231,7 @@ export class LottieLoader {
   }
 
   public async loadAnimationWorker(params: LottieOptions): Promise<LottiePlayer> {
-    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+    if(!IS_WEB_ASSEMBLY_BASELINE_SUPPORTED) {
       throw makeError('NO_WASM');
     }
 
@@ -309,7 +317,7 @@ export class LottieLoader {
   }
 
   public destroyWorkers() {
-    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+    if(!IS_WEB_ASSEMBLY_BASELINE_SUPPORTED) {
       return;
     }
 
