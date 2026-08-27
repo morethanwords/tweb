@@ -23,7 +23,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
 import callbackifyAll from '@helpers/callbackifyAll';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import {PEER_FULL_TTL} from '@appManagers/constants';
+import {FOLDER_ID_ALL, PEER_FULL_TTL} from '@appManagers/constants';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import type {State} from '@config/state';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
@@ -1260,6 +1260,33 @@ export class AppProfileManager extends AppManager {
 
         return this.peerSettings[peerId] = messagesPeerSettings.settings;
       }
+    });
+  }
+
+  /**
+   * The settings bar's unarchive action. Auto-archiving an unknown sender mutes them
+   * too, so accepting the chat has to hand notifications back — otherwise it returns
+   * to the list looking ordinary while staying silently muted. Mirrors tdesktop's
+   * `ContactStatus::setupUnarchiveHandler`.
+   */
+  public unarchiveFromSettingsBar(peerId: PeerId) {
+    // Drop the flags the bar was drawn from so it goes with the click instead of a
+    // round-trip later; `editPeerFolders` refreshes the settings itself once the
+    // server answers, which is what makes the optimistic edit safe.
+    this.modifyCachedPeerSettings(peerId, (settings) => {
+      delete settings.pFlags.autoarchived;
+      delete settings.pFlags.block_contact;
+      delete settings.pFlags.report_spam;
+    });
+
+    this.appMessagesManager.editPeerFolders([peerId], FOLDER_ID_ALL);
+
+    return this.appNotificationsManager.updateNotifySettings({
+      _: 'inputNotifyPeer',
+      peer: this.appPeersManager.getInputPeerById(peerId)
+    }, {
+      // no fields — drop the per-peer override and inherit the global settings
+      _: 'inputPeerNotifySettings'
     });
   }
 

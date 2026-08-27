@@ -179,9 +179,8 @@ export default function createChatActionsPlate(
 
   const actions: PeerSettingsActionDef[] = [{
     key: 'autoarchived',
-    onClick: async() => {
-      const promise = managers.appMessagesManager.editPeerFolders([currentPeerId], 0);
-      freeze(promise);
+    onClick: () => {
+      freeze(managers.appProfileManager.unarchiveFromSettingsBar(currentPeerId));
     }
   }, {
     key: 'block_contact',
