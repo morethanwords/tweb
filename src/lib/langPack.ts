@@ -133,15 +133,27 @@ namespace I18n {
         const dateTimeFormat = getDateTimeFormat({hour: 'numeric', minute: 'numeric', hour12: true});
         const date = new Date();
         date.setHours(0);
-        const amText = dateTimeFormat.format(date);
-        amPmCache.am = amText.split(/\s/)[1];
+        const amParts = dateTimeFormat.formatToParts(date);
+        const amIndex = amParts.findIndex((part) => part.type === 'dayPeriod');
         date.setHours(12);
-        const pmText = dateTimeFormat.format(date);
-        amPmCache.pm = pmText.split(/\s/)[1];
+        const pmPart = dateTimeFormat.formatToParts(date).find((part) => part.type === 'dayPeriod');
+        if(amIndex === -1 || !pmPart) {
+          throw new Error('no dayPeriod part');
+        }
+
+        amPmCache.am = amParts[amIndex].value;
+        amPmCache.pm = pmPart.value;
+
+        // * some locales put the day period before the time, with (ko: 오전 12:34) or without (zh: 上午12:34) a separator
+        amPmCache.leading = amIndex === 0;
+        const separatorPart = amParts[amIndex + (amPmCache.leading ? 1 : -1)];
+        amPmCache.separator = separatorPart?.type === 'literal' ? separatorPart.value : '';
       } catch(err) {
         console.error('cannot get am/pm', err);
         amPmCache.am = 'AM';
         amPmCache.pm = 'PM';
+        amPmCache.leading = false;
+        amPmCache.separator = ' ';
       }
     }
   }
@@ -599,7 +611,7 @@ namespace I18n {
     return dateTimeFormat;
   }
 
-  export const amPmCache = {am: 'AM', pm: 'PM'};
+  export const amPmCache = {am: 'AM', pm: 'PM', leading: false, separator: ' '};
   export type IntlDateElementOptions = IntlElementBaseOptions & {
     date?: Date,
     options: Intl.DateTimeFormatOptions
@@ -629,7 +641,10 @@ namespace I18n {
         // }
 
         if(timeFormat === 'h12') {
-          text += ' ' + (hours < 12 ? amPmCache.am : amPmCache.pm);
+          const dayPeriod = hours < 12 ? amPmCache.am : amPmCache.pm;
+          text = amPmCache.leading ?
+            dayPeriod + amPmCache.separator + text :
+            text + amPmCache.separator + dayPeriod;
         }
       } else {
         // * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
