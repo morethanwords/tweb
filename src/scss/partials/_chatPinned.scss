@@ -749,12 +749,18 @@
     inset-inline-end: .25rem;
   }
 
-  &.is-multiple {
+  // Either the buttons share the row (`is-multiple`), or a lone button has no
+  // close beside it to keep an end slot free for (`is-single`) — both stretch
+  // instead of sitting in the centred pill width.
+  &.is-multiple,
+  &.is-single {
     .pinned-actions-primary-button {
       flex: 1 1 0;
       width: auto;
     }
+  }
 
+  &.is-multiple {
     .pinned-actions-close {
       position: static;
     }

@@ -2199,6 +2199,16 @@ export default class DialogsStorage extends AppManager {
     return ((this.appChatsManager.getChat(chatId) as Chat.channel).admin_rights ? this.appChatsManager.hasRights(forumTopic.peerId.toChatId(), 'manage_topics') : false);
   }
 
+  /**
+   * Whether the reopen action should be offered for a closed topic — mirrors
+   * tdesktop's `TopicReopenBar` state. Composite so the UI needs one round-trip
+   * instead of fetching the topic and asking about rights separately.
+   */
+  public canReopenTopic(peerId: PeerId, threadId: number) {
+    const forumTopic = this.getForumTopic(peerId, threadId);
+    return !!forumTopic?.pFlags?.closed && this.canManageTopic(forumTopic);
+  }
+
   // * FORUMS SECTION END
 
   // * SAVED SECTION
