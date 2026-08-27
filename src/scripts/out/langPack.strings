@@ -123,6 +123,7 @@
 "EditBot.Buttons.Intro" = "Edit Intro";
 "EditBot.Buttons.Commands" = "Edit Commands";
 "EditBot.Buttons.Settings" = "Change Bot Settings";
+"SetProfilePhoto" = "Set Profile Photo";
 "ExceptionModal.Search.Placeholder" = "Add exception...";
 "SharedFolder.CreateLink" = "Create a New Link";
 "SharedFolder.Description" = "Give your friends and colleagues access to the entire folder including all of its groups and channels where you have the necessary rights.";
@@ -1726,6 +1727,9 @@
 "BotRestart" = "Restart bot";
 "ShareYouPhoneNumberTitle" = "Share your phone number?";
 "AreYouSureShareMyContactInfoBot" = "The bot will know your phone number. This can be useful for integration with other services.\n\n⚠️ Warning! Never enter your Telegram login codes in mini apps.";
+"AreYouSureShareMyContactInfoUser" = "Are you sure you want to share your phone number %1$s with **%2$s**?";
+"ShareMyPhoneNoCaps" = "Share my phone number";
+"Conversation.ShareMyPhoneNumber.StatusSuccess" = "%@ can now see your phone number.";
 "DistanceUnitsTitle" = "Distance units";
 "DistanceUnitsKilometers" = "Kilometers";
 "DistanceUnitsMiles" = "Miles";
@@ -1748,6 +1752,12 @@
 "RequestToJoinGroupDescription" = "This group accepts new members only after they are approved by its admins.";
 "RequestToJoinChannelDescription" = "This channel accepts new subscribers only after they are approved by its admins.";
 "RequestToJoinSent" = "Join request sent";
+"ChatWithGroupAdmin" = "**%1$s** is an admin of **%2$s**, a group you requested to join.";
+"ChatWithChannelAdmin" = "**%1$s** is an admin of **%2$s**, a channel you requested to join.";
+"ChatWithAdminGroupTitle" = "Chat with group's admin";
+"ChatWithAdminChannelTitle" = "Chat with channel's admin";
+"ChatWithAdminMessage" = "You received this message because you requested to join **%1$s** on %2$s";
+"IUnderstand" = "I understand";
 "RequestToJoinGroupApproved" = "Your request to join the group was approved";
 "RequestToJoinChannelApproved" = "Your request to join the channel was approved";
 "Update" = "UPDATE";

@@ -1219,6 +1219,20 @@ export class AppUsersManager extends AppManager {
     });
   }
 
+  /**
+   * Share our phone number with a user who already has us in their contacts — the
+   * `share_contact` peer setting. Mirrors tdesktop's `ContactStatus::setupShareHandler`.
+   */
+  public acceptContact(userId: UserId) {
+    return this.apiManager.invokeApi('contacts.acceptContact', {
+      id: this.getUserInput(userId)
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates, {override: true});
+
+      this.appProfileManager.refreshPeerSettingsIfNeeded(userId.toPeerId(false));
+    });
+  }
+
   public deleteContacts(userIds: UserId[]) {
     return this.apiManager.invokeApi('contacts.deleteContacts', {
       id: userIds.map((userId) => this.getUserInput(userId))

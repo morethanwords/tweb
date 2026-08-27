@@ -729,6 +729,10 @@
 }
 
 .pinned-actions {
+  // The join-request line wraps, so the plate measures itself; every other state is
+  // a row of buttons and keeps the usual plate height.
+  --container-height: auto;
+  min-height: var(--pinned-container-height);
   gap: .25rem;
   opacity: 1;
 
@@ -747,6 +751,30 @@
   &-close {
     position: absolute;
     inset-inline-end: .25rem;
+  }
+
+  &-primary-button-icon {
+    font-size: 1.25rem;
+    margin-inline-end: .375rem;
+  }
+
+  // Join-request line: the plate's own button, just quiet and free to wrap —
+  // tdesktop's `_requestChatBg` + `_requestChatInfo`. Width, ripple and centring
+  // come from `.pinned-container-primary-button`.
+  &-info {
+    // no cross to leave an end slot free for, so drop the centred pill width
+    width: 100%;
+    height: auto;
+    min-height: var(--pc-button-height);
+    // the line grows instead of being clipped; the ripple is kept inside by the
+    // `rp-overflow` utility, which clips `.c-ripple` rather than the button
+    overflow: visible;
+    padding-block: .375rem;
+    font-size: var(--font-size-14);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--line-height-14);
+    // the chat's title is server-supplied and can be one long unbreakable word
+    word-break: break-word;
   }
 
   // Either the buttons share the row (`is-multiple`), or a lone button has no

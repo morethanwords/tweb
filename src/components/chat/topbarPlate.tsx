@@ -185,6 +185,8 @@ TopbarPlate.PrimaryButton = (props: {
   children: JSX.Element,
   class?: string,
   danger?: boolean,
+  /** Plain label: default text colour and a neutral hover, no primary tint. */
+  quiet?: boolean,
   ref?: Ref<HTMLElement>
 }) => {
   const modifier = useModifier();
@@ -195,9 +197,10 @@ TopbarPlate.PrimaryButton = (props: {
         baseCls('primary-button'),
         modCls(modifier, 'primary-button'),
         props.danger && 'btn-primary btn-transparent danger',
+        props.quiet && 'btn-primary btn-transparent',
         props.class
       )}
-      primaryTransparent={!props.danger}
+      primaryTransparent={!props.danger && !props.quiet}
       onClick={props.onClick}
     >
       {props.children}
