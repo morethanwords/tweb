@@ -4855,8 +4855,14 @@ export class AppMessagesManager extends AppManager {
       // ! folder's global offset date: the latter is never filled for forums (it comes from the
       // ! peer's own history, which topics don't share), so paging with it repeats the first page
       // ! forever and the list freezes after ~100 topics.
-      // ! the top message is read from the peer's own storage: a botforum's peer is a user, so its
-      // ! mids are legacy ones and a by-id lookup could pick another chat's message
+      // ! the offsets are the per-forum ones advanced strictly in the server's response order —
+      // ! never the tail of the locally sorted list: drafts reorder it, and topics fetched by id
+      // ! (every topic draft injects its topic on startup) can sit far below the loaded frontier,
+      // ! so a tail-derived offset would make the next page skip everything in between.
+      // ! server search still pages by its own results' tail; the top message is read from the
+      // ! peer's own storage: a botforum's peer is a user, so its mids are legacy ones and a
+      // ! by-id lookup could pick another chat's message
+      const paginationOffsets = !isSearch && this.dialogsStorage.getForumTopicsPaginationOffsets(peerId);
       const offsetTopicMessage = offsetTopic &&
         this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), offsetTopic.top_message);
       promise = this.apiManager.invokeApiSingleProcess({
@@ -4864,15 +4870,26 @@ export class AppMessagesManager extends AppManager {
         params: params = {
           peer: this.appPeersManager.getInputPeerById(peerId),
           limit: useLimit,
-          offset_date: offsetTopicMessage?.date || offsetTopic?.date || 0,
-          offset_id: offsetTopic ? getServerMessageId(offsetTopic.top_message) : 0,
-          offset_topic: offsetTopic ? getServerMessageId(offsetTopic.id) : 0,
-          q: query
+          ...(paginationOffsets ? {
+            offset_date: paginationOffsets.date,
+            offset_id: paginationOffsets.id,
+            offset_topic: paginationOffsets.topic
+          } : {
+            offset_date: offsetTopicMessage?.date || offsetTopic?.date || 0,
+            offset_id: offsetTopic ? getServerMessageId(offsetTopic.top_message) : 0,
+            offset_topic: offsetTopic ? getServerMessageId(offsetTopic.id) : 0,
+            q: query
+          })
         },
         options: requestOptions,
         processResult: (result) => {
           result = this.dialogsStorage.processTopics(peerId, result);
-          return processResult(result);
+          const processed = processResult(result);
+          if(processed && !isSearch) {
+            this.dialogsStorage.updateForumTopicsPaginationOffsets(peerId, result.topics as ForumTopic[]);
+          }
+
+          return processed;
         }
       });
     } else if(filterType === FilterType.Saved) {

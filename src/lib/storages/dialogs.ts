@@ -72,6 +72,12 @@ export type DialogUnreadState = {
   unmuted: boolean
 };
 
+export type ForumTopicsPaginationOffsets = {
+  date: number,
+  id: number,
+  topic: number
+};
+
 export const GLOBAL_FOLDER_ID: REAL_FOLDER_ID = undefined;
 
 // let spentTime = 0;
@@ -103,7 +109,13 @@ export default class DialogsStorage extends AppManager {
     deletedTopics: Set<number>,
     getTopicPromises: Map<number, CancellablePromise<ForumTopic>>,
     index: SearchIndex<ForumTopic['id']>,
-    getTopicsPromise?: Promise<any>
+    getTopicsPromise?: Promise<any>,
+    // * the topic list's pagination frontier, advanced strictly in the server's response order
+    // * (raw server ids/dates). Never derived from the locally sorted list: local order mixes in
+    // * drafts and by-id-fetched topics (e.g. every topic draft injects its topic on startup), so
+    // * the local tail can point far below the real frontier and the next page would skip
+    // * everything in between
+    paginationOffsets?: ForumTopicsPaginationOffsets
   }>;
 
   private savedDialogsPromises: Map<PeerId, Promise<SavedDialog>>;
@@ -766,9 +778,16 @@ export default class DialogsStorage extends AppManager {
       this.prepareFolderUnreadCountModifyingByDialog(folderId, dialog, !!newDialogIndex);
     }
 
+    // * a virtual folder's count is the server's total (set from paged responses and the count
+    // * peek in `getForumTopicById`) — it already includes entries that were never loaded
+    // * locally, so local membership changes must not touch it: every topic arriving from a page
+    // * or a by-id fetch would be counted twice, inflating the list's virtual size. Once the
+    // * folder is fully loaded, consumers use its length instead
+    const adjustCount = folder.count !== null && !this.isVirtualFilter(folderId);
+
     if(wasIndex !== -1) {
       dialogs.splice(wasIndex, 1);
-      if(folder.count !== null) {
+      if(adjustCount) {
         --folder.count;
       }
     }
@@ -776,7 +795,7 @@ export default class DialogsStorage extends AppManager {
     if(newDialogIndex) {
       insertInDescendSortedArray(dialogs, dialog, (dialog) => this.getDialogIndex(dialog, indexKey), -1);
 
-      if(wasIndex === -1 && folder.count !== null) {
+      if(wasIndex === -1 && adjustCount) {
         ++folder.count;
       }
     }
@@ -1888,7 +1907,10 @@ export default class DialogsStorage extends AppManager {
       limit,
       folderId: realFolderId,
       query,
-      offsetTopic: isForum || isBotforum ? curDialogStorage[curDialogStorage.length - 1] as ForumTopic : undefined,
+      // ! only server search pages by the local results' tail — the regular topic list is paged by
+      // ! the stored pagination offsets (see `updateForumTopicsPaginationOffsets`), because the
+      // ! locally sorted list is poisoned by drafts and by-id-fetched topics
+      offsetTopic: (isForum || isBotforum) && query ? curDialogStorage[curDialogStorage.length - 1] as ForumTopic : undefined,
       excludeCommunityDialogs: filterType === FilterType.Folder && filterId === FOLDER_ID_ALL
     }).then((result) => {
       if(query) {
@@ -1966,9 +1988,35 @@ export default class DialogsStorage extends AppManager {
 
     cache.topics.clear();
     cache.temporaryTopics.clear();
+    delete cache.paginationOffsets;
 
     // for permanent delete
     // this.forumTopics.delete(peerId);
+  }
+
+  public getForumTopicsPaginationOffsets(peerId: PeerId): ForumTopicsPaginationOffsets {
+    return this.getForumTopicsCache(peerId).paginationOffsets ??= {date: 0, id: 0, topic: 0};
+  }
+
+  /**
+   * Advance the topic list's pagination frontier from a `messages.getForumTopics` page, walking
+   * the topics in the server's response order — mirrors tdesktop's
+   * `Data::Forum::applyReceivedTopics`. Only a SERVER top message can anchor the date/id offsets
+   * (`saveDialog` may have swapped `top_message` to a local pending outgoing mid); a topic
+   * without one advances only the topic offset, keeping the previous date/id.
+   */
+  public updateForumTopicsPaginationOffsets(peerId: PeerId, topics: ForumTopic[]) {
+    const offsets = this.getForumTopicsPaginationOffsets(peerId);
+    const messagesStorage = this.appMessagesManager.getHistoryMessagesStorage(peerId);
+    topics.forEach((topic) => {
+      const message = this.appMessagesManager.getMessageFromStorage(messagesStorage, topic.top_message);
+      if(message && !message.pFlags.is_outgoing) {
+        offsets.date = (message as Message.message).date;
+        offsets.id = getServerMessageId(topic.top_message);
+      }
+
+      offsets.topic = getServerMessageId(topic.id);
+    });
   }
 
   public getForumTopicsCache(peerId: PeerId) {
