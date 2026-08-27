@@ -29,6 +29,7 @@ import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components
 import {createSignal, JSX} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import getWebPageActionOnClick from '@components/chat/getWebPageActionOnClick';
+import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 
 /**
  * Top-level body component so solid-refresh can swap it on HMR. All
@@ -127,6 +128,14 @@ export default function createChatPinnedMessage(
   let wasPinnedIndex = 0;
   let wasPinnedMediaIndex = 0;
   let customButtonMiddleware: MiddlewareHelper | undefined;
+  /**
+   * Bumped by every `_setPinnedMessage` run. The function awaits content
+   * wrapping, and the debounce can have two runs in flight (first + last), so a
+   * slower earlier run must not commit its pin over the newer one.
+   */
+  let renderSeq = 0;
+  /** Pending `is-leaving` action-button removals, cleared on destroy. */
+  const leavingButtonTimeouts = new Set<number>();
 
   // Listeners — top-level for the lifetime of this plate, plus a transient
   // one for the wait-for-bottom-scroll flow.
@@ -179,14 +188,14 @@ export default function createChatPinnedMessage(
       icon: 'unpin',
       text: 'UnpinMessage',
       onClick: () => {
-        PopupElement.createPopup(PopupPinMessage, chat.peerId, pinnedMid, true);
+        PopupElement.createPopup(PopupPinMessage, chat.peerId, pinnedMid, true, undefined, chat.threadId);
       },
       verify: () => managers.appPeersManager.canPinMessage(chat.peerId)
     }, {
       icon: 'eyecross',
       text: 'Popup.Unpin.HideTitle',
       onClick: () => {
-        PopupElement.createPopup(PopupPinMessage, chat.peerId, 0, true);
+        PopupElement.createPopup(PopupPinMessage, chat.peerId, 0, true, undefined, chat.threadId);
       },
       verify: async() => !(await managers.appPeersManager.canPinMessage(chat.peerId))
     }],
@@ -203,7 +212,9 @@ export default function createChatPinnedMessage(
       PopupPinMessage,
       chat.peerId,
       canPin ? pinnedMid : 0,
-      true
+      true,
+      undefined,
+      chat.threadId
     );
   }, {listenerSetter});
 
@@ -245,12 +256,31 @@ export default function createChatPinnedMessage(
   // rootScope listeners
   // ────────────────────────────────────────────────────────────────────────
 
-  listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId}) => {
-    if(peerId !== chat.peerId) return;
-    if(userHidden) {
-      userHidden = false;
-      plateSetHidden(false);
-    }
+  /**
+   * Does a pin update touch the list this plate renders? A thread-scoped update
+   * (unpin-all inside a topic) names its topic; a plain pin/unpin update names
+   * none, so resolve it from the messages themselves — otherwise pinning in one
+   * topic would reset and refetch the plate of every other open topic.
+   */
+  function isOurPinUpdate(threadId: number | undefined, updatedMids: number[] | undefined) {
+    if(threadId) return threadId === chat.threadId;
+    if(!chat.threadId || !chat.isForum || !updatedMids?.length) return true;
+    return updatedMids.some((mid) => {
+      const message = chat.getMessage(mid);
+      // not cached — can't rule it out, so assume it's ours and refetch
+      return !message || getMessageThreadId(message, {isForum: true}) === chat.threadId;
+    });
+  }
+
+  // * `updatedMids`, not `mids`: the closure's own `mids` (this plate's pin list)
+  // * is reset below and must not be shadowed by the event payload
+  listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId, threadId, mids: updatedMids}) => {
+    if(peerId !== chat.peerId || !isOurPinUpdate(threadId, updatedMids)) return;
+    // A pin update clears the persisted hidden state (`resetPinnedMessagesCache`),
+    // so drop the local flag too — but leave the plate hidden: `_setPinnedMessage`
+    // reveals it once we know what to show. Revealing here would flash the
+    // previous pin, or an empty plate when the last one was just removed.
+    userHidden = false;
 
     // Anchor the post-update display at the pin the user was looking at
     // — `setCorrectIndex(0)` would derive the new pin from whatever bubble
@@ -258,7 +288,21 @@ export default function createChatPinnedMessage(
     // bottom-visible bubble usually has a mid greater than every remaining
     // pin, so the plate would snap to the newest pin (mids[0]) regardless
     // of where the user was browsing.
-    const anchorMid = pinnedMid;
+    //
+    // That only applies while the user is actually walking the pin list
+    // (`followPinnedMessage` sets `locked` / `waitForScrollBottom`, and the
+    // plate then deliberately shows an older pin than the viewport implies).
+    // Anywhere else the viewport is the truth — pinning a new message while
+    // sitting at the bottom of the chat must move the plate onto that new
+    // pin, not keep the previous one with a bumped counter.
+    // `waitForScrollBottom` is cleared by the first downward wheel/touch, so it
+    // can still be set while the user is already sitting at the end of the
+    // history (chat opened on an unread message just above the bottom). Reading
+    // the viewport keeps the invariant: at the end of the chat the plate shows
+    // the newest pin.
+    const scrollable = chat.bubbles.scrollable;
+    const atHistoryEnd = scrollable.loadedAll.bottom && scrollable.isScrolledToEnd;
+    const anchorMid = locked || (waitForScrollBottom && !atHistoryEnd) ? pinnedMid : 0;
 
     loadedTop = loadedBottom = false;
     pinnedIndex = -1;
@@ -282,8 +326,9 @@ export default function createChatPinnedMessage(
     }
   });
 
-  listenerSetter.add(rootScope)('peer_pinned_hidden', ({peerId}) => {
-    if(peerId !== chat.peerId) return;
+  listenerSetter.add(rootScope)('peer_pinned_hidden', ({peerId, threadId}) => {
+    // hiding is per-peer / per-topic, so it must match this plate's scope exactly
+    if(peerId !== chat.peerId || (threadId || undefined) !== (chat.threadId || undefined)) return;
     userHidden = true;
     plateSetHidden(true);
   });
@@ -298,6 +343,7 @@ export default function createChatPinnedMessage(
     const bound = log.bindPrefix('setCorrectIndex');
     if(isStatic) {
       debug && bound('not needed, static');
+      return;
     }
 
     if(locked || userHidden) {
@@ -328,6 +374,10 @@ export default function createChatPinnedMessage(
   function testMid(mid: number, lastScrollDirection?: number) {
     if(isStatic) return;
     if(userHidden) return;
+    // Same guard as `setCorrectIndex`: the list is loaded and there is nothing
+    // pinned here. Without it every direct `testMid` (the topbar fires one on
+    // each jump-to-message) falls through to another `getCurrentIndex` fetch.
+    if((loadedBottom || loadedTop) && !count) return;
 
     let currentIndex: number = mids.findIndex((_mid) => _mid <= mid);
     if(currentIndex !== -1 && !isNeededMore(currentIndex)) {
@@ -427,6 +477,12 @@ export default function createChatPinnedMessage(
       count = result.count;
 
       if(!count) {
+        // Nothing is pinned in this scope — drop the pin we were showing so
+        // the `pinnedMessages` getter stops reporting a phantom hint into
+        // `ChatSavedPosition`, which would re-seed (and re-flash) the plate
+        // on the next open of this peer/topic.
+        pinnedMid = 0;
+        pinnedIndex = -1;
         plateSetHidden(true);
       }
 
@@ -452,14 +508,16 @@ export default function createChatPinnedMessage(
     }
 
     loading = false;
+    // Clear before the calls below: either of them may start a fresh fetch and
+    // store its promise here — resetting afterwards would drop that reference
+    // and let the next caller kick off a duplicate request.
+    getCurrentIndexPromise = undefined;
 
     if(locked) {
       testMid(mid);
     } else if(correctAfter) {
       setCorrectIndex(0);
     }
-
-    getCurrentIndexPromise = undefined;
   }
 
   function setScrollDownListener() {
@@ -522,11 +580,16 @@ export default function createChatPinnedMessage(
     chat.setMessageId({lastMsgId: mid});
     (chat.setPeerPromise || Promise.resolve()).then(() => { // * debounce fast clicker
       handleFollowingPinnedMessage();
-      testMid(pinnedIndex >= (count - 1) ? pinnedMaxMid : mid - 1);
+      // wrap to the newest pin from the last one. `pinnedMaxMid` is still 0 when
+      // the plate was painted from a hint and nothing has been fetched yet —
+      // `testMid(0)` would land on the OLDEST pin, reversing the cycle.
+      const wrapMid = pinnedMaxMid || mids[0] || mid;
+      testMid(pinnedIndex >= (count - 1) ? wrapMid : mid - 1);
     });
   }
 
   async function _setPinnedMessage(skipReveal = false) {
+    const seq = ++renderSeq;
     if(count) {
       const message = chat.getMessage(pinnedMid);
 
@@ -558,6 +621,11 @@ export default function createChatPinnedMessage(
 
       await Promise.all(loadPromises);
 
+      // a newer run started while we were wrapping — it owns the plate now
+      if(seq !== renderSeq) {
+        return;
+      }
+
       setIsMedia(isMediaSet);
 
       // Flip the plate visible only after content (text + media) is in
@@ -582,6 +650,8 @@ export default function createChatPinnedMessage(
     } else {
       plateSetHidden(true);
       wasPinnedIndex = 0;
+      // nothing to open anymore — `topbar.openPinned(true)` reads this
+      delete plate.container.dataset.mid;
       updateActionButton();
     }
 
@@ -668,10 +738,12 @@ export default function createChatPinnedMessage(
 
     if(oldBtn) {
       oldBtn.classList.add('is-leaving');
-      setTimeout(() => {
+      const timeout = window.setTimeout(() => {
+        leavingButtonTimeouts.delete(timeout);
         oldBtn.remove();
         oldMiddleware?.destroy();
       }, 200);
+      leavingButtonTimeouts.add(timeout);
     }
   }
 
@@ -745,9 +817,16 @@ export default function createChatPinnedMessage(
     revealPrepared: () => {
       if(!prepared) return;
       prepared = false;
+      // the real list resolved to empty while we were preparing — nothing to show
+      if(!count) return;
       plateSetHidden(false);
     },
     destroy: () => {
+      // deferred work would otherwise run against destroyed rows / a detached plate
+      setPinnedMessageDebounced.clearTimeout();
+      setCorrectIndexThrottled.clear();
+      leavingButtonTimeouts.forEach((timeout) => window.clearTimeout(timeout));
+      leavingButtonTimeouts.clear();
       animatedMedia.destroy();
       animatedSubtitle.destroy();
       animatedCounter.destroy();

@@ -45,8 +45,9 @@ export type BroadcastEvents = {
 
   'emoji_status_change': void,
 
-  'peer_pinned_messages': {peerId: PeerId, mids?: number[], pinned?: boolean, unpinAll?: true},
-  'peer_pinned_hidden': {peerId: PeerId, maxId: number},
+  /** `threadId` scopes the change to one forum topic; absent = the whole peer. */
+  'peer_pinned_messages': {peerId: PeerId, threadId?: number, mids?: number[], pinned?: boolean, unpinAll?: true},
+  'peer_pinned_hidden': {peerId: PeerId, threadId?: number, maxId: number},
   'peer_typings': {peerId: PeerId, threadId?: number, typings: UserTyping[]},
   'peer_block': {peerId: PeerId, blocked?: boolean, blockedMyStoriesFrom?: boolean},
   'peer_title_edit': {peerId: PeerId, threadId?: number},

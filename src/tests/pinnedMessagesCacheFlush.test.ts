@@ -10,6 +10,11 @@ function makeManager() {
   const pushToState = vi.fn();
   const dispatchEvent = vi.fn();
   const manager = new AppMessagesManager();
+  const hiddenPinnedMessages: {[key: string]: number} = {
+    [PEER_ID]: 100,
+    [`${PEER_ID}_${TOPIC_ID}`]: 300,
+    [OTHER_PEER_ID]: 700
+  };
 
   Object.assign(manager as any, {
     pinnedMessages: {
@@ -25,13 +30,13 @@ function makeManager() {
       }
     },
     appStateManager: {
-      getState: () => Promise.resolve({hiddenPinnedMessages: {[PEER_ID]: 100}}),
+      getState: () => Promise.resolve({hiddenPinnedMessages}),
       pushToState
     },
     rootScope: {dispatchEvent}
   });
 
-  return {manager, dispatchEvent};
+  return {manager, dispatchEvent, hiddenPinnedMessages};
 }
 
 describe('pinned messages cache invalidation', () => {
@@ -61,6 +66,19 @@ describe('pinned messages cache invalidation', () => {
     expect(peerSearches['undefined'].inputMessagesFilterPinned).toBeUndefined();
     expect(peerSearches['undefined'].inputMessagesFilterPhotos).toBeDefined();
     expect(peerSearches[TOPIC_ID].inputMessagesFilterPinned).toBeUndefined();
+  });
+
+  // The plate in a topic stores "user hid the pinned bar" under
+  // `${peerId}_${threadId}`; a new pin must bring the bar back in every scope of
+  // that peer, not only the peer-wide one.
+  it('drops the hidden-plate state of the peer, thread-scoped ones included', async() => {
+    const {manager, hiddenPinnedMessages} = makeManager();
+
+    (manager as any).resetPinnedMessagesCache(PEER_ID, [200], true);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(Object.keys(hiddenPinnedMessages)).toEqual([`${OTHER_PEER_ID}`]);
   });
 
   it('leaves the cache alone for other peers when flushing storages', () => {

@@ -1584,7 +1584,7 @@ export default class ChatInput {
         if(originalChat.topbar.pinnedMessage) {
           originalChat.topbar.pinnedMessage.setHidden(true);
         }
-      });
+      }, this.chat.threadId);
     });
     // * pinned part end
 

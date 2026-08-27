@@ -231,7 +231,8 @@ export type State = {
   version: typeof STATE_VERSION,
   build: typeof BUILD,
   authState: AuthState,
-  hiddenPinnedMessages: {[peerId: PeerId]: number},
+  /** Key: `getPinnedMessagesKey(peerId, threadId)` — thread-scoped in a forum topic. */
+  hiddenPinnedMessages: {[peerIdOrThreadKey: string]: number},
   hideChatJoinRequests: {[peerId: PeerId]: number},
   botConnectionReviews: BotConnectionReview[],
   // stateId?: number, // ! DEPRECATED

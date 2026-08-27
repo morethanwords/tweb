@@ -1409,7 +1409,12 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isPinnedMessagesNeeded() {
-    return this.type === ChatType.Chat || (this.isForum && this.type !== ChatType.Static && this.type !== ChatType.Logs);
+    // A forum topic (and the view-as-messages mode) is a `Chat` like any other,
+    // so the type alone decides. The old `|| this.isForum` also matched a
+    // forum's Pinned / Scheduled / Search tabs — which grew `Static` / `Logs`
+    // exclusions one at a time and still put a pinned plate inside the forum's
+    // own pinned-messages list, where no other peer has one.
+    return this.type === ChatType.Chat;
   }
 
   public isForwardOfForward(message: Message) {

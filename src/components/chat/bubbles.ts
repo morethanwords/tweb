@@ -10655,6 +10655,8 @@ export default class ChatBubbles {
       return this.managers.acknowledged.appMessagesManager.getHistory({
         peerId: this.peerId,
         inputFilter: {_: 'inputMessagesFilterPinned'},
+        // thread-scoped in a forum topic, like `getPinnedMessagesMaxId` above
+        threadId: this.chat.threadId,
         offsetPeerId,
         offsetId,
         limit,

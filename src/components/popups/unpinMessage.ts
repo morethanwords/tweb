@@ -5,12 +5,19 @@ import {FormatterArguments, LangPackKey} from '@lib/langPack';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export default class PopupPinMessage {
-  constructor(private peerId: PeerId, private mid: number, private unpin?: true, private onConfirm?: () => void) {
+  constructor(
+    private peerId: PeerId,
+    private mid: number,
+    private unpin?: true,
+    private onConfirm?: () => void,
+    /** Forum topic the action is scoped to — the pinned list there is per-topic. */
+    private threadId?: number
+  ) {
     this.construct();
   }
 
   private async construct() {
-    const {peerId, mid, unpin, onConfirm} = this;
+    const {peerId, mid, unpin, onConfirm, threadId} = this;
     let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments;
     const buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
@@ -23,9 +30,9 @@ export default class PopupPinMessage {
         let promise: Promise<any>;
         if(unpin && !mid) {
           if(canUnpin) {
-            promise = managers.appMessagesManager.unpinAllMessages(peerId);
+            promise = managers.appMessagesManager.unpinAllMessages(peerId, threadId);
           } else {
-            promise = managers.appMessagesManager.hidePinnedMessages(peerId);
+            promise = managers.appMessagesManager.hidePinnedMessages(peerId, threadId);
           }
         } else {
           promise = managers.appMessagesManager.updatePinnedMessage(peerId, mid, unpin, silent, oneSide);
@@ -43,7 +50,7 @@ export default class PopupPinMessage {
         if(canUnpin) {
           title = 'Popup.Unpin.AllTitle';
           description = 'Chat.UnpinAllMessagesConfirmation';
-          descriptionArgs = ['' + ((await managers.appMessagesManager.getPinnedMessagesCount(peerId)) || 1)];
+          descriptionArgs = ['' + ((await managers.appMessagesManager.getPinnedMessagesCount(peerId, threadId)) || 1)];
         } else {
           title = 'Popup.Unpin.HideTitle';
           description = 'Popup.Unpin.HideDescription';

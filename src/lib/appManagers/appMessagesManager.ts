@@ -62,6 +62,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import {BroadcastEvents} from '@lib/rootScope';
 import setBooleanFlag from '@helpers/object/setBooleanFlag';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import getPinnedMessagesKey from '@appManagers/utils/messages/getPinnedMessagesKey';
 import callbackify from '@helpers/callbackify';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
@@ -6153,20 +6154,16 @@ export class AppMessagesManager extends AppManager {
     this.dialogsStorage.flushForumTopicsCache(peerId);
   }
 
-  public hidePinnedMessages(peerId: PeerId) {
+  public hidePinnedMessages(peerId: PeerId, threadId?: number) {
     return Promise.all([
       this.appStateManager.getState(),
-      this.getPinnedMessage(peerId)
+      this.getPinnedMessage(peerId, threadId)
     ])
     .then(([state, pinned]) => {
-      state.hiddenPinnedMessages[peerId] = pinned.maxId;
+      state.hiddenPinnedMessages[getPinnedMessagesKey(peerId, threadId)] = pinned.maxId;
       this.appStateManager.pushToState('hiddenPinnedMessages', state.hiddenPinnedMessages);
-      this.rootScope.dispatchEvent('peer_pinned_hidden', {peerId, maxId: pinned.maxId});
+      this.rootScope.dispatchEvent('peer_pinned_hidden', {peerId, threadId, maxId: pinned.maxId});
     });
-  }
-
-  public getPinnedMessagesKey(peerId: PeerId, threadId?: number) {
-    return peerId + (threadId ? '_' + threadId : '');
   }
 
   // Every cached pin of the peer, thread-scoped entries included: the plate in a
@@ -6182,9 +6179,11 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getPinnedMessage(peerId: PeerId, threadId?: number) {
-    const p = this.pinnedMessages[this.getPinnedMessagesKey(peerId, threadId)] ??= {};
+    const p = this.pinnedMessages[getPinnedMessagesKey(peerId, threadId)] ??= {};
     if(p.promise) return p.promise;
-    else if(p.maxId) return Promise.resolve(p);
+    // `count` alone settles it: a peer/thread with nothing pinned has no `maxId`
+    // to short-circuit on, and would otherwise re-run this on every call.
+    else if(p.maxId || p.count !== undefined) return Promise.resolve(p);
 
     return p.promise = Promise.resolve(this.getHistory({
       peerId,
@@ -6202,11 +6201,11 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getPinnedMessagesCount(peerId: PeerId, threadId?: number) {
-    return this.pinnedMessages[this.getPinnedMessagesKey(peerId, threadId)]?.count;
+    return this.pinnedMessages[getPinnedMessagesKey(peerId, threadId)]?.count;
   }
 
   public getPinnedMessagesMaxId(peerId: PeerId, threadId?: number) {
-    return this.pinnedMessages[this.getPinnedMessagesKey(peerId, threadId)]?.maxId;
+    return this.pinnedMessages[getPinnedMessagesKey(peerId, threadId)]?.maxId;
   }
 
   public updatePinnedMessage(peerId: PeerId, mid: number, unpin?: boolean, silent?: boolean, pm_oneside?: boolean) {
@@ -6229,9 +6228,10 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public unpinAllMessages(peerId: PeerId): Promise<boolean> {
+  public unpinAllMessages(peerId: PeerId, threadId?: number): Promise<boolean> {
     return this.apiManager.invokeApiSingle('messages.unpinAllMessages', {
-      peer: this.appPeersManager.getInputPeerById(peerId)
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      top_msg_id: threadId ? getServerMessageId(threadId) : undefined
     }).then((affectedHistory) => {
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePts',
@@ -6241,19 +6241,28 @@ export class AppMessagesManager extends AppManager {
 
       if(!affectedHistory.offset) {
         const storage = this.getHistoryMessagesStorage(peerId);
+        const isForum = threadId ? this.appPeersManager.isForum(peerId) : false;
+        const isBotforum = threadId ? this.appPeersManager.isBotforum(peerId) : false;
         storage.forEach((message) => {
-          if((message as Message.message).pFlags.pinned) {
-            delete (message as Message.message).pFlags.pinned;
+          if(!(message as Message.message).pFlags.pinned) {
+            return;
           }
+
+          // the request only unpinned this thread — leave the other topics' pins
+          if(threadId && getMessageThreadId(message, {isForum, isBotforum}) !== threadId) {
+            return;
+          }
+
+          delete (message as Message.message).pFlags.pinned;
         });
 
-        this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, unpinAll: true});
+        this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, threadId, unpinAll: true});
         this.flushPinnedMessagesCache(peerId);
 
         return true;
       }
 
-      return this.unpinAllMessages(peerId);
+      return this.unpinAllMessages(peerId, threadId);
     });
   }
 
@@ -12279,7 +12288,14 @@ export class AppMessagesManager extends AppManager {
       }
     }
     this.appStateManager.getState().then((state) => {
-      delete state.hiddenPinnedMessages[peerId];
+      // thread-scoped entries included, same reasoning as `flushPinnedMessagesCache`:
+      // the plate in a topic keys its hidden state under `${peerId}_${threadId}`
+      for(const key in state.hiddenPinnedMessages) {
+        if(+key === peerId || key.startsWith(peerId + '_')) {
+          delete state.hiddenPinnedMessages[key];
+        }
+      }
+
       this.appStateManager.pushToState('hiddenPinnedMessages', state.hiddenPinnedMessages);
       this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});
     });
