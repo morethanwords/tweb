@@ -94,6 +94,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected navigationItem: NavigationItem;
 
   protected listenerSetter: ListenerSetter;
+  /** Own setter so re-running `setButtons` can drop the previous set's handlers */
+  protected buttonsListenerSetter: ListenerSetter;
 
   protected confirmShortcutIsSendShortcut: boolean;
   protected btnConfirmOnEnter: HTMLElement;
@@ -106,11 +108,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   protected buttons: Array<PopupButton>;
 
-  protected middlewareHelper: MiddlewareHelper;
   /**
-   * Gets destroyed after timeout
+   * The popup's RENDER lifetime: destroyed only once the popup has left the DOM, so the Solid
+   * roots its content is built from outlive the hide transition
    */
-  protected lateMiddlewareHelper: MiddlewareHelper;
+  protected middlewareHelper: MiddlewareHelper;
   protected destroyed: boolean;
   protected shown: boolean;
 
@@ -146,8 +148,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     this.isConfirmationNeededOnClose = options.isConfirmationNeededOnClose;
     this.middlewareHelper = getMiddleware();
-    this.lateMiddlewareHelper = getMiddleware();
     this.listenerSetter = new ListenerSetter();
+    this.buttonsListenerSetter = new ListenerSetter();
     this.managers = PopupElement.MANAGERS;
 
     this.confirmShortcutIsSendShortcut = options.confirmShortcutIsSendShortcut;
@@ -251,6 +253,9 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.buttonsEl = undefined;
     }
 
+    // * the outgoing buttons are gone from the DOM - their handlers must not outlive them
+    this.buttonsListenerSetter.removeAll();
+
     if(!buttons?.length) {
       return;
     }
@@ -299,7 +304,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         }
 
         this.hide();
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: this.buttonsListenerSetter});
 
       return b.element = button;
     });
@@ -419,8 +424,10 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.dispatchEvent<PopupListeners>('close');
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
+    // * stop reacting to events right away, but NOT rendering - that is `middlewareHelper`'s
+    // * lifetime and it has to outlive the hide transition (see below)
     this.listenerSetter.removeAll();
-    this.middlewareHelper.destroy();
+    this.buttonsListenerSetter.removeAll();
     MarkupTooltip.getInstance().hide();
 
     if(this.shown && !this.withoutOverlay) {
@@ -439,8 +446,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.element.remove();
       this.dispatchEvent<PopupListeners>('closeAfterTimeout');
       this.cleanup();
+      // * the popup is out of the DOM only now - destroying the middleware any earlier disposes
+      // * every Solid root hanging off it (rows, avatars, `wrapSolidComponent`) mid-animation,
+      // * while `.hiding` still keeps the popup on screen
+      this.middlewareHelper.destroy();
       this.scrollable?.destroy();
-      this.lateMiddlewareHelper.destroy();
 
       if(this.shown && !this.withoutOverlay) {
         animationIntersector.checkAnimations2(false);

@@ -2,6 +2,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import ListenerSetter from '@helpers/listenerSetter';
+import type {Middleware} from '@helpers/middleware';
 import safeAssign from '@helpers/object/safeAssign';
 import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import CheckboxField from '@components/checkboxField';
@@ -38,6 +39,8 @@ export type CheckboxFieldsField = {
 export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFieldsField> {
   public fields: Array<K>;
   protected listenerSetter: ListenerSetter;
+  /** The rows' RENDER lifetime, when the owner has one - see the disposal note in `createField` */
+  protected middleware: Middleware;
   protected asRestrictions: boolean;
   protected round: boolean;
   protected onRowCreation: (row: CheckboxFieldsRow, info: K) => void;
@@ -48,6 +51,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
   constructor(options: {
     fields: Array<K>,
     listenerSetter: ListenerSetter,
+    middleware?: Middleware,
     asRestrictions?: boolean,
     round?: boolean,
     rightButtonIcon?: Icon,
@@ -201,7 +205,13 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       disposed = true;
       disposeRoot();
     };
-    this.listenerSetter.addCleanup(dispose);
+    // same rule as `rowTsxController`: a Solid root follows the render lifetime, so prefer the
+    // middleware and fall back to the listenerSetter only when the owner has none
+    if(this.middleware) {
+      this.middleware.onDestroy(dispose);
+    } else {
+      this.listenerSetter.addCleanup(dispose);
+    }
 
     const row = info.row = {
       container: rowElement as HTMLElement,

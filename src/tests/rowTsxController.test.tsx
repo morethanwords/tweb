@@ -254,6 +254,20 @@ describe('rowTsxController', () => {
     expect(rippleCleanup).toHaveBeenCalledTimes(1);
   });
 
+  it('follows the middleware, not the listener owner, when both are given', () => {
+    const listenerSetter = new ListenerSetter();
+    const middleware = getMiddleware();
+    mountController({title: 'Deferred', listenerSetter, middleware: middleware.get()});
+
+    // an owner can stop listening long before it is done rendering (a popup drops its
+    // listeners the moment it starts closing, 250ms before it leaves the DOM)
+    listenerSetter.removeAll();
+    expect(rippleCleanup).not.toHaveBeenCalled();
+
+    middleware.destroy();
+    expect(rippleCleanup).toHaveBeenCalledTimes(1);
+  });
+
   it('renders a search web page result as a Solid link with external media', () => {
     const middleware = getMiddleware();
     const media = document.createElement('div');

@@ -372,7 +372,7 @@ export default class PopupNewMedia extends PopupElement {
         draft = wrapDraft(this.wasDraft, {
           wrappingForPeerId: this.chat.peerId,
           animationGroup: this.animationGroup,
-          middleware: this.lateMiddlewareHelper.get()
+          middleware: this.middlewareHelper.get()
         });
 
         this.chat.input.messageInputField.value = '';
@@ -380,7 +380,7 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     createRoot((dispose) => {
-      this.lateMiddlewareHelper.onDestroy(dispose);
+      this.middlewareHelper.onDestroy(dispose);
 
       const children = InputFieldMessage({
         maxLength: this.captionLengthMax,
@@ -1787,7 +1787,7 @@ export default class PopupNewMedia extends PopupElement {
     // do not pass these properties to worker
     defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'objectURLs', 'itemDiv', 'mediaSpoiler']);
 
-    params.middlewareHelper = this.lateMiddlewareHelper.get().create();
+    params.middlewareHelper = this.middlewareHelper.get().create();
     params.objectURLs = new ObjectURLScope();
     params.itemDiv = itemDiv;
 
@@ -1872,7 +1872,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private starsState = createRoot((dispose) => {
-    this.lateMiddlewareHelper.get().onDestroy(() => void dispose());
+    this.middlewareHelper.get().onDestroy(() => void dispose());
 
     const [store, set] = createStore({
       hasMessage: false,

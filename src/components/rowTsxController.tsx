@@ -327,11 +327,15 @@ const mountRowController = <T extends SliderSuperTabEventableConstructable = any
   parts.subtitleRight = getPart('row-subtitle-right');
   parts.midtitle = getPart('row-midtitle');
 
-  const removeListenerCleanup = options.listenerSetter?.addCleanup(dispose);
-  options.middleware?.onDestroy(() => {
-    removeListenerCleanup?.();
-    dispose();
-  });
+  // a Solid root is a RENDER lifetime, not an event-listener one: when the caller owns a
+  // middleware, that owns the disposal. A `listenerSetter` is only the fallback for callers
+  // without one - it can stop listening well before its owner is done rendering (a popup drops
+  // its listeners the moment it starts closing, 250ms before it leaves the DOM)
+  if(options.middleware) {
+    options.middleware.onDestroy(dispose);
+  } else {
+    options.listenerSetter?.addCleanup(dispose);
+  }
 
   if(options.withCheckboxSubtitle && checkboxField && !isToggle) {
     const [enabledKey, disabledKey] = options.checkboxKeys || ['Checkbox.Enabled', 'Checkbox.Disabled'];

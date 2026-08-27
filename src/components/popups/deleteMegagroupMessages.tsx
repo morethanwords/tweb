@@ -498,6 +498,7 @@ export default class PopupDeleteMegagroupMessages extends PopupElement {
     const checkboxFields = new CheckboxFields({
       fields,
       listenerSetter: this.listenerSetter,
+      middleware: this.middlewareHelper.get(),
       round: true,
       onRowCreation: (row, info) => {
         if(!info.nestedTo || !info.peerRow) {
