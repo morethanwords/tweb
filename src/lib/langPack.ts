@@ -130,18 +130,30 @@ namespace I18n {
   function updateAmPm() {
     if(timeFormat === 'h12') {
       try {
-        const dateTimeFormat = getDateTimeFormat({hour: 'numeric', minute: 'numeric', hour12: true});
+        // * probe the same 2-digit skeleton update() renders — day period position and separator are skeleton-dependent (am: leading in h:mm, trailing in hh:mm)
+        const dateTimeFormat = getDateTimeFormat({hour: '2-digit', minute: '2-digit', hour12: true});
         const date = new Date();
         date.setHours(0);
-        const amText = dateTimeFormat.format(date);
-        amPmCache.am = amText.split(/\s/)[1];
+        const amParts = dateTimeFormat.formatToParts(date);
+        const amIndex = amParts.findIndex((part) => part.type === 'dayPeriod');
+        if(amIndex === -1) {
+          console.error('cannot get am/pm', 'no dayPeriod part');
+          Object.assign(amPmCache, AM_PM_FALLBACK);
+          return;
+        }
+
         date.setHours(12);
-        const pmText = dateTimeFormat.format(date);
-        amPmCache.pm = pmText.split(/\s/)[1];
+        // * one formatter has one pattern skeleton, so the pm day period sits at the same index
+        amPmCache.am = normalizeAmPmSpaces(amParts[amIndex].value);
+        amPmCache.pm = normalizeAmPmSpaces(dateTimeFormat.formatToParts(date)[amIndex].value);
+
+        // * some locales put the day period before the time, with (ko: 오전 12:34) or without (zh: 上午12:34) a separator
+        amPmCache.leading = amIndex === 0;
+        const separatorPart = amParts[amIndex + (amPmCache.leading ? 1 : -1)];
+        amPmCache.separator = separatorPart?.type === 'literal' ? normalizeAmPmSpaces(separatorPart.value) : '';
       } catch(err) {
         console.error('cannot get am/pm', err);
-        amPmCache.am = 'AM';
-        amPmCache.pm = 'PM';
+        Object.assign(amPmCache, AM_PM_FALLBACK);
       }
     }
   }
@@ -231,8 +243,16 @@ namespace I18n {
   }
 
   export function getLangPackAndApply(langCode: string, web?: boolean, ignoreCache?: boolean) {
+    const previousLangCode = lastRequestedLangCode;
     setLangCode(langCode);
-    return loadLangPack(langCode, web, ignoreCache).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
+    return loadLangPack(langCode, web, ignoreCache).catch((err) => {
+      // * roll back so date formatters aren't built from a language that was never applied
+      if(previousLangCode && lastRequestedLangCode === langCode) {
+        setLangCode(previousLangCode);
+      }
+
+      throw err;
+    }).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
       let strings: LangPackString[] = [];
 
       const pushLocal = () => [localLangPack1, localLangPack2].forEach((l) => {
@@ -599,7 +619,10 @@ namespace I18n {
     return dateTimeFormat;
   }
 
-  export const amPmCache = {am: 'AM', pm: 'PM'};
+  const AM_PM_FALLBACK = {am: 'AM', pm: 'PM', leading: false, separator: ' '};
+  // * ICU 72+ emits U+202F/U+00A0 literals in formatToParts where engines normalize format() output to a plain space
+  const normalizeAmPmSpaces = (value: string) => value.replace(/[\u00a0\u202f]/g, ' ');
+  export const amPmCache = {...AM_PM_FALLBACK};
   export type IntlDateElementOptions = IntlElementBaseOptions & {
     date?: Date,
     options: Intl.DateTimeFormatOptions
@@ -629,7 +652,10 @@ namespace I18n {
         // }
 
         if(timeFormat === 'h12') {
-          text += ' ' + (hours < 12 ? amPmCache.am : amPmCache.pm);
+          const dayPeriod = hours < 12 ? amPmCache.am : amPmCache.pm;
+          text = amPmCache.leading ?
+            dayPeriod + amPmCache.separator + text :
+            text + amPmCache.separator + dayPeriod;
         }
       } else {
         // * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
