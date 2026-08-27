@@ -27,6 +27,7 @@ import {openSavedMusicTab} from '@components/savedMusicActions';
 import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';
 import Button from '@components/buttonTsx';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
+import classNames from '@helpers/string/classNames';
 
 export type ChatAudioController = {
   container: HTMLElement,
@@ -71,6 +72,10 @@ export default function createChatAudio(
   };
 
   const [repeatIcon, setRepeatIcon] = createSignal<Icon>('audio_repeat');
+
+  // A track picked in the music search popup plays off a message that only ever existed inside that
+  // popup — there is nothing to open, so the plate's content stops being a button altogether.
+  const [inert, setInert] = createSignal(false);
 
   // Refs to JSX-rendered buttons that need imperative classList toggles or
   // disability state changes after the initial render.
@@ -137,7 +142,7 @@ export default function createChatAudio(
           >
             {forwardIcon.element}
           </Button>
-          <TopbarPlate.Content class="hover-effect" ripple>
+          <TopbarPlate.Content class={classNames('hover-effect', inert() && 'pinned-audio-content-inert')} ripple>
             <TopbarPlate.Title>{title()}</TopbarPlate.Title>
             <TopbarPlate.Subtitle>
               <span class="pinned-audio-time">{timeText()}</span>
@@ -180,7 +185,7 @@ export default function createChatAudio(
   // Click on the central content (title/subtitle) → open the source chat /
   // saved music tab. Clicks anywhere else on the plate do nothing.
   attachClickEvent(plate.container, (e) => {
-    if(!findUpClassName(e.target, 'pinned-container-content')) {
+    if(inert() || !findUpClassName(e.target, 'pinned-container-content')) {
       return;
     }
 
@@ -227,7 +232,7 @@ export default function createChatAudio(
     repeatEl.classList.toggle('active', playbackParams.loop || playbackParams.round);
   };
 
-  const onMediaPlay = ({doc, message, media, playbackParams, isSavedMusic, isSlotted}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
+  const onMediaPlay = ({doc, message, media, playbackParams, isSavedMusic, isLocal, isSlotted}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
     let titleVal: JSX.Element, subtitleVal: JSX.Element;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
@@ -262,6 +267,10 @@ export default function createChatAudio(
     } else {
       delete plate.container.dataset.savedMusicDocId;
     }
+
+    // The saved-music tab is a real destination even for a locally built message; anything else
+    // local (the music picker) has none.
+    setInert(!isSavedMusic && isLocal);
 
     setTitle(titleVal);
 

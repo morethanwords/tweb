@@ -819,6 +819,11 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       media: playingMedia,
       isSavedMusic: Boolean(message.pFlags.fakeForSavedMusic),
       /**
+       * The message was built only to render a row (the music picker's preview list) and lives
+       * nowhere else — there is no chat message behind it to open.
+       */
+      isLocal: Boolean(message.pFlags.local),
+      /**
        * True when the media was added with a non-zero `slot` (e.g. poll
        * description / explanation audio). Such media is played in isolation:
        * its list loader is empty, so next/previous navigation and looping

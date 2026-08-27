@@ -578,6 +578,13 @@
     padding-inline: .5rem .25rem;
     border-radius: .5rem;
     cursor: pointer;
+
+    // Nothing to open behind this track (see `inert` in chat/audio.tsx) — handing the events back
+    // to the wrapper drops the hover tint, the ripple and the pointer cursor in one go.
+    &-inert {
+      pointer-events: none;
+      cursor: default;
+    }
   }
 
   &-progress {

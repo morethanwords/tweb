@@ -15,7 +15,6 @@ import {i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {BotInlineResult, DocumentAttribute} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
-import generateQId from '@appManagers/utils/inlineBots/generateQId';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -58,7 +57,6 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
     const [query, setQuery] = createSignal('');
     const [globalLoading, setGlobalLoading] = createSignal(false);
     const [globalResults, setGlobalResults] = createSignal<BotInlineResult[]>([]);
-    const [queryId, setQueryId] = createSignal<string | number | undefined>();
     const [botId, setBotId] = createSignal<BotId | null>(null);
 
     const lazyLoadQueue = new LazyLoadQueue();
@@ -85,8 +83,10 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
       return page.documents;
     });
 
-    // A playlist track is a plain document, not an inline result — send it the same way forwarding
-    // one out of the saved-music tab does.
+    // Every track — playlist or search hit — goes out as the plain document it is, the same way
+    // forwarding one out of the saved-music tab does. A search hit is deliberately NOT sent as an
+    // inline result: that would stamp the message with a "via @bot" line, which the music picker
+    // must never do (tdesktop's music attach box sends the same inputMediaDocument for both).
     const sendDocument = (doc: MyDocument) => withPayment((sendingParams) => {
       managers.appMessagesManager.sendOther({
         ...sendingParams,
@@ -121,7 +121,6 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
         const botResults = await managers.appInlineBotsManager.getInlineResults(chat.peerId, bid, q, '');
         if(!middleware() || myRun !== runId) return;
 
-        setQueryId(botResults.query_id);
         setGlobalResults(botResults.results.filter((r) => {
           return r._ === 'botInlineMediaResult' && (r.document as MyDocument | undefined)?.type === 'audio';
         }));
@@ -133,24 +132,13 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
       }
     };
 
-    const sendInlineResult = (item: BotInlineResult) => withPayment((sendingParams) => {
-      const qid = queryId();
-      const bid = botId();
-      if(!bid || qid === undefined) return;
-
-      managers.appInlineBotsManager.sendInlineResult(chat.peerId, bid, generateQId(qid, item.id), {
-        ...sendingParams,
-        clearDraft: false
-      });
-    });
-
     const globalTracks = createMemo<Track[]>(() => globalResults().map((item) => {
       const doc = (item as BotInlineResult.botInlineMediaResult).document as MyDocument;
       return {
         key: 'global-' + item.id,
         doc,
         searchText: trackSearchText(doc, item.title, item.description),
-        send: () => sendInlineResult(item)
+        send: () => sendDocument(doc)
       };
     }));
 
