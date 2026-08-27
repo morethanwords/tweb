@@ -636,7 +636,8 @@ const Icons = {
   filter_circle: 'eb7a',
   message_text: 'eb7b',
   replace_squares: 'eb7c',
-  table_filled: 'eb7d'
+  table_filled: 'eb7d',
+  blockquote: 'eb7e'
 };
 
 export default Icons;

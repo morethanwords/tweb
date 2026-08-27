@@ -71,7 +71,7 @@ export default class MarkupTooltip {
       'strikethrough',
       'monospace',
       'spoiler',
-      ['quote', 'quote', 'quote_filled'],
+      'quote',
       ['date', 'calendar'],
       'link'
     ];
