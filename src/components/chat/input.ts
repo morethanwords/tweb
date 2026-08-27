@@ -3988,19 +3988,20 @@ export default class ChatInput {
 
     if(this.willSendWebPage) {
       const lastUrl = this.lastUrl;
-      let needReturn = false;
-      if(this.helperType) {
-        // if(this.helperFunc) {
-        await this.helperFunc();
-        // }
+      const needReturn = !!this.helperType;
 
-        needReturn = true;
+      // * has to be dropped BEFORE restoring the previous helper, otherwise
+      // * setTopInfo would ignore it and the preview would stay in the plate
+      this.willSendWebPage = null;
+
+      if(needReturn) {
+        await this.helperFunc();
+        this.willSendWebPage = null; // * in case a new one has been fetched meanwhile
       }
 
       // * restore values
       this.lastUrl = lastUrl;
       this.noWebPage = true;
-      this.willSendWebPage = null;
 
       if(needReturn) return;
     }
