@@ -40,6 +40,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
   public offscreen: boolean;
   public rendererId: number;
+  private selfRef: WeakRef<CustomEmojiRenderer>; // its own entry in emojiRenderers, and the "am I registered" flag
   public lastSentOffsets: Map<DocId, number[]>;
   private lastSentSize: {width: number, height: number};
   private lastSentSuspended: boolean;
@@ -117,7 +118,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     // * assigning to this.connectedCallback never stopped the browser from calling it again. A renderer
     // * that got destroyed and then re-inserted used to re-register here with its destroy() already
     // * nulled out, which left it in emojiRenderers with no way to ever be reclaimed - keep it out.
-    if(this.destroyed || emojiRenderers.has(this)) {
+    if(this.destroyed || this.selfRef) {
       return;
     }
 
@@ -127,7 +128,9 @@ export class CustomEmojiRendererElement extends HTMLElement {
     if(observeElement) {
       observeResize(observeElement, this.onResizeEntry);
     }
-    emojiRenderers.add(this);
+    const ref = this.selfRef = new WeakRef(this);
+    emojiRenderers.add(ref);
+    collectedRenderers.register(this, () => emojiRenderers.delete(ref), this);
   }
 
   public disconnectedCallback() {
@@ -170,7 +173,12 @@ export class CustomEmojiRendererElement extends HTMLElement {
       offscreenRenderers.delete(this.rendererId);
     }
 
-    emojiRenderers.delete(this);
+    if(this.selfRef) {
+      emojiRenderers.delete(this.selfRef);
+      this.selfRef = undefined;
+    }
+
+    collectedRenderers.unregister(this); // off both registries already - do not let a finalizer re-run
     this.playersSynced.clear();
     this.middlewareHelper?.clean();
     this.customEmojis.clear();
@@ -588,7 +596,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       return;
     }
 
-    if(!renderEmojis(new Set([this]))) {
+    if(!renderEmojis([this])) {
       if(this.offscreen) {
         this.sendCompositor('clearRenderer');
       } else {
@@ -1114,7 +1122,9 @@ export class CustomEmojiRendererElement extends HTMLElement {
     renderer.offscreen = SHOULD_RENDER_OFFSCREEN && !options.isSelectable;
     if(renderer.offscreen) {
       renderer.rendererId = ++nextRendererId;
-      offscreenRenderers.set(renderer.rendererId, renderer);
+      const rendererId = renderer.rendererId;
+      offscreenRenderers.set(rendererId, new WeakRef(renderer));
+      collectedRenderers.register(renderer, () => offscreenRenderers.delete(rendererId), renderer);
       const dpr = renderer.canvas.dpr = getLottiePixelRatio(renderer.size.width, renderer.size.height);
       ensureCompositor();
       renderer.canvas.dataset.offscreen = '1';
@@ -1202,19 +1212,53 @@ const hasRasterThumbPlaceholder = (elements: CustomEmojiElements) => {
 };
 
 let emojiRenderInterval: number;
-const emojiRenderers: Set<CustomEmojiRenderer> = new Set();
+
+// * These registries must NOT own renderers. A renderer whose owner dropped it without calling
+// * destroy() used to sit here for the tab's lifetime, holding its canvas, its custom-emoji map and
+// * its players - a heap snapshot of a day-old tab charged 9 211 detached nodes to this set. The
+// * tracked object IS the element, so a weak ref is enough: whoever legitimately keeps it - the DOM,
+// * or an owner holding a detached renderer to re-insert later - stays its only owner, and one that
+// * was dropped for good is collected and swept from here.
+const emojiRenderers: Set<WeakRef<CustomEmojiRenderer>> = new Set();
+const collectedRenderers = new FinalizationRegistry<() => void>((release) => release());
+
+// * Deref + prune in one pass; never holds a strong ref longer than the caller's loop
+const liveEmojiRenderers = () => {
+  const live: CustomEmojiRenderer[] = [];
+  for(const ref of emojiRenderers) {
+    const renderer = ref.deref();
+    if(!renderer) {
+      emojiRenderers.delete(ref);
+      continue;
+    }
+
+    live.push(renderer);
+  }
+
+  return live;
+};
 const syncedPlayers: Map<string, SyncedPlayer> = new Map();
 const syncedPlayersFrames: Map<LottiePlayer | HTMLVideoElement, CustomEmojiFrame> = new Map();
 const elementsFadeInStartTimes: WeakMap<CustomEmojiElements, number> = new WeakMap();
 
 let nextRendererId = 0;
-const offscreenRenderers: Map<number, CustomEmojiRendererElement> = new Map();
+const offscreenRenderers: Map<number, WeakRef<CustomEmojiRendererElement>> = new Map();
+
+const getOffscreenRenderer = (rendererId: number) => {
+  const ref = offscreenRenderers.get(rendererId);
+  const renderer = ref?.deref();
+  if(ref && !renderer) {
+    offscreenRenderers.delete(rendererId);
+  }
+
+  return renderer;
+};
 
 // Placeholder-clear parity with the legacy render() path: clear the layout children once
 // the compositor reports the group is fully faded in (fired immediately when the fade was
 // skipped/disabled), so the thumb never lingers past the moment the canvas fully covers it.
 compositorMessagePort.addEventListener('groupPainted', ({rendererId, groupId}) => {
-  const renderer = offscreenRenderers.get(rendererId);
+  const renderer = getOffscreenRenderer(rendererId);
   const elements = renderer?.customEmojis.get(groupId);
   if(!elements || !renderer.isConnected || renderer.clearedElements.has(elements)) {
     return;
@@ -1225,8 +1269,9 @@ compositorMessagePort.addEventListener('groupPainted', ({rendererId, groupId}) =
 
 // CSS-var resolution is not reactive to theme swaps - re-resolve and re-ship the color.
 rootScope.addEventListener('theme_changed', () => {
-  for(const renderer of offscreenRenderers.values()) {
-    const property = renderer.textColor();
+  for(const rendererId of Array.from(offscreenRenderers.keys())) {
+    const renderer = getOffscreenRenderer(rendererId);
+    const property = renderer?.textColor();
     if(!property) {
       continue;
     }
@@ -1237,9 +1282,8 @@ rootScope.addEventListener('theme_changed', () => {
   }
 });
 
-export const renderEmojis = (renderers = emojiRenderers) => {
-  const r = Array.from(renderers);
-  const t = r.filter((r) => r.isConnected && r.checkForAnyFrame() && !r.ignoreSettingDimensions);
+export const renderEmojis = (renderers: CustomEmojiRenderer[] = liveEmojiRenderers()) => {
+  const t = renderers.filter((r) => r.isConnected && r.checkForAnyFrame() && !r.ignoreSettingDimensions);
   if(!t.length) {
     return false;
   }

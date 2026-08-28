@@ -99,7 +99,11 @@ export default async function memoryReport() {
 
   const renderers: Counted = {total: 0, detached: 0};
   let rendererBytes = 0, rendererDetachedBytes = 0;
-  ctx.emojiRenderers?.forEach((renderer: any) => {
+  // * The registry holds WeakRefs so it cannot keep a dropped renderer alive; a ref that no longer
+  // * derefs is one already collected, which is exactly the healthy case and counts as nothing
+  ctx.emojiRenderers?.forEach((entry: any) => {
+    const renderer = entry?.deref ? entry.deref() : entry;
+    if(!renderer) return;
     ++renderers.total;
     const bytes = canvasBytes(renderer.canvas);
     rendererBytes += bytes;
