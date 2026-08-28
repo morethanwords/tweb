@@ -152,9 +152,12 @@ export default class PeerProfileAvatars {
     // not also fold/unfold, nor run checkScrollTop below, which would yank a
     // scrolled profile back to the top. Deriving that from the overlay beats
     // listing the classes: the list and the CSS opt-ins drifted apart twice.
+    // The overlay ITSELF is never a target while it stays pointer-events: none
+    // — excluding it only keeps that from silently turning the whole strip
+    // click-through for the header should the rule ever be relaxed.
     attachClickEvent(this.container, async(_e) => {
-      const info = findUpClassName(_e.target, PeerProfileAvatars.BASE_CLASS + '-info');
-      if(info && info !== _e.target) {
+      const {target} = _e;
+      if(target !== this.info && this.info.contains(target as Node)) {
         return;
       }
 
