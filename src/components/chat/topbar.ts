@@ -41,6 +41,8 @@ import PopupElement from '@components/popups';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import callbackify from '@helpers/callbackify';
 import confirmationPopup from '@components/confirmationPopup';
+import clearHistoryWithConfirmation from '@components/clearHistory';
+import canClearHistory from '@appManagers/utils/chats/canClearHistory';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
@@ -425,6 +427,20 @@ export default class ChatTopbar {
 
     return !!peer && (peer._ === 'chat' || peer._ === 'channel') && !peer.pFlags.creator;
   };
+
+  private verifyIfCanClearHistory = async() => {
+    if(
+      this.chat.type !== ChatType.Chat ||
+      this.chat.threadId ||
+      this.chat.monoforumThreadId ||
+      this.chat.isMonoforum
+    ) {
+      return false;
+    }
+
+    return canClearHistory(this.chat.peer) &&
+      !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId));
+  }
 
   private verifyIfCanDeleteChat = async() => {
     if(this.chat.isMonoforum) {
@@ -826,6 +842,13 @@ export default class ChatTopbar {
         showPeerReport(this.peerId);
       },
       verify: this.verifyIfCanReportChat
+    }, {
+      icon: 'message_crossed',
+      text: 'ClearHistory',
+      onClick: () => {
+        clearHistoryWithConfirmation({peerId: this.peerId, managers: this.managers});
+      },
+      verify: this.verifyIfCanClearHistory
     }, {
       icon: 'delete',
       danger: true,

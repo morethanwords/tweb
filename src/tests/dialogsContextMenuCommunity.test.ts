@@ -81,6 +81,7 @@ vi.mock('@components/communities/leaveCommunity', () => ({
   default: vi.fn(),
   canLeaveCommunity: () => true
 }));
+vi.mock('@components/clearHistory', () => ({default: vi.fn()}));
 
 import DialogsContextMenu from '@components/dialogsContextMenu';
 
@@ -197,6 +198,7 @@ describe('DialogsContextMenu on a Community chat row', () => {
       'MarkAsRead',
       'ChatList.Context.Unmute',
       'Community.RemoveChat',
+      'ClearHistory',
       'Delete'
     ]);
   });
@@ -230,6 +232,7 @@ describe('DialogsContextMenu on a Community chat row', () => {
       'ChatList.Context.Unmute',
       'Archive',
       'Community.RemoveChat',
+      'ClearHistory',
       'Delete'
     ]);
   });

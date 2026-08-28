@@ -38,6 +38,8 @@ import type {
 import leaveCommunityWithConfirmation, {
   canLeaveCommunity
 } from '@components/communities/leaveCommunity';
+import clearHistoryWithConfirmation from '@components/clearHistory';
+import canClearHistory from '@appManagers/utils/chats/canClearHistory';
 import removeChatFromCommunityWithConfirmation
 from '@components/communities/removeChatFromCommunity';
 import {
@@ -412,6 +414,14 @@ export default class DialogsContextMenu {
       onClick: this.onRemoveFromCommunityClick,
       verify: () => this.canRemoveFromCommunity
     }, {
+      icon: 'message_crossed',
+      text: 'ClearHistory',
+      onClick: this.onClearHistoryClick,
+      verify: () => !!this.dialog &&
+        !this.threadId &&
+        !this.monoforumParentPeerId &&
+        canClearHistory(apiManagerProxy.getPeer(this.peerId))
+    }, {
       icon: 'delete',
       className: 'danger',
       text: 'Delete',
@@ -660,6 +670,13 @@ export default class DialogsContextMenu {
   private onLeaveCommunityClick = () => {
     void leaveCommunityWithConfirmation({
       communityId: this.communityId,
+      managers: this.managers
+    });
+  };
+
+  private onClearHistoryClick = () => {
+    void clearHistoryWithConfirmation({
+      peerId: this.peerId,
       managers: this.managers
     });
   };

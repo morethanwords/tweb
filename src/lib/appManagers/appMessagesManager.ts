@@ -6028,26 +6028,36 @@ export class AppMessagesManager extends AppManager {
       const historyResult = await promise;
 
       const channelId = peerId.toChatId();
-      const maxId = historyResult.history.find((mid) => (
-        !this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
-      )) || this.getDialogOnly(peerId)?.top_message || this.getHistoryStorage(peerId).maxId || 0;
+      // The three places the top message can be read from drift apart — a dialog whose
+      // top_message lagged behind the loaded history left messages standing after a
+      // clear — so take the highest id any of them knows rather than the first one that
+      // answers. Overshooting is free (the server clamps `max_id` to what exists),
+      // undershooting silently spares messages. `getServerMessageId` maps ephemeral
+      // (client-only) ids to 0, which drops them from the running maximum.
+      const maxId = Math.max(...[
+        historyResult.history[0],
+        this.getDialogOnly(peerId)?.top_message,
+        this.getHistoryStorage(peerId).maxId
+      ].map((mid) => (mid && getServerMessageId(mid)) || 0));
       return this.apiManager.invokeApiSingle('channels.deleteHistory', {
         channel: this.appChatsManager.getChannelInput(channelId),
-        max_id: getServerMessageId(maxId)
-      }).then((bool) => {
-        if(bool) {
-          this.apiUpdatesManager.processLocalUpdate({
-            _: 'updateChannelAvailableMessages',
-            channel_id: channelId,
-            available_min_id: maxId
-          });
-          const ephemeralIds = [...(this.ephemeralMidsByPeerId.get(peerId)?.keys() || [])];
-          if(ephemeralIds.length) {
-            this.removeEphemeralMessages(peerId, ephemeralIds);
-          }
+        for_everyone: revoke,
+        max_id: maxId
+      }).then((updates) => {
+        // The answer is an `Updates` naming the ids the server actually removed — apply
+        // it rather than assuming everything up to `max_id` is gone. A channel keeps its
+        // creation service message through a clear, only the real update carries the pts,
+        // and a history too big to enumerate comes back as `updateChannelTooLong`, which
+        // `processUpdateMessage` turns into a difference fetch.
+        this.apiUpdatesManager.processUpdateMessage(updates);
+
+        // ephemeral messages live on the client alone, so no update can mention them
+        const ephemeralIds = [...(this.ephemeralMidsByPeerId.get(peerId)?.keys() || [])];
+        if(ephemeralIds.length) {
+          this.removeEphemeralMessages(peerId, ephemeralIds);
         }
 
-        return bool;
+        return true;
       });
     }
 
