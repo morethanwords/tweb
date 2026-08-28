@@ -613,22 +613,21 @@ PeerProfile.PinnedMusic = () => {
     openSavedMusicTab(appSidebarRight, context.peerId);
   };
 
+  // Bind through attachClickEvent rather than on:click: it listens on the same
+  // event the avatars header around us does — mousedown where touch is
+  // supported — so cancelEvent above actually stops the tap there, instead of
+  // arriving one event too late and letting it fold the header too.
+  const attachRowClick = (element: HTMLElement) => {
+    onCleanup(attachClickEvent(element, openSavedMusic, {capture: true}));
+  };
+
   const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined);
   const audioAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeAudio'));
   const filenameAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeFilename'));
 
   return (
     <div class="profile-music-container">
-      {/* the avatars header listens with attachClickEvent, i.e. on mousedown
-        where touch is supported — that fires before our click, so cancel it
-        there too or a tap opens the playlist AND unfolds the header (the story
-        previews above do the same) */}
-      <div
-        class="profile-music"
-        on:mousedown={cancelEvent}
-        on:click={{capture: true, handleEvent: openSavedMusic}}
-        use:ripple
-      >
+      <div class="profile-music" ref={attachRowClick} use:ripple>
         <div class="profile-music-inner">
           <IconTsx icon="note_filled" class="profile-music-icon" />
           {/* `EmojiTextTsx` rather than a bare `wrapEmojiText`: that returns a fragment, and a
@@ -1475,8 +1474,7 @@ PeerProfile.StoryPreviews = (props: {
             'width': `${dims().totalSvgSize}px`,
             'height': `${dims().totalSvgSize}px`
           }}
-          on:mousedown={cancelEvent}
-          on:click={onCircleClick}
+          ref={(element) => onCleanup(attachClickEvent(element, onCircleClick))}
         >
           {storiesCircle()}
           <div
