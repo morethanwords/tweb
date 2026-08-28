@@ -49,11 +49,60 @@ import toArray from '@helpers/array/toArray';
 import computeLockColor from '@helpers/computeLockColor';
 import createLoopingMutedVideo from '@helpers/dom/createLoopingMutedVideo';
 import animationIntersector from '@components/animationIntersector';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
 
-const avatarsMap: Map<string, Set<ReturnType<typeof AvatarNew>>> = new Map();
+// * Only what the registry actually calls: naming the full `ReturnType<typeof AvatarNew>` here
+// * makes AvatarNew's own return-type inference circular, since it registers itself below.
+type TrackedAvatar = {render: (...args: any[]) => any, updateStoriesSegments: (...args: any[]) => any};
+
+// * This registry must NOT own what it tracks. It used to hold avatars strongly and let go only on
+// * a key change or from onCleanup, so an avatar whose owner never disposed it - a caller outside a
+// * Solid root, a middleware that never fired - kept its whole detached subtree alive for the tab's
+// * lifetime. In a day-old tab 14 197 detached nodes hung off this map, the single biggest retainer
+// * in the heap. Now the ELEMENT owns the avatar (avatarByElement) and the map only points at it
+// * weakly: an avatar whose element is still reachable - mounted, or deliberately kept for
+// * re-mounting like the chat list does - keeps updating, and one that was dropped for good takes
+// * its entry with it.
+const avatarsMap: Map<string, Set<WeakRef<TrackedAvatar>>> = new Map();
+const avatarByElement: WeakMap<HTMLElement, TrackedAvatar> = new WeakMap();
+const collectedAvatars = new FinalizationRegistry<{key: string, ref: WeakRef<TrackedAvatar>}>(({key, ref}) => {
+  const set = avatarsMap.get(key);
+  if(!set?.delete(ref) || set.size) {
+    return;
+  }
+
+  avatarsMap.delete(key);
+});
+
+// * Iterating also prunes refs whose avatar is already gone but whose finalizer has not run yet
+const forEachAvatar = (key: string, callback: (avatar: TrackedAvatar) => void) => {
+  const set = avatarsMap.get(key);
+  if(!set?.size) {
+    return;
+  }
+
+  for(const ref of set) {
+    const avatar = ref.deref();
+    if(!avatar) {
+      set.delete(ref);
+      continue;
+    }
+
+    callback(avatar);
+  }
+
+  if(!set.size) {
+    avatarsMap.delete(key);
+  }
+};
+
+// * Exposed for diagnosis: this map was the biggest single retainer in a leaked heap, and its size
+// * is the cheapest way to tell whether avatars are still being released (see memoryReport)
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.avatarsMap = avatarsMap);
+
 const believeMe: Map<string, Set<ReturnType<typeof AvatarNew>>> = new Map();
 const seen: Set<PeerId> = new Set();
 
@@ -62,27 +111,11 @@ function getAvatarQueueKey(peerId: PeerId, threadId?: number) {
 }
 
 const onAvatarUpdate = ({peerId, threadId}: {peerId: PeerId, threadId?: number}) => {
-  const key = getAvatarQueueKey(peerId, threadId);
-  const set = avatarsMap.get(key);
-  if(!set?.size) {
-    return;
-  }
-
-  for(const avatar of set) {
-    avatar.render();
-  }
+  forEachAvatar(getAvatarQueueKey(peerId, threadId), (avatar) => avatar.render());
 };
 
 const onAvatarStoriesUpdate = ({peerId}: {peerId: PeerId}) => {
-  const key = getAvatarQueueKey(peerId);
-  const set = avatarsMap.get(key);
-  if(!set?.size) {
-    return;
-  }
-
-  for(const avatar of set) {
-    avatar.updateStoriesSegments();
-  }
+  forEachAvatar(getAvatarQueueKey(peerId), (avatar) => avatar.updateStoriesSegments());
 };
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
@@ -518,9 +551,12 @@ export const AvatarNew = (props: {
     }
 
     const avatarsSet = avatarsMap.get(lastKey);
-    if(!avatarsSet?.delete(ret)) {
+    if(!selfRef || !avatarsSet?.delete(selfRef)) {
       return;
     }
+
+    collectedAvatars.unregister(ret); // it is off the map already - do not let the finalizer re-run
+    selfRef = undefined;
 
     if(!avatarsSet.size) {
       avatarsMap.delete(lastKey);
@@ -905,6 +941,7 @@ export const AvatarNew = (props: {
   };
 
   let lastKey: string;
+  let selfRef: WeakRef<TrackedAvatar>;
   const render = async(_props?: Modify<typeof props, {size?: never, peerId?: PeerId}>) => {
     const key = getKey();
     if(key !== lastKey) {
@@ -915,7 +952,10 @@ export const AvatarNew = (props: {
       if(!set) {
         avatarsMap.set(key, set = new Set());
       }
-      set.add(ret);
+
+      selfRef = new WeakRef(ret);
+      set.add(selfRef);
+      collectedAvatars.register(ret, {key, ref: selfRef}, ret);
     }
 
     if(_props?.peerId !== undefined && props.peerId !== _props.peerId) {
@@ -1099,6 +1139,9 @@ export const AvatarNew = (props: {
     set,
     color
   };
+
+  // * The strong edge the weak registry leans on: while the element is reachable, so is its avatar
+  avatarByElement.set(node, ret);
 
   if(
     props.peerId !== undefined ||
