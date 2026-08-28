@@ -11,6 +11,9 @@
  * watch: an object still registered while its element is out of the DOM is one nothing will ever
  * come back for. On a healthy tab they stay near zero.
  *
+ * Everything marked (GPU) is canvas surface, which lives in the GPU process - counting it toward
+ * this process's footprint is wrong, and was a dead end worth signposting.
+ *
  * Reads everything off MOUNT_CLASS_TO rather than importing the registries, so this module stays a
  * leaf and cannot introduce an import cycle into the render path (see mountLogExport.ts for why that
  * matters here).
@@ -21,10 +24,14 @@ import {canvasBytes, formatBytes, ThreadMemoryStats, withMemoryStatsTimeout} fro
 
 type Counted = {total: number, detached: number};
 
-const describe = (counted: Counted, bytes?: number) => {
+// * Canvas pixels are NOT in this process: Chrome keeps canvas backing stores GPU-resident, and a
+// * painted 764x10500 canvas (30 MB of pixels) moves the renderer's footprint by nothing at all.
+// * The figures are still worth having - they say how much surface exists - but they must never be
+// * added to the process total, which is exactly the trap that sent an earlier hunt chasing canvases.
+const describe = (counted: Counted, canvasBytesTotal?: number) => {
   const attached = counted.total - counted.detached;
   return `${counted.total} total | ${attached} attached | ${counted.detached} detached` +
-    (bytes === undefined ? '' : ` | ${formatBytes(bytes)}`);
+    (canvasBytesTotal === undefined ? '' : ` | ${formatBytes(canvasBytesTotal)} of canvas (GPU)`);
 };
 
 // * One row per isolate. A pool answers per worker, so lottie/crypto show up several times.
@@ -102,7 +109,7 @@ export default async function memoryReport() {
     }
   });
   report.customEmojiRenderers = describe(renderers, rendererBytes);
-  report.customEmojiRenderersDetachedBytes = formatBytes(rendererDetachedBytes);
+  report.customEmojiRenderersDetachedCanvasGpu = formatBytes(rendererDetachedBytes);
 
   const items: Counted = {total: 0, detached: 0};
   const byGroup: Record<string, number> = {};
@@ -149,7 +156,7 @@ export default async function memoryReport() {
   const canvases = document.querySelectorAll('canvas');
   let domCanvasBytes = 0;
   canvases.forEach((canvas) => domCanvasBytes += canvasBytes(canvas));
-  report.domCanvases = `${canvases.length} | ${formatBytes(domCanvasBytes)}`;
+  report.domCanvases = `${canvases.length} | ${formatBytes(domCanvasBytes)} of canvas (GPU)`;
 
   // * The worker's data caches are mirrored here 1:1, so counting the mirror is the cheapest
   // * estimate of what the MTProto isolate is carrying - and no RPC is needed for it.

@@ -398,13 +398,13 @@ compositorMessagePort.addMultipleEventsListeners({
 
     return readThreadMemory('compositor', {
       renderers: renderers.size,
-      rendererCanvasBytes: rendererBytes,
+      rendererCanvasGpuBytes: rendererBytes,
       groups,
       stickerRenderers: stickerRenderers.size,
       stickerSurfaces: surfaces,
-      stickerCanvasBytes: stickerBytes,
+      stickerCanvasGpuBytes: stickerBytes,
       latestFrames: latestFrames.size,
-      latestFrameBytes: frameBytes,
+      latestFrameGpuBytes: frameBytes,
       decodePorts: decodePorts.size
     });
   },

@@ -610,8 +610,8 @@ lottieMessagePort.addMultipleEventsListeners({
       frameCaches: framesCacheByName.size,
       orphanedFrameCaches: orphanedCaches,
       cachedFrames,
-      cachedFrameBytes,
-      itemCanvasBytes,
+      cachedFrameGpuBytes: cachedFrameBytes,
+      itemCanvasGpuBytes: itemCanvasBytes,
       wasmHeapBytes: getTLottieHeapBytes()
     });
   },
