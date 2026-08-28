@@ -220,6 +220,17 @@ self.addEventListener('message', (ev: MessageEvent<HostRequest>) => {
 // in place. On crypto failure for a single frame we drop it rather than
 // breaking the entire pipe — equivalent to the SFU dropping a corrupt RTP
 // packet.
+//
+// BOTH directions MUST fail closed — a frame we cannot turn into authenticated
+// plaintext never reaches the decoder, and a frame we cannot encrypt never
+// reaches the wire. Forwarding an undecryptable inbound frame is not merely
+// "the user hears noise": it hands the relay a media-injection channel, because
+// a plaintext Opus/VP8 frame the relay makes up decodes perfectly well. That
+// would defeat the per-frame Ed25519 sender signature, whose entire purpose is
+// that unsigned frames are not rendered. The reference does the same — see
+// libtgcalls GroupInstanceCustomImpl.cpp:1494, where the frame is forwarded to
+// the sink ONLY when the transform returned a non-empty result, with no else
+// branch.
 
 interface TransformOptions {
   direction: 'send' | 'recv';
@@ -319,11 +330,14 @@ if(E2E_DEBUG) {
 
 async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): Promise<RTCEncodedFrameLike | undefined> {
   __recvDebug.seen++;
-  if(!call) return frame;
+  // Every bail below returns `undefined` (drop). See the fail-closed note above:
+  // anything we can't authenticate must not reach the decoder, however benign
+  // the cause looks — the relay picks what arrives here.
+  if(!call) return undefined;
   const meta = frame.getMetadata?.();
-  if(!meta) { __recvDebug.noMeta++; return frame; }
+  if(!meta) { __recvDebug.noMeta++; return undefined; }
   const ssrc = meta?.synchronizationSource;
-  if(ssrc === undefined) { __recvDebug.noSsrc++; return frame; }
+  if(ssrc === undefined) { __recvDebug.noSsrc++; return undefined; }
   __recvDebug.lastSsrc = ssrc >>> 0;
   const fromUserId = ssrcToUser.get(ssrc >>> 0);
   if(fromUserId === undefined) {
@@ -333,7 +347,7 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
     unmappedFrames.set(key, n);
     if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'unmapped'});
     else if(n === RECV_DIAG_SUSTAINED_FRAMES) emit({kind: 'recvDiag', ssrc: key, reason: 'unmapped', sustained: true});
-    return frame;
+    return undefined;
   }
   try {
     const encrypted = new Uint8Array(frame.data);
@@ -355,7 +369,7 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
     decryptErrFrames.set(key, n);
     if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', message: __recvDebug.lastErr});
     else if(n === RECV_DIAG_SUSTAINED_FRAMES) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', sustained: true, message: __recvDebug.lastErr});
-    return frame;
+    return undefined;
   }
 }
 

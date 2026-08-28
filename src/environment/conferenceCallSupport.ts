@@ -15,6 +15,18 @@
 // Enabled so the fix can be verified end-to-end on a live 2-party
 // conference. If recv frames still don't pump through the transform, gate
 // this back to `false` while investigating.
-const IS_CONFERENCE_CALL_SUPPORTED = true;
+const IS_CONFERENCE_CALL_ENABLED = true;
+
+// `RTCRtpScriptTransform` is the ONLY thing that puts our per-frame encryption
+// into the media path — without it every frame reaches the SFU as plaintext.
+// So it is a hard requirement, not a progressive enhancement: a browser that
+// lacks it must not be able to join a call we label end-to-end encrypted.
+// Before this gate, `newRtcScriptTransform` threw, the attach helper caught and
+// logged, and the call carried on shipping the user's microphone in the clear
+// under an E2E badge.
+const IS_RTC_SCRIPT_TRANSFORM_SUPPORTED =
+  typeof (globalThis as {RTCRtpScriptTransform?: unknown}).RTCRtpScriptTransform === 'function';
+
+const IS_CONFERENCE_CALL_SUPPORTED = IS_CONFERENCE_CALL_ENABLED && IS_RTC_SCRIPT_TRANSFORM_SUPPORTED;
 
 export default IS_CONFERENCE_CALL_SUPPORTED;

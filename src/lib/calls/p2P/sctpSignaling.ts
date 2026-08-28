@@ -74,6 +74,7 @@ export class SctpSignaling {
   private pendingPeerDataSize = 0;
 
   private reassembly?: ByteBuf[];
+  private reassemblySize = 0;
 
   wrapPayload(payload: ByteBuf) {
     if(this.isEstablished && this.peerTag !== undefined) {
@@ -327,6 +328,7 @@ export class SctpSignaling {
 
     if(isBegin) {
       this.reassembly = [userData];
+      this.reassemblySize = userData.length;
       return undefined;
     }
 
@@ -339,12 +341,31 @@ export class SctpSignaling {
     }
 
     this.reassembly.push(userData);
+    this.reassemblySize += userData.length;
+
+    // Bound the run. Inbound signaling is SCTP-framed BEFORE it can be
+    // authenticated (processDecryptQueue reassembles, then decrypts), so a peer
+    // — or the relay, which delivers updateNewCallSignalingData — can stream
+    // middle fragments that never set the E flag and grow this buffer until the
+    // tab dies. Same budget the pending-chunk map above already uses.
+    if(this.reassembly.length > SCTP_MAX_PENDING_PEER_DATA_CHUNKS ||
+      this.reassemblySize > SCTP_MAX_PENDING_PEER_DATA_BYTES) {
+      logSctp('DATA reassembly overflow, dropping run', {
+        chunks: this.reassembly.length,
+        bytes: this.reassemblySize
+      });
+      this.reassembly = undefined;
+      this.reassemblySize = 0;
+      return undefined;
+    }
+
     if(!isEnd) {
       return undefined;
     }
 
     const result = ByteBuf.concat(this.reassembly);
     this.reassembly = undefined;
+    this.reassemblySize = 0;
     return result;
   }
 
@@ -459,6 +480,7 @@ export class SctpSignaling {
     this.pendingPackets = [];
     this.clearPendingPeerData();
     this.reassembly = undefined;
+    this.reassemblySize = 0;
   }
 
   private createInitPacket() {

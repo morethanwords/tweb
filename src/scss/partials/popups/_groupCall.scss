@@ -157,6 +157,15 @@
     // border-radius: 0;
     padding-right: .5rem;
 
+    // On the e2e blockchain (so it holds the current call key) but absent from
+    // the SFU roster — visible, but not connected to the media and not
+    // actionable. Mirrors tdesktop's inert `State::WithAccess` row.
+    &.is-with-access {
+      .group-call-participant-muted-icon-container {
+        opacity: .5;
+      }
+    }
+
     &-status {
       &-icon {
         vertical-align: middle;

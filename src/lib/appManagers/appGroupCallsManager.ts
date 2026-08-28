@@ -8,7 +8,7 @@
 import type GroupCallConnectionInstance from '@lib/calls/groupCallConnectionInstance';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {nextRandomUint} from '@helpers/random';
-import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '@layer';
+import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, Peer, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '@layer';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -50,6 +50,29 @@ export interface CallRecordParams {
   name: string;
   recordVideo: boolean;
   videoHorizontal: boolean;
+}
+
+/**
+ * What one `refreshConferenceParticipants` fetch saw on the SFU. Handed back to
+ * the tab so it can reconcile the roster against the e2e blockchain membership
+ * without a second round-trip through the manager proxy (which could observe a
+ * cache that already moved on).
+ */
+export interface ConferenceRosterSnapshot {
+  /**
+   * Whether this fetch covered the WHOLE roster in one page. Only then does
+   * "absent from the list" mean "not in the call" — on a truncated page it just
+   * means "on a later page", which must never drive removals.
+   */
+  complete: boolean;
+  /**
+   * Exact decimal `user_id`s the server listed, self included — not PeerIds.
+   * The e2e chain identifies participants by int64 user_id, and PeerId is a JS
+   * number, so diffing in PeerId space would let two distinct chain ids collide
+   * above 2^53 and hide one behind the other. Non-user rows are skipped: they
+   * can never correspond to a chain participant.
+   */
+  userIds: string[];
 }
 
 export class AppGroupCallsManager extends AppManager {
@@ -371,8 +394,12 @@ export class AppGroupCallsManager extends AppManager {
    * Unlike `getGroupCallParticipants`, this always does a fresh fetch (it
    * ignores the pagination cursor) and additionally marks cached participants
    * that are no longer present as `left`, so leaves propagate too.
+   *
+   * Returns what the server listed (see `ConferenceRosterSnapshot`) so the tab
+   * can reconcile it against the e2e chain membership — the roster alone is NOT
+   * the access list, see `@lib/calls/e2e/conferenceMembership`.
    */
-  public refreshConferenceParticipants(id: GroupCallId): Promise<boolean> {
+  public refreshConferenceParticipants(id: GroupCallId): Promise<ConferenceRosterSnapshot | false> {
     const groupCall = this.getGroupCall(id);
     if(!groupCall || groupCall._ !== 'groupCall') {
       // No cached call → can't build the input (getGroupCallInput throws), so
@@ -390,12 +417,27 @@ export class AppGroupCallsManager extends AppManager {
         offset: '',
         limit: GET_PARTICIPANTS_LIMIT
       },
-      processResult: (result) => {
+      // Own dedup bucket. The default key is JSON.stringify(params), which is
+      // byte-identical to `getGroupCallParticipants`' first page (same call,
+      // empty ids/sources, offset ''), so without this the two share a promise:
+      // whichever lands second silently skips its own processResult and
+      // inherits the other's return value. That would hand the caller a
+      // snapshot-shaped `undefined` and skip a round of membership
+      // reconciliation.
+      options: {cacheKey: 'refreshConferenceParticipants-' + id},
+      // Return the snapshot from processResult rather than writing a closure
+      // variable: on a same-key dedup the caller receives the in-flight
+      // promise, and only the resolved VALUE crosses that boundary.
+      processResult: (result): ConferenceRosterSnapshot => {
         this.appChatsManager.saveApiChats(result.chats);
         this.appUsersManager.saveApiUsers(result.users);
 
         const cached = this.getCachedParticipants(id);
         const freshPeerIds = new Set(result.participants.map((p) => getPeerId(p.peer)));
+        const freshUserIds = result.participants
+        .map((p) => (p.peer as Peer.peerUser).user_id)
+        .filter((userId) => userId !== undefined)
+        .map(String);
 
         // Reconcile leaves: a cached participant absent from the fresh list has
         // left. Only safe when we fetched the WHOLE list in one page — with a
@@ -436,8 +478,10 @@ export class AppGroupCallsManager extends AppManager {
           groupCall.participants_count = result.count;
           this.rootScope.dispatchEvent('group_call_update', groupCall);
         }
+
+        return {complete: gotFullList, userIds: freshUserIds};
       }
-    }).then(() => true);
+    });
   }
 
   public hangUp(id: GroupCallId, discard?: boolean | number) {

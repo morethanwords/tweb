@@ -155,8 +155,12 @@ export default defineConfig({
       '**/.{idea,git,cache,output,temp}/**',
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
       '**/solid/**',
-      // Playwright browser specs live here and must not be run by vitest (jsdom)
-      '**/e2e/**'
+      // Playwright browser specs live here and must not be run by vitest (jsdom).
+      // Anchored to the ROOT e2e/ dir (playwright.config.ts `testDir: './e2e'`) —
+      // a `**/e2e/**` glob also swallowed src/lib/calls/e2e/tests/, silently
+      // dropping the whole TdE2E suite (blockchain, call, crypto, keys, …) from
+      // `pnpm test`.
+      'e2e/**'
     ],
     // coverage: {
     //   provider: 'v8',

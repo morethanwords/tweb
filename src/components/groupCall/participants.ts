@@ -110,6 +110,14 @@ export class GroupCallParticipantContextMenu {
         cancelEvent(e);
 
         const peerId = this.targetPeerId = li.dataset.peerId.toPeerId();
+        // A chain-only member has no SFU participant behind them, so every
+        // action here (mute, mute-for-me, kick) would address a row the server
+        // doesn't know about. tdesktop keeps these rows inert too
+        // (calls_group_members_row.cpp:747).
+        if(this.instance.isMemberWithAccess(peerId)) {
+          return;
+        }
+
         this.participant = await this.instance.getParticipantByPeerId(peerId);
         if(this.participant.pFlags.self) {
           return;
@@ -219,6 +227,20 @@ export default class GroupCallParticipantsElement {
       }
     });
 
+    // Members that the e2e blockchain authorises but the SFU roster omits. They
+    // hold the current call key, so they get a row like anyone else — see
+    // `@lib/calls/e2e/conferenceMembership`.
+    listenerSetter.add(instance)('membersWithAccess', ({current, previous}) => {
+      const currentSet = new Set(current);
+      // A peer leaving the set either joined the SFU for real (a live row takes
+      // over) or was removed from the chain (nothing left to show) — refreshRow
+      // resolves which by re-reading the participant.
+      previous.filter((peerId) => !currentSet.has(peerId)).forEach((peerId) => {
+        this.refreshRow(peerId);
+      });
+      current.forEach((peerId) => this.refreshRow(peerId));
+    });
+
     const scrollableLoader = new ScrollableLoader({
       scrollable,
       getPromise: () => {
@@ -233,6 +255,20 @@ export default class GroupCallParticipantsElement {
     });
 
     this.setInstance(instance);
+  }
+
+  // Re-render one row from whatever the instance currently knows about the peer
+  // (a real SFU participant, a chain-only member, or neither). Reading the
+  // participant crosses the manager proxy, so swallow a transient failure
+  // rather than dropping the row — or leaking an unhandled rejection.
+  private refreshRow(peerId: PeerId) {
+    this.instance.getParticipantByPeerId(peerId).then((participant) => {
+      if(participant) {
+        this.updateParticipant(participant);
+      } else if(this.sortedList.has(peerId)) {
+        this.sortedList.delete(peerId);
+      }
+    }, noop);
   }
 
   private updateParticipant(participant: GroupCallParticipant) {
@@ -275,6 +311,9 @@ export default class GroupCallParticipantsElement {
     participants.forEach((participant) => {
       this.updateParticipant(participant);
     });
+
+    // The popup can open mid-call, after reconciliation already ran.
+    instance.memberWithAccessPeerIds.forEach((peerId) => this.refreshRow(peerId));
   }
 
   public destroy() {

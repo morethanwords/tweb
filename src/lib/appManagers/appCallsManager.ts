@@ -241,8 +241,17 @@ export class AppCallsManager extends AppManager {
     });
   }
 
-  // Remove participants from a conference. `block` is a server-format change-
-  // state block (built by the caller via `E2eCall.buildChangeStateBlock`).
+  // Remove participants from a conference. `block` is a LOCAL-format change-
+  // state block (built by the caller via `E2eCall.buildChangeStateBlock`) — like
+  // every other client→server `block` field, e.g. `phone.joinGroupCall`; only
+  // chain deliveries coming BACK from the server use the +1 server magic.
+  //
+  // The block must both drop the participants named in `ids` AND carry the
+  // rotated shared key for the survivors (buildChangesForNewState emits the
+  // setGroupState + setSharedKey pair together) — removing without rekeying
+  // would leave the removed identity's copy of the current key valid.
+  // `onlyLeft` is the stale-pruning form used by the roster reconciliation;
+  // `kick` is an admin removing someone still connected.
   public deleteConferenceCallParticipants(opts: {
     call: InputGroupCall;
     ids: Array<string | number>;

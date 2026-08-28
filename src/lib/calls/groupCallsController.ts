@@ -568,13 +568,14 @@ export class GroupCallsController extends EventListenerBase<{
     // those mids, and a lone receiver fed many SSRCs is what made Chrome pump
     // ~5 frames then bypass the transform.
     //
-    // This `track` listener is a defensive fallback only: attachE2eRecvTransform
-    // is idempotent (no-ops when the receiver already carries a transform), so
-    // it fires meaningfully only for a receiver that somehow wasn't attached at
-    // creation time.
+    // This `track` listener is a defensive fallback only: the late-attach helper
+    // no-ops when the receiver already carries a transform, so it does anything
+    // at all only for a receiver that somehow wasn't attached at creation time
+    // — which it reports, because a late attach is not reliably honoured and
+    // that receiver's media may reach the decoder unauthenticated.
     connection.addEventListener('track', (event) => {
       const kind = event.track.kind === 'video' ? 'video' : 'audio';
-      instance.attachE2eRecvTransform(event.receiver, kind);
+      instance.attachE2eRecvTransformLate(event.receiver, kind);
     });
 
     this.setCurrentGroupCall(instance);

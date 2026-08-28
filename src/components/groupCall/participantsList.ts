@@ -36,9 +36,13 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
       onUpdate: async(element) => {
         const participant = await this.instance.getParticipantByPeerId(element.id);
         const state = getGroupCallParticipantMutedState(participant);
+        // On the e2e chain but absent from the SFU roster: has the call key,
+        // isn't connected to the media. See conferenceMembership.ts.
+        const withAccess = this.instance.isMemberWithAccess(element.id);
 
+        element.dom.listEl.classList.toggle('is-with-access', withAccess);
         element.mutedIcon.setState(state);
-        element.status.setState(state, participant);
+        element.status.setState(state, participant, withAccess);
       },
       onSort: (element, idx) => {
         positionElementByIndex(element.dom.listEl, this.list, idx);

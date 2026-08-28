@@ -24,6 +24,11 @@ import {AppManagers} from '@lib/managers';
 import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from '@lib/calls/groupCallsController';
 import type {EncryptWorkerHost} from '@lib/calls/e2e/encryptWorkerHost';
 import type {CallStatusSnapshot} from '@lib/calls/e2e/encryptWorkerProtocol';
+import {
+  conferenceUserIdToPeerId,
+  findChainOnlyMembers,
+  pruneGroupState
+} from '@lib/calls/e2e/conferenceMembership';
 
 // If a conference poller hasn't reached the server in this long while the call
 // is alive, the watchdog forces recovery. Comfortably past the poll cadences
@@ -32,6 +37,27 @@ const E2E_SYNC_STALL_MS = 15000;
 // How often the watchdog checks for the stall above.
 const E2E_WATCHDOG_INTERVAL_MS = 5000;
 
+// How long a chain member must stay absent from COMPLETE SFU rosters before we
+// remove it from the blockchain.
+//
+// tdesktop prunes on the first complete roster (`checkStaleParticipants`), but
+// it only ever compares after re-requesting the participant list. Our roster
+// poll is on a timer, so the same immediacy would race a real joiner: their
+// block reaches the chain the moment `phone.joinGroupCall` accepts it, and the
+// SFU can list them a beat later — pruning that window kicks people out of the
+// call they just joined. The row is published as "has access" the instant it's
+// detected, so the disclosure requirement is met immediately; only the removal
+// waits out this window.
+const CONFERENCE_STALE_GRACE_MS = 10000;
+// Floor between removal attempts. A rejected removal (chain raced ahead — or a
+// server that refuses to prune) must not turn the 5s roster poll into an RPC
+// loop.
+const CONFERENCE_PRUNE_RETRY_MS = 15000;
+// Consecutive removal failures before we surface a breadcrumb. A server that
+// keeps rejecting the removal while the identity keeps holding the call key is
+// exactly the case the user needs told about.
+const CONFERENCE_PRUNE_FAILURES_BEFORE_REPORT = 3;
+
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
   pinned: (source?: GroupCallOutputSource) => void,
@@ -39,6 +65,11 @@ export default class GroupCallInstance extends CallInstanceBase<{
   // verification phase + emoji fingerprint changes. Only fires when this
   // instance is a conference (i.e. `e2e` is set).
   e2eStatus: (status: CallStatusSnapshot) => void,
+  // Fired when the set of authenticated e2e members that the SFU roster does
+  // NOT list changes. These identities hold the current shared key, so the UI
+  // must show them (see conferenceMembership.ts). `previous` lets the roster
+  // list retire the rows it added.
+  membersWithAccess: (change: {current: PeerId[], previous: PeerId[]}) => void,
 }> {
   public id: GroupCallId;
   public chatId: ChatId;
@@ -113,6 +144,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
   public cleanup(): void {
     this.stopE2eChainPolling();
+    this.membersWithAccess.clear();
+    this.staleSince.clear();
     // Terminate the e2e worker so its Web Worker thread exits. Best-effort —
     // the controller may have already done so via its own state listener,
     // but a double-terminate is harmless (encryptWorkerHost guards).
@@ -229,6 +262,25 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private conferenceParticipantsInterval: ReturnType<typeof setInterval> | undefined;
   private refreshingConferenceParticipants = false;
 
+  // ===== Chain-only members (blockchain ↔ SFU roster reconciliation) =====
+  //
+  // Authenticated e2e members that a COMPLETE SFU roster doesn't list. They
+  // hold the current shared key, so tdlib's Encryption.md requires us to show
+  // them; the protocol additionally requires removing them and rotating the key
+  // (`only_left` pruning). See conferenceMembership.ts for the full rationale.
+  //
+  // Client-side synthetic participants: never saved into the manager cache,
+  // never dispatched as `group_call_participant`, `source: 0` so no SSRC map
+  // ever sees them.
+  private membersWithAccess: Map<PeerId, GroupCallParticipant> = new Map();
+  // user_id → when we first saw it missing, for the grace window.
+  private staleSince: Map<string, number> = new Map();
+  private pruningConferenceMembers = false;
+  private lastPruneAttemptAt = 0;
+  private consecutivePruneFailures = 0;
+  // Set once the media path could not be secured — see failE2eTransform.
+  private failedE2eTransform = false;
+
   // ===== Conference-sync watchdog =====
   //
   // Both conference pollers (pollE2eChain, refreshConferenceParticipants) bail
@@ -236,7 +288,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   // throws without it. If that state persists, media keeps flowing but the call
   // stops learning about unmutes/joins: a participant who unmutes is seen (SFU
   // speaking signal is plaintext) but not heard — their audio SSRC never enters
-  // the e2e recv map, so frames pass through still-encrypted (silence). Observed
+  // the e2e recv map, so the recv transform drops them (silence). Observed
   // live: a ~19-minute stall that only cleared on a manual re-join. These track
   // when each poller last actually REACHED the server; the watchdog re-hydrates
   // `groupCall` and re-kicks the pollers when either goes stale.
@@ -306,14 +358,205 @@ export default class GroupCallInstance extends CallInstanceBase<{
       // `false` => the manager bailed (no cached groupCall), so the roster sync
       // isn't actually running. Only stamp the watchdog clock on a real fetch.
       const fetched = await this.managers.appGroupCallsManager.refreshConferenceParticipants(this.id);
-      if(fetched) {
-        this.lastParticipantsRefreshAt = Date.now();
+      if(!fetched) {
+        return;
+      }
+
+      this.lastParticipantsRefreshAt = Date.now();
+      // A truncated page can't tell "absent" from "on the next page", so it must
+      // never drive the access list or a removal.
+      if(fetched.complete) {
+        await this.reconcileConferenceMembership(fetched.userIds);
       }
     } catch(err) {
       this.log.warn('refreshConferenceParticipants', err);
     } finally {
       this.refreshingConferenceParticipants = false;
     }
+  }
+
+  /**
+   * Compare authenticated e2e membership against the complete SFU roster.
+   *
+   * The blockchain is the access list: a participant in `group_state` holds the
+   * current shared key whether or not the server lists them. So anyone on the
+   * chain but off the roster is (a) surfaced to the user right away and (b)
+   * scheduled for the protocol's `only_left` removal, which rotates the key
+   * away from them. Doing only (b) would leave the user blind whenever the
+   * removal is refused; doing only (a) would leave the key shared forever.
+   */
+  private async reconcileConferenceMembership(rosterUserIds: string[]): Promise<void> {
+    const {e2eStatus, selfUserId} = this;
+    if(!this.e2e || !e2eStatus || selfUserId === undefined) return;
+    if(this.connectionState === 'closed') return;
+
+    const chainOnly = findChainOnlyMembers({
+      participants: e2eStatus.groupState.participants,
+      rosterUserIds,
+      selfUserId
+    });
+
+    // Publish BEFORE the grace window: an identity with call access is shown
+    // the moment it's known, and stays shown until the removal AND its rotated
+    // key have actually been accepted (this recomputes off group_state, so the
+    // row clears itself once the removal block lands).
+    this.publishMembersWithAccess(chainOnly);
+
+    // Age each identity. Rebuilding the map drops anyone who reappeared on the
+    // roster, so a member who flaps starts their window over rather than
+    // accumulating time towards removal.
+    const now = Date.now();
+    const staleSince = new Map<string, number>();
+    const prunable: bigint[] = [];
+    for(const userId of chainOnly) {
+      const key = userId.toString();
+      const since = this.staleSince.get(key) ?? now;
+      staleSince.set(key, since);
+      if(now - since >= CONFERENCE_STALE_GRACE_MS) {
+        prunable.push(userId);
+      }
+    }
+    this.staleSince = staleSince;
+
+    if(!prunable.length || this.pruningConferenceMembers) return;
+    if(now - this.lastPruneAttemptAt < CONFERENCE_PRUNE_RETRY_MS) return;
+
+    // Detached on purpose: this runs inside the roster poller's
+    // `refreshingConferenceParticipants` guard, and a removal RPC that never
+    // settles (dead connection) would otherwise wedge the roster refresh for
+    // the rest of the call. `pruningConferenceMembers` guards overlap instead.
+    void this.pruneConferenceMembers(prunable);
+  }
+
+  // Swap in the chain-only set and tell the UI, but only on a real change —
+  // this runs on every roster poll.
+  private publishMembersWithAccess(userIds: bigint[]): void {
+    const next = new Map<PeerId, GroupCallParticipant>();
+    for(const userId of userIds) {
+      const peerId = conferenceUserIdToPeerId(userId);
+      // The roster list is keyed by PeerId, so two chain ids that round to the
+      // same one (only possible above 2^53 — see conferenceMembership.ts) can
+      // only ever be ONE row. Removal still covers both, since that works off
+      // exact ids, but one identity would go undisclosed until it lands. Real
+      // user ids are nowhere near that range, so this means the server is
+      // feeding us ids no real account has: say so rather than show one row.
+      if(next.has(peerId)) {
+        this.reportConferenceBug(
+          'two e2e members share one displayed peer — one of them cannot be shown',
+          {peerId, userIds: userIds.map(String)}
+        );
+        continue;
+      }
+
+      // Reuse the existing synthetic so the row keeps its identity (and its
+      // sort index) across polls.
+      next.set(peerId, this.membersWithAccess.get(peerId) ?? this.makeMemberWithAccess(userId));
+    }
+
+    const previous = [...this.membersWithAccess.keys()];
+    if(next.size === previous.length && previous.every((peerId) => next.has(peerId))) {
+      return;
+    }
+
+    this.membersWithAccess = next;
+    if(next.size) {
+      this.log.warn(
+        'conference: e2e members absent from the SFU roster —', [...next.keys()],
+        '— they hold the current call key; showing them and scheduling removal'
+      );
+    }
+
+    this.dispatchEvent('membersWithAccess', {current: [...next.keys()], previous});
+  }
+
+  // The roster UI renders chain-only members through the same row widget as
+  // real participants (tdesktop does the same via `updateStateWithAccess`), so
+  // give it the minimal participant shape: muted, no video, `date: 0` so the
+  // descending sort parks them below everyone actually connected.
+  private makeMemberWithAccess(userId: bigint): GroupCallParticipant {
+    return {
+      _: 'groupCallParticipant',
+      peer: {_: 'peerUser', user_id: userId.toString()},
+      pFlags: {muted: true, can_self_unmute: true},
+      source: 0,
+      date: 0
+    };
+  }
+
+  // Build + submit the `only_left` removal. The block carries both the trimmed
+  // group_state and a fresh shared key addressed only to the survivors, so the
+  // removed identity can't decrypt anything past it.
+  private async pruneConferenceMembers(userIds: bigint[]): Promise<void> {
+    const input = this.toInputGroupCall();
+    // Re-check both here, not just at the reconcile call site: this runs
+    // detached, so anything thrown escapes as an unhandled rejection rather
+    // than reaching a caller.
+    if(!input || !this.e2e || !this.e2eStatus) return;
+
+    // Re-derive against the CURRENT chain tip: it may have advanced since the
+    // roster diff, and another client (or an earlier attempt) may already have
+    // removed these identities. Submitting a state that changes nothing would
+    // burn a block and rotate the key for no reason.
+    const {groupState} = this.e2eStatus;
+    const newGroupState = pruneGroupState(groupState, userIds);
+    if(newGroupState.participants.length === groupState.participants.length) {
+      return;
+    }
+
+    this.pruningConferenceMembers = true;
+    this.lastPruneAttemptAt = Date.now();
+    const ids = userIds.map(String);
+    try {
+      const block = await this.e2e.buildChangeStateBlock({newGroupState});
+
+      await this.managers.appCallsManager.deleteConferenceCallParticipants({
+        call: input,
+        ids,
+        block,
+        onlyLeft: true
+      });
+
+      this.consecutivePruneFailures = 0;
+      this.log('conference: removed stale e2e members + rotated the key —', ids);
+    } catch(err) {
+      const type = (err as ApiError)?.type as string | undefined;
+      ++this.consecutivePruneFailures;
+
+      // The chain moved under us between build and submit (someone joined or
+      // another client pruned first). Benign — our own state advances with the
+      // new block and the next pass rebuilds on top of it.
+      if(type === 'CONF_WRITE_CHAIN_INVALID' || type === 'BLOCK_INVALID') {
+        this.log('conference: removal raced the chain, retrying next pass —', type);
+      } else if(type === 'GROUPCALL_FORBIDDEN') {
+        // Same trigger tdesktop rejoins on (calls_group_call.cpp:844) — our
+        // equivalent re-hydrates the call and re-kicks both pollers.
+        this.log.warn('conference: removal forbidden, recovering —', type);
+        void this.recoverConferenceSync();
+      } else {
+        this.log.error('conference: removal failed', err);
+      }
+
+      // Persistent refusal while the identity keeps holding the key is the
+      // shape a hostile relay would take, so make sure it leaves a trace.
+      if(this.consecutivePruneFailures >= CONFERENCE_PRUNE_FAILURES_BEFORE_REPORT) {
+        this.reportConferenceBug(
+          'could not remove e2e members that are absent from the call roster (they still hold the call key)',
+          {ids, error: type || String(err), attempts: this.consecutivePruneFailures}
+        );
+      }
+    } finally {
+      this.pruningConferenceMembers = false;
+    }
+  }
+
+  /** Peers on the e2e chain that the SFU roster doesn't list. */
+  public get memberWithAccessPeerIds(): PeerId[] {
+    return [...this.membersWithAccess.keys()];
+  }
+
+  /** Whether this row is a chain-only member rather than a real participant. */
+  public isMemberWithAccess(peerId: PeerId): boolean {
+    return this.membersWithAccess.has(peerId);
   }
 
   private async pollE2eChain(): Promise<void> {
@@ -534,8 +777,55 @@ export default class GroupCallInstance extends CallInstanceBase<{
     try {
       receiver.transform = this.e2e.newRtcScriptTransform({direction: 'recv', channelId, kind});
     } catch(err) {
-      this.log.error('attachE2eRecvTransform', err);
+      this.failE2eTransform('recv', err);
     }
+  }
+
+  /**
+   * Fallback for a remote track whose receiver never got a recv transform at
+   * transceiver-creation time (the normal attach point — see onParticipantUpdate).
+   *
+   * Attaching one now is best-effort ONLY: Chrome binds the decoder before the
+   * `track` event fires and silently bypasses a transform attached after that,
+   * so frames from this receiver may never pass through our decryption at all.
+   * That is security-relevant, not just broken audio — media the relay puts on
+   * an SSRC it never signalled would reach the decoder without being
+   * authenticated. The bypass isn't observable from here, so at least make the
+   * condition loud instead of silent.
+   */
+  public attachE2eRecvTransformLate(receiver: RTCRtpReceiver, kind: 'audio' | 'video'): void {
+    // Attached at creation time — the expected path, nothing to say.
+    if(!this.e2e || (receiver as any).transform) return;
+
+    this.reportConferenceBug(
+      'inbound media track appeared with no e2e transform attached at creation — it cannot be authenticated',
+      {kind}
+    );
+    this.attachE2eRecvTransform(receiver, kind);
+  }
+
+  // A conference whose media path is missing our transforms is not end-to-end
+  // encrypted, whatever the badge in the header says: outbound frames would
+  // reach the SFU as plaintext, and inbound frames would reach the decoder
+  // unauthenticated. There is no safe degraded mode, so an attach failure ends
+  // the call rather than quietly downgrading it — the previous behaviour was to
+  // log and carry on, which shipped the user's microphone in the clear.
+  //
+  // Leaving (not discarding) is the proportionate response: our client can't
+  // secure its own media, but everyone else's call is unaffected. Deferred a
+  // microtask because this fires from inside the sender/transceiver setup loop,
+  // which must not have the connections torn down under it.
+  private failE2eTransform(direction: 'send' | 'recv', err: unknown): void {
+    this.log.error(`attachE2e${direction === 'send' ? 'Send' : 'Recv'}Transform`, err);
+    this.reportConferenceBug(
+      'end-to-end encryption could not be attached to the media path — leaving the call',
+      {direction, error: (err as Error)?.message || String(err)}
+    );
+    // Attach runs per sender/receiver, so one broken environment fails it many
+    // times over; tear down once.
+    if(this.failedE2eTransform) return;
+    this.failedE2eTransform = true;
+    queueMicrotask(() => void this.hangUp());
   }
 
   // Attach a send transform to ONE sender. Called from the streamManager's
@@ -551,7 +841,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     try {
       sender.transform = this.e2e.newRtcScriptTransform({direction: 'send', channelId, kind});
     } catch(err) {
-      this.log.error('attachE2eSendTransform', err);
+      this.failE2eTransform('send', err);
     }
   }
 
@@ -585,7 +875,15 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   get connectionState() {
-    return this.connections.main.connection.iceConnectionState;
+    // Optional: `connections.main` only exists from createConnectionInstance
+    // onward, but the conference pollers start earlier — attachE2e kicks them
+    // off, and `worker.init` emits its first `status` (→ roster refresh →
+    // membership reconciliation) before the connection is built. Dereferencing
+    // blindly threw a TypeError there, which surfaced as an unhandled rejection
+    // in the poller and skipped the FIRST reconciliation of the call. Undefined
+    // reads as "not closed" below and as CONNECTING in `state`, which is what
+    // that window actually is.
+    return this.connections.main?.connection?.iceConnectionState;
   }
 
   get state() {
@@ -662,7 +960,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public async getParticipantByPeerId(peerId: PeerId) {
-    return NULL_PEER_ID === peerId ? this.participant : (await this.participants).get(peerId);
+    if(NULL_PEER_ID === peerId) {
+      return this.participant;
+    }
+
+    // Real SFU rows win: once a chain-only member finally shows up on the
+    // roster, their live state takes over the row in place.
+    return (await this.participants).get(peerId) ?? this.membersWithAccess.get(peerId);
   }
 
   public toggleMuted() {
