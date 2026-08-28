@@ -145,15 +145,16 @@ export default class PeerProfileAvatars {
     const SWITCH_ZONE = 1 / 3;
     let cancel = false;
     let freeze = false;
-    // Controls that re-enable pointer events inside the (pointer-events: none)
-    // info overlay own their click — the header must not also fold/unfold, nor
-    // run checkScrollTop below, which would yank a scrolled profile to the top.
+    // The info overlay (name + subtitle) is pointer-events: none, so an event
+    // can only reach one of its descendants when that descendant opted back in
+    // — i.e. it is an interactive control (emoji status, stars rating, the
+    // topic's forum button, "show when") and owns the click. The header must
+    // not also fold/unfold, nor run checkScrollTop below, which would yank a
+    // scrolled profile back to the top. Deriving that from the overlay beats
+    // listing the classes: the list and the CSS opt-ins drifted apart twice.
     attachClickEvent(this.container, async(_e) => {
-      if(
-        findUpClassName(_e.target, 'profile-subtitle-rating') ||
-        findUpClassName(_e.target, 'emoji-status') ||
-        findUpClassName(_e.target, 'topic-name-button')
-      ) {
+      const info = findUpClassName(_e.target, PeerProfileAvatars.BASE_CLASS + '-info');
+      if(info && info !== _e.target) {
         return;
       }
 
