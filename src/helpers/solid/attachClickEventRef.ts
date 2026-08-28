@@ -3,7 +3,8 @@ import {attachClickEvent, AttachClickOptions} from '@helpers/dom/clickEvent';
 
 /**
  * Solid `ref` that binds a click through `attachClickEvent` and detaches it on
- * cleanup.
+ * cleanup — so use it from inside a component, where there is an owner to clean
+ * up with.
  *
  * Reach for it instead of `onClick` whenever an ancestor also listens with
  * `attachClickEvent`: that helper listens on `mousedown` wherever touch is
@@ -19,6 +20,8 @@ export default function attachClickEventRef(
   options?: AttachClickOptions
 ) {
   return (element: HTMLElement) => {
-    onCleanup(attachClickEvent(element, callback, options));
+    // `attachClickEvent` writes into the options it is given (`touchMouseDown`),
+    // so hand it a copy rather than the caller's object
+    onCleanup(attachClickEvent(element, callback, {...options}));
   };
 }
