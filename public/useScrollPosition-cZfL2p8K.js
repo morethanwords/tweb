@@ -1,0 +1,2 @@
+import{tt as e}from"./apiManagerProxy-j5uE5XHr.js";import{A as t,S as n,h as r}from"./solid-WnanT5kq.js";function i(i,a=`y`){let[o,s]=n(0),c=!1,l=t=>{c||(c=!0,e(()=>{c=!1,s(a===`y`?t.scrollTop:t.scrollLeft)}))};return r(()=>{let e=i();if(!e){s(0);return}l(e);let n=()=>l(e);e.addEventListener(`scroll`,n,{passive:!0}),t(()=>{e.removeEventListener(`scroll`,n)})}),o}export{i as t};
+//# sourceMappingURL=useScrollPosition-cZfL2p8K.js.map

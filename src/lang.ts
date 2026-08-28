@@ -726,8 +726,8 @@ const lang = {
     'other_value': 'boosts expire on %2$s'
   },
   'Boost.GetMoreBoosts': {
-    'one_value': 'To boost **%2$s**, get **%1$d** more boost by gifting **Telegram Premium** to a friend.',
-    'other_value': 'To boost **%2$s**, get **%1$d** more boosts by gifting **Telegram Premium** to a friend.'
+    'one_value': 'To boost **%1$s**, get **%2$d** more boost by gifting **Telegram Premium** to a friend.',
+    'other_value': 'To boost **%1$s**, get **%2$d** more boosts by gifting **Telegram Premium** to a friend.'
   },
   'Boost.Reassign.Description': 'To boost **%1$s**, reassign a previous boost or %2$s to a friend to get %3$s.',
   'Boost.GiftPremium': '**[gift Telegram Premium]()**',
@@ -1063,7 +1063,7 @@ const lang = {
   'MiniApps.Collapsed.One': '%s',
   'MiniApps.Collapsed.Two': '%s & %s',
   'MiniApps.Collapsed.Many': {
-    'other_value': '%2$s & %1$d Other'
+    'other_value': '%s & %d Other'
   },
   'PaidReaction.Sent': {
     'one_value': 'Star sent!',
@@ -3254,13 +3254,13 @@ const lang = {
   'SponsoredMessageAdWhatIsThis': 'what\'s this?',
   'RevenueSharingAdsAlertSubtitle': 'Telegram Ads are very different from ads on other platforms. Ads such as this one:',
   'RevenueSharingAdsInfo1Title': 'Respect Your Privacy',
-  'RevenueSharingAdsInfo1Subtitle': 'Ads on Telegram do not use your personal information and are based on the channel in which you see them.',
+  'RevenueSharingAdsInfo1Subtitle': 'We don\'t use the contents of your private chats or contacts lists for ad targeting or other commercial purposes. ',
   'RevenueSharingAdsInfo2Title': 'Help the Channel Creator',
   'RevenueSharingAdsInfo2Subtitle': '50% of the revenue from Telegram Ads goes to the owner of the channel where they are displayed.',
   'RevenueSharingAdsInfo3Title': 'Can Be Removed',
   'RevenueSharingAdsInfo3Subtitle': 'You can turn off ads by subscribing to **Telegram Premium**, and Level %1$s channels can remove them for their subscribers.',
   'RevenueSharingAdsInfo4Title': 'Can I Launch an Ad?',
-  'RevenueSharingAdsInfo4Subtitle2': 'Anyone can create an ad to display in this channel — with minimal budgets. Check out the **Telegram Ad Platform** for details. %1$s',
+  'RevenueSharingAdsInfo4Subtitle2': 'Anyone can post ads on Telegram — with minimal budgets. Check out the **Telegram Ad Platform** for details. %1$s',
   'RevenueSharingAdsAlertButton': 'Understood',
   'ViewReplies': {
     'one_value': 'View %1$d Reply',
@@ -3405,8 +3405,8 @@ const lang = {
   'GiftStarsSubtitle': 'With Stars, **%s** will be able to unlock content and services on Telegram.',
   'GiftStarsSubtitleLinkName': '**See Examples >**',
   'StarGiftSentMessageIncoming': {
-    'one_value': '**%2$s** sent you a gift for **%1$d Star**',
-    'other_value': '**%2$s** sent you a gift for **%1$d Stars**'
+    'one_value': '**%1$s** sent you a gift for **%2$d Star**',
+    'other_value': '**%1$s** sent you a gift for **%2$d Stars**'
   },
   'StarGiftSentMessageIncomingTon': '**%2$s** sent you a gift for **%1$s Grams**',
   'StarGiftSentMessageOutgoing': {
@@ -3415,8 +3415,8 @@ const lang = {
   },
   'StarGiftSentMessageOutgoingTon': '**You** sent a gift for **%s Grams**',
   'StarGiftSentMessagePrepaidIncoming': {
-    'one_value': '**%2$s** sent an upgrade worth **%1$d Star** for your gift',
-    'other_value': '**%2$s** sent an upgrade worth **%1$d Stars** for your gift'
+    'one_value': '**%s** sent an upgrade worth **%d Star** for your gift',
+    'other_value': '**%s** sent an upgrade worth **%d Stars** for your gift'
   },
   'StarGiftSentMessagePrepaidOutgoing': {
     'one_value': 'You sent an upgrade worth **%d Star**',
@@ -3426,7 +3426,7 @@ const lang = {
     'one_value': 'You bought a gift for **%d Star**',
     'other_value': 'You bought a gift for **%d Stars**'
   },
-  'StarGiftSentMessageSelfTon': 'You bought a gift for **%s Grams**',
+  'StarGiftSentMessageSelfTon': 'You bought a gift for **%d Grams**',
   'StarGiftFrom': 'Gift from %s',
   'StarGiftUpgradeFrom': 'Upgrade from %s',
   'StarGiftDefaultMessage': 'You can add this gift to your profile.',
@@ -3436,8 +3436,8 @@ const lang = {
     'other_value': 'Add this gift to your profile or convert it to %d Stars.'
   },
   'StarGiftDefaultMessageConvertableOut': {
-    'one_value': '%2$s can add this gift on their profile or convert it to %1$d Star.',
-    'other_value': '%2$s can add this gift on their profile or convert it to %1$d Stars.'
+    'one_value': '%s can add this gift on their profile or convert it to %d Star.',
+    'other_value': '%s can add this gift on their profile or convert it to %d Stars.'
   },
   'StarGiftDefaultMessageUpgrade': 'Upgrade this gift to a unique collectible.',
   'StarGiftDefaultMessageUpgradeOut': '%s can turn this gift into a unique collectible.',

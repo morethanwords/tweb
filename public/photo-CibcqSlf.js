@@ -1,0 +1,2 @@
+import{n as e,t}from"./peerTypeSection-ChlbE-AE.js";var n=e(e=>{let n=t(`photo`,`AutoDownloadPhotosTitle`,e.middlewareHelper.get());e.scrollable.append(n.container)});export{n as default};
+//# sourceMappingURL=photo-CibcqSlf.js.map

@@ -1,0 +1,2 @@
+function e(e){try{e()}catch(e){console.error(`fastRaf callback error:`,e)}}var t;function n(n){t?t.push(n):(t=[n],requestAnimationFrame(()=>{let n=t;t=void 0,n.forEach(e)}))}var r;function i(){return r||(r=new Promise(e=>n(()=>e())),r.then(()=>{r=void 0}),r)}function a(){return new Promise(e=>{n(()=>{n(e)})})}export{n,i as r,a as t};
+//# sourceMappingURL=schedulers-b4lWz3X5.js.map
