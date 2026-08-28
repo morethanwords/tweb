@@ -37,6 +37,7 @@ import {HIDDEN_PEER_ID} from '@appManagers/constants';
 import {rgbIntToHex} from '@helpers/color';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import attachClickEventRef from '@helpers/solid/attachClickEventRef';
 import ListenerSetter from '@helpers/listenerSetter';
 import {resolveFirst} from '@solid-primitives/refs';
 import differenceInYears from '@helpers/date/differenceInYears';
@@ -106,14 +107,14 @@ function getStatusHiddenShow(peerId: PeerId) {
   return (
     <span
       class="show-when"
-      onClick={(e) => {
+      ref={attachClickEventRef((e) => {
         cancelEvent(e);
         PopupElement.createPopup(
           PopupToggleReadDate,
           peerId,
           'lastSeen'
         );
-      }}
+      })}
     >
       {i18n('StatusHiddenShow')}
     </span>
@@ -320,13 +321,13 @@ PeerProfile.SubtitleRating = () => {
     <Show when={starsRating()}>
       <div
         class="profile-subtitle-rating"
-        onClick={(e) => {
+        ref={attachClickEventRef((e) => {
           cancelEvent(e);
           showStarsRatingPopup({
             user: context.peer as User.user,
             userFull: context.fullPeer as UserFull
           });
-        }}
+        })}
       >
         {wrapStarsRatingLevel(starsRating().level)}
       </div>
@@ -613,21 +614,13 @@ PeerProfile.PinnedMusic = () => {
     openSavedMusicTab(appSidebarRight, context.peerId);
   };
 
-  // Bind through attachClickEvent rather than on:click: it listens on the same
-  // event the avatars header around us does — mousedown where touch is
-  // supported — so cancelEvent above actually stops the tap there, instead of
-  // arriving one event too late and letting it fold the header too.
-  const attachRowClick = (element: HTMLElement) => {
-    onCleanup(attachClickEvent(element, openSavedMusic, {capture: true}));
-  };
-
   const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined);
   const audioAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeAudio'));
   const filenameAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeFilename'));
 
   return (
     <div class="profile-music-container">
-      <div class="profile-music" ref={attachRowClick} use:ripple>
+      <div class="profile-music" ref={attachClickEventRef(openSavedMusic)} use:ripple>
         <div class="profile-music-inner">
           <IconTsx icon="note_filled" class="profile-music-icon" />
           {/* `EmojiTextTsx` rather than a bare `wrapEmojiText`: that returns a fragment, and a
@@ -1474,7 +1467,7 @@ PeerProfile.StoryPreviews = (props: {
             'width': `${dims().totalSvgSize}px`,
             'height': `${dims().totalSvgSize}px`
           }}
-          ref={(element) => onCleanup(attachClickEvent(element, onCircleClick))}
+          ref={attachClickEventRef(onCircleClick)}
         >
           {storiesCircle()}
           <div
