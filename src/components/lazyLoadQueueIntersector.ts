@@ -48,6 +48,10 @@ export default class LazyLoadQueueIntersector extends LazyLoadQueueBase {
     return item.load(item.div);
   }
 
+  protected discardItem(item: LazyLoadElement) {
+    this.unobserve(item);
+  }
+
   protected addElement(method: 'push' | 'unshift', el: LazyLoadElement) {
     const item = this.queue.find((i) => i.div === el.div && i.load === el.load);
     if(item) {

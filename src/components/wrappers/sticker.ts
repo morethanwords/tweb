@@ -390,7 +390,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       };
 
       if(lazyLoadQueue && onlyThumb) {
-        lazyLoadQueue.push({div: div[0], load});
+        lazyLoadQueue.push({div: div[0], load, middleware});
         loadThumbPromise.resolve();
         return ret;
       } else {
@@ -731,7 +731,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   }
 
   const loadPromise: Promise<Awaited<ReturnType<typeof load>> | void> = lazyLoadQueue && (!downloaded || isAnimated) ?
-    (lazyLoadQueue.push({div: div[0], load}), Promise.resolve()) :
+    (lazyLoadQueue.push({div: div[0], load, middleware}), Promise.resolve()) :
     load();
 
   if(downloaded && (asStatic/*  || stickerType === 3 */)) {

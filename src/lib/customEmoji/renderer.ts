@@ -1086,7 +1086,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
       if(lazyLoadQueue) {
         lazyLoadQueue.push({
           div: renderer.canvas,
-          load
+          load,
+          middleware
         });
       } else {
         load();

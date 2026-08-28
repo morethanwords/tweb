@@ -30,6 +30,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     container.classList.add('media-sticker-wrapper');
     lazyLoadQueue.push({
       div: container,
+      middleware,
       load: async() => {
         const downloadOptions = await managers.appStickersManager.getStickerSetThumbDownloadOptions(set);
         const promise = appDownloadManager.download(downloadOptions);
