@@ -62,7 +62,10 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     if(this.peerId.isAnyChat()) {
       return this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
     }
-    return false;
+
+    // Own bot — its avatar is editable (and removable) by the owner.
+    const user = await this.managers.appUsersManager.getUser(this.peerId.toUserId());
+    return !!(user?.pFlags?.bot && user.pFlags.bot_can_edit);
   }
 
   onPrevClick = (target: AppMediaViewerAvatarTargetType) => {
@@ -104,8 +107,10 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
       return;
     }
 
-    if(peerId.isUser()) {
+    if(peerId === rootScope.myId) {
       await this.managers.appProfileManager.deletePhotos([photoId as string]);
+    } else if(peerId.isUser()) { // own bot, see computeCanDelete
+      await this.managers.appProfileManager.clearBotProfilePhoto(peerId.toUserId());
     } else {
       await this.managers.appChatsManager.editPhoto(peerId.toChatId());
     }

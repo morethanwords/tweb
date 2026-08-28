@@ -7,7 +7,7 @@
 
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import tsNow from '@helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document} from '@layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputPhoto, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab, Document} from '@layer';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -1087,23 +1087,27 @@ export class AppProfileManager extends AppManager {
 
   public updateProfilePhoto(photoId: string, fallback?: boolean) {
     const photo = this.appPhotosManager.getPhoto(photoId);
-    return this.apiManager.invokeApi('photos.updateProfilePhoto', {
-      id: getPhotoInput(photo),
-      fallback: fallback || undefined
-    }).then(() => {
-      this.apiManager.clearCache('photos.getUserPhotos', () => true);
-      const userId = this.rootScope.myId.toUserId();
-      delete this.usersFull[userId];
-      return this.appUsersManager.getApiUsers([userId]);
-    });
+    return this.setProfilePhoto({id: getPhotoInput(photo), fallback});
   }
 
   public clearFallbackProfilePhoto() {
+    return this.setProfilePhoto({id: {_: 'inputPhotoEmpty'}, fallback: true});
+  }
+
+  // A bot has no photo archive of its own, so photos.deletePhotos (self-only)
+  // can't touch its avatar — setting an empty photo is the only way to remove it.
+  public clearBotProfilePhoto(botId: BotId) {
+    return this.setProfilePhoto({id: {_: 'inputPhotoEmpty'}, botId});
+  }
+
+  private setProfilePhoto({id, fallback, botId}: {id: InputPhoto, fallback?: boolean, botId?: BotId}) {
     return this.apiManager.invokeApi('photos.updateProfilePhoto', {
-      id: {_: 'inputPhotoEmpty'},
-      fallback: true
+      id,
+      fallback: fallback || undefined,
+      bot: botId ? this.appUsersManager.getUserInput(botId) : undefined
     }).then(() => {
-      const userId = this.rootScope.myId.toUserId();
+      this.apiManager.clearCache('photos.getUserPhotos', () => true);
+      const userId = botId || this.rootScope.myId.toUserId();
       delete this.usersFull[userId];
       return this.appUsersManager.getApiUsers([userId]);
     });
