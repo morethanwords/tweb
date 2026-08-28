@@ -336,7 +336,7 @@ PeerProfile.SubtitleRating = () => {
 
 PeerProfile.SubtitleStatus = () => {
   const context = useContext(PeerProfileContext);
-  const {rootScope, appImManager, wrapTopicNameButton} = useHotReloadGuard();
+  const {rootScope, appDialogsManager, appImManager, wrapTopicNameButton} = useHotReloadGuard();
   const needWhen = createMemo(() => {
     const user = (context.peer as User.user);
     return !!(user.status as UserStatus.userStatusRecently)?.pFlags?.by_me;
@@ -365,8 +365,10 @@ PeerProfile.SubtitleStatus = () => {
             middleware
           }
         }).then(({element}) => {
-          attachClickEvent(element, (e) => {
-            appImManager.setPeer({peerId});
+          attachClickEvent(element, () => {
+            // the subtitle under a topic's title is its forum — open the topics
+            // tab, like the anchor this button replaced used to
+            appDialogsManager.toggleForumTabByPeerId(peerId, true, true);
           }, {listenerSetter});
           return element;
         });

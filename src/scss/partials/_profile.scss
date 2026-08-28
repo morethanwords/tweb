@@ -724,6 +724,12 @@
       cursor: pointer;
       pointer-events: all;
     }
+
+    // the subtitle lives inside the avatars header, which is pointer-events:
+    // none — opt the topic's forum button back in, like .show-when above
+    .topic-name-button {
+      pointer-events: all;
+    }
   }
 
   &-avatar {

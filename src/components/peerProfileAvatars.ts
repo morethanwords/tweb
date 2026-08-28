@@ -145,10 +145,14 @@ export default class PeerProfileAvatars {
     const SWITCH_ZONE = 1 / 3;
     let cancel = false;
     let freeze = false;
+    // Controls that re-enable pointer events inside the (pointer-events: none)
+    // info overlay own their click — the header must not also fold/unfold, nor
+    // run checkScrollTop below, which would yank a scrolled profile to the top.
     attachClickEvent(this.container, async(_e) => {
       if(
         findUpClassName(_e.target, 'profile-subtitle-rating') ||
-        findUpClassName(_e.target, 'emoji-status')
+        findUpClassName(_e.target, 'emoji-status') ||
+        findUpClassName(_e.target, 'topic-name-button')
       ) {
         return;
       }
