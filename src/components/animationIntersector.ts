@@ -319,16 +319,23 @@ export class AnimationIntersector {
 
   public checkAnimation(player: AnimationItem, blurred?: boolean, destroy?: boolean) {
     const {el, animation, group, locked} = player;
-    if(locked) {
-      return;
-    }
 
-    // return;
+    // * Reclaim BEFORE honouring `locked`. That flag means "playback is under manual control right
+    // * now" - the hover-to-play logic locks whichever video it stops driving, and sound-capable
+    // * videos are added locked - and it used to bail out above this branch, so a locked item was
+    // * never reclaimed again. Its element left the DOM with its bubble and this registry kept the
+    // * whole subtree: 4 047 detached nodes hung off animationIntersector in a day-old tab. An
+    // * element that is out of the DOM has no playback left to control, and `controlled` still
+    // * protects the items an owner deliberately keeps for re-insertion.
     if(destroy || (!this.lockedGroups[group] && !isInDOM(el))) {
       if(!player.controlled || destroy) {
         this.removeAnimation(player);
       }
 
+      return;
+    }
+
+    if(locked) {
       return;
     }
 
