@@ -634,10 +634,13 @@ export class AppMessagesManager extends AppManager {
   public newUpdatesAfterReloadToHandle: {[key: string]: Set<Update>} = {};
 
   private notificationsHandlePromise: number;
+  private notificationsSyncPromise: Promise<void>;
   private notificationsToHandle: {[key: string]: {
     fwdCount: number,
     fromId: PeerId,
-    topMessage?: MyMessage
+    topMessage?: MyMessage,
+    /** queued while the first difference after the app start was being applied */
+    isInitialSync?: boolean
   }} = {};
 
   private reloadConversationsPromise: Promise<void>;
@@ -8689,14 +8692,28 @@ export class AppMessagesManager extends AppManager {
     // var timeout = $rootScope.idle.isIDLE && StatusManager.isOtherDeviceActive() ? 30000 : 1000;
     // const timeout = 1000;
 
-    for(const key in this.notificationsToHandle) {
+    const notificationsToHandle = this.notificationsToHandle;
+    this.notificationsToHandle = {};
+
+    for(const key in notificationsToHandle) {
       const [peerId, threadId] = key.split('_');
       // if(rootScope.peerId === peerId && !rootScope.idle.isIDLE) {
       // continue;
       // }
 
-      const notifyPeerToHandle = this.notificationsToHandle[key];
-      this.getNotifyPeerSettings(peerId.toPeerId(), threadId ? +threadId : undefined)
+      const notifyPeerToHandle = notificationsToHandle[key];
+      const notifyPeerId = peerId.toPeerId();
+
+      // * hold it back while a difference is being applied: the read mark, the deletion or the
+      // * mute change that cancels this notification can still be in it (in a later
+      // * `updates.differenceSlice`, or in the channel's own difference)
+      if(this.apiUpdatesManager.shouldWaitForSync(notifyPeerId)) {
+        this.notificationsToHandle[key] = notifyPeerToHandle;
+        this.handleNotificationsAfterSync(notifyPeerId);
+        continue;
+      }
+
+      this.getNotifyPeerSettings(notifyPeerId, threadId ? +threadId : undefined)
       .then(({muted, peerTypeNotifySettings}) => {
         const topMessage = notifyPeerToHandle.topMessage;
         if((muted && !topMessage.pFlags.mentioned) || !topMessage.pFlags.unread) {
@@ -8707,15 +8724,32 @@ export class AppMessagesManager extends AppManager {
         if(topMessage.pFlags.unread) {
           this.notifyAboutMessage(topMessage, {
             fwdCount: notifyPeerToHandle.fwdCount,
-            peerTypeNotifySettings
+            peerTypeNotifySettings,
+            isInitialSync: notifyPeerToHandle.isInitialSync
           });
         }
         // }, timeout);
       });
     }
-
-    this.notificationsToHandle = {};
   };
+
+  /** flush the notifications held back by {@link handleNotifications} once the difference is applied */
+  private handleNotificationsAfterSync(peerId: PeerId) {
+    if(this.notificationsSyncPromise) {
+      return;
+    }
+
+    const promise = this.notificationsSyncPromise = this.apiUpdatesManager.waitForSync(peerId);
+
+    promise.then(() => {
+      if(this.notificationsSyncPromise !== promise) {
+        return;
+      }
+
+      this.notificationsSyncPromise = undefined;
+      this.handleNotifications();
+    });
+  }
 
   public getUpdateAfterReloadKey(peerId: PeerId, threadOrSavedId?: number) {
     return peerId + (threadOrSavedId ? '_' + threadOrSavedId : '');
@@ -9247,7 +9281,8 @@ export class AppMessagesManager extends AppManager {
       const notifyPeer = threadKey || peerId;
       const notifyPeerToHandle = this.notificationsToHandle[notifyPeer] ??= {
         fwdCount: 0,
-        fromId: NULL_PEER_ID
+        fromId: NULL_PEER_ID,
+        isInitialSync: this.apiUpdatesManager.isInitialSync()
       };
 
       if(notifyPeerToHandle.fromId !== fromId) {
@@ -10778,23 +10813,18 @@ export class AppMessagesManager extends AppManager {
   private async notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
     peerReaction: MessagePeerReaction,
-    peerTypeNotifySettings: PeerNotifySettings
+    peerTypeNotifySettings: PeerNotifySettings,
+    /** captured when the notification was queued, since the sync is over by the time it's flushed */
+    isInitialSync: boolean
   }> = {}) {
     const peerId = this.getMessagePeer(message);
 
-    if(await this.appPeersManager.isPeerRestricted(peerId)) {
-      return;
-    }
-
-    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
-
-    const port = MTProtoMessagePort.getInstance<false>();
-    port.invokeVoid('notificationBuild', {
+    return this.appNotificationsManager.routeNotification(peerId, {
       message,
-      accountNumber: this.getAccountNumber(),
-      isOtherTabActive: tab ? !!tab.state.idleStartTime : true,
-      ...options
-    }, tab?.source);
+      fwdCount: options.fwdCount,
+      peerReaction: options.peerReaction,
+      peerTypeNotifySettings: options.peerTypeNotifySettings
+    }, options.isInitialSync);
   }
 
   public getScheduledMessagesStorage(peerId: PeerId) {

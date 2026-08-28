@@ -15,6 +15,19 @@ import ctx from '@environment/ctx';
 import assumeType from '@helpers/assumeType';
 import appTabsManager from '@appManagers/appTabsManager';
 import commonStateStorage from '@lib/commonStateStorage';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import type {
+  NotificationBuildMessageTaskPayload,
+  NotificationBuildStoryTaskPayload,
+  NotificationBuildStoryReactionTaskPayload,
+  NotificationBuildTaskPayload
+} from '@lib/apiManagerProxy';
+
+/** what a notification's builder provides — the routing fields are filled in by the router */
+type NotificationBuildPayload =
+  Omit<NotificationBuildMessageTaskPayload, 'accountNumber' | 'isOtherTabActive'> |
+  Omit<NotificationBuildStoryTaskPayload, 'accountNumber' | 'isOtherTabActive'> |
+  Omit<NotificationBuildStoryReactionTaskPayload, 'accountNumber' | 'isOtherTabActive'>;
 
 type ImSadAboutIt = Promise<PeerNotifySettings> | PeerNotifySettings;
 type MyNotifyPeer = NotifyPeer.notifyUsers['_'] | NotifyPeer.notifyChats['_'] | NotifyPeer.notifyBroadcasts['_'];
@@ -456,6 +469,36 @@ export class AppNotificationsManager extends AppManager {
     }
 
     return tab;
+  }
+
+  /**
+   * Hand a built notification to the tab that should show it. Drops it when it belongs to the
+   * first difference after the app start and somebody is sitting in that very tab: that
+   * difference replays the whole backlog at once, and the unread badges tell the same story
+   * without a popup per chat.
+   */
+  public async routeNotification(
+    peerId: PeerId,
+    payload: NotificationBuildPayload,
+    isInitialSync = this.apiUpdatesManager.isInitialSync()
+  ) {
+    if(await this.appPeersManager.isPeerRestricted(peerId)) {
+      return;
+    }
+
+    const tab = await this.getNotificationTab(peerId);
+    // * the tab that would show it is idle -> the user is elsewhere (another tab, another window)
+    const isOtherTabActive = tab ? !!tab.state.idleStartTime : true;
+    if(!isOtherTabActive && isInitialSync) {
+      return;
+    }
+
+    const port = MTProtoMessagePort.getInstance<false>();
+    port.invokeVoid('notificationBuild', {
+      ...payload,
+      accountNumber: this.getAccountNumber(),
+      isOtherTabActive
+    } as NotificationBuildTaskPayload, tab?.source);
   }
 
   private onUpdateNotifySettings = (update: Update.updateNotifySettings) => {

@@ -17,7 +17,6 @@ import {AppManager} from '@appManagers/manager';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
-import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 
 type MyStoryItem = Exclude<StoryItem, StoryItem.storyItemDeleted>;
 
@@ -1582,6 +1581,9 @@ export default class AppStoriesManager extends AppManager {
     const peerId = this.appPeersManager.getPeerId(update.peer);
     const cache = this.getPeerStoriesCache(peerId);
     let {story} = update;
+    // * capture it here: the notification can be routed after an await, by which time the
+    // * first difference is already over
+    const isInitialSync = this.apiUpdatesManager.isInitialSync();
 
     if(story._ === 'storyItemDeleted') {
       this.handleDeletedStory(cache, story.id);
@@ -1599,7 +1601,7 @@ export default class AppStoriesManager extends AppManager {
           !this.isStoryExpired(story) &&
           this.getCacheTypeForPeerId(peerId)
         ) {
-          this.notifyAboutStory(peerId, story, cache.maxReadId);
+          this.notifyAboutStory(peerId, story, cache.maxReadId, isInitialSync);
         }
       });
       return;
@@ -1610,11 +1612,11 @@ export default class AppStoriesManager extends AppManager {
     story = this.saveStoryItems([update.story], cache, cacheType, true)[0];
     if(!hadStoryBefore && cacheType) {
       this.rootScope.dispatchEvent('story_new', {peerId, story, cacheType, maxReadId: cache.maxReadId});
-      this.notifyAboutStory(peerId, story as StoryItem.storyItem, cache.maxReadId);
+      this.notifyAboutStory(peerId, story as StoryItem.storyItem, cache.maxReadId, isInitialSync);
     }
   };
 
-  private async notifyAboutStory(peerId: PeerId, story: StoryItem.storyItem, maxReadId: number) {
+  private async notifyAboutStory(peerId: PeerId, story: StoryItem.storyItem, maxReadId: number, isInitialSync?: boolean) {
     // * don't notify about our own stories
     if(peerId === this.appPeersManager.peerId || story.pFlags?.out) {
       return;
@@ -1625,7 +1627,13 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    if(await this.appPeersManager.isPeerRestricted(peerId)) {
+    // * hold it back while a difference is being applied: the updateReadStories that makes this
+    // * story already-seen (opened on another device) can still be in it
+    await this.apiUpdatesManager.waitForSync(peerId);
+
+    // * ...so re-read the mark, it may have moved while we were waiting
+    const maxReadIdNow = this.getPeerStoriesCache(peerId, false)?.maxReadId;
+    if(maxReadIdNow && story.id <= maxReadIdNow) {
       return;
     }
 
@@ -1633,23 +1641,18 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
-
-    const port = MTProtoMessagePort.getInstance<false>();
-    port.invokeVoid('notificationBuild', {
-      story: {peerId, storyId: story.id},
-      accountNumber: this.getAccountNumber(),
-      isOtherTabActive: tab ? !!tab.state.idleStartTime : true
-    }, tab?.source);
+    return this.appNotificationsManager.routeNotification(peerId, {
+      story: {peerId, storyId: story.id}
+    }, isInitialSync);
   }
 
   protected onUpdateNewStoryReaction = (update: Update.updateNewStoryReaction) => {
-    this.notifyAboutStoryReaction(update);
+    this.notifyAboutStoryReaction(update, this.apiUpdatesManager.isInitialSync());
   };
 
   // * someone reacted to one of our own stories — unlike a new story, this is gated by the
   // * global reactions settings (account.getReactionsNotifySettings), not by the peer's mute
-  private async notifyAboutStoryReaction(update: Update.updateNewStoryReaction) {
+  private async notifyAboutStoryReaction(update: Update.updateNewStoryReaction, isInitialSync?: boolean) {
     const {reaction, story_id: storyId} = update;
     if(reaction._ === 'reactionEmpty') { // * the reaction was removed
       return;
@@ -1660,23 +1663,18 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    if(await this.appPeersManager.isPeerRestricted(peerId)) {
-      return;
-    }
+    // * let a running difference finish first, so the settings below are read after whatever
+    // * it carries (a mute, a settings change) has been applied
+    await this.apiUpdatesManager.waitForSync(peerId);
 
     const notifySettings = await this.appNotificationsManager.getStoryReactionNotifySettings(peerId);
     if(!notifySettings) {
       return;
     }
 
-    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
-
-    const port = MTProtoMessagePort.getInstance<false>();
-    port.invokeVoid('notificationBuild', {
-      storyReaction: {peerId, storyId, reaction, showPreview: notifySettings.showPreview},
-      accountNumber: this.getAccountNumber(),
-      isOtherTabActive: tab ? !!tab.state.idleStartTime : true
-    }, tab?.source);
+    return this.appNotificationsManager.routeNotification(peerId, {
+      storyReaction: {peerId, storyId, reaction, showPreview: notifySettings.showPreview}
+    }, isInitialSync);
   }
 
   protected onUpdateReadStories = (update: Update.updateReadStories) => {
