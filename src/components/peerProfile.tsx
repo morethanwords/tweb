@@ -619,7 +619,16 @@ PeerProfile.PinnedMusic = () => {
 
   return (
     <div class="profile-music-container">
-      <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}} use:ripple>
+      {/* the avatars header listens with attachClickEvent, i.e. on mousedown
+        where touch is supported — that fires before our click, so cancel it
+        there too or a tap opens the playlist AND unfolds the header (the story
+        previews above do the same) */}
+      <div
+        class="profile-music"
+        on:mousedown={cancelEvent}
+        on:click={{capture: true, handleEvent: openSavedMusic}}
+        use:ripple
+      >
         <div class="profile-music-inner">
           <IconTsx icon="note_filled" class="profile-music-icon" />
           {/* `EmojiTextTsx` rather than a bare `wrapEmojiText`: that returns a fragment, and a
