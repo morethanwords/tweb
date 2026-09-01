@@ -33,7 +33,7 @@ import singleInstance, {InstanceDeactivateReason} from '@lib/singleInstance';
 import {parseUriParamsLine} from '@helpers/string/parseUriParams';
 import Modes from '@config/modes';
 import {AuthState} from '@types';
-import DEBUG, {IS_BETA} from '@config/debug';
+import DEBUG, {IS_BETA, IS_POPUP_SANDBOX} from '@config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from '@environment/installPrompt';
 import cacheInstallPrompt from '@helpers/dom/installPrompt';
 import {fillLocalizedDates} from '@helpers/date';
@@ -405,19 +405,42 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   showIconLibrary();
 };
 
+// The popup sandbox, over a running app (`?popups=1` boots straight into it instead). The bare
+// `import.meta.env.DEV` is deliberate: only a `false` literal at the call site makes rolldown drop
+// the dynamic import before chunking. The authorized preview is a dev server, so it is covered.
+if(import.meta.env.DEV) {
+  (window as any)['showPopupSandbox'] = async() => {
+    const {showPopupSandbox} = await import('@components/popupSandbox');
+    await showPopupSandbox();
+  };
+}
+
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   const perf = performance.now();
   randomlyChooseVersionFromSearch();
   setSidebarLeftWidth();
   toggleAttributePolyfill();
   replaceChildrenPolyfill();
-  rootScope.managers = getProxiedManagers();
   setManifest();
   setViewportHeightListeners();
   setWorkerProxy; // * just to import
   listenForWindowPrint();
   cancelImageEvents();
   setRootClasses();
+
+  // ?popups=1 — the popup sandbox: every popup, opened by click with mock data and no session.
+  // It has to take over here, before the session is restored and the auth flow starts.
+  // The literal `import.meta.env.DEV` is not redundant with `IS_POPUP_SANDBOX` (which already
+  // implies it): only a `false` right at the call site makes rolldown drop the dynamic import
+  // before chunking, and with it the whole sandbox chunk. Behind the imported const alone the
+  // branch still folds away, but a ~150 KB orphan chunk is emitted that nothing ever loads.
+  if(import.meta.env.DEV && IS_POPUP_SANDBOX) {
+    const {startPopupSandbox} = await import('@components/popupSandbox');
+    await startPopupSandbox();
+    return;
+  }
+
+  rootScope.managers = getProxiedManagers();
   await checkLastActiveAccountFromTMe();
 
   if(IS_INSTALL_PROMPT_SUPPORTED) {

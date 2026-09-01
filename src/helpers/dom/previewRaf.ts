@@ -1,4 +1,4 @@
-import {IS_PREVIEW} from '@config/debug';
+import {IS_POPUP_SANDBOX, IS_PREVIEW} from '@config/debug';
 
 /*
  * A preview tab frequently isn't painting (it runs backgrounded / headless),
@@ -12,7 +12,7 @@ import {IS_PREVIEW} from '@config/debug';
  * src/index.ts so the swap is in place before any rAF call. Production builds
  * fold the branch away — IS_PREVIEW is a literal `false` there.
  */
-if(IS_PREVIEW && typeof window !== 'undefined') {
+if((IS_PREVIEW || IS_POPUP_SANDBOX) && typeof window !== 'undefined') {
   const FRAME_MS = 1000 / 60;
 
   window.requestAnimationFrame = (callback: FrameRequestCallback) => {

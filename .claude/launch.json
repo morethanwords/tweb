@@ -30,6 +30,12 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "TWEB_MASTER_SEED=seed-b.json exec bash scripts/start-preview.sh --id account-b --port 9002"],
       "port": 9002
+    },
+    {
+      "name": "tweb-popups",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--config.verify-deps-before-run=false", "exec", "vite", "--port", "9007", "--strictPort"],
+      "port": 9007
     }
   ]
 }

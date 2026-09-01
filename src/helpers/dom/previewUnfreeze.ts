@@ -1,4 +1,4 @@
-import {IS_PREVIEW} from '@config/debug';
+import {IS_POPUP_SANDBOX, IS_PREVIEW} from '@config/debug';
 
 /*
  * The preview tab runs permanently hidden, and Chrome throttles DOM timers in
@@ -14,7 +14,7 @@ import {IS_PREVIEW} from '@config/debug';
  * tab. Must be imported before any other module (see src/index.ts) so no code
  * captures the native timers. Production builds fold all of this away.
  */
-if(IS_PREVIEW && typeof(window) !== 'undefined') {
+if((IS_PREVIEW || IS_POPUP_SANDBOX) && typeof(window) !== 'undefined') {
   type StoredTimer = {callback: (...args: any[]) => void, args: any[], isInterval?: boolean};
 
   const workerSource = `

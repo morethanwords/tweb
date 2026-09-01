@@ -45,6 +45,56 @@ details: see the script header. `.claude/launch.json` wires it into Claude
 Code's preview pane; other agents run the script directly and open the printed
 URL with their own browser tooling.
 
+### Popup sandbox
+
+Every popup, opened by click with mock data and **no Telegram traffic**. Two ways in:
+
+- `?popups=1` on any dev/preview build (`.claude/launch.json` has a
+  `tweb-popups` server for it — a plain vite server is enough, no auth needed).
+  `src/index.ts` hands over before the session is restored, so nothing but the
+  sandbox ever runs.
+- `showPopupSandbox()` from the console of a running app, signed in or not. The
+  panel opens over the app and closing it (×) puts the real managers back. The
+  fixture peers/messages are merged into the mirrors key by key rather than
+  replacing them, so a live session's own cache survives.
+
+Signed in, the panel offers a second data source — **My data** — which builds the
+stories out of the session's own dialogs, messages and gifts instead of the
+fixtures, and runs them against the real managers. Writes are held back by a
+name heuristic that fails closed (`liveManagers.ts`): only `get`/`is`/`has`/`can`
+… reach the real manager, everything else resolves to `undefined` and is listed
+in the panel. **Let popups write** removes that guard, and then a confirm button
+does the real thing — deletes, leaves, pays. Stories with no live equivalent (a
+payment form, a gift code) are marked `fixtureOnly` and stay on fixtures.
+
+Either way every `rootScope.managers` call is answered from
+`src/components/popupSandbox/`.
+
+- A **story** is one popup in one state — arguments plus the manager answers it
+  needs. They live in `src/components/popupSandbox/stories/`; add a file there
+  and import it from that folder's `index.ts`. Import the popup module *inside*
+  `open()`, never at the top (the popup graph has import cycles).
+- A story asks `open(ctx)` for a peer by KIND (`ctx.peer('channel')`), a message
+  (`ctx.message()`), a chat (`ctx.chat()`) or a gift — never for a fixture by
+  name. That indirection is what lets the same story render from fixtures or from
+  a real account; a story that reaches into `fixtures.ts` directly cannot go live.
+- Anything a story does not answer resolves to `undefined` and is listed under
+  "Unanswered manager calls" in the panel — that list is the to-do for making a
+  half-rendered popup complete.
+- The panel's theme select switches between `system` and every shipped theme
+  (`day` / `night` / `light` / `tinted`) and survives a reload — the mock
+  managers discard settings writes, so it is kept in `localStorage` instead.
+- `window.popupSandbox` (`ready` / `show` / `hide` / `list` / `open` /
+  `closePopups` / `calls` / `unhandled`) drives the same registry from a script;
+  `calls` and `unhandled` follow the active data source.
+  `pnpm test:popups` runs `e2e/popupSandbox.spec.ts`, which opens every story in
+  headless Chromium and fails on one that throws or never becomes visible.
+- `src/tests/popupSandboxCoverage.test.ts` fails when a module under
+  `components/popups/` can open a popup and no story imports it, so a new popup
+  cannot land without one. It also fails when a story builds its popup out of a
+  fixture without being marked `fixtureOnly` — that mark is what keeps live mode
+  from quietly showing made-up data.
+
 ## Directory Structure
 
 ```

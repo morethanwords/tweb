@@ -93,8 +93,11 @@ export class StoriesSelection extends AppSelection {
     const size = this.selectedMids.size;
     if(!size && !forceSelection) return;
 
+    // `forceSelection` enters selection mode with nothing selected yet (the album picker opens that
+    // way), so there is no peer and no mids — `cantPinDeleteStories` answers "can't" for an empty
+    // list, which is what an empty selection means.
     const peerId = this.selectedMids.keys().next().value;
-    const r = await this.managers.appStoriesManager.cantPinDeleteStories(peerId, Array.from(this.selectedMids.get(peerId)));
+    const r = await this.managers.appStoriesManager.cantPinDeleteStories(peerId, Array.from(this.selectedMids.get(peerId) ?? []));
     this._setCount(this.length());
     this._setCantPin(r.cantPin);
     this._setCantDelete(r.cantDelete);
