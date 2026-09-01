@@ -213,7 +213,6 @@ export default async function createReactionContextMenu({
 
   const element = await ButtonMenu({buttons, listenerSetter});
   element.classList.add('contextmenu', 'reaction-context-menu');
-  element.setAttribute('role', 'menu');
 
   if(resolveReactionPackButton) {
     void reactionPackPromise.then((reactionPack) => {
@@ -243,9 +242,9 @@ export default async function createReactionContextMenu({
         stack: chat.appImManager.getStackFromElement(reactionElement)
       });
     };
-    listenerSetter.add(button.element)('click', openPeer);
     button.element.tabIndex = 0;
-    button.element.setAttribute('role', 'menuitem');
+    button.element.setAttribute('role', 'button');
+    listenerSetter.add(button.element)('click', openPeer);
     listenerSetter.add(button.element)('keydown', (e: KeyboardEvent) => {
       if(e.target === button.element && (e.key === 'Enter' || e.key === ' ')) {
         openPeer(e);

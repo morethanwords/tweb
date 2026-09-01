@@ -1,6 +1,6 @@
 import safePlay from '@helpers/dom/safePlay';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
-import noop from '@helpers/noop';
+import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 import {logger} from '@lib/logger';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
 import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
@@ -20,9 +20,23 @@ export type TryAddTrackOptions = {
   source?: string
 };
 
+type MediaDeviceChangeKind = 'audio' | 'video' | 'output';
+
 export default abstract class CallInstanceBase<E extends EventListenerListeners> extends EventListenerBase<E> {
   protected log: ReturnType<typeof logger>;
   protected outputDeviceId: string;
+
+  private mediaDeviceChangeGenerations: Record<MediaDeviceChangeKind, number> = {
+    audio: 0,
+    video: 0,
+    output: 0
+  };
+  private mediaDeviceChangeQueues: Record<MediaDeviceChangeKind, SerializedQueue> = {
+    audio: createSerializedQueue(),
+    video: createSerializedQueue(),
+    output: createSerializedQueue()
+  };
+  protected pendingInputAudioTracks = new Set<MediaStreamTrack>();
 
   protected player: HTMLElement;
   protected elements: Map<string, HTMLMediaElement>;
@@ -34,6 +48,14 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
   constructor() {
     super(false);
+
+    // Keep `outputDeviceId` as the last sink that every owned element actually
+    // accepted. A persisted id is only a requested value until setSinkId
+    // succeeds; seeding the committed field with it made a rejected startup
+    // application roll back to the same unavailable sink and left future
+    // elements believing it was live.
+    const persistedOutputDeviceId = appSettings.callDevices?.speakerId || '';
+    this.outputDeviceId = '';
 
     const player = this.player = document.createElement('div');
     player.classList.add('call-player');
@@ -53,11 +75,14 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
     this.getStream = getStreamCached();
 
-    // Honour the persisted speaker choice from the Speakers-and-Camera tab.
-    // tryAddTrack reads this every time it spawns a new media element, so
-    // setting it pre-emptively in the constructor is enough — no need to
-    // back-fill existing elements (there are none yet at this point).
-    this.outputDeviceId = appSettings.callDevices?.speakerId || '';
+    if(persistedOutputDeviceId) {
+      // Reuse the same generation/serialization path as a live picker change.
+      // This makes an immediate user selection supersede a still-pending saved
+      // sink instead of the late constructor write winning the race.
+      void this.setOutputDeviceId(persistedOutputDeviceId).catch((err) => {
+        this.log?.warn?.('applying persisted call speaker failed', err);
+      });
+    }
   }
 
   public get isSharingAudio() {
@@ -77,8 +102,28 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     // this.fixedSafariAudio = true;
   }
 
-  public requestAudioSource(muted: boolean) {
-    return this.requestInputSource(true, false, muted);
+  protected isInputTrackAvailable(track: MediaStreamTrack | undefined): boolean {
+    return !!track && track.readyState === 'live' && !track.muted;
+  }
+
+  public async requestAudioSource(muted: boolean): Promise<void> {
+    const currentTrack = this.streamManager?.inputStream?.getAudioTracks()[0];
+    if(currentTrack && !this.isInputTrackAvailable(currentTrack)) {
+      // A live-but-muted source is not producing samples. Leaving it enabled
+      // made every later unmute reuse the same dead capture forever. Keep the
+      // transition fail-closed and reuse the transactional device-swap path so
+      // the sender, StreamManager and cleanup bookkeeping change together.
+      this.setMuted(true);
+      await this.setInputAudioDeviceId(appSettings.callDevices?.microphoneId || '');
+    }
+
+    await this.requestInputSource(true, false, muted);
+
+    const activeTrack = this.streamManager?.inputStream?.getAudioTracks()[0];
+    if(!this.isInputTrackAvailable(activeTrack)) {
+      this.setMuted(true);
+      throw new DOMException('Microphone capture is unavailable', 'NotReadableError');
+    }
   }
 
   public requestInputSource(audio: boolean, video: boolean, muted: boolean) {
@@ -100,7 +145,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       constraints,
       muted
     }).then((stream) => {
-      this.onInputStream(stream);
+      return this.onInputStream(stream);
     });
   }
 
@@ -109,7 +154,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       isScreen: true,
       constraints: getScreenConstraints(true)
     }).then((stream) => {
-      this.onInputStream(stream);
+      return this.onInputStream(stream);
     });
   }
 
@@ -122,6 +167,14 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   public abstract toggleMuted(): Promise<void>;
 
   public cleanup() {
+    // Invalidate getUserMedia / setSinkId work that can still resolve after
+    // the call has already released its registered streams and elements.
+    for(const kind of ['audio', 'video', 'output'] as const) {
+      ++this.mediaDeviceChangeGenerations[kind];
+    }
+    this.pendingInputAudioTracks.forEach((track) => stopTrack(track));
+    this.pendingInputAudioTracks.clear();
+
     this.player.textContent = '';
     this.player.remove();
     this.elements.clear();
@@ -186,12 +239,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       element.srcObject = useStream;
       element.volume = 1.0;
 
-      if((element as any).sinkId !== 'undefined') {
-        const {outputDeviceId} = this;
-        if(outputDeviceId) {
-          (element as any).setSinkId(outputDeviceId);
-        }
-      }
+      this.applyCurrentOutputDeviceToElement(element);
 
       if(!isVideo) {
         player.appendChild(element);
@@ -221,23 +269,65 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
       elements.set(elementEndpoint, element);
     } else {
-      if(element.paused) {
-        safePlay(element);
-      }
-
       // ! EVEN IF MEDIASTREAM IS THE SAME NEW TRACK WON'T PLAY WITHOUT REPLACING IT WHEN NEW PARTICIPANT IS ENTERING !
       // if(element.srcObject !== useStream) {
       element.srcObject = useStream;
       // }
     }
 
+    // The shared audio element is created and play()-primed before it has a
+    // source. Assigning srcObject afterwards does not reliably restart it,
+    // especially when a remote track appears muted and starts producing frames
+    // only after async negotiation/decryption. Always play after the source is
+    // installed, and retry once when that first track becomes live.
+    safePlay(element);
+    if(track.muted) {
+      track.addEventListener('unmute', () => {
+        if(element.srcObject === useStream) {
+          safePlay(element);
+        }
+      }, {once: true});
+    }
+
     return source;
   }
 
   public setMuted(muted?: boolean) {
-    this.streamManager.inputStream.getAudioTracks().forEach((track) => {
+    const tracks = new Set<MediaStreamTrack>(this.streamManager.inputStream.getAudioTracks());
+    this.pendingInputAudioTracks.forEach((track) => tracks.add(track));
+    tracks.forEach((track) => {
       if(track?.kind === 'audio') {
         track.enabled = muted === undefined ? !track.enabled : !muted;
+      }
+    });
+  }
+
+  /**
+   * Every live media element whose output sink belongs to this call.
+   *
+   * Most call types render through `elements`. P2P owns one additional audio
+   * element in its engine state, so subclasses can extend this iterable while
+   * the base class keeps generation, serialization and rollback in one place.
+   */
+  protected getOutputDeviceElements(): Iterable<HTMLMediaElement> {
+    return this.elements.values();
+  }
+
+  protected applyCurrentOutputDeviceToElement(element: HTMLMediaElement): void {
+    if(typeof((element as any).setSinkId) !== 'function') return;
+
+    // The element can appear while a picker transaction is in flight. Queue
+    // behind it and read the committed id only when this operation runs; an
+    // eager read could apply the old sink after the newer selection committed.
+    void this.serializeMediaDeviceChange('output', async() => {
+      const deviceId = this.outputDeviceId;
+      if(!deviceId) return;
+      try {
+        await (element as any).setSinkId(deviceId);
+      } catch(err) {
+        // A single newly-created media element failing its saved sink must not
+        // reject an unrelated track attachment or become unhandled.
+        this.log?.warn?.('applying call speaker to a new media element failed', err);
       }
     });
   }
@@ -246,57 +336,234 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   // own. Used by the in-call settings popup when the user picks a different
   // speaker — the change must propagate to live elements, not just future
   // ones (those pick up `this.outputDeviceId` in `tryAddTrack`).
-  public setOutputDeviceId(deviceId: string) {
-    this.outputDeviceId = deviceId || '';
-    const apply = deviceId || '';
-    for(const [, element] of this.elements) {
-      if(typeof (element as any).setSinkId === 'function') {
-        // setSinkId rejects on unknown ids / no permission; swallow because
-        // the device list itself came from enumerateDevices() and the only
-        // failure mode worth surfacing is permission, which would already
-        // have been declined for mic/cam.
-        (element as any).setSinkId(apply).catch(() => {});
+  public async setOutputDeviceId(deviceId: string): Promise<boolean> {
+    const generation = this.beginMediaDeviceChange('output');
+    const nextDeviceId = deviceId || '';
+
+    return this.serializeMediaDeviceChange('output', async() => {
+      if(!this.isMediaDeviceChangeCurrent('output', generation)) return false;
+
+      const previousDeviceId = this.outputDeviceId;
+      const elements = [...new Set(this.getOutputDeviceElements())].filter((element) => {
+        return typeof (element as any).setSinkId === 'function';
+      });
+      const results = await Promise.allSettled(elements.map((element) => {
+        return Promise.resolve().then(() => (element as any).setSinkId(nextDeviceId) as Promise<void>);
+      }));
+      const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+
+      if(rejected || !this.isMediaDeviceChangeCurrent('output', generation)) {
+        // setSinkId is per-element, so a later element may reject after an
+        // earlier one already switched. Restore the last committed sink before
+        // allowing the next queued selection to run.
+        await Promise.allSettled(elements.map((element) => {
+          return Promise.resolve().then(() => (element as any).setSinkId(previousDeviceId) as Promise<void>);
+        }));
+        if(rejected) throw rejected.reason;
+        return false;
+      }
+
+      this.outputDeviceId = nextDeviceId;
+      return true;
+    });
+  }
+
+  protected beginMediaDeviceChange(kind: MediaDeviceChangeKind): number {
+    return ++this.mediaDeviceChangeGenerations[kind];
+  }
+
+  protected isMediaDeviceChangeCurrent(kind: MediaDeviceChangeKind, generation: number): boolean {
+    return this.mediaDeviceChangeGenerations[kind] === generation;
+  }
+
+  protected serializeMediaDeviceChange<T>(kind: MediaDeviceChangeKind, callback: () => Promise<T>): Promise<T> {
+    return this.mediaDeviceChangeQueues[kind].enqueue(callback);
+  }
+
+  /**
+   * The ONE mid-call input-device swap transaction: acquire the replacement
+   * stream, serialize the sender commit per kind, keep a pending audio track
+   * registered while the swap is in flight, and unwind on every stale/closing
+   * detection. Both the streamManager-backed calls (this class) and P2P (which
+   * keeps its local streams outside StreamManager) run THIS method — they
+   * differ only in the hooks below, never in the transaction shape.
+   */
+  protected async runInputDeviceSwap(opts: {
+    kind: 'audio' | 'video',
+    constraints: MediaStreamConstraints,
+    /**
+     * undefined → proceed; boolean → abandon the swap (the fresh stream is
+     * released) with that result. Sites: 'acquired' (right after getUserMedia),
+     * 'queued' (entering the per-kind serialization queue), 'swapped' (after a
+     * successful sender swap — `false` additionally triggers `rollback`) and
+     * 'failed' (after a rejected swap; undefined rethrows the swap error).
+     * Each caller encodes its own staleness predicates AND their per-site
+     * precedence, which is why this is a function of the site.
+     */
+    shouldAbandon: (site: 'acquired' | 'queued' | 'swapped' | 'failed', generation: number) => boolean | undefined,
+    /**
+     * Resolve the live swap targets once inside the queue. undefined → no
+     * usable sender/track pair (throws the common could-not-replace error).
+     * `rollback` carries its own applicability guards.
+     */
+    resolveSwap: (newTrack: MediaStreamTrack) => {
+      oldTrack: MediaStreamTrack,
+      swap: () => MaybePromise<void>,
+      rollback: () => MaybePromise<void>
+    } | undefined,
+    /**
+     * A multi-sender swap can fail half-applied and must be compensated; a
+     * single-sender replaceTrack that rejects leaves the old track in place
+     * per spec, so compensating would only double the churn.
+     */
+    rollbackOnSwapFailure: boolean,
+    getPendingAudioEnabled: (oldTrack: MediaStreamTrack) => boolean,
+    release?: (stream: MediaStream) => void,
+    commit: (newStream: MediaStream, newTrack: MediaStreamTrack, oldTrack: MediaStreamTrack) => void,
+    acquisitionFailureLogLevel?: 'error' | 'warn'
+  }): Promise<boolean> {
+    const {kind} = opts;
+    const label = `setInput${kind === 'audio' ? 'Audio' : 'Video'}DeviceId`;
+    const release = opts.release ?? ((stream: MediaStream) => stream.getTracks().forEach((t) => stopTrack(t)));
+    const generation = this.beginMediaDeviceChange(kind);
+    let newStream: MediaStream;
+    try {
+      newStream = await getStream(opts.constraints);
+    } catch(err) {
+      if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
+      this.log?.[opts.acquisitionFailureLogLevel ?? 'error']?.(`${label} getUserMedia failed`, err);
+      throw err;
+    }
+
+    {
+      const abandon = opts.shouldAbandon('acquired', generation);
+      if(abandon !== undefined) {
+        release(newStream);
+        return abandon;
       }
     }
+
+    return this.serializeMediaDeviceChange(kind, async() => {
+      const abandon = opts.shouldAbandon('queued', generation);
+      if(abandon !== undefined) {
+        release(newStream);
+        return abandon;
+      }
+
+      const newTrack = newStream.getTracks().find((track) => track.kind === kind);
+      const resolved = newTrack && opts.resolveSwap(newTrack);
+      if(!resolved) {
+        release(newStream);
+        throw new Error(`Could not replace input ${kind} track`);
+      }
+      const {oldTrack, swap, rollback} = resolved;
+
+      const pendingAudioTrack = kind === 'audio' ? newTrack : undefined;
+      if(pendingAudioTrack) {
+        // getUserMedia returns enabled tracks. Preserve the logical microphone
+        // state before exposing the replacement to a sender. Keep tracking it
+        // until commit/rollback as setMuted can run while replaceTrack waits.
+        pendingAudioTrack.enabled = opts.getPendingAudioEnabled(oldTrack);
+        this.pendingInputAudioTracks.add(pendingAudioTrack);
+      }
+
+      try {
+        try {
+          await swap();
+        } catch(err) {
+          if(opts.rollbackOnSwapFailure && !this.isClosing) {
+            try {
+              await rollback();
+            } catch(rollbackErr) {
+              this.log?.error?.(`${label} rollback failed`, rollbackErr);
+            }
+          }
+          release(newStream);
+          const abandonFailed = opts.shouldAbandon('failed', generation);
+          if(abandonFailed !== undefined) return abandonFailed;
+          throw err;
+        }
+
+        // The swap may finish after hangup or after a newer A→B selection
+        // started. Do not publish that orphan stream after cleanup. A stale but
+        // live call (`false`) is restored to its last committed track before B
+        // proceeds.
+        const abandonSwapped = opts.shouldAbandon('swapped', generation);
+        if(abandonSwapped !== undefined) {
+          if(abandonSwapped === false) {
+            try {
+              await rollback();
+            } catch(rollbackErr) {
+              this.log?.error?.(`${label} stale rollback failed`, rollbackErr);
+            }
+          }
+          release(newStream);
+          return abandonSwapped;
+        }
+
+        opts.commit(newStream, newTrack, oldTrack);
+        return true;
+      } finally {
+        if(pendingAudioTrack) this.pendingInputAudioTracks.delete(pendingAudioTrack);
+      }
+    });
+  }
+
+  private async replaceInputDevice(opts: {
+    kind: 'audio' | 'video',
+    constraints: MediaStreamConstraints,
+    getOldTrack: () => MediaStreamTrack | undefined,
+    commit: (newStream: MediaStream, newTrack: MediaStreamTrack, oldTrack: MediaStreamTrack) => void
+  }): Promise<boolean> {
+    const {kind} = opts;
+    return this.runInputDeviceSwap({
+      kind,
+      constraints: opts.constraints,
+      shouldAbandon: (site, generation) => {
+        if(site === 'acquired') {
+          return this.isClosing ? true : undefined;
+        }
+        if(site === 'swapped') {
+          // Closing wins over staleness here: a closed call must not roll the
+          // sender back (there is nothing to restore into).
+          if(this.isClosing) return true;
+          if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
+          return undefined;
+        }
+        if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
+        if(this.isClosing) return true;
+        return undefined;
+      },
+      resolveSwap: (newTrack) => {
+        const oldTrack = opts.getOldTrack();
+        if(!oldTrack) return undefined;
+        return {
+          oldTrack,
+          swap: () => this.replaceSenderTrack?.(kind, oldTrack, newTrack) ?? Promise.resolve(),
+          rollback: () => this.replaceSenderTrack?.(kind, newTrack, oldTrack) ?? Promise.resolve()
+        };
+      },
+      // The group override walks multiple senders and can fail half-swapped.
+      rollbackOnSwapFailure: true,
+      getPendingAudioEnabled: (oldTrack) => oldTrack.enabled,
+      commit: opts.commit
+    });
   }
 
   // Mid-call mic swap: acquire the new device, hand the resulting track
-  // over to the streamManager (so the inputStream now carries the new
-  // track), and let each subclass hot-swap any RTCRtpSender that was still
-  // bound to the old track. The next negotiation cycle picks up the new
-  // track via streamManager.appendToConference; sender.replaceTrack avoids
-  // a renegotiation for the common case.
-  public async setInputAudioDeviceId(deviceId: string) {
-    if(!this.isSharingAudio) return; // no active mic yet — settings will be honoured by the next acquisition path
-    let newStream: MediaStream;
-    try {
-      newStream = await getStream({
-        audio: getAudioConstraints(deviceId)
-      });
-    } catch(err) {
-      this.log?.error?.('setInputAudioDeviceId getUserMedia failed', err);
-      return;
-    }
-
-    // The user can end the call during the ~200ms `getUserMedia` window.
-    // If that happens, cleanup() already ran and won't run again — releasing
-    // the just-acquired stream here is the only way to free the mic / let
-    // the OS indicator turn off.
-    if(this.isClosing) {
-      newStream.getTracks().forEach((t) => stopTrack(t));
-      return;
-    }
-
-    const newTrack = newStream.getAudioTracks()[0];
-    const oldTrack = this.streamManager.inputStream.getAudioTracks()[0];
-    if(!newTrack || !oldTrack) {
-      newStream.getTracks().forEach((t) => stopTrack(t));
-      return;
-    }
-
-    this.streamManager.replaceInputAudio(newStream, oldTrack);
-    this.replaceSenderTrack?.('audio', oldTrack, newTrack);
-    stopTrack(oldTrack);
+  // over to the streamManager, and hot-swap every sender still bound to the
+  // old track. Sender commit is serialized by replaceInputDevice.
+  public setInputAudioDeviceId(deviceId: string): Promise<boolean> {
+    if(!this.isSharingAudio) return Promise.resolve(true);
+    return this.replaceInputDevice({
+      kind: 'audio',
+      constraints: {audio: getAudioConstraints(deviceId)},
+      getOldTrack: () => this.streamManager.inputStream.getAudioTracks()[0],
+      commit: (newStream, _newTrack, oldTrack) => {
+        this.streamManager.replaceInputAudio(newStream, oldTrack);
+        stopTrack(oldTrack);
+      }
+    });
   }
 
   // Find every locally-owned <video> whose `srcObject` is the *source*
@@ -344,53 +611,20 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   // Mid-call camera swap. Mirrors setInputAudioDeviceId, sans the
   // streamManager.replaceInputAudio (which is audio-only) — for video we
   // mutate the inputStream directly.
-  public async setInputVideoDeviceId(deviceId: string) {
-    if(!this.isSharingVideo) return;
-    let newStream: MediaStream;
-    try {
-      newStream = await getStream({
-        video: getVideoConstraints(deviceId)
-      });
-    } catch(err) {
-      this.log?.error?.('setInputVideoDeviceId getUserMedia failed', err);
-      return;
-    }
-
-    // Hang-up race: the user can end the call during the (~200ms)
-    // `getUserMedia` resolution. After that point cleanup has already run,
-    // and the freshly-acquired stream would otherwise stay LIVE forever —
-    // the macOS camera indicator stays on. Release it here.
-    if(this.isClosing) {
-      newStream.getTracks().forEach((t) => stopTrack(t));
-      return;
-    }
-
-    const newTrack = newStream.getVideoTracks()[0];
-    const oldTrack = this.streamManager.inputStream.getVideoTracks()[0];
-    if(!newTrack || !oldTrack) {
-      newStream.getTracks().forEach((t) => stopTrack(t));
-      return;
-    }
-
-    // Go through streamManager's APIs — they keep `items` and `inputStream`
-    // in sync. Direct `inputStream.removeTrack/addTrack` was wrong: it
-    // mutated the MediaStream but left the items list untouched, so the
-    // subsequent async `ended` listener (fired by `stopTrack(oldTrack)`)
-    // removed only the OLD item without anyone pushing a NEW one ⇒ items
-    // ended up missing video entirely while inputStream still carried it,
-    // and `isSharingVideo` (which reads items) lied with `false`, blocking
-    // every follow-up swap with an early return.
-    this.streamManager.removeTrack(oldTrack);
-    this.streamManager.addTrack(newStream, newTrack, 'input');
-    // Swap the track inside the *source* stream the <video> elements are
-    // actually pointing at. `streamManager.inputStream` is a SEPARATE
-    // MediaStream from the one returned by the original `getUserMedia` —
-    // mutating only inputStream leaves the local previews stuck on the
-    // dead old track. This is the fix that makes the popup tiles
-    // re-render with the new camera.
-    this.swapLocalVideoTrack(oldTrack, newTrack);
-    this.replaceSenderTrack?.('video', oldTrack, newTrack);
-    stopTrack(oldTrack);
+  public setInputVideoDeviceId(deviceId: string): Promise<boolean> {
+    if(!this.isSharingVideo) return Promise.resolve(true);
+    return this.replaceInputDevice({
+      kind: 'video',
+      constraints: {video: getVideoConstraints(deviceId)},
+      getOldTrack: () => this.streamManager.inputStream.getVideoTracks()[0],
+      commit: (newStream, newTrack, oldTrack) => {
+        // Keep items, inputStream, and every cloned local preview in sync.
+        this.streamManager.removeTrack(oldTrack);
+        this.streamManager.addTrack(newStream, newTrack, 'input');
+        this.swapLocalVideoTrack(oldTrack, newTrack);
+        stopTrack(oldTrack);
+      }
+    });
   }
 
   // Subclasses (PopupGroupCall via GroupCallInstance / PopupCall via
@@ -400,9 +634,9 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     kind: 'audio' | 'video',
     oldTrack: MediaStreamTrack,
     newTrack: MediaStreamTrack
-  ): void;
+  ): MaybePromise<void>;
 
-  protected onInputStream(stream: MediaStream): void {
+  protected async onInputStream(stream: MediaStream): Promise<void> {
     if(!this.isClosing) {
       const videoTracks = stream.getVideoTracks();
       if(videoTracks.length) {
@@ -412,8 +646,23 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       const {streamManager, description} = this;
       streamManager.addStream(stream, 'input');
 
-      if(description) {
-        streamManager.appendToConference(description);
+      try {
+        if(description) {
+          await streamManager.appendToConference(description, undefined, true);
+        }
+      } catch(err) {
+        stream.getTracks().forEach((track) => {
+          streamManager.removeTrack(track);
+          stopTrack(track);
+        });
+        throw err;
+      }
+
+      // cleanup() may have run while sender.replaceTrack was pending. Its
+      // first stop pass cannot cover a stream registered after that pass, so
+      // release explicitly before this async continuation returns.
+      if(this.isClosing) {
+        stream.getTracks().forEach((track) => stopTrack(track));
       }
     } else { // if call is declined earlier than stream appears
       stream.getTracks().forEach((track) => {

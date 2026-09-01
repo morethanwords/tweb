@@ -683,7 +683,7 @@ export default function createChatPinnedMessage(
     // preview type produces an action here. Labelled `PinnedJoinCall`.
     const media = message?.media;
     const webPage = media?._ === 'messageMediaWebPage' ? media.webpage : undefined;
-    const onCallClick = webPage && getWebPageActionOnClick(webPage, ['telegram_call']);
+    const onCallClick = webPage && getWebPageActionOnClick(webPage, ['telegram_call'], message.fromId);
 
     if(onCallClick) {
       buttonText = I18n.format('PinnedJoinCall', true);

@@ -7,8 +7,10 @@ import {AppManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {RTMP_UNIFIED_CHANNEL_ID, RTMP_UNIFIED_QUALITY} from '@lib/calls/constants';
+import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import RTMP_STATE from '@lib/calls/rtmpState';
 import {logger} from '@lib/logger';
+import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 
 const log = logger('RTMP');
 
@@ -62,6 +64,8 @@ export class RtmpCallsController extends EventListenerBase<{
   private managers: AppManagers;
 
   private _currentCall: RtmpCallInstance;
+  private currentCallGeneration = 0;
+  private rejoinPromise?: Promise<void>;
 
   public construct(managers: AppManagers) {
     this.managers = managers;
@@ -85,6 +89,7 @@ export class RtmpCallsController extends EventListenerBase<{
     }
 
     this._currentCall?.cleanup();
+    ++this.currentCallGeneration;
     this.dispatchEvent('currentCallChanged', this._currentCall = value);
   }
 
@@ -147,34 +152,39 @@ export class RtmpCallsController extends EventListenerBase<{
     }
 
     const update = await this.managers.appGroupCallsManager.joinGroupCall(callId, data, {type: 'main'});
-    const updateData = JSON.parse(update.params.data);
-    if(updateData.rtmp !== true) {
-      throw new Error('Not an rtmp call');
+    let instance: RtmpCallInstance;
+    try {
+      const updateData = JSON.parse(update.params.data);
+      if(updateData.rtmp !== true) {
+        throw new Error('Not an rtmp call');
+      }
+
+      instance = new RtmpCallInstance({
+        call,
+        inputCall: groupCallToInput(call),
+        chatId,
+        peerId,
+        ssrc,
+        pip: false,
+        admin: Boolean(chat.pFlags?.can_delete_channel),
+        lastKnownTime: '0'
+      });
+    } catch(err) {
+      await this.compensateAcceptedJoin(update.acceptedCallInput, ssrc, 'initial RTMP join');
+      throw err;
     }
 
-    this.currentCall = new RtmpCallInstance({
-      call,
-      inputCall: {
-        _: 'inputGroupCall',
-        id: call.id,
-        access_hash: call.access_hash
-      },
-      chatId,
-      peerId,
-      ssrc,
-      pip: false,
-      admin: Boolean(chat.pFlags?.can_delete_channel),
-      lastKnownTime: '0'
-    });
+    this.currentCall = instance;
   }
 
-  public async leaveCall(discard = false) {
-    if(!this.currentCall) return;
+  public async leaveCall(discard = false, expectedCall?: RtmpCallInstance): Promise<boolean> {
     const currentCall = this.currentCall;
+    if(!currentCall || (expectedCall && currentCall !== expectedCall)) return false;
 
     this.currentCall = undefined;
     apiManagerProxy.serviceMessagePort.invokeVoid('leaveRtmpCall', [currentCall.call.id, true]);
     await this.managers.appGroupCallsManager.hangUp(currentCall.call.id, discard ? true : currentCall.ssrc);
+    return true;
   }
 
   public async isCurrentCallDead(checkJoined = false, triedRejoin = false): Promise<'dead' | 'dying' | 'alive'> {
@@ -211,11 +221,50 @@ export class RtmpCallsController extends EventListenerBase<{
     return 'dying';
   }
 
-  public async rejoinCall() {
-    if(!this.currentCall) return;
-    this.currentCall.ssrc = this.randomSsrc();
-    const data = this.getJoinPayload(this.currentCall.ssrc);
-    await this.managers.appGroupCallsManager.joinGroupCall(this.currentCall.call.id, data, {type: 'main'});
+  public rejoinCall(): Promise<void> {
+    if(this.rejoinPromise) return this.rejoinPromise;
+
+    // Only recovery enters the shared call-transition FIFO here. User joins are
+    // already wrapped by AppImManager; wrapping joinCall itself would enqueue a
+    // transition from inside another transition and deadlock it against itself.
+    const promise = callTransitionCoordinator.run(() => this.rejoinCallInternal()).finally(() => {
+      if(this.rejoinPromise === promise) this.rejoinPromise = undefined;
+    });
+    this.rejoinPromise = promise;
+    return promise;
+  }
+
+  private async rejoinCallInternal(): Promise<void> {
+    const currentCall = this.currentCall;
+    if(!currentCall) return;
+
+    const generation = this.currentCallGeneration;
+    const ssrc = this.randomSsrc();
+    const data = this.getJoinPayload(ssrc);
+    const update = await this.managers.appGroupCallsManager.joinGroupCall(currentCall.call.id, data, {
+      type: 'main',
+      // Preserve the exact call identity used by this recovery so a late accepted
+      // join can be compensated even after caches/currentCall have moved on.
+      e2eCallInput: currentCall.inputCall
+    });
+
+    if(this.currentCall !== currentCall || this.currentCallGeneration !== generation) {
+      await this.compensateAcceptedJoin(update.acceptedCallInput, ssrc, 'late RTMP rejoin');
+      return;
+    }
+
+    // Do not publish the replacement source before acceptance. A concurrent
+    // direct leave must still remove the OLD membership; if this response then
+    // arrives late, the generation branch above removes the newly accepted one.
+    currentCall.ssrc = ssrc;
+  }
+
+  private async compensateAcceptedJoin(call: InputGroupCall, ssrc: number, context: string): Promise<void> {
+    try {
+      await this.managers.appGroupCallsManager.leaveGroupCall(call, ssrc);
+    } catch(err) {
+      log.error(`${context} compensation failed`, err);
+    }
   }
 }
 

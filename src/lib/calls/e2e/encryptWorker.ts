@@ -7,13 +7,15 @@
  * - Handles RPC requests via the protocol in `encryptWorkerProtocol.ts`.
  * - Emits asynchronous `status` events after every mutation so the host
  *   doesn't need to poll.
- * - (5d, deferred) Will also serve as the `RTCRtpScriptTransform` worker:
+ * - Serves as the `RTCRtpScriptTransform` worker:
  *   the host attaches `new RTCRtpScriptTransform(worker, {direction, ...})`
  *   to each RTPSender/RTPReceiver, and this worker's `onrtctransform`
  *   handler pumps frames through `call.encrypt` / `call.decrypt`.
  */
 
 import {appendAudioTrailer, stripAudioTrailer} from './audioTrailer';
+import {normalizeSsrc} from '@lib/calls/utils';
+import createSerializedQueue from '@helpers/createSerializedQueue';
 import {E2eCall} from './call';
 import {ensureCryptoReady} from './crypto';
 import type {CallStatusSnapshot, HostRequest, HostResponse, WorkerEvent} from './encryptWorkerProtocol';
@@ -23,6 +25,10 @@ declare const self: DedicatedWorkerGlobalScope;
 
 let call: E2eCall | undefined;
 let privateKey: PrivateKey | undefined;
+// Exact LOCAL-format block returned to the host by prepareRejoinBlock. The
+// host can only commit this retained proposal after the join RPC accepts it;
+// it cannot substitute arbitrary state in the commit phase.
+let pendingRejoinBlock: Uint8Array | undefined;
 
 // ===== Plumbing =====
 
@@ -47,12 +53,24 @@ function snapshot(): CallStatusSnapshot {
   };
 }
 
+// `postMessage` gives this worker its own structured-clone copy of the seed.
+// Deriving the libsodium keypair is synchronous, so the request copy has no
+// reason to survive beyond fromSeed() even when the following async operation
+// fails or stalls.
+function consumePrivateSeed(seed: Uint8Array): PrivateKey {
+  try {
+    return PrivateKey.fromSeed(seed);
+  } finally {
+    seed.fill(0);
+  }
+}
+
 // Wrap any handler so unhandled errors come back as `err` responses instead
 // of crashing the worker.
 async function handle(req: HostRequest): Promise<unknown> {
   switch(req.kind) {
     case 'createZeroBlock': {
-      const sk = PrivateKey.fromSeed(req.args.privateSeed);
+      const sk = consumePrivateSeed(req.args.privateSeed);
       try {
         return await E2eCall.createZeroBlock(sk, req.args.groupState);
       } finally {
@@ -61,7 +79,7 @@ async function handle(req: HostRequest): Promise<unknown> {
     }
 
     case 'createSelfAddBlock': {
-      const sk = PrivateKey.fromSeed(req.args.privateSeed);
+      const sk = consumePrivateSeed(req.args.privateSeed);
       try {
         return await E2eCall.createSelfAddBlock(
           sk,
@@ -75,14 +93,57 @@ async function handle(req: HostRequest): Promise<unknown> {
 
     case 'init': {
       if(call) {
+        req.args.privateSeed.fill(0);
         throw new Error('init: already initialized');
       }
-      // Keep a long-lived PrivateKey for the duration of the call.
-      privateKey = PrivateKey.fromSeed(req.args.privateSeed);
-      call = await E2eCall.create(req.args.userId, privateKey, req.args.lastBlockServer);
+      // A failed earlier init must not leave an orphaned key behind. Build the
+      // new call off-globals, then publish both references together only after
+      // hydration succeeds.
+      privateKey?.destroy();
+      privateKey = undefined;
+      pendingRejoinBlock = undefined;
+      const nextPrivateKey = consumePrivateSeed(req.args.privateSeed);
+      try {
+        const nextCall = await E2eCall.create(req.args.userId, nextPrivateKey, req.args.lastBlockServer);
+        privateKey = nextPrivateKey;
+        call = nextCall;
+      } catch(e) {
+        nextPrivateKey.destroy();
+        privateKey = undefined;
+        call = undefined;
+        pendingRejoinBlock = undefined;
+        throw e;
+      }
+      pendingRejoinBlock = undefined;
       const snap = snapshot();
       emit({kind: 'status', status: snap});
       // Initial verification round always queues a commit broadcast.
+      emit({kind: 'pendingOutbound'});
+      return snap;
+    }
+
+    case 'prepareRejoinBlock': {
+      if(!call || !privateKey) throw new Error('prepareRejoinBlock: not initialized');
+      if(req.args.self.userId !== call.userId) {
+        throw new Error('prepareRejoinBlock: self user_id does not match the live call');
+      }
+      pendingRejoinBlock = undefined;
+      const block = await E2eCall.createSelfAddBlock(
+        privateKey,
+        req.args.previousBlockServer,
+        req.args.self
+      );
+      pendingRejoinBlock = block;
+      return block;
+    }
+
+    case 'commitRejoinBlock': {
+      if(!call) throw new Error('commitRejoinBlock: not initialized');
+      if(!pendingRejoinBlock) throw new Error('commitRejoinBlock: no prepared block');
+      await call.reanchor(pendingRejoinBlock);
+      pendingRejoinBlock = undefined;
+      const snap = snapshot();
+      emit({kind: 'status', status: snap});
       emit({kind: 'pendingOutbound'});
       return snap;
     }
@@ -101,24 +162,26 @@ async function handle(req: HostRequest): Promise<unknown> {
       return snap;
     }
 
-    case 'buildChangeStateBlock': {
-      if(!call) throw new Error('buildChangeStateBlock: not initialized');
-      return call.buildChangeStateBlock(req.args.newGroupState);
+    case 'buildRemoveParticipantsBlock': {
+      if(!call) throw new Error('buildRemoveParticipantsBlock: not initialized');
+      return call.buildRemoveParticipantsBlock(req.args.userIds);
     }
 
     case 'pullOutbound': {
       if(!call) throw new Error('pullOutbound: not initialized');
-      return call.pullOutbound();
+      const verification = call.getVerificationState();
+      if(!verification) return [];
+      return call.pullOutbound().map((bytes) => ({bytes, height: verification.height}));
     }
 
     case 'receiveInbound': {
       if(!call) throw new Error('receiveInbound: not initialized');
-      await call.receiveInbound(req.args.serverMessage);
+      const disposition = await call.receiveInbound(req.args.serverMessage);
       const snap = snapshot();
       emit({kind: 'status', status: snap});
       // Reveals queue up here; tell host to drain.
-      emit({kind: 'pendingOutbound'});
-      return snap;
+      if(disposition === 'consumed') emit({kind: 'pendingOutbound'});
+      return {status: snap, disposition};
     }
 
     case 'getStatus':
@@ -127,7 +190,7 @@ async function handle(req: HostRequest): Promise<unknown> {
     case 'setSsrcUsers': {
       ssrcToUser.clear();
       for(const [ssrc, userId] of req.args.entries) {
-        ssrcToUser.set(ssrc >>> 0, userId);
+        ssrcToUser.set(normalizeSsrc(ssrc), userId);
       }
       // Re-arm recv diagnostics: drop now-mapped SSRCs from the unmapped
       // counter (so a future un-mapping reports again) and reset decrypt-error
@@ -139,42 +202,11 @@ async function handle(req: HostRequest): Promise<unknown> {
       return undefined;
     }
 
-    case 'getDebug': {
-      // Gated: in production (E2E_DEBUG=false) never expose the ssrc→user_id
-      // map, per-frame counters, or loop state — return an empty snapshot.
-      if(!E2E_DEBUG) {
-        return {
-          recv: {seen: 0, noMeta: 0, noSsrc: 0, unmapped: 0, decryptOk: 0, decryptErr: 0, lastSsrc: 0, lastErr: ''},
-          send: {seen: 0, ok: 0, err: 0, lastErr: ''},
-          mapSize: 0,
-          mapEntries: [],
-          rtcInstalledAt: undefined,
-          rtcTransformEvents: 0,
-          hasOnRtcTransform: typeof (self as unknown as {onrtctransform: unknown}).onrtctransform === 'function',
-          loops: {}
-        };
-      }
-      const w = self as unknown as {
-        __rtcInstalled?: number;
-        __rtcEvents?: number;
-        __loopState?: Record<string, unknown>;
-      };
-      return {
-        recv: {...__recvDebug},
-        send: {...__sendDebug},
-        mapSize: ssrcToUser.size,
-        mapEntries: Array.from(ssrcToUser.entries()).map(([s, u]) => [s, u.toString()] as [number, string]),
-        rtcInstalledAt: w.__rtcInstalled,
-        rtcTransformEvents: w.__rtcEvents ?? 0,
-        hasOnRtcTransform: typeof (self as unknown as {onrtctransform: unknown}).onrtctransform === 'function',
-        loops: w.__loopState ? Object.fromEntries(Object.entries(w.__loopState)) : {}
-      };
-    }
-
     case 'destroy': {
       privateKey?.destroy();
       privateKey = undefined;
       call = undefined;
+      pendingRejoinBlock = undefined;
       ssrcToUser.clear();
       return undefined;
     }
@@ -198,9 +230,40 @@ const RECV_DIAG_SUSTAINED_FRAMES = 150;
 const unmappedFrames = new Map<number, number>();
 const decryptErrFrames = new Map<number, number>();
 
+// Stateful RPCs MUST NOT interleave. `handle` is async and every mutating
+// branch (init / applyBlock / receiveInbound / buildRemoveParticipantsBlock) reads
+// `call`'s state, awaits crypto, then writes it back — so two handlers running
+// concurrently tear that read-modify-write apart. The chain deliberately
+// races: `updateGroupCallChainBlocks` pushes blocks fire-and-forget while the
+// 1.5s poll fetches the same window, so concurrent delivery is the normal case,
+// not an exotic one.
+//
+// Two observed consequences, both closed by serialising here:
+//   - applyBlock ran twice against the same pre-block state, so BOTH passed the
+//     height check and the second died on HEIGHT_MISMATCH, which sets the
+//     sticky `status` and bricks the call for good.
+//   - updateGroupSharedKey pushed an epoch pairing the OLD block's shared key
+//     with the NEW block's epoch_hash. That entry already claims the tip
+//     height, so it was never queued into `epochsToForget` and never expired —
+//     and since encryptPacket emits one header_b slot per active epoch, every
+//     later frame stayed readable by whoever held the superseded key (i.e. a
+//     participant the rekey was supposed to remove).
+//
+// tdlib gets this from a per-Call mutex: `call_apply_block` takes
+// `Container::get_unique<Call>()` (Container.h:203-221), which holds the lock
+// for the whole call, so apply_block and update_group_shared_key are atomic
+// with respect to each other. A single tail promise is the JS equivalent.
+//
+// Read-only requests ride the same queue: they are cheap, and answering
+// `getStatus` from halfway through a block application would report a state
+// that never existed.
+const rpcQueue = createSerializedQueue();
+
 self.addEventListener('message', (ev: MessageEvent<HostRequest>) => {
   const req = ev.data;
-  const handlePromise = ensureCryptoReady().then(() => handle(req));
+  // The queue stays alive across a rejected handler — a failed request must
+  // not wedge every request behind it.
+  const handlePromise = rpcQueue.enqueue(() => ensureCryptoReady().then(() => handle(req)));
   handlePromise.then(
     (result) => post({kind: 'ok', id: req.id, result}),
     (err: Error) => post({kind: 'err', id: req.id, message: err.message || String(err)})
@@ -286,7 +349,6 @@ function vp8PlaintextPrefixLength(frame: Uint8Array): number {
 }
 
 async function processSend(opts: TransformOptions, frame: RTCEncodedFrameLike): Promise<RTCEncodedFrameLike | undefined> {
-  __sendDebug.seen++;
   if(!call) return undefined;
   try {
     const input = new Uint8Array(frame.data);
@@ -306,43 +368,24 @@ async function processSend(opts: TransformOptions, frame: RTCEncodedFrameLike): 
       unencryptedPrefixLength
     );
     frame.data = toFreshArrayBuffer(encrypted);
-    __sendDebug.ok++;
     return frame;
-  } catch(err) {
-    __sendDebug.err++;
-    __sendDebug.lastErr = (err as Error)?.message?.slice(0, 80) || '';
+  } catch{
     return undefined;
   }
 }
 
-// E2E frame-pipeline bring-up diagnostics, gated by E2E_DEBUG. In production
-// (false) the worker exposes NOTHING about the call: the getDebug RPC returns
-// empties and self.__e2eDebug — a live handle onto the ssrc→user_id map — is
-// not installed. Flip to true to surface counters + the map while diagnosing.
-// The per-frame counters below are negligible integer bookkeeping and simply
-// go unread when diagnostics are off.
-const E2E_DEBUG = false;
-const __recvDebug = {seen: 0, noMeta: 0, noSsrc: 0, unmapped: 0, decryptOk: 0, decryptErr: 0, lastSsrc: 0, lastErr: ''};
-const __sendDebug = {seen: 0, ok: 0, err: 0, lastErr: ''};
-if(E2E_DEBUG) {
-  (self as unknown as {__e2eDebug?: unknown}).__e2eDebug = {recv: __recvDebug, send: __sendDebug, mapSize: () => ssrcToUser.size};
-}
-
 async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): Promise<RTCEncodedFrameLike | undefined> {
-  __recvDebug.seen++;
   // Every bail below returns `undefined` (drop). See the fail-closed note above:
   // anything we can't authenticate must not reach the decoder, however benign
   // the cause looks — the relay picks what arrives here.
   if(!call) return undefined;
   const meta = frame.getMetadata?.();
-  if(!meta) { __recvDebug.noMeta++; return undefined; }
+  if(!meta) return undefined;
   const ssrc = meta?.synchronizationSource;
-  if(ssrc === undefined) { __recvDebug.noSsrc++; return undefined; }
-  __recvDebug.lastSsrc = ssrc >>> 0;
-  const fromUserId = ssrcToUser.get(ssrc >>> 0);
+  if(ssrc === undefined) return undefined;
+  const fromUserId = ssrcToUser.get(normalizeSsrc(ssrc));
   if(fromUserId === undefined) {
-    __recvDebug.unmapped++;
-    const key = ssrc >>> 0;
+    const key = normalizeSsrc(ssrc);
     const n = (unmappedFrames.get(key) || 0) + 1;
     unmappedFrames.set(key, n);
     if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'unmapped'});
@@ -357,18 +400,16 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
       decrypted = stripAudioTrailer(decrypted);
     }
     frame.data = toFreshArrayBuffer(decrypted);
-    __recvDebug.decryptOk++;
     // Recovered — let a later error on this SSRC report afresh.
-    if(decryptErrFrames.size) decryptErrFrames.delete(ssrc >>> 0);
+    if(decryptErrFrames.size) decryptErrFrames.delete(normalizeSsrc(ssrc));
     return frame;
   } catch(err) {
-    __recvDebug.decryptErr++;
-    __recvDebug.lastErr = (err as Error)?.message?.slice(0, 80) || '';
-    const key = ssrc >>> 0;
+    const message = (err as Error)?.message?.slice(0, 80) || '';
+    const key = normalizeSsrc(ssrc);
     const n = (decryptErrFrames.get(key) || 0) + 1;
     decryptErrFrames.set(key, n);
-    if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', message: __recvDebug.lastErr});
-    else if(n === RECV_DIAG_SUSTAINED_FRAMES) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', sustained: true, message: __recvDebug.lastErr});
+    if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', message});
+    else if(n === RECV_DIAG_SUSTAINED_FRAMES) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', sustained: true, message});
     return undefined;
   }
 }
@@ -377,24 +418,16 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
 // self` guard was wrong: in Chrome the property only exists AFTER the event
 // type has been observed, so the guard silently skipped installation and
 // frames never flowed through the transform.
-(self as unknown as {__rtcInstalled?: number}).__rtcInstalled = Date.now();
 (self as any).onrtctransform = (event: any) => {
-  (self as unknown as {__rtcEvents?: number}).__rtcEvents = ((self as unknown as {__rtcEvents?: number}).__rtcEvents ?? 0) + 1;
   const transformer = event.transformer;
   const options = transformer.options as TransformOptions;
   const handler = options.direction === 'send' ? processSend : processRecv;
-
-  const w = self as unknown as {__loopState?: Record<string, unknown>};
-  w.__loopState = w.__loopState ?? {};
-  const loopKey = `${options.direction}-${options.channelId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  w.__loopState[loopKey] = {state: 'starting'};
 
   // Use the pipeThrough(TransformStream)→pipeTo pattern. Spec-recommended
   // for RTCRtpScriptTransform and used by W3C reference samples — Chrome's
   // recv-side pump consistently halted at ~6 frames with the manual
   // reader/writer pattern, even with no-op handlers. The TransformStream
   // form lets Chrome wire its own backpressure correctly to the decoder.
-  w.__loopState[loopKey] = {state: 'loop-entered'};
   const xform = new TransformStream({
     async transform(frame, controller) {
       if(!isEncodedFrame(frame)) {
@@ -407,12 +440,10 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
           controller.enqueue(out);
         }
         // else: drop frame
-      } catch(err) {
-        w.__loopState![loopKey] = {state: 'transform-threw', err: (err as Error).message};
+      } catch{
+        // Fail closed: a transform error drops this frame.
       }
     }
   });
-  transformer.readable.pipeThrough(xform).pipeTo(transformer.writable).catch((err: Error) => {
-    w.__loopState![loopKey] = {state: 'pipe-failed', err: err?.message};
-  });
+  transformer.readable.pipeThrough(xform).pipeTo(transformer.writable).catch(() => {});
 };

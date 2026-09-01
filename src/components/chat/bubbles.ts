@@ -56,10 +56,9 @@ import SetTransition from '@components/singleTransition';
 import handleHorizontalSwipe from '@helpers/dom/handleHorizontalSwipe';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
-import {wrapCallDuration} from '@components/wrappers/wrapDuration';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
+import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import Button from '@components/button';
-import {CallType} from '@lib/calls/types';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import {InternalLink, INTERNAL_LINK_TYPE} from '@lib/internalLink';
 import ReactionsElement, {REACTIONS_ELEMENTS} from '@components/chat/reactions';
@@ -144,6 +143,8 @@ import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import callbackify from '@helpers/callbackify';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import Icon from '@components/icon';
+import wrapCallBubble from '@components/wrappers/callBubble';
+import {FullMid, makeFullMid, splitFullMid} from '@appManagers/utils/messages/fullMid';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import addAnchorListener, {UNSAFE_ANCHOR_LINK_TYPES} from '@helpers/addAnchorListener';
@@ -270,6 +271,9 @@ export type BubbleContext = {
   releaseDice?: (value: number) => void
 };
 
+export {makeFullMid, splitFullMid};
+export type {FullMid};
+
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
 const USE_MEDIA_TAILS = false;
@@ -289,6 +293,13 @@ export const SERVICE_AS_REGULAR: Set<MESSAGE_ACTION_TYPE> = new Set();
 
 if(IS_CALL_SUPPORTED) {
   SERVICE_AS_REGULAR.add('messageActionPhoneCall');
+}
+
+// tdesktop renders a conference call as the same call bubble a 1-on-1 call gets
+// (HistoryView::Call), not as service text. Gated like the 1-on-1 one: a browser
+// that cannot join the call falls back to the plain service message.
+if(IS_GROUP_CALL_SUPPORTED) {
+  SERVICE_AS_REGULAR.add('messageActionConferenceCall');
 }
 
 // Service actions whose inline photo (suggested profile photo, or a group/channel
@@ -471,27 +482,11 @@ const getSponsoredPhoto = (sponsoredMessage: SponsoredMessage) => {
   // return photo;
 };
 
-export type FullMid = `${PeerId}_${number}`;
-
-export function makeFullMid(peerId: PeerId | Message.message | Message.messageService, mid?: number): FullMid {
-  if(typeof(peerId) === 'object') {
-    mid = peerId.mid;
-    peerId = peerId.peerId;
-  }
-
-  return `${peerId}_${mid}`;
-}
-
 function getBubbleFullMid(bubble: HTMLElement) {
   if(!bubble) return;
   const mid = bubble.dataset.mid;
   if(mid === undefined) return;
   return makeFullMid(bubble.dataset.peerId.toPeerId(), +bubble.dataset.mid);
-}
-
-export function splitFullMid(fullMid: FullMid) {
-  const [peerId, mid] = fullMid.split('_');
-  return {peerId: peerId.toPeerId(), mid: +mid};
 }
 
 const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
@@ -3232,7 +3227,23 @@ export default class ChatBubbles {
 
     const callDiv: HTMLElement = findUpClassName(target, 'bubble-call');
     if(callDiv) {
-      this.chat.appImManager.callUser(this.peerId.toUserId(), callDiv.dataset.type as any);
+      const conferenceMsgId = +callDiv.dataset.conferenceMsgId;
+      if(conferenceMsgId) {
+        // tdesktop resolves the conference from its invite message on any
+        // click on the bubble (history_view_call.cpp:71 -> resolveConferenceCall).
+        // `joinConference` owns the support gate, the confirmation and the
+        // dead-link toast, and rethrows what it already reported.
+        this.chat.appImManager.joinConference({
+          _: 'inputGroupCallInviteMessage',
+          msg_id: conferenceMsgId
+        }, {
+          // The invite's sender is who the confirmation names as inviting us.
+          inviterPeerId: this.chat.getMessage(bubbleFullMid)?.fromId
+        }).catch(noop);
+      } else {
+        this.chat.appImManager.callUser(this.peerId.toUserId(), callDiv.dataset.type as any);
+      }
+
       return;
     }
 
@@ -7685,7 +7696,7 @@ export default class ChatBubbles {
         context.messageMessage = totalEntities = undefined;
       }
     } else {
-      if(message.action._ === 'messageActionPhoneCall') {
+      if(message.action._ === 'messageActionPhoneCall' || message.action._ === 'messageActionConferenceCall') {
         context.messageMedia = {
           _: 'messageMediaCall',
           action: message.action
@@ -8965,56 +8976,19 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaCall': {
-          const action = context.messageMedia.action;
-          const div = document.createElement('div');
-          div.classList.add('bubble-call');
-          div.append(Icon(action.pFlags.video ? 'videocamera' : 'phone', 'bubble-call-icon'));
-
-          const type: CallType = action.pFlags.video ? 'video' : 'voice';
-          div.dataset.type = type;
-
-          const title = document.createElement('div');
-          title.classList.add('bubble-call-title');
-
-          _i18n(title, isOut ?
-            (action.pFlags.video ? 'CallMessageVideoOutgoing' : 'CallMessageOutgoing') :
-            (action.pFlags.video ? 'CallMessageVideoIncoming' : 'CallMessageIncoming'));
-
-          const subtitle = document.createElement('div');
-          subtitle.classList.add('bubble-call-subtitle');
-
-          if(action.duration !== undefined) {
-            subtitle.append(wrapCallDuration(action.duration));
-          } else {
-            let langPackKey: LangPackKey;
-            switch(action.reason._) {
-              case 'phoneCallDiscardReasonBusy':
-                langPackKey = 'Call.StatusBusy';
-                break;
-              case 'phoneCallDiscardReasonMissed':
-                langPackKey = 'Chat.Service.Call.Missed';
-                break;
-              // case 'phoneCallDiscardReasonHangup':
-              default:
-                langPackKey = 'Chat.Service.Call.Cancelled';
-                break;
-            }
-
-            subtitle.classList.add('is-reason');
-            _i18n(subtitle, langPackKey);
-          }
-
-          subtitle.prepend(Icon('arrow_next', 'bubble-call-arrow', 'bubble-call-arrow-' + (action.duration !== undefined ? 'green' : 'red')));
+          const {element, subtitle} = wrapCallBubble({
+            action: context.messageMedia.action,
+            isOut,
+            mid: message.mid
+          });
 
           appendBubbleTime(bubble, subtitle, () => subtitle.append(timeSpan));
-
-          div.append(title, subtitle);
 
           noAttachmentDivNeeded = true;
 
           context.mediaRequiresMessageDiv = true;
           bubble.classList.add('call-message');
-          messageDiv.append(div);
+          messageDiv.append(element);
 
           break;
         }

@@ -46,8 +46,11 @@ export default abstract class CallConnectionInstanceBase {
     return this.description || (this.description = new LocalConferenceDescription(this.connection));
   }
 
-  public appendStreamToConference(onSenderCreated?: (sender: RTCRtpSender) => void) {
-    return this.streamManager.appendToConference(this.description, onSenderCreated);
+  public appendStreamToConference(
+    onSenderCreated?: (sender: RTCRtpSender) => void,
+    throwOnReplaceError = false
+  ) {
+    return this.streamManager.appendToConference(this.description, onSenderCreated, throwOnReplaceError);
   }
 
   public closeConnection() {

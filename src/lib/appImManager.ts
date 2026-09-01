@@ -76,9 +76,15 @@ import appDialogsManager from '@lib/appDialogsManager';
 import idleController from '@helpers/idleController';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {AckedResult} from '@lib/superMessagePort';
+import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 import groupCallsController from '@lib/calls/groupCallsController';
+import showConferenceJoinPopup from '@components/call/conferenceJoinPopup';
+import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import callsController from '@lib/calls/callsController';
+import getConferenceInviteErrorLangKey from '@lib/calls/conferenceInviteError';
+import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
+import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import getFilesFromEvent from '@helpers/files/getFilesFromEvent';
 import getFileMimeType from '@helpers/files/getFileMimeType';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -120,7 +126,7 @@ import {setPeerColors} from '@appManagers/utils/peers/getPeerColorById';
 import {savedReactionTags} from '@components/chat/reactions';
 import {setAppState, useAppState} from '@stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
-import {AppMediaViewerRtmp} from '@components/mediaViewer/rtmp';
+import openRtmpCallViewer from '@lib/calls/openRtmpCallViewer';
 import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';
@@ -211,6 +217,23 @@ type JoinChatFlow = {
   pendingWebViewUrl?: string
 };
 
+export type JoinConferenceOptions = {
+  /**
+   * The user has already agreed to join this specific call — pressing Accept
+   * on a ringing invitation — so skip the "join this call?" confirmation.
+   * Leaving a call that is currently running is still confirmed separately.
+   */
+  confirmed?: boolean,
+  /**
+   * Who invited us, when the join started from an invite message. The
+   * confirmation names them, the way tdesktop names the message's sender
+   * (window_session_controller.cpp:1023).
+   */
+  inviterPeerId?: PeerId
+};
+
+class CallSwitchCancelledError extends Error {}
+
 export class AppImManager extends EventListenerBase<{
   chat_changing: (details: {from: Chat, to: Chat}) => void,
   peer_changed: (chat: Chat) => void,
@@ -237,6 +260,7 @@ export class AppImManager extends EventListenerBase<{
 
   private backgroundPromises: {[url: string]: MaybePromise<string>};
   private joinChatFlowsByQueryId = new Map<string, JoinChatFlow>();
+  private callTransitions = callTransitionCoordinator;
 
   private topbarCall: TopbarCallController;
   private chatAudio: ChatAudioController;
@@ -825,32 +849,68 @@ export class AppImManager extends EventListenerBase<{
 
         const popup = PopupElement.createPopup(PopupCall, instance);
 
-        instance.addEventListener('acceptCallOverride', () => {
-          return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), 'Call', undefined, instance)
-          .then(() => {
+        instance.addEventListener('acceptCallOverride', (accept) => {
+          return this.callTransitions.run(async() => {
+            try {
+              await this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), 'Call', undefined, instance);
+            } catch(err) {
+              if(err instanceof CallSwitchCancelledError) return;
+              throw err;
+            }
+
             callsController.dispatchEvent('accepting', instance);
-            return true;
-          })
-          .catch(() => false);
+            await accept();
+          });
         });
 
         popup.addEventListener('close', () => {
           const currentCall = callsController.currentCall;
           if(currentCall && currentCall !== instance && !instance.wasTryingToJoin) {
-            instance.hangUp('phoneCallDiscardReasonBusy');
+            void instance.hangUp('phoneCallDiscardReasonBusy').catch((err) => {
+              this.log.error('busy discard after superseded P2P popup close failed', err);
+            });
           }
         }, {once: true});
 
         popup.show();
       });
 
-      callsController.addEventListener('incompatible', async(userId) => {
-        toastNew({
-          langPackKey: 'VoipPeerIncompatible',
-          langPackArguments: [
-            await wrapPeerTitle({peerId: userId.toPeerId()})
-          ]
-        });
+      callsController.addEventListener('incompatible', (userId) => {
+        void (async() => {
+          try {
+            toastNew({
+              langPackKey: 'VoipPeerIncompatible',
+              langPackArguments: [
+                await wrapPeerTitle({peerId: userId.toPeerId()})
+              ]
+            });
+          } catch(err) {
+            this.log.error('opening incompatible-call notice failed', err);
+          }
+        })();
+      });
+    }
+
+    if(IS_GROUP_CALL_SUPPORTED) {
+      // A ringing conference invitation opens the same panel an incoming call
+      // does — tdesktop reuses `Calls::Panel` for both
+      // (calls_instance.cpp:1204). Closing the panel is not declining: the
+      // invitation keeps ringing in the registry until it is answered, revoked
+      // or superseded, exactly like a 1-on-1 popup that gets closed.
+      conferenceInvitesController.addEventListener('instance', (instance) => {
+        const popup = PopupElement.createPopup(PopupCall, instance);
+
+        // Unlike a 1-on-1 call, an invitation has nowhere else to live once its
+        // panel is gone — no top bar entry to come back to — so closing the
+        // panel is the same answer the Decline button gives. Declining an
+        // invitation that was already accepted or revoked is a no-op.
+        popup.addEventListener('close', () => {
+          void instance.hangUp().catch((err) => {
+            this.log.error('declining a conference invitation from its popup failed', err);
+          });
+        }, {once: true});
+
+        popup.show();
       });
     }
 
@@ -2117,31 +2177,46 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public async callUser(userId: UserId, type: CallType) {
-    const call = callsController.getCallByUserId(userId);
-    if(call) {
-      return;
-    }
+  public callUser(userId: UserId, type: CallType): Promise<void> {
+    return this.callTransitions.run(async() => {
+      const call = callsController.getCallByUserId(userId);
+      if(call) {
+        return;
+      }
 
-    const userFull = await this.managers.appProfileManager.getProfile(userId);
-    if(userFull.pFlags.phone_calls_private) {
-      wrapPeerTitle({peerId: userId.toPeerId()}).then((element) => {
-        return confirmationPopup({
-          descriptionLangKey: 'Call.PrivacyErrorMessage',
-          descriptionLangArgs: [element],
-          button: {
-            langKey: 'OK',
-            isCancel: true
+      const userFull = await this.managers.appProfileManager.getProfile(userId);
+      if(userFull.pFlags.phone_calls_private) {
+        // This informational modal is not part of the call switch. Keep it
+        // detached so the global transition reservation is released at once,
+        // but observe both title loading and popup cancellation.
+        void (async() => {
+          try {
+            const element = await wrapPeerTitle({peerId: userId.toPeerId()});
+            try {
+              await confirmationPopup({
+                descriptionLangKey: 'Call.PrivacyErrorMessage',
+                descriptionLangArgs: [element],
+                button: {
+                  langKey: 'OK',
+                  isCancel: true
+                }
+              });
+            } catch{
+              // Closing this informational modal is an expected outcome.
+            }
+          } catch(err) {
+            this.log.error('opening call privacy notice failed', err);
+            toastNew({langPackKey: 'Error.AnError'});
           }
-        });
-      });
+        })();
 
-      return;
-    }
+        return;
+      }
 
-    await this.discardCurrentCall(userId.toPeerId(), 'Call');
+      await this.discardCurrentCall(userId.toPeerId(), 'Call');
 
-    callsController.startCallInternal(userId, type === 'video');
+      await callsController.startCallInternal(userId, type === 'video');
+    });
   }
 
   private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call' | 'Conference', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
@@ -2152,11 +2227,13 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private async discardAnyCallConfirmation(fromPeerId: PeerId, toPeerId: PeerId, fromType: Parameters<AppImManager['discardCurrentCall']>[1], toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
-    await Promise.all([
-      wrapPeerTitle({peerId: fromPeerId}),
-      wrapPeerTitle({peerId: toPeerId})
-    ]).then(([title1, title2]) => {
-      return confirmationPopup({
+    const [title1, title2] = await Promise.all([
+      fromType === 'Conference' ? '' : wrapPeerTitle({peerId: fromPeerId}),
+      toType === 'Conference' ? '' : wrapPeerTitle({peerId: toPeerId})
+    ]);
+
+    try {
+      await confirmationPopup({
         titleLangKey: `Call.Confirm.Discard.${fromType}.Header`,
         descriptionLangKey: `Call.Confirm.Discard.${fromType}.To${toType}.Text`,
         descriptionLangArgs: [title1, title2],
@@ -2164,7 +2241,19 @@ export class AppImManager extends EventListenerBase<{
           langKey: 'OK'
         }
       });
-    });
+    } catch{
+      // confirmationPopup rejects when the user cancels/closes it. Give that
+      // expected outcome its own identity so a later hangUp/leave rejection
+      // is not mistaken for cancellation by the conference entry points.
+      throw new CallSwitchCancelledError();
+    }
+  }
+
+  private handleConferenceSwitchError(context: string, err: unknown): boolean {
+    if(err instanceof CallSwitchCancelledError) return true;
+    this.log.error(context, err);
+    toastNew({langPackKey: 'Error.AnError'});
+    return false;
   }
 
   private async discardGroupCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
@@ -2205,51 +2294,52 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
-  public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
-    const chatId = peerId.toChatId();
-    const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
-    const next = async() => {
-      const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
-      if(chatFull._ === 'communityFull') {
-        return;
-      }
-      let call: MyGroupCall;
-      if(!chatFull.call) {
-        if(!hasRights) {
+  public joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId): Promise<void> {
+    return this.callTransitions.run(async() => {
+      const chatId = peerId.toChatId();
+      const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
+      const next = async() => {
+        const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
+        if(chatFull._ === 'communityFull') {
           return;
         }
-
-        call = await this.managers.appGroupCallsManager.createGroupCall(chatId);
-      } else {
-        call = chatFull.call as InputGroupCall.inputGroupCall;
-      }
-
-      groupCallsController.joinGroupCall(chatId, call.id, true, false);
-    };
-
-    if(groupCallId) {
-      const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
-      if(groupCall._ === 'groupCallDiscarded') {
-        if(!hasRights) {
-          toastNew({
-            langPackKey: 'VoiceChat.Chat.Ended'
-          });
-
-          return;
-        }
-
-        await confirmationPopup({
-          descriptionLangKey: 'VoiceChat.Chat.StartNew',
-          button: {
-            langKey: 'VoiceChat.Chat.StartNew.OK'
+        let call: MyGroupCall;
+        if(!chatFull.call) {
+          if(!hasRights) {
+            return;
           }
-        });
+
+          call = await this.managers.appGroupCallsManager.createGroupCall(chatId);
+        } else {
+          call = chatFull.call as InputGroupCall.inputGroupCall;
+        }
+
+        await groupCallsController.joinGroupCall(chatId, call.id, true, false);
+      };
+
+      if(groupCallId) {
+        const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
+        if(groupCall._ === 'groupCallDiscarded') {
+          if(!hasRights) {
+            toastNew({
+              langPackKey: 'VoiceChat.Chat.Ended'
+            });
+
+            return;
+          }
+
+          await confirmationPopup({
+            descriptionLangKey: 'VoiceChat.Chat.StartNew',
+            button: {
+              langKey: 'VoiceChat.Chat.StartNew.OK'
+            }
+          });
+        }
       }
-    }
 
-    await this.discardCurrentCall(peerId, 'Voice');
-
-    next();
+      await this.discardCurrentCall(peerId, 'Voice');
+      await next();
+    });
   }
 
   /**
@@ -2261,26 +2351,99 @@ export class AppImManager extends EventListenerBase<{
    * confirmation, the same-call short-circuit and the dead-link error UX, so the
    * link/anchor sites stay dumb.
    */
-  public async joinConference(input: InputGroupCall) {
-    if(!IS_GROUP_CALL_SUPPORTED) return;
-    // Gated until the SFU exposes a multi-mid layout to browser clients — see
-    // docs/conf-call-browser-recv-blocker.md. Without it the call connects but
-    // inbound audio decryption never runs (Chrome bypass).
-    if(!IS_CONFERENCE_CALL_SUPPORTED) {
-      toastNew({langPackKey: 'LinkNotFound'});
+  public joinConference(input: InputGroupCall, options?: JoinConferenceOptions): Promise<void> {
+    return this.callTransitions.run(() => this.joinConferenceInternal(input, options));
+  }
+
+  public createConference(): Promise<void> {
+    return this.callTransitions.run(() => this.createConferenceInternal());
+  }
+
+  private async createConferenceInternal(): Promise<void> {
+    if(!IS_GROUP_CALL_SUPPORTED || !IS_CONFERENCE_CALL_SUPPORTED) {
+      toastNew({langPackKey: 'ConferenceCall.Unsupported'});
       return;
+    }
+    if(groupCallsController.groupCall || callsController.currentCall || rtmpCallsController.currentCall) {
+      try {
+        await this.discardCurrentCall(NULL_PEER_ID, 'Conference');
+      } catch(err) {
+        if(!this.handleConferenceSwitchError('createConference: failed to leave current call', err)) {
+          throw err;
+        }
+        return;
+      }
+    } else {
+      try {
+        await confirmationPopup({
+          titleLangKey: 'ConferenceCall.Create.Title',
+          descriptionLangKey: 'ConferenceCall.Create.Text',
+          button: {langKey: 'ConferenceCall.Create.Button'}
+        });
+      } catch(err) {
+        return;
+      }
+    }
+
+    try {
+      await groupCallsController.startConference({
+        selfUserId: BigInt(rootScope.myId),
+        muted: true,
+        joinVideo: false
+      });
+    } catch(err) {
+      this.log.error('createConference failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
+      throw err;
+    }
+  }
+
+  private async joinConferenceInternal(input: InputGroupCall, options?: JoinConferenceOptions): Promise<void> {
+    if(!IS_GROUP_CALL_SUPPORTED) {
+      toastNew({langPackKey: 'ConferenceCall.Unsupported'});
+      return;
+    }
+    // Per-frame E2E requires RTCRtpScriptTransform. Unsupported browsers must
+    // explain the capability gap instead of treating a valid invite as dead.
+    if(!IS_CONFERENCE_CALL_SUPPORTED) {
+      toastNew({langPackKey: 'ConferenceCall.Unsupported'});
+      return;
+    }
+
+    let canonicalInput = input as InputGroupCall;
+    // Who is already in the call — the join confirmation names them, so the
+    // resolve that has to happen anyway brings them along.
+    let participantPeerIds: PeerId[] = [];
+    let participantsCount = 0;
+    if(input._ !== 'inputGroupCall') {
+      try {
+        const preview = await this.managers.appGroupCallsManager.resolveConferenceCallPreview(input);
+        const resolved = preview.call;
+        if(resolved._ === 'groupCallDiscarded') {
+          toastNew({langPackKey: 'InviteExpired'});
+          return;
+        }
+        canonicalInput = groupCallToInput(resolved);
+        participantPeerIds = preview.participantPeerIds;
+        participantsCount = resolved.participants_count;
+      } catch(err) {
+        toastNew({langPackKey: getConferenceInviteErrorLangKey(err)});
+        this.log.error('resolveConferenceCall failed', err);
+        return;
+      }
     }
 
     // Don't rejoin a call we're already in. The conference Join affordances
     // (pinned bar, web-page preview, invite service message) stay visible while
     // you're in the call, so a second click would otherwise tear down the live
-    // GroupCallInstance and re-run the whole join. `inputGroupCall` lets us
-    // confirm it's the same call; slug / invite-message can't be matched before
-    // the join response, but you can be in only one call at a time and the
-    // dominant case is re-clicking the same call — so surface the live one.
+    // GroupCallInstance and re-run the whole join. Slug/invite references were
+    // resolved above, so this short-circuit is based on the canonical server id
+    // rather than assuming every unresolved link means the current call.
     const currentCall = groupCallsController.groupCall;
+    const currentCallInput = currentCall?.toInputGroupCall();
     if(currentCall && currentCall.state !== GROUP_CALL_STATE.CLOSED &&
-      (input._ !== 'inputGroupCall' || String(input.id) === String(currentCall.id))) {
+      canonicalInput._ === 'inputGroupCall' && currentCallInput &&
+      sameInputGroupCall(canonicalInput, currentCallInput)) {
       return;
     }
 
@@ -2292,52 +2455,81 @@ export class AppImManager extends EventListenerBase<{
     // without it a conference join would silently leave a live 1-on-1 / RTMP
     // call running. Conferences have no backing peer (NULL_PEER_ID), so the
     // `Conference` toType keys the prompt off the call being left, never a peer.
-    await this.discardCurrentCall(NULL_PEER_ID, 'Conference');
+    // Confirm BEFORE anything destructive. Following a link used to put the
+    // user straight into a live call with no chance to reconsider — and unlike
+    // a chat, a call announces your presence to everyone already in it the
+    // moment you arrive. (We join muted, so this is about presence, not a hot
+    // microphone.) This must precede discardCurrentCall: that hangs up whatever
+    // call the user is currently in, so asking afterwards would leave someone
+    // who cancels in no call at all.
+    // Cancelling rejects, which is a no-op here.
+    if(groupCallsController.groupCall || callsController.currentCall || rtmpCallsController.currentCall) {
+      try {
+        await this.discardCurrentCall(NULL_PEER_ID, 'Conference');
+      } catch(err) {
+        if(!this.handleConferenceSwitchError('joinConference: failed to leave current call', err)) {
+          throw err;
+        }
+        return;
+      }
+    } else if(!options?.confirmed) {
+      // Accepting a ringing invitation already IS the answer to this prompt —
+      // tdesktop joins straight from `Call::acceptConferenceInvite`
+      // (calls_call.cpp:435) with no box in between.
+      try {
+        await showConferenceJoinPopup({
+          inviterPeerId: options?.inviterPeerId,
+          participantPeerIds,
+          participantsCount
+        });
+      } catch(err) {
+        return;
+      }
+    }
 
     try {
       await groupCallsController.joinConference({
+        // Preserve the link/message as the actual authorization all the way
+        // through chain fetch + join. The preview only proves which canonical
+        // call that authorization is expected to resolve to; replacing it with
+        // id+access_hash would let a link revoked during confirmation still
+        // enter the call.
         input,
+        expectedCanonicalInput: canonicalInput._ === 'inputGroupCall' ? canonicalInput : undefined,
         selfUserId: BigInt(rootScope.myId),
         muted: true,
         joinVideo: false
       });
     } catch(err) {
-      const type = (err as ApiError)?.type as string | undefined;
       // Server's "this invite link is dead / call ended" responses. Match
       // tdesktop's `lng_confcall_link_inactive` UX (window_session_controller.cpp:1052).
-      if(type === 'GROUPCALL_INVALID' || type === 'GROUPCALL_FORBIDDEN' ||
-         type === 'INVITE_HASH_EXPIRED' || type === 'INVITE_SLUG_EXPIRED' ||
-         type === 'GROUPCALL_SSRC_DUPLICATE_MUCH') {
-        toastNew({langPackKey: 'LinkNotFound'});
-      } else {
-        // Fallback for transport / chain / unknown failures (e.g.
-        // CONF_WRITE_CHAIN_INVALID, network, etc.).
-        toastNew({langPackKey: 'Error.AnError'});
-      }
+      // Transport / chain / unknown failures keep the generic error fallback.
+      toastNew({langPackKey: getConferenceInviteErrorLangKey(err)});
       console.error('joinConference failed', err);
+      throw err;
     }
   }
 
-  public async joinLiveStream(peerId: PeerId) {
-    await this.discardCurrentCall(peerId, 'Live');
+  public joinLiveStream(peerId: PeerId): Promise<void> {
+    return this.callTransitions.run(async() => {
+      await this.discardCurrentCall(peerId, 'Live');
 
-    await rtmpCallsController.joinCall(peerId.toChatId()).catch((err) => {
-      console.error(err);
-      toastNew({
-        langPackKey: 'Error.AnError'
-      });
-    });
+      try {
+        await rtmpCallsController.joinCall(peerId.toChatId());
+      } catch(err) {
+        console.error(err);
+        toastNew({
+          langPackKey: 'Error.AnError'
+        });
+        return;
+      }
 
-    this.openLiveStreamPlayer(peerId);
-  }
-
-  private async openLiveStreamPlayer(peerId: PeerId) {
-    if(AppMediaViewerRtmp.activeInstance) return;
-
-    const shareUrl = await AppMediaViewerRtmp.getShareUrl(peerId.toChatId());
-    new AppMediaViewerRtmp(shareUrl).openMedia({
-      peerId,
-      isAdmin: rtmpCallsController.currentCall.admin
+      try {
+        await openRtmpCallViewer(peerId);
+      } catch(err) {
+        this.log.error('opening RTMP viewer failed', err);
+        toastNew({langPackKey: 'Error.AnError'});
+      }
     });
   }
 

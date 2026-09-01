@@ -133,7 +133,10 @@ describe('pruneGroupState', () => {
 const flushPending = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function makeConference() {
-  const buildChangeStateBlock = vi.fn(async() => new Uint8Array([0xb6, 0x3d, 0x9a, 0x63]));
+  const buildRemoveParticipantsBlock = vi.fn(async() => ({
+    block: new Uint8Array([0xb6, 0x3d, 0x9a, 0x63]),
+    removedUserIds: [EVE]
+  }));
   const deleteConferenceCallParticipants = vi.fn(async() => ({}));
   const refreshConferenceParticipants = vi.fn();
   const cachedParticipants = new Map<PeerId, any>();
@@ -155,7 +158,7 @@ function makeConference() {
     main: {connection: {iceConnectionState: 'connected'}, streamManager: {stop: vi.fn()}}
   };
   (instance as any).groupCall = FAKE_CALL;
-  (instance as any).e2e = {buildChangeStateBlock, terminate: vi.fn(async() => {})};
+  (instance as any).e2e = {buildRemoveParticipantsBlock, terminate: vi.fn(async() => {})};
   (instance as any).selfUserId = ALICE;
   (instance as any).e2eStatus = {groupState: groupStateOf(ALICE, CAROL, EVE)};
 
@@ -165,7 +168,7 @@ function makeConference() {
   // Jump every pending identity past the grace window without waiting it out.
   const expireGrace = () => {
     const staleSince: Map<string, number> = (instance as any).staleSince;
-    staleSince.forEach((_, key) => staleSince.set(key, 0));
+    staleSince.forEach((_, key) => staleSince.set(key, performance.now() - 10001));
   };
 
   return {
@@ -173,36 +176,64 @@ function makeConference() {
     reconcile,
     expireGrace,
     cachedParticipants,
-    buildChangeStateBlock,
+    buildRemoveParticipantsBlock,
     deleteConferenceCallParticipants,
     refreshConferenceParticipants
   };
 }
 
 describe('AppGroupCallsManager.refreshConferenceParticipants — roster snapshot', () => {
-  function makeManager() {
-    const invokeApiSingleProcess = vi.fn(async(request: any) => request.processResult({
+  // Each call to the mock returns the next queued page.
+  function makeManager(pages?: any[]) {
+    const queue = pages ?? [{
       participants: [
         {_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: ALICE.toString()}, pFlags: {self: true}, source: 1, date: 1},
         {_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 2, date: 1}
       ],
       count: 2,
       next_offset: '',
-      chats: [],
-      users: []
-    }));
+      chats: [] as any[],
+      users: [] as any[]
+    }];
+
+    let page = 0;
+    const invokeApi = vi.fn(async(_method: string, _params: any) => {
+      return queue[Math.min(page++, queue.length - 1)];
+    });
 
     const manager = Object.create(AppGroupCallsManager.prototype) as AppGroupCallsManager;
     Object.assign(manager as any, {
       groupCalls: new Map([[CALL_ID, {_: 'groupCall', id: '777', access_hash: '888', participants_count: 2}]]),
       participants: new Map([[CALL_ID, new Map()]]),
       nextOffsets: new Map(),
+      conferenceRosterFetches: new Map(),
+      participantFetchGenerations: new Map(),
+      participantVersions: new Map(),
+      participantRevisions: new WeakMap(),
       appChatsManager: {saveApiChats: vi.fn()},
       appUsersManager: {saveApiUsers: vi.fn()},
-      rootScope: {dispatchEvent: vi.fn()},
-      apiManager: {invokeApiSingleProcess}
+      rootScope: {dispatchEvent: vi.fn(), myId: 4242 as PeerId},
+      apiManager: {invokeApi},
+      log: Object.assign(() => {}, {warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn()})
     });
-    return {manager, invokeApiSingleProcess};
+    return {manager, invokeApi};
+  }
+
+  function fullPage(from: number, nextOffset: string) {
+    return {
+      participants: Array.from({length: 100}, (_, i) => ({
+        _: 'groupCallParticipant',
+        peer: {_: 'peerUser', user_id: String(from + i)},
+        pFlags: {},
+        source: i + 1,
+        date: 1
+      })),
+      count: 10000,
+      next_offset: nextOffset,
+      version: 1,
+      chats: [] as any[],
+      users: [] as any[]
+    };
   }
 
   it('resolves to what the server listed, so the tab can diff it against the chain', async() => {
@@ -214,69 +245,288 @@ describe('AppGroupCallsManager.refreshConferenceParticipants — roster snapshot
     });
   });
 
-  it('carries the snapshot as the resolved VALUE, not a closure written by processResult', async() => {
-    const {manager, invokeApiSingleProcess} = makeManager();
+  it('de-dupes concurrent walks so the pollers cannot stack requests', async() => {
+    const {manager, invokeApi} = makeManager();
 
-    // invokeApiSingleProcess dedupes by (method, cacheKey) and hands a second
-    // caller the in-flight promise WITHOUT re-running its processResult. A
-    // snapshot published through a closure variable would come back undefined
-    // there — and an undefined snapshot silently skips a round of membership
-    // reconciliation, which is the whole point of this call.
-    await manager.refreshConferenceParticipants(CALL_ID);
-    const request = invokeApiSingleProcess.mock.calls[0][0] as any;
+    const [a, b] = await Promise.all([
+      manager.refreshConferenceParticipants(CALL_ID),
+      manager.refreshConferenceParticipants(CALL_ID)
+    ]);
 
-    expect(await request.processResult({
-      participants: [{_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 2, date: 1}],
-      count: 1,
+    expect(a).toEqual(b);
+    expect(invokeApi).toHaveBeenCalledTimes(1);
+  });
+
+  it('pages until a short page, so completeness is observed rather than claimed', async() => {
+    const {manager, invokeApi} = makeManager([
+      fullPage(90000, 'page2'),
+      {
+        participants: [{_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 5, date: 1}],
+        count: 10000,
+        next_offset: '',
+        version: 1,
+        chats: [] as any[],
+        users: [] as any[]
+      }
+    ]);
+
+    const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
+    expect(invokeApi).toHaveBeenCalledTimes(2);
+    expect(snapshot.complete).toBe(true);
+    expect(snapshot.userIds).toHaveLength(101);
+  });
+
+  it.each([
+    [100, [fullPage(10000, '')]],
+    [200, [fullPage(10000, 'page2'), fullPage(10100, '')]]
+  ] as const)(
+    'treats an exact %i-member roster with an empty final cursor as complete',
+    async(expectedCount, pages) => {
+      const {manager, invokeApi} = makeManager([...pages]);
+
+      const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
+
+      expect(snapshot.complete).toBe(true);
+      expect(snapshot.userIds).toHaveLength(expectedCount);
+      expect(invokeApi).toHaveBeenCalledTimes(expectedCount / 100);
+    }
+  );
+
+  it('a full page with an inflated count cannot switch reconciliation off', async() => {
+    // The old gate compared page length against the server's own `count`, so
+    // one full page alongside a bigger count kept the roster permanently
+    // "incomplete" — and an incomplete roster drives neither disclosure nor
+    // pruning. Paging removes that lever.
+    const {manager} = makeManager([
+      fullPage(90000, 'page2'),
+      {
+        participants: [] as any[],
+        count: 999999,
+        next_offset: '',
+        version: 1,
+        chats: [] as any[],
+        users: [] as any[]
+      }
+    ]);
+
+    const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
+    expect(snapshot.complete).toBe(true);
+  });
+
+  it('refuses to claim completeness when the server never yields a short page', async() => {
+    // A server answering every request with a full page and a fresh cursor must
+    // not spin us forever, and must not get a complete roster either — an
+    // incomplete one is safe, since it drives no removals.
+    const pages = Array.from({length: 40}, (_, i) => fullPage(10000 + i * 100, 'p' + i));
+    const {manager, invokeApi} = makeManager(pages);
+
+    const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
+    expect(snapshot.complete).toBe(false);
+    expect(invokeApi.mock.calls.length).toBeLessThanOrEqual(20);
+  });
+
+  it('refuses to claim completeness when the roster changed mid-walk', async() => {
+    // Cursor paging over a list that is mutating can skip a participant
+    // entirely — and an "absent" participant is marked left AND, if they are on
+    // the chain, scheduled for only_left eviction. The server's own `version`
+    // counter says the pages never coexisted, so the union is not a snapshot.
+    const pageOne = fullPage(90000, 'page2');
+    const pageTwo = {
+      participants: [{_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 5, date: 1}],
+      count: 10000,
       next_offset: '',
-      chats: [],
-      users: []
-    })).toEqual({complete: true, userIds: rosterOf(CAROL)});
+      version: 2, // list moved under us
+      chats: [] as any[],
+      users: [] as any[]
+    };
+    const {manager} = makeManager([pageOne, pageTwo]);
+
+    const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
+    expect(snapshot.complete).toBe(false);
+    expect((manager as any).participantVersions.get(CALL_ID)).toBe(2);
   });
 
-  it('uses its own dedup bucket so it cannot share a promise with the paginating fetch', async() => {
-    const {manager, invokeApiSingleProcess} = makeManager();
-    await manager.refreshConferenceParticipants(CALL_ID);
+  it('still applies each fetched page when the walk tears — SSRC delivery must not starve', async() => {
+    // The walk is the ONLY delivery path for conference participant rows. On a
+    // large churning roster every walk can tear mid-flight; withholding row
+    // application until an untorn walk meant a late joiner's SSRCs never
+    // reached the instance — no recv transceiver, no e2e mapping, their
+    // audio/video never appeared. Pages are applied as they arrive; only
+    // leave-reconciliation stays gated on completeness.
+    const pageOne = fullPage(90000, 'page2');
+    const pageTwo = {
+      participants: [{_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 5, date: 1}],
+      count: 10000,
+      next_offset: '',
+      version: 2, // list moved under us
+      chats: [] as any[],
+      users: [] as any[]
+    };
+    const {manager} = makeManager([pageOne, pageTwo]);
+    const dispatchEvent = (manager as any).rootScope.dispatchEvent as ReturnType<typeof vi.fn>;
 
-    const request = invokeApiSingleProcess.mock.calls[0][0] as any;
-    // The default key is JSON.stringify(params), byte-identical to
-    // getGroupCallParticipants' first page (same call, empty ids/sources,
-    // offset ''). Sharing it makes whichever lands second skip its own
-    // processResult entirely.
-    expect(request.options?.cacheKey).toBe('refreshConferenceParticipants-' + CALL_ID);
-  });
-
-  it('reports an incomplete page as incomplete', async() => {
-    const {manager, invokeApiSingleProcess} = makeManager();
-    await manager.refreshConferenceParticipants(CALL_ID);
-    const request = invokeApiSingleProcess.mock.calls[0][0] as any;
-
-    // A full page with more to come: "absent" here only means "on a later page".
-    const participants = Array.from({length: 100}, (_, i) => ({
-      _: 'groupCallParticipant',
-      peer: {_: 'peerUser', user_id: String(90000 + i)},
-      pFlags: {},
-      source: i + 1,
-      date: 1
-    }));
-    const snapshot = await request.processResult({
-      participants,
-      count: 250,
-      next_offset: 'more',
-      chats: [],
-      users: []
-    });
+    const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
 
     expect(snapshot.complete).toBe(false);
-    expect(snapshot.userIds).toHaveLength(100);
+    const dispatchedRows = dispatchEvent.mock.calls.filter(([event]) => event === 'group_call_participant');
+    // Both pages' rows were applied and dispatched despite the tear…
+    expect(dispatchedRows.length).toBe(101);
+    // …but no synthetic `left` rows were produced off the torn union.
+    expect(dispatchedRows.some(([, payload]) => payload.participant.pFlags.left)).toBe(false);
+  });
+
+  it('drops a hydration self row whose source lags the live connection', async() => {
+    // A dispatched self row runs the instance's source kill switch, which ends
+    // the whole call. The includeSelf hydration must skip a server snapshot
+    // that still shows a previous connection's self row and let the 5s loop
+    // retry, not feed the stale row through.
+    const selfPeerId = 4242 as PeerId;
+    const makeSelfRow = (source: number) => ({
+      _: 'groupCallParticipant',
+      peer: {_: 'peerUser', user_id: String(selfPeerId)},
+      pFlags: {},
+      source,
+      date: 1
+    });
+    const stale = makeManager([{
+      participants: [makeSelfRow(111)],
+      count: 1,
+      next_offset: '',
+      version: 1,
+      chats: [] as any[],
+      users: [] as any[]
+    }]);
+    await stale.manager.refreshConferenceParticipants(CALL_ID, {includeSelf: true, selfSource: 222});
+    const staleDispatches = (stale.manager as any).rootScope.dispatchEvent.mock.calls
+    .filter(([event]: [string]) => event === 'group_call_participant');
+    expect(staleDispatches).toEqual([]);
+
+    const fresh = makeManager([{
+      participants: [makeSelfRow(222)],
+      count: 1,
+      next_offset: '',
+      version: 1,
+      chats: [] as any[],
+      users: [] as any[]
+    }]);
+    await fresh.manager.refreshConferenceParticipants(CALL_ID, {includeSelf: true, selfSource: 222});
+    const freshDispatches = (fresh.manager as any).rootScope.dispatchEvent.mock.calls
+    .filter(([event]: [string]) => event === 'group_call_participant');
+    expect(freshDispatches.length).toBe(1);
+    expect(freshDispatches[0][1].participant.pFlags.self).toBe(true);
+    expect(freshDispatches[0][1].participant.source).toBe(222);
+  });
+
+  it('heals a version-gated push drop with a bounded participants resync', async() => {
+    // A dropped stale push may have carried a joiner's only announcement, and a
+    // legacy voice chat has no periodic roster poll to re-deliver it — the
+    // joiner would stay invisible AND silent (no recv m-line) until a manual
+    // rejoin. tdlib schedules a participants reload on any version mismatch;
+    // the resync is that reload.
+    const {manager, invokeApi} = makeManager([{
+      participants: [{_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 7, date: 1}],
+      count: 1,
+      next_offset: '',
+      version: 6,
+      chats: [] as any[],
+      users: [] as any[]
+    }]);
+    (manager as any).participantVersions.set(CALL_ID, 5);
+
+    (manager as any).processGroupCallParticipantsUpdate({
+      _: 'updateGroupCallParticipants',
+      call: {_: 'inputGroupCall', id: CALL_ID, access_hash: '888'},
+      version: 4,
+      participants: []
+    });
+    await (manager as any).participantsResyncs.get(CALL_ID);
+
+    expect(invokeApi).toHaveBeenCalledWith('phone.getGroupParticipants', expect.objectContaining({offset: ''}));
+    expect((manager as any).participantVersions.get(CALL_ID)).toBe(6);
+    const dispatched = (manager as any).rootScope.dispatchEvent.mock.calls
+    .filter(([event]: [string]) => event === 'group_call_participant');
+    expect(dispatched.length).toBe(1);
+    expect(dispatched[0][1].participant.source).toBe(7);
+  });
+
+  it('does not resync a conference on a gated push — the roster walk owns healing there', async() => {
+    const {manager, invokeApi} = makeManager();
+    ((manager as any).groupCalls.get(CALL_ID) as any).pFlags = {conference: true};
+    (manager as any).participantVersions.set(CALL_ID, 5);
+
+    (manager as any).processGroupCallParticipantsUpdate({
+      _: 'updateGroupCallParticipants',
+      call: {_: 'inputGroupCall', id: CALL_ID, access_hash: '888'},
+      version: 4,
+      participants: []
+    });
+
+    expect((manager as any).participantsResyncs?.size ?? 0).toBe(0);
+    expect(invokeApi).not.toHaveBeenCalled();
+  });
+
+  it('never evicts the user from their own call, even without pFlags.self', async() => {
+    // The leave-reconciliation used to identify us solely by `pFlags.self` on
+    // the CACHED row — a server-supplied flag, on a row saveApiParticipant
+    // overwrites wholesale. Once `left` rows stopped counting as presence, a
+    // self row arriving without that flag made us synthesise a `left` for
+    // ourselves: the user vanished from their own participant list.
+    const {manager} = makeManager([{
+      participants: [
+        {_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {}, source: 2, date: 1}
+      ],
+      count: 1,
+      next_offset: '',
+      version: 1,
+      chats: [] as any[],
+      users: [] as any[]
+    }]);
+
+    // Our own cached row, WITHOUT pFlags.self — exactly the shape that broke it.
+    const cached: Map<PeerId, any> = (manager as any).participants.get(CALL_ID);
+    const selfPeerId = (manager as any).rootScope.myId;
+    cached.set(selfPeerId, {
+      _: 'groupCallParticipant',
+      peer: {_: 'peerUser', user_id: String(selfPeerId)},
+      pFlags: {},
+      source: 1,
+      date: 1
+    });
+
+    const saveApiParticipant = vi.spyOn(manager as any, 'saveApiParticipant');
+    await manager.refreshConferenceParticipants(CALL_ID);
+
+    // Nothing may synthesise a `left` for us.
+    const selfLeft = saveApiParticipant.mock.calls.some(([, p]: any[]) =>
+      String((p.peer as any).user_id) === String(selfPeerId) && p.pFlags?.left
+    );
+    expect(selfLeft).toBe(false);
+  });
+
+  it('does not count a `left` row as roster presence', async() => {
+    // A `left` row is the SFU saying "gone", not the chain saying "no key". If
+    // it counted as presence, an identity the server self-added to the chain and
+    // then reported as `left` would never be disclosed and never pruned.
+    const {manager} = makeManager([{
+      participants: [
+        {_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: ALICE.toString()}, pFlags: {self: true}, source: 1, date: 1},
+        {_: 'groupCallParticipant', peer: {_: 'peerUser', user_id: CAROL.toString()}, pFlags: {left: true}, source: 2, date: 1}
+      ],
+      count: 2,
+      next_offset: '',
+      chats: [] as any[],
+      users: [] as any[]
+    }]);
+
+    const snapshot = await manager.refreshConferenceParticipants(CALL_ID) as any;
+    expect(snapshot.complete).toBe(true);
+    expect(snapshot.userIds).toEqual(rosterOf(ALICE));
+    expect(snapshot.userIds).not.toContain(CAROL.toString());
   });
 });
 
 describe('GroupCallInstance — chain-only conference members', () => {
   beforeEach(() => {
-    (self as any).__conferenceBug = undefined;
-    (self as any).__conferenceBugs = [];
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
     // jsdom has no real <audio>.play(); the constructor's fixSafariAudio calls it.
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
   });
@@ -303,7 +553,7 @@ describe('GroupCallInstance — chain-only conference members', () => {
   });
 
   it('removes with only_left and rekeys to the survivors once the grace window passes', async() => {
-    const {reconcile, expireGrace, buildChangeStateBlock, deleteConferenceCallParticipants} = makeConference();
+    const {reconcile, expireGrace, buildRemoveParticipantsBlock, deleteConferenceCallParticipants} = makeConference();
 
     await reconcile(rosterOf(ALICE, CAROL));
     expireGrace();
@@ -311,21 +561,33 @@ describe('GroupCallInstance — chain-only conference members', () => {
     // The removal runs detached from the roster poller, so let it settle.
     await vi.waitFor(() => expect(deleteConferenceCallParticipants).toHaveBeenCalled());
 
-    // The block is what rotates the key: buildChangesForNewState mints a fresh
-    // shared key addressed to exactly these participants, so Eve's copy of the
-    // current key stops working at this block.
-    expect(buildChangeStateBlock).toHaveBeenCalledWith({
-      newGroupState: {
-        participants: [participantFor(ALICE), participantFor(CAROL)],
-        externalPermissions: 3
-      }
-    });
+    // The worker derives the trimmed state from its serialized current tip and
+    // returns the exact ids represented by the resulting key rotation.
+    expect(buildRemoveParticipantsBlock).toHaveBeenCalledWith({userIds: [EVE]});
     expect(deleteConferenceCallParticipants).toHaveBeenCalledWith({
       call: {_: 'inputGroupCall', id: '777', access_hash: '888'},
       ids: [EVE.toString()],
       block: new Uint8Array([0xb6, 0x3d, 0x9a, 0x63]),
       onlyLeft: true
     });
+  });
+
+  it('uses monotonic time for the removal grace when the wall clock moves backward', async() => {
+    const wallClock = vi.spyOn(Date, 'now').mockReturnValue(2_000_000_000_000);
+    const monotonicClock = vi.spyOn(performance, 'now').mockReturnValue(50_000);
+    try {
+      const {reconcile, deleteConferenceCallParticipants} = makeConference();
+
+      await reconcile(rosterOf(ALICE, CAROL));
+      wallClock.mockReturnValue(1_000_000_000_000);
+      monotonicClock.mockReturnValue(60_001);
+      await reconcile(rosterOf(ALICE, CAROL));
+
+      await vi.waitFor(() => expect(deleteConferenceCallParticipants).toHaveBeenCalledTimes(1));
+    } finally {
+      wallClock.mockRestore();
+      monotonicClock.mockRestore();
+    }
   });
 
   it('does not remove a chain member the SFU has simply not listed yet', async() => {
@@ -343,13 +605,14 @@ describe('GroupCallInstance — chain-only conference members', () => {
   });
 
   it('does not burn a block when the identity is already off the chain', async() => {
-    const {instance, buildChangeStateBlock, deleteConferenceCallParticipants} = makeConference();
-    // Another client (or an earlier attempt) pruned Eve first.
-    (instance as any).e2eStatus = {groupState: groupStateOf(ALICE, CAROL)};
+    const {instance, buildRemoveParticipantsBlock, deleteConferenceCallParticipants} = makeConference();
+    // Another queued block (or an earlier attempt) pruned Eve first. The worker
+    // observes that current state and reports a no-op.
+    buildRemoveParticipantsBlock.mockResolvedValueOnce(undefined as any);
 
     await (instance as any).pruneConferenceMembers([EVE]);
 
-    expect(buildChangeStateBlock).not.toHaveBeenCalled();
+    expect(buildRemoveParticipantsBlock).toHaveBeenCalledWith({userIds: [EVE]});
     expect(deleteConferenceCallParticipants).not.toHaveBeenCalled();
   });
 
@@ -392,6 +655,7 @@ describe('GroupCallInstance — chain-only conference members', () => {
 
   it('keeps the identity visible and reports a bug when removal keeps being refused', async() => {
     const {instance, deleteConferenceCallParticipants} = makeConference();
+    const logError = vi.spyOn((instance as any).log, 'error');
     deleteConferenceCallParticipants.mockRejectedValue({type: 'GROUPCALL_INVALID'});
 
     (instance as any).publishMembersWithAccess([EVE]);
@@ -402,16 +666,21 @@ describe('GroupCallInstance — chain-only conference members', () => {
     // A relay that injects a member and then refuses to let it be pruned is the
     // hostile case — the user must be able to see both halves of it.
     expect(instance.memberWithAccessPeerIds).toEqual([conferenceUserIdToPeerId(EVE)]);
-    expect((self as any).__conferenceBug?.reason).toMatch(/still hold the call key/i);
+    expect(logError).toHaveBeenCalledWith(
+      'CONFERENCE BUG —',
+      expect.stringMatching(/still hold the call key/i),
+      expect.objectContaining({reason: expect.stringMatching(/still hold the call key/i)})
+    );
   });
 
   it('treats a chain race as benign and retries rather than reporting', async() => {
     const {instance, deleteConferenceCallParticipants} = makeConference();
+    const logError = vi.spyOn((instance as any).log, 'error');
     deleteConferenceCallParticipants.mockRejectedValue({type: 'CONF_WRITE_CHAIN_INVALID'});
 
     await (instance as any).pruneConferenceMembers([EVE]);
 
-    expect((self as any).__conferenceBug).toBeUndefined();
+    expect(logError).not.toHaveBeenCalled();
     expect((instance as any).consecutivePruneFailures).toBe(1);
   });
 
@@ -433,6 +702,7 @@ describe('GroupCallInstance — chain-only conference members', () => {
 
   it('reports rather than silently merging two members that share one displayed peer', async() => {
     const {instance, reconcile} = makeConference();
+    const logError = vi.spyOn((instance as any).log, 'error');
     const hidden = BigInt('9007199254740993');
     const decoy = BigInt('9007199254740992');
     (instance as any).e2eStatus = {groupState: groupStateOf(ALICE, hidden, decoy)};
@@ -442,7 +712,52 @@ describe('GroupCallInstance — chain-only conference members', () => {
     // Both are flagged for removal (that works off exact ids), but the roster
     // list is keyed by PeerId and can only carry one row for the pair.
     expect(instance.memberWithAccessPeerIds).toHaveLength(1);
-    expect((self as any).__conferenceBug?.reason).toMatch(/share one displayed peer/i);
+    expect(logError).toHaveBeenCalledWith(
+      'CONFERENCE BUG —',
+      expect.stringMatching(/share one displayed peer/i),
+      expect.objectContaining({reason: expect.stringMatching(/share one displayed peer/i)})
+    );
+  });
+
+  it('leaves rather than spinning when the server disowns the call', async() => {
+    // Observed live: every conference request answered GROUPCALL_INVALID while
+    // the already-negotiated media kept flowing. The client logged and retried
+    // forever, so the roster froze — and with a fail-closed recv transform,
+    // anything a peer started afterwards was dropped ("I see their video but
+    // hear nothing"), all under an encrypted-call UI whose access list could no
+    // longer be verified.
+    const {instance} = makeConference();
+    const hangUp = vi.spyOn(instance, 'hangUp').mockImplementation(async() => {});
+    const err = {type: 'GROUPCALL_INVALID'};
+
+    for(let i = 0; i < 7; ++i) (instance as any).noteConferenceApiResult(err);
+    expect(hangUp).not.toHaveBeenCalled();
+
+    (instance as any).noteConferenceApiResult(err);
+    expect(hangUp).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leave on ordinary transient failures', async() => {
+    const {instance} = makeConference();
+    const hangUp = vi.spyOn(instance, 'hangUp').mockImplementation(async() => {});
+
+    for(let i = 0; i < 40; ++i) {
+      (instance as any).noteConferenceApiResult({type: 'TIMEOUT'});
+    }
+
+    expect(hangUp).not.toHaveBeenCalled();
+  });
+
+  it('a single good answer clears the streak', async() => {
+    const {instance} = makeConference();
+    const hangUp = vi.spyOn(instance, 'hangUp').mockImplementation(async() => {});
+    const err = {type: 'GROUPCALL_INVALID'};
+
+    for(let i = 0; i < 7; ++i) (instance as any).noteConferenceApiResult(err);
+    (instance as any).noteConferenceApiResult(); // one success
+    for(let i = 0; i < 7; ++i) (instance as any).noteConferenceApiResult(err);
+
+    expect(hangUp).not.toHaveBeenCalled();
   });
 
   it('drops the chain-only set when the call is torn down', async() => {

@@ -886,7 +886,7 @@
     "params": [
       {
         "name": "action",
-        "type": "MessageAction.messageActionPhoneCall"
+        "type": "MessageAction.messageActionPhoneCall | MessageAction.messageActionConferenceCall"
       }
     ],
     "type": "MessageMedia"

@@ -18,12 +18,18 @@ import wrapUrl from '@lib/richTextProcessor/wrapUrl';
  * `['telegram_call']` so only call previews produce a handler and every other
  * preview type is ignored.
  *
+ * `fromId` is the sender of the message the preview belongs to. A rendered
+ * message lets a handler climb to its bubble for that, but a surface like the
+ * pinned bar has no bubble to climb — so it travels on the anchor instead (the
+ * same channel `setMediaTimestamp` uses for its timestamp).
+ *
  * Returns the click handler, or `undefined` when the page isn't an allowed
  * type / has no registered internal handler.
  */
 export default function getWebPageActionOnClick(
   webPage: WebPage,
-  allowedTypes: WebPage.webPage['type'][]
+  allowedTypes: WebPage.webPage['type'][],
+  fromId?: PeerId
 ): ((e: Event) => void) | undefined {
   if(webPage._ !== 'webPage' || !allowedTypes.includes(webPage.type)) {
     return;
@@ -46,6 +52,7 @@ export default function getWebPageActionOnClick(
     const anchor = document.createElement('a');
     anchor.href = wrapped.url;
     anchor.setAttribute('safe', '1');
+    if(fromId) anchor.dataset.fromId = '' + fromId;
     (window as any)[onclick](anchor, e);
   };
 }

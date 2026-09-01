@@ -16,6 +16,7 @@ import topicAvatar from '@components/topicAvatar';
 import {wrapCustomEmojiAwaited} from '@components/wrappers/customEmoji';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import wrapJoinVoiceChatAnchor from '@components/wrappers/joinVoiceChatAnchor';
+import {getConferenceCallLangKey, getConferenceCallState} from '@lib/calls/helpers/conferenceCallAction';
 import {WrapMessageActionTextOptions} from '@components/wrappers/messageActionTextNew';
 import wrapMessageForReply, {WrapMessageForReplyOptions} from '@components/wrappers/messageForReply';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -285,27 +286,16 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionConferenceCall': {
-        // tdesktop renders this as a media bubble (MediaCall) with state
-        // Invitation / Active / Missed / Hangup. We render service text +
-        // a Join anchor while the call is still joinable. The Join anchor
-        // resolves the conference via inputGroupCallInviteMessage(msg_id).
-        const isMissed = !!action.pFlags.missed;
-        const hasDuration = action.duration !== undefined;
-        const isJoinable = !isMissed && !hasDuration;
-        const isOut = !!message.pFlags.out;
-
-        if(isMissed) {
-          langPackKey = 'Chat.Service.ConferenceCall.Missed';
-          args = [];
-        } else if(hasDuration) {
-          langPackKey = 'Chat.Service.ConferenceCall.Ended';
-          args = [wrapCallDuration(action.duration, plain)];
-        } else {
-          langPackKey = isOut ?
-            'Chat.Service.ConferenceCall.Outgoing' :
-            'Chat.Service.ConferenceCall.Incoming';
-          args = [noLinks || !isJoinable ? '' : wrapJoinVoiceChatAnchor(message as any)];
-        }
+        // Same title tdesktop's `MediaCall::Text` produces for the call bubble
+        // (rendered by `wrapCallBubble`) — here it serves the plain-text uses:
+        // chat list previews, replies, notifications, and the fallback for
+        // browsers that render the action as a service message because they
+        // cannot join a group call at all.
+        langPackKey = getConferenceCallLangKey(
+          getConferenceCallState(action),
+          !!message.pFlags.out
+        );
+        args = [];
         break;
       }
 

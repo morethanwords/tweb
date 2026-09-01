@@ -4,7 +4,7 @@ import {getAppWindow} from '@helpers/appWindow';
 import {videoToImage} from '@helpers/dom/videoToImage';
 import ListLoader from '@helpers/listLoader';
 import ListenerSetter from '@helpers/listenerSetter';
-import rtmpCallsController from '@lib/calls/rtmpCallsController';
+import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {getRtmpShareUrl, getRtmpStreamUrl} from '@lib/rtmp/url';
 import AppMediaViewerBase from '@components/mediaViewer/base';
@@ -31,8 +31,11 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   static activeInstance: AppMediaViewerRtmp;
   static previousPeerId: PeerId = NULL_PEER_ID;
   static previousCapture: string;
+  private static closeCaptureGeneration = 0;
 
   private peerId: PeerId;
+  private joinedCall: RtmpCallInstance;
+  private closePromise?: Promise<void>;
   private listenerSetter = new ListenerSetter();
   private retryTimeout?: number;
   private retryTempId?: number;
@@ -81,7 +84,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     attachClickEvent(this.buttons.forward, this.onForward, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(apiManagerProxy.serviceMessagePort)('rtmpStreamDestroyed', (callId) => {
-      if(rtmpCallsController.currentCall?.call.id === callId) {
+      const joinedCall = this.joinedCall;
+      if(joinedCall && rtmpCallsController.currentCall === joinedCall && joinedCall.call.id === callId) {
         this.retryLoadStream(this.videoPlayer.video, 'was destroyed');
       }
     });
@@ -109,6 +113,12 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
       await rtmpCallsController.joinCall(chatId);
     }
 
+    const joinedCall = rtmpCallsController.currentCall;
+    if(!joinedCall || joinedCall.peerId !== params.peerId) {
+      throw new Error('RTMP call changed while opening its viewer');
+    }
+
+    this.joinedCall = joinedCall;
     AppMediaViewerRtmp.activeInstance = this;
     this.peerId = params.peerId;
 
@@ -122,8 +132,10 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
       this.shareUrl = getRtmpShareUrl(this.peerId);
     }
 
+    this.assertOpeningCall(joinedCall);
+
     await this._openMedia({
-      media: rtmpCallsController.currentCall.inputCall,
+      media: joinedCall.inputCall,
       mediaThumbnail: params.peerId === AppMediaViewerRtmp.previousPeerId ? AppMediaViewerRtmp.previousCapture : undefined,
       timestamp: 0,
       fromId: params.peerId,
@@ -131,9 +143,9 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
       setupPlayer: (player, readyPromise) => {
         const video = player.video;
 
-        const getCall = () => rtmpCallsController.currentCall;
+        const getCall = () => rtmpCallsController.currentCall === joinedCall ? joinedCall : undefined;
 
-        player.updateLiveViewersCount(getCall().call.participants_count);
+        player.updateLiveViewersCount(joinedCall.call.participants_count);
         if(!IS_SAFARI || params.isAdmin) {
           player.setupLiveMenu([{
             icon: 'volume_up_filled',
@@ -155,7 +167,9 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
             text: 'Rtmp.MediaViewer.Menu.StopRecording',
             verify: () => getCall()?.admin && getCall().call.pFlags.record_video_active,
             onClick: () => {
-              this.managers.appGroupCallsManager.stopRecording(getCall().inputCall).catch(() => {
+              const call = getCall();
+              if(!call) return;
+              this.managers.appGroupCallsManager.stopRecording(call.inputCall).catch(() => {
                 toastNew({
                   langPackKey: 'Error.AnError'
                 });
@@ -252,14 +266,24 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           duration: 300
         });
 
-        rtmpCallsController.currentCall.state = RTMP_STATE.PLAYING;
+        if(rtmpCallsController.currentCall === joinedCall) {
+          joinedCall.state = RTMP_STATE.PLAYING;
+        }
       },
       onBuffering: this.showLoader
     });
 
+    // getChatFull and _openMedia both cross asynchronous boundaries before the
+    // currentCallChanged listener exists. A replacement during either await
+    // must fail this transaction so its owner closes the partially-open viewer
+    // without touching the newer call.
+    this.assertOpeningCall(joinedCall);
+
     this.listenerSetter.add(rtmpCallsController)('currentCallChanged', (call) => {
-      if(!call) {
-        this.close(undefined, true);
+      if(call !== joinedCall) {
+        void this.closeWithoutLeaving().catch((err) => {
+          this.log.error('closing replaced RTMP viewer failed', err);
+        });
         return;
       }
 
@@ -269,21 +293,31 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     this.rejoinInterval = window.setTimeout(this.rejoin, REJOIN_INTERVAL);
   }
 
-  private rejoin = () => {
-    if(rtmpCallsController.currentCall) {
-      rtmpCallsController.rejoinCall().catch((err) => {
-        this.log.error('rejoinCall', err);
-      }).then(() => {
-        this.rejoinInterval = window.setTimeout(this.rejoin, REJOIN_INTERVAL);
-      });
+  private assertOpeningCall(joinedCall: RtmpCallInstance): void {
+    if(this.closePromise ||
+      AppMediaViewerRtmp.activeInstance !== this ||
+      rtmpCallsController.currentCall !== joinedCall) {
+      throw new Error('RTMP call changed while opening its viewer');
     }
   }
+
+  private rejoin = () => {
+    const joinedCall = this.joinedCall;
+    if(this.closePromise || rtmpCallsController.currentCall !== joinedCall) return;
+
+    void rtmpCallsController.rejoinCall().catch((err) => {
+      this.log.error('rejoinCall', err);
+    }).then(() => {
+      if(this.closePromise || rtmpCallsController.currentCall !== joinedCall) return;
+      this.rejoinInterval = window.setTimeout(this.rejoin, REJOIN_INTERVAL);
+    });
+  };
 
   private toggleAdminPanel(visible: boolean) {
     if(visible && this.videoPlayer) {
       this.videoPlayer.cancelFullScreen();
       if(this.videoPlayer.inPip) {
-        getAppWindow().document.exitPictureInPicture();
+        this.exitPictureInPicture('closing RTMP admin-panel picture-in-picture failed');
       }
     }
 
@@ -297,6 +331,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   }
 
   private showLoader = () => {
+    if(rtmpCallsController.currentCall !== this.joinedCall) return;
+
     this.videoPlayer.video.parentElement.classList.add('is-buffering');
 
     if(!this.preloaderTemplate.parentElement) {
@@ -309,14 +345,14 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     const liveEl = this.content.mover.querySelector('.controls-live') as HTMLElement;
     liveEl.classList.remove('is-not-buffering');
 
-    rtmpCallsController.currentCall.state = RTMP_STATE.BUFFERING;
+    this.joinedCall.state = RTMP_STATE.BUFFERING;
   };
 
   private retryLoadStream(video: HTMLVideoElement, reason: string) {
     const tempId = ++this.retryTempId;
     const log = this.log.bindPrefix(`retryLoadStream-${tempId}-${reason}`);
-    const myCallId = rtmpCallsController.currentCall?.call.id;
-    if(!myCallId) {
+    const joinedCall = this.joinedCall;
+    if(!joinedCall || rtmpCallsController.currentCall !== joinedCall) {
       this.close(undefined, true);
       return;
     }
@@ -335,7 +371,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
       clearTimeout(this.retryTimeout);
 
       rtmpCallsController.isCurrentCallDead(checkJoined).then((empty) => {
-        if(rtmpCallsController.currentCall?.call.id !== myCallId || !check()) {
+        if(rtmpCallsController.currentCall !== joinedCall || !check()) {
           // destroyed
           return;
         }
@@ -359,18 +395,18 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           return;
         }
 
-        if(rtmpCallsController.currentCall?.admin) {
+        if(joinedCall.admin) {
           this.toggleAdminPanel(false);
         }
 
-        const url = getRtmpStreamUrl(rtmpCallsController.currentCall.inputCall);
+        const url = getRtmpStreamUrl(joinedCall.inputCall);
         if(video.getAttribute('src') !== url) {
           video.src = url;
           video.load();
           safePlay(video);
         }
       }).catch((err) => {
-        if(rtmpCallsController.currentCall?.call.id !== myCallId || !check()) {
+        if(rtmpCallsController.currentCall !== joinedCall || !check()) {
           // destroyed
           return;
         }
@@ -390,51 +426,120 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     retry();
   }
 
-  private async leaveCall(discard = false) {
-    rtmpCallsController.leaveCall(discard).catch(() => {
+  private async leaveCall(discard = false, expectedCall = this.joinedCall): Promise<void> {
+    await rtmpCallsController.leaveCall(discard, expectedCall).catch(() => {
       toastNew({
         langPackKey: 'Error.AnError'
       });
     });
   }
 
-  public async close(e?: MouseEvent, end = false) {
+  public isAttachedToCall(call: RtmpCallInstance): boolean {
+    return this.joinedCall === call;
+  }
+
+  public closeWithoutLeaving(): Promise<void> {
+    return this.close(undefined, false, true);
+  }
+
+  public close(e?: MouseEvent, end = false, skipLeave = false): Promise<void> {
+    if(this.closePromise) return this.closePromise;
+
+    const joinedCall = this.joinedCall;
     const hadPip = this.videoPlayer?.inPip;
+    const pipElement = hadPip ? this.videoPlayer?.video : undefined;
+    const captureGeneration = ++AppMediaViewerRtmp.closeCaptureGeneration;
 
     clearTimeout(this.retryTimeout);
     clearTimeout(this.rejoinInterval);
     ++this.retryTempId;
 
+    if(AppMediaViewerRtmp.activeInstance === this) {
+      AppMediaViewerRtmp.activeInstance = undefined;
+    }
+    this.listenerSetter.removeAll();
+
+    return this.closePromise = this.closeInternal({
+      captureGeneration,
+      e,
+      end,
+      hadPip,
+      joinedCall,
+      pipElement,
+      skipLeave
+    });
+  }
+
+  private async closeInternal(options: {
+    captureGeneration: number,
+    e?: MouseEvent,
+    end: boolean,
+    hadPip: boolean,
+    joinedCall?: RtmpCallInstance,
+    pipElement?: HTMLVideoElement,
+    skipLeave: boolean
+  }): Promise<void> {
+    const {captureGeneration, e, end, hadPip, joinedCall, pipElement, skipLeave} = options;
+
+    let capturePromise: Promise<Blob> | undefined;
     if(this.videoPlayer) {
       try {
-        const capturedBlob = await videoToImage(this.videoPlayer.video);
-        if(AppMediaViewerRtmp.previousCapture) {
-          URL.revokeObjectURL(AppMediaViewerRtmp.previousCapture);
-        }
-        AppMediaViewerRtmp.previousCapture = URL.createObjectURL(capturedBlob);
-        AppMediaViewerRtmp.previousPeerId = this.peerId;
+        // videoToImage snapshots the current frame synchronously and only then
+        // awaits canvas encoding. Start that work before closing the DOM, but do
+        // not keep an old viewer layered over its replacement while encoding.
+        capturePromise = videoToImage(this.videoPlayer.video);
       } catch(e) {}
     }
 
-    super.close(e);
-    AppMediaViewerRtmp.activeInstance = undefined;
-
-    if(rtmpCallsController.currentCall) {
-      this.leaveCall(end);
+    let baseClose: ReturnType<AppMediaViewerRtmp['close']> | undefined;
+    try {
+      baseClose = super.close(e) as Promise<void>;
+    } catch(err) {
+      this.log.error('closing RTMP media viewer failed', err);
     }
 
-    this.listenerSetter.removeAll();
-    if(hadPip) {
-      getAppWindow().document.exitPictureInPicture();
+    const leavePromise = joinedCall && !skipLeave ? this.leaveCall(end, joinedCall) : Promise.resolve();
+
+    if(capturePromise) {
+      try {
+        const capturedBlob = await capturePromise;
+        if(captureGeneration === AppMediaViewerRtmp.closeCaptureGeneration) {
+          const capture = URL.createObjectURL(capturedBlob);
+          if(AppMediaViewerRtmp.previousCapture) {
+            URL.revokeObjectURL(AppMediaViewerRtmp.previousCapture);
+          }
+          AppMediaViewerRtmp.previousCapture = capture;
+          AppMediaViewerRtmp.previousPeerId = this.peerId;
+        }
+      } catch(e) {}
     }
+
+    await leavePromise;
+
+    const appDocument = getAppWindow().document;
+    if(hadPip && pipElement && appDocument.pictureInPictureElement === pipElement) {
+      await appDocument.exitPictureInPicture().catch((err) => {
+        this.log.error('exit RTMP picture-in-picture failed', err);
+      });
+    }
+
+    await Promise.resolve(baseClose).catch((err) => {
+      this.log.error('closing RTMP media viewer failed', err);
+    });
   }
 
   public static closeActivePip(end = false) {
     if(!AppMediaViewerRtmp.activeInstance) return;
 
     if(AppMediaViewerRtmp.activeInstance.videoPlayer?.inPip) {
-      getAppWindow().document.exitPictureInPicture();
+      AppMediaViewerRtmp.activeInstance.exitPictureInPicture('closing active RTMP picture-in-picture failed');
     }
+  }
+
+  private exitPictureInPicture(context: string): void {
+    void getAppWindow().document.exitPictureInPicture().catch((err) => {
+      this.log.error(context, err);
+    });
   }
 
   public static async getShareUrl(chatId: ChatId) {

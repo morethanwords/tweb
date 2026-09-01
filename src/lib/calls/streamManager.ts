@@ -13,6 +13,12 @@ import LocalConferenceDescription from '@lib/calls/localConferenceDescription';
 import {fixMediaLineType, WebRTCLineType} from '@lib/calls/sdpBuilder';
 import {getAmplitude, toTelegramSource} from '@lib/calls/utils';
 
+export async function waitForMediaTrackReplacements(replacements: Promise<void>[]): Promise<void> {
+  const results = await Promise.allSettled(replacements);
+  const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+  if(rejected) throw rejected.reason;
+}
+
 export type StreamItemBase = {
   type: 'input' | 'output',
   track: MediaStreamTrack,
@@ -262,9 +268,13 @@ export default class StreamManager {
   // path uses this to attach `RTCRtpScriptTransform` early enough that
   // Chrome doesn't reject it as "Too late to create encoded streams" — see
   // memory tde2e-port.md K-2 for the timing details.
-  public appendToConference(conference: LocalConferenceDescription, onSenderCreated?: (sender: RTCRtpSender) => void) {
+  public async appendToConference(
+    conference: LocalConferenceDescription,
+    onSenderCreated?: (sender: RTCRtpSender) => void,
+    throwOnReplaceError = false
+  ): Promise<void> {
     if(this.locked) {
-      return;
+      return Promise.resolve();
     }
 
     const {inputStream, direction, canCreateConferenceEntry} = this;
@@ -279,6 +289,11 @@ export default class StreamManager {
     });
 
     const tracks = inputStream.getTracks();
+    const replacements: {
+      sender: RTCRtpSender,
+      previousTrack: MediaStreamTrack | null,
+      promise: Promise<void>
+    }[] = [];
     // const transceivers = conference.connection.getTransceivers();
     for(const [type, transceiverInit] of types) {
       let entry = conference.findEntry((entry) => entry.direction === direction && entry.type === type);
@@ -336,13 +351,40 @@ export default class StreamManager {
         continue;
       }
 
-      // try { // ! don't use await here. it will wait for adding track and fake one won't be visible in startNegotiation.
-      /* await  */sender.replaceTrack(track).catch((err) => {
-        this.log.error(err);
+      // Start replacement synchronously so a following createOffer sees the
+      // sender immediately. Runtime media transactions may still await the
+      // returned promise and roll back if the browser rejects replacement;
+      // legacy fire-and-forget callers retain the old logged-error behaviour.
+      const previousTrack = sender.track;
+      let replacement: Promise<void>;
+      try {
+        replacement = sender.replaceTrack(track);
+      } catch(err) {
+        replacement = Promise.reject(err);
+      }
+      replacements.push({
+        sender,
+        previousTrack,
+        promise: throwOnReplaceError ? replacement : replacement.catch((err) => {
+          this.log.error(err);
+        })
       });
-      // } catch(err) {
+    }
 
-      // }
+    try {
+      await waitForMediaTrackReplacements(replacements.map(({promise}) => promise));
+    } catch(err) {
+      // A conference can own several senders. Promise.allSettled tells us only
+      // after every replace completed, so a rejection may coexist with other
+      // senders already carrying the new stream. Restore the complete previous
+      // sender set before the caller removes/stops the rejected local tracks.
+      const rollbackResults = await Promise.allSettled(replacements.map(({sender, previousTrack}) => {
+        return sender.replaceTrack(previousTrack);
+      }));
+      rollbackResults.forEach((result) => {
+        if(result.status === 'rejected') this.log.error('replaceTrack rollback failed', result.reason);
+      });
+      throw err;
     }
   }
 

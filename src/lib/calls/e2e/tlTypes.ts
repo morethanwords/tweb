@@ -19,6 +19,13 @@ import {TL_MAGIC, TLReader, TLWriter} from './tl';
 // Permission bits inside groupParticipant.flags.
 export const PERM_ADD_USERS = 1 << 0;
 export const PERM_REMOVE_USERS = 1 << 1;
+// tdlib GroupParticipantFlags::SetValue. tweb keeps no kv trie, so nothing acts
+// on this bit — but it must survive a decode/encode round trip, because the
+// block signature is verified over a RE-SERIALIZATION of the decoded block.
+export const PERM_SET_VALUE = 1 << 2;
+// GroupParticipantFlags::AllPermissions. tdlib rejects a participant carrying
+// anything outside this mask (Blockchain.cpp:340-343).
+export const PERM_ALL_PARTICIPANT = PERM_ADD_USERS | PERM_REMOVE_USERS | PERM_SET_VALUE;
 
 // State-proof flags.
 const SP_FLAG_GROUP_STATE = 1 << 0;
@@ -35,6 +42,29 @@ export interface GroupParticipant {
   canAddUsers: boolean;
   canRemoveUsers: boolean;
   version: number; // int32
+  /**
+   * The flags byte exactly as it arrived, when it did.
+   *
+   * The permission bits we act on are the two booleans above, but the block
+   * signature is checked over a re-serialization of the DECODED block, so any
+   * bit we drop on decode is a bit we sign differently from the sender. tdlib
+   * round-trips `flags` verbatim (Blockchain.cpp:32-40) and keeps SetValue,
+   * which we have no use for — so rebuilding the field from two booleans made
+   * every block carrying that bit hash and verify differently here than in
+   * every official client. Undefined for participants we construct ourselves;
+   * `participantFlags` then derives the field from the booleans.
+   */
+  flags?: number;
+}
+
+// The flags to serialize for a participant: what arrived on the wire if we
+// decoded it, otherwise derived from the permissions we set.
+export function participantFlags(p: GroupParticipant): number {
+  if(p.flags !== undefined) return p.flags;
+  let flags = 0;
+  if(p.canAddUsers) flags |= PERM_ADD_USERS;
+  if(p.canRemoveUsers) flags |= PERM_REMOVE_USERS;
+  return flags;
 }
 
 // NOTE on per-element magic: empirically, the server tolerates the magic
@@ -47,10 +77,7 @@ export function encodeGroupParticipant(w: TLWriter, p: GroupParticipant): void {
   w.magic(TL_MAGIC.groupParticipant);
   w.int64(p.userId);
   w.int256(p.publicKey);
-  let flags = 0;
-  if(p.canAddUsers) flags |= PERM_ADD_USERS;
-  if(p.canRemoveUsers) flags |= PERM_REMOVE_USERS;
-  w.uint32(flags);
+  w.uint32(participantFlags(p));
   w.int32(p.version);
 }
 
@@ -60,12 +87,19 @@ export function decodeGroupParticipant(r: TLReader): GroupParticipant {
   const publicKey = new Uint8Array(r.int256());
   const flags = r.uint32();
   const version = r.int32();
+  const canAddUsers = (flags & PERM_ADD_USERS) !== 0;
+  const canRemoveUsers = (flags & PERM_REMOVE_USERS) !== 0;
+  // Carry the raw field only when it holds something the two booleans cannot
+  // express. For an ordinary participant the derived value is byte-identical,
+  // so this stays an exact round trip and callers never see the extra key.
+  const derived = (canAddUsers ? PERM_ADD_USERS : 0) | (canRemoveUsers ? PERM_REMOVE_USERS : 0);
   return {
     userId,
     publicKey,
-    canAddUsers: (flags & PERM_ADD_USERS) !== 0,
-    canRemoveUsers: (flags & PERM_REMOVE_USERS) !== 0,
-    version
+    canAddUsers,
+    canRemoveUsers,
+    version,
+    flags: flags === derived ? undefined : flags
   };
 }
 

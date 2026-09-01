@@ -954,6 +954,19 @@
       cursor: pointer;
     }
 
+    &-side-btn,
+    &-center {
+      &:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: -2px;
+      }
+
+      &:disabled {
+        cursor: default;
+        opacity: .65;
+      }
+    }
+
     &-mic-btn {
       // Default (muted / connecting / etc.) — primary blue.
       // Overridden to green on `.is-unmuted` below.

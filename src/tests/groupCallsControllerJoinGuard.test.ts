@@ -32,12 +32,14 @@ vi.mock('@lib/calls/e2e/encryptWorkerHost', () => {
 });
 
 import groupCallsController from '@lib/calls/groupCallsController';
-import type {InputGroupCall} from '@layer';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import type {InputGroupCall, Updates} from '@layer';
 
 const SENTINEL_MESSAGE = '__guard_passed_sentinel__';
 
 function installManagers(opts: {
   chainBlocksImpl?: (input: InputGroupCall, sub: number, offset: number, limit: number) => Promise<unknown>;
+  processUpdateMessageImpl?: (updates: unknown) => MaybePromise<void>;
 }) {
   const appCallsManagerMock = {
     getGroupCallChainBlocks: opts.chainBlocksImpl ?? (async() => {
@@ -45,7 +47,7 @@ function installManagers(opts: {
     })
   };
   const apiUpdatesManagerMock = {
-    processUpdateMessage: () => {}
+    processUpdateMessage: opts.processUpdateMessageImpl ?? (() => {})
   };
 
   Object.assign(groupCallsController as any, {
@@ -65,6 +67,11 @@ function installManagers(opts: {
 }
 
 const SELF_USER_ID = BigInt(1234);
+const EXPECTED_CALL: InputGroupCall.inputGroupCall = {
+  _: 'inputGroupCall',
+  id: '700',
+  access_hash: '701'
+};
 
 describe('GroupCallsController.joinConference — InputGroupCall type guard', () => {
   beforeEach(() => {
@@ -83,15 +90,30 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
   it('accepts inputGroupCallSlug — guard does not throw', async() => {
     const input: InputGroupCall = {_: 'inputGroupCallSlug', slug: 'invite-link-slug'};
     await expect(
-      groupCallsController.joinConference({input, selfUserId: SELF_USER_ID})
+      groupCallsController.joinConference({
+        input,
+        expectedCanonicalInput: EXPECTED_CALL,
+        selfUserId: SELF_USER_ID
+      })
     ).rejects.toThrow(SENTINEL_MESSAGE);
   });
 
   it('accepts inputGroupCallInviteMessage — guard does not throw', async() => {
     const input: InputGroupCall = {_: 'inputGroupCallInviteMessage', msg_id: 555};
     await expect(
-      groupCallsController.joinConference({input, selfUserId: SELF_USER_ID})
+      groupCallsController.joinConference({
+        input,
+        expectedCanonicalInput: EXPECTED_CALL,
+        selfUserId: SELF_USER_ID
+      })
     ).rejects.toThrow(SENTINEL_MESSAGE);
+  });
+
+  it('rejects a non-canonical authorization without a preview identity', async() => {
+    const input: InputGroupCall = {_: 'inputGroupCallSlug', slug: 'invite-link-slug'};
+    await expect(
+      groupCallsController.joinConference({input, selfUserId: SELF_USER_ID})
+    ).rejects.toThrow(/requires an expected canonical identity/);
   });
 
   it('rejects any other tag with an informative error', async() => {
@@ -123,10 +145,172 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
 
     const slugInput: InputGroupCall = {_: 'inputGroupCallSlug', slug: 'test-slug'};
     await expect(
-      groupCallsController.joinConference({input: slugInput, selfUserId: SELF_USER_ID})
+      groupCallsController.joinConference({
+        input: slugInput,
+        expectedCanonicalInput: EXPECTED_CALL,
+        selfUserId: SELF_USER_ID
+      })
     ).rejects.toThrow(SENTINEL_MESSAGE);
 
     expect(seen.length).toBe(1);
     expect(seen[0]).toEqual(slugInput);
+  });
+
+  it('rejects a foreign chain update instead of treating it as the requested tip', async() => {
+    const input: InputGroupCall = {_: 'inputGroupCall', id: '700', access_hash: '701'};
+    installManagers({
+      chainBlocksImpl: async() => ({
+        _: 'updates',
+        updates: [{
+          _: 'updateGroupCallChainBlocks',
+          call: {_: 'inputGroupCall', id: '999', access_hash: '1000'},
+          sub_chain_id: 0,
+          blocks: [new Uint8Array([1])],
+          next_offset: 1
+        }],
+        users: [],
+        chats: [],
+        date: 0,
+        seq: 0
+      } satisfies Updates.updates)
+    });
+
+    await expect((groupCallsController as any).fetchLastConferenceBlock(input))
+    .rejects.toThrow(/matching block update/);
+  });
+
+  it('accepts one canonical resolution for a slug and validates its cursor', async() => {
+    const input: InputGroupCall = {_: 'inputGroupCallSlug', slug: 'invite'};
+    const canonical: InputGroupCall.inputGroupCall = {
+      _: 'inputGroupCall',
+      id: '700',
+      access_hash: '701'
+    };
+    installManagers({
+      chainBlocksImpl: async() => ({
+        _: 'updatesCombined',
+        updates: [
+          {
+            _: 'updateGroupCall',
+            pFlags: {},
+            call: {
+              _: 'groupCall',
+              pFlags: {conference: true},
+              id: canonical.id,
+              access_hash: canonical.access_hash,
+              participants_count: 1,
+              unmuted_video_limit: 0,
+              version: 1
+            }
+          },
+          {
+            _: 'updateGroupCallChainBlocks',
+            call: canonical,
+            sub_chain_id: 0,
+            blocks: [new Uint8Array([5])],
+            next_offset: 3
+          }
+        ],
+        users: [],
+        chats: [],
+        date: 0,
+        seq_start: 0,
+        seq: 0
+      } satisfies Updates.updatesCombined)
+    });
+
+    await expect((groupCallsController as any).fetchLastConferenceBlock(input, canonical)).resolves.toEqual({
+      block: new Uint8Array([5]),
+      nextOffset: 3
+    });
+  });
+
+  it('waits for update processing before publishing the initial chain tip', async() => {
+    let finishProcessing: () => void;
+    const processing = new Promise<void>((resolve) => {
+      finishProcessing = resolve;
+    });
+    installManagers({
+      processUpdateMessageImpl: () => processing,
+      chainBlocksImpl: async() => ({
+        _: 'updateShort',
+        update: {
+          _: 'updateGroupCallChainBlocks',
+          call: EXPECTED_CALL,
+          sub_chain_id: 0,
+          blocks: [new Uint8Array([9])],
+          next_offset: 1
+        },
+        date: 0
+      } satisfies Updates.updateShort)
+    });
+
+    let settled = false;
+    const result = (groupCallsController as any).fetchLastConferenceBlock(EXPECTED_CALL).then((value: unknown) => {
+      settled = true;
+      return value;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    finishProcessing();
+    await expect(result).resolves.toEqual({
+      block: new Uint8Array([9]),
+      nextOffset: 1
+    });
+  });
+
+  it('rejects a chain cursor smaller than the returned block batch', async() => {
+    const input: InputGroupCall = {_: 'inputGroupCall', id: '700', access_hash: '701'};
+    installManagers({
+      chainBlocksImpl: async() => ({
+        _: 'updates',
+        updates: [{
+          _: 'updateGroupCallChainBlocks',
+          call: input,
+          sub_chain_id: 0,
+          blocks: [new Uint8Array([1]), new Uint8Array([2])],
+          next_offset: 1
+        }],
+        users: [],
+        chats: [],
+        date: 0,
+        seq: 0
+      } satisfies Updates.updates)
+    });
+
+    await expect((groupCallsController as any).fetchLastConferenceBlock(input))
+    .rejects.toThrow(/invalid next_offset/);
+  });
+
+  it('observes initial legacy roster failure without rejecting an accepted join', async() => {
+    let rejectRoster!: (reason: unknown) => void;
+    const roster = new Promise<Map<PeerId, any>>((_resolve, reject) => {
+      rejectRoster = reject;
+    });
+    const fakeCall = {
+      connections: {main: {streamManager: {}}},
+      onParticipantUpdate: vi.fn(),
+      participants: roster,
+      state: GROUP_CALL_STATE.MUTED
+    };
+    const join = vi.spyOn(groupCallsController as any, 'joinGroupCallInternal').mockResolvedValue(undefined);
+    const warn = vi.fn();
+    (groupCallsController as any).currentGroupCall = fakeCall;
+    (groupCallsController as any).log.warn = warn;
+
+    try {
+      await expect(groupCallsController.joinGroupCall(1 as ChatId, 'call-id' as any, true, true))
+      .resolves.toBeUndefined();
+      const rosterError = new Error('initial roster proxy failed');
+      rejectRoster(rosterError);
+      await vi.waitFor(() => expect(warn).toHaveBeenCalledWith(
+        'initial group call participant hydration failed',
+        rosterError
+      ));
+    } finally {
+      join.mockRestore();
+      (groupCallsController as any).currentGroupCall = undefined;
+    }
   });
 });

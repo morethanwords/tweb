@@ -24,6 +24,7 @@ import App from '@config/app';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import sessionStorage from '@lib/sessionStorage';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
+import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
 import {replaceButtonIcon} from '@components/button';
@@ -100,6 +101,7 @@ import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
 import {useCollapsedCommunityDialogsKey} from '@stores/communities';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
+import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -1076,6 +1078,15 @@ export class AppSidebarLeft extends SidebarSlider {
       text: singular ? 'Group' : 'NewGroup',
       onClick: onNewGroupClick
     }, {
+      icon: 'phone',
+      text: 'ConferenceCall.New',
+      verify: () => IS_CONFERENCE_CALL_SUPPORTED,
+      onClick: () => {
+        closeTabsBefore(() => {
+          void appImManager.createConference().catch(noop);
+        });
+      }
+    }, {
       icon: 'newprivate',
       text: singular ? 'PrivateChat' : 'NewPrivateChat',
       onClick: onContactsClick
@@ -1087,10 +1098,25 @@ export class AppSidebarLeft extends SidebarSlider {
       direction: 'top-left',
       buttons: this.createNewChatsMenuOptions(false),
       noIcon: true,
-      positionPadding: {bottom: 10}
+      positionPadding: {bottom: 10},
+      // Runs before the shared toggle's short-lived cached-menu fast path, so
+      // a rapid close/reopen cannot leave the trigger announced as collapsed.
+      onOpenBefore: () => btnMenu.setAttribute('aria-expanded', 'true'),
+      onClose: () => btnMenu.setAttribute('aria-expanded', 'false')
     });
     btnMenu.className = 'btn-new-menu btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
-    btnMenu.tabIndex = -1;
+    btnMenu.tabIndex = 0;
+    btnMenu.setAttribute('role', 'button');
+    btnMenu.setAttribute('aria-label', I18n.format('ChatAutomation.NewChats', true));
+    btnMenu.setAttribute('aria-expanded', 'false');
+    btnMenu.addEventListener('keydown', (e: KeyboardEvent) => {
+      if(e.key !== 'Enter' && e.key !== ' ') return;
+
+      cancelEvent(e);
+      // Use the same synthetic event as pointer activation. On touch-capable
+      // desktops the shared click helper listens to mousedown, not click.
+      simulateClickEvent(btnMenu);
+    });
     const icons: Icon[] = ['newchat_filled', 'close'];
     btnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
     btnMenu.id = 'new-menu';

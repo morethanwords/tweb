@@ -1,5 +1,12 @@
 @use "../../shared" as *;
 
+// The shared call-button factory is used by both private calls and group calls.
+// Native buttons need a visible keyboard focus indicator in either popup.
+.call-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
 .popup-group-call {
   $parent: ".popup";
 
@@ -60,6 +67,11 @@
     .btn-icon {
       flex: 0 0 auto;
       color: inherit;
+
+      &:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+      }
     }
 
     &-info {
@@ -84,6 +96,12 @@
       font-size: .875rem;
       color: var(--gc-secondary-text-color);
     }
+
+    &-fingerprint {
+      flex: 0 1 auto;
+      min-width: 0;
+      margin-inline: .5rem;
+    }
   }
 
   &-buttons {
@@ -104,6 +122,10 @@
     opacity: 1;
     color: var(--gc-primary-text-color);
     background-color: var(--gc-button-unmuted-color);
+
+    &:disabled {
+      cursor: default;
+    }
 
     .group-call[data-mic-state="muted"] & {
       background-color: var(--gc-button-muted-color);

@@ -27,6 +27,7 @@ import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import SearchIndex from '@lib/searchIndex';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import hasRights from '@appManagers/utils/chats/hasRights';
+import deferred from './helpers/deferred';
 
 const COMMUNITY_ID = 200 as ChatId;
 const COMMUNITY_PEER_ID = COMMUNITY_ID.toPeerId(true);
@@ -111,15 +112,6 @@ beforeEach(() => {
   mirrorInvokeVoid.mockClear();
 });
 
-function deferred<T>() {
-  let resolve: (value: T) => void;
-  let reject: (error: Error) => void;
-  const promise = new Promise<T>((_resolve, _reject) => {
-    resolve = _resolve;
-    reject = _reject;
-  });
-  return {promise, resolve, reject};
-}
 
 function makeCommunity(
   id: ChatId = COMMUNITY_ID,

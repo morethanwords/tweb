@@ -1,5 +1,5 @@
 import {LottieIconItemPartOptions} from '@lib/lottie/lottieIcon';
-import {GROUP_CALL_MICROPHONE_BUTTON_STATE} from '.';
+import {GROUP_CALL_MICROPHONE_BUTTON_STATE} from '@components/groupCall/microphoneControl';
 import {SuperLottieIcon} from '@components/superIcon';
 
 export default class GroupCallMicrophoneIcon extends SuperLottieIcon<{

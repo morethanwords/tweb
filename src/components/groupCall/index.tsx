@@ -1,8 +1,7 @@
 import PopupElement from '@components/popups';
 import {hexToRgb} from '@helpers/color';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import customProperties from '@helpers/dom/customProperties';
-import {GroupCall, GroupCallParticipant} from '@layer';
+import {GroupCallParticipant} from '@layer';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import {LottieColor} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
@@ -10,9 +9,9 @@ import ButtonIcon from '@components/buttonIcon';
 import GroupCallMicrophoneIcon from '@components/groupCall/microphoneIcon';
 import GroupCallParticipantsElement from '@components/groupCall/participants';
 import GroupCallParticipantsVideoElement from '@components/groupCall/participantVideos';
-import PopupPeer from '@components/popups/peer';
 import GroupCallDescriptionElement from '@components/groupCall/description';
 import GroupCallTitleElement from '@components/groupCall/title';
+import requestGroupCallLeave from '@components/groupCall/requestLeave';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
 import Scrollable from '@components/scrollable';
 import {MovableState} from '@components/movableElement';
@@ -21,16 +20,34 @@ import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import throttle from '@helpers/schedulers/throttle';
 import IS_SCREEN_SHARING_SUPPORTED from '@environment/screenSharingSupport';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
-import makeButton from '@components/call/button';
+import makeButton, {
+  setCallButtonBusy,
+  setCallButtonDisabled,
+  setCallButtonLabel
+} from '@components/call/button';
 import MovablePanel from '@helpers/movablePanel';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import toggleClassName from '@helpers/toggleClassName';
 import themeController from '@helpers/themeController';
 import groupCallsController from '@lib/calls/groupCallsController';
-import {render} from 'solid-js/web';
 import {createSignal} from 'solid-js';
 import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import showCallSettingsPopup from '@components/call/settingsPopup';
+import {toastNew} from '@components/toast';
+import {i18n, LangPackKey} from '@lib/langPack';
+import {
+  GROUP_CALL_MICROPHONE_BUTTON_STATE,
+  getGroupCallMicrophoneButtonState,
+  getMicrophoneControlAccessibility,
+  performMicrophoneControlAction
+} from '@components/groupCall/microphoneControl';
+import showPickUserPopup from '@components/popups/pickUser';
+import shareGroupCallInviteLink from '@components/call/shareInviteLink';
+import createInviteViaLinkRow from '@components/groupCall/inviteViaLinkRow';
+import {
+  inviteConferenceParticipants,
+  showConferenceInviteResultToast
+} from '@components/groupCall/inviteParticipants';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -89,23 +106,6 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
   return color;
 }
 
-export enum GROUP_CALL_MICROPHONE_BUTTON_STATE {
-  HAND,
-  MUTED,
-  UNMUTED
-}
-
-export function getGroupCallMicrophoneButtonState(groupCall: GroupCall.groupCall, participant: GroupCallParticipant) {
-  const states = GROUP_CALL_MICROPHONE_BUTTON_STATE;
-  if(!participant.pFlags.can_self_unmute) {
-    return states.HAND;
-  } else if(participant.pFlags.muted) {
-    return states.MUTED
-  } else {
-    return states.UNMUTED;
-  }
-}
-
 let previousState: MovableState = {
   width: 420,
   height: 640
@@ -129,8 +129,10 @@ export default class PopupGroupCall extends PopupElement {
   private movablePanel: MovablePanel;
   private buttonsContainer: HTMLDivElement;
   private btnFullScreen2: HTMLButtonElement;
-  private btnVideo: HTMLDivElement;
-  private btnScreen: HTMLDivElement;
+  private btnVideo: HTMLButtonElement;
+  private btnScreen: HTMLButtonElement;
+  private btnMute: HTMLButtonElement;
+  private videosScrollable: Scrollable;
 
   constructor() {
     super('popup-group-call', {
@@ -151,12 +153,16 @@ export default class PopupGroupCall extends PopupElement {
       const btnFullScreen2 = this.btnFullScreen2 = ButtonIcon('fullscreen ' + className + '-cfs');
       const btnExitFullScreen = this.btnExitFullScreen = ButtonIcon('smallscreen');
 
-      attachClickEvent(btnFullScreen, this.onFullScreenClick, {listenerSetter});
-      attachClickEvent(btnFullScreen2, this.onFullScreenClick, {listenerSetter});
+      setCallButtonLabel(btnFullScreen, 'ConferenceCall.Controls.EnterFullscreen');
+      setCallButtonLabel(btnFullScreen2, 'ConferenceCall.Controls.EnterFullscreen');
+      setCallButtonLabel(btnExitFullScreen, 'ConferenceCall.Controls.ExitFullscreen');
 
-      attachClickEvent(btnExitFullScreen, () => {
+      listenerSetter.add(btnFullScreen)('click', this.onFullScreenClick);
+      listenerSetter.add(btnFullScreen2)('click', this.onFullScreenClick);
+
+      listenerSetter.add(btnExitFullScreen)('click', () => {
         cancelFullScreen();
-      }, {listenerSetter});
+      });
 
       addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
     }
@@ -164,7 +170,12 @@ export default class PopupGroupCall extends PopupElement {
     const btnInvite = this.btnInvite = ButtonIcon('adduser');
     const btnShowColumn = this.btnShowColumn = ButtonIcon('rightpanel ' + className + '-only-big');
 
-    attachClickEvent(btnShowColumn, this.toggleRightColumn, {listenerSetter});
+    setCallButtonLabel(btnInvite, 'VoiceChat.Invite.InviteMembers');
+    setCallButtonLabel(btnShowColumn, 'ConferenceCall.Controls.ShowParticipants');
+    listenerSetter.add(btnShowColumn)('click', this.toggleRightColumn);
+    if(instance.e2e) {
+      listenerSetter.add(btnInvite)('click', this.onConferenceInviteClick);
+    }
 
     const headerInfo = document.createElement('div');
     headerInfo.classList.add(className + '-header-info');
@@ -177,7 +188,13 @@ export default class PopupGroupCall extends PopupElement {
     headerInfo.append(this.title, subtitle);
 
     this.header.classList.add(className + '-header');
-    this.header.append(...[this.btnExitFullScreen, headerInfo/* , btnInvite */, this.btnFullScreen, btnShowColumn].filter(Boolean));
+    this.header.append(...[
+      this.btnExitFullScreen,
+      headerInfo,
+      instance.e2e && btnInvite,
+      this.btnFullScreen,
+      btnShowColumn
+    ].filter(Boolean));
 
     const newHeader = this.header.cloneNode(false) as HTMLElement;
     const newHeaderInfo = headerInfo.cloneNode(false) as HTMLElement;
@@ -188,11 +205,12 @@ export default class PopupGroupCall extends PopupElement {
     const btnHideColumn = ButtonIcon('rightpanel');
     newHeader.append(...[btnHideColumn, newHeaderInfo, this.btnFullScreen2].filter(Boolean));
 
-    attachClickEvent(btnHideColumn, this.toggleRightColumn, {listenerSetter});
+    setCallButtonLabel(btnHideColumn, 'ConferenceCall.Controls.HideParticipants');
+    listenerSetter.add(btnHideColumn)('click', this.toggleRightColumn);
 
     this.body.prepend(newHeader);
 
-    const videosScrollable = new Scrollable(undefined);
+    const videosScrollable = this.videosScrollable = new Scrollable(undefined);
     videosScrollable.container.classList.add('group-call-big-video-container');
     this.container.append(videosScrollable.container);
 
@@ -265,6 +283,7 @@ export default class PopupGroupCall extends PopupElement {
       this.groupCallParticipantsVideo.destroy();
       this.groupCallParticipants.destroy();
       this.groupCallMicrophoneIcon.destroy();
+      this.videosScrollable.destroy();
 
       movablePanel.destroy();
     });
@@ -292,72 +311,67 @@ export default class PopupGroupCall extends PopupElement {
       setHash(status.verification?.emojiHash);
     });
 
-    const mount = document.createElement('span');
-    mount.classList.add(className + '-header-fingerprint');
+    const badge = wrapSolidComponent(() => (
+      <FingerprintBadge
+        class={className + '-header-fingerprint'}
+        emojiHash={hash()}
+      />
+    ), this.middlewareHelper.get());
     // Place the fingerprint to the LEFT of the fullscreen button. A plain
     // append() lands it at the very end of the header (right of fullscreen).
     if(this.btnFullScreen) {
-      this.header.insertBefore(mount, this.btnFullScreen);
+      this.header.insertBefore(badge, this.btnFullScreen);
     } else {
-      this.header.append(mount);
+      this.header.append(badge);
     }
-
-    const dispose = render(() => (
-      <FingerprintBadge emojiHash={hash()} />
-    ), mount);
-
-    this.addEventListener('close', () => {
-      dispose();
-      mount.remove();
-    });
   }
 
   private constructButtons() {
     const buttons = this.buttonsContainer = document.createElement('div');
     buttons.classList.add(className + '-buttons');
+    buttons.setAttribute('role', 'toolbar');
+    buttons.setAttribute('aria-label', i18n('ConferenceCall.Controls.Toolbar').textContent);
 
     const _makeButton = makeButton.bind(null, className, this.listenerSetter);
 
     const btnVideo = this.btnVideo = _makeButton({
-      // text: 'VoiceChat.Video.Stream.Video',
+      ariaLabel: 'VoiceChat.Video.Stream.Video',
       callback: this.onVideoClick,
+      disabled: true,
       icon: 'videocamera_filled'
-    });
+    }) as HTMLButtonElement;
 
     const btnScreen = this.btnScreen = _makeButton({
-      // text: 'VoiceChat.Video.Stream.Screencast',
+      ariaLabel: 'VoiceChat.Video.Stream.Screencast',
       callback: this.onScreenClick,
+      disabled: true,
       icon: 'sharescreen_filled'
-    });
+    }) as HTMLButtonElement;
 
     btnScreen.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
 
-    const btnMute = _makeButton({
+    const btnMute = this.btnMute = _makeButton({
+      ariaLabel: 'VoiceChat.Status.Connecting',
       noRipple: true,
       callback: throttle(this.onMuteClick, 600, true)
-    });
+    }) as HTMLButtonElement;
     btnMute.classList.add(className + '-microphone-button');
 
     const microphoneIcon = this.groupCallMicrophoneIcon = new GroupCallMicrophoneIcon();
     btnMute.append(microphoneIcon.container);
 
     const btnMore = _makeButton({
-      // text: 'VoiceChat.Video.Stream.More'
+      ariaLabel: 'CallSettings.Title',
       icon: 'settings_filled',
       callback: this.onMoreClick
-    });
-
-    // Match the legacy positioning that used to hide btnMore behind the
-    // (also gated) screen-sharing toggle. Keeping the same gate avoids
-    // re-laying out the button row on platforms without screen capture.
-    btnMore.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
+    }) as HTMLButtonElement;
 
     const btnLeave = _makeButton({
-      // text: 'VoiceChat.Leave',
+      ariaLabel: 'VoiceChat.Leave',
       isDanger: true,
       callback: this.onLeaveClick,
       icon: 'close'
-    });
+    }) as HTMLButtonElement;
 
     buttons.append(btnVideo, btnScreen, btnMute, btnMore, btnLeave);
 
@@ -373,60 +387,153 @@ export default class PopupGroupCall extends PopupElement {
     this.buttonsContainer.classList.toggle('show-controls', show);
   };
 
-  private toggleDisability = toggleClassName.bind(null, 'btn-disabled');
+  private runControlAction = async(
+    button: HTMLButtonElement,
+    action: () => MaybePromise<void>,
+    errorKey: LangPackKey,
+    didFail?: () => boolean
+  ) => {
+    setCallButtonBusy(button, true);
+    let failed = false;
+    try {
+      await action();
+      failed = !!didFail?.();
+    } catch(err) {
+      console.error('group call control failed', err);
+      failed = true;
+    } finally {
+      setCallButtonBusy(button, false);
+      this.updateInstance();
+    }
 
-  private onVideoClick = () => {
-    const toggle = this.toggleDisability([this.btnVideo], true);
-    this.instance.toggleVideoSharing().finally(() => {
-      toggle();
-    });
-  };
-
-  private onScreenClick = () => {
-    const toggle = this.toggleDisability([this.btnScreen], true);
-    this.instance.toggleScreenSharing().finally(() => {
-      toggle();
-    });
-  };
-
-  private onMuteClick = () => {
-    const participant = this.instance.participant;
-    if(!participant.pFlags.can_self_unmute) {
-      if(participant.raise_hand_rating === undefined) {
-        this.instance.changeRaiseHand(true);
-      }
-    } else {
-      this.instance.toggleMuted();
+    if(failed && this.instance.state !== GROUP_CALL_STATE.CLOSED) {
+      toastNew({langPackKey: errorKey});
     }
   };
 
+  private onVideoClick = () => {
+    const wasSharing = this.instance.isSharingVideo;
+    return this.runControlAction(
+      this.btnVideo,
+      () => this.instance.toggleVideoSharing(),
+      'ConferenceCall.Media.CameraError',
+      () => this.instance.isSharingVideo === wasSharing
+    );
+  };
+
+  private onScreenClick = () => {
+    const wasSharing = this.instance.isSharingScreen;
+    return this.runControlAction(
+      this.btnScreen,
+      () => this.instance.toggleScreenSharing(),
+      'ConferenceCall.Media.ScreenError',
+      () => this.instance.isSharingScreen === wasSharing
+    );
+  };
+
+  // Fire-and-forget behind the leading-edge throttle, like the topbar plate:
+  // the icon follows the instance's own state events, so making the press wait
+  // out (and lock the button for) a round trip only made muting feel sluggish.
+  private onMuteClick = () => {
+    if(!this.instance.participant) return;
+
+    performMicrophoneControlAction(this.instance).catch((err) => {
+      console.error('group call microphone action failed', err);
+      if(this.instance.state !== GROUP_CALL_STATE.CLOSED) {
+        toastNew({langPackKey: 'ConferenceCall.Media.MicrophoneError'});
+      }
+    });
+  };
+
+  private isConferenceInviteContextCurrent(instance: GroupCallInstance): boolean {
+    return !this.destroyed &&
+      this.instance === instance &&
+      groupCallsController.groupCall === instance &&
+      !!instance.e2e &&
+      !instance.isClosing;
+  }
+
+  private onConferenceInviteClick = () => {
+    const instance = this.instance;
+    return this.runControlAction(
+      this.btnInvite,
+      async() => {
+        const participants = await instance.participants;
+        if(!this.isConferenceInviteContextCurrent(instance)) return;
+
+        await new Promise<void>((resolve) => {
+          // tdesktop's conference invite box (calls_group_invite_controller.cpp:806):
+          // a multi-select list with an "Invite via Link" row above it, one
+          // request per person, and a single toast that reports every verdict.
+          const popup = showPickUserPopup({
+            titleLangKey: 'ConferenceCall.Invite.Title',
+            peerType: ['dialogs', 'contacts'],
+            placeholder: 'Search',
+            exceptSelf: true,
+            multiSelect: true,
+            footerButtonProps: {langKey: 'ConferenceCall.Invite.Button'},
+            excludePeerIds: new Set([
+              ...participants.keys(),
+              ...instance.memberWithAccessPeerIds
+            ]),
+            filterPeerTypeBy: (peer) => peer._ === 'user' && !peer.pFlags.bot,
+            onSelect: (chosen) => {
+              const peerIds = chosen.map(({peerId}) => peerId);
+              if(!peerIds.length || !this.isConferenceInviteContextCurrent(instance)) return;
+
+              // Don't hold the picker open for the round trips — tdesktop
+              // closes its box on confirm and toasts once the batch answers.
+              void this.runConferenceInvites(instance, peerIds);
+            },
+            onClose: resolve
+          });
+
+          popup.selector.section.content.prepend(createInviteViaLinkRow({
+            middleware: popup.middleware,
+            onClick: () => {
+              popup.hide();
+              void shareGroupCallInviteLink(
+                instance,
+                () => this.isConferenceInviteContextCurrent(instance)
+              );
+            }
+          }));
+        });
+      },
+      'Error.AnError'
+    );
+  };
+
+  private async runConferenceInvites(instance: GroupCallInstance, peerIds: PeerId[]) {
+    const isAlive = () => this.isConferenceInviteContextCurrent(instance);
+    const result = await inviteConferenceParticipants(peerIds, {isAlive});
+    if(!isAlive()) return;
+
+    await showConferenceInviteResultToast(result);
+  }
+
   private onMoreClick = async() => {
-    const canManage = await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call');
-    showCallSettingsPopup({mode: 'groupCall', instance: this.instance, canManage});
+    try {
+      // Conferences have no backing chat. Asking hasRights(NULL_PEER_ID) is both
+      // meaningless and capable of preventing the settings/share surface from
+      // opening when the manager rejects the pseudo peer.
+      const canManage = this.instance.e2e ? false :
+        await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call');
+      showCallSettingsPopup({mode: 'groupCall', instance: this.instance, canManage});
+    } catch(err) {
+      console.error('open group call settings failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
   };
 
   private onLeaveClick = async() => {
-    const hangUp = (discard: boolean) => {
-      this.instance.hangUp(discard);
-    };
-
-    if(await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call')) {
-      PopupElement.createPopup(PopupPeer, 'popup-end-video-chat', {
-        titleLangKey: 'VoiceChat.End.Title',
-        descriptionLangKey: 'VoiceChat.End.Text',
-        checkboxes: [{
-          text: 'VoiceChat.End.Third'
-        }],
-        buttons: [{
-          langKey: 'VoiceChat.End.OK',
-          callback: (e, checkboxes) => {
-            hangUp(!!checkboxes.size);
-          },
-          isDanger: true
-        }]
-      }).show();
-    } else {
-      hangUp(false);
+    try {
+      const canManage = !this.instance.e2e &&
+        await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call');
+      await requestGroupCallLeave(this.instance, canManage);
+    } catch(err) {
+      console.error('prepare group call leave failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
     }
   };
 
@@ -505,16 +612,37 @@ export default class PopupGroupCall extends PopupElement {
       return;
     }
 
-    const {participant, groupCall} = this.instance;
-    if(!participant) {
-      return;
-    }
-
     this.setTitle();
     this.setDescription();
     this.setHasPinned();
 
-    const microphoneButtonState = getGroupCallMicrophoneButtonState(groupCall as any, participant);
+    this.btnVideo.setAttribute('aria-pressed', String(this.instance.isSharingVideo));
+    this.btnScreen.setAttribute('aria-pressed', String(this.instance.isSharingScreen));
+
+    const {participant} = this.instance;
+    const mediaReady = this.instance.isMediaRuntimeReady;
+    // Starting capture before the canonical join and our participant update
+    // complete either races negotiation or leaves a local-only camera/mic
+    // indicator. An already-active share must remain stoppable if a transient
+    // participant update disappears while the call recovers.
+    setCallButtonDisabled(this.btnVideo, !mediaReady && !this.instance.isSharingVideo);
+    setCallButtonDisabled(this.btnScreen, !mediaReady && !this.instance.isSharingScreen);
+
+    // Only the label follows the participant — the button itself stays live.
+    // `onMuteClick` already no-ops before the participant arrives and for an
+    // already-raised hand, and a microphone the user cannot press is worse than
+    // one whose press is a no-op.
+    const microphoneAccessibility = getMicrophoneControlAccessibility(participant, this.instance.isMuted);
+    setCallButtonLabel(this.btnMute, microphoneAccessibility.label);
+    // The label describes the next action (Mute / Unmute / Raise hand), so a
+    // simultaneous pressed state would communicate the inverse semantics.
+    this.btnMute.removeAttribute('aria-pressed');
+
+    if(!participant) {
+      return;
+    }
+
+    const microphoneButtonState = getGroupCallMicrophoneButtonState(participant, this.instance.isMuted);
     this.container.dataset.micState = microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.HAND ? 'hand' : (microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.MUTED ? 'muted' : 'unmuted');
     this.groupCallMicrophoneIcon.setState(microphoneButtonState);
   }

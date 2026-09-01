@@ -38,7 +38,8 @@ export interface VerificationStateSnapshot {
   phase: VerificationPhase;
   height: number;
   blockHash: Uint8Array;
-  // Number of commits seen so far (excluding self).
+  // Number of commits/reveals received back from the relay. Self is counted
+  // only after its own signed broadcast is echoed like every other sender.
   commitsSeen: number;
   revealsSeen: number;
   // Defined only when phase === 'end'.
@@ -50,7 +51,7 @@ export class VerificationChain {
   // Our own nonce + its hash — kept until reveal phase.
   private readonly myNonce: Uint8Array;
   private readonly myNonceHash: Uint8Array;
-  // Participant → committed nonce_hash (incl. ourselves).
+  // Participant → committed nonce_hash received from the relay.
   private readonly commits: Map<string, Uint8Array> = new Map();
   // Participant → revealed nonce.
   private readonly reveals: Map<string, Uint8Array> = new Map();
@@ -97,8 +98,10 @@ export class VerificationChain {
       myNonceHash
     );
 
-    // Self-commit immediately + queue outbound for the wire.
-    chain.commits.set(chain.keyForUser(me.userId), myNonceHash);
+    // Outbound state is deliberately separate from accepted inbound state.
+    // The relay must echo our signed commit before it counts towards the round;
+    // otherwise a dropped self broadcast could still produce a green emoji on
+    // this device while no other participant ever accepted that contribution.
     chain.outbound.push(chain.signAndEncodeCommit());
     return chain;
   }
@@ -155,7 +158,6 @@ export class VerificationChain {
       // If all participants have committed, advance to reveal + enqueue our reveal.
       if(this.commits.size === this.participants.length) {
         this.phase = 'reveal';
-        this.reveals.set(this.keyForUser(this.me.userId), this.myNonce);
         this.outbound.push(this.signAndEncodeReveal());
         return true;
       }

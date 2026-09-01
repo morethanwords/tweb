@@ -1,7 +1,7 @@
 import flatten from '@helpers/array/flatten';
 import contextMenuController from '@helpers/contextMenuController';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {AttachClickOptions, attachClickEvent} from '@helpers/dom/clickEvent';
+import {AttachClickOptions, attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -19,6 +19,8 @@ import {ActiveAccountNumber} from '@lib/accounts/types';
 import {putPreloader} from '@components/putPreloader';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
+let nextButtonMenuLabelId = 0;
+
 type AvatarInfo = {
   accountNumber?: ActiveAccountNumber,
   peerId?: PeerId,
@@ -210,6 +212,8 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   }/*  : onClick */, options.options);
 
   if(checkboxField) {
+    textElement.id ||= `btn-menu-item-label-${++nextButtonMenuLabelId}`;
+    checkboxField.input.setAttribute('aria-labelledby', textElement.id);
     el.append(checkboxField.label);
     el.classList.add('has-checkbox')
   }
@@ -296,6 +300,60 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
       container.append(hr);
     });
   }
+
+  // ButtonMenu is used for a mix of actions, native checkbox/radio controls,
+  // and static rows. Keep the ordinary tab model instead of claiming the
+  // composite ARIA menu pattern, which would also require roving focus and
+  // arrow-key navigation. Native form controls own their focus; only plain
+  // action rows need button semantics and delegated keyboard activation.
+  buttons.forEach(({element, onClick, checkboxField}) => {
+    if(!onClick || checkboxField || !element.classList.contains('btn-menu-item')) return;
+
+    element.setAttribute('role', 'button');
+    element.tabIndex = 0;
+  });
+
+  const add = listenerSetter ? listenerSetter.add(el) : el.addEventListener.bind(el);
+  add('keydown', (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest<HTMLElement>('.btn-menu-item');
+    const button = item && buttons.find(({element}) => element === item);
+
+    const radioInput = button?.checkboxField?.input;
+    const radioStep = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 :
+      (e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0);
+    if(
+      target === radioInput &&
+      radioInput.type === 'radio' &&
+      radioStep &&
+      button.radioGroup &&
+      button.onClick
+    ) {
+      const group = buttons.filter((candidate) =>
+        candidate.radioGroup === button.radioGroup &&
+        candidate.checkboxField?.input.type === 'radio' &&
+        candidate.checkboxField.input.name === radioInput.name &&
+        candidate.onClick
+      );
+      const index = group.indexOf(button);
+      const next = group[(index + radioStep + group.length) % group.length];
+      if(next && next !== button) {
+        cancelEvent(e);
+        next.checkboxField.input.focus();
+        simulateClickEvent(next.element);
+      }
+      return;
+    }
+
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+
+    const isActionRow = target === item && !!button?.onClick && !button.checkboxField;
+    const isNativeChoice = target === button?.checkboxField?.input && !!button.onClick;
+    if(!isActionRow && !isNativeChoice) return;
+
+    cancelEvent(e);
+    simulateClickEvent(item);
+  });
 
   return el;
 }

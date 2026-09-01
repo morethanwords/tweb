@@ -15,9 +15,9 @@ import {beforeAll, describe, expect, it} from 'vitest';
 import {E2eCall, CallError} from '../call';
 import {bytesToHex, ensureCryptoReady, sha256} from '../crypto';
 import {PrivateKey} from '../keys';
-import {decodeBlock, GroupParticipant, GroupState} from '../tlTypes';
+import {decodeBlock, encodeGroupBroadcastNonceCommit, GroupParticipant, GroupState} from '../tlTypes';
 import {PERM_ADD_USERS, PERM_REMOVE_USERS} from '../tlTypes';
-import {localToServer, serverToLocal, TLReader} from '../tl';
+import {localToServer, serverToLocal, TLReader, TLWriter} from '../tl';
 
 beforeAll(() => ensureCryptoReady());
 
@@ -29,6 +29,18 @@ function participantFor(userId: bigint, sk: PrivateKey, version = 1): GroupParti
     canRemoveUsers: true,
     version
   };
+}
+
+function futureCommit(userId: bigint, chainHeight: number): Uint8Array {
+  const writer = new TLWriter();
+  encodeGroupBroadcastNonceCommit(writer, {
+    signature: new Uint8Array(64),
+    userId,
+    chainHeight,
+    chainHash: new Uint8Array(32).fill(chainHeight & 0xff),
+    nonceHash: new Uint8Array(32).fill(Number(userId % BigInt(251)))
+  });
+  return localToServer(writer.finish());
 }
 
 describe('E2eCall — block lifecycle', () => {
@@ -167,6 +179,95 @@ describe('E2eCall — two-party flow', () => {
     const packet = await aliceCall.encrypt(0, new Uint8Array([1, 2, 3]), 0);
     await expect(aliceCall.decrypt(aliceId, 0, packet)).rejects.toThrow(/SELF_PACKET/);
   });
+
+  it('re-anchors on an accepted self-add without replacing the private key or packet sequence', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(21));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(22));
+    const aliceUserId = BigInt(301);
+    const bobUserId = BigInt(302);
+    const aliceParticipant = participantFor(aliceUserId, alice);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [aliceParticipant],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceUserId, alice, zero);
+    const bobJoin = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobUserId, bob));
+    const acceptedRejoin = await E2eCall.createSelfAddBlock(alice, bobJoin, aliceParticipant);
+
+    await call.encrypt(0, new Uint8Array([1]), 0);
+    await call.reanchor(acceptedRejoin);
+    await call.encrypt(0, new Uint8Array([2]), 0);
+
+    expect(call.getHeight()).toBe(2);
+    expect(new Set(call.getGroupState().participants.map((p) => p.userId))).toEqual(
+      new Set([aliceUserId, bobUserId])
+    );
+    // Replacing E2eCall would reset this to 1 and make same-key packets look
+    // replayed to peers that stayed in the conference.
+    expect((call as any).seqnoByChannel.get(0)).toBe(2);
+  });
+
+  it('preserves the old live state when a proposed re-anchor fails to hydrate', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(25));
+    const aliceUserId = BigInt(303);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceUserId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceUserId, alice, zero);
+    const height = call.getHeight();
+    const hash = bytesToHex(call.getLastBlockHash());
+    const participants = call.getGroupState().participants.map(({userId}) => userId);
+
+    await expect(call.reanchor(new Uint8Array([1, 2, 3]))).rejects.toThrow();
+
+    expect(call.getHeight()).toBe(height);
+    expect(bytesToHex(call.getLastBlockHash())).toBe(hash);
+    expect(call.getGroupState().participants.map(({userId}) => userId)).toEqual(participants);
+    await expect(call.encrypt(0, new Uint8Array([9]), 0)).resolves.toBeInstanceOf(Uint8Array);
+  });
+
+  it('keeps the sender replay window across a successful re-anchor', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(26));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(27));
+    const aliceUserId = BigInt(304);
+    const bobUserId = BigInt(305);
+    const aliceParticipant = participantFor(aliceUserId, alice);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [aliceParticipant],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const bobJoin = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobUserId, bob));
+    const aliceCall = await E2eCall.create(aliceUserId, alice, bobJoin);
+    const bobBefore = await E2eCall.create(bobUserId, bob, bobJoin);
+    const firstPacket = await bobBefore.encrypt(4, new Uint8Array([1]), 0);
+    await aliceCall.decrypt(bobUserId, 4, firstPacket);
+
+    const acceptedRejoin = await E2eCall.createSelfAddBlock(alice, bobJoin, aliceParticipant);
+    await aliceCall.reanchor(acceptedRejoin);
+
+    // A fresh sender object starts again at seqno=1 but produces a packet for
+    // the new valid epoch. Re-anchor must not forget that this sender/channel
+    // sequence number was already authenticated before the anchor changed.
+    const bobAfter = await E2eCall.create(bobUserId, bob, acceptedRejoin);
+    const replayedSequence = await bobAfter.encrypt(4, new Uint8Array([2]), 0);
+    await expect(aliceCall.decrypt(bobUserId, 4, replayedSequence)).rejects.toThrow(/replay/);
+  });
+
+  it('rejects a self-add whose advertised public key differs from its signer', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(23));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(24));
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(BigInt(401), alice)],
+      externalPermissions: PERM_ADD_USERS
+    });
+
+    await expect(E2eCall.createSelfAddBlock(
+      bob,
+      zero,
+      participantFor(BigInt(402), alice)
+    )).rejects.toThrow(/public key does not match/);
+  });
 });
 
 describe('E2eCall — emoji verification end-to-end', () => {
@@ -194,10 +295,12 @@ describe('E2eCall — emoji verification end-to-end', () => {
     expect(alicePending).toHaveLength(1);
     expect(bobPending).toHaveLength(1);
 
-    // Exchange commits. After receiving the other side's commit, each party
-    // transitions to `reveal` + queues their reveal.
-    await aliceCall.receiveInbound(bobPending[0]);
-    await bobCall.receiveInbound(alicePending[0]);
+    // Relay commits to everyone, including each sender. Local outbound does not
+    // count until the corresponding indexed broadcast comes back.
+    for(const commit of [...alicePending, ...bobPending]) {
+      await aliceCall.receiveInbound(commit);
+      await bobCall.receiveInbound(commit);
+    }
 
     expect(aliceCall.getVerificationState()!.phase).toBe('reveal');
     expect(bobCall.getVerificationState()!.phase).toBe('reveal');
@@ -207,10 +310,12 @@ describe('E2eCall — emoji verification end-to-end', () => {
     expect(aliceReveal).toHaveLength(1);
     expect(bobReveal).toHaveLength(1);
 
-    // Exchange reveals. After validating the other side's nonce against the
-    // committed hash, both parties transition to `end` with the same emoji hash.
-    await aliceCall.receiveInbound(bobReveal[0]);
-    await bobCall.receiveInbound(aliceReveal[0]);
+    // Relay reveals the same way. After validating both nonces against their
+    // echoed commits, both parties reach the same final emoji hash.
+    for(const reveal of [...aliceReveal, ...bobReveal]) {
+      await aliceCall.receiveInbound(reveal);
+      await bobCall.receiveInbound(reveal);
+    }
 
     const aliceFinal = aliceCall.getVerificationState()!;
     const bobFinal = bobCall.getVerificationState()!;
@@ -234,7 +339,7 @@ describe('E2eCall — emoji verification end-to-end', () => {
     const garbage = new Uint8Array(100);
     for(let i = 0; i < garbage.length; i++) garbage[i] = (i * 31 + 7) & 0xff;
 
-    await aliceCall.receiveInbound(garbage);
+    await expect(aliceCall.receiveInbound(garbage)).resolves.toBe('consumed');
     // Call must still be healthy.
     expect(aliceCall.getStatus()).toBeNull();
   });
@@ -484,14 +589,47 @@ describe('E2eCall — verification broadcast reordering', () => {
     // Deliver Bob's height-2 commit to Alice while she is STILL at height 1.
     expect(aliceCall.getHeight()).toBe(1);
     for(const msg of bobOutbound) await aliceCall.receiveInbound(msg);
-    // Buffered, not applied: Alice still at height 1 with only her own commit.
+    // Buffered, not applied: Alice still at height 1 and has received no
+    // relay echo for that older round.
     expect(aliceCall.getVerificationState()!.height).toBe(1);
-    expect(aliceCall.getVerificationState()!.commitsSeen).toBe(1);
+    expect(aliceCall.getVerificationState()!.commitsSeen).toBe(0);
 
     // Alice now applies the height-2 block → the buffered commit is replayed.
     await aliceCall.applyBlockBytes(carolSelfAdd);
     const vs = aliceCall.getVerificationState()!;
     expect(vs.height).toBe(2);
-    expect(vs.commitsSeen).toBe(2); // self + Bob's replayed commit (Carol hasn't committed)
+    expect(vs.commitsSeen).toBe(1); // Bob's replayed commit; self + Carol haven't echoed
+  });
+
+  it('retains all 200 legitimate future commits for a full-size conference', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(0x74));
+    const aliceId = BigInt(7400);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceId, alice, zero);
+
+    for(let i = 0; i < 200; ++i) {
+      await expect(call.receiveInbound(futureCommit(BigInt(8000 + i), 1))).resolves.toBe('consumed');
+    }
+    const delayed = (call as unknown as {delayedBroadcasts: Map<number, unknown[]>}).delayedBroadcasts;
+    expect(delayed.get(1)).toHaveLength(200);
+  });
+
+  it('asks the indexed caller to retry overflow and far-future broadcasts', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(0x75));
+    const aliceId = BigInt(7500);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceId, alice, zero);
+
+    await expect(call.receiveInbound(futureCommit(BigInt(9999), 17))).resolves.toBe('retry');
+    for(let i = 0; i < 400; ++i) {
+      await expect(call.receiveInbound(futureCommit(BigInt(10000 + i), 1))).resolves.toBe('consumed');
+    }
+    await expect(call.receiveInbound(futureCommit(BigInt(10400), 1))).resolves.toBe('retry');
   });
 });

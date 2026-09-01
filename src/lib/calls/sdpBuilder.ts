@@ -11,6 +11,7 @@ import StringFromLineBuilder from '@lib/calls/stringFromLineBuilder';
 import {CallSignalingData, GroupCallConnectionTransport, PayloadType, RtpHdrexts, UpdateGroupCallConnectionData} from '@lib/calls/types';
 import {fromTelegramSource} from '@lib/calls/utils';
 import {getSdpDirection, getSdpPort, SdpSection} from '@lib/calls/p2P/sdpCommon';
+import {isSdpSafeSetup} from '@lib/calls/helpers/sdpSafety';
 import {logger} from '@lib/logger';
 
 // screencast is for Peer-to-Peer only
@@ -286,6 +287,14 @@ export class SDPBuilder extends StringFromLineBuilder {
       audioPayloadTypes, audioExtensions, videoPayloadTypes, videoExtensions,
       sectionOrder, bundleMids, shouldKeepRemoteReceiveSection
     } = options;
+
+    // Defence in depth for every SDPBuilder caller. InitialSetup originates in
+    // peer-controlled JSON; static types do not stop arrays/objects from reaching
+    // the template interpolations below and turning their stringification into
+    // injected SDP lines.
+    if(!isSdpSafeSetup(setup)) {
+      throw new Error('Invalid P2P transport setup');
+    }
 
     const add = (line: string) => {
       this.add(line);

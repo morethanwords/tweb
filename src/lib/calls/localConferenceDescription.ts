@@ -11,6 +11,22 @@ import {GroupCallParticipantVideoSourceGroup} from '@layer';
 import {fixMediaLineType, SDPBuilder, WebRTCLineType, WEBRTC_MEDIA_PORT} from '@lib/calls/sdpBuilder';
 import {AudioCodec, GroupCallConnectionTransport, Ssrc, UpdateGroupCallConnectionData, VideoCodec} from '@lib/calls/types';
 
+type ResolvedSource = {
+  source: number,
+  sourceGroups?: GroupCallParticipantVideoSourceGroup[]
+};
+
+function resolveSource(source: number | GroupCallParticipantVideoSourceGroup[]): ResolvedSource | undefined {
+  if(Array.isArray(source)) {
+    const first = source[0]?.sources?.[0];
+    if(typeof first !== 'number') return;
+    return {source: first, sourceGroups: source};
+  }
+
+  if(typeof source !== 'number') return;
+  return {source};
+}
+
 export class ConferenceEntry {
   public source: number;
   public sourceGroups: GroupCallParticipantVideoSourceGroup[];
@@ -57,15 +73,11 @@ export class ConferenceEntry {
   }
 
   public setSource(source: number | GroupCallParticipantVideoSourceGroup[]) {
-    let sourceGroups: GroupCallParticipantVideoSourceGroup[];
-    if(Array.isArray(source)) {
-      if(!source[0]) return;
-      sourceGroups = source;
-      source = sourceGroups[0].sources[0];
-    }
+    const resolved = resolveSource(source);
+    if(!resolved) return;
 
-    this.sourceGroups = sourceGroups;
-    return this.source = source;
+    this.sourceGroups = resolved.sourceGroups;
+    return this.source = resolved.source;
   }
 
   public shouldBeSkipped(isAnswer?: boolean) {
@@ -74,18 +86,14 @@ export class ConferenceEntry {
 }
 
 export function generateSsrc(type: WebRTCLineType, source: number | GroupCallParticipantVideoSourceGroup[], endpoint?: string): Ssrc {
-  let sourceGroups: GroupCallParticipantVideoSourceGroup[];
-  if(Array.isArray(source)) {
-    if(!source[0]) return;
-    sourceGroups = source;
-    source = sourceGroups[0].sources[0];
-  }
+  const resolved = resolveSource(source);
+  if(!resolved) return;
 
   return {
     endpoint,
     type,
-    source,
-    sourceGroups
+    source: resolved.source,
+    sourceGroups: resolved.sourceGroups
   };
 }
 
@@ -128,7 +136,9 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
   public deleteEntry(entry: ConferenceEntry) {
     indexOfAndSplice(this.entries, entry);
     this.entriesByMid.delete(entry.mid);
-    this.entriesBySource.delete(entry.source);
+    if(this.entriesBySource.get(entry.source) === entry) {
+      this.entriesBySource.delete(entry.source);
+    }
 
     const set = this.entriesByPeerId.get(entry.peerId);
     if(set) {
@@ -140,11 +150,36 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
   }
 
   public setEntrySource(entry: ConferenceEntry, source: Parameters<ConferenceEntry['setSource']>[0]) {
-    entry.setSource(source);
-    this.entriesBySource.set(entry.source, entry);
+    const previousSource = entry.source;
+    const resolvedSource = entry.setSource(source);
+    if(resolvedSource === undefined) return;
+
+    if(previousSource !== undefined && previousSource !== resolvedSource) {
+      if(this.entriesBySource.get(previousSource) === entry) {
+        this.entriesBySource.delete(previousSource);
+      }
+    }
+    this.entriesBySource.set(resolvedSource, entry);
+    return resolvedSource;
   }
 
   public setEntryPeerId(entry: ConferenceEntry, peerId: ConferenceEntry['peerId']) {
+    // Drop the old binding first. This used to be called only on freshly
+    // created entries (peerId undefined), so "an entry appears under exactly
+    // one peerId" held by construction; re-binding a live entry (an SSRC the
+    // server moved between participants) would otherwise leave it indexed under
+    // both, and getEntriesByPeerId would report the previous owner as still
+    // owning a stream that is no longer theirs.
+    if(entry.peerId !== undefined && entry.peerId !== peerId) {
+      const previous = this.entriesByPeerId.get(entry.peerId);
+      if(previous) {
+        previous.delete(entry);
+        if(!previous.size) {
+          this.entriesByPeerId.delete(entry.peerId);
+        }
+      }
+    }
+
     entry.setPeerId(peerId);
     let set = this.entriesByPeerId.get(peerId);
     if(!set) {

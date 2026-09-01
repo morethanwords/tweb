@@ -33,11 +33,20 @@ export type HostRequest =
       privateSeed: Uint8Array;
       lastBlockServer: Uint8Array;
     }}
+  // Two-phase, seedless rejoin. prepareRejoinBlock signs a replacement
+  // self-add block with the worker's existing private key and retains the exact
+  // bytes. Once phone.joinGroupCall accepts them, commitRejoinBlock atomically
+  // re-anchors the live E2eCall without exposing or re-sending the seed.
+  | {kind: 'prepareRejoinBlock'; id: number; args: {
+      previousBlockServer: Uint8Array;
+      self: GroupParticipant;
+    }}
+  | {kind: 'commitRejoinBlock'; id: number}
   | {kind: 'applyBlock'; id: number; args: {
       serverBlock: Uint8Array;
     }}
-  | {kind: 'buildChangeStateBlock'; id: number; args: {
-      newGroupState: GroupState;
+  | {kind: 'buildRemoveParticipantsBlock'; id: number; args: {
+      userIds: bigint[];
     }}
   | {kind: 'pullOutbound'; id: number}
   | {kind: 'receiveInbound'; id: number; args: {
@@ -56,9 +65,6 @@ export type HostRequest =
       // under structured clone.
       entries: Array<[number, bigint]>;
     }}
-  // Debug-only: dump per-frame counters from the recv/send transforms so the
-  // host can verify the e2e pipeline is alive. Strip once J-2 is verified.
-  | {kind: 'getDebug'; id: number}
   | {kind: 'destroy'; id: number};
 
 // ===== Responses (worker → main) =====
@@ -76,6 +82,20 @@ export interface CallStatusSnapshot {
   failed: string | null;
 }
 
+export interface OutboundBroadcast {
+  bytes: Uint8Array;
+  // Verification height that produced these bytes. The host drops queued
+  // messages from older rounds as soon as a newer status arrives.
+  height: number;
+}
+
+export interface ReceiveInboundResult {
+  status: CallStatusSnapshot;
+  // `retry` means the future-message buffer could not retain this indexed
+  // item. The host must not advance the subchain cursor.
+  disposition: 'consumed' | 'retry';
+}
+
 export type WorkerEvent =
   | {kind: 'status'; status: CallStatusSnapshot}
   | {kind: 'pendingOutbound'} // hint: call pullOutbound()
@@ -86,10 +106,10 @@ export type WorkerEvent =
   // into setSsrcUsers, so the frame is dropped → "seen but not heard") or
   // decryption threw (`decryptErr` — usually a stale group key). Both cases drop
   // the frame: the recv transform fails closed (see encryptWorker.ts).
-  // Unlike the E2E_DEBUG counters this stays on in production so the failure
-  // leaves a trace in exported logs. `sustained` is set on the re-emit once the
-  // condition has persisted for many frames (not a transient at-join blip) —
-  // the host escalates that to a user-facing breadcrumb.
+  // This stays on in production so the failure leaves a trace in exported
+  // logs. `sustained` is set on the re-emit once the condition has persisted
+  // for many frames (not a transient at-join blip) — the host escalates that
+  // to a user-facing breadcrumb.
   | {kind: 'recvDiag'; ssrc: number; reason: 'unmapped' | 'decryptErr'; message?: string; sustained?: boolean};
 
 export type HostResponse =
@@ -107,22 +127,17 @@ export interface RequestResultMap {
   createZeroBlock: Uint8Array; // server-format block bytes
   createSelfAddBlock: Uint8Array;
   init: CallStatusSnapshot;
+  prepareRejoinBlock: Uint8Array;
+  commitRejoinBlock: CallStatusSnapshot;
   applyBlock: CallStatusSnapshot;
-  buildChangeStateBlock: Uint8Array;
-  pullOutbound: Uint8Array[]; // server-format broadcast bytes
-  receiveInbound: CallStatusSnapshot;
+  buildRemoveParticipantsBlock: {
+    block: Uint8Array;
+    removedUserIds: bigint[];
+  } | undefined;
+  pullOutbound: OutboundBroadcast[];
+  receiveInbound: ReceiveInboundResult;
   getStatus: CallStatusSnapshot;
   setSsrcUsers: void;
-  getDebug: {
-    recv: {seen: number; noMeta: number; noSsrc: number; unmapped: number; decryptOk: number; decryptErr: number; lastSsrc: number; lastErr: string};
-    send: {seen: number; ok: number; err: number; lastErr: string};
-    mapSize: number;
-    mapEntries: Array<[number, string]>;
-    rtcInstalledAt?: number;
-    rtcTransformEvents: number;
-    hasOnRtcTransform: boolean;
-    loops: Record<string, unknown>;
-  };
   destroy: void;
 }
 

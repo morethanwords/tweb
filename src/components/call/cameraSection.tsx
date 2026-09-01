@@ -1,14 +1,10 @@
 import {createEffect, createMemo, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import Section from '@components/section';
-import Row from '@components/rowTsx';
 import {i18n} from '@lib/langPack';
-import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {useAppSettings} from '@stores/appSettings';
-import showOutputDevicePopup from '@components/rtmp/outputDevicePopup';
-import applyDeviceToActiveCall from '@lib/calls/applyDeviceToActiveCall';
 import acquireStream, {StreamAcquisition} from '@lib/calls/helpers/acquireStream';
 import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import classNames from '@helpers/string/classNames';
+import {CallDeviceRow, CallDeviceSettings} from '@components/call/callDeviceSettings';
 
 // Self-contained "Camera" section used by both the in-call settings popup
 // and the Speakers-and-Camera settings tab. Owns its own preview MediaStream
@@ -18,12 +14,9 @@ import classNames from '@helpers/string/classNames';
 // When `getUserMedia({video})` fails (no permission, no device), the preview
 // block is suppressed via `previewError`. The picker row stays visible so
 // the user can still pick a different device.
-export default function CallCameraSection() {
-  const [appSettings, setAppSettings] = useAppSettings();
-
-  const [devices, setDevices] = createSignal<MediaDeviceInfo[]>([]);
+export default function CallCameraSection(props: {settings: CallDeviceSettings}) {
   const [previewStream, setPreviewStream] = createSignal<MediaStream | undefined>(undefined);
-  const [previewError, setPreviewError] = createSignal<string | undefined>(undefined);
+  const [previewError, setPreviewError] = createSignal(false);
 
   let videoEl: HTMLVideoElement | undefined;
 
@@ -32,10 +25,6 @@ export default function CallCameraSection() {
   // camera is switched (getUserMedia can't be cancelled, so without this the
   // camera light would stay on forever). See acquireStream.
   let acquisition: StreamAcquisition | undefined;
-
-  const refreshDevices = () => {
-    navigator.mediaDevices.enumerateDevices().then(setDevices).catch(() => setDevices([]));
-  };
 
   const stopPreview = () => {
     // dispose() owns the stream's tracks (stops the in-flight one too); clear the
@@ -52,7 +41,7 @@ export default function CallCameraSection() {
   // recovery lives inside `getStream`.
   const startPreview = async() => {
     stopPreview();
-    const id = appSettings.callDevices?.cameraId;
+    const id = props.settings.deviceId('camera');
     const current = acquisition = acquireStream({
       video: id ? {deviceId: {exact: id}} : true
     });
@@ -62,21 +51,18 @@ export default function CallCameraSection() {
       // dispose() already stopped the orphaned stream; nothing to show.
       if(!stream) return;
       setPreviewStream(stream);
-      setPreviewError(undefined);
+      setPreviewError(false);
     } catch(err) {
       // A disposed acquire resolves undefined, so only a real, still-wanted
       // error reaches here.
-      const msg = err instanceof Error ? err.message : String(err);
-      setPreviewError(msg);
+      console.error('camera preview failed', err);
+      setPreviewError(true);
     }
   };
 
   onMount(() => {
-    refreshDevices();
-    navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
     startPreview();
     onCleanup(() => {
-      navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
       // Disposes a startPreview() still awaiting getUserMedia so its stream is
       // stopped when it resolves, rather than leaking it past unmount.
       stopPreview();
@@ -85,7 +71,7 @@ export default function CallCameraSection() {
 
   // Re-spin the preview whenever the persisted cameraId changes — keeps the
   // <video> in sync with the picker without manual wiring.
-  createEffect(on(() => appSettings.callDevices?.cameraId, () => {
+  createEffect(on(() => props.settings.deviceId('camera'), () => {
     startPreview();
   }, {defer: true}));
 
@@ -107,41 +93,25 @@ export default function CallCameraSection() {
     return shouldMirrorVideoTrack(track);
   });
 
-  const labelFor = (id: string) => {
-    if(!id) return i18n('CallSettings.DeviceDefault');
-    const found = devices().find((d) => d.kind === 'videoinput' && d.deviceId === id);
-    return found ? wrapEmojiText(found.label || found.deviceId) : i18n('CallSettings.DeviceDefault');
-  };
-
-  const onPickCamera = () => {
-    showOutputDevicePopup({
-      kind: 'videoinput',
-      currentId: appSettings.callDevices?.cameraId || '',
-      titleLangKey: 'CallSettings.Camera',
-      onPick: (id) => {
-        setAppSettings('callDevices', 'cameraId', id);
-        // Hot-swap the live call's camera too — `setAppSettings` only
-        // persists the choice; without this, an active call keeps sending
-        // the old camera feed until the user drops and rejoins.
-        applyDeviceToActiveCall('camera', id);
-      },
-      onStaleCurrentId: () => {
-        setAppSettings('callDevices', 'cameraId', '');
-      }
-    });
-  };
-
   return (
     <Section name="CallSettings.CameraSection">
-      <Row clickable={onPickCamera}>
-        <Row.Title
-          titleRight={labelFor(appSettings.callDevices?.cameraId || '')}
-          titleRightSecondary
-        >
-          {i18n('CallSettings.Camera')}
-        </Row.Title>
-      </Row>
-      <Show when={!previewError()}>
+      <CallDeviceRow
+        settings={props.settings}
+        kind="camera"
+      />
+      <Show
+        when={!previewError()}
+        fallback={
+          <div
+            class="speakers-and-camera-preview-error"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {i18n('CallSettings.CameraUnavailable')}
+          </div>
+        }
+      >
         <div class="speakers-and-camera-preview">
           <video
             ref={(el) => { videoEl = el; }}

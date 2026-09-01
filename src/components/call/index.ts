@@ -9,8 +9,8 @@ import safePlay from '@helpers/dom/safePlay';
 import MovablePanel from '@helpers/movablePanel';
 import onMediaLoad from '@helpers/onMediaLoad';
 import themeController from '@helpers/themeController';
-import toggleClassName from '@helpers/toggleClassName';
 import CallInstance from '@lib/calls/callInstance';
+import ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
 import CALL_STATE from '@lib/calls/callState';
 import I18n, {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -22,12 +22,14 @@ import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
 import GroupCallMicrophoneIconMini from '@components/groupCall/microphoneIconMini';
 import {MovableState} from '@components/movableElement';
 import PeerTitle from '@components/peerTitle';
+import StackedAvatars from '@components/stackedAvatars';
 import PopupElement from '@components/popups';
 import SetTransition from '@components/singleTransition';
-import makeButton from '@components/call/button';
+import makeButton, {setCallButtonBusy} from '@components/call/button';
 import CallDescriptionElement from '@components/call/description';
 import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
 import showCallSettingsPopup from '@components/call/settingsPopup';
+import {toastNew} from '@components/toast';
 
 // iOS PrivateCallScreen colour palettes (CallBackgroundLayer.swift).
 // 4 colours per state; ChatBackgroundGradientRenderer expects exactly 4 to
@@ -97,7 +99,16 @@ export default class PopupCall extends PopupElement {
 
   private controlsHover: ControlsHover;
 
-  constructor(private instance: CallInstance) {
+  /**
+   * Set when this popup shows a ringing conference invitation rather than a
+   * 1-on-1 call. tdesktop shows both through the same `Calls::Panel`
+   * (calls_panel.cpp:527) — there is no media, no key exchange and no
+   * settings to offer until the invitation is accepted, so those parts of the
+   * screen are simply not built.
+   */
+  private inviteInstance: ConferenceInviteInstance;
+
+  constructor(private instance: CallInstance | ConferenceInviteInstance) {
     super('popup-call', {
       withoutOverlay: true,
       closable: true
@@ -105,8 +116,13 @@ export default class PopupCall extends PopupElement {
 
     this.videoContainers = {};
 
+    const inviteInstance = this.inviteInstance = instance instanceof ConferenceInviteInstance ? instance : undefined;
+
     const {container, listenerSetter} = this;
     container.classList.add(className, 'night');
+    if(inviteInstance) {
+      container.classList.add('is-conference-invite', 'no-video');
+    }
 
     const avatarContainer = document.createElement('div');
     avatarContainer.classList.add(className + '-avatar');
@@ -168,28 +184,38 @@ export default class PopupCall extends PopupElement {
     const info = document.createElement('div');
     info.classList.add(className + '-info');
     info.append(avatarContainer, title, subtitle);
+    if(inviteInstance) {
+      const participants = this.constructConferenceParticipants(inviteInstance);
+      if(participants) {
+        info.append(participants);
+      }
+    }
     container.append(info);
 
     // Two right-side button groups in the header: a slot for the encryption
     // emojis (center) and an action cluster (settings + fullscreen) so they
     // stay glued together on the right edge regardless of how many of them
-    // are visible at a time.
+    // are visible at a time. A ringing invitation has neither a call to
+    // configure nor video to expand, so it gets no action cluster at all.
     const headerActions = document.createElement('div');
     headerActions.classList.add(className + '-header-actions');
 
-    this.btnSettings = ButtonIcon('settings_filled');
-    attachClickEvent(this.btnSettings, () => {
-      showCallSettingsPopup({mode: 'p2p', instance: this.instance});
-    }, {listenerSetter});
-    headerActions.append(this.btnSettings);
+    if(!inviteInstance) {
+      const callInstance = instance as CallInstance;
+      this.btnSettings = ButtonIcon('settings_filled');
+      attachClickEvent(this.btnSettings, () => {
+        showCallSettingsPopup({mode: 'p2p', instance: callInstance});
+      }, {listenerSetter});
+      headerActions.append(this.btnSettings);
 
-    if(!IS_MOBILE) {
-      this.btnFullScreen = ButtonIcon('fullscreen');
-      this.btnExitFullScreen = ButtonIcon('smallscreen hide');
-      attachClickEvent(this.btnFullScreen, this.onFullScreenClick, {listenerSetter});
-      attachClickEvent(this.btnExitFullScreen, () => cancelFullScreen(), {listenerSetter});
-      addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
-      headerActions.append(this.btnExitFullScreen, this.btnFullScreen);
+      if(!IS_MOBILE) {
+        this.btnFullScreen = ButtonIcon('fullscreen');
+        this.btnExitFullScreen = ButtonIcon('smallscreen hide');
+        attachClickEvent(this.btnFullScreen, this.onFullScreenClick, {listenerSetter});
+        attachClickEvent(this.btnExitFullScreen, () => cancelFullScreen(), {listenerSetter});
+        addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
+        headerActions.append(this.btnExitFullScreen, this.btnFullScreen);
+      }
     }
 
     // Header layout: close (left, auto-added by PopupElement), emojis
@@ -197,34 +223,45 @@ export default class PopupCall extends PopupElement {
     this.header.append(emojisSubtitle);
     this.header.append(headerActions);
 
-    this.partyStates = document.createElement('div');
-    this.partyStates.classList.add(className + '-party-states');
+    if(!inviteInstance) {
+      this.partyStates = document.createElement('div');
+      this.partyStates.classList.add(className + '-party-states');
 
-    this.partyMutedState = document.createElement('div');
-    this.partyMutedState.classList.add(className + '-party-state');
-    const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element]);
-    stateText.classList.add(className + '-party-state-text');
-    const mutedIcon = new GroupCallMicrophoneIconMini(false, true, 36);
-    mutedIcon.setState(false, false);
-    this.partyMutedState.append(
-      mutedIcon.container,
-      stateText
-    );
+      this.partyMutedState = document.createElement('div');
+      this.partyMutedState.classList.add(className + '-party-state');
+      const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element]);
+      stateText.classList.add(className + '-party-state-text');
+      const mutedIcon = new GroupCallMicrophoneIconMini(false, true, 36);
+      mutedIcon.setState(false, false);
+      this.partyMutedState.append(
+        mutedIcon.container,
+        stateText
+      );
 
-    this.partyStates.append(this.partyMutedState);
-    this.container.append(this.partyStates);
+      this.partyStates.append(this.partyMutedState);
+      this.container.append(this.partyStates);
+    }
 
     this.makeButton = makeButton.bind(null, className, this.listenerSetter);
-    this.constructFirstButtons();
+    if(!inviteInstance) {
+      this.constructFirstButtons();
+    }
     this.constructSecondButtons();
 
-    listenerSetter.add(instance)('state', () => {
-      this.updateInstance();
-    });
+    if(inviteInstance) {
+      listenerSetter.add(inviteInstance)('state', () => {
+        this.updateInstance();
+      });
+    } else {
+      const callInstance = instance as CallInstance;
+      listenerSetter.add(callInstance)('state', () => {
+        this.updateInstance();
+      });
 
-    listenerSetter.add(instance)('mediaState', () => {
-      this.updateInstance();
-    });
+      listenerSetter.add(callInstance)('mediaState', () => {
+        this.updateInstance();
+      });
+    }
 
     this.movablePanel = new MovablePanel({
       listenerSetter,
@@ -266,7 +303,7 @@ export default class PopupCall extends PopupElement {
       const {movablePanel} = this;
       previousState = movablePanel.state;
 
-      this.microphoneIcon.destroy();
+      this.microphoneIcon?.destroy();
 
       // Stop every state's rAF loop and tear down the renderers. Nulling
       // `gradientRenderers` first stops any late `tickGradient` from
@@ -384,18 +421,49 @@ export default class PopupCall extends PopupElement {
     renderer.toNextPosition(() => progress);
   };
 
+  private runControlAction(
+    action: () => Promise<void>,
+    errorKey: 'ConferenceCall.Media.CameraError' |
+      'ConferenceCall.Media.ScreenError' |
+      'ConferenceCall.Media.MicrophoneError' |
+      'Error.AnError',
+    restoreControls?: () => void
+  ): void {
+    void (async() => {
+      try {
+        await action();
+      } catch(err) {
+        console.error('P2P call control action failed', err);
+        toastNew({langPackKey: errorKey});
+      } finally {
+        restoreControls?.();
+      }
+    })();
+  }
+
+  /**
+   * The 1-on-1 call behind this popup. Only defined when `inviteInstance` is
+   * not: everything media-related (controls, video tiles, the fingerprint)
+   * belongs to an actual call, and none of it is built for an invitation.
+   */
+  private get callInstance() {
+    return this.instance as CallInstance;
+  }
+
   private constructFirstButtons() {
     const buttons = this.firstButtonsRow = document.createElement('div');
     buttons.classList.add(className + '-buttons', 'is-first');
-
-    const toggleDisability = toggleClassName.bind(null, 'btn-disabled');
 
     const btnVideo = this.btnVideo = this.makeButton({
       text: 'Call.Camera',
       icon: 'videocamera_filled',
       callback: () => {
-        const toggle = toggleDisability([btnVideo, btnScreen], true);
-        this.instance.toggleVideoSharing().finally(toggle);
+        setMediaControlsBusy(true);
+        this.runControlAction(
+          () => this.callInstance.toggleVideoSharing(),
+          'ConferenceCall.Media.CameraError',
+          () => setMediaControlsBusy(false)
+        );
       }
     });
 
@@ -403,10 +471,19 @@ export default class PopupCall extends PopupElement {
       text: 'Call.Screen',
       icon: 'sharescreen_filled',
       callback: () => {
-        const toggle = toggleDisability([btnVideo, btnScreen], true);
-        this.instance.toggleScreenSharing().finally(toggle);
+        setMediaControlsBusy(true);
+        this.runControlAction(
+          () => this.callInstance.toggleScreenSharing(),
+          'ConferenceCall.Media.ScreenError',
+          () => setMediaControlsBusy(false)
+        );
       }
     });
+
+    const setMediaControlsBusy = (busy: boolean) => {
+      setCallButtonBusy(btnVideo, busy);
+      setCallButtonBusy(btnScreen, busy);
+    };
 
     if(!IS_SCREEN_SHARING_SUPPORTED) {
       btnScreen.classList.add('hide');
@@ -419,7 +496,10 @@ export default class PopupCall extends PopupElement {
     const btnMute = this.btnMute = this.makeButton({
       text: this.muteI18nElement.element,
       callback: () => {
-        this.instance.toggleMuted();
+        this.runControlAction(
+          () => this.callInstance.toggleMuted(),
+          'ConferenceCall.Media.MicrophoneError'
+        );
       }
     });
 
@@ -444,7 +524,12 @@ export default class PopupCall extends PopupElement {
       text: this.declineI18nElement.element,
       icon: 'endcall_filled',
       callback: () => {
-        this.instance.hangUp('phoneCallDiscardReasonHangup');
+        this.runControlAction(
+          () => this.inviteInstance ?
+            this.inviteInstance.hangUp() :
+            (this.instance as CallInstance).hangUp('phoneCallDiscardReasonHangup'),
+          'Error.AnError'
+        );
       },
       isDanger: true
     });
@@ -453,13 +538,40 @@ export default class PopupCall extends PopupElement {
       text: 'Call.Accept',
       icon: 'phone_filled',
       callback: () => {
-        this.instance.acceptCall();
+        this.runControlAction(() => this.instance.acceptCall(), 'Error.AnError');
       },
       isConfirm: true
     });
 
     buttons.append(btnDecline, btnAccept);
     this.container.append(buttons);
+  }
+
+  /**
+   * The "who is already in this call" pill — tdesktop's
+   * `Panel::initConferenceInvite` (calls_panel.cpp:527): up to three userpics
+   * plus the participant count, and nothing at all below two participants.
+   */
+  private constructConferenceParticipants(instance: ConferenceInviteInstance) {
+    const peerIds = instance.participants;
+    if(peerIds.length < 2) {
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.classList.add(className + '-participants');
+
+    const stackedAvatars = new StackedAvatars({
+      avatarSize: 30,
+      middleware: this.middlewareHelper.get()
+    });
+    stackedAvatars.render(peerIds);
+
+    const label = i18n('VoiceChat.Status.Members', [peerIds.length]);
+    label.classList.add(className + '-participants-label');
+
+    container.append(stackedAvatars.container, label);
+    return container;
   }
 
   private onFullScreenClick = () => {
@@ -526,9 +638,24 @@ export default class PopupCall extends PopupElement {
         cancelFullScreen();
       }
 
-      this.btnVideo.classList.add('disabled');
+      this.btnVideo?.classList.add('disabled');
 
       this.hide();
+      return;
+    }
+
+    // A ringing invitation has none of the state below it: no media to mirror
+    // into the controls, no video tiles, no emoji fingerprint. Only the accept
+    // button's visibility and the status line change, and both stop mattering
+    // the moment the invitation is accepted or declined.
+    if(this.inviteInstance) {
+      const isPending = connectionState === CALL_STATE.PENDING;
+      this.declineI18nElement.compareAndUpdate({
+        key: isPending ? 'Call.Decline' : 'Call.End'
+      });
+      this.btnAccept.classList.toggle('disable', !isPending);
+      this.btnAccept.classList.toggle('hide-me', !isPending);
+      this.setDescription();
       return;
     }
 
@@ -547,7 +674,8 @@ export default class PopupCall extends PopupElement {
     this.btnAccept.classList.toggle('hide-me', !isPendingIncoming);
     this.container.classList.toggle('two-button-rows', isPendingIncoming);
 
-    const isMuted = instance.isMuted;
+    const callInstance = this.callInstance;
+    const isMuted = callInstance.isMuted;
     const onFrame = () => {
       this.btnMute.firstElementChild.classList.toggle('active', isMuted);
     };
@@ -562,13 +690,13 @@ export default class PopupCall extends PopupElement {
       key: isMuted ? 'VoipUnmute' : 'Call.Mute'
     });
 
-    const isSharingVideo = instance.isSharingVideo;
+    const isSharingVideo = callInstance.isSharingVideo;
     this.btnVideo.firstElementChild.classList.toggle('active', isSharingVideo);
 
-    const isSharingScreen = instance.isSharingScreen;
+    const isSharingScreen = callInstance.isSharingScreen;
     this.btnScreen.firstElementChild.classList.toggle('active', isSharingScreen);
 
-    const outputState = instance.getMediaState('output');
+    const outputState = callInstance.getMediaState('output');
 
     SetTransition({
       element: this.partyMutedState,
@@ -580,19 +708,29 @@ export default class PopupCall extends PopupElement {
     const containers = this.videoContainers;
     const oldContainers = {...containers};
     ['input' as const, 'output' as const].forEach((type) => {
-      const mediaState = instance.getMediaState(type);
-      const video = instance.getVideoElement(type) as HTMLVideoElement;
+      const mediaState = callInstance.getMediaState(type);
+      const video = callInstance.getVideoElement(type) as HTMLVideoElement;
 
       const hasFrame = !!(video && video.videoWidth && video.videoHeight);
       if(video && !hasFrame && !video.dataset.hasPromise) {
         video.dataset.hasPromise = '1';
+        let loaded = false;
         // container.classList.add('hide');
-        onMediaLoad(video).then(() => {
-          delete video.dataset.hasPromise;
-          this.updateInstance();
-          // this.resizeVideoContainers();
-          // container.classList.remove('hide');
-        });
+        void (async() => {
+          try {
+            await onMediaLoad(video);
+            loaded = true;
+          } catch(err) {
+            console.error('P2P call video failed to load', err);
+          } finally {
+            delete video.dataset.hasPromise;
+            if(loaded && this.gradientRenderers) {
+              this.updateInstance();
+            }
+            // this.resizeVideoContainers();
+            // container.classList.remove('hide');
+          }
+        })();
       }
 
       const isActive = !!video && hasFrame && !!(mediaState && (mediaState.videoState === 'active' || mediaState.screencastState === 'active'));
@@ -625,10 +763,27 @@ export default class PopupCall extends PopupElement {
 
     this.container.classList.toggle('no-video', !Object.keys(containers).length);
 
-    if(!this.emojisSubtitle.textContent && connectionState < CALL_STATE.EXCHANGING_KEYS) {
-      Promise.resolve(instance.getEmojisFingerprint()).then((emojis) => {
-        replaceContent(this.emojisSubtitle, wrapEmojiText(emojis.join('')));
-      });
+    const emojisSubtitle = this.emojisSubtitle;
+    if(
+      !emojisSubtitle.textContent &&
+      !emojisSubtitle.dataset.hasPromise &&
+      !emojisSubtitle.dataset.fingerprintFailed &&
+      connectionState < CALL_STATE.EXCHANGING_KEYS
+    ) {
+      emojisSubtitle.dataset.hasPromise = '1';
+      void (async() => {
+        try {
+          const emojis = await Promise.resolve(callInstance.getEmojisFingerprint());
+          if(this.gradientRenderers && this.instance === instance) {
+            replaceContent(emojisSubtitle, wrapEmojiText(emojis.join('')));
+          }
+        } catch(err) {
+          emojisSubtitle.dataset.fingerprintFailed = '1';
+          console.error('P2P emoji fingerprint failed', err);
+        } finally {
+          delete emojisSubtitle.dataset.hasPromise;
+        }
+      })();
     }
 
     this.setDescription();

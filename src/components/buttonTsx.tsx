@@ -101,6 +101,7 @@ Button.Icon = (props: {icon: Icon} & Partial<{
   children: JSX.Element,
   onClick: (e: MouseEvent) => void,
   class: string,
+  disabled: boolean,
   noRipple: boolean,
   tabIndex: number
 }> & ButtonAccessibilityProps) => {

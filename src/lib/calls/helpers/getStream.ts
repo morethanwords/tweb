@@ -28,9 +28,27 @@ function stripDeviceId<T extends boolean | MediaTrackConstraints | undefined>(
 
 function applyMuted(stream: MediaStream, muted: boolean | undefined): MediaStream {
   if(muted !== undefined) {
-    stream.getTracks().forEach((t) => t.enabled = !muted);
+    // `muted` is the voice-call microphone intent. A combined audio+video
+    // acquisition must not silently disable the camera when the user joins
+    // muted but explicitly chose to keep video on.
+    stream.getAudioTracks().forEach((track) => track.enabled = !muted);
   }
   return stream;
+}
+
+function getRequestedDeviceId(constraint: boolean | MediaTrackConstraints | undefined): string | undefined {
+  if(!constraint || typeof constraint !== 'object') return undefined;
+  const {deviceId} = constraint;
+  if(typeof deviceId === 'string') return deviceId;
+  if(!deviceId || typeof deviceId !== 'object' || Array.isArray(deviceId)) return undefined;
+  const {exact} = deviceId as ConstrainDOMStringParameters;
+  return typeof exact === 'string' ? exact : undefined;
+}
+
+function clearStaleDeviceId(kind: 'microphoneId' | 'cameraId', requestedDeviceId: string | undefined): boolean {
+  if(!requestedDeviceId || appSettings.callDevices?.[kind] !== requestedDeviceId) return false;
+  setAppSettings('callDevices', kind, '');
+  return true;
 }
 
 // Acquire a media stream for the call subsystem with self-healing fallback
@@ -43,10 +61,12 @@ function applyMuted(stream: MediaStream, muted: boolean | undefined): MediaStrea
 //      asked for an exact deviceId, retry keeping audio's deviceId but
 //      dropping video's. On success the camera was the culprit — clear
 //      cameraId, keep microphoneId.
-//   3. Otherwise (single-deviceId failure, or step 2 also failed) drop the
-//      deviceId from each constraint that had one, clear the matching
-//      appSettings field, and retry. The call falls back to OS defaults for
-//      whichever kind was bad and the call carries on.
+//   3. If step 2 also reports a missing device, try the symmetric probe: keep
+//      video's exact deviceId and drop audio's. On success only the microphone
+//      was stale, so cameraId survives.
+//   4. Otherwise (single-deviceId failure, or both probes failed) drop every
+//      requested deviceId, clear the matching appSettings fields, and retry on
+//      OS defaults.
 //
 // `muted` is only honoured if explicitly provided — leaving it `undefined`
 // means "don't touch track enabled flags" (callers that don't care about
@@ -62,6 +82,8 @@ export default async function getStream(
 
     const audio = stripDeviceId(constraints.audio);
     const video = stripDeviceId(constraints.video);
+    const requestedMicrophoneId = getRequestedDeviceId(constraints.audio);
+    const requestedCameraId = getRequestedDeviceId(constraints.video);
 
     // Nothing to fall back FROM — propagate the original error so the caller
     // surfaces it (this is a real "no device at all" condition, not a stale
@@ -78,25 +100,35 @@ export default async function getStream(
           audio: constraints.audio,
           video: video.value
         });
-        if(appSettings.callDevices?.cameraId) {
-          setAppSettings('callDevices', 'cameraId', '');
-        }
+        clearStaleDeviceId('cameraId', requestedCameraId);
         log('camera device was stale; kept microphone, cleared cameraId');
         return applyMuted(stream, muted);
       } catch(err2) {
         if(!isMissingDeviceError(err2)) throw err2;
-        // audio.deviceId was also bad — fall through to the dual-clear path.
+      }
+
+      // The first probe only proved that keeping audio still fails. Preserve a
+      // working camera preference by trying the mirror image before clearing
+      // both ids; a stale microphone plus a valid camera is a common USB/headset
+      // hot-unplug case.
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: audio.value,
+          video: constraints.video
+        });
+        clearStaleDeviceId('microphoneId', requestedMicrophoneId);
+        log('microphone device was stale; kept camera, cleared microphoneId');
+        return applyMuted(stream, muted);
+      } catch(err3) {
+        if(!isMissingDeviceError(err3)) throw err3;
+        // Both exact ids may be stale — fall through to the dual-clear path.
       }
     }
 
-    if(audio.stripped && appSettings.callDevices?.microphoneId) {
-      setAppSettings('callDevices', 'microphoneId', '');
-    }
-    if(video.stripped && appSettings.callDevices?.cameraId) {
-      setAppSettings('callDevices', 'cameraId', '');
-    }
+    const clearedMicrophone = audio.stripped && clearStaleDeviceId('microphoneId', requestedMicrophoneId);
+    const clearedCamera = video.stripped && clearStaleDeviceId('cameraId', requestedCameraId);
 
-    log.warn('clearing stale device id(s), retrying on OS defaults', {clearedMicrophone: audio.stripped, clearedCamera: video.stripped});
+    log.warn('clearing stale device id(s), retrying on OS defaults', {clearedMicrophone, clearedCamera});
 
     return applyMuted(await navigator.mediaDevices.getUserMedia({
       audio: audio.value,

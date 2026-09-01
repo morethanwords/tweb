@@ -1,6 +1,7 @@
 import replaceContent from '@helpers/dom/replaceContent';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import CallInstance from '@lib/calls/callInstance';
+import ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
 import CALL_STATE from '@lib/calls/callState';
 import {i18n, LangPackKey} from '@lib/langPack';
 
@@ -24,7 +25,7 @@ export default class CallDescriptionElement {
     this.state = undefined;
   }
 
-  public update(instance: CallInstance) {
+  public update(instance: CallInstance | ConferenceInviteInstance) {
     const {connectionState} = instance;
 
     if(this.state === connectionState) {
@@ -48,7 +49,12 @@ export default class CallDescriptionElement {
       let langPackKey: LangPackKey;
       switch(connectionState) {
         case CALL_STATE.PENDING:
-          langPackKey = instance.isOutgoing ? 'Call.StatusRinging' : 'Call.StatusCalling';
+          // A ringing conference invitation names the call rather than the
+          // caller — tdesktop's `lng_call_status_group_invite`
+          // (calls_panel.cpp:1746).
+          langPackKey = instance instanceof ConferenceInviteInstance ?
+            'Call.StatusGroupInvite' :
+            (instance.isOutgoing ? 'Call.StatusRinging' : 'Call.StatusCalling');
           break;
         case CALL_STATE.REQUESTING:
           langPackKey = 'Call.StatusRequesting';

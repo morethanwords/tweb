@@ -63,6 +63,7 @@ import middlewarePromise from '@helpers/middlewarePromise';
 import appDownloadManager from '@lib/appDownloadManager';
 import groupCallsController from '@lib/calls/groupCallsController';
 import callsController from '@lib/calls/callsController';
+import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import noop from '@helpers/noop';
 import pause from '@helpers/schedulers/pause';
@@ -939,6 +940,7 @@ export class AppDialogsManager {
     appSidebarRight.construct(managers);
     groupCallsController.construct(managers);
     callsController.construct(managers);
+    conferenceInvitesController.construct(managers);
     appImManager.construct(managers);
     if(IS_LIVE_STREAM_SUPPORTED) rtmpCallsController.construct(managers);
     new ConnectionStatusComponent().construct(managers, this.chatsContainer, appSidebarLeft.inputSearch);

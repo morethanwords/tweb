@@ -22,6 +22,15 @@
     border-radius: 4px;
     transition: width 80ms linear;
   }
+
+}
+
+.microphone-level-meter__error,
+.speakers-and-camera-preview-error {
+  margin-top: .5rem;
+  color: var(--danger-color);
+  font-size: var(--font-size-14);
+  line-height: 1.25rem;
 }
 
 .speakers-and-camera-preview {

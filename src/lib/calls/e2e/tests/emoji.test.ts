@@ -17,15 +17,17 @@ function pullAll(chain: VerificationChain) {
   return chain.pullOutbound().map((b) => decodeGroupBroadcast(new TLReader(b)));
 }
 
-// Run one round of the protocol between two chains until both finalize, or
-// `maxSteps` is exceeded. Asserts both reach 'end' with matching emojis.
+// Relay every message to every participant, including its sender. Telegram's
+// broadcast subchain is the acknowledgement boundary: outbound state must not
+// count locally until the signed message comes back from that relay.
 async function runRound(a: VerificationChain, b: VerificationChain) {
   for(let step = 0; step < 8; step++) {
-    const aMsgs = pullAll(a);
-    const bMsgs = pullAll(b);
-    if(aMsgs.length === 0 && bMsgs.length === 0) break;
-    for(const m of aMsgs) await b.receive(m);
-    for(const m of bMsgs) await a.receive(m);
+    const messages = [...pullAll(a), ...pullAll(b)];
+    if(messages.length === 0) break;
+    for(const message of messages) {
+      await a.receive(message);
+      await b.receive(message);
+    }
   }
 }
 
@@ -46,8 +48,8 @@ describe('Emoji commit-reveal', () => {
     const bobChain = await VerificationChain.start(7, blockHash, bob, bobKey, participants);
 
     expect(aliceChain.snapshot().phase).toBe('commit');
-    expect(aliceChain.snapshot().commitsSeen).toBe(1);
-    expect(bobChain.snapshot().commitsSeen).toBe(1);
+    expect(aliceChain.snapshot().commitsSeen).toBe(0);
+    expect(bobChain.snapshot().commitsSeen).toBe(0);
 
     await runRound(aliceChain, bobChain);
 
@@ -58,6 +60,25 @@ describe('Emoji commit-reveal', () => {
     expect(aSnap.emojiHash).toBeDefined();
     expect(bSnap.emojiHash).toBeDefined();
     expect(bytesToHex(aSnap.emojiHash!)).toBe(bytesToHex(bSnap.emojiHash!));
+  });
+
+  it('a single-member round waits for relay echoes before it completes', async() => {
+    const key = PrivateKey.fromSeed(new Uint8Array(32).fill(9));
+    const me: VerificationParticipant = {userId: BigInt(9), publicKey: key.publicKey()};
+    const chain = await VerificationChain.start(3, randomBytes(32), me, key, [me]);
+
+    expect(chain.snapshot()).toMatchObject({phase: 'commit', commitsSeen: 0, revealsSeen: 0});
+    const [commit] = pullAll(chain);
+    expect(commit.kind).toBe('commit');
+    await chain.receive(commit);
+
+    expect(chain.snapshot()).toMatchObject({phase: 'reveal', commitsSeen: 1, revealsSeen: 0});
+    const [reveal] = pullAll(chain);
+    expect(reveal.kind).toBe('reveal');
+    await chain.receive(reveal);
+
+    expect(chain.snapshot()).toMatchObject({phase: 'end', commitsSeen: 1, revealsSeen: 1});
+    expect(chain.snapshot().emojiHash).toBeDefined();
   });
 
   it('rejects a reveal whose nonce does not match its committed hash', async() => {
@@ -71,11 +92,13 @@ describe('Emoji commit-reveal', () => {
     const aliceChain = await VerificationChain.start(0, blockHash, alice, aliceKey, participants);
     const bobChain = await VerificationChain.start(0, blockHash, bob, bobKey, participants);
 
-    // Cross-feed commits (one each).
+    // Relay both commits back to both senders so both enter reveal.
     const [aliceCommit] = pullAll(aliceChain);
     const [bobCommit] = pullAll(bobChain);
-    await aliceChain.receive(bobCommit); // alice advances to reveal
-    await bobChain.receive(aliceCommit); // bob advances to reveal
+    for(const commit of [aliceCommit, bobCommit]) {
+      await aliceChain.receive(commit);
+      await bobChain.receive(commit);
+    }
 
     // Both now have a pending reveal queued. Pull alice's reveal, tamper
     // the nonce so SHA256(nonce) no longer matches the committed hash, and
@@ -131,19 +154,19 @@ describe('Emoji commit-reveal', () => {
     // Manual stepwise dispatch so we can sniff messages.
     const [aCommit] = pullAll(aChain);
     const [bCommit] = pullAll(bChain);
-    await aChain.receive(bCommit);
-    await bChain.receive(aCommit);
+    for(const commit of [aCommit, bCommit]) {
+      await aChain.receive(commit);
+      await bChain.receive(commit);
+    }
 
     // Both should now have a reveal pending.
     const aReveals = pullAll(aChain);
     const bReveals = pullAll(bChain);
-    for(const m of aReveals) {
-      if(m.kind === 'reveal') capturedNonces.push(m.nonce);
-      await bChain.receive(m);
-    }
-    for(const m of bReveals) {
+    const reveals = [...aReveals, ...bReveals];
+    for(const m of reveals) {
       if(m.kind === 'reveal') capturedNonces.push(m.nonce);
       await aChain.receive(m);
+      await bChain.receive(m);
     }
 
     const aSnap = aChain.snapshot();

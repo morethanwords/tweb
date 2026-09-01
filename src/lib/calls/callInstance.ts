@@ -18,6 +18,7 @@ import type {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import CallInstanceBase from '@lib/calls/callInstanceBase';
+import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
 import getStream from '@lib/calls/helpers/getStream';
 import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import callsController from '@lib/calls/callsController';
@@ -73,6 +74,7 @@ import {
 import {SDPBuilder} from '@lib/calls/sdpBuilder';
 import StreamManager from '@lib/calls/streamManager';
 import {CallMediaState, DiffieHellmanInfo, P2PMediaContent, P2PMessage} from '@lib/calls/types';
+import {isSdpSafeSetup} from '@lib/calls/helpers/sdpSafety';
 
 const ICE_CANDIDATE_POOL_SIZE = 10;
 const DEFAULT_AUDIO_MID = '0';
@@ -160,7 +162,7 @@ export default class CallInstance extends CallInstanceBase<{
   id: (id: CallId, prevId: CallId) => void,
   muted: (muted: boolean) => void,
   mediaState: (mediaState: CallMediaState) => void,
-  acceptCallOverride: () => Promise<boolean>,
+  acceptCallOverride: (accept: () => Promise<void>) => Promise<void>,
 }> {
   public dh: Partial<DiffieHellmanInfo.a & DiffieHellmanInfo.b>;
   public id: CallId;
@@ -197,6 +199,7 @@ export default class CallInstance extends CallInstanceBase<{
 
   private managers: AppManagers;
   private hangUpTimeout: number;
+  private hangUpStarted = false;
 
   private joined: boolean;
   private p2pConnectionState: RTCPeerConnectionState;
@@ -204,6 +207,7 @@ export default class CallInstance extends CallInstanceBase<{
   private videoElements: Map<CallMediaState['type'], HTMLVideoElement>;
 
   private decryptQueue: Uint8Array[];
+  private decryptQueuePromise: Promise<void>;
 
   private getEmojisFingerprintPromise: Promise<CallInstance['emojisFingerprint']>;
   private emojisFingerprint: [string, string, string, string];
@@ -212,151 +216,100 @@ export default class CallInstance extends CallInstanceBase<{
   // stopPhoneCall. `!this.p2p` means the engine is not running.
   private p2p: State;
 
-  // CallInstanceBase hook for mid-call device swap. We walk our single
-  // RTCPeerConnection's senders and rebind whichever is currently shipping
-  // the old track. Quietly no-ops if the engine isn't running.
-  protected replaceSenderTrack(
+  // P2P keeps its real local streams outside StreamManager, so device swaps
+  // share the base class generation/queue but commit into the live p2p state.
+  // Acquisitions may overlap; sender replacement is serialized per kind.
+  private async replaceP2pInputDevice(
     kind: 'audio' | 'video',
-    oldTrack: MediaStreamTrack,
-    newTrack: MediaStreamTrack
-  ): void {
-    const connection = this.p2p?.connection;
-    if(!connection) return;
-    for(const sender of connection.getSenders()) {
-      if(sender.track === oldTrack || (sender.track?.kind === kind && !sender.track)) {
-        sender.replaceTrack(newTrack).catch((err) => this.log?.warn?.('replaceSenderTrack', err));
+    constraints: MediaStreamConstraints
+  ): Promise<boolean> {
+    const initialState = this.p2p;
+    if(!initialState || (kind === 'audio' ? this.isMuted : !this.isSharingVideo)) return true;
+
+    return this.runInputDeviceSwap({
+      kind,
+      constraints,
+      acquisitionFailureLogLevel: 'warn',
+      release: (stream) => stopStream(stream),
+      shouldAbandon: (site, generation) => {
+        if(site === 'acquired') {
+          if(this.p2p !== initialState || this.isClosing) return true;
+          if(!this.isMediaDeviceChangeCurrent(kind, generation) || (kind === 'audio' && this.isMuted)) return false;
+          return undefined;
+        }
+        if(site === 'queued') {
+          if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
+          if(this.p2p !== initialState || this.isClosing) return true;
+          if(kind === 'audio' && this.isMuted) return false;
+          return undefined;
+        }
+        if(site === 'failed') {
+          if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
+          if(this.p2p !== initialState || this.isClosing) return true;
+          return undefined;
+        }
+        // 'swapped': a replaced/closed call must never be rolled back into.
+        if(this.p2p !== initialState || this.isClosing) return true;
+        if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
+        return undefined;
+      },
+      resolveSwap: (newTrack) => {
+        const state = initialState;
+        const sender = state.senders[kind];
+        const oldStream = kind === 'audio' ? state.streams.ownAudio : state.streams.ownVideo;
+        const oldTrack = oldStream?.getTracks().find((track) => track.kind === kind);
+        if(!sender || !oldTrack) return undefined;
+        return {
+          oldTrack,
+          swap: () => sender.replaceTrack(newTrack),
+          rollback: async() => {
+            // Only restore a sender that still belongs to this p2p state and
+            // still carries the replacement track.
+            if(this.p2p === state && !this.isClosing && sender.track === newTrack) {
+              await sender.replaceTrack(oldTrack);
+            }
+          }
+        };
+      },
+      // A rejected single-sender replaceTrack leaves the old track in place
+      // per spec — compensating would only double the churn.
+      rollbackOnSwapFailure: false,
+      getPendingAudioEnabled: () => !this.isMuted,
+      commit: (newStream) => {
+        const state = initialState;
+        const oldStream = kind === 'audio' ? state.streams.ownAudio : state.streams.ownVideo;
+        const fallback = kind === 'audio' ? state.silence : state.blackVideo;
+        stopStream(oldStream, fallback);
+        if(kind === 'audio') {
+          state.streams.ownAudio = newStream;
+        } else {
+          state.streams.ownVideo = newStream;
+          const inputElement = this.videoElements.get('input');
+          if(inputElement) inputElement.srcObject = newStream;
+        }
+
+        this.updateStreams();
+        this.sendLocalMediaState();
       }
-    }
+    });
   }
 
-  // Override the base-class mid-call camera swap. The base impl mutates
-  // `streamManager.inputStream`, but for P2P calls `streamManager` is just a
-  // placeholder kept around for `CallInstanceBase.cleanup()` — the real
-  // media state lives on `this.p2p` (own streams, transceivers, senders).
-  // Without this override the picker call early-returns at `!oldTrack`
-  // because streamManager has no input tracks.
-  //
-  // The post-await `!this.p2p` check is critical for camera-release: the
-  // user can hang up during the (~200ms) `getUserMedia` window, after which
-  // `stopPhoneCall` nulls `this.p2p`. Without this guard the next line
-  // would dereference the cleared p2p, throw, and leave `newStream` LIVE —
-  // camera LED stays on after the call ends.
-  public async setInputVideoDeviceId(deviceId: string): Promise<void> {
-    if(!this.p2p || !this.isSharingVideo) return;
-    const sender = this.p2p.senders.video;
-    if(!sender) return;
-
-    let newStream: MediaStream;
-    try {
-      newStream = await getStream({
-        video: deviceId ? {deviceId: {exact: deviceId}} : true
-      });
-    } catch(err) {
-      this.log?.warn?.('setInputVideoDeviceId getUserMedia failed', err);
-      return;
-    }
-
-    if(!this.p2p || this.isClosing) {
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    const newTrack = newStream.getVideoTracks()[0];
-    const oldStream = this.p2p.streams.ownVideo;
-    const oldTrack = oldStream?.getVideoTracks()[0];
-    if(!newTrack || !oldTrack) {
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    try {
-      await sender.replaceTrack(newTrack);
-    } catch(err) {
-      this.log?.warn?.('setInputVideoDeviceId replaceTrack failed', err);
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    // The `replaceTrack` itself was async — re-check after it resolves.
-    if(!this.p2p || this.isClosing) {
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    // Stop the OLD getUserMedia stream so the camera light goes out — but
-    // not the reused black/silence fallbacks the engine keeps around.
-    if(oldStream && oldStream !== this.p2p.blackVideo && oldStream !== this.p2p.blackPresentation) {
-      oldStream.getTracks().forEach((t) => t.stop());
-    }
-
-    this.p2p.streams.ownVideo = newStream;
-
-    // Re-point the local <video> the popup is showing at the new stream so
-    // the user sees the swap immediately. getVideoElement('input') normally
-    // updates srcObject lazily on mediaState changes; doing it inline avoids
-    // the next render gap.
-    const inputEl = this.videoElements.get('input');
-    if(inputEl) {
-      inputEl.srcObject = newStream;
-    }
-
-    this.updateStreams();
-    this.sendLocalMediaState();
+  public setInputVideoDeviceId(deviceId: string): Promise<boolean> {
+    return this.replaceP2pInputDevice('video', {
+      video: deviceId ? {deviceId: {exact: deviceId}} : true
+    });
   }
 
-  // Mirrors setInputVideoDeviceId for the microphone. The base impl uses
-  // streamManager.replaceInputAudio which the P2P engine ignores; we need
-  // to swap the real sender track and update `p2p.streams.ownAudio`. Same
-  // `!this.p2p` guard after each await — without it a hang-up during the
-  // device picker resolution leaks the just-acquired mic stream.
-  public async setInputAudioDeviceId(deviceId: string): Promise<void> {
-    if(!this.p2p || this.isMuted) return;
-    const sender = this.p2p.senders.audio;
-    if(!sender) return;
+  public setInputAudioDeviceId(deviceId: string): Promise<boolean> {
+    return this.replaceP2pInputDevice('audio', {
+      audio: getAudioConstraints(deviceId)
+    });
+  }
 
-    let newStream: MediaStream;
-    try {
-      newStream = await getStream({
-        audio: deviceId ? {deviceId: {exact: deviceId}} : true
-      });
-    } catch(err) {
-      this.log?.warn?.('setInputAudioDeviceId getUserMedia failed', err);
-      return;
-    }
-
-    if(!this.p2p || this.isClosing) {
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    const newTrack = newStream.getAudioTracks()[0];
-    const oldStream = this.p2p.streams.ownAudio;
-    const oldTrack = oldStream?.getAudioTracks()[0];
-    if(!newTrack || !oldTrack) {
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    try {
-      await sender.replaceTrack(newTrack);
-    } catch(err) {
-      this.log?.warn?.('setInputAudioDeviceId replaceTrack failed', err);
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    if(!this.p2p || this.isClosing) {
-      newStream.getTracks().forEach((t) => t.stop());
-      return;
-    }
-
-    if(oldStream && oldStream !== this.p2p.silence) {
-      oldStream.getTracks().forEach((t) => t.stop());
-    }
-
-    this.p2p.streams.ownAudio = newStream;
-    this.updateStreams();
-    this.sendLocalMediaState();
+  protected getOutputDeviceElements(): Iterable<HTMLMediaElement> {
+    const elements = [...super.getOutputDeviceElements()];
+    if(this.p2p?.audio) elements.push(this.p2p.audio);
+    return elements;
   }
 
   // Serializes data-channel signaling messages so they are processed in order.
@@ -378,9 +331,10 @@ export default class CallInstance extends CallInstanceBase<{
 
     safeAssign(this, options);
 
-    this.createdAt = Date.now();
+    this.createdAt = performance.now();
     this.joined = false;
     this.decryptQueue = [];
+    this.decryptQueuePromise = Promise.resolve();
     this.dataChannelSignalingMessagePromise = Promise.resolve();
     this.videoElements = new Map();
     this.streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
@@ -512,6 +466,10 @@ export default class CallInstance extends CallInstanceBase<{
     return this.getOwnTrackEnabled('video');
   }
 
+  public get isSharingAudio() {
+    return this.getOwnTrackEnabled('audio');
+  }
+
   public get isSharingScreen() {
     return this.getOwnTrackEnabled('presentation');
   }
@@ -529,7 +487,9 @@ export default class CallInstance extends CallInstanceBase<{
     this.clearHangUpTimeout();
     this.hangUpTimeout = ctx.setTimeout(() => {
       this.hangUpTimeout = undefined;
-      this.hangUp(reason);
+      void this.hangUp(reason).catch((err) => {
+        this.log.error('timed P2P hangup failed', err);
+      });
     }, timeout);
   }
 
@@ -552,16 +512,33 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   public async acceptCall() {
-    const canAccept = (await Promise.all(this.dispatchResultableEvent('acceptCallOverride')))[0] ?? true;
-    if(this.isClosing || !canAccept) {
+    if(this.isClosing) return;
+
+    let acceptPromise: Promise<void> | undefined;
+    const accept = () => acceptPromise ||= this.acceptCallInternal();
+    const overrides = this.dispatchResultableEvent('acceptCallOverride', accept);
+    if(overrides.length) {
+      // The override owns the transaction. AppImManager uses this to run both
+      // leave-current-call and the full accept RPC under one global call-switch
+      // reservation; falling through here would accept outside that lock.
+      await Promise.all(overrides);
       return;
     }
+
+    await accept();
+  }
+
+  private async acceptCallInternal(): Promise<void> {
+    if(this.isClosing) return;
 
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
 
     const call = this.call as PhoneCall.phoneCallRequested;
-    const g_a_hash = call.g_a_hash;
-    this.managers.appCallsManager.generateDh().then(async(dh) => {
+    const {g_a_hash} = call;
+    try {
+      const dh = await this.managers.appCallsManager.generateDh();
+      if(this.isClosing) return;
+
       this.dh = { // ! it is correct
         g_a_hash,
         b: dh.a,
@@ -570,21 +547,40 @@ export default class CallInstance extends CallInstanceBase<{
         p: dh.p
       };
 
-      return this.managers.apiManager.invokeApi('phone.acceptCall', {
-        peer: await this.managers.appCallsManager.getCallInput(this.id),
-        protocol: this.protocol,
-        g_b: this.dh.g_b
-      });
-    }).then(async(phonePhoneCall) => {
-      await this.managers.appCallsManager.savePhonePhoneCall(phonePhoneCall);
-    }).catch((err) => {
+      const acceptedCall = await this.managers.appCallsManager.acceptCall(
+        this.id,
+        this.protocol,
+        this.dh.g_b,
+        call.pFlags.video
+      );
+      if(this.isClosing && acceptedCall._ !== 'phoneCallEmpty' && acceptedCall._ !== 'phoneCallDiscarded') {
+        // The server accepted while a local hangup was already closing this
+        // instance. Compensate the exact echoed call instead of publishing a
+        // late accepted state that can overlap the next global transition.
+        await this.managers.appCallsManager.discardCall(
+          acceptedCall.id,
+          0,
+          {_: 'phoneCallDiscardReasonHangup'},
+          call.pFlags.video
+        );
+      }
+    } catch(err) {
       this.log.error('accept call error', err);
-      this.hangUp('phoneCallDiscardReasonHangup');
-    });
+      if(!this.isClosing) {
+        try {
+          await this.hangUp('phoneCallDiscardReasonHangup');
+        } catch(hangUpError) {
+          this.log.error('hang up after accept call error failed', hangUpError);
+        }
+      }
+    }
   }
 
   public async confirmCall() {
-    const {protocol, id, call} = this;
+    if(this.isClosing) return;
+
+    const {protocol, id} = this;
+    const call = this.call as PhoneCall.phoneCallAccepted;
     const dh = this.dh as DiffieHellmanInfo.a;
 
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
@@ -593,24 +589,42 @@ export default class CallInstance extends CallInstanceBase<{
       // g_b is the peer value relayed by the server; computeKey rejects a
       // degenerate/out-of-range one before it can force the call key.
       const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey(
-        (call as PhoneCall.phoneCallAccepted).g_b,
+        call.g_b,
         dh.a,
         dh.p
       );
+      if(this.isClosing) return;
 
-      const phonePhoneCall = await this.managers.apiManager.invokeApi('phone.confirmCall', {
-        peer: await this.managers.appCallsManager.getCallInput(id),
-        protocol: protocol,
-        g_a: dh.g_a,
-        key_fingerprint: key_fingerprint
-      });
+      const confirmedCall = await this.managers.appCallsManager.confirmCall(
+        id,
+        protocol,
+        dh.g_a,
+        key_fingerprint,
+        call.pFlags.video
+      );
+      if(this.isClosing) {
+        if(confirmedCall._ !== 'phoneCallEmpty' && confirmedCall._ !== 'phoneCallDiscarded') {
+          await this.managers.appCallsManager.discardCall(
+            confirmedCall.id,
+            0,
+            {_: 'phoneCallDiscardReasonHangup'},
+            call.pFlags.video
+          );
+        }
+        return;
+      }
 
       this.encryptionKey = key;
-      await this.managers.appCallsManager.savePhonePhoneCall(phonePhoneCall);
       this.joinCall();
     } catch(err) {
       this.log.error('confirmCall error', err);
-      this.hangUp('phoneCallDiscardReasonHangup');
+      if(!this.isClosing) {
+        try {
+          await this.hangUp('phoneCallDiscardReasonHangup');
+        } catch(hangUpError) {
+          this.log.error('hang up after confirm call error failed', hangUpError);
+        }
+      }
     }
   }
 
@@ -622,7 +636,9 @@ export default class CallInstance extends CallInstanceBase<{
     this.log('joinCall');
     this.joined = true;
 
-    this.getEmojisFingerprint();
+    void Promise.resolve(this.getEmojisFingerprint()).catch((err) => {
+      this.log.error('emoji fingerprint derivation failed', err);
+    });
 
     const call = this.call as PhoneCall.phoneCall;
     const {isOutgoing, encryptionKey} = this;
@@ -644,19 +660,23 @@ export default class CallInstance extends CallInstanceBase<{
       isStun: !!connection.pFlags.stun
     }));
 
-    this.joinPhoneCall(
+    void this.joinPhoneCall(
       connections,
       !!call.pFlags.video,
       !!call.pFlags.p2p_allowed
-    ).catch((err) => {
+    ).catch(async(err) => {
       this.log.error('joinPhoneCall error', err);
-      this.hangUp('phoneCallDiscardReasonDisconnect');
+      try {
+        await this.hangUp('phoneCallDiscardReasonDisconnect');
+      } catch(hangUpError) {
+        this.log.error('hang up after joinPhoneCall failure failed', hangUpError);
+      }
     });
 
     // clear the EXCHANGING_KEYS override → connectionState now follows the p2p engine
     this.overrideConnectionState();
 
-    this.processDecryptQueue();
+    this.scheduleDecryptQueueProcessing();
   }
 
   public async sendCallSignalingData(data: P2PMessage) {
@@ -681,9 +701,15 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   private async sendSignalingRaw(packet: number[] | Uint8Array) {
-    await this.managers.apiManager.invokeApi('phone.sendSignalingData', {
-      peer: await this.managers.appCallsManager.getCallInput(this.id),
-      data: packet instanceof Uint8Array ? packet : new Uint8Array(packet)
+    await this.managers.appCallsManager.sendSignalingData(
+      this.id,
+      packet instanceof Uint8Array ? packet : new Uint8Array(packet)
+    );
+  }
+
+  private sendCallSignalingDataDetached(data: P2PMessage, context: string): void {
+    void this.sendCallSignalingData(data).catch((err) => {
+      this.log.error(context, err);
     });
   }
 
@@ -716,15 +742,34 @@ export default class CallInstance extends CallInstanceBase<{
       case 'updatePhoneCallConnectionState': {
         this.p2pConnectionState = update.connectionState;
         if(update.connectionState === 'connected' && this.connectedAt === undefined) {
-          this.connectedAt = Date.now();
+          this.connectedAt = performance.now();
         }
 
         // a live engine state supersedes the EXCHANGING_KEYS override
         this._connectionState = undefined;
-        this.dispatchEvent('state', this.connectionState);
 
         if(update.connectionState === 'failed') {
-          this.hangUp('phoneCallDiscardReasonDisconnect');
+          // hangUpStarted, rather than the derived CLOSED state, owns idempotency:
+          // a failed RTCPeerConnection makes connectionState CLOSED before we
+          // have sent phone.discardCall. Let hangUp capture hasVideo, stop every
+          // local track and publish the server discard as one transaction.
+          void this.hangUp('phoneCallDiscardReasonDisconnect').catch((err) => {
+            this.log.error('discard after P2P transport failure failed', err);
+          });
+          break;
+        }
+
+        this.dispatchEvent('state', this.connectionState);
+
+        if(update.connectionState === 'closed') {
+          // A locally-closed transport may arrive after the call is already
+          // discarded. Release media idempotently without publishing a second
+          // server mutation.
+          try {
+            this.stopPhoneCall();
+          } catch(err) {
+            this.log.error('stopPhoneCall error', err);
+          }
         }
         break;
       }
@@ -747,16 +792,28 @@ export default class CallInstance extends CallInstanceBase<{
   public getEmojisFingerprint() {
     if(this.emojisFingerprint) return this.emojisFingerprint;
     if(this.getEmojisFingerprintPromise) return this.getEmojisFingerprintPromise;
-    return this.getEmojisFingerprintPromise = apiManagerProxy.invokeCrypto(
+    const promise = apiManagerProxy.invokeCrypto(
       'get-emojis-fingerprint',
       this.encryptionKey,
       this.dh.g_a
     ).then((codePoints) => {
-      this.getEmojisFingerprintPromise = undefined;
+      if(this.getEmojisFingerprintPromise === promise) {
+        this.getEmojisFingerprintPromise = undefined;
+      }
       return this.emojisFingerprint = codePoints.map(
         (codePoints) => emojiFromCodePoints(codePoints)
       ) as [string, string, string, string];
+    }).catch((err) => {
+      // Crypto-worker/proxy failures can be transient. Keep concurrent callers
+      // coalesced onto this rejection, but do not poison the SAS for the rest
+      // of the call: reopening the popup must be able to retry derivation.
+      if(this.getEmojisFingerprintPromise === promise) {
+        this.getEmojisFingerprintPromise = undefined;
+      }
+      throw err;
     });
+    this.getEmojisFingerprintPromise = promise;
+    return promise;
   }
 
   public overrideConnectionState(state?: CALL_STATE) {
@@ -765,11 +822,11 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   public get duration() {
-    return this.connectedAt !== undefined ? (Date.now() - this.connectedAt) / 1000 | 0 : 0;
+    return this.connectedAt !== undefined ? (performance.now() - this.connectedAt) / 1000 | 0 : 0;
   }
 
   public toggleMuted(): Promise<void> {
-    return this.toggleStream('audio').then(() => {
+    return this.toggleStream('audio').finally(() => {
       this.dispatchEvent('muted', this.isMuted);
       this.dispatchEvent('mediaState', this.getMediaState('input'));
     });
@@ -779,9 +836,10 @@ export default class CallInstance extends CallInstanceBase<{
     discardReason?: PhoneCallDiscardReason | Exclude<PhoneCallDiscardReason['_'], PhoneCallDiscardReason.phoneCallDiscardReasonMigrateConferenceCall['_']>,
     discardedByOtherParty?: boolean
   ) {
-    if(this.isClosing) {
+    if(this.hangUpStarted) {
       return;
     }
+    this.hangUpStarted = true;
 
     discardReason = typeof(discardReason) === 'string' ? {_: discardReason} : discardReason;
     assumeType<PhoneCallDiscardReason>(discardReason);
@@ -839,13 +897,17 @@ export default class CallInstance extends CallInstanceBase<{
           signalingData = JSON.parse(str);
         } catch(err) {
           this.log.error('wrong signaling data', str);
-          this.hangUp('phoneCallDiscardReasonDisconnect');
+          try {
+            await this.hangUp('phoneCallDiscardReasonDisconnect');
+          } catch(hangUpError) {
+            this.log.error('hang up after invalid signaling data failed', hangUpError);
+          }
           callsController.dispatchEvent('incompatible', this.interlocutorUserId);
           continue;
         }
 
         this.log('[update] updateNewCallSignalingData', signalingData);
-        this.processSignalingMessage(signalingData);
+        await this.processSignalingMessage(signalingData);
       }
     }
 
@@ -855,7 +917,20 @@ export default class CallInstance extends CallInstanceBase<{
 
   public onUpdatePhoneCallSignalingData(data: Uint8Array) {
     this.decryptQueue.push(data);
-    this.processDecryptQueue();
+    this.scheduleDecryptQueueProcessing();
+  }
+
+  private scheduleDecryptQueueProcessing(): void {
+    const processing = this.decryptQueuePromise.catch(() => {}).then(() => {
+      return this.processDecryptQueue();
+    });
+    this.decryptQueuePromise = processing;
+    void processing.catch((err) => {
+      this.log.error('P2P signaling processing failed', err);
+      void this.hangUp('phoneCallDiscardReasonDisconnect').catch((hangUpError) => {
+        this.log.error('hang up after P2P signaling failure failed', hangUpError);
+      });
+    });
   }
 
   // ===== tgcalls v2 P2P engine =====
@@ -974,6 +1049,7 @@ export default class CallInstance extends CallInstanceBase<{
   private async toggleStream(streamType: StreamType, value: boolean | undefined = undefined) {
     if(!this.p2p) return;
 
+    const initialState = this.p2p;
     const stream = this.getOwnStream(streamType);
     const track = getStreamTrack(stream);
     const sender = this.getSender(streamType);
@@ -984,10 +1060,15 @@ export default class CallInstance extends CallInstanceBase<{
         track: summarizeTrack(track),
         hasSender: Boolean(sender)
       });
-      return;
+      throw new Error(`Could not toggle ${streamType}: missing local track or sender`);
     }
 
     const shouldEnable = value === undefined ? !track.enabled : value;
+    if(streamType === 'audio' && shouldEnable !== track.enabled) {
+      // A mute/unmute action supersedes any microphone picker transaction
+      // that acquired or installed a track from the previous capture state.
+      this.beginMediaDeviceChange('audio');
+    }
 
     try {
       let hasChanged = false;
@@ -998,15 +1079,30 @@ export default class CallInstance extends CallInstanceBase<{
         const newTrack = getStreamTrack(newStream);
         if(!newTrack) {
           stopStream(newStream);
-          return;
+          throw new Error(`Could not enable ${streamType}: media capture returned no track`);
         }
 
+        let isNewStreamStopped = false;
+        const stopNewStream = () => {
+          if(isNewStreamStopped) return;
+          isNewStreamStopped = true;
+          stopStream(newStream);
+        };
+
         try {
+          if(this.p2p !== initialState || this.isClosing) {
+            throw new Error(`Could not enable ${streamType}: call closed during media capture`);
+          }
+
           newTrack.onended = () => {
-            void this.toggleStream(streamType, false);
+            void this.toggleStream(streamType, false).catch((err) => {
+              this.log('track-ended toggle failed', {streamType, error: err});
+            });
           };
 
           let transceiver = this.getTransceiver(streamType);
+          const previousDirection = transceiver?.direction;
+          const previousFacingMode = initialState.facingMode;
           const shouldCreateVideoTransceiver = streamType !== 'audio' &&
             (!sender || !transceiver || transceiver.currentDirection === 'stopped');
           if(shouldCreateVideoTransceiver) {
@@ -1019,28 +1115,75 @@ export default class CallInstance extends CallInstanceBase<{
           } else {
             await sender!.replaceTrack(newTrack);
           }
+          // stopPhoneCall clears `this.p2p` and only stops streams already
+          // registered in its state. If hangup wins while replaceTrack is
+          // pending, this newly-acquired stream is otherwise orphaned and can
+          // keep the microphone/camera/screen capture indicator alive.
+          if(this.p2p !== initialState || this.isClosing) {
+            throw new Error(`Could not enable ${streamType}: call closed during sender replacement`);
+          }
           if(transceiver && streamType !== 'audio') {
             shouldRenegotiate ||= !transceiver.mid || transceiver.currentDirection === 'inactive';
             transceiver.direction = 'sendrecv';
           }
           this.setOwnStream(streamType, newStream);
+
+          if(streamType === 'video' || streamType === 'presentation') {
+            const enabledSender = this.getSender(streamType);
+            initialState.isUpdatingExclusiveVideo = true;
+            try {
+              await this.toggleStream(streamType === 'video' ? 'presentation' : 'video', false);
+              if(this.p2p !== initialState || this.isClosing) {
+                throw new Error(`Could not enable ${streamType}: call closed during exclusive media update`);
+              }
+            } catch(err) {
+              // End the new capture before attempting an async sender rollback.
+              // Even a stuck/rejected rollback can no longer leave camera and
+              // screen capture live at the same time.
+              stopNewStream();
+
+              // The newly-enabled sender is already live at this point, while
+              // the opposite sender rejected its fallback. Restore our exact
+              // previous stream/direction as well as stopping capture, so the
+              // engine state cannot retain a half-committed exclusive stream.
+              if(this.p2p === initialState) {
+                if(enabledSender) {
+                  try {
+                    await enabledSender.replaceTrack(track);
+                  } catch(rollbackError) {
+                    this.log('exclusive stream rollback failed', {
+                      streamType,
+                      error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+                    });
+                  }
+                }
+                if(transceiver) transceiver.direction = previousDirection || 'inactive';
+                this.setOwnStream(streamType, stream);
+                initialState.facingMode = previousFacingMode;
+              }
+              throw err;
+            } finally {
+              initialState.isUpdatingExclusiveVideo = false;
+            }
+          }
         } catch(err) {
-          stopStream(newStream);
+          stopNewStream();
           throw err;
         }
         hasChanged = true;
 
         if(streamType === 'video') {
           this.p2p.facingMode = facingMode;
-          this.p2p.isUpdatingExclusiveVideo = true;
-          await this.toggleStream('presentation', false);
-          this.p2p.isUpdatingExclusiveVideo = false;
-        } else if(streamType === 'presentation') {
-          this.p2p.isUpdatingExclusiveVideo = true;
-          await this.toggleStream('video', false);
-          this.p2p.isUpdatingExclusiveVideo = false;
         }
       } else if(!shouldEnable && track.enabled) {
+        if(streamType === 'audio') {
+          // Fail closed before waiting for sender.replaceTrack. Include a
+          // device replacement already handed to the sender but not committed.
+          track.enabled = false;
+          this.pendingInputAudioTracks.forEach((pendingTrack) => {
+            pendingTrack.enabled = false;
+          });
+        }
         const fallback = this.getFallbackStream(streamType);
         const fallbackTrack = getStreamTrack(fallback);
         if(!fallback || !fallbackTrack) {
@@ -1058,7 +1201,7 @@ export default class CallInstance extends CallInstanceBase<{
             error: err instanceof Error ? err.message : String(err),
             streamType
           });
-          return;
+          throw err;
         }
 
         stopStream(stream, fallback);
@@ -1088,7 +1231,7 @@ export default class CallInstance extends CallInstanceBase<{
           message: err.message
         } : String(err)
       });
-      // Ignore media device failures; the current sender track stays active.
+      throw err;
     }
   }
 
@@ -1173,6 +1316,12 @@ export default class CallInstance extends CallInstanceBase<{
       exchangeId: Math.floor(Math.random() * 0xFFFFFFFF)
     };
 
+    // This element can be created while the constructor is still applying a
+    // saved sink. Queue behind that transaction and read the committed id only
+    // then, so a failed/stale saved id cannot leak into the P2P endpoint and a
+    // successful one is not missed by the creation race.
+    this.applyCurrentOutputDeviceToElement(this.p2p.audio);
+
     conn.onicecandidate = (event) => {
       if(!event.candidate || !this.p2p) {
         return;
@@ -1184,7 +1333,7 @@ export default class CallInstance extends CallInstanceBase<{
         return;
       }
 
-      this.sendCallSignalingData({
+      this.sendCallSignalingDataDetached({
         '@type': 'Candidates',
         'exchangeId': this.p2p.pendingLocalExchangeId || this.p2p.localCandidateExchangeId,
         'ufrag': serializedCandidate.usernameFragment || undefined,
@@ -1194,7 +1343,7 @@ export default class CallInstance extends CallInstanceBase<{
           sdpMLineIndex: serializedCandidate.sdpMLineIndex ?? undefined,
           usernameFragment: serializedCandidate.usernameFragment || undefined
         }]
-      });
+      }, 'sending P2P ICE candidate failed');
     };
 
     conn.onconnectionstatechange = () => {
@@ -1449,11 +1598,11 @@ export default class CallInstance extends CallInstanceBase<{
     });
     this.sendLocalSetup(description);
     this.p2p.pendingLocalExchangeId = localExchangeId;
-    this.sendCallSignalingData({
+    this.sendCallSignalingDataDetached({
       '@type': 'NegotiateChannels',
       'exchangeId': localExchangeId,
       contents
-    });
+    }, 'sending local P2P negotiation failed');
   }
 
   private sendLocalMediaOffer() {
@@ -1479,11 +1628,11 @@ export default class CallInstance extends CallInstanceBase<{
       sdp: summarizeSdp(localDescription.sdp),
       transceivers: this.summarizeTransceivers()
     });
-    this.sendCallSignalingData({
+    this.sendCallSignalingDataDetached({
       '@type': 'NegotiateChannels',
       exchangeId,
       contents
-    });
+    }, 'sending local P2P media negotiation failed');
   }
 
   private async sendOffer() {
@@ -1638,11 +1787,11 @@ export default class CallInstance extends CallInstanceBase<{
           transceivers: this.summarizeTransceivers()
         });
         this.sendLocalSetup(localDescription);
-        this.sendCallSignalingData({
+        this.sendCallSignalingDataDetached({
           '@type': 'NegotiateChannels',
           'exchangeId': pendingRemoteNegotiation.exchangeId,
           contents
-        });
+        }, 'sending P2P negotiation answer failed');
 
         if(this.shouldSendLocalOfferAfterRemoteAnswer()) {
           this.log('send local media offer after remote answer', {
@@ -1666,7 +1815,16 @@ export default class CallInstance extends CallInstanceBase<{
           this.p2p.queuedRemoteNegotiation = undefined;
         }
         if(this.p2p.pendingRemoteNegotiation) {
-          void this.applyRemoteNegotiation();
+          void this.applyRemoteNegotiation().catch((err) => {
+            // The caller awaits the negotiation that was current on entry, but
+            // a queued offer is promoted from this finally block and otherwise
+            // has no observer. A failed remote description leaves this peer
+            // connection unusable, so close the exact P2P call after logging.
+            this.log.error('queued remote negotiation failed', err);
+            void this.hangUp('phoneCallDiscardReasonDisconnect').catch((hangUpError) => {
+              this.log.error('hang up after queued remote negotiation failed', hangUpError);
+            });
+          });
         }
       }
     }
@@ -1689,7 +1847,7 @@ export default class CallInstance extends CallInstanceBase<{
         renomination: setup.renomination
       }
     });
-    this.sendCallSignalingData(setup);
+    this.sendCallSignalingDataDetached(setup, 'sending initial P2P setup failed');
   }
 
   private getActiveLocalMedia(): ActiveLocalMedia {
@@ -2049,6 +2207,16 @@ export default class CallInstance extends CallInstanceBase<{
         break;
       }
       case 'InitialSetup': {
+        // This is peer-controlled JSON, so the TypeScript shape proves nothing
+        // at runtime. Validate both the types and the values before keeping the
+        // setup: arrays/objects are especially dangerous because interpolation
+        // invokes toString(), which can turn an array element containing CR/LF
+        // into a second SDP line.
+        if(!isSdpSafeSetup(message)) {
+          this.log.error('InitialSetup has invalid transport fields — dropping');
+          break;
+        }
+
         this.p2p.remoteSetup = message;
         await this.applyRemoteNegotiation();
         break;

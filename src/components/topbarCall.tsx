@@ -28,6 +28,8 @@ import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';
 import {StackedAvatarsTsx} from '@components/stackedAvatars';
+import {toastNew} from '@components/toast';
+import {i18n, LangPackKey} from '@lib/langPack';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -82,13 +84,15 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   const [instance, setInstance] = createSignal<AnyInstance | undefined>(undefined);
   const [isMuted, setIsMuted] = createSignal<boolean | undefined>(undefined);
   const [isRtmp, setIsRtmp] = createSignal(false);
+  const [statusAnnouncementsEnabled, setStatusAnnouncementsEnabled] = createSignal(true);
+  const [migratingInstance, setMigratingInstance] = createSignal<CallInstance | undefined>();
 
   // Tracked solely for `toggleUninteruptableActivity` calls.
   let currentActivityName: string | undefined;
+  let reopenGroupCallPopupAfterRecovery = false;
 
   const [avatarPeers, setAvatarPeers] = createSignal<PeerId[]>([]);
 
-  let centerEl!: HTMLDivElement;
   let titleEl!: HTMLDivElement;
   let statusEl!: HTMLDivElement;
   let extraEl!: HTMLDivElement;
@@ -170,6 +174,7 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     setStateClass(undefined);
     setIsMuted(undefined);
     setIsRtmp(false);
+    setStatusAnnouncementsEnabled(true);
 
     instanceListenerSetter?.removeAll();
     instanceListenerSetter = undefined;
@@ -186,7 +191,16 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     }).catch(() => {});
   };
 
-  const onState = () => updateInstance(instance());
+  const onState = () => {
+    const inst = instance();
+    if(inst instanceof GroupCallInstance && inst.state === GROUP_CALL_STATE.CLOSED) {
+      reopenGroupCallPopupAfterRecovery = !!PopupElement.getPopups(PopupGroupCall).length;
+    }
+    updateInstance(inst);
+  };
+
+  const isConferenceMigration = (inst: AnyInstance | undefined) =>
+    inst instanceof CallInstance && migratingInstance() === inst;
 
   const updateInstance = (newInstance: AnyInstance | undefined) => {
     ensureWidgets();
@@ -223,7 +237,19 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     if(!inst) state = GROUP_CALL_STATE.CLOSED;
     else if(inst instanceof GroupCallInstance) state = inst.state;
     else if(inst instanceof RtmpCallInstance) state = convertRtmpStateToGroupState(inst.state);
-    else state = convertCallStateToGroupState(inst.connectionState, muted);
+    else state = isConferenceMigration(inst) ?
+      GROUP_CALL_STATE.CONNECTING :
+      convertCallStateToGroupState(inst.connectionState, muted);
+
+    // CallDescriptionElement replaces the status with a duration that updates
+    // every second once a P2P call connects. Keep state text live, but take the
+    // ticking duration out of the live region so assistive technology does not
+    // announce every second. CLOSED keeps the previous duration mounted during
+    // the hide transition, so it remains non-live until the next instance.
+    setStatusAnnouncementsEnabled(!(
+      inst instanceof CallInstance &&
+      (inst.connectionState === CALL_STATE.CONNECTED || inst.connectionState === CALL_STATE.CLOSED)
+    ));
 
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
     if((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
@@ -267,6 +293,9 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
       setAvatarPeers([inst.peerId]);
     }
     currentDescription?.update(inst as any);
+    if(isConferenceMigration(inst)) {
+      replaceContent(statusEl, i18n('ConferenceCall.Migrating'));
+    }
 
     setIsMuted(muted);
     setIsRtmp(inst instanceof RtmpCallInstance);
@@ -286,8 +315,26 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     }
   });
 
-  listenerSetter.add(groupCallsController)('instance', (i) => {
+  listenerSetter.add(callsController)('conferenceMigration', ({instance: i, state}) => {
+    if(state === 'started') {
+      setMigratingInstance(i);
+    } else if(migratingInstance() === i) {
+      setMigratingInstance(undefined);
+    }
+
+    if(instance() === i) {
+      updateInstance(i);
+    }
+  });
+
+  listenerSetter.add(groupCallsController)('instance', (i, isRecovery) => {
     updateInstance(i);
+    if(isRecovery && reopenGroupCallPopupAfterRecovery) {
+      reopenGroupCallPopupAfterRecovery = false;
+      onPlateClick();
+    } else if(!isRecovery) {
+      reopenGroupCallPopupAfterRecovery = false;
+    }
   });
 
   listenerSetter.add(rootScope)('group_call_update', (groupCall) => {
@@ -302,10 +349,21 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   });
 
   // Keep the conference avatar stack fresh as participants join/leave.
-  listenerSetter.add(rootScope)('group_call_participant', ({groupCallId}) => {
+  listenerSetter.add(rootScope)('group_call_participant', ({groupCallId, participant}) => {
     const i = instance();
     if(i instanceof GroupCallInstance && !i.chatId && String(i.id) === String(groupCallId)) {
-      refreshConferenceAvatars(i);
+      if(participant.pFlags.self) {
+        // Self-participant arrival unlocks the microphone semantics as well as
+        // changing the participant avatar stack.
+        updateInstance(i);
+      } else {
+        // The 5s roster poll re-dispatches EVERY row; a full updateInstance per
+        // row is N worker round-trips + N DOM/title rewrites every poll on an
+        // idle call. Non-self rows can only change the avatar stack — self
+        // mute/permission changes additionally flow through the instance's own
+        // 'state' listener.
+        refreshConferenceAvatars(i);
+      }
     }
   });
 
@@ -315,6 +373,10 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
 
   // ───────────────────────── Click handlers ─────────────────────────
 
+  // Fire-and-forget behind the leading-edge throttle: the button reflects
+  // `isMuted()`, which the instance's own 'state' / 'muted' events drive. Making
+  // the click await the toggle (and disabling the button meanwhile) turned every
+  // press into a round trip the user had to wait out.
   const throttledMuteClick = throttle(() => {
     const inst = instance();
     if(inst && !(inst instanceof RtmpCallInstance)) {
@@ -322,16 +384,34 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     }
   }, 600, true);
 
-  const onHangUp = () => {
+  // Ending a call is the one action that must never be locked out: a slow
+  // discard used to leave the button disabled with the call still up. The
+  // in-flight flag only swallows a repeat press, it doesn't disable the button.
+  let hangUpPromise: Promise<unknown> | undefined;
+  const onHangUp = async() => {
     const inst = instance();
-    if(!inst) return;
-    if(inst instanceof RtmpCallInstance) {
-      rtmpCallsController.leaveCall();
-    } else if(inst instanceof GroupCallInstance) {
-      inst.hangUp();
-    } else {
-      inst.hangUp('phoneCallDiscardReasonHangup');
+    if(!inst || hangUpPromise || isConferenceMigration(inst)) return;
+
+    try {
+      hangUpPromise = inst instanceof RtmpCallInstance ?
+        rtmpCallsController.leaveCall() :
+        (inst instanceof GroupCallInstance ?
+          inst.hangUp() :
+          inst.hangUp('phoneCallDiscardReasonHangup'));
+      await hangUpPromise;
+    } catch(err) {
+      console.error('topbar hang up failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
+    } finally {
+      hangUpPromise = undefined;
     }
+  };
+
+  const endCallLabel = (): LangPackKey => {
+    const inst = instance();
+    if(inst instanceof RtmpCallInstance) return 'Close';
+    if(inst instanceof GroupCallInstance) return 'VoiceChat.Leave';
+    return 'Call.End';
   };
 
   const onPlateClick = () => {
@@ -354,6 +434,11 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   const plate = createTopbarPlate({
     modifier: 'call',
     height: 24,
+    // The plate is never `hide`-toggled: it lives parked above the topbar and
+    // slides in on `body.is-calling` (`.pinned-call` transform in
+    // _chatPinned.scss). Flipping `hide` alongside that class would put the
+    // element back in flow in the same frame the transform flips, leaving the
+    // transition no start value to animate from — the plate would jump in.
     initiallyHidden: false,
     render: () => (
       <TopbarPlate.Body onClick={onPlateClick} noRipple>
@@ -361,23 +446,43 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
           <Button
             class={`${CLASS_NAME}-side-btn ${CLASS_NAME}-mic-btn`}
             onClick={(e) => { cancelEvent(e); throttledMuteClick(); }}
+            aria-label={i18n(isMuted() ? 'VoipUnmute' : 'Call.Mute').textContent}
             noRipple
           >
             <IconTsx icon={isMuted() ? 'microphone_crossed_filled' : 'microphone_filled'} />
           </Button>
         </Show>
-        <div class={`${CLASS_NAME}-center`} ref={centerEl}>
+        {/* A real button so the plate is reachable and operable from the
+            keyboard; the click itself is handled by the plate, which stays
+            clickable edge to edge the way it always was (Enter / Space on the
+            button fire a click that bubbles there). */}
+        <button
+          type="button"
+          class={`${CLASS_NAME}-center`}
+          aria-label={i18n('Call.Open').textContent}
+          aria-describedby={`${CLASS_NAME}-status`}
+        >
           <StackedAvatarsTsx peerIds={avatarPeers()} avatarSize={16} />
           <div class={`${CLASS_NAME}-text`}>
             <div class={`${CLASS_NAME}-title`} ref={titleEl} />
-            <div class={`${CLASS_NAME}-status`} ref={statusEl} />
+            <div
+              id={`${CLASS_NAME}-status`}
+              class={`${CLASS_NAME}-status`}
+              ref={statusEl}
+              role={statusAnnouncementsEnabled() ? 'status' : undefined}
+              aria-live={statusAnnouncementsEnabled() ? 'polite' : 'off'}
+              aria-atomic="true"
+            />
           </div>
           <div class={`${CLASS_NAME}-extra`} ref={extraEl} />
-        </div>
+        </button>
         <Button.Icon
           icon={isRtmp() ? 'close' : 'endcall_filled'}
-          class={`${CLASS_NAME}-side-btn ${CLASS_NAME}-end-btn ${!isRtmp() && 'endcall'}`}
-          onClick={(e) => { cancelEvent(e); onHangUp(); }}
+          class={`${CLASS_NAME}-side-btn ${CLASS_NAME}-end-btn${!isRtmp() ? ' endcall' : ''}`}
+          onClick={(e) => { cancelEvent(e); return onHangUp(); }}
+          disabled={isConferenceMigration(instance())}
+          tabIndex={0}
+          aria-label={i18n(endCallLabel()).textContent}
           noRipple
         />
       </TopbarPlate.Body>

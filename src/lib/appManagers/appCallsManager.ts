@@ -2,7 +2,6 @@ import {getEnvironment} from '@environment/utils';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {nextRandomUint} from '@helpers/random';
 import {
-  DataJSON,
   InputGroupCall,
   InputPhoneCall,
   MessagesDhConfig,
@@ -120,6 +119,36 @@ export class AppCallsManager extends AppManager {
     return this.saveCall(phonePhoneCall.phone_call);
   }
 
+  /**
+   * A request/accept RPC has already changed server state before its returned
+   * peers and call are saved locally. If that local processing throws, close
+   * the exact call echoed by the RPC so it cannot survive as an unreachable
+   * server-side P2P call.
+   */
+  private async saveAcceptedPhonePhoneCall(
+    phonePhoneCall: PhonePhoneCall,
+    video?: boolean
+  ): Promise<PhoneCall> {
+    try {
+      return this.savePhonePhoneCall(phonePhoneCall);
+    } catch(error) {
+      const call = phonePhoneCall.phone_call;
+      if(call._ !== 'phoneCallEmpty' && call._ !== 'phoneCallDiscarded') {
+        try {
+          await this.discardCallInput(
+            {_: 'inputPhoneCall', id: call.id, access_hash: call.access_hash},
+            0,
+            {_: 'phoneCallDiscardReasonHangup'},
+            video
+          );
+        } catch(rollbackError) {
+          this.log.warn('accepted P2P call rollback failed', rollbackError);
+        }
+      }
+      throw error;
+    }
+  }
+
   public generateDh() {
     this.log('generateDh');
     return this.apiManager.invokeApi('messages.getDhConfig', {
@@ -127,6 +156,14 @@ export class AppCallsManager extends AppManager {
       random_length: 256
     }).then((dhConfig) => {
       return this.cryptoWorker.invokeCrypto('generate-dh', dhConfig as MessagesDhConfig.messagesDhConfig);
+    });
+  }
+
+  public sendSignalingData(callId: CallId, data: Uint8Array) {
+    this.log('sendSignalingData', callId, {bytes: data.length});
+    return this.apiManager.invokeApi('phone.sendSignalingData', {
+      peer: this.getCallInput(callId),
+      data
     });
   }
 
@@ -148,7 +185,36 @@ export class AppCallsManager extends AppManager {
       g_a_hash: g_a_hash
     });
 
-    return this.savePhonePhoneCall(phonePhoneCall);
+    return this.saveAcceptedPhonePhoneCall(phonePhoneCall, video);
+  }
+
+  public async acceptCall(callId: CallId, protocol: PhoneCallProtocol, g_b: Uint8Array, video?: boolean) {
+    this.log('acceptCall', callId);
+    const phonePhoneCall = await this.apiManager.invokeApi('phone.acceptCall', {
+      peer: this.getCallInput(callId),
+      protocol,
+      g_b
+    });
+
+    return this.saveAcceptedPhonePhoneCall(phonePhoneCall, video);
+  }
+
+  public async confirmCall(
+    callId: CallId,
+    protocol: PhoneCallProtocol,
+    g_a: Uint8Array,
+    keyFingerprint: string,
+    video?: boolean
+  ) {
+    this.log('confirmCall', callId);
+    const phonePhoneCall = await this.apiManager.invokeApi('phone.confirmCall', {
+      peer: this.getCallInput(callId),
+      protocol,
+      g_a,
+      key_fingerprint: keyFingerprint
+    });
+
+    return this.saveAcceptedPhonePhoneCall(phonePhoneCall, video);
   }
 
   public async discardCall(
@@ -163,9 +229,18 @@ export class AppCallsManager extends AppManager {
       return;
     }
 
+    return this.discardCallInput(this.getCallInput(callId), duration, reason, video);
+  }
+
+  private async discardCallInput(
+    peer: InputPhoneCall,
+    duration: number,
+    reason: PhoneCallDiscardReason,
+    video?: boolean
+  ): Promise<void> {
     const updates = await this.apiManager.invokeApi('phone.discardCall', {
       video,
-      peer: this.getCallInput(callId),
+      peer,
       duration,
       reason,
       connection_id: '0'
@@ -182,41 +257,6 @@ export class AppCallsManager extends AppManager {
   // is the migration trigger, and conference state piggy-backs on existing
   // `updatePhoneCall` flows.
 
-  // Create an EMPTY conference call (flags=0, no e2e fields). Returns Updates
-  // containing the new `updateGroupCall`. Used as step 1 of the
-  // create-then-join flow (matches tdesktop's `MakeConferenceCall` +
-  // iOS's `_internal_createConferenceCall`).
-  public createEmptyConferenceCall(): Promise<Updates> {
-    this.log('createEmptyConferenceCall');
-    return this.apiManager.invokeApi('phone.createConferenceCall', {
-      random_id: nextRandomUint(32)
-    });
-  }
-
-  // Single-call create+join variant (flags=join|public_key|block|params).
-  // Used by tdesktop's `GroupCall::startConference` ONLY for migration from
-  // an existing 1-on-1 / scheduled call. Server returns `CONF_WRITE_CHAIN_INVALID`
-  // when called outside that context — use `createEmptyConferenceCall` +
-  // `joinGroupCall` for fresh conferences instead.
-  public async createAndJoinConferenceCall(opts: {
-    publicKey: Uint8Array;
-    block: Uint8Array;
-    params: DataJSON;
-    muted?: boolean;
-    videoStopped?: boolean;
-  }): Promise<Updates> {
-    this.log('createAndJoinConferenceCall', {muted: opts.muted, videoStopped: opts.videoStopped});
-    return this.apiManager.invokeApi('phone.createConferenceCall', {
-      muted: opts.muted,
-      video_stopped: opts.videoStopped,
-      join: true,
-      random_id: nextRandomUint(32),
-      public_key: opts.publicKey,
-      block: opts.block,
-      params: opts.params
-    });
-  }
-
   // Invite a user to a conference. Returns Updates which include the user-side
   // `updatePhoneCallRequested` for the invitee.
   public async inviteConferenceCallParticipant(
@@ -225,24 +265,36 @@ export class AppCallsManager extends AppManager {
     video?: boolean
   ): Promise<Updates> {
     this.log('inviteConferenceCallParticipant', 'id' in call ? call.id : call._, userId, {video});
-    return this.apiManager.invokeApi('phone.inviteConferenceCallParticipant', {
+    const updates = await this.apiManager.invokeApi('phone.inviteConferenceCallParticipant', {
       video,
       call,
       user_id: this.appUsersManager.getUserInput(userId)
     });
+    try {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    } catch(error) {
+      this.log.error('invite conference participant update processing failed after RPC acceptance', error);
+    }
+    return updates;
   }
 
   // Decline an invitation we received. msgId is the service message id that
   // carried the invite.
-  public declineConferenceCallInvite(msgId: number): Promise<Updates> {
+  public async declineConferenceCallInvite(msgId: number): Promise<Updates> {
     this.log('declineConferenceCallInvite', msgId);
-    return this.apiManager.invokeApi('phone.declineConferenceCallInvite', {
+    const updates = await this.apiManager.invokeApi('phone.declineConferenceCallInvite', {
       msg_id: msgId
     });
+    try {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    } catch(error) {
+      this.log.error('decline conference invite update processing failed after RPC acceptance', error);
+    }
+    return updates;
   }
 
   // Remove participants from a conference. `block` is a LOCAL-format change-
-  // state block (built by the caller via `E2eCall.buildChangeStateBlock`) — like
+  // state block (built by the worker via `buildRemoveParticipantsBlock`) — like
   // every other client→server `block` field, e.g. `phone.joinGroupCall`; only
   // chain deliveries coming BACK from the server use the +1 server magic.
   //
@@ -252,7 +304,7 @@ export class AppCallsManager extends AppManager {
   // would leave the removed identity's copy of the current key valid.
   // `onlyLeft` is the stale-pruning form used by the roster reconciliation;
   // `kick` is an admin removing someone still connected.
-  public deleteConferenceCallParticipants(opts: {
+  public async deleteConferenceCallParticipants(opts: {
     call: InputGroupCall;
     ids: Array<string | number>;
     block: Uint8Array;
@@ -260,26 +312,38 @@ export class AppCallsManager extends AppManager {
     kick?: boolean;
   }): Promise<Updates> {
     this.log('deleteConferenceCallParticipants', 'id' in opts.call ? opts.call.id : opts.call._, {ids: opts.ids, kick: opts.kick, onlyLeft: opts.onlyLeft});
-    return this.apiManager.invokeApi('phone.deleteConferenceCallParticipants', {
+    const updates = await this.apiManager.invokeApi('phone.deleteConferenceCallParticipants', {
       only_left: opts.onlyLeft,
       kick: opts.kick,
       call: opts.call,
       ids: opts.ids,
       block: opts.block
     });
+    try {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    } catch(error) {
+      this.log.error('delete conference participants update processing failed after RPC acceptance', error);
+    }
+    return updates;
   }
 
   // Broadcast a serialized GroupBroadcast (emoji commit/reveal) to every
   // participant. The server echoes back via `updateGroupCallChainBlocks`.
-  public sendConferenceCallBroadcast(
+  public async sendConferenceCallBroadcast(
     call: InputGroupCall,
     block: Uint8Array
   ): Promise<Updates> {
     this.log('sendConferenceCallBroadcast', 'id' in call ? call.id : call._, {bytes: block?.length});
-    return this.apiManager.invokeApi('phone.sendConferenceCallBroadcast', {
+    const updates = await this.apiManager.invokeApi('phone.sendConferenceCallBroadcast', {
       call,
       block
     });
+    try {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    } catch(error) {
+      this.log.error('send conference broadcast update processing failed after RPC acceptance', error);
+    }
+    return updates;
   }
 
   // Fetch a window of historical blocks from the conference chain — used on

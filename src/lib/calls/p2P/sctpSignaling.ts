@@ -57,7 +57,7 @@ export class SctpSignaling {
 
   private initSent = false;
 
-  private initSentAt = 0;
+  private initSentAt: number | undefined;
 
   private initRetryCount = 0;
 
@@ -98,11 +98,11 @@ export class SctpSignaling {
   }
 
   private shouldRetryInit() {
-    if(!this.initSentAt || this.peerTag !== undefined) {
+    if(this.initSentAt === undefined || this.peerTag !== undefined) {
       return false;
     }
 
-    return Date.now() - this.initSentAt >= this.getInitRetryDelay();
+    return performance.now() - this.initSentAt >= this.getInitRetryDelay();
   }
 
   private getInitRetryDelay() {
@@ -115,7 +115,7 @@ export class SctpSignaling {
 
   private createInitRetryPacket() {
     this.initSent = true;
-    this.initSentAt = Date.now();
+    this.initSentAt = performance.now();
     this.initRetryCount++;
     return Array.from(this.createInitPacket());
   }
@@ -472,7 +472,7 @@ export class SctpSignaling {
     this.peerInitialTsn = undefined;
     this.peerCumulativeTsn = undefined;
     this.initSent = false;
-    this.initSentAt = 0;
+    this.initSentAt = undefined;
     this.initRetryCount = 0;
     this.isEstablished = false;
     this.cookie = ByteBuf.alloc(0);

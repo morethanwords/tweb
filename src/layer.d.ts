@@ -1353,7 +1353,7 @@ export namespace MessageMedia {
 
   export type messageMediaCall = {
     _: 'messageMediaCall',
-    action?: MessageAction.messageActionPhoneCall
+    action?: MessageAction.messageActionPhoneCall | MessageAction.messageActionConferenceCall
   };
 
   export type messageMediaPhotoExternal = {

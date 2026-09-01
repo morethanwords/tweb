@@ -11,12 +11,14 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import addAnchorListener from '@helpers/addAnchorListener';
 import assumeType from '@helpers/assumeType';
+import findUpAttribute from '@helpers/dom/findUpAttribute';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '@layer';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {PHONE_NUMBER_REG_EXP} from '@lib/richTextProcessor';
 import {isWebAppNameValid} from '@lib/richTextProcessor/validators';
-import appImManager from '@lib/appImManager';
+import appImManager, {JoinConferenceOptions} from '@lib/appImManager';
+import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from '@lib/internalLink';
 import {AppManagers} from '@lib/managers';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
@@ -274,13 +276,18 @@ export class InternalLinkProcessor {
       // already does the chain-head poll itself.
       addAnchorListener<{pathnameParams: ['call', string]}>({
         name: 'call',
-        callback: ({pathnameParams}) => {
+        callback: ({pathnameParams, element, event}) => {
           if(!pathnameParams[1]) return;
           const link: InternalLink = {
             _: INTERNAL_LINK_TYPE.CONFERENCE_CALL,
             slug: pathnameParams[1]
           };
-          return this.processInternalLink(link);
+          // Straight to the handler rather than through `processInternalLink`:
+          // this is the only place that still knows WHICH message the link was
+          // clicked in, and the join confirmation names its sender.
+          return this.processConferenceCallLink(link, {
+            inviterPeerId: this.getClickedMessageSenderPeerId(element, event)
+          });
         }
       });
 
@@ -993,9 +1000,40 @@ export class InternalLinkProcessor {
   // the "already in a call" guard and the dead-link error UX (so re-clicking
   // the link while already in the call doesn't rejoin). tdesktop equivalent:
   // SessionNavigation::resolveConferenceCall → startOrJoinConferenceCall.
-  public processConferenceCallLink = (link: InternalLink.InternalLinkConferenceCall) => {
-    return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug});
+  public processConferenceCallLink = (
+    link: InternalLink.InternalLinkConferenceCall,
+    options?: JoinConferenceOptions
+  ) => {
+    return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug}, options);
   };
+
+  /**
+   * Sender of the message a link was clicked in. tdesktop threads the clicked
+   * item through the click handler's context and names its sender in the
+   * conference join confirmation (window_session_controller.cpp:1023); here
+   * the click is the only thread back to that message.
+   *
+   * A surface that already knows its message says so on the anchor it builds
+   * (`getWebPageActionOnClick`) — that covers the buttons which have no
+   * rendered message around them, like the pinned bar's Join call. Otherwise
+   * the link is text inside a bubble, and the bubble is what identifies it.
+   */
+  private getClickedMessageSenderPeerId(element?: HTMLElement, event?: Event) {
+    const stamped = element?.dataset?.fromId ||
+      findUpAttribute(event?.target as HTMLElement, 'data-from-id')?.dataset.fromId;
+    if(stamped) {
+      return stamped.toPeerId();
+    }
+
+    const bubble = findUpClassName(element, 'bubble') ||
+      findUpClassName(event?.target as HTMLElement, 'bubble');
+    const chat = appImManager.chat;
+    if(!bubble || !chat || bubble.dataset.peerId !== '' + chat.peerId) {
+      return;
+    }
+
+    return chat.getMessage(makeFullMid(chat.peerId, +bubble.dataset.mid))?.fromId;
+  }
 
   public processAddAiStyleLink = async(link: InternalLink.InternalLinkAddAiStyle) => {
     if(this.processingAddAiStyleSlugs.has(link.slug)) return;

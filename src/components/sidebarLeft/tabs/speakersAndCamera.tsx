@@ -1,17 +1,17 @@
-import {createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, onMount, Show} from 'solid-js';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {i18n} from '@lib/langPack';
-import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
-import {useAppSettings} from '@stores/appSettings';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
-import showOutputDevicePopup from '@components/rtmp/outputDevicePopup';
-import applyDeviceToActiveCall from '@lib/calls/applyDeviceToActiveCall';
 import MicrophoneLevelMeter from '@components/call/microphoneLevelMeter';
 import CallCameraSection from '@components/call/cameraSection';
+import {
+  CallDeviceRow,
+  useCallDeviceSettings
+} from '@components/call/callDeviceSettings';
 import {Authorization} from '@layer';
 
 import '@components/call/settingsPopup.scss';
@@ -29,9 +29,7 @@ import '@components/call/settingsPopup.scss';
 export default function SpeakersAndCamera() {
   const [tab] = useSuperTab();
   const promiseCollector = usePromiseCollector();
-  const [appSettings, setAppSettings] = useAppSettings();
-
-  const [devices, setDevices] = createSignal<MediaDeviceInfo[]>([]);
+  const callDevices = useCallDeviceSettings();
 
   // Current authorization carries the `call_requests_disabled` flag; we read
   // it on mount and write back via account.changeAuthorizationSettings.
@@ -39,10 +37,6 @@ export default function SpeakersAndCamera() {
   // failed call rolls the signal back.
   const [currentAuth, setCurrentAuth] = createSignal<Authorization.authorization | undefined>(undefined);
   const acceptCalls = () => !(currentAuth()?.pFlags?.call_requests_disabled);
-
-  const refreshDevices = () => {
-    navigator.mediaDevices.enumerateDevices().then(setDevices).catch(() => setDevices([]));
-  };
 
   // Fetch the current authorization once on mount. Stored in the tab's
   // promise collector so the tab waits for it to render — the toggle is
@@ -59,48 +53,7 @@ export default function SpeakersAndCamera() {
 
   onMount(() => {
     tab.header.classList.add('with-border');
-    refreshDevices();
-    navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
-    onCleanup(() => {
-      navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
-    });
   });
-
-  const labelFor = (kind: MediaDeviceKind, id: string) => {
-    if(!id) return i18n('CallSettings.DeviceDefault');
-    const found = devices().find((d) => d.kind === kind && d.deviceId === id);
-    return found ? wrapEmojiText(found.label || found.deviceId) : i18n('CallSettings.DeviceDefault');
-  };
-
-  const onPickSpeaker = () => {
-    showOutputDevicePopup({
-      kind: 'audiooutput',
-      currentId: appSettings.callDevices?.speakerId || '',
-      titleLangKey: 'CallSettings.Speakers',
-      onPick: (id) => {
-        setAppSettings('callDevices', 'speakerId', id);
-        applyDeviceToActiveCall('speaker', id);
-      },
-      onStaleCurrentId: () => {
-        setAppSettings('callDevices', 'speakerId', '');
-      }
-    });
-  };
-
-  const onPickMicrophone = () => {
-    showOutputDevicePopup({
-      kind: 'audioinput',
-      currentId: appSettings.callDevices?.microphoneId || '',
-      titleLangKey: 'CallSettings.Microphone',
-      onPick: (id) => {
-        setAppSettings('callDevices', 'microphoneId', id);
-        applyDeviceToActiveCall('microphone', id);
-      },
-      onStaleCurrentId: () => {
-        setAppSettings('callDevices', 'microphoneId', '');
-      }
-    });
-  };
 
   const onToggleAcceptCalls = (checked: boolean) => {
     const auth = currentAuth();
@@ -127,31 +80,25 @@ export default function SpeakersAndCamera() {
   return (
     <>
       <Section name="CallSettings.OutputSection">
-        <Row clickable={onPickSpeaker}>
-          <Row.Title
-            titleRight={labelFor('audiooutput', appSettings.callDevices?.speakerId || '')}
-            titleRightSecondary
-          >
-            {i18n('CallSettings.OutputDevice')}
-          </Row.Title>
-        </Row>
+        <CallDeviceRow
+          settings={callDevices}
+          kind="speaker"
+          titleLangKey="CallSettings.OutputDevice"
+        />
       </Section>
 
       <Section name="CallSettings.InputSection">
-        <Row clickable={onPickMicrophone}>
-          <Row.Title
-            titleRight={labelFor('audioinput', appSettings.callDevices?.microphoneId || '')}
-            titleRightSecondary
-          >
-            {i18n('CallSettings.InputDevice')}
-          </Row.Title>
-        </Row>
+        <CallDeviceRow
+          settings={callDevices}
+          kind="microphone"
+          titleLangKey="CallSettings.InputDevice"
+        />
         <div class="speakers-and-camera-meter-wrap">
-          <MicrophoneLevelMeter deviceId={appSettings.callDevices?.microphoneId} />
+          <MicrophoneLevelMeter deviceId={callDevices.deviceId('microphone')} />
         </div>
       </Section>
 
-      <CallCameraSection />
+      <CallCameraSection settings={callDevices} />
 
       <Show when={currentAuth()}>
         <Section caption="CallSettings.AcceptCalls.Caption">

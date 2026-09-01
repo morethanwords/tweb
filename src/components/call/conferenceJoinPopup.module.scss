@@ -1,0 +1,46 @@
+.popup {
+  --popup-max-width: 22.5rem;
+}
+
+.header {
+  position: absolute;
+}
+
+// tdesktop crowns the box with a call glyph on a filled disc
+// (`MakeRoundActiveLogo`); here it is the media header's sticker slot.
+.logo {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+}
+
+.mediaHeader {
+  padding-top: 1.5rem;
+}
+
+.separator {
+  width: 40%;
+  border-top: 1px solid var(--border-color);
+  margin: 1rem auto;
+}
+
+.participants {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .625rem;
+  padding: 0 1rem;
+  text-align: center;
+
+  // StackedAvatars owns this class — it is not the module's to rename.
+  :global(.stacked-avatars) {
+    --margin-right: -1rem;
+    --border-size: .125rem;
+  }
+}
