@@ -1,0 +1,2 @@
+import{t as e}from"./cancellablePromise-DEtsmW8i.js";import{b as t}from"./solid-WnanT5kq.js";import{po as n}from"./appDialogsManager-qKve6JBW.js";function r(r){let i=e(),a;return t(e=>{r.middleware.onClean(()=>{e(),i.resolve()}),a=new n({...r,multiSelect:!1,headerSearch:!0,placeholder:`SearchPlaceholder`,meAsSaved:!1,onFirstRender:()=>{i.resolve()}})}),{selector:a,loadPromise:i}}function i(e){return r({...e,peerType:[`channelParticipants`]})}export{r as n,i as t};
+//# sourceMappingURL=participantsSelector-Dznw4N4Y.js.map

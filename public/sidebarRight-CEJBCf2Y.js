@@ -1,0 +1,1 @@
+import{ct as e,ot as t,st as n}from"./appDialogsManager-qKve6JBW.js";export{t as AppSidebarRight,n as RIGHT_COLUMN_ACTIVE_CLASSNAME,e as default};

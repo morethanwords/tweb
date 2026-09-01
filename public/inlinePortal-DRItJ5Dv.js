@@ -1,0 +1,2 @@
+import{A as e,F as t,d as n}from"./solid-WnanT5kq.js";import{c as r}from"./web-Cdw80WQO.js";function i(i){let a=t(()=>i.mount);r(a,n(()=>i.children)),e(()=>a.replaceChildren())}export{i as t};
+//# sourceMappingURL=inlinePortal-DRItJ5Dv.js.map

@@ -3354,8 +3354,8 @@
 "Chat.Service.VoiceChatInvitationForYou" = "%1$@ invited you to the [video chat](open)";
 "Chat.Service.ConferenceCall.Invitation" = "Group call invitation";
 "Chat.Service.ConferenceCall.Ongoing" = "Ongoing group call";
-"Chat.Service.ConferenceCall.Incoming" = "Incoming group call";
-"Chat.Service.ConferenceCall.Outgoing" = "Outgoing group call";
+"Chat.Service.ConferenceCall.Incoming" = "Incoming group call. [Join](open)";
+"Chat.Service.ConferenceCall.Outgoing" = "Outgoing group call. [Open](open)";
 "Chat.Service.ConferenceCall.Missed" = "Missed group call";
 "Chat.Service.ConferenceCall.Declined" = "Declined group call";
 "Call.Open" = "Open call";

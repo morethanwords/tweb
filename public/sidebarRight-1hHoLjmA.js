@@ -1,1 +1,0 @@
-import{at as e,it as t,ot as n}from"./appDialogsManager-CQiPZLuX.js";export{t as AppSidebarRight,e as RIGHT_COLUMN_ACTIVE_CLASSNAME,n as default};

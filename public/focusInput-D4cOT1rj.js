@@ -1,0 +1,2 @@
+import{O as e,P as t}from"./solid-WnanT5kq.js";import{t as n}from"./placeCaretAtEnd-BsQsHq0e.js";import{h as r,p as i}from"./web-Cdw80WQO.js";var a=r(`<div>`);function o(n){let[r,o]=t(n,[`amount`,`withTransition`]);return(()=>{var t=a();return i(t,e(o,{get style(){return{"padding-top":r.amount,transition:r.withTransition?`.2s`:void 0}}}),!1,!1),t})()}function s(e,t){if(e.focus(),n(e),t){let n=new KeyboardEvent(t.type,t);e.dispatchEvent(n)}}export{o as n,s as t};
+//# sourceMappingURL=focusInput-D4cOT1rj.js.map
