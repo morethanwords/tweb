@@ -1,4 +1,4 @@
-import {createSignal, For, onMount, Show} from 'solid-js';
+import {createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
@@ -30,14 +30,24 @@ import useStars, {hasTonTransactions} from '@stores/stars';
 import PopupStars from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import showPickUserPopup from '@components/popups/pickUser';
 import showMyQrCodePopup from '@components/popups/myQrCode';
-import PopupSendGift from '@components/popups/sendGift';
+import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import showLogOutPopup from '@components/popups/logOut';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
+import InputSearch from '@components/inputSearch';
+import Scrollable from '@components/scrollable2';
+import InlinePortal from '@helpers/solid/inlinePortal';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import SettingsSearchResults from '@components/sidebarLeft/settingsSearchResults';
+import TransitionSlider from '@components/transition';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import {SettingsSearchItem} from '@lib/settingsSearch';
+import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
+import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
+import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — wraps a sub-tab declaration. If the tab has a static `getInitArgs`,
@@ -83,33 +93,159 @@ const Settings = () => {
   const promiseCollector = usePromiseCollector();
   const [tab] = useSuperTab();
 
-  // ── Header (qr + edit + overflow menu)
-  const qrBtn = ButtonIcon('qr');
-  const editBtn = ButtonIcon('edit');
+  // ── Header: search and the overflow menu, the way tdesktop keeps it — editing
+  //    the profile and the QR code are rare enough to live in the menu.
+  const searchBtn = ButtonIcon('search');
   const btnMenu = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
     direction: 'bottom-left',
     buttons: [{
+      icon: 'edit',
+      text: 'EditAccount.Title',
+      // fresh args on every open, so a failed connected-bot request isn't retained
+      onClick: () => tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true))
+    }, {
+      icon: 'qr',
+      text: 'QRCode.Title',
+      onClick: () => showMyQrCodePopup()
+    }, {
       icon: 'logout',
       text: 'EditAccount.Logout',
+      danger: true,
       onClick: () => showLogOutPopup()
     }]
   });
 
-  onMount(() => {
-    tab.container.classList.add('settings-container');
-    tab.header.append(qrBtn, editBtn, btnMenu);
+  // ── Search over every setting (see @lib/settingsSearch). It is a second layer
+  //    of the tab, cross-faded in over the settings the same way the left
+  //    sidebar swaps the chat list for its search — except this one brings its
+  //    own header, since it covers the tab's header too.
+  const [searchQuery, setSearchQuery] = createSignal<string>(undefined);
+  const isSearching = () => searchQuery() !== undefined;
+
+  const mainLayer = document.createElement('div');
+  mainLayer.classList.add('transition-item', 'settings-layer');
+
+  const searchLayer = document.createElement('div');
+  searchLayer.classList.add('transition-item', 'settings-layer', 'settings-search-layer');
+
+  const searchBackBtn = ButtonIcon('left sidebar-close-button', {noRipple: true});
+
+  const inputSearch = new InputSearch({
+    placeholder: 'Search',
+    // the same field the left sidebar's own search uses
+    oldStyle: true,
+    onChange: setSearchQuery,
+    // The clear button empties the query; pressing it on an empty field leaves search.
+    onClear: (e, wasEmpty) => wasEmpty && closeSearch(),
+    alwaysShowClear: true
   });
 
-  attachClickEvent(qrBtn, () => {
-    showMyQrCodePopup();
-  }, {listenerSetter: tab.listenerSetter});
+  inputSearch.input.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') {
+      cancelEvent(e);
+      closeSearch();
+    }
+  });
 
-  // ── Edit profile click — build fresh args for every open so a failed or
-  //    superseded connected-bot request isn't retained by the Settings tab.
-  attachClickEvent(editBtn, () => {
-    tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true));
-  }, {listenerSetter: tab.listenerSetter});
+  let selectLayer: ReturnType<typeof TransitionSlider>;
+
+  // Search is a state to come back from, not a tab: Escape and the back gesture
+  // leave it and keep the settings open, the way they do in the left sidebar.
+  const NAVIGATION_TYPE: NavigationItem['type'] = 'settings-search';
+
+  const openSearch = () => {
+    if(isSearching()) {
+      closeSearch();
+      return;
+    }
+
+    setSearchQuery('');
+    selectLayer(1);
+    inputSearch.input.focus();
+
+    if(!appNavigationController.findItemByType(NAVIGATION_TYPE)) {
+      appNavigationController.pushItem({
+        type: NAVIGATION_TYPE,
+        onPop: () => void closeSearch(true)
+      });
+    }
+  };
+
+  const closeSearch = (fromNavigation?: boolean) => {
+    if(!isSearching()) return;
+
+    if(!fromNavigation) {
+      appNavigationController.removeByType(NAVIGATION_TYPE);
+    }
+
+    setSearchQuery(undefined);
+    selectLayer(0);
+    inputSearch.value = '';
+    // the field goes off screen, and typing into what cannot be seen is worse
+    // than typing nowhere
+    inputSearch.input.blur();
+  };
+
+  attachClickEvent(searchBackBtn, () => closeSearch(), {listenerSetter: tab.listenerSetter});
+
+  // A section can take a request to open, and a second click while it is in
+  // flight would open it twice — the list stays clickable, the navigation does not.
+  let opening: Promise<void>;
+
+  const onResultSelect = (item: SettingsSearchItem) => {
+    if(opening) return;
+
+    bumpRecentSettingsSearch(item.id);
+
+    // A result that lives on this very screen opens no section of its own: the
+    // search layer is the only thing between the user and it, so it steps aside.
+    // Anything else keeps it — the layer stays behind the section that opens, so
+    // going back returns to the results with the query still typed.
+    if(item.sectionId === ROOT_SECTION_ID) {
+      closeSearch();
+    }
+
+    opening = openSettingsSearchItem(item, tab)
+    .catch((err) => console.error('settings search: cannot open', item.id, err))
+    .finally(() => {
+      opening = undefined;
+    });
+  };
+
+  onMount(() => {
+    tab.container.classList.add('settings-container', 'transition', 'zoom-fade');
+    tab.header.append(searchBtn, btnMenu);
+
+    // The tab's own header and content become the first layer, so the search can
+    // fade in over both of them.
+    mainLayer.append(tab.header, tab.content);
+    tab.container.append(mainLayer, searchLayer);
+
+    selectLayer = TransitionSlider({
+      content: tab.container,
+      type: 'zoom-fade',
+      transitionTime: 150,
+      listenerSetter: tab.listenerSetter
+    });
+
+    // Tell the slider which layer is showing — without it the first switch has
+    // nothing to fade out of and both layers end up visible.
+    selectLayer(0, false);
+  });
+
+  onCleanup(() => {
+    appNavigationController.removeByType(NAVIGATION_TYPE);
+    inputSearch.remove();
+    // the header outlives the component (it belongs to the tab), so take the
+    // buttons back out — otherwise a hot reload leaves a second set behind
+    for(const button of [searchBtn, btnMenu]) button.remove();
+    tab.container.append(tab.header, tab.content);
+    mainLayer.remove();
+    searchLayer.remove();
+  });
+
+  attachClickEvent(searchBtn, openSearch, {listenerSetter: tab.listenerSetter});
 
   // ── Sub-tab rows (notifications/data/privacy/general/folders/stickers).
   const subTabConfigs: SubTabConfig[] = [
@@ -229,28 +365,28 @@ const Settings = () => {
     peerId: rootScope.myId,
     isDialog: false,
     scrollable: tab.scrollable,
-    setCollapsedOn: tab.container,
+    setCollapsedOn: mainLayer,
     onAvatarReady: (promise) => promiseCollector.collect(promise)
   }, SolidJSHotReloadGuardProvider);
 
   // Lottie workers preload — fire and forget.
   lottieLoader.loadLottieWorkers();
 
-  const onSendGiftClick = () => {
-    showPickUserPopup({
-      titleLangKey: 'SendGiftTo',
-      placeholder: 'Chat.Menu.SendGift',
-      selfPresence: 'SendGiftSelfCaption',
-      meAsSaved: false,
-      onSelect: (chosen) => {
-        PopupElement.createPopup(PopupSendGift, {peerId: chosen[0].peerId});
-      },
-      filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
-    });
-  };
-
   return (
     <>
+      <InlinePortal mount={searchLayer}>
+        <div class="sidebar-header">
+          {searchBackBtn}
+          {inputSearch.container}
+        </div>
+        <div class="sidebar-content">
+          <Scrollable>
+            <Show when={isSearching()}>
+              <SettingsSearchResults query={searchQuery()} onSelect={onResultSelect} />
+            </Show>
+          </Scrollable>
+        </div>
+      </InlinePortal>
       {peerProfileElement}
       <Section>
         <div class="profile-buttons">
@@ -302,7 +438,7 @@ const Settings = () => {
               </Row.Title>
             </Row>
           </Show>
-          <Row clickable={onSendGiftClick}>
+          <Row clickable={() => showSendGiftPicker()}>
             <Row.Icon icon="gift_filled" />
             <Row.Title>{i18n('Chat.Menu.SendGift')}</Row.Title>
           </Row>

@@ -17,17 +17,20 @@ import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvit
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {PHONE_NUMBER_REG_EXP} from '@lib/richTextProcessor';
 import {isWebAppNameValid} from '@lib/richTextProcessor/validators';
-import appImManager, {JoinConferenceOptions} from '@lib/appImManager';
+import appImManager, {APP_TABS, JoinConferenceOptions} from '@lib/appImManager';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from '@lib/internalLink';
 import {AppManagers} from '@lib/managers';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
+import shake from '@helpers/dom/shake';
 import PopupPremium from '@components/popups/premium';
 import rootScope from '@lib/rootScope';
 import PopupBoost from '@components/popups/boost';
 import PopupGiftLink from '@components/popups/giftLink';
-import PopupStars from '@components/popups/stars';
+import PopupStars, {showGiftStarsPicker} from '@components/popups/stars';
+import PopupSendGift from '@components/popups/sendGift';
+import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import {prefetchStars} from '@stores/stars';
 import {getMiddleware} from '@helpers/middleware';
@@ -47,7 +50,6 @@ import showCreateContactPopup from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
-import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import showAddBotToChat from '@components/popups/addBotToChat';
@@ -765,23 +767,50 @@ export class InternalLinkProcessor {
     });
 
     addAnchorListener<{
-      pathnameParams: string[]
+      pathnameParams: string[],
+      uriParams: {highlight?: string}
     }>({
       name: 'settings',
       protocol: 'tg',
-      callback: ({pathnameParams, event}) => {
+      callback: ({pathnameParams, uriParams}) => {
         const path = pathnameParams.join('/');
         switch(path) {
           case '':
-            return appSidebarLeft.createTab(AppSettingsTab).open();
+            // reuse the open Settings instead of stacking a second one
+            return (appSidebarLeft.getTab(AppSettingsTab) || appSidebarLeft.createTab(AppSettingsTab)).open();
           case 'edit':
           case 'edit/set-photo':
           case 'edit/first-name':
           case 'edit/last-name':
           case 'edit/bio':
           case 'edit/username':
+          case 'profile-photo': {
+            // `noSame` hands back the editor when it is already open, and a tab
+            // inits once — so the field is pointed at afterwards, from outside,
+            // the way every other settings link points at its control.
             const tab = appSidebarLeft.createTab(AppEditProfileTab);
-            return tab.open({...getEditProfileInitArgs(), focusOn: pathnameParams[1]});
+            return tab.open(getEditProfileInitArgs()).then(async() => {
+              // pointing at a field while the tab is still sliding in scrolls it
+              await tab.shown;
+
+              if(path === 'profile-photo' || path === 'edit/set-photo') {
+                shake(tab.container.querySelector('.avatar-edit'));
+                return;
+              }
+
+              const [{findSettingsLink}, {focusControl}] = await Promise.all([
+                import('@lib/settingsSearch/link'),
+                import('@lib/settingsSearch/highlight')
+              ]);
+
+              // which label a path names is the link table's business, the same
+              // table the search copies links from
+              const key = findSettingsLink(path)?.highlight;
+              if(key) {
+                focusControl(key, {root: tab.container, middleware: tab.middlewareHelper.get()});
+              }
+            });
+          }
           case 'edit/birthday':
             return this.managers.appProfileManager.getProfile(rootScope.myId).then((userFull) => {
               showBirthdayPopup({
@@ -791,14 +820,103 @@ export class InternalLinkProcessor {
               });
             });
           case 'edit/add-account':
-            appSidebarLeft.addAccount(event as MouseEvent);
-            break;
-          case 'edit/log-out':
-            showLogOutPopup();
-            break;
+            // tdesktop points at the control instead of starting the flow
+            // (`SettingsControl{InformationId(), "edit/add-account"}`); ours lives
+            // in the chat list's menu, so that is the menu we open.
+            return appImManager.selectTab(APP_TABS.CHATLIST).then(() => {
+              return this.highlightMenuItem(
+                appSidebarLeft.sidebarEl.querySelector('.sidebar-header .btn-menu-toggle'),
+                'MultiAccount.AddAccount'
+              );
+            });
+          case 'edit/log-out': {
+            // tdesktop shows Settings with the log-out control highlighted
+            // (`ShowLogOutMenu`) — a link must not open the confirmation itself.
+            // Ours lives in the header menu, so the menu is opened and the item
+            // inside it is the one that flashes.
+            const settingsTab = appSidebarLeft.getTab(AppSettingsTab) || appSidebarLeft.createTab(AppSettingsTab);
+            return settingsTab.open().then(async() => {
+              // a menu opened over a tab that is still sliding in would jump
+              await settingsTab.shown;
+              return this.highlightMenuItem(
+                settingsTab.header.querySelector('.btn-menu-toggle'),
+                'EditAccount.Logout'
+              );
+            });
+          }
           // case 'edit/change-number':
           // case 'edit/your-color':
           // case 'edit/channel':
+
+          case 'emoji-status': {
+            // iOS opens the picker itself, from where it always opens — for us
+            // that is the status button in the chat list header.
+            const statusBtn = appSidebarLeft.sidebarEl.querySelector<HTMLElement>('.sidebar-emoji-status');
+
+            // no button means no premium — the same promo the control itself
+            // shows when it is used without it (tdesktop: ShowPremiumPreviewBox).
+            // Nothing to reach, so nothing is closed to reach it.
+            if(!statusBtn) {
+              return PopupPremium.show({feature: 'emoji_status'});
+            }
+
+            return appImManager.selectTab(APP_TABS.CHATLIST).then(async() => {
+              // the button belongs to the chat list's own header, so whatever is
+              // stacked over the list has to go — the natural way, letting a tab
+              // that asks before closing ask
+              if(!await appSidebarLeft.closeEverythingInsideNaturally()) {
+                return;
+              }
+
+              // the button opens the picker on its own, and plays its animation
+              // when the status changes; only a collapsed column hides it, and a
+              // hidden anchor would leave the picker in the corner of the screen
+              if(statusBtn.offsetParent) {
+                simulateClickEvent(statusBtn);
+                return;
+              }
+
+              const {openEmojiStatusPicker} = await import('@components/sidebarLeft/emojiStatusPicker');
+              openEmojiStatusPicker({
+                managers: this.managers,
+                anchorElement: statusBtn.closest('.sidebar-header')
+              });
+            });
+          }
+
+          // destinations that are a screen of their own: tdesktop opens the
+          // Premium and Credits sections, and ours live in popups
+          case 'premium':
+            return PopupPremium.show();
+          case 'stars':
+            return PopupElement.createPopup(PopupStars);
+          case 'stars/gift':
+            return showGiftStarsPicker();
+          case 'send-gift':
+            return showSendGiftPicker();
+          case 'send-gift/self':
+            return PopupElement.createPopup(PopupSendGift, {peerId: rootScope.myId});
+
+          // destinations outside Settings, which the section table cannot address
+          case 'saved-messages':
+            return appImManager.setPeer({peerId: appImManager.myId});
+          case 'my-profile/posts/all-stories':
+            return appSidebarLeft.createTab(AppMyStoriesTab).open(AppMyStoriesTab.getInitArgs());
+          case 'my-profile/archived-posts':
+            return appSidebarLeft.createTab(AppMyStoriesTab).open({
+              ...AppMyStoriesTab.getInitArgs(),
+              isArchive: true
+            });
+          case 'ton':
+            return PopupElement.createPopup(PopupStars, {ton: true});
+
+          default:
+            // Every section the settings search indexes is addressable — see
+            // @lib/settingsSearch/link. Imported lazily to keep the index out of
+            // the startup bundle.
+            return import('@lib/settingsSearch/navigate').then(({openSettingsDeepLink}) => {
+              return openSettingsDeepLink(path, uriParams.highlight, appSidebarLeft);
+            }).catch((err) => console.error('settings link failed', path, err));
         }
       }
     });
@@ -845,6 +963,12 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+  }
+
+  /** Points at a control that lives in the menu behind `toggle`. */
+  private async highlightMenuItem(toggle: HTMLElement, key: LangPackKey) {
+    const {highlightMenuControl} = await import('@lib/settingsSearch/highlight');
+    highlightMenuControl(toggle, key);
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {

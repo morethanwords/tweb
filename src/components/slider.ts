@@ -130,13 +130,11 @@ export default class SidebarSlider {
       // @ts-ignore
       tab.onOpen?.();
 
-      // @ts-ignore
-      if(tab.onOpenAfterTimeout) {
-        setTimeout(() => {
-          // @ts-ignore
-          tab.onOpenAfterTimeout();
-        }, TRANSITION_TIME);
-      }
+      setTimeout(() => {
+        // @ts-ignore
+        tab.onOpenAfterTimeout?.();
+        tab.shown.resolve();
+      }, TRANSITION_TIME);
     }
 
     this.pushNavigationItem(tab);
@@ -240,6 +238,8 @@ export default class SidebarSlider {
 
     const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
     if(tab) {
+      tab.resetShown();
+
       try {
         // @ts-ignore
         tab.onClose?.();

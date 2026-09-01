@@ -275,6 +275,27 @@ consciously:
 `highlightText()` from `@helpers/dom/textHighlight`** (options and modes are
 documented in the file; styles in `scss/partials/_textHighlight.scss`).
 
+### Settings tabs are indexed for search
+
+Settings has a search over every screen and row, and its index is **generated
+from the tabs themselves** (`src/scripts/generate_settings_search.js` →
+`src/lib/settingsSearch/generated.ts`, rebuilt by the Vite plugin on build and on
+every settings-tab edit). A new tab or row is picked up with no bookkeeping —
+*if* it follows the conventions the extractor reads. When adding to Settings,
+check the things it cannot guess:
+
+- **Declare the tab in `solidJsTabs/tabs.ts`** — `scaffoldSolidJSTab({title: 'LangKey', getComponentModule: () => import(...)})`. The export name becomes the section id and `title` its heading; a tab declared elsewhere, or without a title key, never appears in results.
+- **It has to be reachable.** The tree is built from the tab constructors an indexed tab references in a row that opens them (`makeSubTabConfig(icon, 'Key', Tab, tab)`, `addRow(..., () => createTab(Tab))`). A tab nothing opens is dropped.
+- **A tab that needs a payload needs an opener.** The search opens a section directly, passing the class's `getInitArgs` when it declares one; anything else `open()` requires goes in `SECTION_OPENERS` (`@lib/settingsSearch/openers.ts`), or the result opens an empty screen. A tab that only makes sense inside a flow (wizard steps, detail views) belongs in `NON_NAVIGABLE_SECTIONS` in the same file — it and everything under it leave the results.
+- **Rows come from the labels a tab renders**: `<Row.Title>{i18n('K')}</Row.Title>`, `<Section name="K">`, title-ish props and option lists, `ButtonMenuToggle` items. Titles computed at runtime, and labels that exist only in a row's context menu, are not indexed. Captions, notices and input labels are excluded by the generator's deny lists — extend those there instead of contorting a tab.
+
+Two things travel with a new setting:
+
+- **Synonyms are language-pack strings, never build-time text** — add `'<TitleKey>.SearchKeywords'` (comma-separated) to `lang.ts` so every language gets its own from the server.
+- **Deep links** live in `src/scripts/in/settings-links.csv`, the `tg://settings/...` table shared with the other clients. A link points at its control instead of performing the action, the way tdesktop does (`edit/log-out` opens the header menu and flashes the item); where another client's behaviour differs, follow that client. Paths the index cannot address are cases in `internalLinkProcessor`.
+
+`src/tests/settingsSearchIndex.test.ts` fails if the checked-in index is stale, holds anything but identifiers, or drops a link from the table — run it after touching a settings tab.
+
 ### Imports from `@layer`
 
 All MTProto types come from `@layer`:
@@ -327,6 +348,7 @@ import {Message, Chat, User, InputPeer} from '@layer';
   commit (directly on master, no feature branch) unless told otherwise.
 - Do not add `oxlint-disable` (or legacy `eslint-disable`) comments without a reason
 - Never hand-edit or manually run `format-lang` to regenerate `src/scripts/out/langPack.strings` — it is auto-generated from `lang.ts`/`langSign.ts` by the Vite-wired lang watcher (`watch-lang.js`) on dev-server start, on every `lang.ts` change, and on build. Edit the lang `.ts` source only.
+- Never hand-edit `src/lib/settingsSearch/generated.ts` — it is the settings-search index, generated from the tabs (see "Settings tabs are indexed for search"). Change what the tabs render, or the extractor, and let it regenerate.
 - Do not import from `react` or use React patterns — this is Solid.js
 - Do not use heavy CSS selectors (deep descendant chains, universal `*`, expensive attribute matchers, `:not()` with complex arguments) — prefer a dedicated class on the target element
 - **Never add a blocking MTProto request on the chat-open path.** `ChatInput.finishPeerChange` (and any sibling `finishPeerChange` in the chat stack) awaits a `Promise.all` before unfreezing the input — every entry there is paid in chat-open latency. Do NOT add `appPrivacyManager.getGlobalPrivacySettings`, `appProfileManager.getProfile` for unrelated peers, fresh `account.*` fetches, or any new uncached round-trip into that batch. If a feature needs server data, either: (a) read it from a manager-side cache that's already kept warm (e.g. `apiManagerProxy.getAppConfig`, `getPrivacy` after preload, cached userFull), (b) fetch it lazily AFTER the chat renders and reconcile via an event (`peer_full_update`, `privacy_update`, custom dispatched event) + a `update*` helper, or (c) preload at app startup and gate via `rootScope.premium`-style cached flags. The same rule holds for `appImManager.setPeer` listeners and `setChatListeners` — keep them event-driven, never `await managers.*` for a per-peer hot-path render.

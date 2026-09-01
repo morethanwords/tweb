@@ -108,12 +108,12 @@ const Contacts: Component = () => {
 
     openContacts();
 
-    // Replaces the legacy `focus()` / onOpenAfterTimeout — invoked by the
-    // scaffold's onOpenAfterTimeout (see tabs.ts).
-    (tab as any)._focusOnOpen = () => {
+    // Focusing while the tab is still sliding in scrolls it, so the field waits
+    // for the tab to be on screen — the promise the slider resolves for it.
+    tab.shown.then(() => {
       if(IS_MOBILE || !canFocus(true)) return;
       inputSearch.input.focus();
-    };
+    });
   });
 
   onCleanup(() => {

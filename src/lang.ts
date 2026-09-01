@@ -5378,6 +5378,32 @@ const lang = {
   'AuthSessions.RenameDevice': 'Rename current device',
   'AuthSessions.DeviceName': 'Device name',
 
+  // Settings search synonyms. Each `<TitleKey>.SearchKeywords` is a comma-separated
+  // list of words that should find the setting titled `<TitleKey>` — they are
+  // translated with the rest of the pack, so every language gets its own.
+  'ChatBackground.SearchKeywords': 'wallpaper, background, picture',
+  'ColorTheme.SearchKeywords': 'theme, colour, accent, dark mode, night mode',
+  'TextSize.SearchKeywords': 'font, text size, bigger, smaller',
+  'LiteMode.EnableText.SearchKeywords': 'power saving, battery, animations, performance',
+  'General.TimeFormat.SearchKeywords': 'clock, 24 hour, 12 hour, am, pm',
+  'DistanceUnitsTitle.SearchKeywords': 'miles, kilometers, distance, units',
+  'NotificationsPrivateChats.SearchKeywords': 'private, direct messages, dm',
+  'NotificationsGroups.SearchKeywords': 'groups, supergroups',
+  'NotificationsChannels.SearchKeywords': 'channels, broadcast',
+  'ArchiveAndMute.SearchKeywords': 'archive, mute, new chats, spam',
+  'BlockedUsers.SearchKeywords': 'block, blacklist, unblock, ban',
+  'TwoStepVerification.SearchKeywords': '2fa, two step, cloud password, security',
+  'PasscodeLock.Item.Title.SearchKeywords': 'passcode, pin, lock, screen lock',
+  'AutoDeleteMessages.SearchKeywords': 'auto delete, self destruct, ttl, timer',
+  'Privacy.Passkeys.SearchKeywords': 'passkey, webauthn, biometric, fingerprint',
+  'SessionsTitle.SearchKeywords': 'devices, sessions, log out, terminate',
+  'DataSettings.SearchKeywords': 'storage, cache, data usage, auto download, traffic',
+  'StickersName.SearchKeywords': 'stickers, emoji, gifs, masks, reactions',
+  'AccountSettings.Filters.SearchKeywords': 'folders, filters, tabs',
+  'AccountSettings.SpeakersAndCamera.SearchKeywords': 'microphone, camera, speaker, audio, video, devices',
+  'KeyboardShortcuts.Title.SearchKeywords': 'hotkeys, shortcuts, keyboard',
+  'AccountSettings.Language.SearchKeywords': 'language, locale, translation',
+
   'Apply': 'Apply'
 };
 

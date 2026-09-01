@@ -1721,7 +1721,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 
-  public addAccount = async(e: MouseEvent | TouchEvent) => {
+  public addAccount = async(e?: MouseEvent | TouchEvent) => {
     const totalAccounts = await AccountController.getTotalAccounts();
     if(totalAccounts >= MAX_ACCOUNTS) return;
 
@@ -1736,7 +1736,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
     const openTabs = apiManagerProxy.getOpenTabsCount();
 
-    const newTab = e.ctrlKey || e.metaKey || (openTabs <= 1 && isUsingPasscode);
+    const newTab = e?.ctrlKey || e?.metaKey || (openTabs <= 1 && isUsingPasscode);
     if(!newTab) {
       appImManager.goOffline();
 

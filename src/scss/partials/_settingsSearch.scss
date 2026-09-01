@@ -1,0 +1,74 @@
+@use "../shared" as *;
+
+/*
+ * Settings search — a second layer of the Settings tab, cross-faded in over the
+ * settings the way the left sidebar swaps the chat list for its search. Unlike
+ * that one it covers the tab's header as well, so it carries its own.
+ *
+ * The profile scope (`.profile-container`, added by `renderPeerProfile`) sits on
+ * the settings layer rather than on the tab, so its header rules — transparent
+ * bar, white icons, clicks passed through to the avatar gradient — never reach
+ * this layer's plain `.sidebar-header`.
+ */
+
+.settings-container > .settings-layer {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-search-layer {
+  background-color: var(--background-color);
+
+  > .sidebar-header {
+    background-color: var(--surface-color);
+  }
+
+  .input-search {
+    flex: 1;
+    margin-inline-start: .5rem;
+  }
+
+  // the results start a section's worth of space below the field, instead of
+  // touching it
+  .scrollable {
+    padding-top: var(--section-padding-bottom);
+  }
+
+  // the breadcrumbs stay on one line, as they do on iOS
+  .row-subtitle {
+    @include text-overflow();
+  }
+}
+
+/* The row a search result points at, flashed once its section has opened. */
+.is-settings-highlighted {
+  --settings-highlight-color: rgba(var(--primary-color-rgb), .16);
+  animation: settings-highlight 1.6s ease-in-out;
+}
+
+// inside a menu the flash is the item's own hover, so it reads as "this one"
+.btn-menu-item.is-settings-highlighted {
+  --settings-highlight-color: var(--light-secondary-text-color);
+
+  &.danger {
+    --settings-highlight-color: var(--light-danger-color);
+  }
+}
+
+@include animation-level(0) {
+  .is-settings-highlighted {
+    animation: none;
+  }
+}
+
+@keyframes settings-highlight {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+
+  15%,
+  70% {
+    background-color: var(--settings-highlight-color);
+  }
+}

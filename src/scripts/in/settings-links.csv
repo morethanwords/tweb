@@ -1,0 +1,117 @@
+link,path
+tg://settings,Chat List > Hamburger > Settings
+tg://settings/edit,Chat List > Hamburger > Settings > Pencil
+tg://settings/edit/set-photo,Chat List > Hamburger > Settings > Pencil > Click Photo
+tg://settings/edit/first-name,Chat List > Hamburger > Settings > Pencil > First Name
+tg://settings/edit/last-name,Chat List > Hamburger > Settings > Pencil > Last Name
+tg://settings/edit/bio,Chat List > Hamburger > Settings > Pencil > Bio
+tg://settings/edit/birthday,Chat List > Hamburger > Settings > Birthday
+tg://settings/edit/username,Chat List > Hamburger > Settings > Pencil > Username
+tg://settings/edit/add-account,Chat List > Hamburger > Add Account
+tg://settings/edit/log-out,Chat List > Hamburger > Settings > Three-dots > Log Out
+tg://settings/emoji-status,Chat List > Click Emoji Status
+tg://settings/profile-photo,Chat List > Hamburger > Settings > Pencil > Click photo
+tg://settings/my-profile/posts/all-stories,Chat List > Hamburger > My Stories
+tg://settings/my-profile/archived-posts,Chat List > Hamburger > My Stories > three-dot > Show Archive
+tg://settings/saved-messages,Chat List > Hamburger > Saved Messages
+tg://settings/devices,Chat List > Hamburger > Settings > Devices
+tg://settings/devices/terminate-sessions,Chat List > Hamburger > Settings > Devices > Terminate all other sessions
+tg://settings/folders,Chat List > Hamburger > Settings > Chat Folders
+tg://settings/folders/create,Chat List > Hamburger > Settings > Chat Folders > Create FOlder
+tg://settings/folders/add-recommended,Chat List > Hamburger > Settings > Chat Folders > Recommended Folders > Add
+tg://settings/folders/tab-view,Chat List > Hamburger > Settings > Chat Folders > Folders View
+tg://settings/notifications,Chat LIst > Hamburger > Settings > Notifications and Sounds
+tg://settings/notifications/accounts,Chat LIst > Hamburger > Settings > Notifications and Sounds > All Accounts
+tg://settings/notifications/private-chats,Chat LIst > Hamburger > Settings > Notifications and Sounds > Private Chats
+tg://settings/notifications/private-chats/show,Chat LIst > Hamburger > Settings > Notifications and Sounds > Private Chats > Notifications for Private Chats
+tg://settings/notifications/groups,Chat List > Hamburger > Settings > Notifications and Sounds > Group Chats
+tg://settings/notifications/groups/show,Chat List > Hamburger > Settings > Notifications and Sounds > Group Chats > Notifications for Groups
+tg://settings/notifications/channels,Chat List > Hamburger > Settings > Notifications and Sounds > Channels
+tg://settings/notifications/channels/show,Chat List > Hamburger > Settings > Notifications and Sounds > Channels > Notifications for Channels
+tg://settings/notifications/new-contacts,Chat List > Hamburger > Settings > Notifications and Sounds > Contact joined Tewlegram
+tg://settings/privacy,Chat List > Hamburger > Settings > Privacy and Security
+tg://settings/privacy/blocked,Chat List > Hamburger > Settings > Privacy and Security > Blocked Users
+tg://settings/privacy/blocked/block-user,Chat List > Hamburger > Settings > Privacy and Security > Blocked Users > (+)
+tg://settings/privacy/active-websites,Chat List > Hamburger > Settings > Privacy and Security > Connected Websites
+tg://settings/privacy/active-websites/disconnect-all,Chat List > Hamburger > Settings > Privacy and Security > Connected Websites > Disconnect All Websites
+tg://settings/privacy/passcode,Chat List > Hamburger > Settings > Privacy and Security > Passcode Lock
+tg://settings/privacy/passcode/disable,Chat List > Hamburger > Settings > Privacy and Security > Passcode Lock > Turn Passcode Off
+tg://settings/privacy/passcode/change,Chat List > Hamburger > Settings > Privacy and Security > Passcode Lock > Change Passcode
+tg://settings/privacy/passcode/auto-lock,Chat List > Hamburger > Settings > Privacy and Security > Passcode Lock > Auto-l;ock after
+tg://settings/privacy/2sv,Chat List > Hamburger > Settings > Privacy and Security > Two-Step Verification
+tg://settings/privacy/2sv/change,Chat List > Hamburger > Settings > Privacy and Security > Two-Step Verification > Change Password
+tg://settings/privacy/2sv/disable,Chat List > Hamburger > Settings > Privacy and Security > Two-Step Verification > Disable Password
+tg://settings/privacy/2sv/change-email,Chat List > Hamburger > Settings > Two-Step Verification > Change Recovery Email
+tg://settings/privacy/phone-number/,Chat List > Hamburger > Settings > Privacy and Security > Who can see my phone number
+tg://settings/privacy/phone-number/never,Chat List > Hamburger > Settings > Privacy and Security > Who can see my phone number > Exceptions > Never
+tg://settings/privacy/phone-number/always,Chat List > Hamburger > Settings > Privacy and Security > Who can see my phone number > Exceptions > Always
+tg://settings/privacy/last-seen,Chat List > Hamburger > Settings > Privacy and Security > Who can see my last seen time
+tg://settings/privacy/last-seen/never,Chat List > Hamburger > Settings > Privacy and Security > Who can see my last seen time > Exceptions > Never
+tg://settings/privacy/last-seen/always,Chat List > Hamburger > Settings > Privacy and Security > Who can see my last seen time > Exceptions > Always
+tg://settings/privacy/last-seen/hide-read-time,Chat List > Hamburger > Settings > Privacy and Security > Who can see my last seen time > Hide Read Time
+tg://settings/privacy/profile-photos,Chat List > Hamburger > Settings > Privacy and Security > Who can see my profile photos
+tg://settings/privacy/profile-photos/never,Chat List > Hamburger > Settings > Privacy and Security > Who can see my profile photos > Exceptions > Never
+tg://settings/privacy/profile-photos/always,Chat List > Hamburger > Settings > Privacy and Security > Who can see my profile photos > Exceptions > Always
+tg://settings/privacy/bio,Chat List > Hamburger > Settings > Privacy and Security > Bio
+tg://settings/privacy/bio/never,Chat List > Hamburger > Settings > Privacy and Security > Bio > Exceptions > Never
+tg://settings/privacy/bio/always,Chat List > Hamburger > Settings > Privacy and Security > Bio > Exceptions > Always
+tg://settings/privacy/birthday,Chat List > Hamburger > Settings > Privacy and Security > Birthday
+tg://settings/privacy/birthday/never,Chat List > Hamburger > Settings > Privacy and Security > Birthday > Exceptions > Never
+tg://settings/privacy/birthday/always,Chat List > Hamburger > Settings > Privacy and Security > Birthday > Exceptions > Always
+tg://settings/privacy/forwards,Chat List > Hamburger > Settings > Privacy and Security > Who can add a link...
+tg://settings/privacy/forwards/never,Chat List > Hamburger > Settings > Privacy and Security > Who can add a link... > Exceptions > Never
+tg://settings/privacy/forwards/always,Chat List > Hamburger > Settings > Privacy and Security > Who can add a link... > Exceptions > Always
+tg://settings/privacy/calls,Chat List > Hamburger > Settings > Privacy and Security > Who can call me
+tg://settings/privacy/calls/never,Chat List > Hamburger > Settings > Privacy and Security > Who can call me > Exceptions > Never
+tg://settings/privacy/calls/always,Chat List > Hamburger > Settings > Privacy and Security > Who can call me > Exceptions > Always
+tg://settings/privacy/calls/p2p,Chat List > Hamburger > Settings > Privacy and Security > Who can call me > Peer-to-Peer Calls
+tg://settings/privacy/calls/p2p/never,Chat List > Hamburger > Settings > Privacy and Security > Who can call me > Peer-to-Peer Calls > Exceptions > Never
+tg://settings/privacy/calls/p2p/always,Chat List > Hamburger > Settings > Privacy and Security > Who can call me > Peer-to-Peer Calls > Exceptions > Always
+tg://settings/privacy/voice,Chat List > Hamburger > Settings > Privacy and Security > Who can send me voice...
+tg://settings/privacy/voice/never,Chat List > Hamburger > Settings > Privacy and Security > Who can send me voice... > Exceptions > Never
+tg://settings/privacy/voice/always,Chat List > Hamburger > Settings > Privacy and Security > Who can send me voice... > Exceptions > Always
+tg://settings/privacy/messages,Chat List > Hamburger > Settings > Privacy and Security > Who can send me messages
+tg://settings/privacy/messages/set-price,Chat List > Hamburger > Settings > Privacy and Security > Who can send me messages > Set your price
+tg://settings/privacy/messages/remove-fee,Chat List > Hamburger > Settings > Privacy and Security > Who can send me messages > remove fee
+tg://settings/privacy/invites,Chat List > Hamburger > Settings > Privacy and Security > Who can add me
+tg://settings/privacy/invites/never,Chat List > Hamburger > Settings > Privacy and Security > Who can add me > Exceptions > Never
+tg://settings/privacy/invites/always,Chat List > Hamburger > Settings > Privacy and Security > Who can add me > Exceptions > Always
+tg://settings/privacy/data-settings/delete-cloud-drafts,Chat List > Hamburger > Settings > Privacy and Security > Delete all cloud drafts
+tg://settings/privacy/data-settings/clear-payment-info,Chat List > Hamburger > Settings > Privacy and Security > Clear Payment and Shipping Info
+tg://settings/privacy/archive-and-mute,Chat List > Hamburger > Settings > Privacy and Security > Archive and Mute
+tg://settings/data,Chat List > Hamburger > Settings > Data and Storage
+tg://settings/data/auto-download/wifi/enable,Chat List > Hamburger > Settings > Data and Storage > Auto-download Media
+tg://settings/data/auto-download/wifi/photos,Chat List > Hamburger > Settings > Data and Storage > Auto-download Media > Photos
+tg://settings/data/auto-download/wifi/videos,Chat List > Hamburger > Settings > Data and Storage > Auto-download Media > Videos
+tg://settings/data/auto-download/wifi/files,Chat List > Hamburger > Settings > Data and Storage > Auto-download Media > Files
+tg://settings/data/auto-download/reset,Chat List > Hamburger > Settings > Data and Storage > Automatic media download > Reset auto download settings
+tg://settings/data/show-18-content,Chat List > Hamburger > Settings > Privacy and Security > Disable Filtering
+tg://settings/appearance/themes,Chat List > Hamburger > Settings > General Settings > Theme
+tg://settings/appearance/wallpapers,Chat List > Hamburger > Settings > General Settings > Chat Wallpaper
+tg://settings/appearance/wallpapers/set,Chat List > Hamburger > Settings > General Settings > Chat Wallpaper > Set a color
+tg://settings/appearance/wallpapers/choose-photo,Chat List > Hamburger > Settings > General Settings > Chat Wallpaper > Upload Wallpaper
+tg://settings/appearance/night-mode,Chat List > Hamburger > Settings > General Settings > Night
+tg://settings/appearance/auto-night-mode,Chat List > Hamburger > Settings > General Settings > System Default
+tg://settings/appearance/text-size,Chat List > Hamburger > Settings > General Settings > Message Text Size
+tg://settings/appearance/stickers-and-emoji,Chat List > Hamburger > Settings > Stickers and Emoji
+tg://settings/appearance/stickers-and-emoji/emoji/suggest,Chat List > Hamburger > Settings > Stickers and Emoji > Suggest Animated Emoji
+tg://settings/appearance/stickers-and-emoji/emoji/quick-reaction,Chat List > Hamburger > Settings > Stickers and Emoji > Quick Reaction
+tg://settings/appearance/stickers-and-emoji/suggest-by-emoji,Chat List > Hamburger > Settings > Stickers and Emoji > Suggest Stickers by Emoji
+tg://settings/appearance/stickers-and-emoji/large-emoji,Chat List > Hamburger > Settings > Stickers and Emoji > Large Emoji
+tg://settings/appearance/stickers-and-emoji/dynamic-order,Chat List > Hamburger > Settings > Stickers and Emoji > Dynamic Pack Order
+tg://settings/power-saving,Chat List > Hamburger > Settings > Power Saving Mode
+tg://settings/power-saving/videos,Chat List > Hamburger > Settings > Power Saving Mode > Autoplay Videos
+tg://settings/power-saving/gifs,Chat List > Hamburger > Settings > Power Saving Mode > Autoplay GIFs
+tg://settings/power-saving/stickers,Chat List > Hamburger > Settings > Power Saving Mode > Sticker Animations
+tg://settings/power-saving/effects,Chat List > Hamburger > Settings > Power Saving Mode > Interactive Effects
+tg://settings/power-saving/transitions,Chat List > Hamburger > Settings > Power Saving Mode > Interface Animations
+tg://settings/language,Chat List > Hamburger > Settings > Language
+tg://settings/language/show-button,Chat List > Hamburger > Settings > Language > Show Translate Button
+tg://settings/language/translate-chats,Chat List > Hamburger > Settings > Language > Translate Entire Chats
+tg://settings/language/do-not-translate,Chat List > Hamburger > Settings > Language > Do Not Translate
+tg://settings/premium,Chat List > Hamburger > Settings > Telegram Premium
+tg://settings/ton,Chat List > Hamburger > Settings > My TON
+tg://settings/stars,Chat List > Hamburger > Settings > My Stars
+tg://settings/stars/gift,Chat List > Hamburger > Settings > My Stars > Gift Stars to Friends
+tg://settings/send-gift,Chat List > Hamburger > Settings > Send a Gift
+tg://settings/send-gift/self,Chat List > Hamburger > Settings > Send a Gift > Buy yourself a gift

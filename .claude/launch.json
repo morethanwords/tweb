@@ -8,6 +8,12 @@
       "port": 9001
     },
     {
+      "name": "tweb-settings-search",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["scripts/start-preview.sh", "--port", "9005"],
+      "port": 9005
+    },
+    {
       "name": "tweb-debug",
       "runtimeExecutable": "bash",
       "runtimeArgs": ["scripts/start-preview.sh", "--no-worker", "--port", "9011"],

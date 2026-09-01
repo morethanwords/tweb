@@ -1,7 +1,7 @@
 import type {ContactBirthdaysState} from '@appManagers/appPromoManager';
 import PopupElement from '@components/popups';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
-import showPickUserPopup from '@components/popups/pickUser';
+import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import PopupSendGift from '@components/popups/sendGift';
 import RippleElement from '@components/rippleElement';
 import Row from '@components/rowTsx';
@@ -158,11 +158,7 @@ function BirthdayContactsSuggestion(props: {
       return;
     }
 
-    showPickUserPopup({
-      titleLangKey: 'SendGiftTo',
-      placeholder: 'Chat.Menu.SendGift',
-      selfPresence: 'SendGiftSelfCaption',
-      meAsSaved: false,
+    showSendGiftPicker({
       prependPeerIds: nearbyContacts().map(({peerId}) => peerId),
       getSubtitleForElement: (peerId) => {
         const key = todayPeerIds().has(peerId) ? 'Suggestion.BirthdayContacts.Today' :
@@ -170,8 +166,7 @@ function BirthdayContactsSuggestion(props: {
           birthdayPeerIds().has(peerId) ? 'Suggestion.BirthdayContacts.Tomorrow' : undefined;
         return key ? i18n(key) : undefined;
       },
-      onSelect: ([{peerId}]) => openGift(peerId),
-      filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
+      onSelect: ([{peerId}]) => openGift(peerId)
     });
   };
 

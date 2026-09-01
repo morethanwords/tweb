@@ -1,4 +1,5 @@
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import noop from '@helpers/noop';
@@ -37,6 +38,19 @@ export default class SliderSuperTab {
   public middlewareHelper: MiddlewareHelper;
 
   public isConfirmationNeededOnClose: () => void | boolean | Promise<any>; // should return boolean instantly or `Promise` from `confirmationPopup`
+
+  /**
+   * Resolves once the tab has finished sliding in. `open()` awaits the render,
+   * the transition runs after it — the slider resolves this when it is over.
+   */
+  public shown: CancellablePromise<void> = deferredPromise<void>();
+
+  /** A reopened tab slides in again, so what waits on `shown` has to wait anew. */
+  public resetShown() {
+    if(this.shown.isFulfilled) {
+      this.shown = deferredPromise<void>();
+    }
+  }
 
   constructor(slider: SidebarSlider, destroyable?: boolean) {
     this._constructor(slider, destroyable);

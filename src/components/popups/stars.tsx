@@ -15,6 +15,7 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
 import Row from '@components/rowTsx';
+import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import {formatFullSentTime} from '@helpers/date';
 import {avatarNew} from '@components/avatarNew';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -338,6 +339,19 @@ export async function getStarsTransactionTitleAndMedia({
   ]);
 
   return {title, media};
+}
+
+/**
+ * Picks who the stars are for, then opens the top-up for them — the row inside
+ * this popup and `tg://settings/stars/gift` are the same thing.
+ */
+export function showGiftStarsPicker() {
+  return showSendGiftPicker({
+    titleLangKey: 'TelegramStarsGift',
+    onSelect: ([{peerId}]) => {
+      PopupElement.createPopup(PopupStars, {giftPeerId: peerId});
+    }
+  });
 }
 
 export default class PopupStars extends PopupElement {
@@ -809,6 +823,17 @@ export default class PopupStars extends PopupElement {
       </>
     );
 
+    // Gifting stars is buying them for someone else, so it goes with the top-up
+    // options and is out when buying is blocked or this popup is already a gift.
+    const giftSection = !this.purchaseBlocked && !this.ton && !this.giftPeerId && !this.itemPrice && (
+      <Section>
+        <Row clickable={showGiftStarsPicker}>
+          <Row.Icon icon="gift" />
+          <Row.Title>{i18n('TelegramStarsGift')}</Row.Title>
+        </Row>
+      </Section>
+    );
+
     return (
       <>
         {image}
@@ -816,6 +841,7 @@ export default class PopupStars extends PopupElement {
         <div class="popup-stars-title">{title}</div>
         <div class="popup-stars-subtitle">{subtitle}</div>
         {firstSection}
+        {giftSection}
         {starsNeeded() === bigInt.zero && !this.giftPeerId && restSection}
       </>
     );

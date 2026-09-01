@@ -11,6 +11,7 @@ import {existsSync, copyFileSync, readFileSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import devChecks from './scripts/dev-checks.mjs';
+import settingsSearchPlugin from './scripts/settings-search-plugin.mjs';
 import path from 'path';
 
 const rootDir = resolve(__dirname);
@@ -132,6 +133,7 @@ export default defineConfig({
     //   autoname: true // e.g. enable autoname
     // }),
     process.env.VITEST || process.env.TWEB_PREVIEW ? undefined : devChecks(rootDir),
+    process.env.VITEST ? undefined : settingsSearchPlugin(rootDir),
     solidPlugin(),
     handlebarsPlugin as any,
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,

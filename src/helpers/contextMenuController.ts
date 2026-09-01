@@ -37,6 +37,24 @@ class ContextMenuController extends OverlayClickHandler {
     return !!this.element;
   }
 
+  /** Set for one open: see {@link keepNextOpenOnMouseMove}. */
+  private keepOpenOnMouseMove = false;
+  private keepOpenTimeout: number;
+
+  /**
+   * The next menu is opened away from the pointer — from a deep link rather than
+   * a click — so the first mouse move must not close it: there is nothing for the
+   * pointer to be moving away from yet.
+   */
+  public keepNextOpenOnMouseMove() {
+    this.keepOpenOnMouseMove = true;
+
+    // a click that opens nothing (a hidden trigger, a move since mousedown) would
+    // otherwise leave the flag for the next menu the user opens themselves
+    clearTimeout(this.keepOpenTimeout);
+    this.keepOpenTimeout = window.setTimeout(() => this.keepOpenOnMouseMove = false, 1000);
+  }
+
   private onMouseMove = (e: MouseEvent) => {
     const allMenus = [
       ...[...this.additionalMenus].reverse(),
@@ -145,7 +163,11 @@ class ContextMenuController extends OverlayClickHandler {
       this.addEventListener('toggle', onClose, {once: true});
     }
 
-    if(!IS_TOUCH_SUPPORTED) {
+    const keepOpen = this.keepOpenOnMouseMove;
+    this.keepOpenOnMouseMove = false;
+    clearTimeout(this.keepOpenTimeout);
+
+    if(!IS_TOUCH_SUPPORTED && !keepOpen) {
       this.realmWindow.addEventListener('mousemove', this.onMouseMove);
     }
   }

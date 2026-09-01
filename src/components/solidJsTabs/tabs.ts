@@ -81,7 +81,7 @@ export const AppNotificationsTab =
   });
 
 
-export function getEditProfileInitArgs(overwriteConnectedBot?: boolean): Omit<EditProfileTabPayload, 'focusOn'> {
+export function getEditProfileInitArgs(overwriteConnectedBot?: boolean): EditProfileTabPayload {
   return {
     bioMaxLength: rootScope.managers.apiManager.getLimit('bio'),
     user: rootScope.managers.appUsersManager.getSelf(),
@@ -209,10 +209,7 @@ export const AppStickersAndEmojiTab =
 export const AppContactsTab =
   scaffoldSolidJSTab({
     title: 'Contacts',
-    getComponentModule: () => import('../sidebarLeft/tabs/contacts'),
-    onOpenAfterTimeout: function() {
-      (this as any)._focusOnOpen?.();
-    }
+    getComponentModule: () => import('../sidebarLeft/tabs/contacts')
   });
 (AppContactsTab as any).noSame = true;
 
