@@ -936,3 +936,58 @@ describe('registerE2eUserSsrc', () => {
     expect(setSsrcUsers.mock.calls.length).toBe(callsAfterFirst);
   });
 });
+
+describe('legacy group call media allocation', () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  });
+
+  // Conference sources are capped in registerE2eUserSsrcGroup; the legacy SFU
+  // path had no bound at all, so one participant list could demand a decoder
+  // per announced source without limit.
+  function makeLegacyInstance(entryCount: number) {
+    const {instance} = makeInstance();
+    (instance as any).e2e = undefined;
+    const description = installParticipantDescription(instance);
+    description.entries = new Array(entryCount).fill({type: 'audio', direction: 'recvonly'});
+    description.createEntry = vi.fn(() => ({
+      type: 'audio',
+      transceiver: {receiver: {}},
+      setDirection: vi.fn(),
+      setEndpoint: vi.fn(),
+      createTransceiver: vi.fn()
+    }));
+    (instance as any).connections.main.connection = {iceConnectionState: 'connected', addTransceiver: vi.fn()};
+    const report = vi.spyOn(instance as any, 'reportConferenceBug').mockImplementation(() => {});
+    return {description, instance, report};
+  }
+
+  const bobRow = {
+    _: 'groupCallParticipant',
+    peer: {_: 'peerUser', user_id: String(BOB)},
+    pFlags: {},
+    source: 4242,
+    date: 1
+  } as any;
+
+  it('allocates a decoder for a new source while under the cap', () => {
+    const {description, instance, report} = makeLegacyInstance(1023);
+
+    instance.onParticipantUpdate(bobRow);
+
+    expect(description.createEntry).toHaveBeenCalledTimes(1);
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('stops allocating once the server announced more streams than the call can hold', () => {
+    const {description, instance, report} = makeLegacyInstance(1024);
+
+    instance.onParticipantUpdate(bobRow);
+
+    expect(description.createEntry).not.toHaveBeenCalled();
+    expect(report).toHaveBeenCalledWith(
+      'the call server announced more media streams than this call can hold',
+      expect.objectContaining({source: 4242, entries: 1024})
+    );
+  });
+});

@@ -91,9 +91,12 @@ export interface OutboundBroadcast {
 
 export interface ReceiveInboundResult {
   status: CallStatusSnapshot;
-  // `retry` means the future-message buffer could not retain this indexed
-  // item. The host must not advance the subchain cursor.
-  disposition: 'consumed' | 'retry';
+  // `dropped` means the future-broadcast buffer did not retain this item (a
+  // far-future height, or a full buffer with nothing worth evicting). It is
+  // consumed either way: the host advances the subchain cursor and leaves a
+  // breadcrumb. Parking the cursor on such an item stalled every later
+  // verification round.
+  disposition: 'consumed' | 'dropped';
 }
 
 export type WorkerEvent =

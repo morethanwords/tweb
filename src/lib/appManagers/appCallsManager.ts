@@ -78,11 +78,22 @@ export class AppCallsManager extends AppManager {
       this.calls.set(call.id, call as any);
     }
 
+    // A ringing request must reach exactly one tab (one popup, one ringtone):
+    // the least idle tab of this account. Every later state of the call goes
+    // to ALL tabs of the account, like call_signaling — only the tab that owns
+    // the CallInstance acts on it, the rest ignore an unknown call id. Routing
+    // those by idle time as well lost phoneCallDiscarded / phoneCall whenever
+    // the user focused another tab mid-call: the ringing tab rang out the full
+    // timeout, the key exchange never completed.
+    if(call._ !== 'phoneCallRequested') {
+      this.rootScope.dispatchEvent('call_update', call);
+      return call;
+    }
+
     const tabs = appTabsManager.getTabs();
     tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
     const tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
     const anyTab = tabs[0];
-    // this.rootScope.dispatchEvent('call_update', call);
 
     if(tab) {
       MTProtoMessagePort.getInstance<false>().invokeVoid('event', {
@@ -90,7 +101,7 @@ export class AppCallsManager extends AppManager {
         args: [call],
         accountNumber: this.getAccountNumber()
       }, tab.source);
-    } else if(anyTab && call._ !== 'phoneCallEmpty' && call._ !== 'phoneCallDiscarded') {
+    } else if(anyTab) {
       MTProtoMessagePort.getInstance<false>().invokeVoid('callNotification', {
         callerId: call.admin_id,
         callId: call.id,

@@ -38,8 +38,9 @@ import createSerializedQueue from '@helpers/createSerializedQueue';
 // is alive, the watchdog forces recovery. Comfortably past the poll cadences
 // (chain 1.5s, participants 5s) so transient network hiccups don't trip it.
 const E2E_SYNC_STALL_MS = 15000;
-// Ceiling on both active ssrc -> user_id mappings and lifetime remote media
-// allocations. Each source is server-chosen; real conferences are far smaller.
+// Ceiling on active ssrc -> user_id mappings, lifetime conference media
+// allocations and the legacy call's m-lines alike. Each source is
+// server-chosen and costs a transceiver + decoder; real calls are far smaller.
 const MAX_E2E_SSRC_ENTRIES = 1024;
 // Consecutive incomplete roster polls before we surface it. The roster poll is
 // on a 5s timer, so this is ~15s of a server refusing to say who is in the call.
@@ -1444,7 +1445,16 @@ export default class GroupCallInstance extends CallInstanceBase<{
           await this.e2e.applyBlock({serverBlock: block});
         } else {
           const result = await this.e2e.receiveInbound({serverMessage: block});
-          if(result.disposition === 'retry') return;
+          if(result.disposition === 'dropped') {
+            // Consumed all the same: the cursor MUST move past it. Parking on a
+            // broadcast the buffer refused re-delivered it on every poll and
+            // queued every later honest commit/reveal behind it — one message
+            // from any participant silenced the emoji fingerprint for good.
+            this.reportConferenceBug(
+              'a verification broadcast was dropped (far-future height or buffer overflow)',
+              {offset, height: result.status.height}
+            );
+          }
         }
       } catch(err) {
         if(this.conferenceRecoveryDispatched) return;
@@ -3189,6 +3199,17 @@ export default class GroupCallInstance extends CallInstanceBase<{
           modifiedTypes.add(entry.type);
         }
 
+        return;
+      }
+
+      // Conference sources are capped up front in registerE2eUserSsrcGroup;
+      // this is the same bound on the legacy SFU path, where nothing else
+      // limited how many decoders one participant list could demand.
+      if(description.entries.length >= MAX_E2E_SSRC_ENTRIES) {
+        this.reportConferenceBug(
+          'the call server announced more media streams than this call can hold',
+          {source: ssrc.source, entries: description.entries.length}
+        );
         return;
       }
 

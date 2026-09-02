@@ -5,6 +5,7 @@ import {InputGroupCall} from '@layer';
 import {DcId} from '@types';
 import {RTMP_UNIFIED_CHANNEL_ID, RTMP_UNIFIED_QUALITY} from '@lib/calls/constants';
 import {Fmp4InitChunkInfo, generateFmp4Init, generateFmp4Segment} from '@lib/rtmp/fmp4';
+import {scaleToChunkTime} from '@lib/rtmp/utils';
 import ISOBoxer from '@lib/rtmp/isoboxer';
 import {serviceMessagePort, log, invokeVoidAll} from '@lib/serviceWorker/index.service';
 import bigInt from 'big-integer';
@@ -31,6 +32,9 @@ const BUFFER_MS_MIN = 8000;
 const BUFFER_MS_MAX = 10000;
 const BUFFER_MS_START = 5000;
 const OFFSET_MS = 1000;
+// Never fetch more than this per replenish, whatever the buffer arithmetic
+// says — with a valid scale it is at most 40 (5 s of 125 ms chunks).
+const MAX_REPLENISH_CHUNKS = 64;
 
 // seconds to consider stream to be still alive when using hls
 // (since the last time manifest was requested)
@@ -41,11 +45,6 @@ const STREAM_TIMEOUT = 5000;
 
 const MP4_MIME = 'video/mp4';
 const HLS_MIME = 'application/vnd.apple.mpegurl';
-
-function scaleToTime(scale: number) {
-  if(scale < 0) return 1000 << -scale;
-  return 1000 >> scale;
-}
 
 interface BufferedChunk {
   time: bigInt.BigInteger;
@@ -255,7 +254,7 @@ class RtmpStream {
     const thisGeneration = this._generation;
 
     // fetch upcoming chunks
-    const chunksToFetch = clamp(this._bufferSize - this._buffer.length, 0, maxChunks);
+    const chunksToFetch = clamp(this._bufferSize - this._buffer.length, 0, Math.min(maxChunks, MAX_REPLENISH_CHUNKS));
     if(!chunksToFetch) {
       log('skipping replenish - buffer full');
       return;
@@ -545,7 +544,7 @@ class RtmpStream {
     this._cutoff = this._time.minus(BUFFER_MS_MIN);
     // this._lastRequestedTime = this._cutoff;
     this._scale = channel.scale;
-    this._chunkTime = scaleToTime(this._scale);
+    this._chunkTime = scaleToChunkTime(this._scale);
     this._bufferSize = Math.ceil(BUFFER_MS_MIN / this._chunkTime);
     this._dcId = state.dcId;
 

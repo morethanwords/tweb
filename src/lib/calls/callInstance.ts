@@ -7,7 +7,8 @@
  * stopPhoneCall; `!this.p2p` means the engine has not been started / is stopped).
  */
 
-import {gunzipSync, gzipSync} from 'fflate';
+import {gzipSync} from 'fflate';
+import gzipUncompress from '@helpers/gzipUncompress';
 import ctx from '@environment/ctx';
 import assumeType from '@helpers/assumeType';
 import safeAssign from '@helpers/object/safeAssign';
@@ -23,7 +24,7 @@ import getStream from '@lib/calls/helpers/getStream';
 import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import callsController from '@lib/calls/callsController';
 import CALL_STATE from '@lib/calls/callState';
-import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
+import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS, P2P_SIGNALING_MAX_INFLATED_BYTES} from '@lib/calls/constants';
 import getCallProtocol from '@lib/calls/p2P/getCallProtocol';
 import P2PEncryptor from '@lib/calls/p2P/p2PEncryptor';
 import ByteBuf from '@lib/calls/p2P/byteBuf';
@@ -888,9 +889,13 @@ export default class CallInstance extends CallInstanceBase<{
           continue;
         }
 
-        // 13.0.0 (v3): the payload is gzipped (magic 1f 8b); older protocols send it raw
+        // 13.0.0 (v3): the payload is gzipped (magic 1f 8b); older protocols send it raw.
+        // Inflate through the size-bounded streaming path: gunzipSync sizes its
+        // output by the trailer's ISIZE, so the peer could make a 1 MiB packet
+        // reserve gigabytes. tgcalls caps the inflated size the same way.
         const payload = decryptedData[0] === 0x1F && decryptedData[1] === 0x8B ?
-          gunzipSync(decryptedData) : decryptedData;
+          gzipUncompress(decryptedData, false, P2P_SIGNALING_MAX_INFLATED_BYTES) as Uint8Array :
+          decryptedData;
         const str = new TextDecoder().decode(payload);
         let signalingData: P2PMessage;
         try {

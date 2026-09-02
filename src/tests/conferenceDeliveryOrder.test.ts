@@ -197,19 +197,19 @@ describe('deliverE2eChainBlocks', () => {
     expect(offset(instance, 0)).toBe(2);
   });
 
-  it('does not advance the broadcast cursor when the worker asks for a retry', async() => {
+  it('advances the broadcast cursor past a dropped broadcast and reports it', async() => {
     const {instance, receiveInbound} = makeInstance();
-    receiveInbound.mockResolvedValueOnce({disposition: 'retry'});
+    const report = vi.spyOn(instance as any, 'reportConferenceBug').mockImplementation(() => {});
+    receiveInbound.mockResolvedValueOnce({disposition: 'dropped', status: {height: 3}} as any);
 
+    // The dropped item is consumed like any other: the cursor moves on and the
+    // buffered suffix is delivered in the same pass. Parking on it re-delivered
+    // the same item on every poll and stalled every later verification round.
     await deliver(instance, 1, [1, 2], 2);
-    expect(offset(instance, 1)).toBe(0);
-    expect((instance as any).e2eChainPending[1].size).toBe(2);
-
-    // A repeated poll replays the retained exact index, then continues through
-    // the already-buffered suffix without losing either broadcast.
-    await deliver(instance, 1, [1, 2], 2);
-    expect(receiveInbound.mock.calls.map(([{serverMessage}]) => serverMessage[0])).toEqual([1, 1, 2]);
+    expect(receiveInbound.mock.calls.map(([{serverMessage}]) => serverMessage[0])).toEqual([1, 2]);
     expect(offset(instance, 1)).toBe(2);
+    expect((instance as any).e2eChainPending[1].size).toBe(0);
+    expect(report).toHaveBeenCalledTimes(1);
   });
 
   it('buffers accepted chain updates until post-join activation', async() => {

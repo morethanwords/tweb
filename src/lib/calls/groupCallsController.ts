@@ -277,163 +277,230 @@ export class GroupCallsController extends EventListenerBase<{
         managers: this.managers
       });
 
-      currentGroupCall.fixSafariAudio();
+      try {
+        currentGroupCall.fixSafariAudio();
 
-      currentGroupCall.addEventListener('state', (state) => {
-        if(this.currentGroupCall === currentGroupCall && state === GROUP_CALL_STATE.CLOSED) {
-          this.setCurrentGroupCall(null);
-          this.stopConnectingSound();
-          this.audioAsset.play({name: 'end'});
-          rootScope.dispatchEvent('chat_update', currentGroupCall.chatId);
-        }
-      });
-
-      currentGroupCall.groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
-
-      const connectionInstance = currentGroupCall.createConnectionInstance({
-        streamManager,
-        type,
-        options: {
-          type,
-          isMuted: muted,
-          joinVideo,
-          rejoin
-        }
-      });
-
-      const connection = connectionInstance.createPeerConnection();
-      let initialNegotiationCompleted = false;
-      connection.addEventListener('negotiationneeded', () => {
-        void connectionInstance.requestNegotiation().catch((err) => {
-          // The explicit initial request below observes its own failure and
-          // lets the join transaction roll back. Later dirty negotiations are
-          // event-owned and must fail closed instead of rejecting unobserved.
-          if(!initialNegotiationCompleted ||
-             this.currentGroupCall !== currentGroupCall ||
-             currentGroupCall.isClosing) {
-            return;
+        currentGroupCall.addEventListener('state', (state) => {
+          if(this.currentGroupCall === currentGroupCall && state === GROUP_CALL_STATE.CLOSED) {
+            this.setCurrentGroupCall(null);
+            this.stopConnectingSound();
+            this.audioAsset.play({name: 'end'});
+            rootScope.dispatchEvent('chat_update', currentGroupCall.chatId);
           }
-          log.error('group call runtime negotiation failed', err);
-          this.hangUpAfterTransportFailure(currentGroupCall);
         });
-      });
 
-      connection.addEventListener('track', (event) => {
-        log('ontrack', event);
-        currentGroupCall.onTrack(event);
-      });
+        currentGroupCall.groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(groupCallId);
 
-      // Media-transport watchdog. GroupCallInstance.connectionState (and thus the
-      // call UI) reports the ICE state ONLY, so a call where ICE reaches
-      // `connected` but the RTCPeerConnection never does — the DTLS handshake
-      // stalls, observed on restrictive networks / some VPNs — looks "connected"
-      // while NO media ever flows: black video tiles, silence, the SFU data
-      // channel never opens, no error anywhere. Watch the REAL connectionState
-      // (which only flips to `connected` once DTLS completes) and, if it doesn't
-      // get there shortly after ICE does, surface it and end the dead call
-      // instead of leaving the user staring at a silent black call.
-      let connectionWatchdog: number;
-      const clearConnectionWatchdog = () => {
-        if(connectionWatchdog) {
-          clearTimeout(connectionWatchdog);
-          connectionWatchdog = undefined;
-        }
-      };
-      const armConnectionWatchdog = () => {
-        clearConnectionWatchdog();
-        connectionWatchdog = window.setTimeout(() => {
-          connectionWatchdog = undefined;
-          const {connectionState} = connection;
-          if(connectionState === 'connected') return;
-          if(this.currentGroupCall !== currentGroupCall) return;
-          log.warn('media transport stall: ICE connected but connectionState =', connectionState, '— ending call');
-          currentGroupCall.reportMediaTransportStall({connectionState, iceConnectionState: connection.iceConnectionState});
-          this.hangUpAfterTransportFailure(currentGroupCall);
-        }, CONNECTION_ESTABLISH_TIMEOUT_MS);
-      };
-
-      connection.addEventListener('connectionstatechange', () => {
-        const {connectionState} = connection;
-        if(connectionState === 'connected') {
-          clearConnectionWatchdog();
-        } else if(connectionState === 'failed') {
-          // ICE can sit at `connected` while DTLS fails, so the ICE 'failed'
-          // branch below never fires — end the call on a failed transport here.
-          clearConnectionWatchdog();
-          this.hangUpAfterTransportFailure(currentGroupCall);
-        }
-      });
-
-      connection.addEventListener('iceconnectionstatechange', () => {
-        currentGroupCall.dispatchEvent('state', currentGroupCall.state);
-
-        const {iceConnectionState} = connection;
-        if(iceConnectionState === 'disconnected' || iceConnectionState === 'checking' || iceConnectionState === 'new') {
-          this.startConnectingSound();
-        } else {
-          this.stopConnectingSound();
-        }
-
-        switch(iceConnectionState) {
-          case 'checking': {
-            break;
+        const connectionInstance = currentGroupCall.createConnectionInstance({
+          streamManager,
+          type,
+          options: {
+            type,
+            isMuted: muted,
+            joinVideo,
+            rejoin
           }
+        });
 
-          case 'closed': {
+        const connection = connectionInstance.createPeerConnection();
+        let initialNegotiationCompleted = false;
+        connection.addEventListener('negotiationneeded', () => {
+          void connectionInstance.requestNegotiation().catch((err) => {
+            // The explicit initial request below observes its own failure and
+            // lets the join transaction roll back. Later dirty negotiations are
+            // event-owned and must fail closed instead of rejecting unobserved.
+            if(!initialNegotiationCompleted ||
+               this.currentGroupCall !== currentGroupCall ||
+               currentGroupCall.isClosing) {
+              return;
+            }
+            log.error('group call runtime negotiation failed', err);
+            this.hangUpAfterTransportFailure(currentGroupCall);
+          });
+        });
+
+        connection.addEventListener('track', (event) => {
+          log('ontrack', event);
+          currentGroupCall.onTrack(event);
+        });
+
+        // Media-transport watchdog. GroupCallInstance.connectionState (and thus the
+        // call UI) reports the ICE state ONLY, so a call where ICE reaches
+        // `connected` but the RTCPeerConnection never does — the DTLS handshake
+        // stalls, observed on restrictive networks / some VPNs — looks "connected"
+        // while NO media ever flows: black video tiles, silence, the SFU data
+        // channel never opens, no error anywhere. Watch the REAL connectionState
+        // (which only flips to `connected` once DTLS completes) and, if it doesn't
+        // get there shortly after ICE does, surface it and end the dead call
+        // instead of leaving the user staring at a silent black call.
+        let connectionWatchdog: number;
+        const clearConnectionWatchdog = () => {
+          if(connectionWatchdog) {
+            clearTimeout(connectionWatchdog);
+            connectionWatchdog = undefined;
+          }
+        };
+        const armConnectionWatchdog = () => {
+          clearConnectionWatchdog();
+          connectionWatchdog = window.setTimeout(() => {
+            connectionWatchdog = undefined;
+            const {connectionState} = connection;
+            if(connectionState === 'connected') return;
+            if(this.currentGroupCall !== currentGroupCall) return;
+            log.warn('media transport stall: ICE connected but connectionState =', connectionState, '— ending call');
+            currentGroupCall.reportMediaTransportStall({connectionState, iceConnectionState: connection.iceConnectionState});
+            this.hangUpAfterTransportFailure(currentGroupCall);
+          }, CONNECTION_ESTABLISH_TIMEOUT_MS);
+        };
+
+        connection.addEventListener('connectionstatechange', () => {
+          const {connectionState} = connection;
+          if(connectionState === 'connected') {
+            clearConnectionWatchdog();
+          } else if(connectionState === 'failed') {
+            // ICE can sit at `connected` while DTLS fails, so the ICE 'failed'
+            // branch below never fires — end the call on a failed transport here.
             clearConnectionWatchdog();
             this.hangUpAfterTransportFailure(currentGroupCall);
-            break;
+          }
+        });
+
+        connection.addEventListener('iceconnectionstatechange', () => {
+          currentGroupCall.dispatchEvent('state', currentGroupCall.state);
+
+          const {iceConnectionState} = connection;
+          if(iceConnectionState === 'disconnected' || iceConnectionState === 'checking' || iceConnectionState === 'new') {
+            this.startConnectingSound();
+          } else {
+            this.stopConnectingSound();
           }
 
-          case 'completed': {
-            break;
-          }
-
-          case 'connected': {
-            // ICE is up; give DTLS a bounded window to finish (see watchdog above).
-            armConnectionWatchdog();
-
-            if(!currentGroupCall.joined) {
-              currentGroupCall.joined = true;
-              this.audioAsset.play({name: 'start'});
-              void this.managers.appGroupCallsManager.getGroupCallParticipants(groupCallId).catch((err) => {
-                log.warn('initial group call participant fetch failed', err);
-              });
+          switch(iceConnectionState) {
+            case 'checking': {
+              break;
             }
 
-            break;
+            case 'closed': {
+              clearConnectionWatchdog();
+              this.hangUpAfterTransportFailure(currentGroupCall);
+              break;
+            }
+
+            case 'completed': {
+              break;
+            }
+
+            case 'connected': {
+              // ICE is up; give DTLS a bounded window to finish (see watchdog above).
+              armConnectionWatchdog();
+
+              if(!currentGroupCall.joined) {
+                currentGroupCall.joined = true;
+                this.audioAsset.play({name: 'start'});
+                void this.managers.appGroupCallsManager.getGroupCallParticipants(groupCallId).catch((err) => {
+                  log.warn('initial group call participant fetch failed', err);
+                });
+              }
+
+              break;
+            }
+
+            case 'disconnected': {
+              break;
+            }
+
+            case 'failed': {
+              clearConnectionWatchdog();
+              // TODO: replace with ICE restart
+              this.hangUpAfterTransportFailure(currentGroupCall);
+              // connection.restartIce();
+              break;
+            }
+
+            case 'new': {
+              break;
+            }
           }
+        });
 
-          case 'disconnected': {
-            break;
-          }
+        connectionInstance.createDescription();
+        connectionInstance.createDataChannel();
 
-          case 'failed': {
-            clearConnectionWatchdog();
-            // TODO: replace with ICE restart
-            this.hangUpAfterTransportFailure(currentGroupCall);
-            // connection.restartIce();
-            break;
-          }
+        await connectionInstance.appendStreamToConference();
 
-          case 'new': {
-            break;
-          }
-        }
-      });
+        this.setCurrentGroupCall(currentGroupCall);
+        log('set currentGroupCall', groupCallId, currentGroupCall);
 
-      connectionInstance.createDescription();
-      connectionInstance.createDataChannel();
+        this.startConnectingSound();
 
-      await connectionInstance.appendStreamToConference();
+        await connectionInstance.requestNegotiation();
+        initialNegotiationCompleted = true;
+      } catch(err) {
+        // The microphone (and camera) were captured before this join started
+        // and nothing owns them yet when it fails here — the instance is not
+        // current, so no UI could release them. Undo the whole join instead of
+        // leaving the capture live until a reload.
+        await this.rollbackFailedJoin({
+          instance: currentGroupCall,
+          connectionInstance: currentGroupCall.connections.main,
+          streamManager
+        });
+        throw err;
+      }
+    }
+  }
 
-      this.setCurrentGroupCall(currentGroupCall);
-      log('set currentGroupCall', groupCallId, currentGroupCall);
+  // Undo everything a failed join built — close media, release the
+  // microphone/camera, drop the instance — and compensate a
+  // phone.joinGroupCall the server already accepted (it may have installed our
+  // participant and source even though worker commit, SDP parsing or
+  // remote-description setup failed afterwards). Compensates exactly once;
+  // teardown first keeps capture closed while the best-effort leave is in
+  // flight. Shared by the legacy and conference joins.
+  private async rollbackFailedJoin(opts: {
+    instance?: GroupCallInstance,
+    connectionInstance?: GroupCallConnectionInstance,
+    streamManager: StreamManager,
+    acceptedCall?: InputGroupCall,
+    discard?: boolean
+  }): Promise<void> {
+    const {instance, connectionInstance, streamManager} = opts;
+    this.stopConnectingSound();
+    if(!instance) {
+      streamManager.stop();
+      return;
+    }
 
-      this.startConnectingSound();
+    const connectionTypes = Object.keys(instance.connections) as GroupCallConnectionType[];
+    for(const type of connectionTypes) {
+      instance.connections[type].closeConnectionAndStream(true);
+    }
+    // A join that failed before createConnectionInstance has no connection to
+    // stop the stream through.
+    if(!connectionTypes.length) streamManager.stop();
+    if(this.currentGroupCall === instance) {
+      instance.dispatchEvent('state', GROUP_CALL_STATE.CLOSED);
+      if(this.currentGroupCall === instance) this.setCurrentGroupCall(null);
+    }
+    instance.cleanup();
 
-      await connectionInstance.requestNegotiation();
-      initialNegotiationCompleted = true;
+    if(!connectionInstance?.joinAccepted) return;
+    const acceptedCall = connectionInstance.acceptedCallInput ??
+      opts.acceptedCall ??
+      instance.toInputGroupCall();
+    if(!acceptedCall) return;
+    try {
+      if(opts.discard) {
+        await this.managers.appGroupCallsManager.discardGroupCall(acceptedCall);
+      } else {
+        const source = connectionInstance.sources.audio?.source;
+        await this.managers.appGroupCallsManager.leaveGroupCall(
+          acceptedCall,
+          typeof source === 'number' ? source : 0
+        );
+      }
+    } catch(leaveError) {
+      this.log.warn('conference post-accept rollback failed', leaveError);
     }
   }
 
@@ -898,45 +965,13 @@ export class GroupCallsController extends EventListenerBase<{
       }, 0);
       return instance;
     } catch(err) {
-      this.stopConnectingSound();
-      if(instance) {
-        for(const type in instance.connections) {
-          instance.connections[type as GroupCallConnectionType].closeConnectionAndStream(true);
-        }
-        if(this.currentGroupCall === instance) {
-          instance.dispatchEvent('state', GROUP_CALL_STATE.CLOSED);
-          if(this.currentGroupCall === instance) this.setCurrentGroupCall(null);
-        }
-        instance.cleanup();
-
-        // phone.joinGroupCall may already have installed our participant and
-        // source even though worker commit, SDP parsing or remote-description
-        // setup failed afterwards. Compensate that accepted mutation exactly
-        // once; teardown above keeps the camera/microphone closed while the
-        // best-effort leave is in flight. Preserve the original error.
-        if(connectionInstance?.joinAccepted) {
-          const acceptedCall = connectionInstance.acceptedCallInput ??
-            opts.input ??
-            instance.toInputGroupCall();
-          try {
-            if(acceptedCall) {
-              if(opts.createConference) {
-                await this.managers.appGroupCallsManager.discardGroupCall(acceptedCall);
-              } else {
-                const source = connectionInstance.sources.audio?.source;
-                await this.managers.appGroupCallsManager.leaveGroupCall(
-                  acceptedCall,
-                  typeof source === 'number' ? source : 0
-                );
-              }
-            }
-          } catch(leaveError) {
-            this.log.warn('conference post-accept rollback failed', leaveError);
-          }
-        }
-      } else {
-        streamManager.stop();
-      }
+      await this.rollbackFailedJoin({
+        instance,
+        connectionInstance,
+        streamManager,
+        acceptedCall: opts.input,
+        discard: opts.createConference
+      });
       await opts.worker.terminate().catch((): undefined => undefined);
       throw err;
     }

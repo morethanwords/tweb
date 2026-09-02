@@ -1512,3 +1512,59 @@ describe('GroupCallsController conference transactions', () => {
     await first;
   });
 });
+
+describe('GroupCallsController legacy join rollback', () => {
+  beforeEach(() => {
+    callMocks.instances.length = 0;
+    callMocks.negotiationError = undefined;
+    callMocks.joinAccepted = false;
+    callMocks.acceptedCallInput = undefined;
+    callMocks.createMainStreamManager.mockReset();
+    // The legacy state listener announces the closed call to the chat list
+    // through the (absent here) worker port.
+    vi.spyOn(rootScope, 'dispatchEvent').mockImplementation((() => {}) as any);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // The microphone is captured before the join starts. Until the instance is
+  // current there is no UI that could release it, so a failed join must undo
+  // the capture itself — it used to stay live until a reload.
+  it('releases the captured microphone when the call cannot even be fetched', async() => {
+    const {appGroupCallsManager, controller} = makeController();
+    const streamManager = {stop: vi.fn()};
+    callMocks.createMainStreamManager.mockResolvedValue(streamManager);
+    const fetchError = new Error('GROUPCALL_INVALID');
+    appGroupCallsManager.getGroupCallFull.mockRejectedValueOnce(fetchError);
+
+    await expect(controller.joinGroupCall(99 as ChatId, INPUT.id as any, true)).rejects.toBe(fetchError);
+
+    expect(streamManager.stop).toHaveBeenCalledTimes(1);
+    expect(callMocks.instances[0].cleanup).toHaveBeenCalledTimes(1);
+    expect(controller.groupCall).toBeFalsy();
+    expect(appGroupCallsManager.leaveGroupCall).not.toHaveBeenCalled();
+  });
+
+  it('tears the transport down and leaves once when negotiation fails after the server accepted the join', async() => {
+    const {appGroupCallsManager, controller} = makeController();
+    const streamManager = {stop: vi.fn()};
+    callMocks.createMainStreamManager.mockResolvedValue(streamManager);
+    const sdpError = new Error('setRemoteDescription failed');
+    callMocks.negotiationError = sdpError;
+    callMocks.joinAccepted = true;
+    callMocks.acceptedCallInput = INPUT;
+
+    await expect(controller.joinGroupCall(99 as ChatId, INPUT.id as any, true)).rejects.toBe(sdpError);
+
+    const instance = callMocks.instances[0];
+    const connectionInstance = instance.connections.main;
+    expect(connectionInstance.closeConnectionAndStream).toHaveBeenCalledWith(true);
+    expect(streamManager.stop).toHaveBeenCalledTimes(1);
+    expect(instance.cleanup).toHaveBeenCalledTimes(1);
+    expect(appGroupCallsManager.leaveGroupCall).toHaveBeenCalledTimes(1);
+    expect(appGroupCallsManager.leaveGroupCall).toHaveBeenCalledWith(INPUT, 777);
+    expect(controller.groupCall).toBeFalsy();
+  });
+});

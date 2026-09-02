@@ -196,7 +196,10 @@ export class CallsController extends EventListenerBase<{
           break;
         }
         if(instance.isClosing) break;
-        if(call.key_fingerprint !== key_fingerprint) {
+        // The server's long arrives as a JS number whenever it fits 53 bits
+        // (fetchLong), the local one is always a decimal string — a strict
+        // compare dropped one correct incoming call in a thousand.
+        if(String(call.key_fingerprint) !== key_fingerprint) {
           this.log.error('Incorrect key fingerprint', call.key_fingerprint, key_fingerprint, g_a, dh);
           await instance.hangUp('phoneCallDiscardReasonDisconnect');
           break;

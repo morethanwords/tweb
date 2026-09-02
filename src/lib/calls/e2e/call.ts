@@ -309,12 +309,18 @@ const FORGET_EPOCH_DELAY_MS = 10_000;
 // yet are buffered and replayed once the chain catches up (tdlib
 // delayed_broadcasts_). One complete 200-member round can legitimately have
 // 200 commits followed by 200 reveals buffered before its main block arrives.
-// Anything beyond the bound is NOT consumed: the indexed subchain cursor stays
-// put and retries it after the main chain catches up.
+// A broadcast cannot be authenticated before its block is applied (the
+// signer's key lives in that block's group state), so the bound is structural:
+// one commit and one reveal per (height, sender), heights within a short
+// horizon, and eviction (see evictDelayedBroadcast) once the total is hit.
+// Whatever does not fit is CONSUMED AND DROPPED — the indexed subchain cursor
+// always advances. Refusing an item used to park the cursor on it: every poll
+// re-delivered the same far-future commit, every later honest commit/reveal
+// queued behind it, and the emoji fingerprint never completed again.
 const MAX_DELAYED_FUTURE_HEIGHTS = 16;
 const MAX_DELAYED_BROADCASTS = 400;
 
-export type InboundMessageDisposition = 'consumed' | 'retry';
+export type InboundMessageDisposition = 'consumed' | 'dropped';
 
 interface EpochCleanupEntry {
   epochHash: Uint8Array;
@@ -677,7 +683,7 @@ export class E2eCall {
   private async deliverBroadcast(broadcast: GroupBroadcast): Promise<InboundMessageDisposition> {
     if(!this.verification) return 'consumed';
     if(broadcast.chainHeight > this.verification.height) {
-      return this.bufferDelayedBroadcast(broadcast) ? 'consumed' : 'retry';
+      return this.bufferDelayedBroadcast(broadcast) ? 'consumed' : 'dropped';
     }
     // Current-or-stale height: the verification chain validates height + hash
     // itself and drops stale ones.
@@ -689,22 +695,55 @@ export class E2eCall {
     return 'consumed';
   }
 
+  // Returns false when the broadcast was not retained (the caller reports it).
   private bufferDelayedBroadcast(broadcast: GroupBroadcast): boolean {
     if(!this.verification) return true;
-    // Bound against a flood without acknowledging data we did not retain. The
-    // caller owns an indexed cursor and retries the same item once main-chain
-    // progress makes it admissible.
-    if(broadcast.chainHeight > this.verification.height + MAX_DELAYED_FUTURE_HEIGHTS) return false;
+    const {chainHeight} = broadcast;
+    if(chainHeight > this.verification.height + MAX_DELAYED_FUTURE_HEIGHTS) return false;
+
+    let list = this.delayedBroadcasts.get(chainHeight);
+    // One commit and one reveal per sender is all a round can use of a height.
+    if(list?.some((b) => b.kind === broadcast.kind && b.userId === broadcast.userId)) return true;
+
     let total = 0;
-    for(const list of this.delayedBroadcasts.values()) total += list.length;
-    if(total >= MAX_DELAYED_BROADCASTS) return false;
-    let list = this.delayedBroadcasts.get(broadcast.chainHeight);
+    for(const entries of this.delayedBroadcasts.values()) total += entries.length;
+    if(total >= MAX_DELAYED_BROADCASTS && !this.evictDelayedBroadcast(broadcast)) return false;
+
     if(!list) {
       list = [];
-      this.delayedBroadcasts.set(broadcast.chainHeight, list);
+      this.delayedBroadcasts.set(chainHeight, list);
     }
     list.push(broadcast);
     return true;
+  }
+
+  // Make room for `incoming` in a full buffer. Nothing in it is authenticated
+  // yet, so drop what a flood is made of first: an entry whose sender is not a
+  // current member, farthest height first. Failing that, only a member's
+  // broadcast is worth displacing another member's — from the farthest height,
+  // and never when the newcomer is the farthest itself.
+  private evictDelayedBroadcast(incoming: GroupBroadcast): boolean {
+    const members = new Set(this.state.groupState.participants.map((p) => p.userId));
+    const heights = [...this.delayedBroadcasts.keys()].sort((a, b) => b - a);
+    for(const height of heights) {
+      const list = this.delayedBroadcasts.get(height)!;
+      const index = list.findIndex((b) => !members.has(b.userId));
+      if(index === -1) continue;
+      this.removeDelayedBroadcast(height, index);
+      return true;
+    }
+
+    if(!members.has(incoming.userId)) return false;
+    const farthest = heights[0];
+    if(farthest === undefined || farthest <= incoming.chainHeight) return false;
+    this.removeDelayedBroadcast(farthest, this.delayedBroadcasts.get(farthest)!.length - 1);
+    return true;
+  }
+
+  private removeDelayedBroadcast(height: number, index: number): void {
+    const list = this.delayedBroadcasts.get(height)!;
+    list.splice(index, 1);
+    if(!list.length) this.delayedBroadcasts.delete(height);
   }
 
   // After the chain advances to a new tip, replay buffered broadcasts for that

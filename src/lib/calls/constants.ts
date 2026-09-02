@@ -24,6 +24,11 @@ export const RTMP_UNIFIED_QUALITY = GroupCallVideoQuality.Full;
 export const E2E_MAIN_CHANNEL_ID = 0;
 export const E2E_SCREENCAST_CHANNEL_ID = 1;
 
+// Inbound 1-on-1 signaling is gzipped by the peer (tgcalls 13.0.0). Bound the
+// inflated size the way tgcalls does (InstanceV2Impl.cpp gunzipData, 2 MiB) so
+// an authenticated peer cannot turn a 1 MiB packet into a gigabyte in the tab.
+export const P2P_SIGNALING_MAX_INFLATED_BYTES = 2 * 1024 * 1024;
+
 // How long a call may ring before it is given up on — the 1-on-1 request /
 // accept window and, for want of the server's `call_ring_timeout_ms`, the age
 // past which an incoming conference invitation is no longer offered.

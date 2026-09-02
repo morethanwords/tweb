@@ -17,6 +17,12 @@ import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 import {UpdateGroupCallConnectionData} from '@lib/calls/types';
 import {InputGroupCall} from '@layer';
 
+// The server decides how many video participants it announces, so what we ask
+// it to forward must not scale with that: the pinned tile at full quality, grid
+// tiles at medium, and no more than this many on stage at once (tgcalls
+// requests only the visible tiles, by tier).
+const MAX_ON_STAGE_VIDEO_ENDPOINTS = 16;
+
 export default class GroupCallConnectionInstance extends CallConnectionInstanceBase {
   private groupCall: GroupCallInstance;
   public updateConstraints?: boolean;
@@ -549,17 +555,17 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       onStageEndpoints: []
     };
 
-    for(const entry of this.description.entries) {
-      if(entry.direction !== 'recvonly' || entry.type !== 'video') {
-        continue;
-      }
-
+    const pinnedSource = this.groupCall?.pinnedSource;
+    const videoEntries = this.description.entries.filter((entry) => {
+      return entry.direction === 'recvonly' && entry.type === 'video';
+    });
+    videoEntries.sort((a, b) => Number(b.source === pinnedSource) - Number(a.source === pinnedSource));
+    for(const entry of videoEntries.slice(0, MAX_ON_STAGE_VIDEO_ENDPOINTS)) {
       const {endpoint} = entry;
       obj.onStageEndpoints.push(endpoint);
-      obj.constraints[endpoint] = {
-        minHeight: 180,
-        maxHeight: 720
-      };
+      obj.constraints[endpoint] = entry.source === pinnedSource ?
+        {minHeight: 180, maxHeight: 720} :
+        {minHeight: 180, maxHeight: 360};
     }
 
     this.sendDataChannelData(obj);

@@ -617,19 +617,38 @@ describe('E2eCall — verification broadcast reordering', () => {
     expect(delayed.get(1)).toHaveLength(200);
   });
 
-  it('asks the indexed caller to retry overflow and far-future broadcasts', async() => {
+  it('drops overflow and far-future broadcasts instead of stalling the cursor', async() => {
     const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(0x75));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(0x76));
     const aliceId = BigInt(7500);
+    const bobId = BigInt(7600);
     const zero = await E2eCall.createZeroBlock(alice, {
-      participants: [participantFor(aliceId, alice)],
+      participants: [participantFor(aliceId, alice), participantFor(bobId, bob)],
       externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
     });
     const call = await E2eCall.create(aliceId, alice, zero);
+    const delayed = (call as unknown as {delayedBroadcasts: Map<number, Array<{userId: bigint}>>}).delayedBroadcasts;
 
-    await expect(call.receiveInbound(futureCommit(BigInt(9999), 17))).resolves.toBe('retry');
+    // Beyond the height horizon: consumed and dropped, never a "retry" that
+    // would park the subchain cursor on it for the rest of the call.
+    await expect(call.receiveInbound(futureCommit(BigInt(9999), 17))).resolves.toBe('dropped');
+    expect(delayed.size).toBe(0);
+
+    // A flood of commits from senders that are not members fills the buffer…
     for(let i = 0; i < 400; ++i) {
       await expect(call.receiveInbound(futureCommit(BigInt(10000 + i), 1))).resolves.toBe('consumed');
     }
-    await expect(call.receiveInbound(futureCommit(BigInt(10400), 1))).resolves.toBe('retry');
+    expect(delayed.get(1)).toHaveLength(400);
+    // …a member's commit still gets in by evicting one of them…
+    await expect(call.receiveInbound(futureCommit(bobId, 1))).resolves.toBe('consumed');
+    expect(delayed.get(1)).toHaveLength(400);
+    expect(delayed.get(1).some((b) => b.userId === bobId)).toBe(true);
+    // …further flood entries replace each other, never the member's…
+    await expect(call.receiveInbound(futureCommit(BigInt(10400), 1))).resolves.toBe('consumed');
+    expect(delayed.get(1)).toHaveLength(400);
+    expect(delayed.get(1).some((b) => b.userId === bobId)).toBe(true);
+    // …and a sender's repeated commit for one height is not buffered twice.
+    await expect(call.receiveInbound(futureCommit(bobId, 1))).resolves.toBe('consumed');
+    expect(delayed.get(1).filter((b) => b.userId === bobId)).toHaveLength(1);
   });
 });

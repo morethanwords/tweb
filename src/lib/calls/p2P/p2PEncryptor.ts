@@ -9,7 +9,9 @@ import bufferConcats from '@helpers/bytes/bufferConcats';
 import subtle from '@lib/crypto/subtle';
 import sha256 from '@lib/crypto/utils/sha256';
 
-const kMaxIncomingPacketSize = 128 * 1024 * 1024;
+// tgcalls EncryptedConnection.cpp: "don't try decrypting more". Signaling is a
+// few KiB of gzipped JSON; the old 128 MiB cap only bounded the tab's memory.
+const kMaxIncomingPacketSize = 128 * 1024;
 
 export default class P2PEncryptor {
   private type: 'Signaling';

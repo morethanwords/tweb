@@ -1,6 +1,6 @@
 import {Decompress, decompressSync} from 'fflate';
 
-export default function gzipUncompress(bytes: ArrayBuffer, toString?: boolean, maxSize?: number): string | Uint8Array {
+export default function gzipUncompress(bytes: ArrayBuffer | Uint8Array, toString?: boolean, maxSize?: number): string | Uint8Array {
   let result: Uint8Array;
 
   if(maxSize === undefined) {
