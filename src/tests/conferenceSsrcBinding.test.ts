@@ -17,6 +17,7 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 import GroupCallInstance, {e2eSourcesOf} from '@lib/calls/groupCallInstance';
+import rootScope from '@lib/rootScope';
 import LocalConferenceDescription, {generateSsrc} from '@lib/calls/localConferenceDescription';
 
 const CALL_ID = 'ssrc-test' as any;
@@ -989,5 +990,72 @@ describe('legacy group call media allocation', () => {
       'the call server announced more media streams than this call can hold',
       expect.objectContaining({source: 4242, entries: 1024})
     );
+  });
+});
+
+describe('own send sources', () => {
+  function installOwnAudioEntry(entries: Map<number, any>) {
+    const own = {source: 1, peerId: 42 as PeerId, direction: 'sendonly', originalDirection: 'sendonly', type: 'audio'};
+    entries.set(1, own);
+    return own;
+  }
+
+  function remoteRow(pFlags: Record<string, true> = {}) {
+    return {
+      _: 'groupCallParticipant',
+      peer: {_: 'peerUser', user_id: String(BOB)},
+      pFlags,
+      source: 1,
+      date: 1
+    } as any;
+  }
+
+  it('does not let a remote row claim one of our own send sources', () => {
+    const {instance, entries, setEntryPeerId} = makeInstance();
+    const description = installParticipantDescription(instance);
+    const own = installOwnAudioEntry(entries);
+    const reportConferenceBug = vi.spyOn(instance as any, 'reportConferenceBug');
+
+    instance.onParticipantUpdate(remoteRow());
+
+    expect(reportConferenceBug).toHaveBeenCalledTimes(1);
+    expect(setEntryPeerId).not.toHaveBeenCalled();
+    expect(own.peerId).toBe(42);
+    expect(own.direction).toBe('sendonly');
+    expect(description.createEntry).not.toHaveBeenCalled();
+    expect((instance as any).connections.main.requestNegotiation).not.toHaveBeenCalled();
+    expect((instance as any).e2eUserBySsrc.has(1)).toBe(false);
+    expect((instance as any).participantsSsrcs.get(Number(BOB) as PeerId)).toEqual([]);
+  });
+
+  it('keeps our send entry active when the claiming participant later leaves', () => {
+    const {instance, entries} = makeInstance();
+    installParticipantDescription(instance);
+    const own = installOwnAudioEntry(entries);
+    vi.spyOn(instance as any, 'reportConferenceBug');
+
+    instance.onParticipantUpdate(remoteRow());
+    instance.onParticipantUpdate(remoteRow({left: true}));
+
+    expect(own.direction).toBe('sendonly');
+    expect((instance as any).connections.main.requestNegotiation).not.toHaveBeenCalled();
+  });
+
+  it('recognises our entry by peerId once it went inactive', () => {
+    const {instance, entries, setEntryPeerId} = makeInstance();
+    installParticipantDescription(instance);
+    const own = installOwnAudioEntry(entries);
+    own.direction = 'inactive';
+    const previousMyId = rootScope.myId;
+    rootScope.myId = 42 as PeerId;
+    vi.spyOn(instance as any, 'reportConferenceBug');
+    try {
+      instance.onParticipantUpdate(remoteRow());
+    } finally {
+      rootScope.myId = previousMyId;
+    }
+
+    expect(setEntryPeerId).not.toHaveBeenCalled();
+    expect(own.direction).toBe('inactive');
   });
 });

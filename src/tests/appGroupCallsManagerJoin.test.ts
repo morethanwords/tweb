@@ -1503,3 +1503,109 @@ describe('AppGroupCallsManager accepted create compensation', () => {
     });
   });
 });
+
+describe('AppGroupCallsManager participant rows', () => {
+  function fullRow(userId: number, extra: Partial<GroupCallParticipant> = {}): GroupCallParticipant {
+    return {...groupCallParticipant(userId, 100), ...extra};
+  }
+
+  function minRow(userId: number, extra: Partial<GroupCallParticipant> = {}): GroupCallParticipant {
+    return {...groupCallParticipant(userId, 100), ...extra, pFlags: {min: true, ...extra.pFlags}};
+  }
+
+  it('keeps the viewer-personal fields of a cached row when a min row arrives', () => {
+    const manager = makeManager({apiResponse: buildUpdatesReply(null)});
+    manager.saveGroupCall(activeGroupCall('rows', 'hash'));
+    manager.saveApiParticipant('rows', fullRow(7, {pFlags: {muted_by_you: true}, volume: 5000}));
+
+    manager.saveApiParticipant('rows', minRow(7, {pFlags: {muted: true}, volume: 10000}));
+
+    const cached = manager.getCachedParticipants('rows').get(7 as PeerId);
+    expect(cached.pFlags.muted).toBe(true);
+    expect(cached.pFlags.muted_by_you).toBe(true);
+    expect(cached.pFlags.volume_by_admin).toBeUndefined();
+    expect(cached.volume).toBe(5000);
+  });
+
+  it('applies an admin-set volume from a min row and lets a full row replace the personal fields', () => {
+    const manager = makeManager({apiResponse: buildUpdatesReply(null)});
+    manager.saveGroupCall(activeGroupCall('rows', 'hash'));
+    manager.saveApiParticipant('rows', fullRow(7, {pFlags: {volume_by_admin: true}, volume: 3000}));
+
+    manager.saveApiParticipant('rows', minRow(7, {volume: 8000}));
+    expect(manager.getCachedParticipants('rows').get(7 as PeerId).volume).toBe(8000);
+
+    manager.saveApiParticipant('rows', fullRow(7));
+    const cached = manager.getCachedParticipants('rows').get(7 as PeerId);
+    expect(cached.volume).toBeUndefined();
+    expect(cached.pFlags.volume_by_admin).toBeUndefined();
+    expect(cached.pFlags.muted_by_you).toBeUndefined();
+  });
+
+  it('clamps participants_count at zero and takes the count an updateGroupCall carries', () => {
+    const manager = makeManager({apiResponse: buildUpdatesReply(null)});
+    manager.saveGroupCall(activeGroupCall('count', 'hash'));
+    // A poll row carries no `just_joined`, so its join was never counted.
+    manager.saveApiParticipant('count', fullRow(7));
+
+    manager.saveApiParticipant('count', fullRow(7, {pFlags: {left: true}}));
+    expect((manager.getGroupCall('count') as GroupCall.groupCall).participants_count).toBe(0);
+
+    manager.saveGroupCall({...activeGroupCall('count', 'hash'), participants_count: 3, version: 2});
+    expect((manager.getGroupCall('count') as GroupCall.groupCall).participants_count).toBe(3);
+  });
+});
+
+describe('AppGroupCallsManager RTMP state migrations', () => {
+  const call: InputGroupCall.inputGroupCall = {_: 'inputGroupCall', id: 'rtmp', access_hash: 'rtmp-hash'};
+
+  function makeRtmpManager(answer: (dcId: number) => Promise<unknown>) {
+    const manager = makeManager({apiResponse: buildUpdatesReply(null)});
+    vi.spyOn(manager, 'getGroupCallFull').mockResolvedValue({
+      ...activeGroupCall('rtmp', 'rtmp-hash'),
+      stream_dc_id: 2
+    });
+    const invokeApi = vi.fn((_method: string, _params: unknown, options: {dcId: number}) => answer(options.dcId));
+    (manager as any).apiManager = {invokeApi};
+    return {manager, invokeApi};
+  }
+
+  const migrate = (dcId: number) => Object.assign(new Error(`CALL_MIGRATE_${dcId}`), {type: `CALL_MIGRATE_${dcId}`});
+
+  it('follows a migration to the named DC', async() => {
+    const {manager, invokeApi} = makeRtmpManager(async(dcId) => {
+      if(dcId === 2) throw migrate(4);
+      return {channels: []};
+    });
+
+    await expect(manager._fetchRtmpState(call)).resolves.toMatchObject({dcId: 4});
+    expect(invokeApi).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops when the server names the DC it just answered from', async() => {
+    const {manager, invokeApi} = makeRtmpManager(async() => {
+      throw migrate(2);
+    });
+
+    await expect(manager._fetchRtmpState(call)).rejects.toMatchObject({type: 'CALL_MIGRATE_2'});
+    expect(invokeApi).toHaveBeenCalledTimes(1);
+  });
+
+  it('bounds a chain of migrations', async() => {
+    const {manager, invokeApi} = makeRtmpManager(async(dcId) => {
+      throw migrate(dcId + 1);
+    });
+
+    await expect(manager._fetchRtmpState(call)).rejects.toMatchObject({type: 'CALL_MIGRATE_6'});
+    expect(invokeApi).toHaveBeenCalledTimes(4);
+  });
+
+  it('rejects a bare CALL_MIGRATE_ instead of crashing on it', async() => {
+    const {manager, invokeApi} = makeRtmpManager(async() => {
+      throw Object.assign(new Error('CALL_MIGRATE_'), {type: 'CALL_MIGRATE_'});
+    });
+
+    await expect(manager._fetchRtmpState(call)).rejects.toMatchObject({type: 'CALL_MIGRATE_'});
+    expect(invokeApi).toHaveBeenCalledTimes(1);
+  });
+});

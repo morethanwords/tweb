@@ -1,3 +1,4 @@
+import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
 import {appSettings, setAppSettings} from '@stores/appSettings';
 import {logger} from '@lib/logger';
 
@@ -137,4 +138,4 @@ export default async function getStream(
   }
 }
 
-(window as any).getStream = getStream;
+DEBUG && (MOUNT_CLASS_TO.getStream = getStream);

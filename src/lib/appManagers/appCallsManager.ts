@@ -178,13 +178,15 @@ export class AppCallsManager extends AppManager {
     });
   }
 
-  // private verifyProtocolCompatibility(protocol: PhoneCallProtocol) {
-  //   const my = getCallProtocol();
-  //   const myVersion = my.library_versions[0];
-  //   return !protocol.library_versions.find((version) => {
-  //     return compareVersion(myVersion, version) > 0;
-  //   });
-  // }
+  // Acknowledges an incoming request: until a device sends this the caller
+  // sees "waiting", not "ringing". tdesktop sends it before it rings
+  // (calls_call.cpp startIncoming), tdlib right on phoneCallRequested.
+  public receivedCall(callId: CallId) {
+    this.log('receivedCall', callId);
+    return this.apiManager.invokeApi('phone.receivedCall', {
+      peer: this.getCallInput(callId)
+    });
+  }
 
   public async requestCall(userId: UserId, protocol: PhoneCallProtocol, g_a_hash: Uint8Array, video?: boolean) {
     this.log('requestCall', userId, {video});

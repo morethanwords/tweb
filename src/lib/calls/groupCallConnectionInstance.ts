@@ -7,6 +7,7 @@ import GroupCallInstance from '@lib/calls/groupCallInstance';
 import filterServerCodecs from '@lib/calls/helpers/filterServerCodecs';
 import fixLocalOffer from '@lib/calls/helpers/fixLocalOffer';
 import processMediaSection from '@lib/calls/helpers/processMediaSection';
+import {getUnsafeConnectionDataReason} from '@lib/calls/helpers/sdpSafety';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import senderKind from '@lib/calls/helpers/senderKind';
 import {E2E_MAIN_CHANNEL_ID, E2E_SCREENCAST_CHANNEL_ID} from '@lib/calls/constants';
@@ -148,13 +149,46 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     });
 
     dataChannel.addEventListener('close', () => {
-      if(this.updateConstraintsInterval) {
-        clearInterval(this.updateConstraintsInterval);
-        this.updateConstraintsInterval = undefined;
-      }
+      this.clearUpdateConstraintsInterval();
     });
 
     return dataChannel;
+  }
+
+  private clearUpdateConstraintsInterval() {
+    if(this.updateConstraintsInterval) {
+      clearInterval(this.updateConstraintsInterval);
+      this.updateConstraintsInterval = undefined;
+    }
+  }
+
+  public closeConnection() {
+    // The data channel's `close` event was the only thing stopping the
+    // constraints timer, and pc.close() does not reliably fire it — the timer
+    // kept ticking against a dead channel for the rest of the session.
+    this.clearUpdateConstraintsInterval();
+    super.closeConnection();
+  }
+
+  // The SFU's answer is interpolated into the SDP handed to setRemoteDescription
+  // (transport ufrag / pwd / fingerprints, the codec tables), so it gets the same
+  // shape-and-line-safety check as the 1-on-1 signalling. Throwing is the
+  // fail-closed path: an initial join rolls back through rollbackFailedJoin, a
+  // runtime renegotiation ends in hangUpAfterTransportFailure.
+  private parseConnectionData(raw: string): UpdateGroupCallConnectionData {
+    let data: unknown;
+    try {
+      data = JSON.parse(raw);
+    } catch(err) {
+      this.log.error('group call connection data is not JSON', err);
+    }
+
+    const reason = getUnsafeConnectionDataReason(data);
+    if(reason !== undefined) {
+      throw new Error(`Invalid group call connection data: ${reason}`);
+    }
+
+    return data as UpdateGroupCallConnectionData;
   }
 
   public createDescription() {
@@ -371,7 +405,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
 
     await activateE2e?.();
 
-    const data: UpdateGroupCallConnectionData = JSON.parse(update.params.data);
+    const data = this.parseConnectionData(update.params.data);
 
     data.audio = data.audio || groupCall.connections.main.description.audio;
     description.setData(data);
@@ -571,10 +605,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     this.sendDataChannelData(obj);
 
     if(!obj.onStageEndpoints.length) {
-      if(this.updateConstraintsInterval) {
-        clearInterval(this.updateConstraintsInterval);
-        this.updateConstraintsInterval = undefined;
-      }
+      this.clearUpdateConstraintsInterval();
     } else if(!this.updateConstraintsInterval) {
       this.updateConstraintsInterval = window.setInterval(this.maybeUpdateRemoteVideoConstraints.bind(this), 5000);
     }

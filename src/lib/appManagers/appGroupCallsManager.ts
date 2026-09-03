@@ -50,6 +50,28 @@ export type JoinGroupCallJsonPayload = {
 // that keeps handing back a full page with a fresh cursor; a real conference
 // never comes close.
 const MAX_CONFERENCE_ROSTER_PAGES = 20;
+// How many CALL_MIGRATE_x hops one RTMP stream-channels fetch may follow.
+const MAX_RTMP_STATE_MIGRATIONS = 3;
+
+// A `min` participant row is the server's non-personalised broadcast form: it
+// carries no `muted_by_you` / `volume` / `volume_by_admin` for THIS viewer
+// (tdlib GroupCallParticipant::update_from, tdesktop data_group_call.cpp
+// applyParticipantsSlice keep was->mutedByMe / was->volume for is_min rows).
+// Replacing the cached row wholesale reset a local "mute for me" and volume on
+// every such broadcast. Everything else in a min row is authoritative.
+function keepPersonalFieldsFromCachedParticipant(cached: GroupCallParticipant, min: GroupCallParticipant) {
+  const {pFlags} = min;
+  if(cached.pFlags.muted_by_you) pFlags.muted_by_you = true;
+  else delete pFlags.muted_by_you;
+  if(cached.pFlags.volume_by_admin) pFlags.volume_by_admin = true;
+  else delete pFlags.volume_by_admin;
+  // tdesktop applyVolumeFromMin: a volume an admin set is the one exception a
+  // min row may carry, everything else keeps the value we chose locally.
+  if(!cached.pFlags.volume_by_admin) {
+    if(cached.volume !== undefined) min.volume = cached.volume;
+    else delete min.volume;
+  }
+}
 
 type NextOffsetSaveMode = 'skip' | 'initialize' | 'replace';
 
@@ -328,6 +350,9 @@ export class AppGroupCallsManager extends AppManager {
     }
 
     if(oldParticipant) {
+      if(participant.pFlags.min) {
+        keepPersonalFieldsFromCachedParticipant(oldParticipant, participant);
+      }
       safeReplaceObject(oldParticipant, participant);
       participant = oldParticipant;
     } else {
@@ -339,8 +364,14 @@ export class AppGroupCallsManager extends AppManager {
     if(groupCall?._ === 'groupCall') {
       let modified = false;
       if(hasLeft) {
-        --groupCall.participants_count;
-        modified = true;
+        // Clamped like tdesktop's _serverParticipantsCount: a `left` for a row
+        // whose join this bookkeeping never counted (polls carry no
+        // `just_joined`) drifted the counter below zero. The next
+        // updateGroupCall / roster page resets it to the server's value anyway.
+        if(groupCall.participants_count > 0) {
+          --groupCall.participants_count;
+          modified = true;
+        }
       } else if(participant.pFlags.just_joined && !oldParticipant && !participant.pFlags.self) {
         ++groupCall.participants_count;
         modified = true;
@@ -1243,7 +1274,12 @@ export class AppGroupCallsManager extends AppManager {
     }
   }
 
-  public async _fetchRtmpState(call: InputGroupCall.inputGroupCall, retry = 0, dcId?: DcId): Promise<GroupCallRtmpState> {
+  public async _fetchRtmpState(
+    call: InputGroupCall.inputGroupCall,
+    retry = 0,
+    dcId?: DcId,
+    migrations = 0
+  ): Promise<GroupCallRtmpState> {
     const full = await this.getGroupCallFull(call.id);
     if(full._ === 'groupCallDiscarded') {
       throw new Error('Group call discarded');
@@ -1262,8 +1298,15 @@ export class AppGroupCallsManager extends AppManager {
       assumeType<ApiError>(error);
 
       if(error.type?.indexOf('CALL_MIGRATE') === 0) {
-        const dcId = +error.type.match(/^(CALL_MIGRATE_)(\d+)/)[2] as DcId;
-        return this._fetchRtmpState(call, retry, dcId);
+        // Bounded: the server used to be able to bounce us between DCs forever
+        // (every answer re-entered with a fresh budget), and a bare
+        // `CALL_MIGRATE_` crashed on the match. A DC that names itself again
+        // or more than a few hops is a server fault, not a route to follow.
+        const migrateDcId = +error.type.match(/^CALL_MIGRATE_(\d+)$/)?.[1] as DcId;
+        if(!migrateDcId || migrateDcId === dcId || migrations >= MAX_RTMP_STATE_MIGRATIONS) {
+          throw error;
+        }
+        return this._fetchRtmpState(call, retry, migrateDcId, migrations + 1);
       }
 
       if(error.type === 'GROUPCALL_INVALID' && retry < 3) {
@@ -1359,14 +1402,13 @@ export class AppGroupCallsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
-  // Wraps phone.exportGroupCallInvite. `can_self_unmute` mirrors the listener
-  // / speaker distinction tdesktop draws in lng_group_call_share — for now we
-  // expose only the speaker variant (canSelfUnmute = true) since the in-call
-  // settings popup has no separate listener-link affordance.
+  // Wraps phone.exportGroupCallInvite. `can_self_unmute` is the listener /
+  // speaker distinction tdesktop draws in lng_group_call_share; the caller
+  // (shareGroupCallInviteLink) decides who may ask for the speaker link.
   public async exportGroupCallInvite(id: GroupCallId, canSelfUnmute?: boolean) {
     const result = await this.apiManager.invokeApiSingle('phone.exportGroupCallInvite', {
       call: this.getGroupCallInput(id),
-      can_self_unmute: canSelfUnmute
+      can_self_unmute: canSelfUnmute || undefined
     });
 
     return result.link;

@@ -8,6 +8,7 @@
 import bufferConcats from '@helpers/bytes/bufferConcats';
 import subtle from '@lib/crypto/subtle';
 import sha256 from '@lib/crypto/utils/sha256';
+import {P2P_SIGNALING_INCOMING_COUNTERS_KEPT} from '@lib/calls/constants';
 
 // tgcalls EncryptedConnection.cpp: "don't try decrypting more". Signaling is a
 // few KiB of gzipped JSON; the old 128 MiB cap only bounded the tab's memory.
@@ -16,12 +17,43 @@ const kMaxIncomingPacketSize = 128 * 1024;
 export default class P2PEncryptor {
   private type: 'Signaling';
   private counter: number;
-  private seqMap: Map<number, number>;
+  // The replay window, tgcalls `_largestIncomingCounters`: ascending, at most
+  // P2P_SIGNALING_INCOMING_COUNTERS_KEPT entries. A Map of every counter ever
+  // seen grew with the call and let the peer fill the tab's memory one packet
+  // at a time.
+  private largestIncomingCounters: number[];
 
   constructor(private isOutgoing: boolean, private p2pKey: Uint8Array) {
     this.type = 'Signaling';
     this.counter = 0;
-    this.seqMap = new Map();
+    this.largestIncomingCounters = [];
+  }
+
+  // tgcalls EncryptedConnection::registerIncomingCounter: refuse a counter the
+  // window already holds, or one that fell out of it (older than the largest
+  // seen minus the window), then keep the window trimmed to the largest ones.
+  private registerIncomingCounter(counter: number) {
+    const list = this.largestIncomingCounters;
+    let position = 0;
+    while(position < list.length && list[position] < counter) {
+      ++position;
+    }
+
+    const largest = list.length ? list[list.length - 1] : 0;
+    if(position < list.length && list[position] === counter) {
+      return false;
+    } else if(counter + P2P_SIGNALING_INCOMING_COUNTERS_KEPT <= largest) {
+      return false;
+    }
+
+    let eraseCount = 0;
+    while(eraseCount < list.length && list[eraseCount] + P2P_SIGNALING_INCOMING_COUNTERS_KEPT <= counter) {
+      ++eraseCount;
+    }
+
+    list.splice(0, eraseCount);
+    list.splice(position - eraseCount, 0, counter);
+    return true;
   }
 
   private concatSHA256(parts: Uint8Array[]) {
@@ -151,10 +183,9 @@ export default class P2PEncryptor {
 
     const dataView = new DataView(decryptionBuffer.buffer);
     const seq = dataView.getUint32(0);
-    if(this.seqMap.has(seq)) {
+    if(!this.registerIncomingCounter(seq)) {
       return;
     }
-    this.seqMap.set(seq, seq);
 
     return decryptionBuffer.slice(4);
   }

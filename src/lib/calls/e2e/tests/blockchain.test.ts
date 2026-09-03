@@ -453,3 +453,122 @@ describe('Blockchain.applyBlock — state-proof shape (tdlib validate_state)', (
     await expectReject(applyBlock(afterZero, setValueBlock), 'INVALID_STATE_PROOF');
   });
 });
+
+// tweb hardening on top of tdlib (blockchain.ts authorizeOutsiderSelfJoin): a
+// signer outside the prior group state may only produce the self-join block
+// official clients emit — tdlib create_self_add_block / tdesktop makeJoinBlock —
+// and never touch anybody else, whatever external_permissions grants.
+describe('Blockchain.applyBlock — outsider blocks are self-joins only', () => {
+  const aliceId = BigInt(1), bobId = BigInt(2), attackerId = BigInt(666), malloryId = BigInt(667);
+  const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(0xd1));
+  const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(0xd2));
+  const bobNewDevice = PrivateKey.fromSeed(new Uint8Array(32).fill(0xd3));
+  const attacker = PrivateKey.fromSeed(new Uint8Array(32).fill(0xdc));
+  const mallory = PrivateKey.fromSeed(new Uint8Array(32).fill(0xdd));
+  const OPEN = PERM_ADD_USERS | PERM_REMOVE_USERS;
+
+  function part(userId: bigint, sk: PrivateKey, add = true, remove = true): GroupParticipant {
+    return {userId, publicKey: sk.publicKeyBytes, canAddUsers: add, canRemoveUsers: remove, version: 0};
+  }
+
+  // Zero block authored by alice (= participants[0]) with external add+remove,
+  // exactly what every conference is created with.
+  function openGroup(...participants: GroupParticipant[]) {
+    const zero = buildSignedBlock({
+      signer: alice,
+      prevBlockHash: new Uint8Array(32),
+      changes: [{kind: 'setGroupState', groupState: {participants, externalPermissions: OPEN}}],
+      height: 0
+    });
+    return applyBlock(createInitialState(), zero);
+  }
+
+  function nextBlock(
+    state: Awaited<ReturnType<typeof openGroup>>,
+    signer: PrivateKey,
+    participants: GroupParticipant[],
+    externalPermissions = OPEN
+  ) {
+    return buildSignedBlock({
+      signer,
+      prevBlockHash: state.lastBlockHash,
+      changes: [{kind: 'setGroupState', groupState: {participants, externalPermissions}}],
+      height: state.height + 1,
+      explicitSignerKey: true
+    });
+  }
+
+  async function expectReject(promise: Promise<unknown>, message: RegExp) {
+    await expect(promise).rejects.toMatchObject({code: 'NO_PERMISSIONS', message});
+  }
+
+  it('rejects an outsider removing a member alongside its own join', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const forged = nextBlock(state, attacker, [part(aliceId, alice), part(attackerId, attacker)]);
+    await expectReject(applyBlock(state, forged), /nothing but its own stale entry/);
+  });
+
+  it('rejects an outsider adding a second entry next to itself', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const forged = nextBlock(state, attacker, [
+      part(aliceId, alice), part(bobId, bob), part(attackerId, attacker), part(malloryId, mallory)
+    ]);
+    await expectReject(applyBlock(state, forged), /nobody but its signer/);
+  });
+
+  it('rejects an outsider adding a key that is not its own', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const forged = nextBlock(state, attacker, [part(aliceId, alice), part(bobId, bob), part(malloryId, mallory)]);
+    await expectReject(applyBlock(state, forged), /nobody but its signer/);
+  });
+
+  it('rejects an outsider rewriting a retained member\'s permissions', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const forged = nextBlock(state, attacker, [
+      part(aliceId, alice), part(bobId, bob, false, false), part(attackerId, attacker)
+    ]);
+    await expectReject(applyBlock(state, forged), /verbatim/);
+  });
+
+  it('rejects an outsider narrowing external_permissions on its way in', async() => {
+    // tdlib only forbids WIDENING them; an outsider locking the door behind
+    // itself is not a join either.
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const forged = nextBlock(
+      state, attacker, [part(aliceId, alice), part(bobId, bob), part(attackerId, attacker)], PERM_ADD_USERS
+    );
+    await expectReject(applyBlock(state, forged), /external_permissions/);
+  });
+
+  it('accepts a plain outsider self-add', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const join = nextBlock(state, attacker, [part(aliceId, alice), part(bobId, bob), part(attackerId, attacker)]);
+    const next = await applyBlock(state, join);
+    expect(next.height).toBe(1);
+    expect(next.groupState.participants.map((p) => p.userId)).toEqual([aliceId, bobId, attackerId]);
+  });
+
+  it('accepts an outsider self-add that replaces its own stale entry (re-join with a new key)', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    // What create_self_add_block builds: prior state minus every entry with
+    // our user_id, plus ourselves — signed by a key the group has never seen.
+    const rejoin = nextBlock(state, bobNewDevice, [part(aliceId, alice), part(bobId, bobNewDevice)]);
+    const next = await applyBlock(state, rejoin);
+    expect(next.groupState.participants).toHaveLength(2);
+    const bobEntry = next.groupState.participants.find((p) => p.userId === bobId)!;
+    expect(bytesToHex(bobEntry.publicKey)).toBe(bytesToHex(bobNewDevice.publicKeyBytes));
+  });
+
+  it('still lets a member with the permissions remove others', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    const eject = nextBlock(state, alice, [part(aliceId, alice)]);
+    const next = await applyBlock(state, eject);
+    expect(next.groupState.participants.map((p) => p.userId)).toEqual([aliceId]);
+  });
+
+  it('leaves the zero block alone — its author is an outsider by construction', async() => {
+    const state = await openGroup(part(aliceId, alice), part(bobId, bob));
+    expect(state.height).toBe(0);
+    expect(state.groupState.participants).toHaveLength(2);
+  });
+});

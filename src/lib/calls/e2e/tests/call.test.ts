@@ -261,6 +261,74 @@ describe('encryptPacket / decryptPacket', () => {
   });
 });
 
+// tdlib CallEncryption::check_not_seen / mark_as_seen: a 1024-wide window per
+// (sender, channel) that rejects duplicates and anything older than the window.
+describe('ReplayState', () => {
+  const pub = (fill: number) => PrivateKey.fromSeed(new Uint8Array(32).fill(fill)).publicKey();
+  const windowOf = (replay: ReplayState, sender: PublicKey, channelId: number) =>
+    (replay as unknown as {windows: Map<string, {seen: Set<number>; max: number}>})
+    .windows.get(`${bytesToHex(sender.bytes)}:${channelId}`);
+
+  it('rejects a duplicate seqno — per sender and channel', () => {
+    const alice = pub(0x51), bob = pub(0x52);
+    const replay = new ReplayState();
+    replay.checkAndMark(alice, 0, 42);
+    expect(() => replay.checkAndMark(alice, 0, 42)).toThrow(/already seen/);
+    expect(() => replay.checkAndMark(alice, 1, 42)).not.toThrow();
+    expect(() => replay.checkAndMark(bob, 0, 42)).not.toThrow();
+  });
+
+  it('rejects a seqno older than the window', () => {
+    const alice = pub(0x53);
+    const replay = new ReplayState();
+    replay.checkAndMark(alice, 0, 5000);
+    expect(() => replay.checkAndMark(alice, 0, 5000 - 1024)).toThrow(/older than window/);
+    expect(() => replay.checkAndMark(alice, 0, 5000 - 1023)).not.toThrow();
+  });
+
+  it('accepts in-window reordering and still catches every seqno the second time', () => {
+    const alice = pub(0x54);
+    const replay = new ReplayState();
+    for(const seqno of [100, 105, 103, 101, 104, 102]) {
+      expect(() => replay.checkAndMark(alice, 0, seqno)).not.toThrow();
+    }
+    for(const seqno of [100, 103, 105]) {
+      expect(() => replay.checkAndMark(alice, 0, seqno)).toThrow(/already seen/);
+    }
+  });
+
+  it('slides forward holding at most 1024 seqnos, and drops everything on a jump past the window', () => {
+    const alice = pub(0x55);
+    const replay = new ReplayState();
+    for(let seqno = 1; seqno <= 3000; seqno++) replay.checkAndMark(alice, 0, seqno);
+    const window = windowOf(replay, alice, 0)!;
+    expect(window.seen.size).toBe(1024);
+    expect(window.max).toBe(3000);
+    // What the window slid past is "too old", never "not yet seen".
+    expect(() => replay.checkAndMark(alice, 0, 3000 - 1024)).toThrow(/older than window/);
+    expect(() => replay.checkAndMark(alice, 0, 3000 - 1023)).toThrow(/already seen/);
+
+    replay.checkAndMark(alice, 0, 100000);
+    expect(window.seen.size).toBe(1);
+    expect(() => replay.checkAndMark(alice, 0, 3000)).toThrow(/older than window/);
+    expect(() => replay.checkAndMark(alice, 0, 99999)).not.toThrow();
+  });
+
+  it('retainSenders drops every window of a sender that is no longer active', () => {
+    const alice = pub(0x56), bob = pub(0x57);
+    const replay = new ReplayState();
+    replay.checkAndMark(alice, 0, 1);
+    replay.checkAndMark(alice, 7, 1);
+    replay.checkAndMark(bob, 0, 1);
+
+    replay.retainSenders(new Set([bytesToHex(alice.bytes)]));
+
+    expect(replay.has(alice, 0)).toBe(true);
+    expect(replay.has(alice, 7)).toBe(true);
+    expect(replay.has(bob, 0)).toBe(false);
+  });
+});
+
 describe('utility: ed25519SkToCurve25519', () => {
   it('matches sodium roundtrip', () => {
     const sk = PrivateKey.fromSeed(new Uint8Array(32).fill(99));

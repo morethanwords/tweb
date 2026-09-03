@@ -17,7 +17,12 @@ import sdp from '@/mock/webrtc/sdp';
 import CallConnectionInstanceBase from '@lib/calls/callConnectionInstanceBase';
 import GroupCallConnectionInstance from '@lib/calls/groupCallConnectionInstance';
 import type {GroupCall, Update} from '@layer';
+import mockConnectionData from '@/mock/webrtc/data';
 import deferred from './helpers/deferred';
+
+// The SFU answer is validated before it reaches the SDP (sdpSafety), so a
+// placeholder `{}` no longer passes — use the real shape.
+const validAnswer = JSON.stringify(mockConnectionData);
 
 function activeCall(id: string, accessHash: string): GroupCall.groupCall {
   return {
@@ -91,7 +96,7 @@ describe('GroupCallConnectionInstance join error propagation', () => {
       media: {mediaType: 'audio'},
       source: 777,
       sourceGroups: undefined,
-      params: {_: 'dataJSON', data: '{}'}
+      params: {_: 'dataJSON', data: validAnswer}
     });
     joinMocks.filterServerCodecs.mockReset();
   });
@@ -222,7 +227,7 @@ describe('GroupCallConnectionInstance join error propagation', () => {
     const accepted = Object.assign({
       _: 'updateGroupCallConnection' as const,
       pFlags: {},
-      params: {_: 'dataJSON' as const, data: '{}'}
+      params: {_: 'dataJSON' as const, data: validAnswer}
     }, {
       acceptedCallInput: {_: 'inputGroupCall' as const, id: resolved.id, access_hash: resolved.access_hash},
       resolvedCallId: resolved.id,
@@ -291,7 +296,7 @@ describe('GroupCallConnectionInstance join error propagation', () => {
     const accepted = Object.assign({
       _: 'updateGroupCallConnection' as const,
       pFlags: {},
-      params: {_: 'dataJSON' as const, data: '{}'}
+      params: {_: 'dataJSON' as const, data: validAnswer}
     }, {
       acceptedCallInput: {_: 'inputGroupCall' as const, id: resolved.id, access_hash: resolved.access_hash},
       resolvedCallId: resolved.id,
@@ -328,7 +333,7 @@ describe('GroupCallConnectionInstance join error propagation', () => {
     const accepted = {
       _: 'updateGroupCallConnection' as const,
       pFlags: {},
-      params: {_: 'dataJSON' as const, data: '{}'},
+      params: {_: 'dataJSON' as const, data: validAnswer},
       acceptedCallInput: {_: 'inputGroupCall' as const, id: resolved.id, access_hash: resolved.access_hash},
       resolvedCallId: resolved.id,
       resolvedAccessHash: resolved.access_hash,
@@ -392,7 +397,7 @@ describe('GroupCallConnectionInstance join error propagation', () => {
     const accepted = Object.assign({
       _: 'updateGroupCallConnection' as const,
       pFlags: {},
-      params: {_: 'dataJSON' as const, data: '{}'}
+      params: {_: 'dataJSON' as const, data: validAnswer}
     }, {
       acceptedCallInput: {_: 'inputGroupCall' as const, id: resolved.id, access_hash: resolved.access_hash},
       resolvedCallId: resolved.id,
@@ -451,7 +456,7 @@ describe('GroupCallConnectionInstance join error propagation', () => {
     const accepted = {
       _: 'updateGroupCallConnection' as const,
       pFlags: {},
-      params: {_: 'dataJSON' as const, data: '{}'},
+      params: {_: 'dataJSON' as const, data: validAnswer},
       acceptedCallInput: {_: 'inputGroupCall' as const, id: resolved.id, access_hash: resolved.access_hash},
       resolvedCallId: resolved.id,
       resolvedAccessHash: resolved.access_hash,

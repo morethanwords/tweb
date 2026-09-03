@@ -80,7 +80,7 @@ vi.mock('@components/call/getAudioAsset', () => ({
   default: () => ({play: vi.fn(), playIfDifferent: vi.fn(), stop: vi.fn()})
 }));
 vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
-vi.mock('@config/debug', () => ({MOUNT_CLASS_TO: undefined}));
+vi.mock('@config/debug', () => ({default: false, MOUNT_CLASS_TO: undefined}));
 vi.mock('@environment/callSupport', () => ({default: true}));
 vi.mock('@environment/conferenceCallSupport', () => ({default: true}));
 vi.mock('@lib/apiManagerProxy', () => ({default: {invokeCrypto: mocks.invokeCrypto}}));
@@ -89,6 +89,7 @@ vi.mock('@lib/calls/callTransitionCoordinator', () => ({
   default: {run: vi.fn((callback: () => Promise<void>) => callback())}
 }));
 vi.mock('@lib/calls/groupCallsController', () => ({default: {joinConference: vi.fn()}}));
+vi.mock('@lib/calls/rtmpCallsController', () => ({default: {currentCall: undefined}}));
 vi.mock('@lib/logger', () => ({logger: () => mocks.log}));
 vi.mock('@lib/rootScope', () => ({default: mocks.rootScope}));
 
@@ -149,5 +150,32 @@ describe('CallsController incoming key fingerprint check', () => {
     expect(instance.hangUp).toHaveBeenCalledWith('phoneCallDiscardReasonDisconnect');
     expect(instance.encryptionKey).toBeUndefined();
     expect(instance.dh.g_a).toBeUndefined();
+  });
+
+  it('never hands the private exponent to the error log', async() => {
+    // Error-level logs are kept in production. The fingerprint mismatch and
+    // the computeKey failure used to log `dh` (with the callee's `b`) and the
+    // raw public value; only what the peer sent in the clear may appear.
+    mocks.log.error.mockClear();
+    const {computeKey, instance} = makeIncomingCall('incoming-secrets', String(FINGERPRINT + 1));
+    await dispatchPhoneCall('incoming-secrets');
+
+    computeKey.mockRejectedValueOnce(new Error('bad g_a'));
+    const {instance: failing} = makeIncomingCall('incoming-secrets-2', String(FINGERPRINT));
+    failing.dh = instance.dh;
+    (failing as any).managers = undefined;
+    await dispatchPhoneCall('incoming-secrets-2');
+
+    expect(mocks.log.error).toHaveBeenCalled();
+    for(const args of mocks.log.error.mock.calls) {
+      for(const arg of args) {
+        expect(arg).not.toBe(instance.dh);
+        expect(arg).not.toBe(instance.dh.b);
+        expect(arg).not.toBe(G_A);
+        if(arg && typeof arg === 'object') {
+          expect(Object.values(arg)).not.toContain(instance.dh.b);
+        }
+      }
+    }
   });
 });

@@ -124,6 +124,16 @@ export class VerificationChain {
     return out;
   }
 
+  // Wipe the one secret of the round: our nonce while it is still unrevealed
+  // (a block creator who learns it early could bias the emoji hash). Commits
+  // and reveals were public the moment they were broadcast.
+  public destroy(): void {
+    this.myNonce.fill(0);
+    this.commits.clear();
+    this.reveals.clear();
+    this.outbound = [];
+  }
+
   // Apply an incoming GroupBroadcast (commit or reveal) from a peer.
   // Returns true if the broadcast caused a phase transition.
   public async receive(b: GroupBroadcast): Promise<boolean> {

@@ -33,3 +33,24 @@ export const P2P_SIGNALING_MAX_INFLATED_BYTES = 2 * 1024 * 1024;
 // accept window and, for want of the server's `call_ring_timeout_ms`, the age
 // past which an incoming conference invitation is no longer offered.
 export const CALL_REQUEST_TIMEOUT = 45e3;
+
+// tgcalls EncryptedConnection.cpp kKeepIncomingCountersCount: the replay window
+// of 1-on-1 signaling — how many of the largest incoming counters are kept; a
+// counter already seen, or older than the smallest kept once the window is
+// full, is refused.
+export const P2P_SIGNALING_INCOMING_COUNTERS_KEPT = 64;
+
+// Encrypted 1-on-1 signaling packets are held back until the key is derived
+// (there is a real few-ms gap between computeKey and the encryptor), and ICE
+// candidates until the negotiation they belong to is applied. Both queues are
+// fed by the peer, so both are bounded — the oldest entry goes first.
+export const P2P_SIGNALING_MAX_QUEUED_PACKETS = 64;
+export const P2P_MAX_PENDING_CANDIDATES = 256;
+
+// A second incoming call rings while another call is up (call waiting) —
+// audible, but quiet enough not to drown the conversation.
+export const CALL_WAITING_RING_VOLUME = 0.3;
+
+// t.me/call/<slug>: the slug is an opaque token the server minted. Anything
+// outside this alphabet is a malformed link, not something to resolve.
+export const CONFERENCE_CALL_SLUG_REGEXP = /^[A-Za-z0-9_-]{1,64}$/;

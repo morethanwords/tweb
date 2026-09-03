@@ -13,7 +13,7 @@
  * by whoever listens to the `instance` event, exactly like `CallsController`.
  */
 
-import {MOUNT_CLASS_TO} from '@config/debug';
+import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import getCallAudioAsset from '@components/call/getAudioAsset';
@@ -30,7 +30,6 @@ import CALL_STATE from '@lib/calls/callState';
 import callsController from '@lib/calls/callsController';
 import ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
 import groupCallsController from '@lib/calls/groupCallsController';
-import rtmpCallsController from '@lib/calls/rtmpCallsController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import {CALL_REQUEST_TIMEOUT} from '@lib/calls/constants';
 import {getConferenceCallState} from '@lib/calls/helpers/conferenceCallAction';
@@ -187,11 +186,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
   }
 
   private isBusy() {
-    return !!(
-      callsController.currentCall ||
-      rtmpCallsController.currentCall ||
-      (groupCallsController.groupCall && groupCallsController.groupCall.state !== GROUP_CALL_STATE.CLOSED)
-    );
+    return callsController.isOtherCallActive();
   }
 
   private isInConference(conferenceId: string) {
@@ -210,8 +205,9 @@ export class ConferenceInvitesController extends EventListenerBase<{
 
   /**
    * `Instance::showConferenceInvite` (calls_instance.cpp:1166): every reason
-   * not to ring, in the same order — already in this very conference, busy with
-   * another call, or the invitation is simply too old to still be live.
+   * not to ring, in the same order — invited by ourselves, calls switched off
+   * for this session, already in this very conference, busy with another call,
+   * or the invitation is simply too old to still be live.
    */
   private show(entry: InviteEntry) {
     const {conferenceId} = entry;
@@ -223,7 +219,37 @@ export class ConferenceInvitesController extends EventListenerBase<{
       return;
     }
 
+    if(entry.fromId === rootScope.myId) {
+      this.log('ignoring a conference invitation from this very account', entry.serverMsgId);
+      return;
+    }
+
     if(this.ringing.has(conferenceId) || this.isInConference(conferenceId)) {
+      return;
+    }
+
+    // `callsDisabledForSession()` (calls_instance.cpp:1177): the session's own
+    // "accept calls on this device" switch. tdesktop reads a cached flag; here
+    // it is one round trip, after which the invitation is checked again.
+    void this.managers.appAccountManager.isCallRequestsDisabled().then((disabled) => {
+      if(disabled) {
+        this.log('ignoring a conference invitation: call requests are disabled for this session', entry.serverMsgId);
+        return;
+      }
+
+      this.ring(entry);
+    });
+  }
+
+  private ring(entry: InviteEntry) {
+    const {conferenceId} = entry;
+
+    // The round trip above may have outlived the invitation.
+    if(
+      !this.invites.has(makeFullMid(entry.peerId, entry.mid)) ||
+      this.ringing.has(conferenceId) ||
+      this.isInConference(conferenceId)
+    ) {
       return;
     }
 
@@ -325,5 +351,5 @@ export class ConferenceInvitesController extends EventListenerBase<{
 }
 
 const conferenceInvitesController = new ConferenceInvitesController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.conferenceInvitesController = conferenceInvitesController);
+DEBUG && (MOUNT_CLASS_TO.conferenceInvitesController = conferenceInvitesController);
 export default conferenceInvitesController;

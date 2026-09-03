@@ -148,6 +148,7 @@ vi.mock('@components/toast', () => ({
 }));
 
 vi.mock('@config/debug', () => ({
+  default: false,
   MOUNT_CLASS_TO: undefined
 }));
 
@@ -175,6 +176,10 @@ vi.mock('@lib/calls/callTransitionCoordinator', () => ({
 
 vi.mock('@lib/calls/groupCallsController', () => ({
   default: {joinConference: mocks.joinConference}
+}));
+
+vi.mock('@lib/calls/rtmpCallsController', () => ({
+  default: {currentCall: undefined}
 }));
 
 vi.mock('@lib/logger', () => ({

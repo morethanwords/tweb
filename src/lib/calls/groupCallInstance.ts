@@ -17,7 +17,7 @@ import getStream from '@lib/calls/helpers/getStream';
 import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
 import {findGroupCallChainUpdate, getUpdatesList, groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import stopTrack from '@lib/calls/helpers/stopTrack';
-import localConferenceDescription from '@lib/calls/localConferenceDescription';
+import localConferenceDescription, {ConferenceEntry} from '@lib/calls/localConferenceDescription';
 import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 import StreamManager, {waitForMediaTrackReplacements} from '@lib/calls/streamManager';
 import {Ssrc} from '@lib/calls/types';
@@ -33,6 +33,15 @@ import {
 import {GROUP_CALL_PARTICIPANTS_LOAD_LIMIT} from '@lib/calls/constants';
 import {fromTelegramSource, normalizeSsrc} from '@lib/calls/utils';
 import createSerializedQueue from '@helpers/createSerializedQueue';
+import notifyAllowedToSpeak from '@components/groupCall/allowedToSpeakCue';
+
+// Screen capture is requested without tab / system audio. There is no in-app
+// "share system audio" toggle yet (tdesktop asks explicitly in its picker), so
+// audio-less is the privacy default: the browser's picker would otherwise offer
+// the audio of whatever else is playing, and the P2P path
+// (callInstanceBase.requestScreen) already asks this way.
+const getGroupScreenConstraints = () => getScreenConstraints(true);
+
 
 // If a conference poller hasn't reached the server in this long while the call
 // is alive, the watchdog forces recovery. Comfortably past the poll cadences
@@ -2440,7 +2449,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       }
       this.assertMediaRuntimeReady();
       await this.drainPendingPresentationLeaves();
-      stream ??= await getScreenStream(getScreenConstraints());
+      stream ??= await getScreenStream(getGroupScreenConstraints());
       // The screen-picker can stay open for seconds; the user can hang up
       // before it resolves. hangUp() already walked this.connections and never
       // saw the presentation connection (it didn't exist yet), so building it
@@ -2513,7 +2522,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // closed, rejoin unable to start) until the picker was dismissed.
     const start = (async() => {
       this.assertMediaRuntimeReady();
-      const stream = await getScreenStream(getScreenConstraints());
+      const stream = await getScreenStream(getGroupScreenConstraints());
       return this.enqueuePresentationTransition(() => this.startScreenSharingInternal(generation, stream));
     })();
     const trackedStart = start.finally(() => {
@@ -2991,6 +3000,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
     return this.selfParticipantEditTail.enqueue(invoke);
   }
 
+  private isOwnSendEntry(entry: ConferenceEntry): boolean {
+    const isSending = (direction: RTCRtpTransceiverDirection) => direction === 'sendonly' || direction === 'sendrecv';
+    return isSending(entry.direction) ||
+      isSending(entry.originalDirection) ||
+      (!!rootScope.myId && entry.peerId === rootScope.myId);
+  }
+
   public onParticipantUpdate(participant: GroupCallParticipant) {
     const connectionInstance = this.connections.main;
     const {connection, description} = connectionInstance;
@@ -3011,11 +3027,34 @@ export default class GroupCallInstance extends CallInstanceBase<{
       ++this.selfParticipantRevision;
       this.participant = participant;
 
+      if(hasLeft) {
+        // The server removed us — an admin kicked us, or our slot was taken
+        // over. This row used to be ignored, so the call only ended once ICE
+        // timed out 15-30 s later, and an unmuted microphone kept feeding our
+        // SFU slot meanwhile while the popup still showed "unmuted". tdesktop
+        // applySelfUpdate rejoins when the row carries our ssrc and hangs up
+        // otherwise; a rejoin is a separate feature, so fail closed either
+        // way: cut capture synchronously, then leave. A row that arrives while
+        // our own leave is already tearing the connection down changes nothing.
+        if(this.isClosing) return;
+        this.setMuted(true);
+        this.dispatchEvent('state', this.state);
+        this.hangUpAfterFatalFailure();
+        return;
+      }
+
       const adminMediaBlocked = !participant.pFlags.can_self_unmute;
       const adminMediaBlockChanged = this.adminMediaBlocked !== adminMediaBlocked;
       if(adminMediaBlockChanged) {
         this.adminMediaBlocked = adminMediaBlocked;
         ++this.adminMediaTeardownGeneration;
+        if(!adminMediaBlocked && this.joined) {
+          // An admin lifted our forced mute. The row still says `muted`, so we
+          // stay muted (below) — the cue is what tells the user the microphone
+          // button works again (tdesktop notifyAboutAllowedToSpeak, gated on
+          // having joined exactly like `_hadJoinedState`).
+          notifyAllowedToSpeak();
+        }
       }
 
       if(connectionInstance.sources.audio.source !== participant.source) {
@@ -3084,6 +3123,22 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
 
     let ssrcs = hasLeft ? [] : makeSsrcsFromParticipant(participant);
+
+    // A remote row naming one of OUR send sources used to rebind that entry to
+    // the remote peer and, once the row stopped listing it, set it inactive —
+    // the next answer then rejected our own audio m-line. Our send entries
+    // never belong to anyone else, so drop such a source here, before it can
+    // reach the key map, the SDP or this participant's remembered set (which
+    // is what the `left` pass below inactivates).
+    ssrcs = ssrcs.filter((ssrc) => {
+      const entry = description.getEntryBySource(ssrc.source);
+      if(!entry || !this.isOwnSendEntry(entry)) return true;
+      this.reportConferenceBug(
+        'the call server assigned our own media stream to another participant',
+        {source: ssrc.source, type: ssrc.type, to: peerId}
+      );
+      return false;
+    });
 
     // For e2e conferences: map every SFU SSRC for this participant to their
     // Telegram user_id so recv RTCRtpScriptTransform handlers can look up

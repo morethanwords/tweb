@@ -254,6 +254,52 @@ function authorizeSetGroupState(oldGS: GroupState, newGS: GroupState, signer: Si
   }
 }
 
+// tweb hardening on top of tdlib. tdlib lets a signer that is NOT a member of
+// the prior group state act on `external_permissions` alone
+// (GroupState::get_permissions, Blockchain.cpp:71-78), and every conference is
+// created with external add+remove (our zero block, tdesktop makeJoinBlock) —
+// so under tdlib's rules an outsider block could eject members or inject keys
+// for arbitrary user_ids, and the server is the party relaying it. The only
+// block an official client ever signs from outside the group is its own join:
+// Call::create_self_add_block (Call.cpp:597) and tdesktop's makeJoinBlock
+// (tde2e_api.cpp:158) copy the prior state, drop the entries carrying the
+// joiner's user_id (a stale key left by an earlier session) and append the
+// joiner — external_permissions and everyone else verbatim. Pin an outsider's
+// SetGroupState to exactly that shape. Members keep tdlib's rules, and the
+// zero block (no prior members at all) is not subject to this.
+function authorizeOutsiderSelfJoin(oldGS: GroupState, newGS: GroupState, signerPublicKey: Uint8Array): void {
+  if(oldGS.externalPermissions !== newGS.externalPermissions) {
+    throw new BlockchainError('NO_PERMISSIONS', 'outsider block must keep external_permissions');
+  }
+
+  const removed = new Map<string, GroupParticipant>();
+  for(const p of oldGS.participants) removed.set(participantMapKey(p), p);
+  let self: GroupParticipant | undefined;
+  for(const p of newGS.participants) {
+    const key = participantMapKey(p);
+    const prior = removed.get(key);
+    if(prior) {
+      if(participantFlags(prior) !== participantFlags(p) || prior.version !== p.version) {
+        throw new BlockchainError('NO_PERMISSIONS', 'outsider block must carry the other participants verbatim');
+      }
+      removed.delete(key);
+      continue;
+    }
+    if(self || !constantTimeEqual(p.publicKey, signerPublicKey)) {
+      throw new BlockchainError('NO_PERMISSIONS', 'outsider block may add nobody but its signer');
+    }
+    self = p;
+  }
+  if(!self) {
+    throw new BlockchainError('NO_PERMISSIONS', 'outsider block must add its signer');
+  }
+  for(const p of removed.values()) {
+    if(p.userId !== self.userId) {
+      throw new BlockchainError('NO_PERMISSIONS', 'outsider block may remove nothing but its own stale entry');
+    }
+  }
+}
+
 // tdlib State::validate_shared_key — exactly one header per participant.
 function validateSharedKey(sharedKey: SharedKey | undefined, gs: GroupState): void {
   if(!sharedKey) return; // empty/cleared shared key is valid
@@ -364,7 +410,11 @@ export async function applyBlock(
       case 'setGroupState': {
         hasGroupStateChange = true;
         validateGroupState(change.groupState);
-        authorizeSetGroupState(groupState, change.groupState, getSignerPermissions(groupState, signerPubKey));
+        const signer = getSignerPermissions(groupState, signerPubKey);
+        authorizeSetGroupState(groupState, change.groupState, signer);
+        if(block.height > 0 && !signer.isParticipant) {
+          authorizeOutsiderSelfJoin(groupState, change.groupState, signerPubKey);
+        }
         groupState = change.groupState;
         // SetGroupState implicitly clears the shared key; tdlib requires
         // may_change_shared_key on the NEW state for that clear.

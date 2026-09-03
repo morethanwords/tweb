@@ -17,13 +17,15 @@ import {appendAudioTrailer, stripAudioTrailer} from './audioTrailer';
 import {normalizeSsrc} from '@lib/calls/utils';
 import createSerializedQueue from '@helpers/createSerializedQueue';
 import {E2eCall} from './call';
-import {ensureCryptoReady} from './crypto';
+import {ensureCryptoReady, randomBytes} from './crypto';
 import type {CallStatusSnapshot, HostRequest, HostResponse, WorkerEvent} from './encryptWorkerProtocol';
 import {PrivateKey} from './keys';
 
 declare const self: DedicatedWorkerGlobalScope;
 
 let call: E2eCall | undefined;
+// The call's signing key. Born here in `createKey` — the host only ever learns
+// the public half — or derived from a request's explicit seed (unit tests).
 let privateKey: PrivateKey | undefined;
 // Exact LOCAL-format block returned to the host by prepareRejoinBlock. The
 // host can only commit this retained proposal after the join RPC accepts it;
@@ -65,56 +67,67 @@ function consumePrivateSeed(seed: Uint8Array): PrivateKey {
   }
 }
 
+// The key a request signs with: its own seed when it carries one (the caller
+// destroys that key when done), otherwise the one `createKey` retained.
+function requestKey(privateSeed: Uint8Array | undefined): {key: PrivateKey; owned: boolean} {
+  if(privateSeed) return {key: consumePrivateSeed(privateSeed), owned: true};
+  if(!privateKey) throw new Error('no signing key: createKey first');
+  return {key: privateKey, owned: false};
+}
+
 // Wrap any handler so unhandled errors come back as `err` responses instead
 // of crashing the worker.
 async function handle(req: HostRequest): Promise<unknown> {
   switch(req.kind) {
+    case 'createKey': {
+      if(call) throw new Error('createKey: already initialized');
+      privateKey?.destroy();
+      privateKey = consumePrivateSeed(randomBytes(32));
+      return new Uint8Array(privateKey.publicKeyBytes);
+    }
+
     case 'createZeroBlock': {
-      const sk = consumePrivateSeed(req.args.privateSeed);
+      const {key, owned} = requestKey(req.args.privateSeed);
       try {
-        return await E2eCall.createZeroBlock(sk, req.args.groupState);
+        return await E2eCall.createZeroBlock(key, req.args.groupState);
       } finally {
-        sk.destroy();
+        if(owned) key.destroy();
       }
     }
 
     case 'createSelfAddBlock': {
-      const sk = consumePrivateSeed(req.args.privateSeed);
+      const {key, owned} = requestKey(req.args.privateSeed);
       try {
         return await E2eCall.createSelfAddBlock(
-          sk,
+          key,
           req.args.previousBlockServer,
           req.args.self
         );
       } finally {
-        sk.destroy();
+        if(owned) key.destroy();
       }
     }
 
     case 'init': {
       if(call) {
-        req.args.privateSeed.fill(0);
+        req.args.privateSeed?.fill(0);
         throw new Error('init: already initialized');
       }
-      // A failed earlier init must not leave an orphaned key behind. Build the
-      // new call off-globals, then publish both references together only after
-      // hydration succeeds.
-      privateKey?.destroy();
-      privateKey = undefined;
       pendingRejoinBlock = undefined;
-      const nextPrivateKey = consumePrivateSeed(req.args.privateSeed);
+      const {key, owned} = requestKey(req.args.privateSeed);
+      // An explicit seed supersedes whatever createKey retained. Either way the
+      // key is off-globals while hydrating, so a failed init leaves no orphan
+      // behind and both references are published together on success.
+      if(owned) privateKey?.destroy();
+      privateKey = undefined;
       try {
-        const nextCall = await E2eCall.create(req.args.userId, nextPrivateKey, req.args.lastBlockServer);
-        privateKey = nextPrivateKey;
+        const nextCall = await E2eCall.create(req.args.userId, key, req.args.lastBlockServer);
+        privateKey = key;
         call = nextCall;
       } catch(e) {
-        nextPrivateKey.destroy();
-        privateKey = undefined;
-        call = undefined;
-        pendingRejoinBlock = undefined;
+        key.destroy();
         throw e;
       }
-      pendingRejoinBlock = undefined;
       const snap = snapshot();
       emit({kind: 'status', status: snap});
       // Initial verification round always queues a commit broadcast.
@@ -203,9 +216,12 @@ async function handle(req: HostRequest): Promise<unknown> {
     }
 
     case 'destroy': {
+      // Epoch keys and the pending verification nonce live in the call, the
+      // signing key here — wipe both, not just the key.
+      call?.destroy();
+      call = undefined;
       privateKey?.destroy();
       privateKey = undefined;
-      call = undefined;
       pendingRejoinBlock = undefined;
       ssrcToUser.clear();
       return undefined;

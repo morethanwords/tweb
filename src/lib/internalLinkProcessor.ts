@@ -9,6 +9,7 @@ import showStickersPopup from '@components/popups/stickers';
 import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
+import {CONFERENCE_CALL_SLUG_REGEXP} from '@lib/calls/constants';
 import addAnchorListener from '@helpers/addAnchorListener';
 import assumeType from '@helpers/assumeType';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
@@ -1128,6 +1129,13 @@ export class InternalLinkProcessor {
     link: InternalLink.InternalLinkConferenceCall,
     options?: JoinConferenceOptions
   ) => {
+    // The slug is an opaque token the server minted; a malformed one is a dead
+    // link, and it gets the same notice as an expired one.
+    if(typeof(link.slug) !== 'string' || !CONFERENCE_CALL_SLUG_REGEXP.test(link.slug)) {
+      toastNew({langPackKey: 'InviteExpired'});
+      return Promise.resolve();
+    }
+
     return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug}, options);
   };
 

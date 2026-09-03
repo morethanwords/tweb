@@ -168,7 +168,7 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
       if(!groupCallInstance || shareInvitePromise || !shareInviteMiddleware()) return;
 
       setShareInviteBusy(true);
-      const operation = shareGroupCallInviteLink(groupCallInstance, shareInviteMiddleware);
+      const operation = shareGroupCallInviteLink(groupCallInstance, {canManage, isAlive: shareInviteMiddleware});
       const tracked = operation.finally(() => {
         if(shareInvitePromise === tracked) shareInvitePromise = undefined;
         if(shareInviteMiddleware()) setShareInviteBusy(false);

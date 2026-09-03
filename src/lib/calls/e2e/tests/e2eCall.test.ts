@@ -12,7 +12,7 @@
  */
 
 import {beforeAll, describe, expect, it} from 'vitest';
-import {E2eCall, CallError} from '../call';
+import {ActiveEpoch, E2eCall, CallError, ReplayState} from '../call';
 import {bytesToHex, ensureCryptoReady, sha256} from '../crypto';
 import {PrivateKey} from '../keys';
 import {decodeBlock, encodeGroupBroadcastNonceCommit, GroupParticipant, GroupState} from '../tlTypes';
@@ -650,5 +650,85 @@ describe('E2eCall — verification broadcast reordering', () => {
     // …and a sender's repeated commit for one height is not buffered twice.
     await expect(call.receiveInbound(futureCommit(bobId, 1))).resolves.toBe('consumed');
     expect(delayed.get(1).filter((b) => b.userId === bobId)).toHaveLength(1);
+  });
+});
+
+describe('E2eCall — replay windows follow the epochs', () => {
+  it('forgets an ejected member\'s windows once its last epoch expires', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(61));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(62));
+    const carol = PrivateKey.fromSeed(new Uint8Array(32).fill(63));
+    const aliceId = BigInt(601), bobId = BigInt(602), carolId = BigInt(603);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const bobJoin = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
+    const carolJoin = await E2eCall.createSelfAddBlock(carol, bobJoin, participantFor(carolId, carol));
+
+    let now = 0;
+    const aliceCall = await E2eCall.create(aliceId, alice, carolJoin, () => now);
+    const bobCall = await E2eCall.create(bobId, bob, carolJoin);
+    const carolCall = await E2eCall.create(carolId, carol, carolJoin);
+    await aliceCall.decrypt(bobId, 0, await bobCall.encrypt(0, new Uint8Array([1]), 0));
+    await aliceCall.decrypt(carolId, 0, await carolCall.encrypt(0, new Uint8Array([2]), 0));
+    const replay = (aliceCall as unknown as {replayState: ReplayState}).replayState;
+    expect(replay.has(bob.publicKey(), 0)).toBe(true);
+    expect(replay.has(carol.publicKey(), 0)).toBe(true);
+
+    // Alice ejects Bob. His epoch — and with it his window — survives the
+    // grace period a superseded key stays decryptable for, then both go.
+    const removal = await aliceCall.buildRemoveParticipantsBlock([bobId]);
+    await aliceCall.applyBlockBytes(removal.block);
+    await aliceCall.encrypt(0, new Uint8Array([3]), 0);
+    expect(replay.has(bob.publicKey(), 0)).toBe(true);
+
+    now = 10_001;
+    await aliceCall.encrypt(0, new Uint8Array([4]), 0);
+    expect(replay.has(bob.publicKey(), 0)).toBe(false);
+    expect(replay.has(carol.publicKey(), 0)).toBe(true);
+  });
+});
+
+describe('E2eCall — destroy', () => {
+  async function twoEpochCall() {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(64));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(65));
+    const aliceId = BigInt(604), bobId = BigInt(605);
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceId, alice, zero);
+    await call.applyBlockBytes(await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob)));
+    return call;
+  }
+
+  it('zeroes every epoch key and the unrevealed nonce, then poisons the call', async() => {
+    const call = await twoEpochCall();
+    const internals = call as unknown as {epochs: ActiveEpoch[]; verification: {myNonce: Uint8Array} | undefined};
+    expect(internals.epochs).toHaveLength(2);
+    const keys = internals.epochs.map((e) => e.groupSharedKey);
+    const nonce = internals.verification!.myNonce;
+    expect(keys.every((k) => k.some((b) => b !== 0))).toBe(true);
+    expect(nonce.some((b) => b !== 0)).toBe(true);
+
+    call.destroy();
+
+    expect(keys.every((k) => k.every((b) => b === 0))).toBe(true);
+    expect(nonce.every((b) => b === 0)).toBe(true);
+    expect(internals.epochs).toHaveLength(0);
+    expect(internals.verification).toBeUndefined();
+    expect(call.getStatus()).toBeInstanceOf(CallError);
+    await expect(call.encrypt(0, new Uint8Array([1]), 0)).rejects.toThrow(/destroyed/);
+  });
+
+  it('drops a frame whose encryption was in flight when the keys were wiped', async() => {
+    const call = await twoEpochCall();
+    const pending = call.encrypt(0, new Uint8Array([1, 2, 3]), 0);
+    call.destroy();
+    // A header_b slot sealed under an all-zero key would leak the frame's
+    // one-time secret; the frame must be dropped, not returned.
+    await expect(pending).rejects.toThrow(/destroyed/);
   });
 });

@@ -19,6 +19,9 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 // before the controller import.
 vi.mock('@lib/calls/e2e/encryptWorkerHost', () => {
   class EncryptWorkerHost {
+    public async createKey(): Promise<Uint8Array> {
+      return new Uint8Array(32);
+    }
     public async createZeroBlock(_args: any): Promise<Uint8Array> {
       // Unreachable in these tests — the chain-blocks mock throws first.
       return new Uint8Array(0);

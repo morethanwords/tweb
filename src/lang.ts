@@ -4396,6 +4396,7 @@ const lang = {
   'VoiceChat.Video.Stream.Video': 'video',
   'VoiceChat.Video.Stream.Screencast': 'screen',
   'VoiceChat.Video.Stream.More': 'more',
+  'VoiceChat.YouCanNowSpeak': 'You can now speak.',
   'VoiceChat.Leave': 'Leave',
   'VoiceChat.End.Title': 'Leave video chat',
   'VoiceChat.End.Text': 'Are you sure you want to leave this video chat?',

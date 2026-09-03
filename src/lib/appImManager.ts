@@ -2087,8 +2087,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(options.call) {
-      const call = await rootScope.managers.appCallsManager.getCall(options.call);
-      rootScope.dispatchEvent('call_update', call);
+      await callsController.ringRequestedCall(options.call);
     }
 
     if(threadId) {

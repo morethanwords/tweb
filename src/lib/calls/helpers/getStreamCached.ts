@@ -1,3 +1,4 @@
+import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
 import getScreenStream from '@lib/calls/helpers/getScreenStream';
 import getStream from '@lib/calls/helpers/getStream';
 
@@ -56,4 +57,4 @@ export default function getStreamCached() {
   };
 }
 
-(window as any).getStreamCached = getStreamCached;
+DEBUG && (MOUNT_CLASS_TO.getStreamCached = getStreamCached);

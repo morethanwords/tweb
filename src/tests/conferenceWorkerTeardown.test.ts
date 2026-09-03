@@ -201,56 +201,99 @@ describe('EncryptWorkerHost.terminate', () => {
   });
 });
 
+describe('EncryptWorkerHost.createKey', () => {
+  beforeEach(() => {
+    fake = new FakeWorker();
+  });
+
+  it('asks the worker for a key with no arguments at all', async() => {
+    const {EncryptWorkerHost} = await import('@lib/calls/e2e/encryptWorkerHost');
+    const host = new EncryptWorkerHost();
+    await host.createKey();
+    expect(fake.posted.find((message) => message.kind === 'createKey')).toEqual({
+      kind: 'createKey',
+      id: expect.any(Number)
+    });
+    await host.terminate();
+  });
+});
+
+// Load a fresh encryptWorker module against mocked keys / call / crypto modules
+// and capture the message handler it installs. `restore` undoes everything.
+async function loadWorker(modules: {keys: unknown, call: unknown, crypto?: Record<string, unknown>}) {
+  vi.resetModules();
+  vi.doMock('@lib/calls/e2e/keys', () => modules.keys);
+  vi.doMock('@lib/calls/e2e/call', () => modules.call);
+  vi.doMock('@lib/calls/e2e/crypto', () => ({
+    ensureCryptoReady: vi.fn(async() => {}),
+    ...modules.crypto
+  }));
+
+  let messageHandler: ((event: MessageEvent<any>) => void) | undefined;
+  const previousTransform = (self as any).onrtctransform;
+  const addListener = vi.spyOn(self as any, 'addEventListener').mockImplementation((...args: unknown[]) => {
+    const [type, listener] = args as [string, (event: MessageEvent<any>) => void];
+    if(type === 'message') messageHandler = listener;
+  });
+  const postMessage = vi.spyOn(self as any, 'postMessage').mockImplementation(() => {});
+  const restore = () => {
+    addListener.mockRestore();
+    postMessage.mockRestore();
+    (self as any).onrtctransform = previousTransform;
+    vi.doUnmock('@lib/calls/e2e/keys');
+    vi.doUnmock('@lib/calls/e2e/call');
+    vi.doUnmock('@lib/calls/e2e/crypto');
+    vi.resetModules();
+  };
+
+  try {
+    await import('@lib/calls/e2e/encryptWorker');
+    if(!messageHandler) throw new Error('encryptWorker did not install its message handler');
+  } catch(err) {
+    restore();
+    throw err;
+  }
+
+  const dispatch = async(data: any) => {
+    messageHandler!({data} as MessageEvent<any>);
+    await vi.waitFor(() => {
+      expect(postMessage.mock.calls.some(([response]) =>
+        (response as {id?: number}).id === data.id
+      )).toBe(true);
+    });
+  };
+  return {dispatch, postMessage, restore};
+}
+
 describe('encryptWorker request seed lifecycle', () => {
   it('wipes every request seed and destroys a key whose init hydration fails', async() => {
-    vi.resetModules();
     const derivedFrom: number[][] = [];
     const keys: Array<{destroy: ReturnType<typeof vi.fn>}> = [];
     const create = vi.fn(async() => {
       throw new Error('invalid initial block');
     });
 
-    vi.doMock('@lib/calls/e2e/keys', () => ({
-      PrivateKey: class {
-        public static fromSeed(seed: Uint8Array) {
-          derivedFrom.push([...seed]);
-          const key = {destroy: vi.fn()};
-          keys.push(key);
-          return key;
+    const {dispatch, postMessage, restore} = await loadWorker({
+      keys: {
+        PrivateKey: class {
+          public static fromSeed(seed: Uint8Array) {
+            derivedFrom.push([...seed]);
+            const key = {destroy: vi.fn()};
+            keys.push(key);
+            return key;
+          }
+        }
+      },
+      call: {
+        E2eCall: {
+          createZeroBlock: vi.fn(async() => new Uint8Array([1])),
+          createSelfAddBlock: vi.fn(async() => new Uint8Array([2])),
+          create
         }
       }
-    }));
-    vi.doMock('@lib/calls/e2e/call', () => ({
-      E2eCall: {
-        createZeroBlock: vi.fn(async() => new Uint8Array([1])),
-        createSelfAddBlock: vi.fn(async() => new Uint8Array([2])),
-        create
-      }
-    }));
-    vi.doMock('@lib/calls/e2e/crypto', () => ({
-      ensureCryptoReady: vi.fn(async() => {})
-    }));
-
-    let messageHandler: ((event: MessageEvent<any>) => void) | undefined;
-    const previousTransform = (self as any).onrtctransform;
-    const addListener = vi.spyOn(self as any, 'addEventListener').mockImplementation((...args: unknown[]) => {
-      const [type, listener] = args as [string, (event: MessageEvent<any>) => void];
-      if(type === 'message') messageHandler = listener;
     });
-    const postMessage = vi.spyOn(self as any, 'postMessage').mockImplementation(() => {});
 
     try {
-      await import('@lib/calls/e2e/encryptWorker');
-      if(!messageHandler) throw new Error('encryptWorker did not install its message handler');
-
-      const dispatch = async(data: any) => {
-        messageHandler!({data} as MessageEvent<any>);
-        await vi.waitFor(() => {
-          expect(postMessage.mock.calls.some(([response]) =>
-            (response as {id?: number}).id === data.id
-          )).toBe(true);
-        });
-      };
       const zeroSeed = new Uint8Array(32).fill(11);
       const selfAddSeed = new Uint8Array(32).fill(22);
       const initSeed = new Uint8Array(32).fill(33);
@@ -311,20 +354,13 @@ describe('encryptWorker request seed lifecycle', () => {
         message: 'Call not initialized'
       }));
     } finally {
-      addListener.mockRestore();
-      postMessage.mockRestore();
-      (self as any).onrtctransform = previousTransform;
-      vi.doUnmock('@lib/calls/e2e/keys');
-      vi.doUnmock('@lib/calls/e2e/call');
-      vi.doUnmock('@lib/calls/e2e/crypto');
-      vi.resetModules();
+      restore();
     }
   });
 });
 
 describe('encryptWorker rejoin transaction', () => {
   it('commits only the latest prepared block and queues one final-round verification broadcast', async() => {
-    vi.resetModules();
     const firstPrepared = new Uint8Array([10]);
     const finalPrepared = new Uint8Array([20]);
     const reanchor = vi.fn(async() => {});
@@ -345,44 +381,24 @@ describe('encryptWorker rejoin transaction', () => {
     .mockResolvedValueOnce(finalPrepared);
     const destroyKey = vi.fn();
 
-    vi.doMock('@lib/calls/e2e/keys', () => ({
-      PrivateKey: class {
-        public static fromSeed() {
-          return {destroy: destroyKey};
+    const {dispatch, postMessage, restore} = await loadWorker({
+      keys: {
+        PrivateKey: class {
+          public static fromSeed() {
+            return {destroy: destroyKey};
+          }
+        }
+      },
+      call: {
+        E2eCall: {
+          create: vi.fn(async() => liveCall),
+          createZeroBlock: vi.fn(),
+          createSelfAddBlock
         }
       }
-    }));
-    vi.doMock('@lib/calls/e2e/call', () => ({
-      E2eCall: {
-        create: vi.fn(async() => liveCall),
-        createZeroBlock: vi.fn(),
-        createSelfAddBlock
-      }
-    }));
-    vi.doMock('@lib/calls/e2e/crypto', () => ({
-      ensureCryptoReady: vi.fn(async() => {})
-    }));
-
-    let messageHandler: ((event: MessageEvent<any>) => void) | undefined;
-    const previousTransform = (self as any).onrtctransform;
-    const addListener = vi.spyOn(self as any, 'addEventListener').mockImplementation((...args: unknown[]) => {
-      const [type, listener] = args as [string, (event: MessageEvent<any>) => void];
-      if(type === 'message') messageHandler = listener;
     });
-    const postMessage = vi.spyOn(self as any, 'postMessage').mockImplementation(() => {});
 
     try {
-      await import('@lib/calls/e2e/encryptWorker');
-      if(!messageHandler) throw new Error('encryptWorker did not install its message handler');
-      const dispatch = async(data: any) => {
-        messageHandler!({data} as MessageEvent<any>);
-        await vi.waitFor(() => {
-          expect(postMessage.mock.calls.some(([response]) =>
-            (response as {id?: number}).id === data.id
-          )).toBe(true);
-        });
-      };
-
       await dispatch({
         kind: 'init',
         id: 1,
@@ -416,13 +432,130 @@ describe('encryptWorker rejoin transaction', () => {
       });
       expect(pendingOutbound).toHaveLength(1);
     } finally {
-      addListener.mockRestore();
-      postMessage.mockRestore();
-      (self as any).onrtctransform = previousTransform;
-      vi.doUnmock('@lib/calls/e2e/keys');
-      vi.doUnmock('@lib/calls/e2e/call');
-      vi.doUnmock('@lib/calls/e2e/crypto');
-      vi.resetModules();
+      restore();
+    }
+  });
+});
+
+describe('encryptWorker key ownership', () => {
+  const selfParticipant = {
+    userId: BigInt(7),
+    publicKey: new Uint8Array(32),
+    canAddUsers: true,
+    canRemoveUsers: true,
+    version: 0
+  };
+
+  function keyModules() {
+    const fromSeed = vi.fn((seed: Uint8Array) => ({
+      publicKeyBytes: new Uint8Array(32).fill(seed[0]),
+      destroy: vi.fn()
+    }));
+    const randomBytes = vi.fn((size: number) => new Uint8Array(size).fill(0x5a));
+    const liveCall = {
+      userId: BigInt(7),
+      getHeight: () => 0,
+      getGroupState: (): {participants: never[], externalPermissions: number} => ({
+        participants: [],
+        externalPermissions: 0
+      }),
+      getLastBlockHash: () => new Uint8Array(32),
+      getVerificationState: (): undefined => undefined,
+      getStatus: (): null => null,
+      destroy: vi.fn()
+    };
+    const E2eCall = {
+      create: vi.fn(async() => liveCall),
+      createZeroBlock: vi.fn(async() => new Uint8Array([1])),
+      createSelfAddBlock: vi.fn(async() => new Uint8Array([2]))
+    };
+    return {fromSeed, randomBytes, liveCall, E2eCall};
+  }
+
+  it('mints the key in the worker, returns only its public half and signs every seedless request with it', async() => {
+    const {fromSeed, randomBytes, liveCall, E2eCall} = keyModules();
+    const {dispatch, postMessage, restore} = await loadWorker({
+      keys: {PrivateKey: {fromSeed}},
+      call: {E2eCall},
+      crypto: {randomBytes}
+    });
+
+    try {
+      await dispatch({kind: 'createKey', id: 1});
+      expect(randomBytes).toHaveBeenCalledWith(32);
+      expect(fromSeed).toHaveBeenCalledTimes(1);
+      const key = fromSeed.mock.results[0].value;
+      // The seed lived exactly as long as the derivation.
+      expect([...fromSeed.mock.calls[0][0]]).toEqual(new Array(32).fill(0));
+      expect(postMessage).toHaveBeenCalledWith({kind: 'ok', id: 1, result: new Uint8Array(32).fill(0x5a)});
+
+      await dispatch({
+        kind: 'createZeroBlock',
+        id: 2,
+        args: {groupState: {participants: [], externalPermissions: 0}}
+      });
+      await dispatch({
+        kind: 'createSelfAddBlock',
+        id: 3,
+        args: {previousBlockServer: new Uint8Array([1]), self: selfParticipant}
+      });
+      await dispatch({
+        kind: 'init',
+        id: 4,
+        args: {userId: BigInt(7), lastBlockServer: new Uint8Array([1])}
+      });
+
+      expect(E2eCall.createZeroBlock).toHaveBeenCalledWith(key, expect.anything());
+      expect(E2eCall.createSelfAddBlock).toHaveBeenCalledWith(key, expect.anything(), selfParticipant);
+      expect(E2eCall.create).toHaveBeenCalledWith(BigInt(7), key, expect.anything());
+      expect(fromSeed).toHaveBeenCalledTimes(1);
+      expect(key.destroy).not.toHaveBeenCalled();
+
+      // destroy wipes the call's epoch keys, not just the signing key.
+      await dispatch({kind: 'destroy', id: 5});
+      expect(liveCall.destroy).toHaveBeenCalledTimes(1);
+      expect(key.destroy).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
+  });
+
+  it('refuses to sign without a key and to mint one over a live call', async() => {
+    const {fromSeed, randomBytes, E2eCall} = keyModules();
+    const {dispatch, postMessage, restore} = await loadWorker({
+      keys: {PrivateKey: {fromSeed}},
+      call: {E2eCall},
+      crypto: {randomBytes}
+    });
+
+    try {
+      await dispatch({
+        kind: 'createZeroBlock',
+        id: 1,
+        args: {groupState: {participants: [], externalPermissions: 0}}
+      });
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        kind: 'err',
+        id: 1,
+        message: 'no signing key: createKey first'
+      }));
+      expect(E2eCall.createZeroBlock).not.toHaveBeenCalled();
+
+      await dispatch({kind: 'createKey', id: 2});
+      await dispatch({
+        kind: 'init',
+        id: 3,
+        args: {userId: BigInt(7), lastBlockServer: new Uint8Array([1])}
+      });
+      await dispatch({kind: 'createKey', id: 4});
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        kind: 'err',
+        id: 4,
+        message: 'createKey: already initialized'
+      }));
+      expect(fromSeed).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
     }
   });
 });

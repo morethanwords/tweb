@@ -24,7 +24,12 @@ import getStream from '@lib/calls/helpers/getStream';
 import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import callsController from '@lib/calls/callsController';
 import CALL_STATE from '@lib/calls/callState';
-import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS, P2P_SIGNALING_MAX_INFLATED_BYTES} from '@lib/calls/constants';
+import {
+  GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS,
+  P2P_MAX_PENDING_CANDIDATES,
+  P2P_SIGNALING_MAX_INFLATED_BYTES,
+  P2P_SIGNALING_MAX_QUEUED_PACKETS
+} from '@lib/calls/constants';
 import getCallProtocol from '@lib/calls/p2P/getCallProtocol';
 import P2PEncryptor from '@lib/calls/p2P/p2PEncryptor';
 import ByteBuf from '@lib/calls/p2P/byteBuf';
@@ -75,7 +80,7 @@ import {
 import {SDPBuilder} from '@lib/calls/sdpBuilder';
 import StreamManager from '@lib/calls/streamManager';
 import {CallMediaState, DiffieHellmanInfo, P2PMediaContent, P2PMessage} from '@lib/calls/types';
-import {isSdpSafeSetup} from '@lib/calls/helpers/sdpSafety';
+import {isSdpSafeContents, isSdpSafeSetup, isSdpSafeString} from '@lib/calls/helpers/sdpSafety';
 
 const ICE_CANDIDATE_POOL_SIZE = 10;
 const DEFAULT_AUDIO_MID = '0';
@@ -99,6 +104,14 @@ type LocalMediaParameters = {
   videoExtensions: Conference['videoExtensions'];
 };
 
+// A remote ICE candidate waiting for the negotiation it belongs to, stamped
+// with how many remote exchanges had been applied when it was queued — the
+// way to tell a candidate that arrived early from one whose exchange was
+// superseded and would otherwise wait forever.
+type PendingCandidate = QueuedCandidate & {appliedExchanges: number};
+
+type HangUpReason = Parameters<CallInstance['hangUp']>[0];
+
 // Live state of the P2P engine: the RTCPeerConnection, its transceivers/senders,
 // the media streams and all the negotiation bookkeeping. Created in joinPhoneCall,
 // cleared in stopPhoneCall.
@@ -120,7 +133,7 @@ type State = {
   appliedRemoteUfrag?: string;
   isApplyingRemoteNegotiation?: boolean;
   handledRemoteExchangeIds: Set<string>;
-  pendingCandidates: QueuedCandidate[];
+  pendingCandidates: PendingCandidate[];
   transceivers: {
     audio: RTCRtpTransceiver;
     remoteAudio?: RTCRtpTransceiver;
@@ -484,11 +497,14 @@ export default class CallInstance extends CallInstanceBase<{
     return connectionState === CALL_STATE.CLOSING || connectionState === CALL_STATE.CLOSED;
   }
 
-  public setHangUpTimeout(timeout: number, reason: Parameters<CallInstance['hangUp']>[0]) {
+  // The reason may be decided when the timer fires: an unanswered incoming
+  // call is "missed" — unless another call is still up by then, which makes
+  // it "busy".
+  public setHangUpTimeout(timeout: number, reason: HangUpReason | (() => HangUpReason)) {
     this.clearHangUpTimeout();
     this.hangUpTimeout = ctx.setTimeout(() => {
       this.hangUpTimeout = undefined;
-      void this.hangUp(reason).catch((err) => {
+      void this.hangUp(typeof(reason) === 'function' ? reason() : reason).catch((err) => {
         this.log.error('timed P2P hangup failed', err);
       });
     }, timeout);
@@ -579,6 +595,16 @@ export default class CallInstance extends CallInstanceBase<{
 
   public async confirmCall() {
     if(this.isClosing) return;
+
+    // A redelivered phoneCallAccepted (getDifference, a second tab's copy of
+    // the update) must not run the exchange twice: the second
+    // phone.confirmCall fails on the server and that would drop a call that is
+    // already connecting. tdesktop bails the same way (`confirmAcceptedCall`:
+    // ExchangingKeys || _instance).
+    if(this.encryptionKey || this.joined || this.connectionState === CALL_STATE.EXCHANGING_KEYS) {
+      this.log.warn('ignoring a repeated phoneCallAccepted', this.id);
+      return;
+    }
 
     const {protocol, id} = this;
     const call = this.call as PhoneCall.phoneCallAccepted;
@@ -922,6 +948,15 @@ export default class CallInstance extends CallInstanceBase<{
 
   public onUpdatePhoneCallSignalingData(data: Uint8Array) {
     this.decryptQueue.push(data);
+
+    // Packets wait here only until the key is derived (and while the previous
+    // batch decrypts); the peer must not be able to grow that wait forever.
+    const overflow = this.decryptQueue.length - P2P_SIGNALING_MAX_QUEUED_PACKETS;
+    if(overflow > 0) {
+      this.decryptQueue.splice(0, overflow);
+      this.log.warn('dropping the oldest queued signaling packets', {overflow});
+    }
+
     this.scheduleDecryptQueueProcessing();
   }
 
@@ -2201,13 +2236,22 @@ export default class CallInstance extends CallInstanceBase<{
           remoteDescriptionMids: getRemoteDescriptionMids(this.p2p.connection),
           count: message.candidates.length
         });
-        this.p2p.pendingCandidates.push(...message.candidates.map((candidate) => {
+        const appliedExchanges = this.p2p.appliedRemoteExchangeIds.size;
+        this.p2p.pendingCandidates.push(...message.candidates.map((candidate): PendingCandidate => {
           return {
             ...candidate,
             exchangeId: message.exchangeId,
-            ufrag: message.ufrag || candidate.usernameFragment
+            ufrag: message.ufrag || candidate.usernameFragment,
+            appliedExchanges
           };
         }));
+
+        const overflow = this.p2p.pendingCandidates.length - P2P_MAX_PENDING_CANDIDATES;
+        if(overflow > 0) {
+          this.p2p.pendingCandidates.splice(0, overflow);
+          this.log.warn('dropping the oldest pending ICE candidates', {overflow});
+        }
+
         await this.commitPendingIceCandidates();
         break;
       }
@@ -2227,6 +2271,15 @@ export default class CallInstance extends CallInstanceBase<{
         break;
       }
       case 'NegotiateChannels': {
+        // Peer-controlled JSON again, and every field of it — codec names,
+        // fmtp, rtcp-fb, extmap URIs, ssrc groups and the ssrcs that double as
+        // mids — is interpolated into the SDP by SDPBuilder.addP2p. Rejected
+        // the way an unsafe InitialSetup is: dropped, never negotiated.
+        if(!isSdpSafeString(message.exchangeId) || !isSdpSafeContents(message.contents)) {
+          this.log.error('NegotiateChannels has invalid media fields — dropping');
+          break;
+        }
+
         if(this.p2p.handledRemoteExchangeIds.has(message.exchangeId)) {
           this.log('ignore duplicate remote negotiation', {
             exchangeId: message.exchangeId
@@ -2265,8 +2318,8 @@ export default class CallInstance extends CallInstanceBase<{
     }
 
     const {connection, pendingCandidates} = this.p2p;
-    const candidatesToAdd: QueuedCandidate[] = [];
-    const queuedCandidates: QueuedCandidate[] = [];
+    const candidatesToAdd: PendingCandidate[] = [];
+    const queuedCandidates: PendingCandidate[] = [];
 
     pendingCandidates.forEach((candidate) => {
       const decision = this.getCandidateCommitDecision(candidate);
@@ -2293,7 +2346,7 @@ export default class CallInstance extends CallInstanceBase<{
     }));
   }
 
-  private getCandidateCommitDecision(candidate: QueuedCandidate): 'add' | 'queue' | 'drop' {
+  private getCandidateCommitDecision(candidate: PendingCandidate): 'add' | 'queue' | 'drop' {
     if(!this.p2p?.connection.remoteDescription) {
       return 'queue';
     }
@@ -2319,6 +2372,13 @@ export default class CallInstance extends CallInstanceBase<{
       }
 
       if(this.p2p.handledRemoteExchangeIds.has(candidateExchangeId)) {
+        return 'drop';
+      }
+
+      // Nothing has claimed this exchange, and a newer one has been applied
+      // since the candidate was queued: its negotiation was superseded (or
+      // never existed) and the candidate would otherwise wait forever.
+      if(this.p2p.appliedRemoteExchangeIds.size > candidate.appliedExchanges) {
         return 'drop';
       }
 

@@ -1,5 +1,6 @@
-import {MOUNT_CLASS_TO} from '@config/debug';
+import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
 import EventListenerBase from '@helpers/eventListenerBase';
+import noop from '@helpers/noop';
 import {nextRandomUint} from '@helpers/random';
 import {DataJSON, GroupCall, InputGroupCall} from '@layer';
 import {JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
@@ -77,6 +78,19 @@ export class RtmpCallsController extends EventListenerBase<{
         this.currentCall.lastKnownTime = time;
       }
     });
+
+    if(typeof(window) !== 'undefined') {
+      // Watching a stream is a server-side membership (phone.joinGroupCall).
+      // Leave it when the tab goes away — best effort through the manager,
+      // which the SharedWorker keeps alive while any other tab exists — so the
+      // viewer count does not carry a ghost until the server times it out.
+      window.addEventListener('pagehide', () => {
+        const {currentCall} = this;
+        if(currentCall) {
+          void this.managers.appGroupCallsManager.hangUp(currentCall.call.id, currentCall.ssrc).catch(noop);
+        }
+      });
+    }
   }
 
   public get currentCall() {
@@ -269,5 +283,5 @@ export class RtmpCallsController extends EventListenerBase<{
 }
 
 const rtmpCallsController = new RtmpCallsController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.rtmpCallsController = rtmpCallsController);
+DEBUG && (MOUNT_CLASS_TO.rtmpCallsController = rtmpCallsController);
 export default rtmpCallsController;

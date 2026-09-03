@@ -1,7 +1,8 @@
 import getGroupCallAudioAsset from '@components/groupCall/getAudioAsset';
-import {MOUNT_CLASS_TO} from '@config/debug';
+import {DEBUG, MOUNT_CLASS_TO} from '@config/debug';
 import {IS_CHROMIUM} from '@environment/userAgent';
 import EventListenerBase from '@helpers/eventListenerBase';
+import noop from '@helpers/noop';
 import {GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup} from '@layer';
 import {GroupCallId, GroupCallConnectionType} from '@appManagers/appGroupCallsManager';
 import {AppManagers} from '@lib/managers';
@@ -15,14 +16,13 @@ import {
   findGroupCallChainUpdate
 } from '@lib/calls/helpers/groupCallUpdates';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
+import {isSdpSafeSourceGroups, isSdpSafeString} from '@lib/calls/helpers/sdpSafety';
 import senderKind from '@lib/calls/helpers/senderKind';
 import {generateSsrc} from '@lib/calls/localConferenceDescription';
 import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 import StreamManager from '@lib/calls/streamManager';
 import {Ssrc} from '@lib/calls/types';
 import {EncryptWorkerHost} from '@lib/calls/e2e/encryptWorkerHost';
-import {randomBytes} from '@lib/calls/e2e/crypto';
-import {PrivateKey} from '@lib/calls/e2e/keys';
 import type {GroupParticipant} from '@lib/calls/e2e/tlTypes';
 import type {InputGroupCall, Updates} from '@layer';
 import {NULL_PEER_ID} from '@appManagers/constants';
@@ -83,12 +83,20 @@ type ConferenceStartOptions = {
 class ConferenceTransitionCancelledError extends Error {}
 
 export function makeSsrcsFromParticipant(participant: GroupCallParticipant) {
+  // A source group's semantics goes into `a=ssrc-group:` verbatim and its
+  // sources into every `a=ssrc:` line, the endpoint into the stream name — a
+  // malformed one is dropped here rather than handed to the SDP builder.
+  const isSafeVideo = (video: GroupCallParticipantVideo) => {
+    return video && isSdpSafeSourceGroups(video.source_groups) && isSdpSafeString(video.endpoint);
+  };
+  const video = isSafeVideo(participant.video) ? participant.video : undefined;
+  const presentation = isSafeVideo(participant.presentation) ? participant.presentation : undefined;
   return [
     makeSsrcFromParticipant(participant, 'audio', participant.source),
-    participant.video?.audio_source && makeSsrcFromParticipant(participant, 'audio', participant.video.audio_source),
-    participant.video && makeSsrcFromParticipant(participant, 'video', participant.video.source_groups, participant.video.endpoint),
-    participant.presentation?.audio_source && makeSsrcFromParticipant(participant, 'audio', participant.presentation.audio_source),
-    participant.presentation && makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint)
+    video?.audio_source && makeSsrcFromParticipant(participant, 'audio', video.audio_source),
+    video && makeSsrcFromParticipant(participant, 'video', video.source_groups, video.endpoint),
+    presentation?.audio_source && makeSsrcFromParticipant(participant, 'audio', presentation.audio_source),
+    presentation && makeSsrcFromParticipant(participant, 'video', presentation.source_groups, presentation.endpoint)
   ].filter(Boolean);
 };
 
@@ -152,6 +160,36 @@ export class GroupCallsController extends EventListenerBase<{
         currentGroupCall.onParticipantUpdate(participant);
       }
     });
+
+    // A closed tab used to linger as a ghost participant until the server timed
+    // it out — still listed, still holding a chain key in a conference. The
+    // SharedWorker outlives this tab, so a leave posted from pagehide reaches
+    // the server. Best-effort by design: not awaited, no UI teardown (the page
+    // is going away), and never a discard.
+    if(typeof window !== 'undefined') {
+      window.addEventListener('pagehide', () => this.leaveOnPageHide());
+    }
+  }
+
+  private leaveOnPageHide(): void {
+    const instance = this.currentGroupCall;
+    if(!instance) return;
+    const target = this.resolveLeaveTarget(instance, instance.connections.main);
+    if(!target) return;
+    void this.managers.appGroupCallsManager.leaveGroupCall(target.input, target.source).catch(noop);
+  }
+
+  // The server-side identity + audio source a leave for `instance` is addressed
+  // with — the reference phone.joinGroupCall accepted when there is one.
+  private resolveLeaveTarget(
+    instance: GroupCallInstance,
+    connectionInstance: GroupCallConnectionInstance | undefined,
+    fallbackInput?: InputGroupCall
+  ): {input: InputGroupCall, source: number} | undefined {
+    const input = connectionInstance?.acceptedCallInput ?? fallbackInput ?? instance.toInputGroupCall();
+    if(!input) return;
+    const source = connectionInstance?.sources.audio?.source;
+    return {input, source: typeof source === 'number' ? source : 0};
   }
 
   get groupCall() {
@@ -485,19 +523,13 @@ export class GroupCallsController extends EventListenerBase<{
     instance.cleanup();
 
     if(!connectionInstance?.joinAccepted) return;
-    const acceptedCall = connectionInstance.acceptedCallInput ??
-      opts.acceptedCall ??
-      instance.toInputGroupCall();
-    if(!acceptedCall) return;
+    const target = this.resolveLeaveTarget(instance, connectionInstance, opts.acceptedCall);
+    if(!target) return;
     try {
       if(opts.discard) {
-        await this.managers.appGroupCallsManager.discardGroupCall(acceptedCall);
+        await this.managers.appGroupCallsManager.discardGroupCall(target.input);
       } else {
-        const source = connectionInstance.sources.audio?.source;
-        await this.managers.appGroupCallsManager.leaveGroupCall(
-          acceptedCall,
-          typeof source === 'number' ? source : 0
-        );
+        await this.managers.appGroupCallsManager.leaveGroupCall(target.input, target.source);
       }
     } catch(leaveError) {
       this.log.warn('conference post-accept rollback failed', leaveError);
@@ -510,11 +542,17 @@ export class GroupCallsController extends EventListenerBase<{
   // phone.createConferenceCall(join=true). Joining an existing conference
   // first polls its current chain tip, then submits a self-add (or zero block
   // when the chain is empty) through phone.joinGroupCall.
-  private createConferenceCrypto(selfUserId: bigint) {
-    const seed = randomBytes(32);
-    const tempSk = PrivateKey.fromSeed(seed);
-    const publicKey = new Uint8Array(tempSk.publicKeyBytes);
-    tempSk.destroy();
+  // The signing key is born in the worker and never leaves it; this thread only
+  // learns the public key it advertises in the join payload.
+  private async createConferenceCrypto(selfUserId: bigint) {
+    const worker = new EncryptWorkerHost();
+    let publicKey: Uint8Array;
+    try {
+      publicKey = await worker.createKey();
+    } catch(err) {
+      await worker.terminate().catch((): undefined => undefined);
+      throw err;
+    }
 
     const selfParticipant: GroupParticipant = {
       userId: selfUserId,
@@ -524,12 +562,7 @@ export class GroupCallsController extends EventListenerBase<{
       version: 0
     };
 
-    return {
-      publicKey,
-      seed,
-      selfParticipant,
-      worker: new EncryptWorkerHost()
-    };
+    return {publicKey, selfParticipant, worker};
   }
 
   public startConference(opts: ConferenceStartOptions): Promise<GroupCallInstance> {
@@ -537,16 +570,14 @@ export class GroupCallsController extends EventListenerBase<{
   }
 
   private async startConferenceAttempt(opts: ConferenceStartOptions): Promise<GroupCallInstance> {
-    const {publicKey, seed, selfParticipant, worker} = this.createConferenceCrypto(opts.selfUserId);
+    const {publicKey, selfParticipant, worker} = await this.createConferenceCrypto(opts.selfUserId);
     try {
       const zeroBlock = await worker.createZeroBlock({
-        privateSeed: seed,
         groupState: {participants: [selfParticipant], externalPermissions: 3}
       });
       return await this.joinConferenceCommon({
         createConference: true,
         worker,
-        seed,
         publicKey,
         selfUserId: opts.selfUserId,
         lastBlockServer: zeroBlock,
@@ -557,8 +588,6 @@ export class GroupCallsController extends EventListenerBase<{
     } catch(err) {
       await worker.terminate().catch((): undefined => undefined);
       throw err;
-    } finally {
-      seed.fill(0);
     }
   }
 
@@ -644,7 +673,7 @@ export class GroupCallsController extends EventListenerBase<{
        !sameInputGroupCall(opts.input, opts.expectedCanonicalInput)) {
       throw new Error('joinConference: canonical input does not match its expected identity');
     }
-    const {publicKey, seed, selfParticipant, worker} = this.createConferenceCrypto(opts.selfUserId);
+    const {publicKey, selfParticipant, worker} = await this.createConferenceCrypto(opts.selfUserId);
     const initialOffsets: Partial<{0: number; 1: number}> = {};
     // Build the initial join block by polling the chain head and either making
     // a self-add block on top of it or a zero block if the chain is empty.
@@ -653,19 +682,16 @@ export class GroupCallsController extends EventListenerBase<{
       initialOffsets[0] = head.nextOffset;
       return head.block ?
         worker.createSelfAddBlock({
-          privateSeed: seed,
           previousBlockServer: head.block,
           self: selfParticipant
         }) :
         worker.createZeroBlock({
-          privateSeed: seed,
           groupState: {participants: [selfParticipant], externalPermissions: 3}
         });
     };
 
     // On a chain race the worker is already initialised, so it signs the
-    // replacement with its retained key. The seed is wiped in the main thread
-    // immediately after init and is never captured by this retry callback.
+    // replacement with its retained key.
     const rebuildJoinBlock = async(): Promise<Uint8Array> => {
       const head = await this.fetchLastConferenceBlock(opts.input, opts.expectedCanonicalInput);
       initialOffsets[0] = head.nextOffset;
@@ -688,7 +714,6 @@ export class GroupCallsController extends EventListenerBase<{
         input: opts.input,
         expectedCanonicalInput: opts.expectedCanonicalInput,
         worker,
-        seed,
         publicKey,
         selfUserId: opts.selfUserId,
         lastBlockServer: joinBlock,
@@ -706,8 +731,6 @@ export class GroupCallsController extends EventListenerBase<{
     } catch(e) {
       await worker.terminate().catch((): undefined => undefined);
       throw e;
-    } finally {
-      seed.fill(0);
     }
   }
 
@@ -723,7 +746,6 @@ export class GroupCallsController extends EventListenerBase<{
     createConference?: boolean;
     expectedCanonicalInput?: InputGroupCall.inputGroupCall;
     worker: EncryptWorkerHost;
-    seed: Uint8Array;
     publicKey: Uint8Array;
     selfUserId: bigint;
     lastBlockServer: Uint8Array;
@@ -818,20 +840,12 @@ export class GroupCallsController extends EventListenerBase<{
         }
       });
 
-      // Hydrate the worker against the block we built/fetched.
-      let initPromise: ReturnType<EncryptWorkerHost['init']>;
-      try {
-        initPromise = opts.worker.init({
-          userId: opts.selfUserId,
-          privateSeed: opts.seed,
-          lastBlockServer: opts.lastBlockServer
-        });
-      } finally {
-        // Worker.postMessage clones synchronously. Drop the main-thread copy
-        // before waiting for crypto hydration, which may be slow or fail.
-        opts.seed.fill(0);
-      }
-      await initPromise;
+      // Hydrate the worker against the block we built/fetched; it signs with
+      // the key it generated in createConferenceCrypto.
+      await opts.worker.init({
+        userId: opts.selfUserId,
+        lastBlockServer: opts.lastBlockServer
+      });
 
       instance.addEventListener('state', (state) => {
         if(this.currentGroupCall === instance && state === GROUP_CALL_STATE.CLOSED) {
@@ -1373,5 +1387,5 @@ export class GroupCallsController extends EventListenerBase<{
 }
 
 const groupCallsController = new GroupCallsController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.groupCallController = groupCallsController);
+DEBUG && (MOUNT_CLASS_TO.groupCallController = groupCallsController);
 export default groupCallsController;

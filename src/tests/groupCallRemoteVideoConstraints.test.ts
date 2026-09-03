@@ -33,7 +33,7 @@ function makeConnection(pinnedSource?: number) {
     clearInterval((instance as any).updateConstraintsInterval);
     return JSON.parse(send.mock.calls[send.mock.calls.length - 1][0]);
   };
-  return {request};
+  return {instance, request, send};
 }
 
 describe('GroupCallConnectionInstance remote video constraints', () => {
@@ -59,6 +59,28 @@ describe('GroupCallConnectionInstance remote video constraints', () => {
     expect(obj.onStageEndpoints).toEqual(Array.from({length: 16}, (_, i) => `video${i + 1}`));
     for(const endpoint of obj.onStageEndpoints) {
       expect(obj.constraints[endpoint]).toEqual({minHeight: 180, maxHeight: 360});
+    }
+  });
+});
+
+describe('GroupCallConnectionInstance constraints timer lifetime', () => {
+  it('stops the timer when the connection closes without a data-channel close event', () => {
+    vi.useFakeTimers();
+    try {
+      const {instance, send} = makeConnection(7);
+      instance.maybeUpdateRemoteVideoConstraints();
+      expect((instance as any).updateConstraintsInterval).toBeDefined();
+
+      // pc.close() does not reliably fire the channel's `close`; the override
+      // must not depend on it.
+      instance.closeConnection();
+
+      expect((instance as any).updateConstraintsInterval).toBeUndefined();
+      const sentBeforeClose = send.mock.calls.length;
+      vi.advanceTimersByTime(30000);
+      expect(send).toHaveBeenCalledTimes(sentBeforeClose);
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

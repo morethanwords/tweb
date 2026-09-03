@@ -5,10 +5,11 @@
  * The controller is the only thing standing between a `messageActionConferenceCall`
  * arriving and the user's device ringing, so what is asserted here is exactly
  * what tdesktop gates on: only a pending, incoming, private-chat invitation
- * rings; an invitation that lands while another call is up (or that is already
- * too old to be live) is declined instead of ignored; declining answers EVERY
- * invite message of that conference; and an invitation that is retracted,
- * answered elsewhere or deleted stops ringing.
+ * rings; one from this very account, or arriving at a session that has calls
+ * switched off, is ignored; an invitation that lands while another call is up
+ * (or that is already too old to be live) is declined instead of ignored;
+ * declining answers EVERY invite message of that conference; and an invitation
+ * that is retracted, answered elsewhere or deleted stops ringing.
  */
 
 import {beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -29,10 +30,6 @@ vi.mock('@lib/calls/groupCallsController', () => ({
   default: groupCallsControllerMock
 }));
 
-vi.mock('@lib/calls/rtmpCallsController', () => ({
-  default: rtmpCallsControllerMock
-}));
-
 vi.mock('@lib/appImManager', () => ({
   default: appImManagerMock
 }));
@@ -41,11 +38,6 @@ const audioAsset = vi.hoisted(() => ({
   play: vi.fn(),
   stop: vi.fn(),
   playIfDifferent: vi.fn()
-}));
-
-const callsControllerMock = vi.hoisted(() => ({
-  currentCall: undefined as unknown,
-  addEventListener: vi.fn()
 }));
 
 const groupCallsControllerMock = vi.hoisted(() => ({
@@ -57,6 +49,18 @@ const rtmpCallsControllerMock = vi.hoisted(() => ({
   currentCall: undefined as unknown
 }));
 
+// `isOtherCallActive` is the controller's own "busy" — another 1-on-1, a group
+// call or a live stream — so the mock derives it from the same three sources.
+const callsControllerMock = vi.hoisted(() => ({
+  currentCall: undefined as unknown,
+  addEventListener: vi.fn(),
+  isOtherCallActive: vi.fn(() => !!(
+    callsControllerMock.currentCall ||
+    rtmpCallsControllerMock.currentCall ||
+    (groupCallsControllerMock.groupCall && (groupCallsControllerMock.groupCall as {state: number}).state !== 4)
+  ))
+}));
+
 const appImManagerMock = vi.hoisted(() => ({
   joinConference: vi.fn(() => Promise.resolve())
 }));
@@ -64,6 +68,7 @@ const appImManagerMock = vi.hoisted(() => ({
 import type {Message} from '@layer';
 import rootScope from '@lib/rootScope';
 import CALL_STATE from '@lib/calls/callState';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import type ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
 
@@ -80,6 +85,7 @@ type RootScopeListeners = {
 
 const listeners: RootScopeListeners = {};
 const declineConferenceCallInvite = vi.fn(() => Promise.resolve({} as any));
+const isCallRequestsDisabled = vi.fn(() => Promise.resolve(false));
 let rung: ConferenceInviteInstance[] = [];
 let now: number;
 
@@ -127,8 +133,11 @@ function makeInvite(overrides: Partial<{
   } as any as Message.messageService;
 }
 
-function receive(message: Message.messageService) {
+// Ringing waits for the session's call-requests flag, so delivery settles a
+// macrotask later.
+async function receive(message: Message.messageService) {
   listeners.history_multiappend(message);
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe('ConferenceInvitesController', () => {
@@ -150,6 +159,7 @@ describe('ConferenceInvitesController', () => {
     callsControllerMock.currentCall = undefined;
     groupCallsControllerMock.groupCall = undefined;
     rtmpCallsControllerMock.currentCall = undefined;
+    isCallRequestsDisabled.mockResolvedValue(false);
 
     vi.spyOn(rootScope, 'addEventListener').mockImplementation(((event: string, listener: any) => {
       (listeners as any)[event] = listener;
@@ -158,12 +168,13 @@ describe('ConferenceInvitesController', () => {
     Object.defineProperty(rootScope, 'myId', {value: MY_ID.toPeerId(), configurable: true});
 
     conferenceInvitesController.construct({
-      appCallsManager: {declineConferenceCallInvite}
+      appCallsManager: {declineConferenceCallInvite},
+      appAccountManager: {isCallRequestsDisabled}
     } as any);
   });
 
-  it('rings for a pending incoming invitation and carries its participants', () => {
-    receive(makeInvite());
+  it('rings for a pending incoming invitation and carries its participants', async() => {
+    await receive(makeInvite());
 
     expect(rung).toHaveLength(1);
     const instance = rung[0];
@@ -177,37 +188,97 @@ describe('ConferenceInvitesController', () => {
     expect(declineConferenceCallInvite).not.toHaveBeenCalled();
   });
 
-  it('stays silent for invitations that are not a pending incoming call', () => {
-    receive(makeInvite({mid: 1, out: true}));
-    receive(makeInvite({mid: 2, active: true}));
-    receive(makeInvite({mid: 3, missed: true}));
-    receive(makeInvite({mid: 4, duration: 42}));
-    receive(makeInvite({mid: 5, peerId: (-INVITER_ID).toPeerId(true)}));
+  it('stays silent for invitations that are not a pending incoming call', async() => {
+    await receive(makeInvite({mid: 1, out: true}));
+    await receive(makeInvite({mid: 2, active: true}));
+    await receive(makeInvite({mid: 3, missed: true}));
+    await receive(makeInvite({mid: 4, duration: 42}));
+    await receive(makeInvite({mid: 5, peerId: (-INVITER_ID).toPeerId(true)}));
 
     expect(rung).toHaveLength(0);
     expect(audioAsset.play).not.toHaveBeenCalled();
     expect(declineConferenceCallInvite).not.toHaveBeenCalled();
   });
 
+  it('stays silent for an invitation sent by this very account', async() => {
+    // tdesktop `showConferenceInvite`: `user->isSelf()` returns without
+    // declining — the message is ours, there is nothing to answer.
+    await receive(makeInvite({fromId: MY_ID.toPeerId()}));
+
+    expect(rung).toHaveLength(0);
+    expect(audioAsset.play).not.toHaveBeenCalled();
+    expect(declineConferenceCallInvite).not.toHaveBeenCalled();
+    expect(isCallRequestsDisabled).not.toHaveBeenCalled();
+  });
+
+  it('stays silent when call requests are disabled for this session', async() => {
+    // tdesktop `callsDisabledForSession()`: the session's own "accept calls on
+    // this device" switch — ignored, not declined, like the self check.
+    isCallRequestsDisabled.mockResolvedValue(true);
+    await receive(makeInvite());
+
+    expect(isCallRequestsDisabled).toHaveBeenCalledTimes(1);
+    expect(rung).toHaveLength(0);
+    expect(audioAsset.play).not.toHaveBeenCalled();
+    expect(declineConferenceCallInvite).not.toHaveBeenCalled();
+  });
+
+  it('rings when the call-requests flag cannot be fetched', async() => {
+    // The helper resolves false on failure; a network hiccup must not silence
+    // a call.
+    isCallRequestsDisabled.mockResolvedValue(false);
+    await receive(makeInvite());
+
+    expect(rung).toHaveLength(1);
+  });
+
+  it('does not ring an invitation that was retracted while the flag was being fetched', async() => {
+    let resolveFlag: (disabled: boolean) => void;
+    isCallRequestsDisabled.mockImplementation(() => new Promise<boolean>((resolve) => {
+      resolveFlag = resolve;
+    }));
+
+    listeners.history_multiappend(makeInvite());
+    listeners.history_delete({peerId: INVITER_ID.toPeerId(), msgs: new Set([1])});
+    resolveFlag(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(rung).toHaveLength(0);
+    expect(audioAsset.play).not.toHaveBeenCalled();
+  });
+
   it('declines instead of ringing while another call is up', async() => {
     callsControllerMock.currentCall = {};
-    receive(makeInvite());
+    await receive(makeInvite());
 
     expect(rung).toHaveLength(0);
     expect(audioAsset.play).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(declineConferenceCallInvite).toHaveBeenCalledWith(1));
   });
 
+  it('declines instead of ringing while a group call or a live stream is up', async() => {
+    groupCallsControllerMock.groupCall = {state: GROUP_CALL_STATE.MUTED, toInputGroupCall: (): undefined => undefined};
+    await receive(makeInvite({mid: 1}));
+    await vi.waitFor(() => expect(declineConferenceCallInvite).toHaveBeenCalledWith(1));
+
+    groupCallsControllerMock.groupCall = undefined;
+    rtmpCallsControllerMock.currentCall = {};
+    await receive(makeInvite({mid: 2, fromId: OTHER_ID.toPeerId(), peerId: OTHER_ID.toPeerId()}));
+    await vi.waitFor(() => expect(declineConferenceCallInvite).toHaveBeenCalledWith(2));
+
+    expect(rung).toHaveLength(0);
+  });
+
   it('declines an invitation that is already older than the ring timeout', async() => {
-    receive(makeInvite({date: (now - 60e3) / 1000 | 0}));
+    await receive(makeInvite({date: (now - 60e3) / 1000 | 0}));
 
     expect(rung).toHaveLength(0);
     await vi.waitFor(() => expect(declineConferenceCallInvite).toHaveBeenCalledWith(1));
   });
 
   it('declines every invite message of the conference at once', async() => {
-    receive(makeInvite({mid: 1}));
-    receive(makeInvite({mid: 2, fromId: OTHER_ID.toPeerId(), peerId: OTHER_ID.toPeerId()}));
+    await receive(makeInvite({mid: 1}));
+    await receive(makeInvite({mid: 2, fromId: OTHER_ID.toPeerId(), peerId: OTHER_ID.toPeerId()}));
 
     // Only the first one rings — the conference is already being offered.
     expect(rung).toHaveLength(1);
@@ -221,21 +292,21 @@ describe('ConferenceInvitesController', () => {
     expect(audioAsset.stop).toHaveBeenCalled();
   });
 
-  it('stops ringing when the invitation is answered elsewhere or revoked', () => {
-    receive(makeInvite({mid: 1}));
+  it('stops ringing when the invitation is answered elsewhere or revoked', async() => {
+    await receive(makeInvite({mid: 1}));
     listeners.message_edit({message: makeInvite({mid: 1, active: true})});
     expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
     expect(declineConferenceCallInvite).not.toHaveBeenCalled();
 
     rung = [];
-    receive(makeInvite({mid: 2}));
+    await receive(makeInvite({mid: 2}));
     listeners.history_delete({peerId: INVITER_ID.toPeerId(), msgs: new Set([2])});
     expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);
     expect(declineConferenceCallInvite).not.toHaveBeenCalled();
   });
 
   it('joins through the invite message when accepted, with no second confirmation', async() => {
-    receive(makeInvite());
+    await receive(makeInvite());
     await rung[0].acceptCall();
 
     expect(appImManagerMock.joinConference).toHaveBeenCalledWith(
@@ -249,7 +320,7 @@ describe('ConferenceInvitesController', () => {
 
   it('closes the invitation when the join it started fails', async() => {
     appImManagerMock.joinConference.mockRejectedValueOnce(new Error('GROUPCALL_INVALID'));
-    receive(makeInvite());
+    await receive(makeInvite());
 
     await expect(rung[0].acceptCall()).rejects.toThrow('GROUPCALL_INVALID');
     expect(rung[0].connectionState).toBe(CALL_STATE.CLOSED);

@@ -7,8 +7,9 @@
  *   - `host.on('status', cb)`             — subscribe to async events.
  *   - `host.terminate()`                  — clean shutdown.
  *
- * The host never sees the call's private key bytes after handing the seed
- * over to the worker — keep that property as the worker integration matures.
+ * The host never sees the call's private key: the worker generates it
+ * (`createKey`) and only the public half comes back — keep that property as
+ * the worker integration matures.
  */
 
 import EventListenerBase from '@helpers/eventListenerBase';
@@ -64,6 +65,11 @@ export class EncryptWorkerHost extends EventListenerBase<HostEvents> {
   //
   // One method per HostRequest kind. The TS signature mirrors the protocol's
   // `args` shape and the response type comes from `RequestResultMap`.
+
+  /** Generate the call key inside the worker; only the public key comes back. */
+  public createKey(): Promise<RequestResultMap['createKey']> {
+    return this.invoke('createKey');
+  }
 
   public createZeroBlock(args: Extract<HostRequest, {kind: 'createZeroBlock'}>['args']): Promise<RequestResultMap['createZeroBlock']> {
     return this.invoke('createZeroBlock', args);
@@ -166,7 +172,7 @@ export class EncryptWorkerHost extends EventListenerBase<HostEvents> {
 
   private invoke<K extends RequestKind>(
     kind: K,
-    args?: K extends 'pullOutbound' | 'getStatus' | 'commitRejoinBlock' | 'destroy' ?
+    args?: K extends 'createKey' | 'pullOutbound' | 'getStatus' | 'commitRejoinBlock' | 'destroy' ?
       undefined :
       Extract<HostRequest, {kind: K}> extends {args: infer A} ? A : undefined
   ): Promise<RequestResultMap[K]> {

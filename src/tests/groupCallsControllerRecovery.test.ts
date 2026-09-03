@@ -292,7 +292,6 @@ async function joinConferenceFixture(
     input: options.input ?? INPUT,
     expectedCanonicalInput: options.expectedCanonicalInput,
     worker,
-    seed: new Uint8Array(32),
     publicKey: new Uint8Array(32),
     selfUserId: SELF_USER_ID,
     lastBlockServer: new Uint8Array([1]),
@@ -359,7 +358,6 @@ describe('GroupCallsController conference transactions', () => {
     const joining = (controller as any).joinConferenceCommon({
       input: INPUT,
       worker,
-      seed: new Uint8Array(32),
       publicKey: new Uint8Array(32),
       selfUserId: SELF_USER_ID,
       lastBlockServer: new Uint8Array([1]),
@@ -399,7 +397,6 @@ describe('GroupCallsController conference transactions', () => {
     await expect((controller as any).joinConferenceCommon({
       input: INPUT,
       worker,
-      seed: new Uint8Array(32),
       publicKey: new Uint8Array(32),
       selfUserId: SELF_USER_ID,
       lastBlockServer: new Uint8Array([1]),
@@ -428,7 +425,6 @@ describe('GroupCallsController conference transactions', () => {
     await expect((controller as any).joinConferenceCommon({
       input: SLUG_INPUT,
       worker,
-      seed: new Uint8Array(32),
       publicKey: new Uint8Array(32),
       selfUserId: SELF_USER_ID,
       lastBlockServer: new Uint8Array([1]),
@@ -455,7 +451,6 @@ describe('GroupCallsController conference transactions', () => {
     await expect((controller as any).joinConferenceCommon({
       createConference: true,
       worker,
-      seed: new Uint8Array(32),
       publicKey: new Uint8Array(32),
       selfUserId: SELF_USER_ID,
       lastBlockServer: new Uint8Array([1]),
@@ -468,37 +463,30 @@ describe('GroupCallsController conference transactions', () => {
     expect(appGroupCallsManager.leaveGroupCall).not.toHaveBeenCalled();
   });
 
-  it('wipes the main-thread seed before a pending worker init resolves', async() => {
+  it('hydrates the worker without a seed — the signing key never exists on this thread', async() => {
     const {controller} = makeController();
     const streamManager = {inputError: undefined as Error | undefined, stop: vi.fn()};
-    let resolveInit: () => void;
-    const initPromise = new Promise<void>((resolve) => {
-      resolveInit = resolve;
-    });
     const worker = {
-      init: vi.fn(() => initPromise),
+      init: vi.fn(async() => {}),
       terminate: vi.fn(async() => {})
     };
     const joinError = new Error('stop after init');
-    const seed = new Uint8Array(32).fill(7);
     callMocks.createMainStreamManager.mockResolvedValue(streamManager);
     callMocks.negotiationError = joinError;
 
-    const joining = (controller as any).joinConferenceCommon({
+    await expect((controller as any).joinConferenceCommon({
       input: INPUT,
       worker,
-      seed,
       publicKey: new Uint8Array(32),
       selfUserId: SELF_USER_ID,
       lastBlockServer: new Uint8Array([1]),
       muted: true,
       joinVideo: false
-    });
+    })).rejects.toBe(joinError);
 
-    await flushPromises();
-    expect([...seed]).toEqual(new Array(32).fill(0));
-    resolveInit!();
-    await expect(joining).rejects.toBe(joinError);
+    expect(worker.init).toHaveBeenCalledTimes(1);
+    // Exact shape: a `privateSeed` property, even an empty one, would not match.
+    expect(worker.init).toHaveBeenCalledWith({userId: SELF_USER_ID, lastBlockServer: new Uint8Array([1])});
   });
 
   it('does not schedule joined-source probes while the transport stays connected', () => {
@@ -1263,7 +1251,6 @@ describe('GroupCallsController conference transactions', () => {
     const joining = (controller as any).joinConferenceCommon({
       input: INPUT,
       worker,
-      seed: new Uint8Array(32),
       publicKey: new Uint8Array(32),
       selfUserId: SELF_USER_ID,
       lastBlockServer: new Uint8Array([1]),
@@ -1406,7 +1393,6 @@ describe('GroupCallsController conference transactions', () => {
 
   it('starts a fresh conference with one zero-block create transaction', async() => {
     const {appGroupCallsManager, controller} = makeController();
-    const seed = new Uint8Array(32).fill(7);
     const publicKey = new Uint8Array(32).fill(8);
     const zeroBlock = new Uint8Array([9]);
     const worker = {
@@ -1420,9 +1406,8 @@ describe('GroupCallsController conference transactions', () => {
       canRemoveUsers: true,
       version: 0
     };
-    vi.spyOn(controller as any, 'createConferenceCrypto').mockReturnValue({
+    vi.spyOn(controller as any, 'createConferenceCrypto').mockResolvedValue({
       publicKey,
-      seed,
       selfParticipant,
       worker
     });
@@ -1436,13 +1421,11 @@ describe('GroupCallsController conference transactions', () => {
     })).resolves.toBe(created);
 
     expect(worker.createZeroBlock).toHaveBeenCalledWith({
-      privateSeed: seed,
       groupState: {participants: [selfParticipant], externalPermissions: 3}
     });
     expect(common).toHaveBeenCalledWith({
       createConference: true,
       worker,
-      seed,
       publicKey,
       selfUserId: SELF_USER_ID,
       lastBlockServer: zeroBlock,
@@ -1452,7 +1435,6 @@ describe('GroupCallsController conference transactions', () => {
     });
     expect(appGroupCallsManager.getGroupCallFull).not.toHaveBeenCalled();
     expect(appGroupCallsManager.discardGroupCall).not.toHaveBeenCalled();
-    expect([...seed]).toEqual(new Array(32).fill(0));
   });
 
   it('rebuilds a fresh conference stack after an SSRC collision', async() => {
@@ -1470,14 +1452,12 @@ describe('GroupCallsController conference transactions', () => {
 
   it('does not compensate an atomic create before its RPC is accepted', async() => {
     const {appGroupCallsManager, controller} = makeController();
-    const seed = new Uint8Array(32).fill(7);
     const worker = {
       createZeroBlock: vi.fn(async() => new Uint8Array([9])),
       terminate: vi.fn(async() => {})
     };
-    vi.spyOn(controller as any, 'createConferenceCrypto').mockReturnValue({
+    vi.spyOn(controller as any, 'createConferenceCrypto').mockResolvedValue({
       publicKey: new Uint8Array(32),
-      seed,
       selfParticipant: {userId: SELF_USER_ID},
       worker
     });
@@ -1489,7 +1469,6 @@ describe('GroupCallsController conference transactions', () => {
     expect(worker.terminate).toHaveBeenCalledTimes(1);
     expect(appGroupCallsManager.discardGroupCall).not.toHaveBeenCalled();
     expect(appGroupCallsManager.leaveGroupCall).not.toHaveBeenCalled();
-    expect([...seed]).toEqual(new Array(32).fill(0));
   });
 
   it('rejects a different concurrent join before creating another stack', async() => {

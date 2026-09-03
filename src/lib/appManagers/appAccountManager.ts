@@ -318,6 +318,17 @@ export default class AppAccountManager extends AppManager {
     return promise;
   }
 
+  // tdesktop `Api::Authorizations::callsDisabledHere()`: whether this session
+  // has "accept calls on this device" switched off — the current authorization's
+  // `call_requests_disabled`. A failed fetch counts as enabled, so a network
+  // hiccup never silences a call.
+  public isCallRequestsDisabled(): Promise<boolean> {
+    return this.getAuthorizations().then((result) => {
+      const current = result.authorizations.find((authorization) => authorization.pFlags.current);
+      return !!current?.pFlags.call_requests_disabled;
+    }, () => false);
+  }
+
   // Wraps account.setAuthorizationTTL: the server drops any session that stays
   // inactive for longer than `days`. The current value ships with
   // account.getAuthorizations as `authorization_ttl_days`.

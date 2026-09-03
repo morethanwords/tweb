@@ -3,9 +3,11 @@
  *
  * The worker owns the E2eCall instance (and therefore the long-lived
  * Ed25519 private key + derived shared keys), so the main thread NEVER sees
- * raw key material. Requests are RPC-style with a numeric `id`; the worker
- * replies with `{kind: 'ok' | 'err', id, ...}`. Asynchronous state updates
- * use `{kind: 'event', event}` and are not tied to a request id.
+ * raw key material: the key is generated inside the worker (`createKey`) and
+ * only its public half ever crosses back. Requests are RPC-style with a
+ * numeric `id`; the worker replies with `{kind: 'ok' | 'err', id, ...}`.
+ * Asynchronous state updates use `{kind: 'event', event}` and are not tied to
+ * a request id.
  *
  * All Uint8Arrays and bigints traverse the postMessage boundary via
  * structured clone (no manual transferables) — keeps both sides simple at
@@ -19,18 +21,24 @@ import type {GroupParticipant, GroupState} from './tlTypes';
 // ===== Requests (main → worker) =====
 
 export type HostRequest =
+  // Generate the call's Ed25519 key inside the worker and retain it; the
+  // result is the public key the host advertises in its join payload. The
+  // block builders and `init` below sign with the retained key when they carry
+  // no `privateSeed` — the seed form exists for unit tests driving the worker
+  // with a known key, and is consumed (zeroed) on arrival.
+  | {kind: 'createKey'; id: number}
   | {kind: 'createZeroBlock'; id: number; args: {
-      privateSeed: Uint8Array;
+      privateSeed?: Uint8Array;
       groupState: GroupState;
     }}
   | {kind: 'createSelfAddBlock'; id: number; args: {
-      privateSeed: Uint8Array;
+      privateSeed?: Uint8Array;
       previousBlockServer: Uint8Array;
       self: GroupParticipant;
     }}
   | {kind: 'init'; id: number; args: {
       userId: bigint;
-      privateSeed: Uint8Array;
+      privateSeed?: Uint8Array;
       lastBlockServer: Uint8Array;
     }}
   // Two-phase, seedless rejoin. prepareRejoinBlock signs a replacement
@@ -127,6 +135,7 @@ export type HostResponse =
 // type the awaited result correctly.
 
 export interface RequestResultMap {
+  createKey: Uint8Array; // 32-byte Ed25519 public key
   createZeroBlock: Uint8Array; // server-format block bytes
   createSelfAddBlock: Uint8Array;
   init: CallStatusSnapshot;

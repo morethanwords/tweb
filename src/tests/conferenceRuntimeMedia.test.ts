@@ -1235,4 +1235,18 @@ describe('GroupCallInstance runtime media transactions', () => {
     expect(newTrack.stop).toHaveBeenCalledTimes(1);
     expect(oldTrack.stop).not.toHaveBeenCalled();
   });
+  it('requests screen capture without tab or system audio', async() => {
+    const {instance} = makeReadyInstance();
+    instances.push(instance);
+    const track = new FakeTrack();
+    mediaMocks.getScreenStream.mockResolvedValue(makeStream(track));
+
+    // The rest of the presentation setup is not under test here.
+    await instance.startScreenSharing().catch(() => {});
+
+    expect(mediaMocks.getScreenStream).toHaveBeenCalledTimes(1);
+    const constraints = mediaMocks.getScreenStream.mock.calls[0][0] as DisplayMediaStreamOptions;
+    expect(constraints.video).toBeTruthy();
+    expect(constraints.audio).toBeUndefined();
+  });
 });

@@ -59,6 +59,11 @@ class AudioStreamAnalyser {
     streamSource.connect(analyser);
     // analyser.connect(context.destination);
   }
+
+  public disconnect() {
+    this.streamSource.disconnect();
+    this.analyser.disconnect();
+  }
 }
 
 export default class StreamManager {
@@ -121,7 +126,7 @@ export default class StreamManager {
         for(let i = 0; i < items.length; ++i) {
           const {track: t, type, source: itemSource} = items[i];
           if(itemSource === source && type === 'input') {
-            items.splice(i, 1);
+            this.discardItem(i);
             outputStream.removeTrack(t);
             break;
           }
@@ -135,13 +140,16 @@ export default class StreamManager {
       }
     }
 
+    // A stopped manager has closed its context; a source node cannot be created
+    // on a closed one. The amplitude reader tolerates a missing analyser.
+    const canAnalyse = kind === 'audio' && context.state !== 'closed';
     this.finalizeAddingTrack({
       type,
       source,
       stream,
       track,
       kind,
-      streamAnalyser: kind === 'audio' ? new AudioStreamAnalyser(context, stream) : undefined
+      streamAnalyser: canAnalyse ? new AudioStreamAnalyser(context, stream) : undefined
     });
 
     if(kind === 'audio' && this.interval) {
@@ -156,6 +164,15 @@ export default class StreamManager {
     }, {once: true});
 
     this.items.push(item);
+  }
+
+  // Drops an item and releases its Web Audio nodes. A source node keeps the
+  // context graph (and the track it reads) referenced until it is disconnected.
+  private discardItem(index: number) {
+    const [item] = this.items.splice(index, 1);
+    if(item.kind === 'audio') {
+      item.streamAnalyser?.disconnect();
+    }
   }
 
   public hasInputTrackKind(kind: StreamItem['kind']) {
@@ -177,7 +194,7 @@ export default class StreamManager {
       switch(type) {
         case 'output': {
           if(t === track) {
-            items.splice(i, 1);
+            this.discardItem(i);
             this.outputStream.removeTrack(track);
             handled = true;
           }
@@ -187,7 +204,7 @@ export default class StreamManager {
 
         case 'input': {
           if(t === track) {
-            items.splice(i, 1);
+            this.discardItem(i);
             this.inputStream.removeTrack(track);
             handled = true;
           }
@@ -219,7 +236,7 @@ export default class StreamManager {
 
   public getAmplitude = (item: StreamAudioItem): StreamAmplitude => {
     const {streamAnalyser, stream, track, source, type} = item;
-    const analyser = streamAnalyser.analyser;
+    const analyser = streamAnalyser?.analyser;
     if(!analyser) return;
 
     const array = new Uint8Array(analyser.frequencyBinCount);
@@ -396,6 +413,28 @@ export default class StreamManager {
       });
     } catch(e) {
       this.log.error(e);
+    }
+
+    // stopTrack's synthetic `ended` removed the listed tracks above; sweep the
+    // rest (output video is never added to outputStream) so no analyser stays
+    // wired, then stop the timer that would read them.
+    while(this.items.length) {
+      this.discardItem(this.items.length - 1);
+    }
+    if(this.timer !== undefined) {
+      clearInterval(this.timer);
+      this.timer = undefined;
+    }
+
+    // Every StreamManager owns an AudioContext and only the tracks were ever
+    // stopped, so each call (and every camera/screen connection within it)
+    // leaked a running context — an audio thread per leftover manager. Close
+    // it; `state` and `close` are guarded for environments without Web Audio.
+    const {context} = this;
+    if(context && context.state !== 'closed' && typeof context.close === 'function') {
+      context.close().catch((err) => {
+        this.log.error('closing the audio context failed', err);
+      });
     }
   }
 }

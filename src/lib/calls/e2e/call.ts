@@ -64,7 +64,10 @@ const MAGIC_CALL_PACKET_LARGE_MSG_ID = 0x1ce56c2d;
 // referencing more than this in header_a.
 export const MAX_ACTIVE_EPOCHS = 15;
 
-// Replay-protection window per (sender, channel) — sliding set of seen seqnos.
+// Replay-protection window per (sender, channel) — the last REPLAY_WINDOW_SIZE
+// seqnos, like tdlib CallEncryption::check_not_seen / mark_as_seen
+// (Call.cpp:477-499): anything older than the window or already seen is
+// rejected.
 const REPLAY_WINDOW_SIZE = 1024;
 
 // Channel IDs are constrained to a 10-bit range.
@@ -265,33 +268,61 @@ export interface DecryptPacketOptions {
   replayState?: ReplayState;
 }
 
-export class ReplayState {
-  // Map keyed by `${publicKeyHex}:${channelId}` → sorted set of recent seqnos.
-  private seen: Map<string, number[]> = new Map();
-
-  public checkAndMark(senderPub: PublicKey, channelId: number, seqno: number): void {
-    const key = `${pkHex(senderPub)}:${channelId}`;
-    const window = this.seen.get(key);
-    if(!window || window.length === 0) {
-      this.seen.set(key, [seqno]);
-      return;
-    }
-    const oldest = window[0];
-    if(seqno < oldest) throw new Error(`replay: seqno ${seqno} older than oldest ${oldest}`);
-    if(window.includes(seqno)) throw new Error(`replay: seqno ${seqno} already seen`);
-    window.push(seqno);
-    window.sort((a, b) => a - b);
-    while(window.length > REPLAY_WINDOW_SIZE ||
-      (window.length > 0 && window[0] + REPLAY_WINDOW_SIZE < seqno)) {
-      window.shift();
-    }
-  }
+interface ReplayWindow {
+  // Hex of the sender's public key — what a prune matches on.
+  sender: string;
+  // Accepted seqnos in (max - REPLAY_WINDOW_SIZE, max]. Never more than
+  // REPLAY_WINDOW_SIZE entries: whatever the bound passes is deleted below.
+  seen: Set<number>;
+  max: number;
 }
 
-function pkHex(pk: PublicKey): string {
-  let s = '';
-  for(let i = 0; i < pk.bytes.length; i++) s += pk.bytes[i].toString(16).padStart(2, '0');
-  return s;
+export class ReplayState {
+  // Keyed by `${senderPublicKeyHex}:${channelId}`.
+  private readonly windows = new Map<string, ReplayWindow>();
+
+  public checkAndMark(senderPub: PublicKey, channelId: number, seqno: number): void {
+    const sender = bytesToHex(senderPub.bytes);
+    const key = `${sender}:${channelId}`;
+    const window = this.windows.get(key);
+    if(!window) {
+      this.windows.set(key, {sender, seen: new Set([seqno]), max: seqno});
+      return;
+    }
+    // tdlib erases every seqno at or below `max - 1024` once `max` is marked
+    // and rejects anything below the oldest survivor; on a dense stream that
+    // survivor sits right on this bound.
+    const oldest = window.max - REPLAY_WINDOW_SIZE;
+    if(seqno <= oldest) throw new Error(`replay: seqno ${seqno} older than window (max ${window.max})`);
+    if(window.seen.has(seqno)) throw new Error(`replay: seqno ${seqno} already seen`);
+    window.seen.add(seqno);
+    if(seqno <= window.max) return;
+    // The window moved: the seqnos that just fell out are exactly those in
+    // (old bound, new bound] — as many as the advance, so a steady stream
+    // pays one delete per frame instead of a sort of the whole window, and a
+    // jump past the window's width leaves nothing worth walking.
+    if(seqno - window.max >= REPLAY_WINDOW_SIZE) {
+      window.seen.clear();
+      window.seen.add(seqno);
+    } else {
+      for(let s = oldest + 1; s <= seqno - REPLAY_WINDOW_SIZE; s++) window.seen.delete(s);
+    }
+    window.max = seqno;
+  }
+
+  public has(senderPub: PublicKey, channelId: number): boolean {
+    return this.windows.has(`${bytesToHex(senderPub.bytes)}:${channelId}`);
+  }
+
+  // Drop the windows of every sender outside `activeSenders` (hex public keys).
+  // Run when an epoch is forgotten: a sender that is in no active epoch cannot
+  // produce a frame we would decrypt, so its windows are dead weight that a
+  // long call would otherwise keep for everyone who ever spoke.
+  public retainSenders(activeSenders: Set<string>): void {
+    for(const [key, window] of this.windows) {
+      if(!activeSenders.has(window.sender)) this.windows.delete(key);
+    }
+  }
 }
 
 // ===== High-level Call wrapper =====
@@ -576,7 +607,27 @@ export class E2eCall {
       this.epochsToForget = replacement.epochsToForget;
       this.verification = replacement.verification;
       this.delayedBroadcasts.clear();
+      // Every pre-anchor epoch is gone; the replay windows of members who left
+      // with them go too. Windows of retained members survive (their seqnos
+      // continue under the new epoch).
+      this.pruneReplayWindows();
     });
+  }
+
+  // Wipe every secret this object holds: epoch keys and the unrevealed
+  // verification nonce. The worker calls this from its `destroy` RPC before
+  // dropping its reference; the signing key is the worker's own and is
+  // destroyed there. Poisons the call so nothing in flight can emit a frame
+  // under a zeroed key.
+  public destroy(): void {
+    for(const epoch of this.epochs) epoch.groupSharedKey.fill(0);
+    this.epochs = [];
+    this.epochsToForget = [];
+    this.verification?.destroy();
+    this.verification = undefined;
+    this.delayedBroadcasts.clear();
+    this.pruneReplayWindows();
+    this.status = new CallError('CALL_FAILED', 'call destroyed');
   }
 
   // ===== Packet ops =====
@@ -598,7 +649,7 @@ export class E2eCall {
     const seqno = prev + 1;
     this.seqnoByChannel.set(channelId, seqno);
 
-    return encryptPacket({
+    const packet = await encryptPacket({
       channelId,
       data,
       unencryptedPrefixLength,
@@ -614,6 +665,13 @@ export class E2eCall {
       privateKey: this.privateKey,
       seqno
     });
+    // The snapshot shares the key buffers with `this.epochs`, and destroy()
+    // zeroes those in place while a frame may still be mid-encryption. A
+    // header_b slot sealed with an all-zero key would hand the frame's
+    // one-time secret to anyone, so a call that died underneath us drops the
+    // frame instead of returning it.
+    this.checkStatus();
+    return packet;
   }
 
   public async decrypt(
@@ -626,7 +684,15 @@ export class E2eCall {
     if(fromUserId === this.userId) {
       throw new CallError('SELF_PACKET', 'packet encrypted by us');
     }
-    void channelId; // currently informational; sender's channel_id wins
+    // The receiving transform's channel is deliberately NOT compared with the
+    // channel_id inside the frame. tdesktop encrypts AND decrypts every stream
+    // — mic, camera, screen share — under channel 0 (tde2e_api.cpp:88,
+    // `CallChannelId(0)`), and tdlib ignores expected_channel_id as well
+    // (Call.cpp:475 "currently ignore expected_channel_id"); enforcing it here
+    // would drop every tdesktop screen share. The frame's own channel_id keys
+    // the replay window, so a frame replayed onto another channel is still a
+    // duplicate. Do not "fix" this.
+    void channelId;
     const decoded = await decryptPacket({
       packet,
       fromUserId,
@@ -886,11 +952,24 @@ export class E2eCall {
   // decrypt (mirrors `CallEncryption::sync` in tdlib).
   private sync(): void {
     const now = this.now();
+    let forgotten = false;
     while(this.epochsToForget.length > 0 &&
       (this.epochsToForget[0].forgetAt <= now || this.epochs.length > MAX_ACTIVE_EPOCHS)) {
       const {epochHash} = this.epochsToForget.shift()!;
       this.epochs = this.epochs.filter((e) => !constantTimeEqual(e.epochHash, epochHash));
+      forgotten = true;
     }
+    if(forgotten) this.pruneReplayWindows();
+  }
+
+  // Keep replay windows only for senders that can still address one of our
+  // active epochs — the union of every active epoch's participants.
+  private pruneReplayWindows(): void {
+    const active = new Set<string>();
+    for(const epoch of this.epochs) {
+      for(const pk of epoch.participantKeysByUserId.values()) active.add(bytesToHex(pk.bytes));
+    }
+    this.replayState.retainSenders(active);
   }
 }
 

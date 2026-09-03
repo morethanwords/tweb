@@ -492,10 +492,11 @@ export default class PopupGroupCall extends PopupElement {
             middleware: popup.middleware,
             onClick: () => {
               popup.hide();
-              void shareGroupCallInviteLink(
-                instance,
-                () => this.isConferenceInviteContextCurrent(instance)
-              );
+              // A conference has no admins, so nobody mints a speaker link.
+              void shareGroupCallInviteLink(instance, {
+                canManage: false,
+                isAlive: () => this.isConferenceInviteContextCurrent(instance)
+              });
             }
           }));
         });
