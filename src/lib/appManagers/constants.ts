@@ -35,6 +35,11 @@ export const SEND_PAID_REACTION_ANONYMOUS_PEER_ID: PeerId = -1;
 export const SUGGESTED_POST_WAIT_FOR_REWARD_HOURS = 24;
 export const SUGGESTED_POST_DEFAULT_STARS_COMMISSION = 850;
 export const PEER_FULL_TTL = 3 * 60e3;
+// A request that raced updateChannelAvailableMessages is reissued so its answer cannot describe
+// history the client has already purged. The cutoff generation only moves when available_min_id
+// really changes, so this normally costs at most one extra round trip; the cap turns a peer whose
+// cutoff keeps moving into a stale answer instead of an unbounded request loop.
+export const CHANNEL_CUTOFF_RETRY_LIMIT = 5;
 
 export const FOLDER_ID_ALL: REAL_FOLDER_ID = 0;
 export const FOLDER_ID_ARCHIVE: REAL_FOLDER_ID = 1;

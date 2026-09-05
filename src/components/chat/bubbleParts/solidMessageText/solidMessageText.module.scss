@@ -1,5 +1,15 @@
-.hidden {
-  display: none;
+.Root {
+  min-width: 0;
+}
+
+.Content {
+  display: contents;
+}
+
+.Dots {
+  display: inline-flex;
+  white-space: pre;
+  user-select: none;
 }
 
 $duration: 0.65s;
@@ -18,13 +28,22 @@ $delay: calc($duration / 5);
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .Dot {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 @keyframes dot-animation {
   0%, 15% {
     opacity: 0;
   }
+
   20%, 55% {
     opacity: 1;
   }
+
   60%, 100% {
     opacity: 0;
   }

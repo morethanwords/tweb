@@ -109,6 +109,7 @@ export interface MTAppConfig {
   stars_purchase_blocked?:                   boolean;
   can_edit_factcheck?:                       boolean;
   message_primary_edited_date?:              boolean;
+  message_typing_draft_ttl?:                 number;
   stories_pinned_to_top_count_max?:          number;
   stars_paid_post_amount_max?:               number;
   stars_gifts_enabled?:                      boolean;

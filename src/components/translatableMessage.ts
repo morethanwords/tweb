@@ -34,6 +34,7 @@ export function TranslatableMessageTsx(props: {
   const [textWithEntities, setTextWithEntities] = createSignal<TextWithEntities>();
   const translation = usePeerTranslation(props.peerId);
   const deferred = deferredPromise<void>();
+  onCleanup(() => deferred.resolve());
   let originalText: TextWithEntities = props.textWithEntities;
   let first = true, hadText = false;
 

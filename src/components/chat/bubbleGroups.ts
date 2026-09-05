@@ -423,7 +423,7 @@ export default class BubbleGroups {
     this.removeItemFromCache(item);
   }
 
-  removeAndUnmountBubble(bubble: HTMLElement) {
+  removeAndUnmountBubble(bubble: HTMLElement, deferredGroups?: Set<BubbleGroup>) {
     const item = this.getItemByBubble(bubble);
     if(!item) { // * can be a placeholder
       const parentElement = bubble.parentElement;
@@ -462,10 +462,17 @@ export default class BubbleGroups {
       this.f(nextSibling.group.items);
       group.onItemUnmount();
       modifiedGroups.add(previousSibling.group);
-      this.groupUngrouped();
+      const regrouped = this.groupUngrouped();
+      if(deferredGroups) {
+        for(const group of regrouped) deferredGroups.add(group);
+      }
     }
 
-    this.mountUnmountGroups(Array.from(modifiedGroups));
+    if(deferredGroups) {
+      for(const group of modifiedGroups) deferredGroups.add(group);
+    } else {
+      this.mountUnmountGroups(Array.from(modifiedGroups));
+    }
 
     return true;
   }

@@ -598,9 +598,7 @@ export default function createChatActionsPlate(
       currentPeerId = peerId;
       currentSettings = settings;
       recomputePeerSettings();
-      if(peerSettingsActions.length || requestChatInfo) {
-        chat.bubbles.setPeerSettings(peerId, settings);
-      }
+      chat.bubbles.setPeerSettings(peerId, settings);
 
       applyState();
       refreshEmojiStatusNote();

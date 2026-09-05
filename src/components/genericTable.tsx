@@ -5,6 +5,7 @@ import styles from '@components/genericTable.module.scss';
 
 export type GenericTableCell = {
   content?: JSX.Element;
+  renderContent?: () => JSX.Element;
   header?: boolean;
   colspan?: number;
   rowspan?: number;
@@ -57,7 +58,7 @@ export default function GenericTable(props: {
                     cell.valignBottom && styles.cellValignBottom
                   )}
                 >
-                  {cell.content}
+                  {cell.renderContent ? cell.renderContent() : cell.content}
                 </Dynamic>
               )}</For>
             </tr>

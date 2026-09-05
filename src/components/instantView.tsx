@@ -1,13 +1,24 @@
-import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction} from 'solid-js';
+import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction, createMemo, on, Accessor, batch} from 'solid-js';
 import type {JSX} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
-import {Document, MessageEntity, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '@layer';
+import {createStore, reconcile, unwrap} from 'solid-js/store';
+import {
+  Document,
+  Page,
+  PageBlock,
+  PageCaption,
+  PageListOrderedItem,
+  PageTableCell,
+  PageTableRow,
+  Photo,
+  RichText
+} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import styles from '@components/instantView.module.scss';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
-import GenericTable, {GenericTableRow} from '@components/genericTable';
+import GenericTable, {GenericTableCell, GenericTableRow} from '@components/genericTable';
 import {SolidJSHotReloadGuardContextValue, useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '@helpers/date';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -15,11 +26,10 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import Scrollable, {ScrollableContext} from '@components/scrollable2';
 import fastSmoothScroll, {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import Animated from '@helpers/solid/animations';
-import {unwrap} from 'solid-js/store';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
-import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import type {Middleware} from '@helpers/middleware';
 import MySuspense from '@helpers/solid/mySuspense';
 import TelegramWebView from '@components/telegramWebView';
 import getWebFileLocation from '@helpers/getWebFileLocation';
@@ -40,10 +50,53 @@ import copyFromElement from '@helpers/dom/copyFromElement';
 import {toastNew} from '@components/toast';
 import {Latex, hydrateInlineMath} from '@components/instantViewMath';
 import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
+import {reconcileStablePageBlockEntries} from '@components/instantView/stablePageBlocks';
+import {
+  MessageTextLayoutEvent,
+  MessageTextPhase,
+  MessageTextRevealCoordinator,
+  SolidInlineText
+} from '@components/chat/bubbleParts/solidMessageText';
+import copy from '@helpers/object/copy';
+import deepEqual from '@helpers/object/deepEqual';
+import filterDisabledEntities, {
+  MESSAGE_LINK_ENTITY_TYPES
+} from '@lib/richTextProcessor/filterDisabledEntities';
+
+export type ReactiveInstantViewValue<T> = T | Accessor<T>;
+
+export type InstantViewRichTextOptions = Parameters<typeof wrapRichText>[1];
+
+export function hasInstantViewDisabledNavigation(options?: InstantViewRichTextOptions) {
+  return !!(options?.noNavigation || options?.noLinks);
+}
+
+export function getInstantViewDisabledEntities(options?: InstantViewRichTextOptions) {
+  const disabledEntities = options?.disabledEntities;
+  if(!hasInstantViewDisabledNavigation(options)) return disabledEntities;
+  if(!disabledEntities) return MESSAGE_LINK_ENTITY_TYPES;
+
+  for(const type of MESSAGE_LINK_ENTITY_TYPES) {
+    if(!disabledEntities.has(type)) {
+      return new Set([...disabledEntities, ...MESSAGE_LINK_ENTITY_TYPES]);
+    }
+  }
+
+  return disabledEntities;
+}
+
+export function readReactiveInstantViewValue<T>(value: ReactiveInstantViewValue<T>): T {
+  return typeof(value) === 'function' ? (value as Accessor<T>)() : value;
+}
 
 type InstantViewContextValue = {
   webPageId: Long,
   page: Page.page,
+  sourceRevision: number,
+  phase: MessageTextPhase,
+  revealCoordinator?: MessageTextRevealCoordinator,
+  onTextLayout?: (event: MessageTextLayoutEvent) => void,
+  richTextOptions?: InstantViewRichTextOptions,
   randomId: string,
   openNewPage: (url: string) => void,
   collapse: () => void,
@@ -52,6 +105,8 @@ type InstantViewContextValue = {
   details: WeakMap<HTMLElement, Setter<boolean>>,
   ready: boolean,
   savingScroll: boolean,
+  isAlive: () => boolean,
+  navigationGeneration: number,
   media: Array<{ref: HTMLElement, media: Photo.photo | Document.document, caption: PageCaption}>
 };
 
@@ -116,6 +171,10 @@ function getEmbedSandbox(html: string, url: string) {
   return isCrossOrigin ? EMBED_URL_SANDBOX_ATTRIBUTES : EMBED_SANDBOX_ATTRIBUTES;
 }
 
+function hasDisabledNavigation(context: InstantViewContextValue) {
+  return hasInstantViewDisabledNavigation(context.richTextOptions);
+}
+
 function onClick(context: InstantViewContextValue, e: MouseEvent) {
   // Code block header buttons (copy / wrap toggle) — same affordance as chat bubbles, since IV
   // reuses wrapRichText's `messageEntityPre` markup for highlighted code.
@@ -159,8 +218,14 @@ function expandDetailsAncestors(context: InstantViewContextValue, element: HTMLE
 }
 
 export function InstantViewBlocks(props: {
-  webPageId: Long,
-  page: Page.page,
+  webPageId: ReactiveInstantViewValue<Long>,
+  page: ReactiveInstantViewValue<Page.page>,
+  sourceRevision?: ReactiveInstantViewValue<number>,
+  phase?: ReactiveInstantViewValue<MessageTextPhase>,
+  richTextOptions?: ReactiveInstantViewValue<InstantViewRichTextOptions>,
+  onTextLayout?: (event: MessageTextLayoutEvent) => void,
+  revealCoordinator?: MessageTextRevealCoordinator,
+  afterBlocks?: JSX.Element,
   openNewPage: (url: string) => void,
   collapse: () => void,
   // host-provided scroll for in-page anchor jumps (the embedding chat passes its viewport-aware
@@ -171,6 +236,8 @@ export function InstantViewBlocks(props: {
   paddings?: number,
   style?: JSX.CSSProperties
 }) {
+  let disposed = false;
+  let navigationGeneration = 0;
   const customEmojiRenderer = CustomEmojiRendererElement.create({
     textColor: 'primary-text-color',
     middleware: createMiddleware().get(),
@@ -179,15 +246,30 @@ export function InstantViewBlocks(props: {
 
   const value: InstantViewContextValue = {
     get webPageId() {
-      return props.webPageId;
+      return readReactiveInstantViewValue(props.webPageId);
     },
+    get page() {
+      return readReactiveInstantViewValue(props.page);
+    },
+    get sourceRevision() {
+      return props.sourceRevision === undefined ? 0 : readReactiveInstantViewValue(props.sourceRevision);
+    },
+    get phase() {
+      return props.phase === undefined ? 'final' : readReactiveInstantViewValue(props.phase);
+    },
+    get richTextOptions() {
+      return props.richTextOptions === undefined ? undefined : readReactiveInstantViewValue(props.richTextOptions);
+    },
+    onTextLayout: props.onTextLayout,
+    revealCoordinator: props.revealCoordinator,
     ready: true,
-    page: props.page,
     randomId: '' + (Math.random() * 1000 | 0),
-    openNewPage: props.openNewPage,
+    openNewPage: (url) => {
+      if(!hasDisabledNavigation(value)) props.openNewPage(url);
+    },
     collapse: props.collapse,
     scrollToAnchor: (anchor) => {
-      if(!anchor) {
+      if(!anchor || hasDisabledNavigation(value)) {
         return;
       }
 
@@ -202,8 +284,26 @@ export function InstantViewBlocks(props: {
     customEmojiRenderer,
     details: new WeakMap(),
     savingScroll: false,
+    isAlive: () => !disposed,
+    get navigationGeneration() {
+      return navigationGeneration;
+    },
     media: []
   };
+
+  let policyInitialized = false;
+  createEffect(() => {
+    // `richTextOptions` is a value or an accessor of one (ReactiveInstantViewValue), never a
+    // store, so reading the getter below is the whole dependency — the individual policy flags
+    // are plain properties and reading them would track nothing.
+    value.richTextOptions;
+    if(policyInitialized) ++navigationGeneration;
+    else policyInitialized = true;
+  });
+  onCleanup(() => {
+    disposed = true;
+    ++navigationGeneration;
+  });
 
   return (
     <InstantViewContent
@@ -212,6 +312,7 @@ export function InstantViewBlocks(props: {
       contentClass={props.contentClass}
       paddings={props.paddings}
       style={props.style}
+      afterBlocks={props.afterBlocks}
     />
   );
 }
@@ -226,7 +327,8 @@ function InstantViewContent(props: {
   contentClass?: string,
   paddings?: number,
   style?: JSX.CSSProperties,
-  children?: JSX.Element
+  children?: JSX.Element,
+  afterBlocks?: JSX.Element
 }) {
   return (
     <InstantViewContext.Provider value={props.value}>
@@ -238,9 +340,11 @@ function InstantViewContent(props: {
       >
         {props.value.customEmojiRenderer}
         <div class={classNames(styles.InstantViewContent, props.contentClass)}>
-          <For each={props.value.page.blocks}>{(block) => (
-            <Block block={block} paddings={props.paddings ?? 2} />
-          )}</For>
+          <StablePageBlocks
+            blocks={props.value.page.blocks}
+            paddings={props.paddings ?? 2}
+          />
+          {props.afterBlocks}
         </div>
         {props.children}
       </div>
@@ -257,6 +361,7 @@ export function InstantView(props: {
   anchor?: string, // * expect it to be '#name'
   onReady?: () => void
 }) {
+  let disposed = false;
   const [ready, setReady] = createSignal(false);
   const value: InstantViewContextValue = {
     get webPageId() {
@@ -265,7 +370,11 @@ export function InstantView(props: {
     get ready() {
       return ready();
     },
-    page: props.page,
+    get page() {
+      return props.page;
+    },
+    sourceRevision: 0,
+    phase: 'final',
     randomId: '' + (Math.random() * 1000 | 0),
     openNewPage: props.openNewPage,
     collapse: props.collapse,
@@ -291,8 +400,11 @@ export function InstantView(props: {
     }),
     details: new WeakMap(),
     savingScroll: false,
+    isAlive: () => !disposed,
+    navigationGeneration: 0,
     media: []
   };
+  onCleanup(() => disposed = true);
 
   // console.log(props.page);
 
@@ -396,21 +508,26 @@ function onMediaResult(
   return r;
 }
 
+function findPagePhoto(context: InstantViewContextValue, id: string | number) {
+  return unwrap(context.page.photos.find((photo) => photo.id === id)) as Photo.photo;
+}
+
+function findPageDocument(context: InstantViewContextValue, id: string | number) {
+  return unwrap(context.page.documents.find((document) => document.id === id)) as Document.document;
+}
+
 function Caption(props: {caption: PageCaption}) {
-  const {caption} = props;
-  const isTextEmpty = isRichTextEmpty(caption.text);
-  const isCreditEmpty = isRichTextEmpty(caption.credit);
   return (
-    <Show when={!isTextEmpty || !isCreditEmpty}>
+    <Show when={!isRichTextEmpty(props.caption.text) || !isRichTextEmpty(props.caption.credit)}>
       <div class={classNames(styles.Padding, styles.Caption, 'secondary')}>
-        <Show when={!isTextEmpty}>
+        <Show when={!isRichTextEmpty(props.caption.text)}>
           <div class={classNames(styles.CaptionText, 'text-bold')}>
-            <RichTextRenderer text={caption.text} />
+            <RichTextRenderer text={props.caption.text} />
           </div>
         </Show>
-        <Show when={!isCreditEmpty}>
+        <Show when={!isRichTextEmpty(props.caption.credit)}>
           <div class={styles.CaptionCredit}>
-            <RichTextRenderer text={caption.credit} />
+            <RichTextRenderer text={props.caption.credit} />
           </div>
         </Show>
       </div>
@@ -420,17 +537,21 @@ function Caption(props: {caption: PageCaption}) {
 
 function prepareMediaForViewer(
   ref: HTMLDivElement,
-  media: Photo.photo | Document.document,
-  caption: PageCaption,
-  webPageId?: Long,
-  url?: string
+  media: Accessor<Photo.photo | Document.document>,
+  caption: Accessor<PageCaption>,
+  webPageId?: Accessor<Long | undefined>,
+  url?: Accessor<string | undefined>
 ) {
   const context = useContext(InstantViewContext);
   const hotReloadGuard = useHotReloadGuard();
   const item = {
     ref,
-    media,
-    caption
+    get media() {
+      return media();
+    },
+    get caption() {
+      return caption();
+    }
   };
   context.media.push(item);
 
@@ -438,13 +559,100 @@ function prepareMediaForViewer(
     indexOfAndSplice(context.media, item);
   });
 
-  return onMediaClick.bind(null, {
+  return () => onMediaClick({
     context,
     ref,
     hotReloadGuard,
-    webPageId,
-    url
+    webPageId: hasDisabledNavigation(context) ? undefined : webPageId?.(),
+    url: hasDisabledNavigation(context) ? undefined : url?.()
   });
+}
+
+function getMediaItemsInDomOrder(context: InstantViewContextValue) {
+  return context.media.slice().sort((left, right) => {
+    if(left.ref === right.ref) return 0;
+    const position = left.ref.compareDocumentPosition(right.ref);
+    if(position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+    if(position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+    return 0;
+  });
+}
+
+function EmbedWebView(props: {
+  block: PageBlock.pageBlockEmbed,
+  context: InstantViewContextValue,
+  onHeight: (height: number) => void
+}) {
+  // Prefer the canonical URL, and only render the markup inline when there is none.
+  const embedUrl = props.block.url || (props.block.html ? extractEmbedUrl(props.block.html) : undefined);
+  const embedHtml = embedUrl ? undefined : props.block.html;
+  const webView = new TelegramWebView({
+    html: embedHtml,
+    url: embedUrl,
+    sandbox: getEmbedSandbox(embedHtml, embedUrl)
+  });
+  webView.iframe.classList.add(styles.EmbedIframe);
+  webView.iframe.allowFullscreen = true;
+  if(props.block.url) {
+    webView.iframe.style.width = '100%';
+    webView.iframe.style.height = '100%';
+    webView.iframe.style.border = '0';
+  }
+
+  createEffect(() => {
+    webView.iframe.scrolling = props.block.pFlags?.allow_scrolling ? 'yes' : 'no';
+  });
+
+  let cleaned = false;
+  let restoreGeneration = 0;
+  let ownsScrollSave = false;
+  createEffect(() => {
+    if(!props.context.ready) return;
+    queueMicrotask(() => {
+      if(!cleaned) webView.onMount();
+    });
+  });
+
+  const scrollableContext = useContext(ScrollableContext);
+  webView.addEventListener('resize_frame', ({height}) => {
+    if(!height) return;
+
+    height = Math.min(height, windowSize.height * MAX_EMBED_VIEWPORTS);
+
+    const scrollSaver = props.context.savingScroll ?
+      undefined :
+      new ScrollSaver(scrollableContext, undefined, false);
+    if(scrollSaver) {
+      props.context.savingScroll = true;
+      ownsScrollSave = true;
+      scrollSaver.save();
+    }
+
+    props.onHeight(height);
+    if(scrollSaver) {
+      const generation = ++restoreGeneration;
+      queueMicrotask(() => {
+        queueMicrotask(() => {
+          if(cleaned || generation !== restoreGeneration) return;
+          ownsScrollSave = false;
+          props.context.savingScroll = false;
+          scrollSaver.restore();
+        });
+      });
+    }
+  });
+
+  onCleanup(() => {
+    cleaned = true;
+    ++restoreGeneration;
+    if(ownsScrollSave) {
+      ownsScrollSave = false;
+      props.context.savingScroll = false;
+    }
+    webView.destroy();
+  });
+
+  return webView.iframe;
 }
 
 async function onMediaClick({
@@ -461,7 +669,18 @@ async function onMediaClick({
   url?: string
 }) {
   const {rootScope, AppMediaViewer, I18n} = hotReloadGuard;
-  const promises = context.media.map(async({ref, media, caption}, index) => {
+  if(!context.isAlive()) return;
+
+  const navigationGeneration = context.navigationGeneration;
+  const sourceRevision = context.sourceRevision;
+  const navigationDisabled = hasDisabledNavigation(context);
+  const disabledEntities = getInstantViewDisabledEntities(context.richTextOptions);
+  if(navigationDisabled) {
+    webPageId = undefined;
+    url = undefined;
+  }
+  const mediaItems = getMediaItemsInDomOrder(context);
+  const promises = mediaItems.map(async({ref, media, caption}, index) => {
     const message = await rootScope.managers.appMessagesManager.generateStandaloneOutgoingMessage(NULL_PEER_ID);
     message.media = media._ === 'photo' ?
       {_: 'messageMediaPhoto', pFlags: {}, photo: media} :
@@ -472,7 +691,9 @@ async function onMediaClick({
 
     if(!isRichTextEmpty(caption.text)) {
       const textWithEntities = wrapTelegramRichText(caption.text);
-      message.totalEntities = textWithEntities.entities;
+      message.totalEntities = disabledEntities ?
+        filterDisabledEntities(textWithEntities.entities || [], disabledEntities) :
+        textWithEntities.entities;
       message.message = textWithEntities.text;
     }
 
@@ -510,7 +731,27 @@ async function onMediaClick({
     return target;
   });
   const targets = await Promise.all(promises);
+  if(
+    !context.isAlive() ||
+    context.navigationGeneration !== navigationGeneration ||
+    context.sourceRevision !== sourceRevision
+  ) {
+    return;
+  }
+
+  const currentMedia = getMediaItemsInDomOrder(context);
+  if(
+    currentMedia.length !== mediaItems.length ||
+    currentMedia.some((item, index) => (
+      item.ref !== mediaItems[index].ref ||
+      !item.ref.isConnected
+    ))
+  ) {
+    return;
+  }
+
   const target = targets.find(({element}) => element === ref);
+  if(!target) return;
   targets.forEach((target) => target.element = target.element.lastElementChild as any);
 
   new AppMediaViewer(true)
@@ -523,6 +764,102 @@ async function onMediaClick({
     prevTargets: targets.slice(0, target.index),
     nextTargets: targets.slice(target.index + 1)
   });
+}
+
+function StablePageBlocks(props: {
+  blocks: PageBlock[],
+  paddings: number,
+  noCaption?: boolean,
+  render?: (block: PageBlock) => JSX.Element
+}) {
+  const entries = createStablePageBlockEntries(() => props.blocks);
+
+  return (
+    <For each={entries()}>{(entry) => (
+      props.render ?
+        props.render(entry.block) :
+        <Block block={entry.block} paddings={props.paddings} noCaption={props.noCaption} />
+    )}</For>
+  );
+}
+
+function createStablePageBlockEntries(blocks: Accessor<PageBlock[]>) {
+  const context = useContext(InstantViewContext);
+  let nextKey = 0;
+  const createKey = () => `iv-block-${++nextKey}`;
+  const blockSetters = new Map<string, (block: PageBlock) => void>();
+  const createEntry = ({key, block}: ReturnType<typeof reconcileStablePageBlockEntries>[number]) => {
+    const [reactiveBlock, setReactiveBlock] = createStore(copy(block));
+    blockSetters.set(key, (nextBlock) => {
+      const current = unwrap(reactiveBlock) as PageBlock & Record<string, unknown>;
+      const next = unwrap(nextBlock) as PageBlock & Record<string, unknown>;
+      const setProperty = setReactiveBlock as (...args: any[]) => void;
+      Object.keys(current).forEach((property) => {
+        if(!(property in next)) setProperty(property, undefined);
+      });
+      Object.keys(next).forEach((property) => {
+        if(deepEqual(current[property], next[property])) return;
+        if(isNestedPageBlockSnapshot(nextBlock, property)) {
+          // The nested StablePageBlocks owner needs a new collection snapshot
+          // so it can reconcile PageBlock identities itself. Mutating this
+          // array by index would turn a media reorder into changed media props
+          // on the old DOM owners and can also race the revision-triggered
+          // nested reconciliation effect.
+          setProperty(property, copy(next[property]));
+          return;
+        }
+        // Merge nested arrays/objects in place. Page-list items, table rows and
+        // related articles have no protocol ids, so replacing a deep-copied
+        // array would make Solid's <For> remount every sibling on each token.
+        setProperty(property, reconcile(next[property], {merge: true}));
+      });
+    });
+    return {key, block: reactiveBlock as PageBlock};
+  };
+  const [entries, setEntries] = createSignal(
+    reconcileStablePageBlockEntries([], blocks() || [], createKey).map(createEntry),
+    {equals: false}
+  );
+
+  createEffect(on(
+    [() => context.sourceRevision, blocks],
+    ([, nextBlocks]) => {
+      const previous = entries();
+      const previousByKey = new Map(previous.map((entry) => [entry.key, entry]));
+      const next = reconcileStablePageBlockEntries(previous, nextBlocks || [], createKey);
+      const nextKeys = new Set(next.map((entry) => entry.key));
+
+      batch(() => {
+        const nextEntries = next.map((entry) => {
+          const current = previousByKey.get(entry.key);
+          if(!current) return createEntry(entry);
+          blockSetters.get(entry.key)(entry.block);
+          return current;
+        });
+        for(const key of blockSetters.keys()) {
+          if(!nextKeys.has(key)) blockSetters.delete(key);
+        }
+        if(
+          nextEntries.length !== previous.length ||
+          nextEntries.some((entry, index) => entry !== previous[index])
+        ) {
+          setEntries(nextEntries);
+        }
+      });
+    },
+    {defer: true}
+  ));
+
+  return entries;
+}
+
+function isNestedPageBlockSnapshot(block: PageBlock, property: string) {
+  return property === 'blocks' ||
+    property === 'cover' ||
+    property === 'items' && (
+      block._ === 'pageBlockCollage' ||
+      block._ === 'pageBlockSlideshow'
+    );
 }
 
 function Block(props: {
@@ -554,15 +891,15 @@ function Block(props: {
       // h3 / h4 tag. With it, render the matching semantic tag and add `HeadingH{n}` so the
       // CSS module can size each level distinctly.
       const isHeader = block._ === 'pageBlockHeader';
-      const level = (block as typeof block & {headingLevel?: number}).headingLevel;
-      const tag = level ? `h${Math.min(level + 1, 6)}` : (isHeader ? 'h3' : 'h4');
+      const level = () => (block as typeof block & {headingLevel?: number}).headingLevel;
+      const tag = () => level() ? `h${Math.min(level() + 1, 6)}` : (isHeader ? 'h3' : 'h4');
       return (
         <Dynamic
-          component={tag}
+          component={tag()}
           class={classNames(
             styles.Padding,
             isHeader ? styles.Header : styles.Subheader,
-            level && styles[`HeadingH${level}`]
+            level() && styles[`HeadingH${level()}`]
           )}
         >
           <RichTextRenderer text={block.text} />
@@ -580,29 +917,25 @@ function Block(props: {
     case 'pageBlockParagraph':
       return <p class={classNames(styles.Padding, styles.Paragraph)}><RichTextRenderer text={block.text} /></p>;
     case 'pageBlockPreformatted': {
-      const code = richTextToString(block.text);
       // `$$…$$` blocks are tagged language `math` by parseMarkdownToPage — render them as display
       // formulas via Temml (like WebA), wrapped in a horizontal scroller for wide equations.
-      if(block.language === 'math') {
-        return (
+      return (
+        <Show
+          when={block.language === 'math'}
+          fallback={<PreformattedCode text={block.text} language={block.language} />}
+        >
           <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
-            <Latex source={code} isBlock />
+            <BlockLatex source={richTextToString(block.text)} />
           </div>
-        );
-      }
-      // Otherwise render as the app's real highlighted code block (Prism + language header +
-      // copy/wrap), reusing the exact markup wrapRichText builds for `messageEntityPre`. The header
-      // buttons are wired by the IV root onClick delegator (see onClick()).
-      const entities: MessageEntity[] = [{_: 'messageEntityPre', offset: 0, length: code.length, language: block.language || ''}];
-      const fragment = wrapRichText(code, {entities});
-      return <div class={classNames(styles.Padding, styles.PreformattedWrapper)}>{documentFragmentToNodes(fragment)}</div>;
+        </Show>
+      );
     }
     case 'pageBlockMath':
       // Server-sent `pageBlockMath` (rich messages) — render as a display formula through the same
       // Temml path master uses for markdown `$$…$$` blocks, instead of dumping the raw LaTeX source.
       return (
         <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
-          <Latex source={block.source} isBlock />
+          <BlockLatex source={block.source} />
         </div>
       );
     case 'pageBlockFooter':
@@ -613,28 +946,28 @@ function Block(props: {
     case 'pageBlockList': {
       // * own numbers cannot be perfectly vertical aligned if children is not plain text
       const isOrdered = block._ === 'pageBlockOrderedList';
-      const shouldHaveOwnNumbers = isOrdered && block.items.some((item) => item.num && !item.num.match(/^\d+$/));
-      const orderedProps = isOrdered ? {
-        reversed: block.pFlags.reversed,
-        start: block.start,
-        type: block.type
-      } : {};
+      const orderedBlock = block as PageBlock.pageBlockOrderedList;
+      const shouldHaveOwnNumbers = createMemo(() => (
+        isOrdered && block.items.some((item) => item.num && !item.num.match(/^\d+$/))
+      ));
       const {wrapEmojiText} = useHotReloadGuard();
       return (
         <Dynamic
           component={isOrdered ? 'ol' : 'ul'}
-          {...orderedProps}
+          reversed={isOrdered ? orderedBlock.pFlags.reversed : undefined}
+          start={isOrdered ? orderedBlock.start : undefined}
+          type={isOrdered ? orderedBlock.type as '1' | 'a' | 'i' | 'A' | 'I' : undefined}
           class={classNames(
             styles.List,
             styles.BlockContainer,
             styles.BlockGutter,
-            shouldHaveOwnNumbers && styles.ListOrdered,
+            shouldHaveOwnNumbers() && styles.ListOrdered,
             'browser-default'
           )}
         >
           <For each={block.items}>{(item, idx) => (
             <li class={styles.ListItem}>
-              {shouldHaveOwnNumbers && (
+              {shouldHaveOwnNumbers() && (
                 <span class={styles.ListItemNumber}>
                   {(item as PageListOrderedItem.pageListOrderedItemText).num ?
                     wrapEmojiText((item as PageListOrderedItem.pageListOrderedItemText).num) :
@@ -653,9 +986,7 @@ function Block(props: {
                   <RichTextRenderer text={item.text} />
                 </>
               ) : (
-                <For each={item.blocks}>{(subBlock) => (
-                  <Block block={subBlock} paddings={props.paddings + 1} />
-                )}</For>
+                <StablePageBlocks blocks={item.blocks} paddings={props.paddings + 1} />
               )}
             </li>
           )}</For>
@@ -682,9 +1013,7 @@ function Block(props: {
           {/* same app-standard quote chrome as the inline blockquote (accent bar + tinted bg + glyph),
               but hosting parsed child blocks instead of a single rich-text run */}
           <blockquote class={classNames('quote-like', 'quote-like-border', 'quote-like-icon', styles.Blockquote, styles.BlockquoteBlocks, styles.BlockContainer)}>
-            <For each={block.blocks}>{(subBlock) => (
-              <Block block={subBlock} paddings={props.paddings + 1} />
-            )}</For>
+            <StablePageBlocks blocks={block.blocks} paddings={props.paddings + 1} />
             <Show when={!isRichTextEmpty(block.caption)}>
               <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
                 <RichTextRenderer text={block.caption} />
@@ -696,23 +1025,29 @@ function Block(props: {
     case 'pageBlockCover':
       return (
         <div class={styles.Cover}>
-          <Block block={block.cover} paddings={props.paddings} />
+          <StablePageBlocks blocks={[block.cover]} paddings={props.paddings} />
         </div>
       );
     case 'pageBlockPhoto': {
       const context = useContext(InstantViewContext);
       const {PhotoTsx} = useHotReloadGuard();
-      const photo = unwrap(context.page.photos.find((photo) => photo.id === block.photo_id)) as Photo.photo;
+      const photo = createMemo(() => findPagePhoto(context, block.photo_id));
       let ref: HTMLDivElement, onClick: () => void;
       return (
         <>
           <PhotoTsx
             ref={(_ref) => {
               ref = _ref;
-              onClick = prepareMediaForViewer(ref, photo, block.caption, block.webpage_id, block.url);
+              onClick = prepareMediaForViewer(
+                ref,
+                photo,
+                () => block.caption,
+                () => block.webpage_id,
+                () => block.url
+              );
             }}
             class={styles.Media}
-            photo={photo}
+            photo={photo()}
             withoutPreloader
             onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
             onClick={() => onClick()}
@@ -724,16 +1059,16 @@ function Block(props: {
     case 'pageBlockVideo': {
       const context = useContext(InstantViewContext);
       const {VideoTsx} = useHotReloadGuard();
-      const doc = unwrap(context.page.documents.find((doc) => doc.id === block.video_id)) as Document.document;
+      const doc = createMemo(() => findPageDocument(context, block.video_id));
       let ref: HTMLDivElement, onClick: () => void;
       return (
         <>
           <VideoTsx
             ref={(_ref) => {
               ref = _ref;
-              onClick = prepareMediaForViewer(ref, doc, block.caption);
+              onClick = prepareMediaForViewer(ref, doc, () => block.caption);
             }}
-            doc={doc}
+            doc={doc()}
             class={styles.Media}
             withoutPreloader
             withPreview
@@ -748,9 +1083,8 @@ function Block(props: {
     case 'pageBlockAudio': {
       const context = useContext(InstantViewContext);
       const {DocumentTsx} = useHotReloadGuard();
-      const doc = unwrap(context.page.documents.find((doc) => doc.id === block.audio_id)) as Document.document;
-
-      const message: Message.message = {
+      const doc = createMemo(() => findPageDocument(context, block.audio_id));
+      const message = createMemo<Message.message>(() => ({
         _: 'message',
         id: (Number(block.audio_id) || 0) as number, // Fake ID
         peer_id: {_: 'peerUser', user_id: 0},
@@ -758,19 +1092,19 @@ function Block(props: {
         message: '',
         media: {
           _: 'messageMediaDocument',
-          document: doc,
+          document: doc(),
           pFlags: {}
         },
         pFlags: {},
         mid: (Number(block.audio_id) || 0) as number, // Fake MID
         peerId: NULL_PEER_ID
-      };
+      }));
 
       return (
         <>
           <DocumentTsx
             class={classNames(styles.Padding, styles.Audio)}
-            message={message}
+            message={message()}
             withTime={false}
             clickable
             autoDownloadSize={10 * 1024 * 1024} // 10MB auto-download limit
@@ -781,16 +1115,19 @@ function Block(props: {
     }
     case 'pageBlockChannel': {
       const {PeerTitleTsx, appImManager} = useHotReloadGuard();
-      const {collapse} = useContext(InstantViewContext);
+      const context = useContext(InstantViewContext);
+      const {collapse} = context;
       const peerId = block.channel.id.toPeerId(true);
       return (
         <div
           class={classNames(
             styles.SectionName,
             styles.Channel,
+            !hasDisabledNavigation(context) && 'hover-effect',
             'text-bold'
           )}
           onClick={() => {
+            if(hasDisabledNavigation(context)) return;
             collapse();
             appImManager.setInnerPeer({peerId});
           }}
@@ -827,18 +1164,53 @@ function Block(props: {
         />
       );
     case 'pageBlockTable': {
-      const rows: GenericTableRow[] = block.rows.map((row) => ({
-        cells: row.cells.map((cell) => ({
-          content: cell.text ? <RichTextRenderer text={cell.text} /> : undefined,
-          header: cell.pFlags.header,
-          colspan: cell.colspan,
-          rowspan: cell.rowspan,
-          alignCenter: cell.pFlags.align_center,
-          alignRight: cell.pFlags.align_right,
-          valignMiddle: cell.pFlags.valign_middle,
-          valignBottom: cell.pFlags.valign_bottom
-        }))
-      }));
+      const rowViews = new WeakMap<PageTableRow, GenericTableRow>();
+      const cellViews = new WeakMap<PageTableCell, GenericTableCell>();
+      const getCellView = (cell: PageTableCell) => {
+        let view = cellViews.get(cell);
+        if(view) return view;
+        view = {
+          // A function child is mounted by GenericTable's stable cell owner.
+          // Its RichTextRenderer therefore survives source changes instead of
+          // being recreated by the rows mapping computation.
+          renderContent: () => cell.text ? <RichTextRenderer text={cell.text} /> : undefined,
+          get header() {
+            return cell.pFlags.header;
+          },
+          get colspan() {
+            return cell.colspan;
+          },
+          get rowspan() {
+            return cell.rowspan;
+          },
+          get alignCenter() {
+            return cell.pFlags.align_center;
+          },
+          get alignRight() {
+            return cell.pFlags.align_right;
+          },
+          get valignMiddle() {
+            return cell.pFlags.valign_middle;
+          },
+          get valignBottom() {
+            return cell.pFlags.valign_bottom;
+          }
+        };
+        cellViews.set(cell, view);
+        return view;
+      };
+      const getRowView = (row: PageTableRow) => {
+        let view = rowViews.get(row);
+        if(view) return view;
+        view = {
+          get cells() {
+            return row.cells.map(getCellView);
+          }
+        };
+        rowViews.set(row, view);
+        return view;
+      };
+      const rows = createMemo<GenericTableRow[]>(() => block.rows.map(getRowView));
 
       return (
         <div class={styles.TableWrapper}>
@@ -849,7 +1221,7 @@ function Block(props: {
           </Show>
           <div class={styles.Table}>
             <GenericTable
-              rows={rows}
+              rows={rows()}
               bordered={block.pFlags.bordered}
               striped={block.pFlags.striped}
             />
@@ -866,24 +1238,26 @@ function Block(props: {
             <RichTextRenderer text={block.title} />
           </div>
           <For each={block.articles}>{(article, idx) => {
-            const wrapped = wrapUrl('tg://iv?url=' + encodeURIComponent(article.url));
-            const photo = article.photo_id ?
-              unwrap(useContext(InstantViewContext).page.photos.find((photo) => photo.id === article.photo_id)) :
-              undefined;
+            const context = useContext(InstantViewContext);
+            const wrapped = createMemo(() => wrapUrl('tg://iv?url=' + encodeURIComponent(article.url)));
+            const photo = createMemo(() => article.photo_id ?
+              findPagePhoto(context, article.photo_id) :
+              undefined);
             return (
               <>
                 {idx() && <div class={styles.Border} />}
                 <a
                   dir="auto"
-                  href={wrapped.url}
+                  href={hasDisabledNavigation(context) ? undefined : wrapped().url}
+                  aria-disabled={hasDisabledNavigation(context)}
                   class={classNames(
                     styles.RelatedArticle,
-                    photo && styles.WithPhoto,
+                    photo() && styles.WithPhoto,
                     idx() && styles.BorderTop,
-                    'hover-effect'
+                    !hasDisabledNavigation(context) && 'hover-effect'
                   )}
                   // @ts-ignore
-                  attr:onclick={wrapped.onclick + '(this)'}
+                  attr:onclick={hasDisabledNavigation(context) ? undefined : wrapped().onclick + '(this)'}
                 >
                   <div class={classNames(styles.RelatedArticleTitle, 'text-bold')}>
                     <RichTextRenderer text={{_: 'textPlain', text: article.title}} />
@@ -900,14 +1274,16 @@ function Block(props: {
                       <span dir="auto">{formatFullSentTime(article.published_date, true)}</span>
                     </Show>
                   </div>
-                  <Show when={photo}>
-                    <PhotoTsx
-                      photo={photo as Photo.photo}
-                      class={styles.RelatedArticlePhoto}
-                      boxWidth={100}
-                      boxHeight={100}
-                      withoutPreloader
-                    />
+                  <Show when={photo()}>
+                    {(photo) => (
+                      <PhotoTsx
+                        photo={photo() as Photo.photo}
+                        class={styles.RelatedArticlePhoto}
+                        boxWidth={100}
+                        boxHeight={100}
+                        withoutPreloader
+                      />
+                    )}
                   </Show>
                 </a>
               </>
@@ -919,103 +1295,47 @@ function Block(props: {
     case 'pageBlockEmbed': {
       const context = useContext(InstantViewContext);
       const {PhotoTsx} = useHotReloadGuard();
-      const isFullWidth = block.pFlags?.full_width;
-      const posterPhoto = block.poster_photo_id ?
-        unwrap(context.page.photos.find((photo) => photo.id === block.poster_photo_id)) as Photo.photo :
-        undefined;
+      const isFullWidth = () => block.pFlags?.full_width;
+      const posterPhoto = createMemo(() => block.poster_photo_id ?
+        findPagePhoto(context, block.poster_photo_id) :
+        undefined);
 
       const [height, setHeight] = createSignal(0);
-      // prefer the canonical URL, and only render the markup inline when there is none
-      const embedUrl = block.url || (block.html ? extractEmbedUrl(block.html) : undefined);
-      const embedHtml = embedUrl ? undefined : block.html;
-      const webView = embedHtml || embedUrl ?
-        new TelegramWebView({
-          html: embedHtml,
-          url: embedUrl,
-          sandbox: getEmbedSandbox(embedHtml, embedUrl)
-        }) :
-        undefined;
-      if(webView) {
-        webView.iframe.classList.add(styles.EmbedIframe);
-        webView.iframe.scrolling = block.pFlags?.allow_scrolling ? 'yes' : 'no';
-        webView.iframe.allowFullscreen = true;
-
-        if(block.url) {
-          webView.iframe.style.width = '100%';
-          webView.iframe.style.height = '100%';
-          webView.iframe.style.border = '0';
-        }
-
-        createEffect(() => {
-          if(!context.ready) {
-            return;
-          }
-
-          queueMicrotask(() => {
-            if(!cleaned) {
-              webView.onMount();
-            }
-          });
-        });
-
-        let cleaned = false;
-        onCleanup(() => {
-          cleaned = true;
-          webView.destroy();
-        });
-
-        const scrollableContext = useContext(ScrollableContext);
-        webView.addEventListener('resize_frame', ({height}) => {
-          if(!height) {
-            return;
-          }
-
-          height = Math.min(height, windowSize.height * MAX_EMBED_VIEWPORTS);
-
-          const scrollSaver = context.savingScroll ? undefined : new ScrollSaver(scrollableContext, undefined, false);
-          if(scrollSaver) {
-            context.savingScroll = true;
-            scrollSaver.save();
-          }
-
-          setHeight(height);
-          if(scrollSaver) queueMicrotask(() => {
-            queueMicrotask(() => {
-              context.savingScroll = false;
-              scrollSaver.restore();
-            });
-          });
-        });
-      }
+      let mediaRef: HTMLDivElement;
+      const canMountWebView = () => !hasDisabledNavigation(context) && !!(block.html || block.url);
+      createEffect(() => {
+        const width = block.w || 4;
+        const blockHeight = block.h || 3;
+        const paddings = Math.max(isFullWidth() ? 0 : 2, props.paddings);
+        if(mediaRef) _onMediaResult(mediaRef, width, blockHeight, paddings);
+      });
+      createEffect(() => {
+        if(!canMountWebView()) setHeight(0);
+      });
 
       return (
         <>
           <div
-            ref={(ref) => {
-              _onMediaResult(
-                ref,
-                block.w || 4,
-                block.h || 3,
-                Math.max(isFullWidth ? 0 : 2, props.paddings)
-              );
-            }}
+            ref={mediaRef}
             class={classNames(
               styles.Media,
               styles.Embed,
-              isFullWidth ? styles.EmbedFullWidth : styles.EmbedAutoWidth,
+              isFullWidth() ? styles.EmbedFullWidth : styles.EmbedAutoWidth,
               height() && styles.EmbedHasHeight
             )}
             style={{
               '--height': height() && height() + 'px'
             }}
           >
-            <Show when={!webView} fallback={webView.iframe}>
-              <Show when={posterPhoto}>
-                <PhotoTsx
-                  photo={posterPhoto}
-                  withoutPreloader
-                />
-              </Show>
+            <Show
+              when={canMountWebView()}
+              fallback={
+                <Show when={posterPhoto()}>
+                  {(posterPhoto) => <PhotoTsx photo={posterPhoto()} withoutPreloader />}
+                </Show>
+              }
+            >
+              <EmbedWebView block={block} context={context} onHeight={setHeight} />
             </Show>
           </div>
           <CaptionC caption={block.caption} />
@@ -1025,9 +1345,9 @@ function Block(props: {
     case 'pageBlockEmbedPost': {
       const context = useContext(InstantViewContext);
       const {Row, PhotoTsx} = useHotReloadGuard();
-      const authorPhoto = block.author_photo_id ?
-        unwrap(context.page.photos.find((photo) => photo.id === block.author_photo_id)) as Photo.photo :
-        undefined;
+      const authorPhoto = createMemo(() => block.author_photo_id ?
+        findPagePhoto(context, block.author_photo_id) :
+        undefined);
 
       return (
         <div class={classNames(styles.Post, styles.BlockGutter)}>
@@ -1042,7 +1362,7 @@ function Block(props: {
             <Row.Media size="abitbigger">
               <PhotoTsx
                 class={styles.PostAuthorPhoto}
-                photo={authorPhoto}
+                photo={authorPhoto()}
                 withoutPreloader
                 boxWidth={42}
                 boxHeight={42}
@@ -1050,24 +1370,24 @@ function Block(props: {
             </Row.Media>
           </Row>
           <div class={styles.BlockContainer}>
-            <For each={block.blocks}>{(subBlock) => (
-              <Block block={subBlock} paddings={props.paddings + 1} />
-            )}</For>
+            <StablePageBlocks blocks={block.blocks} paddings={props.paddings + 1} />
           </div>
         </div>
       );
     }
     case 'pageBlockSlideshow': {
       const {Slideshow} = useHotReloadGuard();
+      const items = createStablePageBlockEntries(() => block.items);
 
       return (
         <>
           <Slideshow
             class={styles.Slideshow}
-            items={block.items}
+            items={items()}
+            getItemKey={(item) => item.key}
           >
             {(item, idx) => (
-              <Block block={item} paddings={0} noCaption />
+              <Block block={item.block} paddings={0} noCaption />
             )}
           </Slideshow>
           <CaptionC caption={block.caption} />
@@ -1075,6 +1395,7 @@ function Block(props: {
       );
     }
     case 'pageBlockMap': {
+      const context = useContext(InstantViewContext);
       const geo = block.geo as GeoPoint.geoPoint;
       const url = makeGoogleMapsUrl(geo);
       const location = getWebFileLocation(geo, block.w, block.h, block.zoom);
@@ -1091,8 +1412,9 @@ function Block(props: {
                 props.paddings
               );
             }}
-            href={url}
+            href={hasDisabledNavigation(context) ? undefined : url}
             target="_blank"
+            aria-disabled={hasDisabledNavigation(context)}
             class={styles.Map}
             style={{'--max-height': block.h + 'px'}}
           >
@@ -1133,6 +1455,11 @@ function Block(props: {
     case 'pageBlockDetails': {
       const [open, setOpen] = createSignal(!!block.pFlags.open);
       const detailsMap = useContext(InstantViewContext).details;
+      let userToggled = false;
+      createEffect(() => {
+        const serverOpen = !!block.pFlags.open;
+        if(!userToggled) setOpen(serverOpen);
+      });
       return (
         <div
           ref={(ref) => {detailsMap.set(ref, setOpen)}}
@@ -1140,7 +1467,10 @@ function Block(props: {
         >
           <div
             class={classNames(styles.DetailsSummary, 'hover-effect')}
-            onClick={() => setOpen(!open())}
+            onClick={() => {
+              userToggled = true;
+              setOpen(!open());
+            }}
           >
             <IconTsx
               icon="down"
@@ -1158,9 +1488,7 @@ function Block(props: {
             )}
           >
             <div class={styles.DetailsContentInner}>
-              <For each={block.blocks}>{(subBlock) => (
-                <Block block={subBlock} paddings={props.paddings} />
-              )}</For>
+              <StablePageBlocks blocks={block.blocks} paddings={props.paddings} />
             </div>
           </div>
         </div>
@@ -1169,23 +1497,30 @@ function Block(props: {
     case 'pageBlockCollage': {
       let ref: HTMLDivElement;
       const map: Map<HTMLDivElement, {width: number, height: number}> = new Map();
+      const [sizeRevision, setSizeRevision] = createSignal(0);
+      const items = createStablePageBlockEntries(() => block.items);
       const ret = (
         <div
           ref={ref}
           class={classNames(styles.Collage, styles.Media)}
         >
-          <For each={block.items}>{(item) => {
+          <For each={items()}>{(item) => {
             let ref: HTMLDivElement;
+            onCleanup(() => {
+              map.delete(ref);
+              setSizeRevision((revision) => revision + 1);
+            });
             const ret = (
               <div
                 ref={ref}
                 class={styles.CollageItem}
               >
                 <Block
-                  block={item}
+                  block={item.block}
                   paddings={props.paddings}
                   onSize={(size) => {
                     map.set(ref, size);
+                    setSizeRevision((revision) => revision + 1);
                   }}
                 />
               </div>
@@ -1197,7 +1532,14 @@ function Block(props: {
       );
 
       createEffect(() => {
-        const sizes = Array.from(map.values()).map(({width, height}) => ({w: width, h: height}));
+        sizeRevision();
+        const currentItems = items();
+        currentItems.map((item) => item.key);
+        const length = currentItems.length;
+        const sizes = Array.from(ref.children).map((element) => map.get(element as HTMLDivElement))
+        .filter(Boolean)
+        .map(({width, height}) => ({w: width, h: height}));
+        if(!length || sizes.length !== length) return;
         const {width, height} = prepareAlbum({
           container: ref,
           items: sizes,
@@ -1241,44 +1583,126 @@ function richTextToString(text: RichText): string {
   }
 }
 
-function RichTextRenderer(props: {text: RichText}) {
-  const {webPageId, page, randomId, customEmojiRenderer} = useContext(InstantViewContext);
-  const {text, entities} = wrapTelegramRichText(
-    props.text,
-    {webPageId, url: page.url, randomId}
+function BlockLatex(props: {source: string}) {
+  const context = useContext(InstantViewContext);
+  return (
+    <Latex
+      source={props.source}
+      isBlock
+      sourceRevision={() => context.sourceRevision}
+      phase={() => context.phase}
+      revealCoordinator={context.revealCoordinator}
+      onTextLayout={context.onTextLayout}
+    />
   );
+}
 
-  // console.log({text, entities}, unwrap(props.text));
-  const fragment = wrapRichText(text, {entities, customEmojiRenderer});
-  fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
-    el.classList.add(styles.Anchor);
+function getInstantViewRichTextOptions(context: InstantViewContextValue) {
+  const options = context.richTextOptions;
+  return {
+    ...options,
+    disabledEntities: getInstantViewDisabledEntities(options),
+    customEmojiRenderer: context.customEmojiRenderer
+  };
+}
+
+function RichTextRenderer(props: {text: RichText}) {
+  const context = useContext(InstantViewContext);
+  const value = createMemo(() => {
+    return wrapTelegramRichText(
+      props.text,
+      {webPageId: context.webPageId, url: context.page.url, randomId: context.randomId}
+    );
   });
-  // In-page fragment links (`#x`) get wrapped by wrapUrl into `https://#x` and flagged as
-  // masked → wrapRichText attaches `showMaskedAlert` onclick. That alert is meaningless for
-  // a same-page scroll, strip it so the IV onClick delegator can run scrollToAnchor.
-  fragment.querySelectorAll<HTMLAnchorElement>('a.anchor-url[onclick="showMaskedAlert(this)"]').forEach((el) => {
-    if(FRAGMENT_HREF_RE.test(el.getAttribute('href') || '')) {
-      el.removeAttribute('onclick');
-    }
+  const hasInlineMath = createMemo(() => value().text.includes('\x02'));
+  const needsPostprocessing = createMemo(() => {
+    const wrapped = value();
+    return hasInlineMath() || wrapped.entities?.some((entity) => (
+      entity._ === 'messageEntityAnchor' ||
+      entity._ === 'messageEntityUrl' ||
+      entity._ === 'messageEntityTextUrl'
+    ));
   });
-  // Inline math markers (`$x$`) are carried as plain-text base64 by the parser — swap them for
-  // Temml-rendered spans before the fragment is inserted, so the sentinels never become visible.
-  hydrateInlineMath(fragment);
-  return documentFragmentToNodes(fragment);
-  // return (<span dir="auto">{fragment}</span>);
-  // const textWithEntities = createMemo(() => wrapTelegramRichText(props.text));
+  const richTextOptions = createMemo(() => getInstantViewRichTextOptions(context));
+  const effectivePhase = createMemo(() => (
+    context.revealCoordinator?.phase() ?? context.phase
+  ));
 
-  // let ref: HTMLSpanElement;
-  // const ret = (<span ref={ref} />);
+  const processFragment = (
+    fragment: DocumentFragment,
+    middleware: Middleware,
+    typesetMath: boolean
+  ) => {
+    fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
+      el.classList.add(styles.Anchor);
+    });
+    // In-page fragment links (`#x`) get wrapped by wrapUrl into `https://#x` and flagged as
+    // masked → wrapRichText attaches `showMaskedAlert` onclick. That alert is meaningless for
+    // a same-page scroll, strip it so the IV onClick delegator can run scrollToAnchor.
+    fragment.querySelectorAll<HTMLAnchorElement>('a.anchor-url[onclick="showMaskedAlert(this)"]').forEach((el) => {
+      if(FRAGMENT_HREF_RE.test(el.getAttribute('href') || '')) {
+        el.removeAttribute('onclick');
+      }
+    });
+    // Inline math markers (`$x$`) are carried as plain-text base64 by the parser. Decode them into
+    // spans before insertion; streaming stays raw and the final render lets Temml typeset them.
+    return hydrateInlineMath(fragment, middleware, typesetMath);
+  };
+  const processFinalFragment = (fragment: DocumentFragment, middleware: Middleware) => (
+    processFragment(fragment, middleware, true)
+  );
+  const processStreamingFragment = (fragment: DocumentFragment, middleware: Middleware) => (
+    processFragment(fragment, middleware, false)
+  );
+  const selectedProcessFragment = createMemo(() => {
+    if(!needsPostprocessing()) return;
+    return hasInlineMath() && effectivePhase() !== 'final' ?
+      processStreamingFragment :
+      processFinalFragment;
+  });
 
-  // createRenderEffect(() => {
-  //   if(ref) {
-  //     const {text, entities} = textWithEntities();
-  //     console.log(textWithEntities(), props.text);
-  //     const wrapped = wrapRichText(text, {entities});
-  //     ref.replaceChildren(wrapped);
-  //   }
-  // });
+  return (
+    <SolidInlineText
+      value={value}
+      sourceRevision={() => context.sourceRevision}
+      phase={() => context.phase}
+      revealCoordinator={context.revealCoordinator}
+      richTextOptions={richTextOptions}
+      processFragment={selectedProcessFragment()}
+      processFragmentMode="chunk"
+      onLayout={context.onTextLayout}
+    />
+  );
+}
 
-  // return ret;
+function PreformattedCode(props: {text: RichText, language: string}) {
+  const context = useContext(InstantViewContext);
+  const value = createMemo(() => {
+    const code = richTextToString(props.text);
+    return {
+      _: 'textWithEntities' as const,
+      text: code,
+      entities: [{
+        _: 'messageEntityPre' as const,
+        offset: 0,
+        length: code.length,
+        language: props.language || ''
+      }]
+    };
+  });
+
+  const richTextOptions = createMemo(() => getInstantViewRichTextOptions(context));
+
+  return (
+    <SolidInlineText
+      value={value}
+      sourceRevision={() => context.sourceRevision}
+      phase={() => context.phase}
+      revealCoordinator={context.revealCoordinator}
+      richTextOptions={richTextOptions}
+      inline={false}
+      class={classNames(styles.Padding, styles.PreformattedWrapper)}
+      onLayout={context.onTextLayout}
+    />
+  );
 }

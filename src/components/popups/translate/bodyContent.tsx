@@ -11,6 +11,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {useObserveResize} from '@hooks/useObserveResize';
 import {TextWithEntities} from '@layer';
+import {flattenRichMessageContent} from '@lib/richMessage';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createSignal, onCleanup, useContext} from 'solid-js';
 import {TransitionGroup} from 'solid-transition-group';
@@ -39,11 +40,16 @@ export function TranslatePopupBodyContent(props: {
 
   let originalTextWithEntities: TextWithEntities = options.textWithEntities;
   if(options.message) {
-    originalTextWithEntities = {
-      _: 'textWithEntities',
-      text: options.message.message,
-      entities: options.message.totalEntities
-    };
+    // A rich message keeps its content out of `message`, so reading that field alone would
+    // preview an empty original. This card is a compact side-by-side, not an Instant View
+    // surface, so the blocks are flattened the same way the translation source is.
+    originalTextWithEntities = options.message.rich_message ?
+      flattenRichMessageContent(options.message.rich_message) :
+      {
+        _: 'textWithEntities',
+        text: options.message.message,
+        entities: options.message.totalEntities
+      };
   }
 
   // Closes the popup when a media-caption part (e.g. a spoiler-wrapped media link)

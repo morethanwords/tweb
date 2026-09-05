@@ -22,7 +22,9 @@ const seedPath = process.env.PREVIEW_SEED ?
   resolve(__dirname, 'tmp/seed-preview.json');
 const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
 
-// per-seed cache dir so simultaneous preview servers don't clobber each other
+// Per-seed cache dir so simultaneous preview servers don't clobber each other.
+// Keep it inside this worktree: node_modules can be a symlink to the main
+// checkout, and preview caches must not write through that shared symlink.
 const cacheKey = basename(seedPath).replace(/\.json$/, '');
 
 // Mirrors seedLocalStorage() from src/tests/api/harness.ts, but for the browser:
@@ -68,7 +70,7 @@ const seedScript = `(function(){
 })();`;
 
 export default mergeConfig(baseConfig as any, {
-  cacheDir: `node_modules/.vite-preview-${cacheKey}`,
+  cacheDir: resolve(__dirname, 'tmp/vite-preview-cache', cacheKey),
   // Expose the preview flag to the app bundle. src/config/debug.ts reads it as
   // IS_PREVIEW and uses it to switch off boot-blocking behaviour a non-painting
   // preview tab can't satisfy: the rAF-gated fade-in and the cross-tab dynamic

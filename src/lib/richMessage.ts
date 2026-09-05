@@ -7,11 +7,15 @@ const emptyRichText: RichText = {_: 'textEmpty'};
 type Summary = TextWithEntities.textWithEntities;
 
 export function richMessageToPage(richMessage: RichMessage): Page.page {
+  // A streamed draft is rendered from every revision the sender pushes, so this runs on
+  // partial data far more often than on a finished message. Reading through `pFlags` blindly
+  // turns one unexpected revision into a throw inside `renderMessage`, which loses the bubble.
+  const pFlags = richMessage.pFlags || {};
   return {
     _: 'page',
     pFlags: {
-      rtl: richMessage.pFlags.rtl,
-      part: richMessage.pFlags.part
+      rtl: pFlags.rtl,
+      part: pFlags.part
     },
     url: '',
     blocks: richMessage.blocks || [],
@@ -22,16 +26,25 @@ export function richMessageToPage(richMessage: RichMessage): Page.page {
 }
 
 export function isRichMessagePart(richMessage: RichMessage) {
-  return !!richMessage.pFlags.part;
+  return !!richMessage.pFlags?.part;
 }
 
 export function flattenRichMessageSummary(richMessage?: RichMessage, maxLength = 100): Summary {
+  return flattenRichMessage(richMessage, maxLength, true);
+}
+
+/** Real rich-message text only, without UI fallback labels such as Photo or Unsupported. */
+export function flattenRichMessageContent(richMessage?: RichMessage, maxLength = 0): Summary {
+  return flattenRichMessage(richMessage, maxLength, false);
+}
+
+function flattenRichMessage(richMessage: RichMessage, maxLength: number, includeFallbacks: boolean): Summary {
   if(!richMessage) {
     return emptySummary();
   }
 
   const summary = emptySummary();
-  appendBlocks(summary, richMessage.blocks || []);
+  appendBlocks(summary, richMessage.blocks || [], '', includeFallbacks);
 
   if(maxLength && summary.text.length > maxLength) {
     // Hard-truncate to maxLength. Don't use limitSymbols() here: it trims *leading* whitespace,
@@ -61,13 +74,13 @@ function emptySummary(): Summary {
   };
 }
 
-function appendBlocks(summary: Summary, blocks: PageBlock[], prefix = '') {
+function appendBlocks(summary: Summary, blocks: PageBlock[], prefix = '', includeFallbacks = true) {
   for(const block of blocks) {
-    appendBlock(summary, block, prefix);
+    appendBlock(summary, block, prefix, includeFallbacks);
   }
 }
 
-function appendBlock(summary: Summary, block: PageBlock, prefix = '') {
+function appendBlock(summary: Summary, block: PageBlock, prefix = '', includeFallbacks = true) {
   switch(block._) {
     case 'pageBlockTitle':
     case 'pageBlockSubtitle':
@@ -95,7 +108,7 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '') {
       appendRichTextLine(summary, block.caption, prefix);
       break;
     case 'pageBlockBlockquoteBlocks':
-      appendBlocks(summary, block.blocks, prefix);
+      appendBlocks(summary, block.blocks, prefix, includeFallbacks);
       appendRichTextLine(summary, block.caption, prefix);
       break;
     case 'pageBlockList':
@@ -104,7 +117,7 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '') {
         if(item._ === 'pageListItemText') {
           appendRichTextLine(summary, item.text, itemPrefix);
         } else {
-          appendBlocks(summary, item.blocks, itemPrefix);
+          appendBlocks(summary, item.blocks, itemPrefix, includeFallbacks);
         }
       });
       break;
@@ -116,7 +129,7 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '') {
         if(item._ === 'pageListOrderedItemText') {
           appendRichTextLine(summary, item.text, itemPrefix);
         } else {
-          appendBlocks(summary, item.blocks, itemPrefix);
+          appendBlocks(summary, item.blocks, itemPrefix, includeFallbacks);
         }
       });
       break;
@@ -128,58 +141,88 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '') {
       break;
     case 'pageBlockDetails':
       appendRichTextLine(summary, block.title, prefix);
-      appendBlocks(summary, block.blocks, prefix);
+      appendBlocks(summary, block.blocks, prefix, includeFallbacks);
       break;
     case 'pageBlockPhoto':
-      appendCaptionOrFallback(summary, block.caption, 'Photo', prefix);
+      appendCaptionOrFallback(summary, block.caption, 'Photo', prefix, includeFallbacks);
       break;
     case 'pageBlockVideo':
-      appendCaptionOrFallback(summary, block.caption, 'Video', prefix);
+      appendCaptionOrFallback(summary, block.caption, 'Video', prefix, includeFallbacks);
       break;
     case 'pageBlockAudio':
-      appendCaptionOrFallback(summary, block.caption, 'Audio', prefix);
+      appendCaptionOrFallback(summary, block.caption, 'Audio', prefix, includeFallbacks);
       break;
     case 'pageBlockMap':
-      appendCaptionOrFallback(summary, block.caption, 'Location', prefix);
+      appendCaptionOrFallback(summary, block.caption, 'Location', prefix, includeFallbacks);
+      break;
+    case 'inputPageBlockMap':
+      appendCaptionOrFallback(summary, block.caption, 'Location', prefix, includeFallbacks);
       break;
     case 'pageBlockEmbed':
-    case 'pageBlockEmbedPost':
-      appendCaptionOrFallback(summary, block.caption, 'Embed', prefix);
+      appendCaptionOrFallback(summary, block.caption, 'Embed', prefix, includeFallbacks);
       break;
-    case 'pageBlockCollage':
-    case 'pageBlockSlideshow':
-      appendCaptionOrFallback(summary, block.caption, 'Media', prefix);
-      if(isSummaryEmpty(summary)) {
-        appendBlocks(summary, block.items, prefix);
+    case 'pageBlockEmbedPost': {
+      const before = summary.text;
+      appendCaptionOrFallback(summary, block.caption, 'Embed', prefix, includeFallbacks);
+      if(!includeFallbacks || summary.text === before) {
+        if(!includeFallbacks) appendPlainLine(summary, block.author, prefix);
+        appendBlocks(summary, block.blocks, prefix, includeFallbacks);
       }
       break;
+    }
+    case 'pageBlockCollage':
+    case 'pageBlockSlideshow': {
+      const before = summary.text;
+      appendCaptionOrFallback(summary, block.caption, 'Media', prefix, includeFallbacks);
+      if(!includeFallbacks || summary.text === before) {
+        appendBlocks(summary, block.items, prefix, includeFallbacks);
+      }
+      break;
+    }
     case 'pageBlockCover':
-      appendBlock(summary, block.cover, prefix);
+      appendBlock(summary, block.cover, prefix, includeFallbacks);
       break;
     case 'pageBlockRelatedArticles':
       appendRichTextLine(summary, block.title, prefix);
       for(const article of block.articles) {
         appendPlainLine(summary, article.title, prefix);
         appendPlainLine(summary, article.description, prefix);
+        if(!includeFallbacks) appendPlainLine(summary, article.author, prefix);
       }
       break;
     case 'pageBlockUnsupported':
-      appendPlainLine(summary, 'Unsupported block', prefix);
+      if(includeFallbacks) appendPlainLine(summary, 'Unsupported block', prefix);
       break;
     case 'pageBlockDivider':
     case 'pageBlockAnchor':
+      break;
     case 'pageBlockChannel':
+      if(!includeFallbacks && 'title' in block.channel) {
+        appendPlainLine(summary, block.channel.title, prefix);
+      }
+      break;
+    case 'pageBlockAuthorDate':
+      appendRichTextLine(summary, block.author, prefix);
       break;
     default:
-      appendPlainLine(summary, `Unsupported block: ${(block as PageBlock)._}`, prefix);
+      if(includeFallbacks) appendPlainLine(summary, `Unsupported block: ${(block as PageBlock)._}`, prefix);
       break;
   }
 }
 
-function appendCaptionOrFallback(summary: Summary, caption: PageCaption, fallback: string, prefix = '') {
+function appendCaptionOrFallback(
+  summary: Summary,
+  caption: PageCaption,
+  fallback: string,
+  prefix = '',
+  includeFallback = true
+) {
   const before = summary.text;
   appendRichTextLine(summary, caption?.text || emptyRichText, prefix);
-  if(summary.text === before) {
+  if(!includeFallback) {
+    appendRichTextLine(summary, caption?.credit || emptyRichText, prefix);
+  }
+  if(includeFallback && summary.text === before) {
     appendPlainLine(summary, fallback, prefix);
   }
 }
@@ -221,7 +264,15 @@ function wrapSummaryRichText(richText: RichText): TextWithEntities {
   return {
     _: 'textWithEntities',
     text: out,
-    entities: (textWithEntities.entities || []).map((entity) => ({...entity, offset: shiftOffset(entity.offset)}))
+    entities: (textWithEntities.entities || []).map((entity) => {
+      const offset = shiftOffset(entity.offset);
+      const end = shiftOffset(entity.offset + entity.length);
+      return {
+        ...entity,
+        offset,
+        length: Math.max(0, end - offset)
+      };
+    })
   };
 }
 
@@ -274,8 +325,4 @@ function joinCells(cells: RichText[]): TextWithEntities {
   }
 
   return joined;
-}
-
-function isSummaryEmpty(summary: Summary) {
-  return !summary.text.trim();
 }

@@ -41,6 +41,16 @@ type UpdatesState = {
   lastDifferenceTime?: number
 };
 
+type StreamedMessageDraftTypingUpdate =
+  Update.updateUserTyping |
+  Update.updateChatUserTyping |
+  Update.updateChannelUserTyping;
+
+type StreamedMessageDraftDifferenceState = {
+  updates: StreamedMessageDraftTypingUpdate[],
+  reconciled: boolean
+};
+
 const SYNC_DELAY = 6;
 
 /**
@@ -285,7 +295,12 @@ class ApiUpdatesManager {
     });
   }, 1_000, false, true);
 
-  private getDifference(first = false): Promise<void> {
+  private getDifference(
+    first = false,
+    streamedDraftState?: StreamedMessageDraftDifferenceState
+  ): Promise<void> {
+    const ownsStreamedDraftState = !streamedDraftState;
+    streamedDraftState ??= {updates: [], reconciled: false};
     const log = this.log.bindPrefix('getDifference');
     log('get', first);
 
@@ -313,6 +328,7 @@ class ApiUpdatesManager {
         log('apply empty diff', differenceResult.seq);
         updatesState.date = differenceResult.date;
         updatesState.seq = differenceResult.seq;
+        this.reconcileStreamedMessageDraftState(streamedDraftState);
         return;
       }
 
@@ -329,6 +345,11 @@ class ApiUpdatesManager {
         log('applying', differenceResult.other_updates.length, 'other updates');
 
         differenceResult.other_updates.forEach((update) => {
+          if(this.isStreamedMessageDraftTypingUpdate(update)) {
+            streamedDraftState.updates.push(update);
+            return;
+          }
+
           switch(update._) {
             case 'updateChannelTooLong':
             case 'updateNewChannelMessage':
@@ -337,7 +358,7 @@ class ApiUpdatesManager {
               return;
           }
 
-          this.saveUpdate(update);
+          this.saveUpdate(update, {fromDifference: true});
         });
 
         log('applying', differenceResult.new_messages.length, 'new messages');
@@ -349,7 +370,6 @@ class ApiUpdatesManager {
             pts_count: 0
           });
         });
-
         const nextState = differenceResult._ === 'updates.difference' ? differenceResult.state : differenceResult.intermediate_state;
         updatesState.seq = nextState.seq;
         updatesState.pts = nextState.pts;
@@ -368,17 +388,24 @@ class ApiUpdatesManager {
       log('apply diff', updatesState.seq, updatesState.pts);
 
       if(differenceResult._ === 'updates.differenceSlice') {
-        return this.getDifference();
+        return this.getDifference(false, streamedDraftState);
       } else {
+        this.reconcileStreamedMessageDraftState(streamedDraftState);
         log('finish');
       }
     });
 
+    const guardedPromise = this.guardStreamedMessageDraftDifference(
+      promise,
+      streamedDraftState,
+      ownsStreamedDraftState
+    );
+
     if(!wasSyncing) {
-      this.setDifferencePromise(updatesState, promise);
+      this.setDifferencePromise(updatesState, guardedPromise);
     }
 
-    return promise;
+    return guardedPromise;
   }
 
   private clearStatePendingSync(state: UpdatesState) {
@@ -388,7 +415,12 @@ class ApiUpdatesManager {
     }
   }
 
-  private getChannelDifference(channelId: ChatId): Promise<void> {
+  private getChannelDifference(
+    channelId: ChatId,
+    streamedDraftState?: StreamedMessageDraftDifferenceState
+  ): Promise<void> {
+    const ownsStreamedDraftState = !streamedDraftState;
+    streamedDraftState ??= {updates: [], reconciled: false};
     const channelState = this.getChannelState(channelId);
     const wasSyncing = channelState.syncLoading;
     if(!wasSyncing) {
@@ -412,11 +444,13 @@ class ApiUpdatesManager {
 
       if(differenceResult._ === 'updates.channelDifferenceEmpty') {
         log('apply channel empty diff', differenceResult);
+        this.reconcileStreamedMessageDraftState(streamedDraftState);
         return;
       }
 
       if(differenceResult._ === 'updates.channelDifferenceTooLong') {
         log('channel diff too long', differenceResult);
+        this.reconcileStreamedMessageDraftState(streamedDraftState);
         delete this.channelStates[channelId];
 
         this.saveUpdate({_: 'updateChannelReload', channel_id: channelId});
@@ -429,7 +463,12 @@ class ApiUpdatesManager {
       // Should be first because of updateMessageID
       log('applying', differenceResult.other_updates.length, 'channel other updates');
       differenceResult.other_updates.forEach((update) => {
-        this.saveUpdate(update);
+        if(this.isStreamedMessageDraftTypingUpdate(update)) {
+          streamedDraftState.updates.push(update);
+          return;
+        }
+
+        this.saveUpdate(update, {fromDifference: true});
       });
 
       log('applying', differenceResult.new_messages.length, 'channel new messages');
@@ -441,22 +480,28 @@ class ApiUpdatesManager {
           pts_count: 0
         });
       });
-
       log('apply channel diff', channelState.pts);
 
       if(differenceResult._ === 'updates.channelDifference' &&
         !differenceResult.pFlags.final) {
-        return this.getChannelDifference(channelId);
+        return this.getChannelDifference(channelId, streamedDraftState);
       } else {
+        this.reconcileStreamedMessageDraftState(streamedDraftState);
         log('finished channel get diff');
       }
     });
 
+    const guardedPromise = this.guardStreamedMessageDraftDifference(
+      promise,
+      streamedDraftState,
+      ownsStreamedDraftState
+    );
+
     if(!wasSyncing) {
-      this.setDifferencePromise(channelState, promise, channelId);
+      this.setDifferencePromise(channelState, guardedPromise, channelId);
     }
 
-    return promise;
+    return guardedPromise;
   }
 
   private onDifferenceTooLong() {
@@ -743,9 +788,62 @@ class ApiUpdatesManager {
     }
   }
 
-  public saveUpdate(update: Update) {
+  public saveUpdate(update: Update, options?: {fromDifference?: boolean}) {
     this.log('saveUpdate', update);
+    if(
+      options?.fromDifference &&
+      (
+        update._ === 'updateUserTyping' ||
+        update._ === 'updateChatUserTyping' ||
+        update._ === 'updateChannelUserTyping'
+      ) &&
+      (
+        update.action._ === 'sendMessageTextDraftAction' ||
+        update.action._ === 'sendMessageRichMessageDraftAction'
+      )
+    ) {
+      this.appMessagesManager.handleStreamedMessageTypingUpdate(update, true);
+      return;
+    }
     this.dispatchEvent(update._, update as any);
+  }
+
+  private isStreamedMessageDraftTypingUpdate(
+    update: Update
+  ): update is StreamedMessageDraftTypingUpdate {
+    return (
+      update._ === 'updateUserTyping' ||
+      update._ === 'updateChatUserTyping' ||
+      update._ === 'updateChannelUserTyping'
+    ) && (
+      update.action._ === 'sendMessageTextDraftAction' ||
+      update.action._ === 'sendMessageRichMessageDraftAction'
+    );
+  }
+
+  private reconcileStreamedMessageDraftUpdates(updates: StreamedMessageDraftTypingUpdate[]) {
+    updates.forEach((update) => {
+      this.saveUpdate(update, {fromDifference: true});
+    });
+    updates.length = 0;
+  }
+
+  private reconcileStreamedMessageDraftState(state: StreamedMessageDraftDifferenceState) {
+    if(state.reconciled) return;
+    state.reconciled = true;
+    this.reconcileStreamedMessageDraftUpdates(state.updates);
+  }
+
+  private guardStreamedMessageDraftDifference(
+    promise: Promise<void>,
+    state: StreamedMessageDraftDifferenceState,
+    ownsState: boolean
+  ) {
+    if(!ownsState) return promise;
+    return promise.catch((error) => {
+      this.reconcileStreamedMessageDraftState(state);
+      throw error;
+    });
   }
 
   public subscribeToChannelUpdates(channelId: ChatId) {

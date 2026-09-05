@@ -1,5 +1,6 @@
 import {afterEach, describe, expect, test, vi} from 'vitest';
-import {renderLatexInto} from '@components/instantViewMath';
+import {hydrateInlineMath, renderLatexInto} from '@components/instantViewMath';
+import {getMiddleware} from '@helpers/middleware';
 
 // Temml ships as an IIFE global loaded through a <script> tag (see loadTemml for why it must not
 // be bundled), and jsdom does not fetch external scripts — so the loader is the seam to stub.
@@ -57,5 +58,25 @@ describe('rendered LaTeX labels', () => {
 
     expect(first.querySelector('[id]').getAttribute('id'))
     .not.toEqual(second.querySelector('[id]').getAttribute('id'));
+  });
+
+  test('a stale streamed formula cannot mutate its detached generation', async() => {
+    const element = document.createElement('span');
+    const middleware = getMiddleware();
+    const source = 'a=b \\tag{1}\\label{stale}';
+    renderLatexInto(element, source, false, middleware.get());
+    middleware.destroy();
+
+    await Promise.resolve();
+    expect(element.textContent).toBe(source);
+    expect(element.querySelector('[id]')).toBeNull();
+  });
+
+  test('hydrates an empty inline formula without exposing its sentinels', () => {
+    const fragment = document.createDocumentFragment();
+    fragment.append('\x02\x02');
+    expect(hydrateInlineMath(fragment)).toBeInstanceOf(Promise);
+    expect(fragment.textContent).toBe('');
+    expect(fragment.querySelector('span')).toBeTruthy();
   });
 });

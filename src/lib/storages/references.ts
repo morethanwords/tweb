@@ -8,6 +8,8 @@ import type {MyStickerSetInput} from '@lib/appManagers/utils/stickers/constants'
 export type ReferenceContext =
   ReferenceContext.referenceContextProfilePhoto |
   ReferenceContext.referenceContextMessage |
+  ReferenceContext.referenceContextMessageRich |
+  ReferenceContext.referenceContextMessageRichTranslation |
   ReferenceContext.referenceContextEmojiesSounds |
   ReferenceContext.referenceContextReactions |
   ReferenceContext.referenceContextUserFull |
@@ -39,6 +41,19 @@ export namespace ReferenceContext {
     type: 'message',
     peerId: PeerId,
     messageId: number
+  };
+
+  export type referenceContextMessageRich = {
+    type: 'messageRich',
+    peerId: PeerId,
+    messageId: number
+  };
+
+  export type referenceContextMessageRichTranslation = {
+    type: 'messageRichTranslation',
+    peerId: PeerId,
+    messageId: number,
+    lang: string
   };
 
   export type referenceContextEmojiesSounds = {
@@ -238,6 +253,19 @@ export class ReferencesStorage extends AppManager {
         //   this.log('FILE_REFERENCE_EXPIRED: got message', context, message, _message);
         // });
       }
+
+      case 'messageRich':
+        return this.appMessagesManager.refreshRichMessage(
+          context.peerId,
+          context.messageId
+        );
+
+      case 'messageRichTranslation':
+        return this.appTranslationsManager.refreshRichMessageTranslation(
+          context.peerId,
+          context.messageId,
+          context.lang
+        );
 
       case 'emojiesSounds':
         return this.refreshEmojiesSoundsPromise || this.appStickersManager.getAnimatedEmojiSounds(true).then(() => {

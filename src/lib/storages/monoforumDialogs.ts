@@ -4,6 +4,7 @@ import tsNow from '@helpers/tsNow';
 import {DraftMessage, MessagesGetSavedDialogs, MessagesSavedDialogs, SavedDialog, Update} from '@layer';
 import {Pair} from '@types';
 import {MyMessage, SUGGESTED_POST_MIN_THRESHOLD_SECONDS} from '@appManagers/appMessagesManager';
+import {CHANNEL_CUTOFF_RETRY_LIMIT} from '@appManagers/constants';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
@@ -188,6 +189,10 @@ class MonoforumDialogsStorage extends AppManager {
     return collection.map.get(peerId);
   }
 
+  public getDialogsByParentIfExists(parentPeerId: PeerId) {
+    return this.collectionsByPeerId[parentPeerId]?.map;
+  }
+
   public enqueDraftDialog(parentPeerId: PeerId, peerId: PeerId) {
     (this.queuedDraftDialogs[parentPeerId] ??= []).push(peerId);
   }
@@ -214,7 +219,11 @@ class MonoforumDialogsStorage extends AppManager {
     return this.fetchAndSaveDialogsById({parentPeerId, ids: filterUnique(toFetch)});
   }
 
-  private async fetchAndSaveDialogs({parentPeerId, limit, offsetDialog}: MonoforumDialogsStorage.FetchDialogsArgs) {
+  private fetchAndSaveDialogs(
+    {parentPeerId, limit, offsetDialog}: MonoforumDialogsStorage.FetchDialogsArgs,
+    overwrite = false,
+    cutoffAttempt = 0
+  ): Promise<{count: number, dialogs: MonoforumDialog[]}> {
     const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
 
     const offsetPeer = this.appPeersManager.getInputPeerById(offsetDialog?.peerId);
@@ -229,63 +238,74 @@ class MonoforumDialogsStorage extends AppManager {
       offset_peer: offsetPeer,
       parent_peer: parentPeer
     };
-    const result = await this.apiManager.invokeApiSingleProcess({
+    const cutoffGeneration = this.appMessagesManager.getChannelAvailableMinIdGeneration(parentPeerId);
+    return this.apiManager.invokeApiSingleProcess({
       method: 'messages.getSavedDialogs',
-      params: p
+      params: p,
+      options: {overwrite},
+      processResult: (result) => {
+        if(
+          cutoffGeneration !== this.appMessagesManager.getChannelAvailableMinIdGeneration(parentPeerId) &&
+          cutoffAttempt < CHANNEL_CUTOFF_RETRY_LIMIT
+        ) {
+          return this.fetchAndSaveDialogs({parentPeerId, limit, offsetDialog}, true, cutoffAttempt + 1);
+        }
+
+        if(DEBUG) MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] fetching dialogs', parentPeerId, p, result});
+
+        const processedResult = this.processGetDialogsResult({parentPeerId, result});
+        const {dialogs} = processedResult;
+        const newStableIds = new Set(dialogs.map(dialog => dialog.peerId));
+        const collection = this.getDialogCollection(parentPeerId);
+        collection.stable = collection.stable.filter(dialog => !newStableIds.has(dialog.peerId));
+        collection.stable.push(...dialogs);
+        collection.stable.sort(this.sortStableDialogsComparator); // Theoretically this is useless, but let it be
+        return processedResult;
+      }
     });
-
-    if(DEBUG) MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] fetching dialogs', parentPeerId, p, result});
-
-    const processedResult = this.processGetDialogsResult({parentPeerId, result});
-    const {dialogs} = processedResult;
-
-    const newStableIds = new Set(dialogs.map(dialog => dialog.peerId));
-
-    const collection = this.getDialogCollection(parentPeerId);
-
-    collection.stable = collection.stable.filter(dialog => !newStableIds.has(dialog.peerId));
-
-    collection.stable.push(...dialogs);
-    collection.stable.sort(this.sortStableDialogsComparator); // Theoretically this is useless, but let it be
-
-    return processedResult;
   }
 
-  private async fetchAndSaveDialogsById({parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs) {
+  private fetchAndSaveDialogsById(
+    {parentPeerId, ids}: MonoforumDialogsStorage.FetchDialogsByIdArgs,
+    overwrite = false,
+    cutoffAttempt = 0
+  ): Promise<void> {
     const collection = this.getDialogCollection(parentPeerId);
     const isCollectionEmpty = !collection.count;
 
     const parentPeer = this.appPeersManager.getInputPeerById(parentPeerId);
-    const [result] = await Promise.all([
-      this.apiManager.invokeApiSingleProcess({
-        method: 'messages.getSavedDialogsByID',
-        params: {
-          ids: ids.map(id => this.appPeersManager.getInputPeerById(id)),
-          parent_peer: parentPeer
+    const ensureCountPromise = isCollectionEmpty && this.fetchAndSaveDialogs({parentPeerId, limit: 1});
+    const cutoffGeneration = this.appMessagesManager.getChannelAvailableMinIdGeneration(parentPeerId);
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getSavedDialogsByID',
+      params: {
+        ids: ids.map(id => this.appPeersManager.getInputPeerById(id)),
+        parent_peer: parentPeer
+      },
+      options: {overwrite},
+      processResult: async(result) => {
+        await ensureCountPromise;
+        if(
+          cutoffGeneration !== this.appMessagesManager.getChannelAvailableMinIdGeneration(parentPeerId) &&
+          cutoffAttempt < CHANNEL_CUTOFF_RETRY_LIMIT
+        ) {
+          return this.fetchAndSaveDialogsById({parentPeerId, ids}, true, cutoffAttempt + 1);
         }
-      }),
-      isCollectionEmpty && this.fetchAndSaveDialogs({parentPeerId, limit: 1}) // make sure we have the correct count as the by id request doesn't return it
-    ]);
 
-    if(DEBUG) MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] by id', parentPeerId, ids, result});
+        if(DEBUG) MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] by id', parentPeerId, ids, result});
 
-    const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
+        const {dialogs} = this.processGetDialogsResult({parentPeerId, result});
+        const lastStableDialogIndex = lastItem(collection.stable)?.stableIndex || Infinity;
+        const fetchedDialogsSet = new Set(dialogs.map(dialog => dialog.peerId));
+        collection.stable = collection.stable.filter(dialog => !fetchedDialogsSet.has(dialog.peerId));
+        collection.stable.push(...dialogs.filter(dialog => dialog.stableIndex >= lastStableDialogIndex));
+        collection.stable.sort(this.sortStableDialogsComparator);
+        this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs});
 
-    const lastStableDialogIndex = lastItem(collection.stable)?.stableIndex || Infinity;
-
-    const fetchedDialogsSet = new Set(dialogs.map(dialog => dialog.peerId));
-
-    collection.stable = collection.stable.filter(dialog => !fetchedDialogsSet.has(dialog.peerId));
-
-    collection.stable.push(...dialogs.filter(dialog => dialog.stableIndex >= lastStableDialogIndex));
-    collection.stable.sort(this.sortStableDialogsComparator);
-
-    this.rootScope.dispatchEvent('monoforum_dialogs_update', {dialogs});
-
-    const deletedDialogs = ids.filter(id => !fetchedDialogsSet.has(id));
-    if(!deletedDialogs.length) return;
-
-    this.dropDeletedDialogs(parentPeerId, deletedDialogs);
+        const deletedDialogs = ids.filter(id => !fetchedDialogsSet.has(id));
+        if(deletedDialogs.length) this.dropDeletedDialogs(parentPeerId, deletedDialogs);
+      }
+    });
   };
 
   private processGetDialogsResult({parentPeerId, result}: MonoforumDialogsStorage.ProcessGetDialogsResultArgs) {

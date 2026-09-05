@@ -1,11 +1,17 @@
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import makeError from '@helpers/makeError';
 import pause from '@helpers/schedulers/pause';
-import {TextWithEntities, MessagesTranslatedText, MessagesTranslateText, MessageEntity} from '@layer';
+import {
+  MessageEntity,
+  MessagesTranslatedRichMessage,
+  MessagesTranslatedText,
+  MessagesTranslateText,
+  RichMessage,
+  TextWithEntities
+} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-
-// ! possible race-condition if message was edited while translation is in progress
+import type {ReferenceContext} from '@lib/storages/references';
 
 const MAX_MESSAGES_PER_REQUEST = 20;
 
@@ -18,6 +24,12 @@ export default class AppTranslationsManager extends AppManager {
       messagesPromises: Map<PeerId, Promise<any>>
     }
   } = {};
+  private translateRichMessageBatch: {
+    [lang: string]: {
+      messages: Map<PeerId, Map<number, MaybeDeferredPromise<RichMessage>>>,
+      messagesPromises: Map<PeerId, Promise<any>>
+    }
+  } = {};
   private triedToTranslateMessages: Map<`${PeerId}_${number}`, Set<string>> = new Map();
   private summaries: {
     [peerId: PeerId]: {
@@ -26,6 +38,40 @@ export default class AppTranslationsManager extends AppManager {
       }
     }
   } = {};
+
+  public clear = () => {
+    const invalidMessageError = makeError('MESSAGE_ID_INVALID');
+
+    for(const lang in this.translateTextBatch) {
+      const batch = this.translateTextBatch[lang];
+      this.clearTranslationMap(batch.text, invalidMessageError);
+      for(const map of batch.messages.values()) {
+        this.clearTranslationMap(map, invalidMessageError);
+      }
+      batch.messages.clear();
+      batch.messagesPromises.clear();
+      batch.textPromise = undefined;
+    }
+
+    for(const lang in this.translateRichMessageBatch) {
+      const batch = this.translateRichMessageBatch[lang];
+      for(const [peerId, map] of batch.messages) {
+        this.clearTranslationMap(map, invalidMessageError, (richMessage, mid) => {
+          this.appMessagesManager.releaseRichMessage(
+            richMessage,
+            this.getRichMessageTranslationReferenceContext(peerId, mid, lang)
+          );
+        });
+      }
+      batch.messages.clear();
+      batch.messagesPromises.clear();
+    }
+
+    this.translateTextBatch = {};
+    this.translateRichMessageBatch = {};
+    this.triedToTranslateMessages.clear();
+    this.summaries = {};
+  };
 
   public hasTriedToTranslateMessage(peerId: PeerId, mid: number) {
     return this.triedToTranslateMessages.has(`${peerId}_${mid}`);
@@ -39,20 +85,122 @@ export default class AppTranslationsManager extends AppManager {
     }
 
     for(const lang of languages) {
-      const batch = this.translateTextBatch[lang];
-      if(!batch) {
-        continue;
+      const textBatch = this.translateTextBatch[lang];
+      const textMessages = textBatch?.messages;
+      const textMap = textMessages?.get(peerId);
+      this.evictMessageTranslation(textMap, mid);
+      if(textMap && !textMap.size && !textBatch?.messagesPromises.has(peerId)) {
+        textMessages?.delete(peerId);
       }
 
-      const map = batch.messages.get(peerId);
-      if(!map) {
-        continue;
+      const richBatch = this.translateRichMessageBatch[lang];
+      const richMessages = richBatch?.messages;
+      const richMap = richMessages?.get(peerId);
+      this.evictRichMessageTranslation(lang, peerId, mid);
+      if(richMap && !richMap.size && !richBatch?.messagesPromises.has(peerId)) {
+        richMessages?.delete(peerId);
       }
-
-      map.delete(mid);
     }
 
     this.triedToTranslateMessages.delete(key);
+  }
+
+  public resetPeerTranslations(peerId: PeerId) {
+    const keyPrefix = `${peerId}_`;
+    for(const key of [...this.triedToTranslateMessages.keys()]) {
+      if(key.startsWith(keyPrefix)) {
+        this.resetMessageTranslations(peerId, +key.slice(keyPrefix.length));
+      }
+    }
+
+    this.clearSummaries(peerId);
+  }
+
+  public resetPeerTranslationsByChannelCutoff(peerId: PeerId) {
+    const mids = new Set<number>();
+    const keyPrefix = `${peerId}_`;
+    for(const key of [...this.triedToTranslateMessages.keys()]) {
+      if(!key.startsWith(keyPrefix)) continue;
+      const mid = +key.slice(keyPrefix.length);
+      if(this.appMessagesManager.isMessageIdUnavailableByChannelCutoff(peerId, mid)) {
+        mids.add(mid);
+        this.resetMessageTranslations(peerId, mid);
+      }
+    }
+
+    const peerSummaries = this.summaries[peerId];
+    if(peerSummaries) {
+      for(const key of Object.keys(peerSummaries)) {
+        const mid = +key;
+        if(this.appMessagesManager.isMessageIdUnavailableByChannelCutoff(peerId, mid)) {
+          mids.add(mid);
+          delete peerSummaries[mid];
+        }
+      }
+      if(!Object.keys(peerSummaries).length) delete this.summaries[peerId];
+    }
+
+    return mids;
+  }
+
+  private clearTranslationMap<K, T>(
+    map: Map<K, MaybeDeferredPromise<T>>,
+    error: ApiError,
+    onEvict?: (value: T, key: K) => void
+  ) {
+    for(const [key, value] of map) {
+      map.delete(key);
+      if(value instanceof Promise) {
+        (value as CancellablePromise<T>).reject(error);
+      } else {
+        onEvict?.(value, key);
+      }
+    }
+  }
+
+  private evictMessageTranslation<K, T>(
+    map: Map<K, MaybeDeferredPromise<T>>,
+    key: K,
+    onEvict?: (value: T) => void
+  ) {
+    const value = map?.get(key);
+    if(value === undefined) return;
+
+    map.delete(key);
+    if(value instanceof Promise) {
+      (value as CancellablePromise<T>).reject(makeError('MESSAGE_ID_INVALID'));
+    } else {
+      onEvict?.(value);
+    }
+  }
+
+  private evictRichMessageTranslation(
+    lang: string,
+    peerId: PeerId,
+    mid: number,
+    releaseMedia = true
+  ) {
+    this.evictMessageTranslation(
+      this.translateRichMessageBatch[lang]?.messages.get(peerId),
+      mid,
+      releaseMedia ? (richMessage) => this.appMessagesManager.releaseRichMessage(
+        richMessage,
+        this.getRichMessageTranslationReferenceContext(peerId, mid, lang)
+      ) : undefined
+    );
+  }
+
+  private getRichMessageTranslationReferenceContext(
+    peerId: PeerId,
+    mid: number,
+    lang: string
+  ): ReferenceContext.referenceContextMessageRichTranslation {
+    return {
+      type: 'messageRichTranslation',
+      peerId,
+      messageId: mid,
+      lang
+    };
   }
 
   private processTextWithEntities = (textWithEntities: TextWithEntities) => {
@@ -60,43 +208,102 @@ export default class AppTranslationsManager extends AppManager {
     return textWithEntities;
   };
 
+  private batchValues<T, V>(
+    map: Map<T, MaybeDeferredPromise<V>>,
+    request: (keys: T[]) => Promise<V[]>,
+    processValue?: (value: V, key: T) => V,
+    noCaching?: boolean
+  ) {
+    if(!map || ![...map.values()].some((value) => value instanceof Promise)) {
+      return;
+    }
+
+    return pause(0).then(async() => {
+      const doingEntries = [...map.entries()]
+      .filter(([, value]) => value instanceof Promise)
+      .slice(0, MAX_MESSAGES_PER_REQUEST);
+      if(!doingEntries.length) {
+        return;
+      }
+
+      const doingMap = new Map(doingEntries);
+      const doingKeys = doingEntries.map(([key]) => key);
+
+      let values: V[];
+      try {
+        values = await request(doingKeys);
+      } catch(error) {
+        doingKeys.forEach((key) => {
+          const deferred = doingMap.get(key) as CancellablePromise<V>;
+          if(map.get(key) === deferred) {
+            map.delete(key);
+          }
+          deferred.reject(error);
+        });
+        return;
+      }
+
+      doingKeys.forEach((key, index) => {
+        const deferred = doingMap.get(key) as CancellablePromise<V>;
+        const value = values[index];
+        if(value === undefined) {
+          if(map.get(key) === deferred) {
+            map.delete(key);
+          }
+          deferred.reject(makeError('UNKNOWN'));
+          return;
+        }
+
+        // An edit/reset can replace this deferred while the request is in flight.
+        // Check ownership before normalizing media or running any other side effect.
+        if(map.get(key) !== deferred) {
+          return;
+        }
+
+        let processedValue: V;
+        try {
+          processedValue = processValue ? processValue(value, key) : value;
+        } catch(error) {
+          if(map.get(key) === deferred) {
+            map.delete(key);
+          }
+          deferred.reject(error);
+          return;
+        }
+
+        if(noCaching) map.delete(key);
+        else map.set(key, processedValue);
+        deferred.resolve(processedValue);
+      });
+    });
+  }
+
   private batchTranslation<T>(
     lang: string,
     map: Map<any, MaybeDeferredPromise<TextWithEntities>>,
     getParams: (keys: T[]) => Partial<MessagesTranslateText>,
     noCaching?: boolean
   ) {
-    if(!map || ![...map.values()].some((v) => v instanceof Promise)) {
-      return;
-    }
-
-    return pause(0).then(async() => {
-      const doingEntries = [...map.entries()].filter(([mid, v]) => v instanceof Promise).slice(0, MAX_MESSAGES_PER_REQUEST);
-      const doingMap = new Map(doingEntries);
-      const doingKeys = doingEntries.map(([mid]) => mid);
-
+    return this.batchValues(map, async(keys) => {
       const result: MessagesTranslatedText = await this.apiManager.invokeApi('messages.translateText', {
-        ...getParams(doingKeys),
+        ...getParams(keys),
         to_lang: lang
-      }).catch((err) => {
-        doingKeys.forEach((key) => {
-          const deferred = doingMap.get(key) as CancellablePromise<TextWithEntities>;
-          map.delete(key);
-          deferred.reject(err);
-        });
-
-        return undefined as MessagesTranslatedText;
       });
+      return result.result;
+    }, this.processTextWithEntities, noCaching);
+  }
 
-      if(result) result.result.forEach((textWithEntities, idx) => {
-        this.processTextWithEntities(textWithEntities);
-        const key = doingKeys[idx];
-        const deferred = doingMap.get(key) as CancellablePromise<TextWithEntities>;
-        if(noCaching) map.delete(key);
-        else map.set(key, textWithEntities);
-        deferred.resolve(textWithEntities);
-      });
-    });
+  private releaseMessageBatch<T>(batch: {
+    messages: Map<PeerId, Map<number, MaybeDeferredPromise<T>>>,
+    messagesPromises: Map<PeerId, Promise<any>>
+  }, peerId: PeerId, promise?: Promise<any>) {
+    if(batch.messagesPromises.get(peerId) === promise) {
+      batch.messagesPromises.delete(peerId);
+    }
+    const currentMap = batch.messages.get(peerId);
+    if(currentMap && !currentMap.size) {
+      batch.messages.delete(peerId);
+    }
   }
 
   private batchMessageTranslation(lang: string, peerId: PeerId) {
@@ -111,10 +318,11 @@ export default class AppTranslationsManager extends AppManager {
       id: mids.map((mid) => getServerMessageId(mid))
     }));
     promise && batch.messagesPromises.set(peerId, promise);
-    promise?.then(() => {
-      batch.messagesPromises.delete(peerId);
+    const release = () => {
+      this.releaseMessageBatch(batch, peerId, promise);
       this.batchMessageTranslation(lang, peerId);
-    });
+    };
+    promise?.then(release, release);
   }
 
   private batchTextTranslation(lang: string) {
@@ -128,10 +336,59 @@ export default class AppTranslationsManager extends AppManager {
       text: keys.map((key) => ({entities: [], ...JSON.parse(key)}))
     }), true);
     promise && (batch.textPromise = promise);
-    batch.textPromise?.then(() => {
-      batch.textPromise = undefined;
+    const release = () => {
+      if(batch.textPromise === promise) {
+        batch.textPromise = undefined;
+      }
       this.batchTextTranslation(lang);
-    });
+    };
+    promise?.then(release, release);
+  }
+
+  private batchRichMessageTranslation(lang: string, peerId: PeerId) {
+    const batch = this.translateRichMessageBatch[lang];
+    if(!batch || batch.messagesPromises.get(peerId)) {
+      return;
+    }
+
+    const map = batch.messages.get(peerId);
+    const promise = this.batchValues(map, async(mids) => {
+      const result: MessagesTranslatedRichMessage = await this.apiManager.invokeApi('messages.translateRichMessage', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id: mids.map((mid) => getServerMessageId(mid)),
+        to_lang: lang
+      });
+      return result.result;
+    }, (richMessage, mid) => this.appMessagesManager.processRichMessage(
+      richMessage,
+      this.getRichMessageTranslationReferenceContext(peerId, mid, lang)
+    ));
+    promise && batch.messagesPromises.set(peerId, promise);
+    const release = () => {
+      this.releaseMessageBatch(batch, peerId, promise);
+      this.batchRichMessageTranslation(lang, peerId);
+    };
+    promise?.then(release, release);
+  }
+
+  private trackMessageTranslation(peerId: PeerId, mid: number, lang: string) {
+    const key = `${peerId}_${mid}` as const;
+    let tried = this.triedToTranslateMessages.get(key);
+    if(!tried) {
+      this.triedToTranslateMessages.set(key, tried = new Set());
+    }
+    tried.add(lang);
+  }
+
+  private getChannelCutoffResult(peerId: PeerId, mid: number, onlyCache?: boolean) {
+    if(!this.appMessagesManager.isMessageIdUnavailableByChannelCutoff(peerId, mid)) {
+      return {unavailable: false as const};
+    }
+
+    return {
+      unavailable: true as const,
+      result: onlyCache ? undefined : Promise.reject(makeError('MESSAGE_ID_INVALID'))
+    };
   }
 
   public translateText(options: ({
@@ -140,9 +397,14 @@ export default class AppTranslationsManager extends AppManager {
   } | {
     text: TextWithEntities
   }) & {lang: string, onlyCache?: boolean}): MaybeDeferredPromise<TextWithEntities> {
+    const isMessage = 'peerId' in options;
+    if(isMessage) {
+      const cutoff = this.getChannelCutoffResult(options.peerId, options.mid, options.onlyCache);
+      if(cutoff.unavailable) return cutoff.result;
+    }
+
     this.translateTextBatch[options.lang] ??= {text: new Map(), messages: new Map(), messagesPromises: new Map()};
     const batch = this.translateTextBatch[options.lang];
-    const isMessage = 'peerId' in options;
 
     if(isMessage) {
       const message = this.appMessagesManager.getMessageByPeer(options.peerId, options.mid);
@@ -175,12 +437,7 @@ export default class AppTranslationsManager extends AppManager {
       promise = deferredPromise<TextWithEntities>();
       map.set(options.mid, promise);
 
-      const key = `${options.peerId}_${options.mid}` as const;
-      let tried = this.triedToTranslateMessages.get(key);
-      if(!tried) {
-        this.triedToTranslateMessages.set(key, tried = new Set());
-      }
-      tried.add(options.lang);
+      this.trackMessageTranslation(options.peerId, options.mid, options.lang);
 
       this.batchMessageTranslation(options.lang, options.peerId);
 
@@ -205,6 +462,63 @@ export default class AppTranslationsManager extends AppManager {
     }
   }
 
+  public translateRichMessage(options: {
+    peerId: PeerId,
+    mid: number,
+    lang: string,
+    onlyCache?: boolean
+  }): MaybeDeferredPromise<RichMessage> {
+    const cutoff = this.getChannelCutoffResult(options.peerId, options.mid, options.onlyCache);
+    if(cutoff.unavailable) return cutoff.result;
+
+    if(this.appMessagesManager.isEphemeralMessageId(options.mid)) {
+      return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+    }
+
+    this.translateRichMessageBatch[options.lang] ??= {messages: new Map(), messagesPromises: new Map()};
+    const batch = this.translateRichMessageBatch[options.lang];
+    let map = batch.messages.get(options.peerId);
+    if(!map) {
+      batch.messages.set(options.peerId, map = new Map());
+    }
+
+    let promise = map.get(options.mid);
+    if(promise || options.onlyCache) {
+      return promise;
+    }
+
+    promise = deferredPromise<RichMessage>();
+    map.set(options.mid, promise);
+    this.trackMessageTranslation(options.peerId, options.mid, options.lang);
+    this.batchRichMessageTranslation(options.lang, options.peerId);
+
+    return promise;
+  }
+
+  public refreshRichMessageTranslation(peerId: PeerId, mid: number, lang: string) {
+    const current = this.translateRichMessageBatch[lang]?.messages.get(peerId)?.get(mid);
+    if(current instanceof Promise) return current;
+
+    // Keep the old context alive while ReferencesStorage is refreshing it: the
+    // replacement response mutates the shared reference bytes in place.
+    this.evictRichMessageTranslation(lang, peerId, mid, false);
+    const promise = this.translateRichMessage({peerId, mid, lang});
+    if(current) {
+      const context = this.getRichMessageTranslationReferenceContext(peerId, mid, lang);
+      Promise.resolve(promise).then(
+        (richMessage) => this.appMessagesManager.releaseRichMessage(
+          current,
+          context,
+          false,
+          richMessage
+        ),
+        () => this.appMessagesManager.releaseRichMessage(current, context)
+      );
+    }
+
+    return promise;
+  }
+
   public togglePeerTranslations(peerId: PeerId, disabled: boolean) {
     this.appProfileManager.modifyCachedFullPeer(peerId, (fullPeer) => {
       if(!('pFlags' in fullPeer)) {
@@ -225,6 +539,9 @@ export default class AppTranslationsManager extends AppManager {
     mid: number,
     lang?: string
   }) {
+    const cutoff = this.getChannelCutoffResult(peerId, mid);
+    if(cutoff.unavailable) return cutoff.result;
+
     if(
       this.appMessagesManager.isEphemeralMessageId(mid) ||
       this.appMessagesManager.isEphemeralMessage(this.appMessagesManager.getMessageByPeer(peerId, mid))
@@ -245,11 +562,22 @@ export default class AppTranslationsManager extends AppManager {
       throw makeError('SUMMARY_FLOOD_PREMIUM');
     }) */;
 
-    promise.then((textWithEntities) => {
-      if(this.summaries[peerId][mid][lang] === promise) {
-        this.summaries[peerId][mid][lang] = textWithEntities;
+    promise.then(
+      (textWithEntities) => {
+        if(this.summaries[peerId]?.[mid]?.[lang] === promise) {
+          this.summaries[peerId][mid][lang] = textWithEntities;
+        }
+      },
+      () => {
+        if(this.summaries[peerId]?.[mid]?.[lang] === promise) {
+          const peerSummaries = this.summaries[peerId];
+          const messageSummaries = peerSummaries[mid];
+          delete messageSummaries[lang];
+          if(!Object.keys(messageSummaries).length) delete peerSummaries[mid];
+          if(!Object.keys(peerSummaries).length) delete this.summaries[peerId];
+        }
       }
-    });
+    );
 
     return promise;
   }

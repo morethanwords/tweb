@@ -1,18 +1,23 @@
 import {AppMessagesManager, HistoryType} from '@appManagers/appMessagesManager';
 import getHistoryStorageKey from '@appManagers/utils/messages/getHistoryStorageKey';
+import type {MessagesMessages} from '@layer';
 import '@helpers/peerIdPolyfill';
 
 describe('community message search', () => {
   test('routes through searchGlobal with a community and no folder', async() => {
-    const invokeApiSingle = vi.fn().mockResolvedValue({
+    const response: MessagesMessages.messagesMessages = {
       _: 'messages.messages',
       messages: [],
+      topics: [],
       chats: [],
       users: []
+    };
+    const invokeApiSingleProcess = vi.fn(({processResult}) => {
+      return Promise.resolve(response).then(processResult);
     });
     const manager = new AppMessagesManager();
     Object.assign(manager as any, {
-      apiManager: {invokeApiSingle},
+      apiManager: {invokeApiSingleProcess},
       appChatsManager: {
         getChannelInput: (communityId: ChatId) => ({
           _: 'inputChannel',
@@ -36,9 +41,9 @@ describe('community message search', () => {
       query: 'needle'
     });
 
-    expect(invokeApiSingle).toHaveBeenCalledWith(
-      'messages.searchGlobal',
-      expect.objectContaining({
+    expect(invokeApiSingleProcess).toHaveBeenCalledWith({
+      method: 'messages.searchGlobal',
+      params: expect.objectContaining({
         q: 'needle',
         folder_id: undefined,
         community: {
@@ -47,8 +52,13 @@ describe('community message search', () => {
           access_hash: 'community-200'
         }
       }),
-      {noErrorBox: true}
-    );
+      options: {
+        noErrorBox: true,
+        overwrite: false
+      },
+      processResult: expect.any(Function),
+      processError: expect.any(Function)
+    });
   });
 
   test('skips peer restriction lookup only for peerless searches', async() => {

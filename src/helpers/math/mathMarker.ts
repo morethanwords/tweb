@@ -9,9 +9,9 @@
 // source survives the emphasis / escape passes and parseMarkdown untouched; the IV later decodes &
 // renders it with Temml (see instantViewMath). Mirrors how WebA (telegram-tt) renders `textMath`.
 
-const STX = '\x02';
+export const STX = '\x02';
 
-export const MATH_MARKER_RE = /\x02([A-Za-z0-9+/=]+)\x02/g;
+export const MATH_MARKER_RE = /\x02([A-Za-z0-9+/=]*)\x02/g;
 
 function toBase64(s: string): string {
   const bytes = new TextEncoder().encode(s);

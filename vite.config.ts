@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import {defineConfig} from 'vite';
+import {defineConfig, searchForWorkspaceRoot} from 'vite';
 import solidPlugin from 'vite-plugin-solid';
 // @ts-ignore no type declarations
 import handlebars from 'vite-plugin-handlebars';
@@ -7,7 +7,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
-import {existsSync, copyFileSync, readFileSync} from 'fs';
+import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import devChecks from './scripts/dev-checks.mjs';
@@ -18,6 +18,15 @@ const rootDir = resolve(__dirname);
 const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
 const LANG_PACK_LOCAL_FILE_PATH = path.join(rootDir, 'src', 'langPackLocalVersion.ts');
+const NODE_MODULES_PATH = path.join(rootDir, 'node_modules');
+const SERVER_FS_ALLOW = new Set([searchForWorkspaceRoot(rootDir)]);
+
+if(existsSync(NODE_MODULES_PATH)) {
+  // Worktrees reuse the main checkout's node_modules through a symlink. Vite
+  // resolves dependency IDs to their physical path, so ?url imports need that
+  // exact dependency root in the allow list as well.
+  SERVER_FS_ALLOW.add(realpathSync(NODE_MODULES_PATH));
+}
 
 const isDEV = process.env.NODE_ENV === 'development';
 if(!existsSync(LANG_PACK_LOCAL_FILE_PATH)) {
@@ -69,6 +78,9 @@ const USE_DEV_HTTP2 = !USE_SSL && !process.env.TWEB_PREVIEW && !process.env.VITE
 const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
+  fs: {
+    allow: [...SERVER_FS_ALLOW]
+  },
   watch: {
     // NB: anchor on rootDir. A worktree checkout's own path contains
     // ".claude/worktrees/<name>/", so a bare '**/.claude/**' glob would also match
@@ -171,6 +183,12 @@ export default defineConfig({
     //   exclude: ['**/*.d.ts', 'src/server/*.ts', 'store/src/**/server.ts']
     // },
     environment: 'jsdom',
+    // The suite runs in parallel forks, so a CPU-bound test (2048-bit prime
+    // checks, bulk AES) competes with every other file for the same cores.
+    // Vitest's 5s/10s defaults leave those no headroom on a loaded machine; a
+    // genuinely hung test still fails, just later.
+    testTimeout: 15_000,
+    hookTimeout: 30_000,
     // otherwise, solid would be loaded twice:
     // deps: {registerNodeLoader: true},
     pool: 'forks',

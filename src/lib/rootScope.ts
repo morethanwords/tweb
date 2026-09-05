@@ -22,6 +22,7 @@ import type {MyPromoData} from '@appManagers/appPromoManager';
 import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {BotConnectionReview} from '@appManagers/appBusinessManager';
+import type {StreamedMessageDraft, StreamedMessageDraftRemovalReason} from '@appManagers/utils/messages/streamedMessageDrafts';
 import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -96,6 +97,10 @@ export type BroadcastEvents = {
   'ephemeral_send_error': {peerId: PeerId, retryId: number},
 
   'message_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage},
+  'peer_history_flush': {peerId: PeerId},
+  'streamed_message_update': {draft: StreamedMessageDraft, message: Message.message, initial: boolean},
+  'streamed_message_remove': {draft: StreamedMessageDraft, reason: StreamedMessageDraftRemovalReason},
+  'streamed_message_finalize': {draft: StreamedMessageDraft, tempId: number, finalMessage: MyMessage},
   'message_sent': {storageKey: MessagesStorageKey, tempId: number, tempMessage: any, mid: number, message: MyMessage},
   'message_error': {storageKey: MessagesStorageKey, peerId: PeerId, tempId: number, error: ApiError},
   'message_transcribed': {peerId: PeerId, mid: number, text: string, pending?: boolean},

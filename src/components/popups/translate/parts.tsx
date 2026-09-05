@@ -10,6 +10,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Message, TextWithEntities} from '@layer';
+import {flattenRichMessageContent} from '@lib/richMessage';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createResource, createSignal, JSX, Match, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
@@ -35,12 +36,26 @@ export const Result = (props: {
 }) => {
   const {rootScope, wrapRichText} = useHotReloadGuard();
 
-  const [translation] = createResource(() => props.language, (lang) =>
-    rootScope.managers.appTranslationsManager.translateText({
-      ...(props.message ? {peerId: props.message.peerId, mid: props.message.mid} : {text: props.textWithEntities}),
+  const [translation] = createResource(() => props.language, async(lang) => {
+    const message = props.message;
+    // A rich message has no plain text to send: it translates through its own endpoint and
+    // comes back as blocks, flattened here to the shape the original side renders. Desktop
+    // only swaps the rich page inside the bubble; offering it from the menu as well is a
+    // deliberate difference, so this branch has no upstream counterpart to follow.
+    if(message?.rich_message) {
+      const richMessage = await rootScope.managers.appTranslationsManager.translateRichMessage({
+        peerId: message.peerId,
+        mid: message.mid,
+        lang
+      });
+      return flattenRichMessageContent(richMessage);
+    }
+
+    return rootScope.managers.appTranslationsManager.translateText({
+      ...(message ? {peerId: message.peerId, mid: message.mid} : {text: props.textWithEntities}),
       lang
-    })
-  );
+    });
+  });
 
   let scrollableRef: HTMLDivElement, scrollableContextRef: ScrollableContextValue;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();

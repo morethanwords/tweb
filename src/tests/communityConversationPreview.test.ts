@@ -53,9 +53,10 @@ describe('Community conversation previews', () => {
 
   it('does not turn a peer forbidden when a preview is inaccessible', async() => {
     const manager = Object.create(AppMessagesManager.prototype) as any;
+    const error = {type: 'CHANNEL_PRIVATE'};
     manager.apiManager = {
-      invokeApiSingle: vi.fn().mockRejectedValue({
-        type: 'CHANNEL_PRIVATE'
+      invokeApiSingleProcess: vi.fn(({processError}) => {
+        return Promise.reject(error).catch(processError);
       })
     };
     manager.appPeersManager = {
@@ -64,6 +65,7 @@ describe('Community conversation previews', () => {
     manager.appChatsManager = {
       getChat: vi.fn()
     };
+    manager.getChannelAvailableMinIdGeneration = () => 0;
     manager.saveApiResult = vi.fn();
 
     await expect(manager.requestHistory({

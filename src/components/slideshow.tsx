@@ -10,6 +10,7 @@ import {IconTsx} from '@components/iconTsx';
 export type SlideshowProps<T> = {
   class?: string;
   items?: T[];
+  getItemKey?: (item: T) => unknown;
   children?: (item: T, index: number) => JSX.Element;
   initialIndex?: number;
   activeIndex?: number;
@@ -25,9 +26,27 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
   let itemsContainer: HTMLDivElement;
   let swipeHandler: SwipeHandler;
 
-  const [index, setIndex] = createSignal(props.initialIndex || 0);
+  const clampIndex = (value: number) => Math.max(0, Math.min(value, Math.max(0, props.items.length - 1)));
+  const getItemKey = (item: T) => props.getItemKey ? props.getItemKey(item) : item;
+  const initialIndex = clampIndex(props.initialIndex || 0);
+  const [index, setIndex] = createSignal(initialIndex);
   const [isSwiping, setIsSwiping] = createSignal(false);
   const [noTransition, setNoTransition] = createSignal(false);
+  let selectedKey = props.items.length ? getItemKey(props.items[initialIndex]) : undefined;
+  let hasSelectedKey = !!props.items.length;
+
+  const selectIndex = (value: number) => {
+    const nextIndex = clampIndex(value);
+    setIndex(nextIndex);
+    if(props.items.length) {
+      selectedKey = getItemKey(props.items[nextIndex]);
+      hasSelectedKey = true;
+    } else {
+      selectedKey = undefined;
+      hasSelectedKey = false;
+    }
+    return nextIndex;
+  };
 
   const getCount = () => props.items.length;
 
@@ -72,7 +91,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
           if(newIndex < 0) newIndex = 0;
           if(newIndex >= getCount()) newIndex = getCount() - 1;
 
-          setIndex(newIndex);
+          selectIndex(newIndex);
           setIsSwiping(false);
         });
       }
@@ -85,7 +104,25 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
 
   createEffect(() => {
     if(props.activeIndex !== undefined && props.activeIndex !== index()) {
-      setIndex(props.activeIndex);
+      selectIndex(props.activeIndex);
+    }
+  });
+
+  createEffect(() => {
+    const keys = props.items.map(getItemKey);
+    const currentIndex = index();
+    let nextIndex = props.activeIndex === undefined && hasSelectedKey ?
+      keys.findIndex((key) => Object.is(key, selectedKey)) :
+      -1;
+    if(nextIndex === -1) nextIndex = clampIndex(currentIndex);
+
+    if(nextIndex !== currentIndex) setIndex(nextIndex);
+    if(keys.length) {
+      selectedKey = keys[nextIndex];
+      hasSelectedKey = true;
+    } else {
+      selectedKey = undefined;
+      hasSelectedKey = false;
     }
   });
 
@@ -121,7 +158,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
     e.stopPropagation();
     if(index() > 0) {
       const newIndex = index() - 1;
-      setIndex(newIndex);
+      selectIndex(newIndex);
       props.onIndexChange?.(newIndex);
     }
   };
@@ -130,7 +167,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
     e.stopPropagation();
     if(index() < (getCount() - 1)) {
       const newIndex = index() + 1;
-      setIndex(newIndex);
+      selectIndex(newIndex);
       props.onIndexChange?.(newIndex);
     }
   };

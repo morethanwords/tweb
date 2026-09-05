@@ -31,6 +31,7 @@ export default async function wrapGroupedDocuments({
   richTextOptions,
   canTranscribeVoice,
   translatableParams,
+  createMessageText,
   factCheckBox,
   isOut
 }: {
@@ -51,9 +52,10 @@ export default async function wrapGroupedDocuments({
   fontWeight?: number,
   fontSize?: number,
   richTextFragment?: DocumentFragment | HTMLElement,
-  richTextOptions?: Parameters<typeof wrapRichText>[1]
+  richTextOptions?: Parameters<typeof wrapRichText>[1],
   canTranscribeVoice?: boolean,
   translatableParams: Parameters<typeof TranslatableMessage>[0],
+  createMessageText?: (element: HTMLElement, message: Message.message) => void,
   factCheckBox?: HTMLElement,
   isOut?: boolean
 }) {
@@ -103,27 +105,31 @@ export default async function wrapGroupedDocuments({
     }
 
     if(message.message) {
-      let fragment = richTextFragment;
-      if(!fragment) {
-        if(translatableParams) {
-          fragment = TranslatableMessage({
-            ...translatableParams,
-            message,
-            richTextOptions: {
-              ...translatableParams.richTextOptions,
+      if(createMessageText) {
+        createMessageText(messageDiv, message);
+      } else {
+        let fragment = richTextFragment;
+        if(!fragment) {
+          if(translatableParams) {
+            fragment = TranslatableMessage({
+              ...translatableParams,
+              message,
+              richTextOptions: {
+                ...translatableParams.richTextOptions,
+                maxMediaTimestamp: getMediaDurationFromMessage(message)
+              }
+            });
+          } else {
+            fragment = wrapRichText(message.message, {
+              ...richTextOptions,
+              entities: message.totalEntities,
               maxMediaTimestamp: getMediaDurationFromMessage(message)
-            }
-          });
-        } else {
-          fragment = wrapRichText(message.message, {
-            ...richTextOptions,
-            entities: message.totalEntities,
-            maxMediaTimestamp: getMediaDurationFromMessage(message)
-          });
+            });
+          }
         }
-      }
 
-      setInnerHTML(messageDiv, fragment);
+        setInnerHTML(messageDiv, fragment);
+      }
     }
 
     if(factCheckBox && messageDiv && isLast) {

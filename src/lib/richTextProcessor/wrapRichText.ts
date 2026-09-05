@@ -32,14 +32,20 @@ import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
 import formatFormattedDate from '@helpers/date/formatFormattedDate';
 import formatRelativeTime from '@helpers/date/formatRelativeTime';
 import tsNow from '@helpers/tsNow';
+import filterDisabledEntities, {markMessageLinkEntity} from '@lib/richTextProcessor/filterDisabledEntities';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
   contextSite: string,
   highlightUsername: string,
+  /** Render navigation entities as ordinary text and disable rich-surface navigation. */
   noLinks: boolean,
+  /** Disable navigation owned by a rich surface without broadening the entity filter. */
+  noNavigation: boolean,
   noLinebreaks: boolean,
   noCommands: boolean,
+  /** Keep streamed code blocks formatted without scheduling syntax work per reveal frame. */
+  noCodeHighlight: boolean,
   wrappingDraft: boolean,
   // mustWrapEmoji: boolean,
   fromBot: boolean,
@@ -52,6 +58,8 @@ export type WrapRichTextOptions = Partial<{
   isSelectable: boolean,
   whitelistedDomains?: string[],
   passMaskedLinks?: boolean,
+  disabledEntities?: ReadonlySet<MessageEntity['_']>,
+  onEntitiesDisabled?: () => void,
 
   contextHashtag?: string,
 
@@ -123,6 +131,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
   const fragment = document.createDocumentFragment();
   if(!text) {
     return fragment;
+  }
+
+  const disabledEntities = options.disabledEntities;
+  if(disabledEntities && !options.nasty) {
+    const entities = options.entities ?? parseEntities(text);
+    options.entities = filterDisabledEntities(entities, disabledEntities);
+    if(options.entities.length !== entities.length) {
+      options.onEntitiesDisabled?.();
+    }
   }
 
   const nasty = options.nasty ??= {
@@ -298,9 +315,9 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
           container.append(header, content);
 
-          const result = languageName && highlightCode(fullEntityText, languageName);
+          const result = !options.noCodeHighlight && languageName && highlightCode(fullEntityText, languageName);
           result && callbackify(result, (html) => {
-            if(html) {
+            if(html && (!options.middleware || options.middleware())) {
               element.innerHTML = html;
             }
           });
@@ -855,6 +872,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
     }
+
+    if(element) markMessageLinkEntity(element, entity);
 
     if(processingBlockElement) {
       let foundNextLinebreakIndex = -1;

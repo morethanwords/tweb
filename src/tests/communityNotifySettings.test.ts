@@ -220,6 +220,7 @@ describe('community pinned dialog order', () => {
   const communityId = 200 as ChatId;
   const communityPeerId = communityId.toPeerId(true);
   const ordinaryB = (300 as UserId).toPeerId(false);
+  const getChannelAvailableMinIdGeneration = () => 0;
 
   const makeDialog = (userId: UserId): Dialog.dialog => ({
     _: 'dialog',
@@ -416,6 +417,9 @@ describe('community pinned dialog order', () => {
         restoreCommunityPinPositions,
         handlePinnedDialogsOrder: vi.fn()
       },
+      appMessagesManager: {
+        getChannelAvailableMinIdGeneration
+      },
       appPeersManager: {
         getPeerId: (peer: Dialog.dialog['peer']) => {
           return peer._ === 'peerUser' ?
@@ -518,6 +522,9 @@ describe('community pinned dialog order', () => {
         invokeApi: vi.fn().mockReturnValue(pinnedPromise)
       },
       appCommunitiesManager,
+      appMessagesManager: {
+        getChannelAvailableMinIdGeneration
+      },
       appPeersManager: {
         getPeerId: (peer: Dialog.dialog['peer']) => {
           return peer._ === 'peerUser' ?

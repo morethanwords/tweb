@@ -64,6 +64,7 @@ import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMes
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
+import {getMessageSourceText} from '@stores/peerLanguage';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
 import {showAdReport, showMessageReport} from '@components/popups/reportAd';
@@ -2418,7 +2419,11 @@ export default class ChatContextMenu {
       return detectLanguageForTranslation(text);
     }
 
-    return detectLanguageForTranslation((this.message as Message.message).message);
+    // Deliberately wider than desktop, which gates this entry on the plain `message` field and
+    // therefore never offers it for a rich message (history_inner_widget: `originalText()` is
+    // empty there). Here a rich message is translatable from the menu too, so detect the
+    // language from what the message actually shows.
+    return detectLanguageForTranslation(getMessageSourceText(this.message as Message.message));
   }
 
   private async getPollTextWithEntities(message: MyMessage) {

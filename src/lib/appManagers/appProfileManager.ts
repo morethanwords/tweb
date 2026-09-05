@@ -23,7 +23,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
 import callbackifyAll from '@helpers/callbackifyAll';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import {FOLDER_ID_ALL, PEER_FULL_TTL} from '@appManagers/constants';
+import {CHANNEL_CUTOFF_RETRY_LIMIT, FOLDER_ID_ALL, PEER_FULL_TTL} from '@appManagers/constants';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import type {State} from '@config/state';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
@@ -217,6 +217,12 @@ export class AppProfileManager extends AppManager {
         fullPeer.pinned_msg_id,
         isUser ? undefined : peerId.toChatId()
       );
+      if(
+        fullPeer._ === 'channelFull' &&
+        this.appMessagesManager.isMessageIdUnavailableByChannelCutoff(peerId, fullPeer.pinned_msg_id)
+      ) {
+        delete fullPeer.pinned_msg_id;
+      }
     }
 
     if('notify_settings' in fullPeer) {
@@ -756,10 +762,20 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  public getChannelFull(id: ChatId, override?: boolean) {
+  public getChannelFull(
+    id: ChatId,
+    override?: boolean,
+    cutoffAttempt = 0
+  ): MaybePromise<ChatFull.channelFull> {
     const peerId = id.toPeerId(true);
     if(this.chatsFull[id] !== undefined && !override && Date.now() < this.fullExpiration[peerId]) {
-      return this.chatsFull[id] as ChatFull.channelFull;
+      const fullChat = this.chatsFull[id] as ChatFull.channelFull;
+      // The cutoff lives in appMessagesManager's memory, which a difference-too-long wipes —
+      // but this cache is not wiped with it (there is no clear() here), so nothing would
+      // re-derive the cutoff until this entry expires. Re-apply it non-authoritatively: it
+      // restores a forgotten cutoff without lowering one an update has raised since.
+      this.appMessagesManager.applyChannelAvailableMinId(id, fullChat.available_min_id ?? 0);
+      return fullChat;
     }
 
     const chat = this.appChatsManager.getChat(id);
@@ -767,12 +783,27 @@ export class AppProfileManager extends AppManager {
       throw makeError('CHANNEL_PRIVATE') as any;
     }
 
+    const cutoffGeneration = this.appMessagesManager.getChannelAvailableMinIdRequestGeneration(peerId);
     return this.apiManager.invokeApiSingleProcess({
       method: 'channels.getFullChannel',
       params: {
         channel: this.appChatsManager.getChannelInput(id)
       },
+      options: {overwrite: override},
       processResult: (result) => {
+        if(
+          cutoffGeneration !==
+            this.appMessagesManager.getChannelAvailableMinIdRequestGeneration(peerId) &&
+          cutoffAttempt < CHANNEL_CUTOFF_RETRY_LIMIT
+        ) {
+          return this.getChannelFull(id, true, cutoffAttempt + 1);
+        }
+        const fullChat = result.full_chat as ChatFull.channelFull;
+        this.appMessagesManager.applyChannelAvailableMinId(
+          id,
+          fullChat.available_min_id ?? 0,
+          true
+        );
         return this.saveFullPeerResult(peerId, result) as ChatFull.channelFull;
       },
       processError: (error) => {
@@ -1386,14 +1417,24 @@ export class AppProfileManager extends AppManager {
     const threadId = topMsgId ? this.appMessagesIdsManager.generateMessageId(topMsgId, (update as Update.updateChannelUserTyping).channel_id) : undefined;
     const peerId = this.appPeersManager.getPeerId(update);
     const key = this.getTypingsKey(peerId, threadId);
-    const typings = this.typingsInPeer[key] ??= [];
     const action = update.action;
-    let typing = typings.find((t) => t.userId === fromId);
 
-    if(update._ === 'updateUserTyping' && action._ === 'sendMessageTextDraftAction') {
-      this.appMessagesManager.handleTypingBotforumUpdate(update);
+    if(
+      action._ === 'sendMessageTextDraftAction' ||
+      action._ === 'sendMessageRichMessageDraftAction'
+    ) {
+      this.appMessagesManager.handleStreamedMessageTypingUpdate(update);
       return;
     }
+
+    let typings = this.typingsInPeer[key];
+    let typing = typings?.find((t) => t.userId === fromId);
+
+    if(action._ === 'sendMessageCancelAction' && !typing) {
+      return;
+    }
+
+    typings ??= this.typingsInPeer[key] = [];
 
     if((action as SendMessageAction.sendMessageEmojiInteraction).msg_id) {
       (action as SendMessageAction.sendMessageEmojiInteraction).msg_id = this.appMessagesIdsManager.generateMessageId((action as SendMessageAction.sendMessageEmojiInteraction).msg_id, (update as Update.updateChannelUserTyping).channel_id);
@@ -1419,10 +1460,6 @@ export class AppProfileManager extends AppManager {
     }
 
     if(action._ === 'sendMessageCancelAction') {
-      if(!typing) {
-        return;
-      }
-
       cancelAction();
       return;
     }

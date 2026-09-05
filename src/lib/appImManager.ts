@@ -2175,6 +2175,7 @@ export class AppImManager extends EventListenerBase<{
     commentId: number
   }) {
     return this.managers.appMessagesManager.getDiscussionMessage(options.peerId, options.msgId).then((message) => {
+      if(!message) return;
       return this.openThread({
         peerId: message.peerId,
         lastMsgId: options.commentId,
