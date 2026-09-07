@@ -49,7 +49,7 @@
 
     &:after {
       // content: var(--quote-icon);
-      content: $tgico-quote;
+      content: $tgico-quote_filled;
       font-family: '#{$tgico-font-family}' !important;
     }
   }
