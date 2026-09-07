@@ -539,7 +539,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     }
     const ownerPeerId = this.gift.ownerId;
     const isEditableUniqueGift = gift._ === 'starGiftUnique' && ownerPeerId !== undefined && props.canManageGifts;
-    const canSave = gift._ === 'starGift' && isIncoming && !isConverted || (isEditableUniqueGift && saved !== undefined)
+    const canSave = saved && (gift._ === 'starGift' && isIncoming && !isConverted || isEditableUniqueGift)
 
     const [isListed, setIsListed] = createSignal((gift as StarGift.starGiftUnique).resell_amount !== undefined);
     const [resellOnlyTon, setResellOnlyTon] = createSignal(this.gift.resellOnlyTon);
@@ -1198,7 +1198,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           </div>
         )}
 
-        {saved.pFlags.name_hidden && (
+        {saved?.pFlags.name_hidden && (
           <div class="popup-star-gift-info-hint">
             {i18n('StarGiftHiddenSender')}
           </div>

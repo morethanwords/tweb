@@ -545,20 +545,22 @@ function StoriesGrid(props: {
           ignoreCache: true,
           onlyStripped: true
         });
-        const thumb = gotThumb.image as HTMLCanvasElement;
-        element.parentElement.prepend(thumb);
+        if(gotThumb && element.parentElement) {
+          const thumb = gotThumb.image as HTMLCanvasElement;
+          element.parentElement.prepend(thumb);
 
-        // need img for clone animation to work
-        gotThumb.loadPromise.then(() => {
-          const img = document.createElement('img');
-          img.className = thumb.className;
-          img.src = thumb.toDataURL();
-          thumb.replaceWith(img);
-        });
+          // need img for clone animation to work
+          gotThumb.loadPromise.then(() => {
+            const img = document.createElement('img');
+            img.className = thumb.className;
+            img.src = thumb.toDataURL();
+            thumb.replaceWith(img);
+          });
 
-        onCleanup(() => {
-          thumb.remove();
-        });
+          onCleanup(() => {
+            thumb.remove();
+          });
+        }
       }
 
       if(element.parentElement && props.pinned && !stories.albumId && (storyItem as StoryItem.storyItem).pinnedIndex !== undefined) {

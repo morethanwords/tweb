@@ -146,7 +146,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
         const stepValues = [1, 3, 5, 7, 10, 25, 50, 100].filter((v) => this.premiumGiftCodeOptions.some((o) => o.users === v));
         const steps = range.generateSteps(stepValues);
         const focusValue = untrack(subscriptionsCount);
-        range.setSteps(steps, stepValues.indexOf(focusValue));
+        range.setSteps(steps, Math.max(0, stepValues.indexOf(focusValue)));
       });
     } else {
       setSubscriptionsCount(this.prepaidGiveaway.quantity);

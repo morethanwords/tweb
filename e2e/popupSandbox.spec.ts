@@ -35,7 +35,14 @@ test('every popup story opens and becomes visible', async({page}) => {
   test.setTimeout(5 * 60_000);
 
   const pageErrors: string[] = [];
+  const renderErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.stack || error.message || String(error)));
+  // Our Solid fork reports render failures through console.error rather than window.onerror.
+  page.on('console', (message) => {
+    if(message.type() === 'error' && message.text().startsWith('solid error')) {
+      renderErrors.push(message.text().split('\n')[0]);
+    }
+  });
 
   await page.goto('/?popups=1');
   await page.waitForFunction(() => !!window.popupSandbox, null, {timeout: 30_000});
@@ -47,6 +54,7 @@ test('every popup story opens and becomes visible', async({page}) => {
   const failed: string[] = [];
   for(const story of stories) {
     pageErrors.length = 0;
+    renderErrors.length = 0;
 
     const opened = await page.evaluate(async(id) => {
       try {
@@ -80,6 +88,9 @@ test('every popup story opens and becomes visible', async({page}) => {
     await page.evaluate(() => window.popupSandbox.closePopups());
     // Longer than the 250ms hide timeout, after which a closed popup fires `closeAfterTimeout`.
     await page.waitForTimeout(400);
+    if(renderErrors.length) {
+      failed.push(`${story.id}: render error — ${renderErrors.join(' | ')}`);
+    }
   }
 
   expect(failed, `\n${failed.join('\n')}\n`).toEqual([]);

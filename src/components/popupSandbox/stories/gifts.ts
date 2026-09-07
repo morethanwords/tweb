@@ -8,6 +8,7 @@
 
 import noop from '@helpers/noop';
 import {defineStories} from '../registry';
+import type {PopupStoryContext} from '@components/popupSandbox/context';
 import {starGiftUpgradePreview, starGiftValueInfo} from '../fixtures';
 
 defineStories('Star gifts', [
@@ -26,7 +27,7 @@ defineStories('Star gifts', [
   {
     id: 'gift/info',
     title: 'Gift info — collectible',
-    open: async(ctx) => {
+    open: async(ctx: PopupStoryContext) => {
       const [{default: PopupElement}, {default: PopupStarGiftInfo}] = await Promise.all([
         import('@components/popups'),
         import('@components/popups/starGiftInfo')
@@ -35,18 +36,21 @@ defineStories('Star gifts', [
       PopupElement.createPopup(PopupStarGiftInfo, {gift: ctx.uniqueGift()});
     }
   },
-  {
-    id: 'gift/info-plain',
-    title: 'Gift info — not upgraded',
-    open: async(ctx) => {
+  ...[false, true].map((catalog) => ({
+    id: catalog ? 'gift/info-catalog' : 'gift/info-plain',
+    title: catalog ? 'Gift info — unsaved catalogue gift' : 'Gift info — not upgraded',
+    open: async(ctx: PopupStoryContext) => {
       const [{default: PopupElement}, {default: PopupStarGiftInfo}] = await Promise.all([
         import('@components/popups'),
         import('@components/popups/starGiftInfo')
       ]);
 
-      PopupElement.createPopup(PopupStarGiftInfo, {gift: ctx.gift()});
+      const gift = ctx.gift();
+      PopupElement.createPopup(PopupStarGiftInfo, {
+        gift: catalog ? {...gift, saved: undefined, input: undefined, isIncoming: false, ownerId: undefined} : gift
+      });
     }
-  },
+  })),
   {
     id: 'gift/wear',
     title: 'Wear a gift',

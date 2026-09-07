@@ -1,6 +1,7 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const {getInvalidPluralKeys} = require('./lib/validatePluralStrings.ts');
 
 const onResponse = (response) => {
   let data = '';
@@ -26,7 +27,7 @@ const onResponse = (response) => {
       'other'
     ]);
 
-    ['lang', 'langSign'].forEach((part) => {
+    const updates = ['lang', 'langSign'].map((part) => {
       const filePath = path.resolve(__dirname, `../${part}.ts`);
     
       let lang = fs.readFileSync(filePath).toString();
@@ -62,10 +63,19 @@ const onResponse = (response) => {
         }
       }
 
-      if(originalLang !== lang) {
-        fs.writeFileSync(filePath, lang);
+      const importedPlurals = Object.fromEntries(Object.entries(plural).filter(([key]) => originalLang.includes(`'${key}': {`)));
+      const invalidKeys = getInvalidPluralKeys(importedPlurals);
+      if(invalidKeys.length) {
+        throw new Error(`Translation import would move the plural count out of argument 1: ${invalidKeys.join(', ')}`);
       }
+
+      return {filePath, lang, originalLang};
     });
+
+    // Validate both packs before writing either one, so a rejected import preserves the local texts.
+    for(const {filePath, lang, originalLang} of updates) {
+      if(originalLang !== lang) fs.writeFileSync(filePath, lang);
+    }
 
     console.log(version);
   });

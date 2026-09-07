@@ -83,7 +83,7 @@ export default class PopupPaymentMethods extends PopupElement {
             onSelect={() => selectMethod(() => undefined)}
           />
         )}
-        {this.paymentForm.additional_methods.map((method) => (
+        {this.paymentForm.additional_methods?.map((method) => (
           <PaymentMethodRow
             title={wrapEmojiText(method.title)}
             onSelect={() => selectMethod(() => PopupElement.createPopup(

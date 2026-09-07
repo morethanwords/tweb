@@ -8,7 +8,7 @@
     "start": "vite",
     "start-in-docker": "vite --host",
     "serve": "pnpm run build && node server.js --dist",
-    "build": "pnpm run typecheck && pnpm run generate-changelog && vite build && pnpm run check-bundle",
+    "build": "pnpm test --run && pnpm run typecheck && pnpm run generate-changelog && vite build && pnpm run check-bundle",
     "check-bundle": "node scripts/check-bundle-mangling.mjs dist",
     "test": "vitest",
     "test:ephemeral-bot": "node ./src/tests/fixtures/ephemeralBot/bot.mjs",

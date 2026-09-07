@@ -7,6 +7,7 @@
  */
 
 import type {
+  AiComposeToneExample,
   Chat,
   Dialog,
   Document,
@@ -25,10 +26,13 @@ import type {
   ShippingOption,
   StarGift,
   StarsAmount,
+  StarsGiveawayOption,
   User,
   WebPage
 } from '@layer';
 import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
+import type {MyStarGift} from '@appManagers/appGiftsManager';
+import {getMiddleware} from '@helpers/middleware';
 
 export const SELF_USER_ID = 777001;
 export const CONTACT_USER_ID = 777002;
@@ -317,6 +321,7 @@ export const uniqueStarGift: StarGift.starGiftUnique = {
   availability_issued: 42,
   availability_total: 5000,
   resell_amount: [{_: 'starsAmount', amount: 900, nanos: 0}],
+  offer_min_stars: 500,
   value_amount: 1200,
   value_currency: 'XTR',
   attributes: [
@@ -348,8 +353,18 @@ export const myStarGift = {
   raw: starGift,
   sticker: stickerDocument,
   isIncoming: true,
-  ownerId: SELF_PEER_ID
-};
+  ownerId: SELF_PEER_ID,
+  input: {_: 'inputSavedStarGiftUser', msg_id: PRIVATE_MID},
+  saved: {
+    _: 'savedStarGift',
+    pFlags: {},
+    gift: starGift,
+    from_id: {_: 'peerUser', user_id: CONTACT_USER_ID},
+    date: NOW,
+    msg_id: PRIVATE_MID,
+    convert_stars: starGift.convert_stars
+  }
+} satisfies MyStarGift;
 
 export const myUniqueStarGift = {
   type: 'stargift' as const,
@@ -365,8 +380,9 @@ export const myUniqueStarGift = {
     pattern: uniqueStarGift.attributes[2] as any,
     original: uniqueStarGift.attributes[3] as any
   },
-  input: {_: 'inputSavedStarGiftUser' as const, msg_id: PRIVATE_MID}
-};
+  input: {_: 'inputSavedStarGiftUser', msg_id: PRIVATE_MID + 2},
+  saved: {...myStarGift.saved, gift: uniqueStarGift, msg_id: PRIVATE_MID + 2, transfer_stars: 25}
+} satisfies MyStarGift;
 
 /** Peers with a dialog, newest first — what a peer picker or a forward popup lists. */
 export const dialogPeerIds: PeerId[] = [
@@ -522,7 +538,7 @@ export const chatStub = {
   getMessageSendingParams: () => ({peerId: CONTACT_PEER_ID}),
   sendReaction: () => Promise.resolve(),
   starsAmount: 0,
-  destroyMiddlewareHelper: () => {},
+  destroyMiddlewareHelper: getMiddleware(),
   input: {
     helperType: undefined as string,
     editMessage: undefined as any,
@@ -594,3 +610,24 @@ export const storyItem: StoryItem.storyItem = {
   media: {_: 'messageMediaPhoto', pFlags: {}, photo},
   albums: [1]
 };
+
+export const aiToneExample: AiComposeToneExample = {
+  _: 'aiComposeToneExample',
+  from: {_: 'textWithEntities', text: 'Hello, friend!', entities: []},
+  to: {_: 'textWithEntities', text: 'Ahoy, matey!', entities: []}
+};
+
+export const starsGiveawayOptions: StarsGiveawayOption[] = [500, 1000].map((stars) => ({
+  _: 'starsGiveawayOption',
+  pFlags: {},
+  stars,
+  yearly_boosts: stars / 100,
+  currency: 'EUR',
+  amount: stars,
+  winners: [1, 5].map((users) => ({
+    _: 'starsGiveawayWinnersOption',
+    pFlags: {},
+    users,
+    per_user_stars: stars / users
+  }))
+}));

@@ -11,7 +11,9 @@ import {
   checkedGiftCode,
   myBoosts,
   passwordState,
+  premiumGiftOptions,
   selfUser,
+  starsGiveawayOptions,
   stickerDocument,
   storyItem,
   userFullWithRating
@@ -247,8 +249,8 @@ defineStories('Boosts & invites', [
     title: 'Boost via a giveaway',
     managers: {
       appPaymentsManager: {
-        getPremiumGiftCodeOptions: () => [] as any[],
-        getStarsGiveawayOptions: () => [] as any[]
+        getPremiumGiftCodeOptions: () => premiumGiftOptions,
+        getStarsGiveawayOptions: () => starsGiveawayOptions
       },
       appProfileManager: {getChannelFull: () => ({_: 'channelFull', pFlags: {}, id: channelChat.id})}
     },
@@ -304,7 +306,7 @@ defineStories('Stars & payments (more)', [
         import('@components/popups/starReaction')
       ]);
 
-      PopupElement.createPopup(PopupStarReaction, ctx.peer('channel'), ctx.mid('private'), ctx.chat());
+      PopupElement.createPopup(PopupStarReaction, ctx.peer('channel'), ctx.mid('channel'), ctx.chat());
     }
   },
   {

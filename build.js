@@ -84,6 +84,7 @@ function changeVersion(langVersion) {
 
 function applyNewLang() {
   const child = spawn(npmCmd, ['run', 'apply-new-lang'], {shell: true});
+  child.stderr.pipe(process.stderr);
   let data = '';
   child.stdout.on('data', (chunk) => {
     data += chunk.toString();

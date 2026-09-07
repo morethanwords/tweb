@@ -1,37 +1,20 @@
 import lang from '@/lang';
+import {getInvalidPluralKeys} from '@/scripts/lib/validatePluralStrings';
 
-// I18n.format picks the plural form from the first argument, so every counted text has to spend its
-// first argument on the count — a text that leads with a name picks the form out of that name instead
 describe('plural strings', () => {
-  // * mirrors how superFormatter walks the slots: an explicit %N$ / unN takes the N-th argument,
-  // * a bare slot takes the next one, starting after the highest explicit index
-  const getCountedArgumentIndexes = (input: string) => {
-    const explicit = input.match(/(%|un)\d+/g);
-    let i = explicit?.length ? Math.max(...explicit.map((str) => +str.replace(/\D/g, ''))) : 0;
-
-    const indexes: number[] = [];
-    for(const slot of input.match(/un\d|%\d\$.|%\S/g) || []) {
-      const index = slot.replace(/\D/g, '');
-      const argumentIndex = index ? +index - 1 : i++;
-      if(slot.endsWith('d')) {
-        indexes.push(argumentIndex);
-      }
-    }
-
-    return indexes;
-  };
-
   test('spend their first argument on the count', () => {
-    const leadingWithSomethingElse = Object.entries(lang).filter(([, value]) => {
-      const input = (value as any)?.other_value;
-      if(typeof(input) !== 'string') {
-        return false;
-      }
+    expect(getInvalidPluralKeys(lang)).toEqual([]);
+  });
 
-      const indexes = getCountedArgumentIndexes(input);
-      return indexes.length && !indexes.includes(0);
-    }).map(([key]) => key);
-
-    expect(leadingWithSomethingElse).toEqual([]);
+  test('rejects incompatible imported forms while accepting explicit and implicit count slots', () => {
+    expect(getInvalidPluralKeys({
+      reordered: {other_value: '%2$s sent %1$d gifts'},
+      implicit: {one_value: '%d gift'},
+      noCountSlot: {other_value: 'Gifts'},
+      ordinary: '%s sent %d gifts',
+      wrongExplicit: {other_value: '%1$s sent %2$d gifts'},
+      wrongImplicit: {one_value: '%s sent %d gift', other_value: '%2$s sent %1$d gifts'},
+      afterExplicit: {other_value: '%1$s sent %d gifts'}
+    })).toEqual(['wrongExplicit', 'wrongImplicit', 'afterExplicit']);
   });
 });

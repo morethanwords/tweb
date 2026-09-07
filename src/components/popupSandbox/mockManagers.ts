@@ -12,6 +12,9 @@
 import type {AppManagers} from '@lib/managers';
 import {SETTINGS_INIT, STATE_INIT} from '@config/state';
 import {
+  aiToneExample,
+  animatedStickerDocument,
+  stickerDocument,
   boostsStatus,
   contactPeerIds,
   dialogs,
@@ -170,6 +173,13 @@ function createDefaultHandlers(): ManagerHandlers {
     },
     appReactionsManager: {
       getAvailableReactions: () => [] as any[]
+    },
+    aiTonesManager: {
+      getTones: () => [],
+      fetchExample: () => aiToneExample
+    },
+    appDocsManager: {
+      getDoc: (docId: DocId) => [stickerDocument, animatedStickerDocument].find((doc) => doc.id === docId)
     },
     appStickersManager: {
       // No sticker set to resolve against; callers guard on a missing `doc`.

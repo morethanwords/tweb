@@ -268,10 +268,10 @@ defineStories('Chat & moderation', [
           id: '1',
           title: 'Pirate',
           prompt: 'Rewrite the message as a pirate would say it.',
-          creator_id: ctx.peer('self'),
-          date: NOW,
-          examples: []
-        } as any
+          access_hash: '1',
+          slug: 'SandboxPirate',
+          author_id: ctx.peer('self')
+        }
       });
     }
   },

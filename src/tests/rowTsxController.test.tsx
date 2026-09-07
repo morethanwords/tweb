@@ -59,25 +59,13 @@ vi.mock('@components/radioForm', () => ({
 
 vi.mock('@environment/touchSupport', () => ({default: true}));
 
-vi.mock('@components/rippleElement', async() => {
-  const {createRenderEffect, onCleanup} = await import('solid-js');
-  const {insert} = await import('solid-js/web');
+vi.mock('@components/rippleElement', async(importOriginal) => {
+  const {onCleanup} = await import('solid-js');
+  const {default: RippleElement} = await importOriginal<typeof import('@components/rippleElement')>();
   return {
-    default: (props: any) => {
+    default: (props: Parameters<typeof RippleElement>[0]) => {
       onCleanup(rippleCleanup);
-      const element = document.createElement(props.component || 'div');
-      createRenderEffect(() => {
-        Object.entries(props.classList || {}).forEach(([className, enabled]) => {
-          className.split(' ').forEach((name) => element.classList.toggle(name, !!enabled));
-        });
-        if(typeof(props.style) === 'object') {
-          Object.assign(element.style, props.style);
-        }
-      });
-      props.ref?.(element);
-      if(props.onClick) element.addEventListener('click', props.onClick);
-      insert(element, () => props.children);
-      return element;
+      return RippleElement(props);
     }
   };
 });
@@ -104,7 +92,9 @@ import {renderChatlistTopNotification} from '@components/sidebarLeft/chatlistTop
 import UsernameRow from '@components/usernameRow';
 
 const mountController = (options: Parameters<typeof attachRowController>[1]) => {
-  return attachRowController({}, options);
+  const row = attachRowController({}, options);
+  document.body.append(row.container);
+  return row;
 };
 
 describe('rowTsxController', () => {
@@ -301,6 +291,7 @@ describe('rowTsxController', () => {
 
   it('updates and disposes the shared-folder notification through Solid state', () => {
     const host = document.createElement('div');
+    document.body.append(host);
     const onClick = vi.fn();
     const notification = renderChatlistTopNotification(host, {
       onClick,
@@ -461,7 +452,7 @@ describe('rowTsxController', () => {
       listenerSetter,
       onAnyChange
     });
-    fields.createField(parent);
+    document.body.append(...fields.createField(parent).nodes);
 
     expect(parent.nestedCounter.textContent).toBe('1/2');
     expect(parent.row.container.querySelector('.row-title-row')?.classList.contains('with-delimiter')).toBe(true);
