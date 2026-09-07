@@ -4,7 +4,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import shake from '@helpers/dom/shake';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {Chat, DialogFilter, User} from '@layer';
-import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
+import type {DialogElement} from '@lib/appDialogsManager';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -42,6 +42,7 @@ const SharedFolder: Component = () => {
   let animation: LottiePlayer;
   let selector: AppSelectPeers;
   const elementMap: Map<PeerId, DialogElement> = new Map();
+  const peersMap: Map<PeerId, Awaited<ReturnType<typeof tab.managers.appPeersManager.getPeer>>> = new Map();
 
   const canSelectPeer = (peer: Chat | User) => {
     if(!peer || !chatlistInvite) {
@@ -87,46 +88,15 @@ const SharedFolder: Component = () => {
     confirmBtn.classList.toggle('hide', isSame);
   };
 
-  const renderResults = async(peerIds: PeerId[]) => {
-    const promises = peerIds.map(async(peerId) => {
-      const peer = await tab.managers.appPeersManager.getPeer(peerId);
+  const getSubtitleForElement = (peerId: PeerId) => {
+    const peer = peersMap.get(peerId);
+    if(peer._ === 'user') {
+      return i18n(peer.pFlags.bot ? 'SharedFolder.Cant.ShareBots' : 'SharedFolder.Cant.ShareUsers');
+    } else if(!canSelectPeer(peer)) {
+      return i18n('SharedFolder.Cant.Share');
+    }
 
-      const dialogElement = appDialogsManager.addDialogNew({
-        peerId,
-        container: selector.list,
-        rippleEnabled: true,
-        avatarSize: 'abitbigger',
-        meAsSaved: false,
-        wrapOptions: {
-          middleware: tab.middlewareHelper.get()
-        }
-      });
-
-      const {dom} = dialogElement;
-
-      elementMap.set(peerId, dialogElement);
-
-      const selected = selector.selected.has(peerId);
-      dom.containerEl.append(selector.checkbox(selected));
-
-      const canSelect = canSelectPeer(peer);
-      if(!canSelect) {
-        dom.containerEl.classList.add('cant-select');
-      }
-
-      let subtitle: HTMLElement;
-      if(peer._ === 'user') {
-        subtitle = i18n(peer.pFlags.bot ? 'SharedFolder.Cant.ShareBots' : 'SharedFolder.Cant.ShareUsers');
-      } else if(!canSelect) {
-        subtitle = i18n('SharedFolder.Cant.Share');
-      } else {
-        subtitle = await getChatMembersString(peer.id, undefined, peer);
-      }
-
-      dom.lastMessageSpan.append(subtitle);
-    });
-
-    return Promise.all(promises).then(() => {});
+    return getChatMembersString(peer.id, undefined, peer);
   };
 
   tab.isConfirmationNeededOnClose = () => {
@@ -205,11 +175,16 @@ const SharedFolder: Component = () => {
         appendTo: tab.container,
         onChange: onSelectChange,
         peerType: [],
-        renderResultsFunc: renderResults,
+        getSubtitleForElement,
+        processElementAfter: (peerId, dialogElement) => {
+          elementMap.set(peerId, dialogElement);
+          dialogElement.container.classList.toggle('cant-select', !canSelectPeer(peersMap.get(peerId)));
+        },
         sectionNameLangPackKey: titleI18n.element,
         sectionCaption: 'SharedFolder.Edit.Subtitle',
         managers: tab.managers,
         noSearch: true,
+        meAsSaved: false,
         multiSelect: true
       });
 
@@ -225,7 +200,6 @@ const SharedFolder: Component = () => {
         const peers = await Promise.all(combinedPeerIds.map((peerId) => tab.managers.appPeersManager.getPeer(peerId)));
         const ratings: Map<typeof peers[0], number> = new Map();
         const peerIds: Map<typeof peers[0], PeerId> = new Map();
-        const peersMap: Map<PeerId, typeof peers[0]> = new Map();
         peers.forEach((peer) => {
           const peerId = peer.id.toPeerId(peer._ !== 'user');
           peerIds.set(peer, peerId);
@@ -241,7 +215,7 @@ const SharedFolder: Component = () => {
           ratings.set(peer, rating);
         });
         peers.sort((a, b) => ratings.get(b) - ratings.get(a));
-        selector.renderResultsFunc(peers.map((peer) => peerIds.get(peer)));
+        await selector.renderResultsFunc(peers.map((peer) => peerIds.get(peer)));
 
         const _add = selector.add.bind(selector);
         selector.add = (options) => {

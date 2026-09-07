@@ -77,6 +77,7 @@ export default class AppSelectPeers {
   private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts' | 'channelParticipants' | 'custom']: boolean}> = {};
 
   private renderedPeerIds: Set<PeerId> = new Set();
+  private pendingLists = new Set<HTMLElement>();
 
   private appendTo: HTMLElement;
   private onChange: (length: number, changes: {key: PeerId | string, add: boolean}[]) => void;
@@ -615,12 +616,14 @@ export default class AppSelectPeers {
   }
 
   public deletePeerId(peerId: PeerId) {
-    const el = this.list.querySelector(`[data-peer-id="${peerId}"]`);
-    const dialogElement = (el as any)?.dialogElement;
-    if(dialogElement) {
-      dialogElement.remove();
-    } else {
-      el?.remove();
+    for(const list of [this.list, ...this.pendingLists]) {
+      const el = list.querySelector(`[data-peer-id="${peerId}"]`);
+      const dialogElement = (el as any)?.dialogElement;
+      if(dialogElement) {
+        dialogElement.remove();
+      } else {
+        el?.remove();
+      }
     }
 
     this.renderedPeerIds.delete(peerId);
@@ -1113,7 +1116,8 @@ export default class AppSelectPeers {
   }
 
   private async renderResults(peerIds: PeerId[], append?: boolean) {
-    // console.log('will renderResults:', peerIds);
+    const middleware = this.middlewareHelperLoader.get();
+    const list = this.list;
 
     // оставим только неконтакты с диалогов
     if(!this.peerType.includes('dialogs') && this.loadedWhat.contacts) {
@@ -1122,32 +1126,46 @@ export default class AppSelectPeers {
       });
     }
 
+    if(!middleware()) {
+      return;
+    }
+
+    // Keep the whole batch detached until titles, avatars and subtitles are ready.
+    const container = document.createElement('div');
+    this.pendingLists.add(container);
+    // Concurrent participant updates must keep their insertion order, not their load order.
+    const position = document.createComment('');
+    list[append === false ? 'prepend' : 'append'](position);
+    const checkboxes: {key: PeerId, input: HTMLInputElement}[] = [];
     const promises = peerIds.map(async(key) => {
+      const additionalParams = this.additionalDialogParams?.(key);
+      const dialogLoadPromises = additionalParams?.loadPromises || [];
       const dialogElement = appDialogsManager.addDialogNew({
         peerId: this.getPeerIdFromKey?.(key) ?? key,
-        container: this.list,
         rippleEnabled: this.rippleEnabled,
         avatarSize: this.avatarSize,
         meAsSaved: this.meAsSaved,
         append,
         wrapOptions: {
-          middleware: this.middlewareHelperLoader.get()
+          middleware
         },
         withStories: this.withStories,
-        ...(this.additionalDialogParams?.(key) || {})
+        ...additionalParams,
+        container,
+        loadPromises: dialogLoadPromises
       });
+      const rowMiddleware = dialogElement.middlewareHelper.get();
 
       if(this.getPeerIdFromKey) {
         dialogElement.container.dataset.peerId = key as any as string;
       }
-
-      (dialogElement.container as any).dialogElement = dialogElement;
 
       const {dom} = dialogElement;
 
       if(this.multiSelect !== 'disabled') {
         const selected = this.selected.has(key);
         const checkbox = this.checkbox(selected);
+        checkboxes.push({key, input: checkbox.querySelector('input')});
         if(this.checkboxSide === 'right') {
           dom.containerEl.append(checkbox);
         } else {
@@ -1155,23 +1173,52 @@ export default class AppSelectPeers {
         }
       }
 
-      let subtitleEl: HTMLElement | DocumentFragment;
-      if(this.getSubtitleForElement) {
-        subtitleEl = await this.getSubtitleForElement(key);
-      }
+      const prepare = async() => {
+        let subtitleEl: HTMLElement | DocumentFragment;
+        if(this.getSubtitleForElement) {
+          subtitleEl = await this.getSubtitleForElement(key);
+        }
 
-      if(!subtitleEl) {
-        subtitleEl = await this.wrapSubtitle(key);
-      }
+        if(!middleware() || !rowMiddleware()) {
+          return;
+        }
 
-      dom.lastMessageSpan.append(subtitleEl);
+        if(!subtitleEl) {
+          subtitleEl = await this.wrapSubtitle(key);
+        }
 
-      if(this.processElementAfter) {
-        await this.processElementAfter(key, dialogElement);
-      }
+        if(!middleware() || !rowMiddleware()) {
+          return;
+        }
+
+        dom.lastMessageSpan.append(subtitleEl);
+
+        if(this.processElementAfter) {
+          await this.processElementAfter(key, dialogElement);
+        }
+      };
+
+      return Promise.race([
+        Promise.all([...dialogLoadPromises, prepare()]),
+        new Promise<void>((resolve) => rowMiddleware.onClean(resolve))
+      ]);
     });
 
-    return Promise.all(promises);
+    try {
+      await Promise.all(promises);
+      if(!middleware()) {
+        return;
+      }
+
+      for(const {key, input} of checkboxes) {
+        input.checked = this.selected.has(key);
+      }
+
+      position.replaceWith(...container.children);
+    } finally {
+      position.remove();
+      this.pendingLists.delete(container);
+    }
   }
 
   public async wrapSubtitle(peerId: PeerId) {

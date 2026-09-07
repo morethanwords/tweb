@@ -1,7 +1,6 @@
 import {Component, onCleanup, onMount} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import AppSelectPeers from '@components/appSelectPeers';
-import appDialogsManager from '@lib/appDialogsManager';
 import ButtonIcon from '@components/buttonIcon';
 import Button from '@components/button';
 import {i18n, LangPackKey, join} from '@lib/langPack';
@@ -31,43 +30,17 @@ const IncludedChats: Component = () => {
   let limit: number;
   const dialogsByFilters: Map<MyDialogFilter, Set<PeerId>> = new Map();
 
-  const renderResults = async(peerIds: PeerId[]) => {
-    await tab.managers.appUsersManager.getContacts();
-    const promises = peerIds.map(async(peerId) => {
-      const dialogElement = appDialogsManager.addDialogNew({
-        peerId: peerId,
-        container: selector.list,
-        rippleEnabled: true,
-        avatarSize: 'abitbigger',
-        wrapOptions: {
-          middleware: tab.middlewareHelper.get()
-        }
-      });
-
-      (dialogElement.container as any).dialogElement = dialogElement;
-      const {dom} = dialogElement;
-
-      const selected = selector.selected.has(peerId);
-      dom.containerEl.append(selector.checkbox(selected));
-
-      const foundInFilters: HTMLElement[] = [];
-      const promises = [...dialogsByFilters.entries()].map(async([filter, dialogs]) => {
-        if(dialogs.has(peerId)) {
-          const span = document.createElement('span');
-          span.append(await wrapFolderTitle(filter.title, tab.middlewareHelper.get()));
-          foundInFilters.push(span);
-        }
-      });
-
-      await Promise.all(promises);
-
-      const joined = join(foundInFilters, false);
-      joined.forEach((el) => {
-        dom.lastMessageSpan.append(el);
-      });
-    });
-
-    await Promise.all(promises);
+  const getSubtitleForElement = async(peerId: PeerId) => {
+    const middleware = selector.middlewareHelperLoader.get();
+    const titles = await Promise.all([...dialogsByFilters.entries()].map(async([filter, dialogs]) => {
+      if(!dialogs.has(peerId)) return;
+      const span = document.createElement('span');
+      span.append(await wrapFolderTitle(filter.title, middleware));
+      return span;
+    }));
+    const subtitle = document.createDocumentFragment();
+    subtitle.append(...join(titles.filter(Boolean), false));
+    return subtitle;
   };
 
   const onSelectChange = (length: number) => {
@@ -109,7 +82,7 @@ const IncludedChats: Component = () => {
       appendTo: tab.container,
       onChange: onSelectChange,
       peerType: ['dialogs'],
-      renderResultsFunc: renderResults,
+      getSubtitleForElement,
       placeholder: 'Search',
       sectionNameLangPackKey: 'FilterChats',
       managers: tab.managers
@@ -244,6 +217,7 @@ const IncludedChats: Component = () => {
 
     promiseCollector.collect((async() => {
       await Promise.all([
+        tab.managers.appUsersManager.getContacts(),
         tab.managers.filtersStorage.getDialogFilters().then(async(filters) => {
           await Promise.all(filters.filter((filter) => !REAL_FOLDERS.has(filter.id)).map(async(filter) => {
             const dialogs = await tab.managers.dialogsStorage.getFolderDialogs(filter.id);
