@@ -113,7 +113,10 @@ import {getMediaTypeForProfileTab, orderMediaTabsByMain, ProfileTabMediaType} fr
 import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
 import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
 
-export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
+// The call log is searched by the Calls tab, never by shared media — and unlike
+// every other filter its constructor is not just its id (it carries `pFlags`),
+// so a media tab could not build one from `{_: inputFilter}` anyway.
+export type SearchSuperType = Exclude<MyInputMessagesFilter, 'inputMessagesFilterPhoneCalls'>/*  | 'members' */;
 export type SearchSuperContext = {
   peerId: PeerId,
   inputFilter: {_: MyInputMessagesFilter},
@@ -770,7 +773,7 @@ export default class AppSearchSuper {
       }
     }, {capture: true, passive: false, listenerSetter: this.listenerSetter});
 
-    const onMediaClick = async(className: string, targetClassName: string, inputFilter: MyInputMessagesFilter, e: MouseEvent) => {
+    const onMediaClick = async(className: string, targetClassName: string, inputFilter: SearchSuperType, e: MouseEvent) => {
       const target = findUpClassName(e.target as HTMLDivElement, className);
       if(!target) return;
 

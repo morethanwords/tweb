@@ -2,6 +2,7 @@ import PopupElement from '.';
 import I18n, {i18n} from '@lib/langPack';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {StarsBalance} from '@components/popups/stars';
+import {DelimiterWithText} from '@components/chat/giveaway';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
 import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
 import Row from '@components/rowTsx';
@@ -270,13 +271,11 @@ export default class PopupStarReaction extends PopupElement {
         <div class="popup-stars-title">{i18n('StarsReactionTitle')}</div>
         <div class="popup-stars-subtitle">{i18n('StarsReactionText', [peerTitle])}</div>
         <div class="popup-star-reaction-senders">
-          <div class="popup-star-reaction-senders-delimiter">
-            <div class="popup-star-reaction-senders-line"></div>
-            <span class="popup-star-reaction-senders-text">
-              {i18n('StarsReactionTopSenders')}
-            </span>
-            <div class="popup-star-reaction-senders-line"></div>
-          </div>
+          <DelimiterWithText
+            langKey="StarsReactionTopSenders"
+            class="popup-star-reaction-senders-delimiter"
+            textClass="popup-star-reaction-senders-text"
+          />
           <div class="popup-star-reaction-senders-list">
             <For each={topSendersWithMe()}>
               {renderSender}

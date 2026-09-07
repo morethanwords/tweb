@@ -232,6 +232,19 @@ export type JoinConferenceOptions = {
   inviterPeerId?: PeerId
 };
 
+/** One person the New Call screen picked, and how they were picked. */
+export type ConferenceInviteRequest = {
+  peerId: PeerId,
+  /** Picked with the camera button rather than the handset. */
+  video?: boolean
+};
+
+export type CreateConferenceOptions = {
+  invite?: ConferenceInviteRequest[],
+  /** Default true — the "start an encrypted group call?" box. */
+  confirm?: boolean
+};
+
 class CallSwitchCancelledError extends Error {}
 
 export class AppImManager extends EventListenerBase<{
@@ -2362,11 +2375,20 @@ export class AppImManager extends EventListenerBase<{
     return this.callTransitions.run(() => this.joinConferenceInternal(input, options));
   }
 
-  public createConference(): Promise<void> {
-    return this.callTransitions.run(() => this.createConferenceInternal());
+  /**
+   * Start a fresh conference. `invite` seeds it with people the way tdesktop's
+   * `startOrJoinConferenceCall({.invite})` does — the call is created first and
+   * each person is then called into it, one server verdict per person.
+   *
+   * `confirm` is what the New Call screen turns off: picking people there IS
+   * the confirmation, so a second "start an encrypted group call?" box would
+   * only be in the way.
+   */
+  public createConference(options?: CreateConferenceOptions): Promise<void> {
+    return this.callTransitions.run(() => this.createConferenceInternal(options));
   }
 
-  private async createConferenceInternal(): Promise<void> {
+  private async createConferenceInternal(options: CreateConferenceOptions = {}): Promise<void> {
     if(!IS_GROUP_CALL_SUPPORTED || !IS_CONFERENCE_CALL_SUPPORTED) {
       toastNew({langPackKey: 'ConferenceCall.Unsupported'});
       return;
@@ -2380,7 +2402,7 @@ export class AppImManager extends EventListenerBase<{
         }
         return;
       }
-    } else {
+    } else if(options.confirm !== false) {
       try {
         await confirmationPopup({
           titleLangKey: 'ConferenceCall.Create.Title',
@@ -2403,6 +2425,21 @@ export class AppImManager extends EventListenerBase<{
       toastNew({langPackKey: 'Error.AnError'});
       throw err;
     }
+
+    const invite = options.invite;
+    if(!invite?.length) {
+      return;
+    }
+
+    // The call is live at this point, so a failed invite is not a failed
+    // creation — it is reported in the batch toast and the call stays up.
+    const {inviteConferenceParticipants, showConferenceInviteResultToast} =
+      await import('@components/groupCall/inviteParticipants');
+    const result = await inviteConferenceParticipants(
+      invite.map(({peerId}) => peerId),
+      {video: (peerId) => invite.find((request) => request.peerId === peerId)?.video}
+    );
+    await showConferenceInviteResultToast(result);
   }
 
   private async joinConferenceInternal(input: InputGroupCall, options?: JoinConferenceOptions): Promise<void> {

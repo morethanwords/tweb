@@ -57,11 +57,19 @@ export function createConferenceInviteResult(): ConferenceInviteResult {
  */
 export async function inviteConferenceParticipants(
   peerIds: PeerId[],
-  options: {isAlive?: () => boolean} = {}
+  options: {
+    isAlive?: () => boolean,
+    /**
+     * Whether each person is called in with video. The New Call screen picks
+     * this per person (handset vs camera button); the in-call picker has one
+     * button per row and leaves it unset.
+     */
+    video?: (peerId: PeerId) => boolean
+  } = {}
 ): Promise<ConferenceInviteResult> {
-  const {isAlive} = options;
+  const {isAlive, video} = options;
   const settled = await Promise.allSettled(peerIds.map((peerId) => {
-    return groupCallsController.inviteConferenceParticipant(peerId.toUserId());
+    return groupCallsController.inviteConferenceParticipant(peerId.toUserId(), video?.(peerId));
   }));
 
   if(isAlive && !isAlive()) {

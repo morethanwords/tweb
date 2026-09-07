@@ -214,6 +214,22 @@ export const AppContactsTab =
 (AppContactsTab as any).noSame = true;
 
 
+export const AppCallsTab =
+  scaffoldSolidJSTab({
+    title: 'Calls',
+    getComponentModule: () => import('../sidebarLeft/tabs/calls')
+  });
+(AppCallsTab as any).noSame = true;
+
+
+export const AppNewCallTab =
+  scaffoldSolidJSTab({
+    title: 'ConferenceCall.NewCall.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/newCall')
+  });
+(AppNewCallTab as any).noSame = true;
+
+
 export const AppPowerSavingTab =
   scaffoldSolidJSTab({
     title: 'LiteMode.Title',

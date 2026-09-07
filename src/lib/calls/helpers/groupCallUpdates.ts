@@ -52,6 +52,20 @@ export function getInputGroupCallFromUpdates(updates: Updates): InputGroupCall.i
 }
 
 /**
+ * The invite link the server minted for a link-only conference. A call created
+ * without the join flags carries no chain update, so its `updateGroupCall` is
+ * matched by id rather than through `findResolvedGroupCallUpdate`.
+ */
+export function getGroupCallInviteLinkFromUpdates(
+  updates: Updates,
+  call: InputGroupCall.inputGroupCall
+): string | undefined {
+  return getActiveGroupCallUpdates(updates)
+  .find(({call: found}) => String(found.id) === String(call.id))
+  ?.call.invite_link;
+}
+
+/**
  * Resolve a non-canonical call reference only when the same container links an
  * active updateGroupCall to a chain update naming that canonical call. A lone
  * updateGroupCall is not proof that it belongs to a requested slug/message.

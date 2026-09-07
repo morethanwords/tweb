@@ -4,13 +4,15 @@ import Icon from '@components/icon';
 import ripple from '@components/ripple';
 
 export const ButtonIconTsx = (inProps: {icon?: Icon, noRipple?: boolean} & JSX.ButtonHTMLAttributes<HTMLButtonElement>) => {
-  const [props, restProps] = splitProps(inProps, ['icon', 'class', 'children', 'noRipple']);
+  const [props, restProps] = splitProps(inProps, ['icon', 'class', 'children', 'noRipple', 'tabIndex']);
 
   const btn = (
     <button
       class={classNames('btn-icon', props.class)}
       {...restProps}
-      tabIndex={-1}
+      // Out of the tab order by default — most of these sit inside something
+      // already focusable — unless the caller says the button is its own action.
+      tabIndex={props.tabIndex ?? -1}
     >
       {props.icon && Icon(props.icon)}
       {props.children}

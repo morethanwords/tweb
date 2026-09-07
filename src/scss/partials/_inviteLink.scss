@@ -42,6 +42,17 @@
     text-transform: uppercase;
   }
 
+  // Two actions under the link share the row evenly.
+  &-buttons {
+    display: flex;
+    gap: .5rem;
+
+    > .invite-link-button {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+
   &-subtitle {
     text-align: center;
     margin: 0.75rem 0 0.5rem;

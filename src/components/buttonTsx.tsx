@@ -7,6 +7,10 @@ import RippleElement from '@components/rippleElement';
 type ButtonAccessibilityProps = Pick<JSX.ButtonHTMLAttributes<HTMLButtonElement>,
   | 'aria-label'
   | 'aria-pressed'
+  // Native, non-delegated listeners. Needed wherever an ancestor cancels the
+  // event before it reaches the document listener Solid delegates from — a row
+  // inside `AppSelectPeers`, say (appSelectPeers.ts:420).
+  | 'on:click'
   | 'on:keydown'
 >;
 
@@ -69,6 +73,7 @@ const Button = (props: Partial<{
       tabIndex={props.tabIndex}
       aria-label={props['aria-label']}
       aria-pressed={props['aria-pressed']}
+      on:click={props['on:click']}
       on:keydown={props['on:keydown']}
     >
       {props.icon && <IconTsx icon={props.icon} class={classNames('button-icon', props.iconClass)} />}

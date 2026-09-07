@@ -1,0 +1,19 @@
+// The buttons sit over the row's right edge, so the row has to stop its own
+// text short of them — otherwise a long name runs underneath.
+.row {
+  padding-inline-end: 5.75rem;
+}
+
+// The two pick buttons ride the right edge of the row, clear of its checkbox.
+.modes {
+  position: absolute;
+  inset-inline-end: .5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: .25rem;
+}
+
+.picked {
+  color: var(--primary-color);
+}

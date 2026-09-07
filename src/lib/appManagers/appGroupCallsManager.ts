@@ -8,8 +8,8 @@
 import type GroupCallConnectionInstance from '@lib/calls/groupCallConnectionInstance';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {nextRandomUint} from '@helpers/random';
-import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, Peer, PhoneGroupCall, PhoneGroupParticipants, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '@layer';
-import {NULL_PEER_ID} from '@appManagers/constants';
+import {Chat, ChatFull, DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, Peer, PhoneGroupCall, PhoneGroupParticipants, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '@layer';
+import {FOLDER_ID_ALL, NULL_PEER_ID} from '@appManagers/constants';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {DcId} from '@types';
@@ -18,6 +18,7 @@ import {parseVideoStreamInfo} from '@lib/calls/videoStreamInfo';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import {
   findResolvedGroupCallUpdate,
+  getGroupCallInviteLinkFromUpdates,
   getInputGroupCallFromUpdates,
   getUpdatesList,
   groupCallToInput
@@ -27,6 +28,13 @@ import {CONFERENCE_PREVIEW_PARTICIPANTS_LIMIT, GROUP_CALL_PARTICIPANTS_LOAD_LIMI
 import pause from '@helpers/schedulers/pause';
 
 export type GroupCallId = GroupCall['id'];
+
+/** One row of the "Active video chats" block: who, and what kind of call. */
+export type ActiveGroupCallEntry = {
+  peerId: PeerId,
+  /** An RTMP live stream — watched, not joined as a participant. */
+  rtmp: boolean
+};
 export type MyGroupCall = GroupCall | Exclude<
   InputGroupCall,
   InputGroupCall.inputGroupCallSlug | InputGroupCall.inputGroupCallInviteMessage
@@ -446,6 +454,54 @@ export class AppGroupCallsManager extends AppManager {
 
   public getGroupCall(id: GroupCallId) {
     return this.groupCalls.get(id);
+  }
+
+  /**
+   * Peers whose group call is running right now — the "Active video chats"
+   * block above the call log (tdesktop's `GroupCalls::ListController`,
+   * calls_box_controller.cpp:186). Like it, this is built from the cached chat
+   * list rather than from a request, and `call_not_empty` alone is the test —
+   * `ChannelHasActiveCall` (data_peer_values.cpp:542) reads that one flag, and
+   * a call with `call_active` but nobody in it is not worth listing.
+   *
+   * tdesktop seeds the block from the pinned dialogs plus the first
+   * `kFirstPageCount` of the list, then keeps it current by watching
+   * `PeerUpdate::Flag::GroupCall` for ANY peer — so a call that starts in a
+   * chat further down still shows up. Here the whole cached folder is walked
+   * instead: it reaches the same end state, and re-running one pass over an
+   * in-memory list is cheaper than maintaining a second, unbounded index.
+   */
+  public async getActiveGroupCalls(): Promise<ActiveGroupCallEntry[]> {
+    const peerIds: PeerId[] = [];
+    for(const dialog of this.dialogsStorage.getFolderDialogs(FOLDER_ID_ALL)) {
+      if(dialog.peerId.isUser()) {
+        continue;
+      }
+
+      // Both `chat` and `channel` carry the flag.
+      const chat = this.appChatsManager.getChat(dialog.peerId.toChatId());
+      if((chat as Chat.chat | Chat.channel)?.pFlags?.call_not_empty) {
+        peerIds.push(dialog.peerId);
+      }
+    }
+
+    // A chat flag says a call is running, not what kind it is: only the call
+    // itself carries `rtmp_stream`, and a stream is watched (joinLiveStream →
+    // the RTMP viewer) rather than joined as a participant. There are only ever
+    // a handful of live calls, so resolving each is cheap.
+    return Promise.all(peerIds.map(async(peerId) => {
+      let rtmp = false;
+      try {
+        const chatFull = await this.appProfileManager.getChatFull(peerId.toChatId());
+        const input = (chatFull as ChatFull.channelFull)?.call as InputGroupCall.inputGroupCall;
+        const call = input && await this.getGroupCallFull(input.id);
+        rtmp = call?._ === 'groupCall' && !!call.pFlags.rtmp_stream;
+      } catch(err) {
+        this.log.warn('active call kind lookup failed', peerId, err);
+      }
+
+      return {peerId, rtmp};
+    }));
   }
 
   private savePhoneGroupCall(result: PhoneGroupCall, nextOffsetMode: NextOffsetSaveMode): GroupCall {
@@ -1400,6 +1456,36 @@ export class AppGroupCallsManager extends AppManager {
     });
 
     this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
+  /**
+   * Create a conference that exists only as a link: `phone.createConferenceCall`
+   * with none of the join flags set, exactly as tdesktop's `MakeConferenceCall`
+   * does (calls_group_common.cpp:497). The creator is NOT a participant — the
+   * call sits empty until someone opens the link, which is what lets the Call
+   * Link box offer "be the first to join".
+   *
+   * Distinct from `createConferenceCall` above, which creates AND joins in one
+   * request and therefore needs the E2E key material.
+   */
+  public async createConferenceCallLink(): Promise<{call: InputGroupCall.inputGroupCall, link: string}> {
+    const updates = await this.apiManager.invokeApi('phone.createConferenceCall', {
+      random_id: nextRandomUint(32)
+    });
+
+    const call = getInputGroupCallFromUpdates(updates);
+    if(!call) {
+      throw new Error('createConferenceCallLink: no unique active group call in response');
+    }
+
+    const link = getGroupCallInviteLinkFromUpdates(updates, call);
+    if(!link) {
+      throw new Error('createConferenceCallLink: call link not found');
+    }
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+
+    return {call, link};
   }
 
   // Wraps phone.exportGroupCallInvite. `can_self_unmute` is the listener /

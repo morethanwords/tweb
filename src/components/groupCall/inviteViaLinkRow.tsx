@@ -19,7 +19,7 @@ export default function createInviteViaLinkRow(options: {
       role="button"
       tabIndex={0}
     >
-      <Row.Icon icon="link" />
+      <Row.Icon icon="link_filled" />
       <Row.Title>{i18n('ConferenceCall.Invite.ViaLink')}</Row.Title>
     </Row>
   ), options.middleware);

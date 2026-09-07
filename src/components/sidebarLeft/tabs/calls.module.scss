@@ -1,0 +1,53 @@
+.list {
+  // The rows carry their own 42px avatar, so the section only has to stop
+  // adding the horizontal padding a settings row would get.
+  padding: 0;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.arrow {
+  flex: 0 0 auto;
+  font-size: 1.0625rem;
+  margin-inline-end: .125rem;
+  // The shared `arrow_next` glyph points right; the call log tilts it the way
+  // the bubble does (`_chatBubble.scss` .bubble-call-arrow).
+  transform: rotate(135deg);
+  color: var(--green-color);
+
+  &.out {
+    transform: rotate(-45deg);
+  }
+
+  &.missed {
+    color: var(--danger-color);
+  }
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .375rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-weight: var(--font-weight-bold);
+  font-size: 1rem;
+}
+
+.emptyDescription {
+  color: var(--secondary-text-color);
+}

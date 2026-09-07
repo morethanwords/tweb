@@ -31,11 +31,16 @@ export function getGiftAssetName(days?: number) {
   return durationAssetMap[clamp(months ?? 0, 3, 12)];
 }
 
-export function DelimiterWithText(props: {langKey: LangPackKey}) {
+export function DelimiterWithText(props: {
+  langKey: LangPackKey,
+  class?: string,
+  /** For a caller that dresses the label itself — the stars pill, say. */
+  textClass?: string
+}) {
   return (
-    <span class="delimiter-with-text">
+    <span class={classNames('delimiter-with-text', props.class)}>
       <span class="delimiter-with-text-stripe" />
-      {i18n(props.langKey)}
+      <span class={props.textClass}>{i18n(props.langKey)}</span>
       <span class="delimiter-with-text-stripe" />
     </span>
   );

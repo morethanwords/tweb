@@ -219,7 +219,8 @@ export type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
   | 'inputMessagesFilterUrl'
   | 'inputMessagesFilterMyMentions'
   | 'inputMessagesFilterChatPhotos'
-  | 'inputMessagesFilterPinned';
+  | 'inputMessagesFilterPinned'
+  | 'inputMessagesFilterPhoneCalls';
 
 export type PinnedStorage = Partial<{
   promise: Promise<PinnedStorage>,
@@ -8243,6 +8244,36 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
+  /**
+   * Clears the whole call log — the "Clear All" of the Calls list.
+   *
+   * `messages.deletePhoneCallHistory` deletes one server-side page per call and
+   * reports how much is left in `offset`, so it has to be looped until the
+   * server answers `0` (tdesktop calls_box_controller.cpp:757, Android
+   * CallLogActivity.java:900). Every answer carries the deleted ids as an
+   * `updateDeleteMessages`, so the local state (and the list) empties as we go.
+   */
+  public async deletePhoneCallHistory(revoke?: boolean): Promise<void> {
+    for(;;) {
+      const result = await this.apiManager.invokeApi('messages.deletePhoneCallHistory', {revoke});
+
+      // Calls only ever live in private chats, whose server ids are already
+      // tweb mids — no channel offset to apply.
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateDeleteMessages',
+        messages: result.messages,
+        pts: result.pts,
+        pts_count: result.pts_count
+      });
+
+      // `offset` alone drives the loop, but a page that deleted nothing while
+      // still reporting more would spin it forever — stop on no progress.
+      if(!result.offset || !result.messages.length) {
+        break;
+      }
+    }
+  }
+
   public readHistory({peerId, maxId = 0, threadId, monoforumThreadId, force = false}: ReadHistoryArgs) {
     if(DO_NOT_READ_HISTORY) {
       return Promise.resolve();
@@ -12324,7 +12355,12 @@ export class AppMessagesManager extends AppManager {
 
       method = 'channels.searchPosts';
       options = searchOptions;
-    } else if(inputFilter && peerId && !communityId && !nextRate && folderId === undefined/*  || !query */) {
+    // The call log is the one peerless `messages.search`: the server answers
+    // `inputMessagesFilterPhoneCalls` over `inputPeerEmpty` with the whole
+    // history of calls, and `messages.searchGlobal` has no such index. Every
+    // client loads the Calls list this way (tdesktop
+    // calls_box_controller.cpp:552, Android CallLogActivity.java:1322).
+    } else if(inputFilter && (peerId || inputFilter._ === 'inputMessagesFilterPhoneCalls') && !communityId && !nextRate && folderId === undefined/*  || !query */) {
       const savedPeerIdInput = monoforumThreadId ?
         this.appPeersManager.getInputPeerById(monoforumThreadId) :
         historyType === HistoryType.Saved ?

@@ -1,5 +1,5 @@
 import {createSignal, Show} from 'solid-js';
-import {IconTsx} from '@components/iconTsx';
+import CallLogo from '@components/call/callLogo';
 import MediaHeader from '@components/mediaHeader';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {StackedAvatarsTsx} from '@components/stackedAvatars';
@@ -58,14 +58,7 @@ export default async function showConferenceJoinPopup(options: ConferenceJoinPop
         </PopupElement.Header>
         <PopupElement.Body class="text-overflow-wrap">
           <MediaHeader class={styles.mediaHeader}>
-            <MediaHeader.Sticker
-              size={80}
-              element={(
-                <div class={styles.logo}>
-                  <IconTsx icon="phone_filled" />
-                </div>
-              )}
-            />
+            <CallLogo icon="phone_filled" />
             <MediaHeader.Title>{i18n('ConferenceCall.Join.Title')}</MediaHeader.Title>
             <MediaHeader.Subtitle secondary>{invitation}</MediaHeader.Subtitle>
           </MediaHeader>

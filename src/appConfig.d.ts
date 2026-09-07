@@ -7,6 +7,7 @@ export interface MTAppConfig {
   stickers_emoji_suggest_only_api?:          boolean;
   stickers_emoji_cache_time?:                number;
   groupcall_video_participants_max?:         number;
+  conference_call_size_limit?:               number;
   youtube_pip?:                              string;
   qr_login_camera?:                          boolean;
   qr_login_code?:                            string;

@@ -473,19 +473,10 @@
   }
 
   &-senders {
+    // Layout only — the line/text framing is `.delimiter-with-text`.
     &-delimiter {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: .625rem;
       padding: 0 1rem;
       margin-top: 1.625rem;
-    }
-
-    &-line {
-      height: .5px;
-      background-color: var(--border-color);
-      flex: 1 1 auto;
     }
 
     &-text {

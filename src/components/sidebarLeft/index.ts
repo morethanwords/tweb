@@ -12,6 +12,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppSettingsTab} from '@components/solidJsTabs';
 import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import {AppContactsTab} from '@components/solidJsTabs/tabs';
+import {AppCallsTab} from '@components/solidJsTabs/tabs';
 import {AppArchivedTab} from '@components/solidJsTabs/tabs';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import I18n, {i18n} from '@lib/langPack';
@@ -102,6 +103,7 @@ import {useAppSettings} from '@stores/appSettings';
 import {useCollapsedCommunityDialogsKey} from '@stores/communities';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
+import IS_CALL_SUPPORTED from '@environment/callSupport';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -739,6 +741,15 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'user',
       text: 'Contacts',
       onClick: onContactsClick
+    }, {
+      icon: 'phone',
+      text: 'Calls',
+      onClick: () => {
+        closeTabsBefore(() => {
+          this.createTab(AppCallsTab).open();
+        });
+      },
+      verify: () => IS_CALL_SUPPORTED || IS_CONFERENCE_CALL_SUPPORTED
     }, {
       id: 'settings',
       icon: 'settings',

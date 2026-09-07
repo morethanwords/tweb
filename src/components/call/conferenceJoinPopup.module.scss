@@ -1,23 +1,9 @@
 .popup {
-  --popup-max-width: 22.5rem;
+  --popup-width: 22.5rem;
 }
 
 .header {
   position: absolute;
-}
-
-// tdesktop crowns the box with a call glyph on a filled disc
-// (`MakeRoundActiveLogo`); here it is the media header's sticker slot.
-.logo {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
 }
 
 .mediaHeader {

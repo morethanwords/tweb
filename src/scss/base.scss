@@ -2070,18 +2070,24 @@ hr {
   align-items: center;
   justify-content: center;
   position: relative;
-  opacity: .4;
-  gap: .5rem;
+  gap: .625rem;
   flex: 0 0 auto;
+  align-self: center;
+  width: 70%;
   padding: 0 .25rem;
+  // The label reads as part of the rule, not as body copy — the stripes take
+  // the same colour through `currentColor`.
+  color: var(--secondary-text-color);
 
   &-stripe {
     display: block;
-    height: .0625rem;
+    height: .5px;
+    // Tinted from the text around it rather than `--border-color`, which is
+    // darker than a popup's own background and leaves the line invisible.
     background-color: currentColor;
     flex: 1 1 auto;
     border-radius: 1px;
-    opacity: .5;
+    opacity: .2;
   }
 }
 

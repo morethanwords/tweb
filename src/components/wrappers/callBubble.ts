@@ -1,14 +1,12 @@
 import Icon from '@components/icon';
 import {wrapCallDuration} from '@components/wrappers/wrapDuration';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import {MessageAction} from '@layer';
 import {_i18n, LangPackKey} from '@lib/langPack';
 import {getConferenceCallLangKey, getConferenceCallState} from '@lib/calls/helpers/conferenceCallAction';
+import {CallLogAction} from '@lib/calls/helpers/callLog';
 import {CallType} from '@lib/calls/types';
 
-export type CallBubbleAction =
-  | MessageAction.messageActionPhoneCall
-  | MessageAction.messageActionConferenceCall;
+export type CallBubbleAction = CallLogAction;
 
 /**
  * The call-log bubble: icon, what kind of call it was, and a status line the
