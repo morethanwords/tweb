@@ -2,7 +2,6 @@ import type LazyLoadQueue from '@components/lazyLoadQueue';
 import type {PeerPhotoSize} from '@appManagers/appAvatarsManager';
 import type {StoriesSegment, StoriesSegments as StoriesSegmentsType} from '@appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '@helpers/middleware';
-import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import deferredPromise from '@helpers/cancellablePromise';
 import {
   createSignal,
@@ -47,8 +46,7 @@ import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {resolveElements} from '@solid-primitives/refs';
 import toArray from '@helpers/array/toArray';
 import computeLockColor from '@helpers/computeLockColor';
-import createLoopingMutedVideo from '@helpers/dom/createLoopingMutedVideo';
-import animationIntersector from '@components/animationIntersector';
+import createAvatarVideo from '@components/createAvatarVideo';
 import {MOUNT_CLASS_TO} from '@config/debug';
 
 const FADE_IN_DURATION = 200;
@@ -132,32 +130,6 @@ rootScope.addEventListener('stories_read', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_new', onAvatarStoriesUpdate);
 
-function createAvatarVideo(url: string, startTime: number, middleware: Middleware) {
-  const video = createLoopingMutedVideo(
-    url,
-    'avatar-photo avatar-video',
-    startTime,
-    middleware
-  );
-
-  // Pause videos that are off-screen, blurred, idle or disabled by lite mode.
-  // Observing the video itself also lets the intersector notice DOM removal.
-  animationIntersector.addAnimation({
-    animation: video,
-    observeElement: video,
-    type: 'video'
-  });
-
-  middleware.onClean(() => {
-    animationIntersector.removeAnimationByPlayer(video);
-    clearMediaElementSource(video);
-    video.remove();
-  });
-
-  return video;
-}
-
-
 const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegmentsType>> => {
   if(storyId) {
     const storyUnreadType = await rootScope.managers.appStoriesManager.getUnreadType(peerId, storyId);
@@ -222,9 +194,9 @@ async function loadAvatarVideoOverlay(
     return;
   }
 
-  // Muted-autoplay setup with src assigned last (see helper) — retry on
-  // canplay/loadeddata covers the "interrupted by a new load request" reject.
-  return createAvatarVideo(url, videoStartTs, middleware);
+  // Android's ImageReceiver limits small video avatars to three repeats.
+  // Full profile avatars retain continuous playback.
+  return createAvatarVideo(url, videoStartTs, middleware, videoSize === 'photo_video' ? 3 : undefined);
 }
 
 const calculateSegmentsDimensions = (s: number) => {

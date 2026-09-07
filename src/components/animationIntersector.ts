@@ -328,6 +328,10 @@ export class AnimationIntersector {
     // * element that is out of the DOM has no playback left to control, and `controlled` still
     // * protects the items an owner deliberately keeps for re-insertion.
     if(destroy || (!this.lockedGroups[group] && !isInDOM(el))) {
+      if(player.type === 'video') {
+        animation.pause();
+      }
+
       if(!player.controlled || destroy) {
         this.removeAnimation(player);
       }

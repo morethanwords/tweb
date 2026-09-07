@@ -13,11 +13,14 @@ import {pinObjectURL} from '@helpers/objectUrl';
 // clients begin playback at that frame so the moving clip continues the static
 // cover, then native-loop back to 0 (tdesktop video_userpic_player.cpp:138,
 // iOS PeerAvatarImageGalleryItem.swift:365). We seek to it once metadata is in.
+// Pass autoplay=false when an external controller owns playback; loading and
+// seeking still work, but neither the browser nor readiness events start it.
 export default function createLoopingMutedVideo(
   url: string,
   className?: string,
   startTime?: number,
-  middleware?: Middleware
+  middleware?: Middleware,
+  autoplay = true
 ) {
   const v = document.createElement('video');
   if(className) v.className = className;
@@ -31,7 +34,9 @@ export default function createLoopingMutedVideo(
   v.setAttribute('disableremoteplayback', '');
 
   const tryPlay = () => {
-    v.play().catch(() => {});
+    if(autoplay && (!middleware || middleware())) {
+      v.play().catch(() => {});
+    }
   };
 
   const seekTo = startTime > 0 ? startTime : 0;
@@ -46,13 +51,12 @@ export default function createLoopingMutedVideo(
       tryPlay();
       // Flag it as autoplay only AFTER the seek — setting it before src (like the
       // no-seek branch) would make the browser start at frame 0 and flash it
-      // before the cover frame. The flag itself is just a marker so a pause/resume
-      // manager (e.g. animationIntersector) knows the clip is meant to be playing.
-      v.autoplay = true;
+      // before the cover frame. Externally controlled videos keep it disabled.
+      v.autoplay = autoplay;
     }, {once: true});
     v.addEventListener('canplay', tryPlay, {once: true}); // backstop
   } else {
-    v.autoplay = true;
+    v.autoplay = autoplay;
     v.addEventListener('loadeddata', tryPlay, {once: true});
     v.addEventListener('canplay', tryPlay, {once: true});
   }

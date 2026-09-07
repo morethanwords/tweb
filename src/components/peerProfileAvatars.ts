@@ -15,7 +15,6 @@ import {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import {avatarNew, wrapPhotoToAvatar} from '@components/avatarNew';
-import animationIntersector from '@components/animationIntersector';
 import Scrollable from '@components/scrollable';
 import SwipeHandler from '@components/swipeHandler';
 import wrapPhoto from '@components/wrappers/photo';
@@ -981,16 +980,6 @@ export default class PeerProfileAvatars {
 
   public cleanup() {
     cancelAnimationFrame(this.videoProgressRAF);
-    // Release the avatar videos we registered with the intersector. While the
-    // right sidebar was closed, toggleVideosUnder may have LOCKED them, and a
-    // locked item is NOT auto-removed when it leaves the DOM (checkAnimation
-    // early-returns on locked) — so unregister + free the decoder explicitly.
-    this.container.querySelectorAll<HTMLVideoElement>('video.avatar-video').forEach((video) => {
-      animationIntersector.removeAnimationByPlayer(video);
-      video.pause();
-      video.src = '';
-      video.load();
-    });
     this.listenerSetter.removeAll();
     this.swipeHandler.removeListeners();
     this.intersectionObserver?.disconnect();
