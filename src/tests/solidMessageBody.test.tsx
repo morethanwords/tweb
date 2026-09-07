@@ -1,6 +1,6 @@
-import {createEffect, createSignal, onCleanup, onMount} from 'solid-js';
+import {batch, createEffect, createSignal, onCleanup, onMount} from 'solid-js';
 import type {JSX} from 'solid-js';
-import type {Message, RichMessage} from '@layer';
+import type {Message, RichMessage, TextWithEntities} from '@layer';
 
 const translationMocks = vi.hoisted(() => ({
   translateText: vi.fn(),
@@ -425,6 +425,84 @@ describe('createSolidMessageBody', () => {
     expect(richRoot(host).textContent).toContain('large original rich tree');
     expect(translationMocks.richMessageMounted).toHaveBeenCalledTimes(2);
     expect(translationMocks.richMessageDisposed).toHaveBeenCalledOnce();
+  });
+
+  test.each(['text', 'rich', 'summary', 'summary with translation'])(
+    'keeps the displayed %s until the scroll-preserving commit when returning to the original',
+    async(kind) => {
+      const isSummary = kind.startsWith('summary');
+      const isRich = kind !== 'text';
+      if(kind === 'summary') setTranslationEnabled(false);
+      const [summarizing, setSummarizing] = createSignal(isSummary);
+      const translatedText: TextWithEntities = {_: 'textWithEntities', text: 'translated content', entities: []};
+      translationMocks.processMessageForTranslation.mockResolvedValue(undefined);
+      translationMocks.translateText.mockResolvedValue({cached: true, result: Promise.resolve(translatedText)});
+      translationMocks.summarizeText.mockResolvedValue({cached: true, result: Promise.resolve(translatedText)});
+      translationMocks.translateRichMessage.mockResolvedValue({
+        cached: true,
+        result: isSummary ? new Promise(() => {}) : Promise.resolve(richMessage('translated content'))
+      });
+      const commits: (() => void)[] = [];
+      const flush = () => batch(() => commits.splice(0).forEach((commit) => commit()));
+
+      host = document.createElement('div');
+      document.body.append(host);
+      controller = createSolidMessageBody(
+        host,
+        makeSolidMessageBodySnapshot(message({
+          text: isRich ? '' : 'original content',
+          rich: isRich ? richMessage('original content') : undefined
+        }), 1),
+        {
+          reducedMotion: () => true,
+          translation: {enabled: true, summarizing, onCommit: (commit) => commits.push(commit)}
+        }
+      );
+      await vi.waitFor(() => expect(commits).toHaveLength(1));
+      flush();
+      expect(host.textContent).toBe('translated content');
+
+      if(isSummary) setSummarizing(false);
+      else setTranslationEnabled(false);
+      await Promise.resolve();
+
+      // The chat must still measure the translated layout when it saves its anchor.
+      expect(host.textContent).toBe('translated content');
+      expect(commits).toHaveLength(1);
+      flush();
+      // Solid must finish the DOM change inside the batch, before scroll restoration.
+      expect(host.textContent).toBe('original content');
+    }
+  );
+
+  test('ignores a queued original-text commit after translations are enabled again', async() => {
+    translationMocks.processMessageForTranslation.mockResolvedValue(undefined);
+    translationMocks.translateText.mockResolvedValue({
+      cached: true,
+      result: Promise.resolve({_: 'textWithEntities', text: 'translated content', entities: []})
+    });
+    const commits: (() => void)[] = [];
+    host = document.createElement('div');
+    document.body.append(host);
+    controller = createSolidMessageBody(
+      host,
+      makeSolidMessageBodySnapshot(message({text: 'original content'}), 1),
+      {translation: {enabled: true, onCommit: (commit) => commits.push(commit)}}
+    );
+    await vi.waitFor(() => expect(commits).toHaveLength(1));
+    batch(commits.shift());
+    expect(host.textContent).toBe('translated content');
+
+    setTranslationEnabled(false);
+    expect(commits).toHaveLength(1);
+    const staleCommit = commits.shift();
+    setTranslationEnabled(true);
+    await vi.waitFor(() => expect(commits).toHaveLength(2));
+    batch(() => commits.splice(0).forEach((commit) => commit()));
+    expect(host.textContent).toBe('translated content');
+
+    batch(staleCommit);
+    expect(host.textContent).toBe('translated content');
   });
 
   test('detects a cold peer before translation becomes enabled without duplicating detection', async() => {

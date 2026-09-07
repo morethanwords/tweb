@@ -16,7 +16,7 @@ import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import rootScope from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {getMessageTranslationSourceToken, processMessageForTranslation} from '@stores/peerLanguage';
-import {Accessor, createEffect, createMemo, createSignal, JSX, onCleanup, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, JSX, onCleanup, Show, untrack} from 'solid-js';
 import {render} from 'solid-js/web';
 import styles from './solidMessageBody.module.scss';
 
@@ -152,9 +152,11 @@ function SolidMessageBody(props: {
 
   const clearTranslation = () => {
     activeRequestKey = undefined;
-    ++requestGeneration;
+    const generation = ++requestGeneration;
     setPendingTranslation(undefined);
-    setDisplay(undefined);
+    // Returning to the source changes bubble height too. Keep it in the same
+    // scroll-preserving batch as translated results, without tracking display.
+    if(untrack(display)) commit(generation, () => setDisplay(undefined));
     setLoading(false);
   };
 
@@ -196,11 +198,9 @@ function SolidMessageBody(props: {
     ].join(':');
     if(activeRequestKey === requestKey) return;
 
+    clearTranslation();
     activeRequestKey = requestKey;
-    const generation = ++requestGeneration;
-    setPendingTranslation(undefined);
-    setDisplay(undefined);
-    setLoading(false);
+    const generation = requestGeneration;
 
     void (async() => {
       try {
