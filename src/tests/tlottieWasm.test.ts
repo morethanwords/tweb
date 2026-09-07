@@ -31,11 +31,11 @@ const ASSETS_PATH = resolve(process.cwd(), 'public/assets/tgs');
 const VARIANTS = [{
   name: 'tlottie.wasm',
   simd: true,
-  sha256: '0cb9c73e2e184d3c3d2762d4f7c23ed1c993a76a9f0c10f1ea84883a4dc41801'
+  sha256: '2f3be462e448170ddf3682a0af40f527c45f03a2e3d566728001dc8909342534'
 }, {
   name: 'tlottie.nosimd.wasm',
   simd: false,
-  sha256: '01e0d8359073259cb6aed1a61e97ceee964419cdfecb2c8849a8deae6b6b934c'
+  sha256: '22673f5ea917a018cdf23de9e14fc373a348d75e7f80a839bba762748ef7ed22'
 }] as const;
 type TLottieVariantName = typeof VARIANTS[number]['name'];
 const variantBytes = new Map(VARIANTS.map((variant) => [

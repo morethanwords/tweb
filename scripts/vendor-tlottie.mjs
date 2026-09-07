@@ -3,19 +3,19 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const SOURCE_COMMIT = 'cbfaf4fa180a74aec826ac2662e83d3ae0bbc560';
+const SOURCE_COMMIT = '758c7cb74444f1c3c9923065c40fdb3aad8b7d60';
 
 // Upstream builds the same sources twice: with and without `-C target-feature=simd128`.
 // Both variants are vendored so browsers without WebAssembly SIMD still get a renderer.
 const VARIANTS = [{
   name: 'tlottie.wasm',
-  sourceSha256: '48e7ad6025cdae153214ea32ec4393c446475df7a3d5939d8cc286f7b9979248',
-  outputSha256: '0cb9c73e2e184d3c3d2762d4f7c23ed1c993a76a9f0c10f1ea84883a4dc41801',
+  sourceSha256: 'adaca5c88e5df75abffc7b8bb43f145fc1dcfd0a6cf208164f3a16b1c5e998b3',
+  outputSha256: '2f3be462e448170ddf3682a0af40f527c45f03a2e3d566728001dc8909342534',
   simd: true
 }, {
   name: 'tlottie.nosimd.wasm',
-  sourceSha256: '17bebc9128dcc3351a405a47192af7ee2c5d4653869fd76ef504c75681d242d7',
-  outputSha256: '01e0d8359073259cb6aed1a61e97ceee964419cdfecb2c8849a8deae6b6b934c',
+  sourceSha256: '1e2566386057eec9604ce4237bc220cd776b29137eb342e3e5bf70603bf270c6',
+  outputSha256: '22673f5ea917a018cdf23de9e14fc373a348d75e7f80a839bba762748ef7ed22',
   simd: false
 }];
 
