@@ -393,7 +393,9 @@
 
   & > &-select-checkbox {
     //bottom: .75rem; // * by avatar
-    bottom: .3125rem; // * by middle of one-line message
+    // * middle of a one-line bubble — which is also the middle of the avatar beside it (both are
+    // * the same height and sit on the same baseline), so every bubble takes the same offset
+    bottom: .1875rem;
     /* left: 0;
     top: 50%;
     transform: translateY(-50%); */
@@ -711,12 +713,6 @@
 
     &:after {
       bottom: -#{$bubble-overflow-big};
-    }
-
-    .bubbles-inner.is-chat &.is-in {
-      > .bubble-select-checkbox {
-        bottom: .1875rem;
-      }
     }
   }
 
@@ -3225,6 +3221,13 @@
 
   b {
     color: inherit;
+  }
+
+  // * while selecting, a click anywhere on the pill must toggle it instead of firing the action
+  // * inside it (a gift button, a peer link, a story mention) — a date separator keeps its own
+  // * click, it opens the calendar rather than selecting anything
+  .bubbles.is-selecting &:not(.is-date) .bubble-content-wrapper {
+    pointer-events: none;
   }
 
   .bubble-content {

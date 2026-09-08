@@ -60,6 +60,7 @@ vi.mock('@components/chat/controlPlate', () => ({default: () => document.createE
 import ListenerSetter from '@helpers/listenerSetter';
 import '@helpers/peerIdPolyfill';
 import ChatSelection from '@components/chat/selection';
+import {ChatType} from '@components/chat/chatType';
 
 const rect = (top: number) => ({
   x: 0,
@@ -79,90 +80,111 @@ const flushPromises = async() => {
   await Promise.resolve();
 };
 
-describe('chat album pointer drag selection', () => {
-  afterEach(() => {
-    document.body.replaceChildren();
-    document.body.className = '';
-  });
+const createHarness = (type?: ChatType) => {
+  const peerId = (1 as UserId).toPeerId(false);
+  const root = document.createElement('div');
+  root.classList.add('bubbles-inner');
 
-  const createHarness = () => {
-    const peerId = (1 as UserId).toPeerId(false);
-    const root = document.createElement('div');
-    root.classList.add('bubbles-inner');
+  const album = document.createElement('div');
+  album.classList.add('bubble', 'is-album', 'is-grouped');
+  album.dataset.mid = '101';
+  album.dataset.peerId = String(peerId);
+  album.getBoundingClientRect = () => rect(100);
 
-    const album = document.createElement('div');
-    album.classList.add('bubble', 'is-album', 'is-grouped');
-    album.dataset.mid = '101';
-    album.dataset.peerId = String(peerId);
-    album.getBoundingClientRect = () => rect(100);
-
-    const createItem = (mid: number, top: number) => {
-      const item = document.createElement('div');
-      item.classList.add('grouped-item');
-      item.dataset.mid = '' + mid;
-      item.dataset.peerId = String(peerId);
-      item.getBoundingClientRect = () => rect(top);
-      return item;
-    };
-
-    const firstItem = createItem(101, 100);
-    const secondItem = createItem(102, 140);
-    const thirdItem = createItem(103, 180);
-    album.append(firstItem, secondItem, thirdItem);
-
-    const text = document.createElement('div');
-    text.classList.add('bubble');
-    text.dataset.mid = '104';
-    text.dataset.peerId = String(peerId);
-    text.getBoundingClientRect = () => rect(240);
-
-    const documentBubble = document.createElement('div');
-    documentBubble.classList.add('bubble', 'document-container');
-    documentBubble.dataset.mid = '105';
-    documentBubble.dataset.peerId = String(peerId);
-    documentBubble.getBoundingClientRect = () => rect(300);
-    const documentNode = document.createElement('div');
-    documentNode.classList.add('document');
-    documentBubble.append(documentNode);
-
-    root.append(album, text, documentBubble);
-    document.body.append(root);
-
-    const bubbles = {
-      getBubbleGroupedItems: (bubble: HTMLElement) => {
-        return Array.from(bubble.querySelectorAll('.grouped-item')) as HTMLElement[];
-      },
-      getRenderedHistory: (): string[] => [],
-      skippedMids: new Set(),
-      getBubble: vi.fn()
-    };
-    const input = {
-      center: vi.fn().mockResolvedValue(undefined),
-      chatInput: document.createElement('div'),
-      inputContainer: document.createElement('div')
-    };
-    const chat = {input, bubbles};
-    const managers = {
-      appMessagesManager: {
-        cantForwardDeleteMids: vi.fn().mockResolvedValue({
-          cantForward: false,
-          cantDelete: false
-        })
-      }
-    };
-    const selection = new ChatSelection(chat as any, bubbles as any, input as any, managers as any);
-    selection.attachListeners(root, new ListenerSetter());
-
-    const drag = async(...elements: HTMLElement[]) => {
-      elements[0].dispatchEvent(new MouseEvent('mousedown', {bubbles: true, button: 0}));
-      elements.forEach((element) => element.dispatchEvent(new MouseEvent('mousemove', {bubbles: true})));
-      document.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
-      await flushPromises();
-    };
-
-    return {album, documentBubble, firstItem, secondItem, thirdItem, text, selection, drag};
+  const createItem = (mid: number, top: number) => {
+    const item = document.createElement('div');
+    item.classList.add('grouped-item');
+    item.dataset.mid = '' + mid;
+    item.dataset.peerId = String(peerId);
+    item.getBoundingClientRect = () => rect(top);
+    return item;
   };
 
+  const firstItem = createItem(101, 100);
+  const secondItem = createItem(102, 140);
+  const thirdItem = createItem(103, 180);
+  album.append(firstItem, secondItem, thirdItem);
+
+  const text = document.createElement('div');
+  text.classList.add('bubble');
+  text.dataset.mid = '104';
+  text.dataset.peerId = String(peerId);
+  text.getBoundingClientRect = () => rect(240);
+
+  const documentBubble = document.createElement('div');
+  documentBubble.classList.add('bubble', 'document-container');
+  documentBubble.dataset.mid = '105';
+  documentBubble.dataset.peerId = String(peerId);
+  documentBubble.getBoundingClientRect = () => rect(300);
+  const documentNode = document.createElement('div');
+  documentNode.classList.add('document');
+  documentBubble.append(documentNode);
+
+  const serviceBubble = document.createElement('div');
+  serviceBubble.classList.add('bubble', 'service');
+  serviceBubble.dataset.mid = '106';
+  serviceBubble.dataset.peerId = String(peerId);
+  serviceBubble.getBoundingClientRect = () => rect(360);
+
+  const dateBubble = document.createElement('div');
+  dateBubble.classList.add('bubble', 'service', 'is-date');
+  dateBubble.getBoundingClientRect = () => rect(420);
+
+  root.append(album, text, documentBubble, serviceBubble, dateBubble);
+  document.body.append(root);
+
+  const bubbles = {
+    getBubbleGroupedItems: (bubble: HTMLElement) => {
+      return Array.from(bubble.querySelectorAll('.grouped-item')) as HTMLElement[];
+    },
+    getRenderedHistory: (): string[] => [],
+    skippedMids: new Set(),
+    getBubble: vi.fn()
+  };
+  const input = {
+    center: vi.fn().mockResolvedValue(undefined),
+    chatInput: document.createElement('div'),
+    inputContainer: document.createElement('div')
+  };
+  const chat = {input, bubbles, type};
+  const managers = {
+    appMessagesManager: {
+      cantForwardDeleteMids: vi.fn().mockResolvedValue({
+        cantForward: false,
+        cantDelete: false
+      })
+    }
+  };
+  const selection = new ChatSelection(chat as any, bubbles as any, input as any, managers as any);
+  selection.attachListeners(root, new ListenerSetter());
+
+  const drag = async(...elements: HTMLElement[]) => {
+    elements[0].dispatchEvent(new MouseEvent('mousedown', {bubbles: true, button: 0}));
+    elements.forEach((element) => element.dispatchEvent(new MouseEvent('mousemove', {bubbles: true})));
+    document.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+    await flushPromises();
+  };
+
+  return {
+    album,
+    dateBubble,
+    documentBubble,
+    firstItem,
+    secondItem,
+    serviceBubble,
+    text,
+    thirdItem,
+    selection,
+    drag
+  };
+};
+
+afterEach(() => {
+  document.body.replaceChildren();
+  document.body.className = '';
+});
+
+describe('chat album pointer drag selection', () => {
   it('selects album to text and deselects text to album', async() => {
     const {album, text, selection, drag} = createHarness();
 
@@ -223,5 +245,69 @@ describe('chat album pointer drag selection', () => {
 
     expect(input.checked).toBe(false);
     expect(documentBubble.querySelectorAll('.bubble-select-checkbox')).toHaveLength(1);
+  });
+});
+
+describe('chat service message selection', () => {
+  it('selects and deselects a service message', async() => {
+    const {serviceBubble, selection} = createHarness();
+
+    selection.toggleByElement(serviceBubble);
+    await flushPromises();
+
+    expect(selection.getSelectedMids()).toEqual([106]);
+    expect(serviceBubble.querySelector('.bubble-select-checkbox')).not.toBeNull();
+
+    selection.toggleByElement(serviceBubble);
+    await flushPromises();
+
+    expect(selection.getSelectedMids()).toEqual([]);
+  });
+
+  it('drags a range that ends on a service message', async() => {
+    const {text, serviceBubble, selection, drag} = createHarness();
+
+    await drag(text, serviceBubble);
+    expect(selection.getSelectedMids()).toEqual([104, 105, 106]);
+  });
+
+  it('never selects a date separator', async() => {
+    const {dateBubble, selection} = createHarness();
+
+    expect(selection.canSelectBubble(dateBubble)).toBe(false);
+
+    selection.toggleByElement(dateBubble);
+    await flushPromises();
+
+    expect(selection.getSelectedMids()).toEqual([]);
+    expect(dateBubble.querySelector('.bubble-select-checkbox')).toBeNull();
+  });
+
+  it('keeps service messages out of a report selection', async() => {
+    const {serviceBubble, text, selection} = createHarness();
+
+    selection.enterReportSelection({option: new Uint8Array([1])});
+    await flushPromises();
+
+    expect(selection.canSelectBubble(text)).toBe(true);
+    expect(selection.canSelectBubble(serviceBubble)).toBe(false);
+
+    selection.toggleByElement(serviceBubble);
+    await flushPromises();
+
+    expect(selection.getSelectedMids()).toEqual([]);
+    expect(serviceBubble.querySelector('.bubble-select-checkbox')).toBeNull();
+  });
+
+  it('selects nothing in the admin log', async() => {
+    const {serviceBubble, text, selection} = createHarness(ChatType.Logs);
+
+    expect(selection.canSelectBubble(serviceBubble)).toBe(false);
+    expect(selection.canSelectBubble(text)).toBe(false);
+
+    selection.toggleByElement(serviceBubble);
+    await flushPromises();
+
+    expect(selection.getSelectedMids()).toEqual([]);
   });
 });

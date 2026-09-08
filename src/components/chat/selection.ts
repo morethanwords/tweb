@@ -1036,7 +1036,14 @@ export default class ChatSelection extends AppSelection {
 
   public canSelectBubble(bubble: HTMLElement) {
     return bubble &&
-      !bubble.classList.contains('service') &&
+      // * a service message IS selectable (it can be deleted just like a regular one) — only the
+      // * bubbles that stand for no message at all are not: date separators, and the admin log,
+      // * which is a read-only view whose entries live outside the message storage
+      !bubble.classList.contains('is-date') &&
+      this.chat.type !== ChatType.Logs &&
+      // * a report is about what someone posted, and a service message is not that — tdesktop
+      // * rules them out of the choose-messages flow too (HistoryItem::suggestReport)
+      !(this.isReportSelection && bubble.classList.contains('service')) &&
       !bubble.classList.contains('is-outgoing') &&
       !bubble.classList.contains('is-error') &&
       !bubble.classList.contains('bubble-first') &&

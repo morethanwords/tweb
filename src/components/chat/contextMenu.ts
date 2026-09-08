@@ -1315,7 +1315,7 @@ export default class ChatContextMenu {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !(this.message as Message.messageService).action && !this.isSelected && this.isSelectable,
+      verify: () => !this.isSelected && this.isSelectable,
       notDirect: () => true,
       withSelection: true
     }, {

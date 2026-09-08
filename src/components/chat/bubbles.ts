@@ -7903,7 +7903,12 @@ export default class ChatBubbles {
         }
       }
 
+      // * resetting the class name drops what the skeleton put on the bubble — `is-ephemeral`
+      // * has to come back, the selection reads it to keep both groups apart
       bubble.className = 'bubble service';
+      if(isEphemeral) {
+        bubble.classList.add('is-ephemeral');
+      }
 
       bubbleContainer.replaceChildren();
 
