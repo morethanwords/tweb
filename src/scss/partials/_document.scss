@@ -239,6 +239,9 @@
   .checkbox-field-round {
     --margin-top: .25rem;
     --margin-left: .125rem;
+    // selection prepends the checkbox into the row, so the icon and the download preloader
+    // (z-index 1) after it paint on top of it
+    z-index: 3;
     margin-left: calc(var(--padding-left) * -1 + var(--icon-size) - var(--size) + var(--margin-left));
     margin-top: calc(var(--icon-size) - var(--size) + var(--margin-top));
     top: auto;

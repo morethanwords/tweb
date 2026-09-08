@@ -379,6 +379,9 @@
     --icon-size-default: 3rem;
     --padding-left-default: 4.5rem;
     position: absolute;
+    // selection prepends the checkbox into the row, so every positioned thing after it — the play
+    // button in Row's media slot, the download preloader over it (z-index 2) — paints on top of it
+    z-index: 3;
     left: auto;
     top: auto;
     background: #fff;
