@@ -1378,7 +1378,7 @@
     // (history_view_call.cpp:120), iOS at `boundingWidth - width - 8`
     // (ChatMessageCallBubbleContentNode.swift:351).
     padding-inline-start: .125rem;
-    padding-inline-end: 2.5625rem;
+    padding-inline-end: 3.5625rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1392,6 +1392,7 @@
       height: 1.5rem;
       margin-block: auto;
       font-size: 1.5rem;
+      color: var(--primary-color);
     }
 
     &-title {
