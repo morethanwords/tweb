@@ -6,6 +6,7 @@ import {artifactPlugin} from './scripts/artifact-plugin.ts';
 export default defineConfig({
   plugins: [solid({dev: false}), artifactPlugin()],
   publicDir: false,
+  worker: {format: 'es', plugins: () => [artifactPlugin('worker')]},
   resolve: {alias: solidAliases, conditions: ['browser', 'production']},
   build: {
     outDir: 'dist', emptyOutDir: true, target: 'es2022', sourcemap: false,

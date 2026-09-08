@@ -4,8 +4,13 @@ import {command, createEditor} from './editor';
 import {activate, finishReply, messageText, sendText, startRun, classifyTestText, textReadiness, jumpRun, pendingMessageCount, isActiveBotMessage} from './simulator';
 import {ShellLimits, type TestRun} from './types';
 
+function pendingStep(run: TestRun) {
+  if(run.pending?.kind !== 'step') throw new Error('Expected pending screen reply');
+  return run.pending;
+}
+
 function finish(run: TestRun): TestRun {
-  return finishReply(run, run.id, run.pending!.id, run.pending!.dueAt)!;
+  return finishReply(run, run.id, run.pending!.id, pendingStep(run).dueAt)!;
 }
 
 describe('literal visitor text and folder replies', () => {
@@ -43,7 +48,7 @@ describe('literal visitor text and folder replies', () => {
     const replied = finish(first);
     const second = sendText(replied, replied.id, 'text-2', 'Привет', 400);
     expect(second.pending?.id).not.toBe(first.pending?.id);
-    expect(second.pending?.targetStepId).toBe('start-fallback');
+    expect(pendingStep(second).targetStepId).toBe('start-fallback');
     const next = finish(second);
     expect(next.messages).toHaveLength(5);
     expect(new Set(next.messages.map(message => message.id)).size).toBe(5);
@@ -54,7 +59,7 @@ describe('literal visitor text and folder replies', () => {
   it('text equal to a button label remains literal and never guesses a button transition', () => {
     const run = startRun(createFixture(), 'visitor', 0);
     const waiting = sendText(run, run.id, 'label', run.document.content.buttons['start-offer'], 0);
-    expect(waiting.pending?.targetStepId).toBe('start-fallback');
+    expect(pendingStep(waiting).targetStepId).toBe('start-fallback');
     expect(waiting.messages.at(-1)?.kind).toBe('text');
     expect(finish(waiting).messages.at(-1)?.stepId).not.toBe('offer');
   });
@@ -114,7 +119,8 @@ describe('literal visitor text and folder replies', () => {
 
   it('reserves a whole multi-message fallback and rejects it before adding outgoing text when it cannot fit', () => {
     const document = createFixture();
-    document.steps['start-fallback'].messageIds.push('fallback-second', 'fallback-third');
+    document.steps['start-fallback'].blockIds.push('fallback-second', 'fallback-third');
+    for(const id of ['fallback-second', 'fallback-third']) document.blocks[id] = {id, type: 'message', messageId: id};
     for(const id of ['fallback-second', 'fallback-third']) {document.messages[id] = {rows: []}; document.content.messages[id] = id;}
     let run = startRun(document, 'capacity', 0);
     for(let index = 0; index < 196; index++) run = jumpRun(run, 'start', index);
@@ -139,11 +145,11 @@ describe('folder context and start priority', () => {
   it('uses the active screen owner across explicit button transitions and author jumps', () => {
     const run = startRun(createFixture(), 'context', 0);
     const menu = finish(activate(run, run.activeMessageId, 'start-menu', 0));
-    expect(sendText(menu, run.id, 'menu', '/help', 351).pending?.targetStepId).toBe('menu-fallback');
+    expect(pendingStep(sendText(menu, run.id, 'menu', '/help', 351)).targetStepId).toBe('menu-fallback');
     const details = jumpRun(menu, 'details', 351);
-    expect(sendText(details, run.id, 'details', 'Вопрос', 352).pending?.targetStepId).toBe('menu-fallback');
+    expect(pendingStep(sendText(details, run.id, 'details', 'Вопрос', 352)).targetStepId).toBe('menu-fallback');
     const material = jumpRun(details, 'material', 352);
-    expect(sendText(material, run.id, 'material', '/help', 353).pending?.targetStepId).toBe('start-fallback');
+    expect(pendingStep(sendText(material, run.id, 'material', '/help', 353)).targetStepId).toBe('start-fallback');
   });
 
   it('/start is visibly sent, replaces pending fallback identity and preserves the transcript', () => {
@@ -168,11 +174,11 @@ describe('folder context and start priority', () => {
     const moved = command(original, {type: 'move_step_to_folder', stepId: 'details', folderId: 'start-folder'}, 0);
     moved.document.content.messages['menu-fallback-message'] = 'Changed later';
     const waiting = sendText(run, run.id, 'question', 'Вопрос', 1);
-    expect(waiting.pending?.targetStepId).toBe('menu-fallback');
+    expect(pendingStep(waiting).targetStepId).toBe('menu-fallback');
     const completed = finish(waiting);
     expect(messageText(completed, completed.messages.at(-1)!)).toBe(document.content.messages['menu-fallback-message']);
     const fresh = startRun(moved.document, 'fresh', 0, 'details');
-    expect(sendText(fresh, fresh.id, 'question', 'Вопрос', 1).pending?.targetStepId).toBe('start-fallback');
+    expect(pendingStep(sendText(fresh, fresh.id, 'question', 'Вопрос', 1)).targetStepId).toBe('start-fallback');
   });
 
   it('rejects launch when any folder fallback batch is blank, even if the starting folder is ready', () => {

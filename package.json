@@ -1,5 +1,5 @@
 {
-  "name": "offline-bot-builder-shell",
+  "name": "robochat-semantic-mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,13 +11,18 @@
   },
   "scripts": {
     "shell:typecheck": "tsc --noEmit",
-    "shell:lint": "oxlint src/shell scripts tests/browser vite.config.ts vitest.config.ts playwright.config.ts",
+    "shell:lint": "oxlint src/shell scripts tests/browser tests/companion vite.config.ts vite.companion.config.ts vitest.config.ts playwright.config.ts playwright.companion.config.ts",
     "shell:unit": "vitest run && node --test scripts/*.test.mjs",
-    "shell:build": "vite build && node scripts/check-artifact.mjs",
+    "shell:build": "node scripts/quickjs-assets.mjs && vite build && node scripts/check-artifact.mjs",
     "shell:serve": "node scripts/serve-artifact.mjs",
     "shell:browser": "playwright test",
+    "shell:browser:quick": "playwright test --project=chromium-1280x900 --project=chromium-375x812",
     "shell:verify": "node scripts/verify.mjs",
-    "shell:reference": "node scripts/build-reference.mjs"
+    "shell:reference": "node scripts/build-reference.mjs",
+    "semantic:build": "node scripts/quickjs-assets.mjs && node scripts/semantic-build.mjs",
+    "semantic:serve": "node semantic-dist/semantic-entry.js",
+    "semantic:browser": "playwright test --config playwright.companion.config.ts",
+    "semantic:verify": "node scripts/semantic-verify.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
@@ -29,6 +34,21 @@
     "typescript": "7.0.2",
     "vite": "8.2.1",
     "vite-plugin-solid": "2.11.13",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "typescript-browser": "npm:typescript@6.0.3",
+    "quickjs-emscripten-core": "0.32.0",
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
+    "@codemirror/state": "6.7.4",
+    "@codemirror/view": "6.43.11",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/commands": "6.11.0",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/language": "6.12.4",
+    "@modelcontextprotocol/client": "2.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "zod": "4.3.6"
   }
 }

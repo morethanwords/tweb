@@ -4,17 +4,22 @@ import {activate, buttonReadiness, finishReply, messageText, startRun} from './s
 import {ShellLimits} from './types';
 import type {TestRun} from './types';
 
+function pendingStep(run: TestRun) {
+  if(run.pending?.kind !== 'step') throw new Error('Expected pending screen reply');
+  return run.pending;
+}
+
 function choose(run: TestRun, buttonId: string, at: number): TestRun {
   const waiting = activate(run, run.activeMessageId, buttonId, at);
   expect(waiting.pending).not.toBeNull();
-  return finishReply(waiting, waiting.id, waiting.pending!.id, waiting.pending!.dueAt)!;
+  return finishReply(waiting, waiting.id, waiting.pending!.id, pendingStep(waiting).dueAt)!;
 }
 
 describe('local visitor runtime', () => {
   it('starts one bot occurrence with a detached version and no authoring mutation', () => {
     const document = createFixture();
     const run = startRun(document, 'visitor-1', 1000);
-    expect(run.messages).toEqual([{id: 'visitor-1:message:0', kind: 'bot', stepId: 'start', messageId: 'start-message', at: 1000}]);
+    expect(run.messages).toMatchObject([{id: 'visitor-1:message:0', kind: 'bot', stepId: 'start', messageId: 'start-message', at: 1000}]);
     expect(run.phase).toBe('ready');
     document.content.messages['start-message'] = 'Owner changed after Test started';
     expect(messageText(run, run.messages[0])).not.toContain('Owner changed');
@@ -25,7 +30,7 @@ describe('local visitor runtime', () => {
     const waiting = activate(run, run.activeMessageId, 'start-offer', 1100);
     expect(waiting.messages).toHaveLength(2);
     expect(waiting.phase).toBe('waiting');
-    expect(waiting.pending?.dueAt).toBe(1450);
+    expect(pendingStep(waiting).dueAt).toBe(1450);
     expect(waiting.messages[1]).toMatchObject({kind: 'user', buttonId: 'start-offer', stepId: 'start'});
     expect(activate(waiting, run.activeMessageId, 'start-offer', 1100)).toBe(waiting);
     expect(activate(waiting, run.activeMessageId, 'start-menu', 1101)).toBe(waiting);
@@ -40,7 +45,7 @@ describe('local visitor runtime', () => {
     expect(finishReply(waiting, waiting.id, 'other-reply', 2000)).toBe(waiting);
     const ready = finishReply(waiting, waiting.id, waiting.pending!.id, 2000)!;
     expect(ready.messages).toHaveLength(3);
-    expect(ready.messages[2]).toEqual({id: 'visitor-1:message:2', kind: 'bot', stepId: 'offer', messageId: 'offer-message', at: 1450});
+    expect(ready.messages[2]).toMatchObject({id: 'visitor-1:message:2', kind: 'bot', stepId: 'offer', messageId: 'offer-message', at: 1450});
     expect(ready.phase).toBe('ready');
     expect(ready.pending).toBeNull();
     expect(finishReply(ready, waiting.id, waiting.pending!.id, 2001)).toBe(ready);
@@ -86,7 +91,7 @@ describe('local visitor runtime', () => {
     const document = createFixture();
     const start = startRun(document, 'visitor-1', 0);
     document.content.buttons['start-offer'] = 'Edited label';
-    document.buttons['start-offer'].targetStepId = 'menu';
+    document.buttons['start-offer'].transition = {type: 'screen', screenId: 'menu'};
     document.content.messages['offer-message'] = 'Edited offer';
     const ready = choose(start, 'start-offer', 0);
     expect(messageText(ready, ready.messages[1])).toBe('Посмотреть материал');
@@ -96,7 +101,7 @@ describe('local visitor runtime', () => {
 
   it('keeps incomplete target/label visible as an error and appends no fake user message', () => {
     const document = createFixture();
-    document.buttons['start-offer'].targetStepId = null;
+    document.buttons['start-offer'].transition = null;
     const run = startRun(document, 'visitor-1', 0);
     const rejected = activate(run, run.activeMessageId, 'start-offer', 0);
     expect(rejected.error).toMatch(/не выбран переход/);

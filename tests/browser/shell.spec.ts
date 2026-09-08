@@ -27,6 +27,12 @@ async function selectScreen(page: Page, id: string) {
   await expect(page.getByTestId(`story-step-${id}`)).toBeVisible();
   if ((page.viewportSize()?.width ?? 1280) < 900) await expect(page.getByRole('button', {name: 'Закрыть навигацию'})).not.toBeVisible();
 }
+async function sendAuthoredMessage(page: Page, text: string) {
+  const composer = page.getByRole('textbox', {name: 'Сообщение', exact: true});
+  await composer.fill(text);
+  await composer.press('Enter');
+  await expect(composer).toHaveValue('');
+}
 async function exported(page: Page) {
   const download = page.waitForEvent('download');
   await page.keyboard.press('ControlOrMeta+Shift+E');
@@ -61,16 +67,41 @@ async function startDragging(page: Page, source: Locator) {
 }
 async function startScreenDragging(page: Page, source: Locator) {
   await source.scrollIntoViewIfNeeded();
-  const box = await source.boundingBox();
-  expect(box).not.toBeNull();
-  const x = box!.x + box!.width / 2;
-  const y = box!.y + box!.height / 2;
+  const {x, y} = await visibleScreenPoint(source);
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 8, y, {steps: 3});
   await expect(page.locator('.folder-screen-list.is-screen-dragging')).toHaveCount(1);
 }
+async function visibleScreenPoint(screen: Locator, vertical = 0.5) {
+  return screen.evaluate((element, fraction) => {
+    const box = element.getBoundingClientRect();
+    const list = element.closest('.folder-screen-list')!.getBoundingClientRect();
+    const left = Math.max(0, box.left, list.left), right = Math.min(innerWidth, box.right, list.right);
+    const top = Math.max(0, box.top, list.top), bottom = Math.min(innerHeight, box.bottom, list.bottom);
+    if(right - left < 4 || bottom - top < 4) throw new Error('Screen has no reachable drag area');
+    return {x: (left + right) / 2, y: Math.max(top + 2, Math.min(bottom - 2, box.top + box.height * fraction))};
+  }, vertical);
+}
+async function center(target: Locator): Promise<[number, number]> {
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  return [box!.x + box!.width / 2, box!.y + box!.height / 2];
+}
 async function dropAtCenter(page: Page, target: Locator, vertical = 0.5) {
+  if(await target.evaluate(element => element.matches('.screen-chat') && !!element.closest('.folder-screen-list'))) {
+    // A short list clips most of the row; drop on its visible part, never the pinned controls below it.
+    await target.scrollIntoViewIfNeeded();
+    await target.evaluate((element, fraction) => {
+      const list = element.closest<HTMLElement>('.folder-screen-list')!, bounds = list.getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      if(bounds.height < box.height) list.scrollTop += box.top + box.height * fraction - (bounds.top + bounds.height / 2);
+    }, vertical);
+    const {x, y} = await visibleScreenPoint(target, vertical);
+    await page.mouse.move(x, y, {steps: 8});
+    await page.mouse.up();
+    return;
+  }
   const box = await target.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height * vertical, {steps: 8});
@@ -156,13 +187,13 @@ test('Edit inspects one button; rows, destinations and export agree; Test uses o
   await movedButton.press('Alt+Shift+ArrowDown');
   await expect(movedButton).toHaveAttribute('data-button-color', 'green');
   const exportedDocument = await exported(page);
-  expect(exportedDocument.schemaVersion).toBe(5);
-  expect(exportedDocument.buttons['start-offer'].targetStepId).toBe('details');
+  expect(exportedDocument.schemaVersion).toBe(6);
+  expect(exportedDocument.buttons['start-offer'].transition.screenId).toBe('details');
   expect(exportedDocument.buttons['start-offer'].color).toBe('green');
   expect(exportedDocument.content.buttons['start-offer']).toBe('Начать практику');
-  expect(exportedDocument.messages[exportedDocument.steps.start.messageIds[0]].rows.map((row: {buttonIds: string[]}) => row.buttonIds)).toEqual([['start-menu'], ['start-offer']]);
-  expect(exportedDocument.content.messages[exportedDocument.steps.offer.messageIds[0]]).toContain('Три шага');
-  expect(Object.keys(exportedDocument).sort()).toEqual(['bot', 'buttons', 'content', 'entryStepId', 'folderOrder', 'folders', 'id', 'messages', 'nextStepNumber', 'schemaVersion', 'steps']);
+  expect(exportedDocument.messages[exportedDocument.steps.start.blockIds[0]].rows.map((row: {buttonIds: string[]}) => row.buttonIds)).toEqual([['start-menu'], ['start-offer']]);
+  expect(exportedDocument.content.messages[exportedDocument.steps.offer.blockIds[0]]).toContain('Три шага');
+  expect(Object.keys(exportedDocument).sort()).toEqual(['blocks', 'bot', 'buttons', 'content', 'entryStepId', 'folderOrder', 'folders', 'id', 'messages', 'nextStepNumber', 'schemaVersion', 'steps', 'variables']);
   expect(exportedDocument.folderOrder).toEqual(['start-folder', 'menu-folder']);
   expect(exportedDocument.folders['start-folder']).toEqual({stepIds: ['start', 'offer', 'material'], fallbackStepId: 'start-fallback'});
   expect(exportedDocument.content).not.toHaveProperty('fallbacks');
@@ -206,8 +237,10 @@ test('screen numbers are stable references across reorder, delete, creation and 
   await expect(page.locator('.screen-number')).toHaveText('01');
   await expect(page.getByTestId('screen-boundary')).toContainText('01 · Знакомство');
 
-  await page.getByRole('button', {name: 'Настройки экрана', exact: true}).click();
-  await page.getByRole('button', {name: 'Экран ниже', exact: true}).click();
+  await sidebar(page);
+  await startScreenDragging(page, page.getByTestId('step-nav-start').locator('.screen-chat'));
+  await dropAtCenter(page, page.getByTestId('step-nav-offer').locator('.screen-chat'), .8);
+  await closeSidebar(page);
   await expect(page.locator('[data-testid^="step-nav-"]').nth(0).locator('.screen-avatar')).toHaveText('02');
   await expect(page.locator('[data-testid^="step-nav-"]').nth(1).locator('.screen-avatar')).toHaveText('01');
 
@@ -243,6 +276,24 @@ test('screen numbers are stable references across reorder, delete, creation and 
   await expect(page.getByTestId('step-nav-offer').getByRole('button', {name: 'Экран 02 · Что внутри материала', exact: true})).toHaveAttribute('aria-current', 'page');
 });
 
+test('a clipped sidebar list scrolls in both directions during a screen drag', async ({page}) => {
+  test.skip((page.viewportSize()?.height ?? 900) > 480, 'Exercises the short viewport drag edges.');
+  await page.goto('/'); await sidebar(page);
+  const list = page.locator('.folder-screen-list');
+  await startScreenDragging(page, page.getByTestId('step-nav-start').locator('.screen-chat'));
+  const box = (await list.boundingBox())!;
+  expect(box.height).toBeLessThan(68);
+  const before = await list.evaluate(element => element.scrollTop);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height - 2);
+  await expect.poll(() => list.evaluate(element => element.scrollTop)).toBeGreaterThan(before);
+  const lower = await list.evaluate(element => element.scrollTop);
+  await page.mouse.move(box.x + box.width / 2, box.y + 2);
+  await expect.poll(() => list.evaluate(element => element.scrollTop)).toBeLessThan(lower);
+  await page.keyboard.press('Escape'); await page.mouse.up();
+  await expect(list).not.toHaveClass(/is-screen-dragging/);
+  await expect(list.locator('.screen-avatar')).toHaveText(['01', '02', '04']);
+});
+
 test('text edit undo and missing-target failure preserve document; new step has an empty usable keyboard', async ({page}) => {
   await page.goto('/');
   const start = page.getByTestId('story-step-start');
@@ -258,7 +309,7 @@ test('text edit undo and missing-target failure preserve document; new step has 
   await text.fill('Сохранённая вручную правка');
   await text.press('ControlOrMeta+Enter');
   await expectAuthoredMessages(start, ['Сохранённая вручную правка']);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   await expectAuthoredMessages(start, [originalText]);
   await start.getByRole('button', {name: 'Добавить кнопку'}).click();
   const inspector = page.getByTestId('keyboard-inspector');
@@ -338,7 +389,7 @@ test('typing preserves the node and caret; composition, dark inspector and drawe
   await input.press('ControlOrMeta+Enter');
   await expect(page.getByLabel('Текст сообщения', {exact: true})).toHaveCount(0);
   await expect(start.locator('.message-editor')).toHaveValue(/^alpha NEW 漢 omega\n?$/);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   await expectAuthoredMessages(start, [originalText]);
   await page.getByRole('button', {name: 'Тёмная тема', exact: true}).click();
   await start.getByRole('button', {name: 'Посмотреть материал', exact: true}).click();
@@ -394,8 +445,10 @@ test('screen chats stay separate, previews follow edits and start/end badges fol
   await expect(page.getByTestId('story-step-details').locator('.message-editor')).toHaveValue(/Мой полезный ответ/);
 
   await selectScreen(page, 'start');
-  await page.getByRole('button', {name: 'Настройки экрана', exact: true}).click();
-  await page.getByRole('button', {name: 'Экран ниже', exact: true}).click();
+  await sidebar(page);
+  await startScreenDragging(page, page.getByTestId('step-nav-start').locator('.screen-chat'));
+  await dropAtCenter(page, page.getByTestId('step-nav-offer').locator('.screen-chat'), .8);
+  await closeSidebar(page);
   await expect(page.locator('[data-testid^="step-nav-"]').first()).toHaveAttribute('data-testid', 'step-nav-offer');
   await expect(page.getByTestId('step-start-start')).toHaveCount(1);
   await expect(page.getByTestId('step-start-offer')).toHaveCount(0);
@@ -567,9 +620,7 @@ test('folder fallback is an editable full screen and follows runtime ownership r
   const firstEditor = await focusAuthoredMessage(screen);
   await firstEditor.fill(reply);
   await firstEditor.press('ControlOrMeta+Enter');
-  await screen.getByRole('button', {name: 'Добавить сообщение', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill('Дополнительная инструкция из этой же папки.');
-  await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+  await sendAuthoredMessage(page, 'Дополнительная инструкция из этой же папки.');
   await selectScreen(page, 'menu-fallback');
   const menuFallbackEditor = await focusAuthoredMessage(page.getByTestId('story-step-menu-fallback'));
   await menuFallbackEditor.fill('Меню: такой команды нет. Выберите раздел.');
@@ -677,8 +728,8 @@ test('folders create two screens, rename atomically, transfer ordinary screens a
   expect(created.steps[ordinaryId].number).toBe(8);
   expect(created.steps[fallbackId].number).toBe(9);
   expect(created.content.folders[folderId].title).toBe('Поддержка');
-  expect(created.content.messages[created.steps[ordinaryId].messageIds[0]].trim()).not.toBe('');
-  expect(created.content.messages[created.steps[fallbackId].messageIds[0]].trim()).not.toBe('');
+  expect(created.content.messages[created.steps[ordinaryId].blockIds[0]].trim()).not.toBe('');
+  expect(created.content.messages[created.steps[fallbackId].blockIds[0]].trim()).not.toBe('');
   await expect(page.getByTestId(`step-fallback-${fallbackId}`)).toContainText('Если непонятно');
   await expect(page.locator('[data-testid^="step-nav-"]').last()).toHaveAttribute('data-testid', `step-nav-${fallbackId}`);
 
@@ -699,7 +750,7 @@ test('folders create two screens, rename atomically, transfer ordinary screens a
   await selectScreen(page, fallbackId);
   await page.getByRole('button', {name: 'Настройки экрана', exact: true}).click();
   await expect(page.getByRole('combobox', {name: 'Папка экрана', exact: true})).toHaveCount(0);
-  for (const action of ['Сделать началом', 'Экран выше', 'Экран ниже', 'Удалить']) await expect(page.getByRole('button', {name: action, exact: true})).toBeDisabled();
+  for (const action of ['Сделать началом', 'Удалить']) await expect(page.getByRole('button', {name: action, exact: true})).toBeDisabled();
   await expect(page.getByTestId(`step-end-${fallbackId}`)).toHaveCount(0);
   await selectScreen(page, ordinaryId);
   await page.getByRole('button', {name: 'Настройки экрана', exact: true}).click();
@@ -709,7 +760,7 @@ test('folders create two screens, rename atomically, transfer ordinary screens a
   expect(moved.folders[folderId].stepIds).toEqual([]);
   expect(moved.folders['start-folder'].stepIds).toContain(ordinaryId);
   expect(moved.steps[ordinaryId].number).toBe(8);
-  expect(moved.content.messages[created.steps[ordinaryId].messageIds[0]]).toBe(created.content.messages[created.steps[ordinaryId].messageIds[0]]);
+  expect(moved.content.messages[created.steps[ordinaryId].blockIds[0]]).toBe(created.content.messages[created.steps[ordinaryId].blockIds[0]]);
   await sidebar(page);
   await page.getByTestId(`folder-tab-${folderId}`).click();
   await expect(page.locator('[data-testid^="step-nav-"]')).toHaveCount(1);
@@ -721,7 +772,7 @@ test('folders create two screens, rename atomically, transfer ordinary screens a
   expect(deleted.folders).not.toHaveProperty(folderId);
   expect(deleted.steps).not.toHaveProperty(fallbackId);
   expect(deleted.content.folders).not.toHaveProperty(folderId);
-  for (const id of created.steps[fallbackId].messageIds) {
+  for (const id of created.steps[fallbackId].blockIds) {
     expect(deleted.messages).not.toHaveProperty(id);
     expect(deleted.content.messages).not.toHaveProperty(id);
   }
@@ -761,13 +812,13 @@ test('button drag moves within a row, across rows and into a new row without cha
   await expect(button('menu-offer')).toHaveAttribute('data-button-color', 'green');
   expect(changed.buttons).toEqual(original.buttons);
   expect(changed.content).toEqual(original.content);
-  expect(changed.messages[changed.steps.menu.messageIds[0]].rows.map((row: {buttonIds: string[]}) => row.buttonIds)).toEqual([['menu-details'], ['menu-material', 'menu-start'], ['menu-offer']]);
+  expect(changed.messages[changed.steps.menu.blockIds[0]].rows.map((row: {buttonIds: string[]}) => row.buttonIds)).toEqual([['menu-details'], ['menu-material', 'menu-start'], ['menu-offer']]);
 
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   await expect.poll(() => buttonRows(screen)).toEqual([['menu-details'], ['menu-offer', 'menu-material', 'menu-start']]);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   await expect.poll(() => buttonRows(screen)).toEqual([['menu-details', 'menu-offer'], ['menu-material', 'menu-start']]);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await exported(page)).toEqual(original);
   await assertNoOverflow(page);
 });
@@ -791,7 +842,7 @@ test('button drag cancellation preserves the document and keyboard alternatives 
   await expect(page.getByTestId('keyboard-inspector')).toHaveCount(0);
   await expect(screen.locator('[data-keyboard-drop="new-row"]')).toHaveCount(0);
   expect(await exported(page)).toEqual(original);
-  await expect(page.getByRole('button', {name: '↶ Отменить', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: 'Отменить последнее изменение', exact: true})).toBeDisabled();
 
   await source.press('Alt+ArrowRight');
   await expect.poll(() => buttonRows(screen)).toEqual([['menu-details', 'menu-offer'], ['menu-material', 'menu-start']]);
@@ -799,7 +850,7 @@ test('button drag cancellation preserves the document and keyboard alternatives 
   await expect.poll(() => buttonRows(screen)).toEqual([['menu-details'], ['menu-material', 'menu-start', 'menu-offer']]);
   await source.press('Alt+Shift+ArrowDown');
   await expect.poll(() => buttonRows(screen)).toEqual([['menu-details'], ['menu-material', 'menu-start'], ['menu-offer']]);
-  for (let index = 0; index < 3; index++) await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  for (let index = 0; index < 3; index++) await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await exported(page)).toEqual(original);
   await source.click();
   await expect(page.getByTestId('keyboard-inspector')).toBeVisible();
@@ -817,7 +868,7 @@ test('cross-pane drag assigns button transitions in both directions and sidebar 
   const offerRow = page.getByTestId('step-nav-offer');
   const materialRow = page.getByTestId('step-nav-material');
 
-  await expect(page.getByRole('button', {name: '↶ Отменить', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: 'Отменить последнее изменение', exact: true})).toBeDisabled();
   await startDragging(page, offerButton);
   const offerTarget = offerRow.getByRole('button', {name: /Экран 02/});
   const offerTargetBox = await offerTarget.boundingBox();
@@ -825,7 +876,7 @@ test('cross-pane drag assigns button transitions in both directions and sidebar 
   await page.mouse.move(offerTargetBox!.x + offerTargetBox!.width / 2, offerTargetBox!.y + offerTargetBox!.height / 2, {steps: 8});
   await expect(offerRow).toHaveClass(/is-link-target/);
   await page.mouse.up();
-  await expect(page.getByRole('button', {name: '↶ Отменить', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: 'Отменить последнее изменение', exact: true})).toBeDisabled();
   expect(await exported(page)).toEqual(original);
 
   await startDragging(page, offerButton);
@@ -836,7 +887,7 @@ test('cross-pane drag assigns button transitions in both directions and sidebar 
   await page.mouse.move(heading!.x + heading!.width / 2, heading!.y + heading!.height / 2, {steps: 5});
   await expect(offerRow).not.toHaveClass(/is-link-target/);
   await page.mouse.up();
-  await expect(page.getByRole('button', {name: '↶ Отменить', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: 'Отменить последнее изменение', exact: true})).toBeDisabled();
   expect(await exported(page)).toEqual(original);
 
   await startDragging(page, offerButton);
@@ -849,10 +900,10 @@ test('cross-pane drag assigns button transitions in both directions and sidebar 
   await expect(page.getByTestId('keyboard-inspector')).toHaveCount(0);
   await expect(page.getByTestId('story-step-start')).toBeVisible();
   const buttonLinked = await exported(page);
-  expect(buttonLinked.buttons).toEqual({...original.buttons, 'start-offer': {...original.buttons['start-offer'], targetStepId: 'material'}});
+  expect(buttonLinked.buttons).toEqual({...original.buttons, 'start-offer': {...original.buttons['start-offer'], transition: {type: 'screen', screenId: 'material'}}});
   expect(buttonLinked.content).toEqual(original.content);
   expect(buttonLinked.messages).toEqual(original.messages);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await exported(page)).toEqual(original);
 
   await startScreenDragging(page, offerTarget);
@@ -864,10 +915,55 @@ test('cross-pane drag assigns button transitions in both directions and sidebar 
   await expect(page.getByTestId('keyboard-inspector')).toHaveCount(0);
   await expect(page.getByTestId('story-step-start')).toBeVisible();
   const screenLinked = await exported(page);
-  expect(screenLinked.buttons).toEqual({...original.buttons, 'start-menu': {...original.buttons['start-menu'], targetStepId: 'offer'}});
+  expect(screenLinked.buttons).toEqual({...original.buttons, 'start-menu': {...original.buttons['start-menu'], transition: {type: 'screen', screenId: 'offer'}}});
   expect(screenLinked.content).toEqual(original.content);
   expect(screenLinked.messages).toEqual(original.messages);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
+  expect(await exported(page)).toEqual(original);
+
+  const addButton = story.getByRole('button', {name: '＋ Добавить кнопку', exact: true});
+  await startScreenDragging(page, materialTarget);
+  const addTarget = (await addButton.boundingBox())!;
+  await page.mouse.move(addTarget.x + addTarget.width / 2, addTarget.y + addTarget.height / 2, {steps: 8});
+  await expect(addButton).toHaveClass(/is-link-target/);
+  await page.mouse.up();
+  await expect(addButton).not.toHaveClass(/is-link-target/);
+  await expect(page.getByTestId('keyboard-inspector')).toHaveCount(0);
+  const createdLink = await exported(page);
+  const createdIds = Object.keys(createdLink.buttons).filter(id => !Object.hasOwn(original.buttons, id));
+  expect(createdIds).toHaveLength(1);
+  const createdId = createdIds[0];
+  expect(createdLink.buttons[createdId].transition).toEqual({type: 'screen', screenId: 'material'});
+  expect(createdLink.content.buttons[createdId]).toBe(original.content.steps.material.title);
+  expect(createdLink.folders).toEqual(original.folders);
+  expect(createdLink.steps).toEqual(original.steps);
+  await page.mouse.up();
+  expect(await exported(page)).toEqual(createdLink);
+  await page.getByRole('button', {name: 'Пройти', exact: true}).click();
+  await page.locator(`[data-button-id="${createdId}"]`).click();
+  await expect(page.getByTestId('run-bot').last()).toContainText(original.content.messages['material-message']);
+  await page.getByRole('button', {name: 'Редактировать', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
+  expect(await exported(page)).toEqual(original);
+
+  await sendAuthoredMessage(page, 'Ещё один способ открыть материал');
+  const beforeSecondLink = await exported(page);
+  const secondMessage = story.locator('.screen-message').last();
+  const secondMessageId = (await secondMessage.getAttribute('data-message-id'))!;
+  const secondAdd = secondMessage.getByRole('button', {name: '＋ Добавить кнопку', exact: true});
+  await secondAdd.scrollIntoViewIfNeeded();
+  await startScreenDragging(page, materialTarget);
+  await dropAtCenter(page, secondAdd);
+  const secondLinked = await exported(page);
+  const secondIds = Object.keys(secondLinked.buttons).filter(id => !Object.hasOwn(beforeSecondLink.buttons, id));
+  expect(secondIds).toHaveLength(1);
+  expect(secondLinked.messages[secondMessageId].rows).toHaveLength(1);
+  expect(secondLinked.messages[secondMessageId].rows[0].buttonIds).toEqual(secondIds);
+  expect(secondLinked.buttons[secondIds[0]].transition).toEqual({type: 'screen', screenId: 'material'});
+  for(const id of Object.keys(original.messages)) expect(secondLinked.messages[id]).toEqual(original.messages[id]);
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
+  expect(await exported(page)).toEqual(beforeSecondLink);
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await exported(page)).toEqual(original);
 
   await startScreenDragging(page, materialRow.getByRole('button', {name: /Экран 04/}));
@@ -881,7 +977,7 @@ test('cross-pane drag assigns button transitions in both directions and sidebar 
   expect(reordered.steps.offer.number).toBe(2);
   expect(reordered.steps.material.number).toBe(4);
   expect(reordered.buttons).toEqual(original.buttons);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await exported(page)).toEqual(original);
   await assertNoOverflow(page);
 });
@@ -908,7 +1004,7 @@ test('touch hold reorders sidebar screens and keeps the fallback pinned', async 
   await expect(page.locator('[data-testid^="step-nav-"]').first()).toHaveAttribute('data-testid', 'step-nav-material');
   await expect(page.locator('[data-testid^="step-nav-"]').last()).toHaveAttribute('data-testid', 'step-nav-start-fallback');
   await closeSidebar(page);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   await sidebar(page);
   await expect(page.locator('[data-testid^="step-nav-"]').first()).toHaveAttribute('data-testid', 'step-nav-start');
   await cdp.detach();
@@ -961,7 +1057,7 @@ test('emulated touch scrolls button labels and a whole-button hold arms dragging
   await touch('touchEnd');
   await expect.poll(() => buttonRows(screen)).toEqual([['menu-details', 'menu-offer'], ['menu-material', 'menu-start']]);
   await expect(page.getByTestId('keyboard-inspector')).toHaveCount(0);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await buttonRows(screen)).toEqual([['menu-offer', 'menu-details'], ['menu-material', 'menu-start']]);
   await cdp.detach();
   await assertNoOverflow(page);
@@ -1128,12 +1224,7 @@ test('ordered screen messages keep independent keyboards and every button in the
   const firstEditor = await focusAuthoredMessage(screen);
   await firstEditor.fill(messages[0]);
   await firstEditor.press('ControlOrMeta+Enter');
-  for (const text of messages.slice(1)) {
-    await screen.getByRole('button', {name: 'Добавить сообщение', exact: true}).click();
-    await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeFocused();
-    await page.getByLabel('Текст сообщения', {exact: true}).fill(text);
-    await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
-  }
+  for (const text of messages.slice(1)) await sendAuthoredMessage(page, text);
   await expectAuthoredMessages(screen, messages);
   const bubbles = screen.locator('.bubble');
   await expect(bubbles).toHaveCount(3);
@@ -1148,8 +1239,8 @@ test('ordered screen messages keep independent keyboards and every button in the
   await expect(bubbles.nth(0).getByRole('button', {name: 'Посмотреть материал', exact: true})).toBeVisible();
   await expect(bubbles.nth(1).getByRole('button', {name: 'Сразу к практике', exact: true})).toBeVisible();
   const saved = await exported(page);
-  const ids: string[] = saved.steps.start.messageIds;
-  expect(saved.schemaVersion).toBe(5);
+  const ids: string[] = saved.steps.start.blockIds;
+  expect(saved.schemaVersion).toBe(6);
   expect(ids).toHaveLength(3);
   expect(new Set(ids).size).toBe(3);
   expect(ids[0]).toBe('start-message');
@@ -1158,7 +1249,7 @@ test('ordered screen messages keep independent keyboards and every button in the
   expect(saved.messages[ids[0]].rows.flatMap((row: {buttonIds: string[]}) => row.buttonIds)).toEqual(['start-offer', 'start-menu']);
   const secondButtons: string[] = saved.messages[ids[1]].rows.flatMap((row: {buttonIds: string[]}) => row.buttonIds);
   expect(secondButtons).toHaveLength(1);
-  expect(saved.buttons[secondButtons[0]].targetStepId).toBe('details');
+  expect(saved.buttons[secondButtons[0]].transition.screenId).toBe('details');
   expect(saved.messages[ids[2]].rows).toEqual([]);
 
   await page.clock.install({time: new Date('2026-09-07T12:00:00Z')});
@@ -1178,13 +1269,13 @@ test('ordered screen messages keep independent keyboards and every button in the
   await expect(bubbles.nth(1).locator('.reply-markup')).toHaveCount(1);
   await captureReview(page, info, 'independent-keyboards');
   const deleted = await exported(page);
-  expect(deleted.steps.start.messageIds).toEqual(ids.slice(0, 2));
+  expect(deleted.steps.start.blockIds).toEqual(ids.slice(0, 2));
   expect(Object.hasOwn(deleted.content.messages, ids[2])).toBe(false);
   expect(Object.hasOwn(deleted.messages, ids[2])).toBe(false);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   await expectAuthoredMessages(screen, messages);
   const restored = await exported(page);
-  expect(restored.steps.start.messageIds).toEqual(ids);
+  expect(restored.steps.start.blockIds).toEqual(ids);
   expect(ids.map(id => restored.content.messages[id])).toEqual(messages);
 
   await page.getByRole('button', {name: 'Пройти', exact: true}).click();
@@ -1225,12 +1316,15 @@ test('abandoned new messages disappear without undo history; filled messages com
   await page.goto('/');
   const screen = page.getByTestId('story-step-start');
   const original = await exported(page);
-  const undo = page.getByRole('button', {name: '↶ Отменить', exact: true});
+  const undo = page.getByRole('button', {name: 'Отменить последнее изменение', exact: true});
   const editor = page.getByLabel('Текст сообщения', {exact: true});
-  const addMessage = screen.getByRole('button', {name: 'Добавить сообщение', exact: true});
+  const addMessage = async () => {
+    await screen.locator('.screen-add-actions').getByTestId('add-element').click();
+    await page.getByTestId('add-element-message').click();
+  };
   const badge = page.getByTestId('screen-boundary');
   for (const variant of ['empty', 'whitespace-ime', 'type-clear']) {
-    await addMessage.click();
+    await addMessage();
     await expect(editor).toBeFocused();
     await expect(screen.locator('.bubble')).toHaveCount(2);
     if (variant === 'whitespace-ime') {
@@ -1255,7 +1349,7 @@ test('abandoned new messages disappear without undo history; filled messages com
     expect(await exported(page)).toEqual(original);
   }
   const addedText = 'Дополнительное сообщение сохраняется после выхода из поля.';
-  await addMessage.click();
+  await addMessage();
   await editor.fill(addedText);
   await badge.click();
   await expect(editor).toHaveCount(0);
@@ -1273,15 +1367,11 @@ test('abandoned new messages disappear without undo history; filled messages com
     expect(service.color).toBe('rgb(255, 255, 255)');
     expect(service.background).not.toBe('rgba(0, 0, 0, 0)');
     const addButton = screen.getByRole('button', {name: '＋ Добавить кнопку', exact: true});
-    expect(await addButton.evaluate(element => ({color: getComputedStyle(element).color, background: getComputedStyle(element).backgroundColor}))).toEqual(service);
-    const messageStyle = await addMessage.evaluate(element => ({color: getComputedStyle(element).color, background: getComputedStyle(element).backgroundColor, border: getComputedStyle(element).borderTopStyle}));
-    expect(messageStyle.color).not.toBe(service.color);
-    expect(messageStyle.background).not.toBe(service.background);
-    expect(messageStyle.border).toBe('solid');
+    const addElement = screen.locator('.screen-add-actions').getByTestId('add-element');
     const addButtonBounds = (await addButton.boundingBox())!;
-    const addMessageBounds = (await addMessage.boundingBox())!;
-    expect(addMessageBounds.y - (addButtonBounds.y + addButtonBounds.height)).toBeGreaterThanOrEqual(20);
-    for (const control of [addMessage, addButton]) {
+    const addElementBounds = (await addElement.boundingBox())!;
+    expect(addElementBounds.y - (addButtonBounds.y + addButtonBounds.height)).toBeGreaterThanOrEqual(20);
+    for (const control of [addElement, addButton]) {
       const bounds = (await control.boundingBox())!;
       expect(bounds.height).toBeGreaterThanOrEqual(40);
       expect(bounds.x).toBeGreaterThanOrEqual(0);
@@ -1322,7 +1412,7 @@ test('editor help opens on hover or focus, pins on click and dismisses without c
   await expect(help).not.toBeVisible();
   await expect(trigger).toBeFocused();
   await expect(page.locator('[data-testid^="story-step-"]')).toHaveCount(1);
-  await expect(page.getByRole('button', {name: '↶ Отменить', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: 'Отменить последнее изменение', exact: true})).toBeDisabled();
   await assertNoOverflow(page);
 });
 
@@ -1387,7 +1477,7 @@ test('Test message editing preserves pending replies and updates authored text a
   await page.getByRole('button', {name: 'В редактор', exact: true}).click();
   await expectAuthoredMessages(page.getByTestId('story-step-start'), [finalText]);
   const document = await exported(page);
-  expect(document.content.messages[document.steps.start.messageIds[0]]).toBe(finalText);
+  expect(document.content.messages[document.steps.start.blockIds[0]]).toBe(finalText);
   await assertNoOverflow(page);
 });
 
@@ -1541,7 +1631,7 @@ test('screen names edit in the header and sidebar with Enter, blur and Escape, a
   await dropAtButton(page, screen.getByRole('button', {name: 'Открыть меню', exact: true}), 'after');
   await expect(rename).toContainText('Имя перед переносом');
   expect(await buttonRows(screen)).toEqual([['start-menu', 'start-offer']]);
-  await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
   expect(await buttonRows(screen)).toEqual([['start-offer', 'start-menu']]);
   await expect(rename).toContainText('Имя перед переносом');
   await rename.click();
@@ -1626,8 +1716,8 @@ test('Test double-click edits a button without navigation and synchronizes its l
   await expect(bot.last()).toContainText('Шаблон запроса');
   await page.getByRole('button', {name: 'В редактор', exact: true}).click();
   const saved = await exported(page);
-  expect(saved.schemaVersion).toBe(5);
-  expect(saved.buttons['start-offer']).toEqual({targetStepId: 'material', color: 'green'});
+  expect(saved.schemaVersion).toBe(6);
+  expect(saved.buttons['start-offer']).toEqual({transition: {type: 'screen', screenId: 'material'}, color: 'green'});
   expect(saved.content.buttons['start-offer']).toBe('Другой текст');
   expect(saved.messages['start-message'].rows.flatMap((row: {buttonIds: string[]}) => row.buttonIds)).toContain('start-offer');
   await assertNoOverflow(page);
@@ -1740,5 +1830,103 @@ test('emulated touch opens message actions on hold and edits through Done withou
   await expect(bubble.getByRole('button', {name: 'Материал с телефона', exact: true})).toBeVisible();
   expect(await page.evaluate(() => window.__shellIsolation().copies)).toEqual([]);
   await cdp.detach();
+  await assertNoOverflow(page);
+});
+
+test('hovering a screen avatar peeks that screen in the chat and returns without changing the selection', async ({page}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('screen-boundary')).toHaveText('01 · Знакомство · Начало бота');
+  const row = await revealScreen(page, 'offer');
+  await expect(row.locator('.screen-avatar')).toHaveText('02');
+  await row.locator('.screen-avatar').hover();
+  await expect(page.getByTestId('story-step-offer')).toHaveCount(1);
+  await expect(page.getByTestId('story-step-start')).toHaveCount(0);
+  await expect(page.locator('.screen-number')).toHaveText('02');
+  await expect(page.getByTestId('story-step-offer').locator('.message-editor').first()).toHaveValue(/Три шага от идеи/);
+  await expect(page.getByTestId('story-step-offer').getByRole('button', {name: 'Прочитать шаблон', exact: true})).toHaveCount(1);
+  await expect(page.getByTestId('step-nav-start').locator('.screen-chat')).toHaveAttribute('aria-current', 'page');
+  await expect(row.locator('.screen-chat')).not.toHaveAttribute('aria-current', 'page');
+  await page.mouse.move(0, 0);
+  await expect(page.getByTestId('story-step-start')).toHaveCount(1);
+  await expect(page.getByTestId('story-step-offer')).toHaveCount(0);
+  await expect(page.locator('.screen-number')).toHaveText('01');
+  await assertNoOverflow(page);
+});
+
+test('the editor composer appends a bubble on send and fills a trailing empty message instead of adding another', async ({page}) => {
+  await page.goto('/');
+  const screen = page.getByTestId('story-step-start');
+  const original = await exported(page);
+  await sendAuthoredMessage(page, 'Второе сообщение экрана');
+  await expectAuthoredMessages(screen, [original.content.messages['start-message'], 'Второе сообщение экрана']);
+  await expect(screen.locator('.bubble').first().locator('.reply-markup')).toHaveCount(1);
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
+  await expectAuthoredMessages(screen, [original.content.messages['start-message']]);
+  expect(await exported(page)).toEqual(original);
+  await sidebar(page);
+  await page.getByTestId('add-step').click();
+  const created = page.locator('[data-testid^="story-step-"]');
+  const newId = (await created.getAttribute('data-testid'))!.replace('story-step-', '');
+  await expect(page.getByTestId(`step-nav-${newId}`)).toContainText('Пустой экран');
+  await sendAuthoredMessage(page, 'Первый текст нового экрана');
+  await expectAuthoredMessages(created, ['Первый текст нового экрана']);
+  await expect((await revealScreen(page, newId)).getByTestId(`step-preview-${newId}`)).toHaveText('Первый текст нового экрана');
+  await assertNoOverflow(page);
+});
+
+test('a sidebar screen is removed only after confirmation, and a referenced screen offers no removal', async ({page}) => {
+  await page.goto('/');
+  await sidebar(page);
+  await expect(page.getByTestId('step-nav-offer').getByRole('button', {name: /^Удалить экран 02/})).toBeDisabled();
+  await expect(page.getByTestId('step-nav-start-fallback').getByRole('button', {name: /^Удалить экран/})).toHaveCount(0);
+  await page.getByTestId('add-step').click();
+  const created = page.locator('[data-testid^="story-step-"]');
+  const newId = (await created.getAttribute('data-testid'))!.replace('story-step-', '');
+  await page.keyboard.press('Escape');
+  const row = await revealScreen(page, newId);
+  const remove = row.getByRole('button', {name: /^Удалить экран/});
+  const confirm = page.getByTestId(`delete-confirm-${newId}`);
+  await remove.click();
+  await expect(confirm.getByRole('button', {name: 'Отмена', exact: true})).toBeFocused();
+  await confirm.getByRole('button', {name: 'Отмена', exact: true}).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(remove).toBeFocused();
+  await remove.click();
+  await page.keyboard.press('Escape');
+  await expect(confirm).toHaveCount(0);
+  await expect(page.getByTestId(`step-nav-${newId}`)).toHaveCount(1);
+  await remove.click();
+  await confirm.getByRole('button', {name: 'Удалить', exact: true}).click();
+  await expect(page.getByTestId(`step-nav-${newId}`)).toHaveCount(0);
+  await expect(page.locator('[data-testid^="step-nav-"]')).toHaveCount(4);
+  await closeSidebar(page);
+  await expect(page.getByTestId('story-step-start')).toHaveCount(1);
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
+  await expect(await revealScreen(page, newId)).toContainText('Пустой экран');
+  await assertNoOverflow(page);
+});
+
+test('dragging a screen onto a folder tab moves it there and follows it; the same folder is a no-op', async ({page}) => {
+  await page.goto('/');
+  const original = await exported(page);
+  await sidebar(page);
+  await startScreenDragging(page, page.getByTestId('step-nav-offer').locator('.screen-chat'));
+  await page.mouse.move(...await center(page.getByTestId('folder-tab-menu-folder')), {steps: 8});
+  await expect(page.getByTestId('folder-tab-menu-folder')).toHaveClass(/is-drop-target/);
+  await page.mouse.up();
+  await expect(page.getByTestId('folder-tab-menu-folder')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('folder-tab-menu-folder')).not.toHaveClass(/is-drop-target/);
+  await expect(page.locator('[data-testid^="step-nav-"]').nth(2)).toHaveAttribute('data-testid', 'step-nav-offer');
+  const moved = await exported(page);
+  expect(moved.folders['start-folder'].stepIds).toEqual(['start', 'material']);
+  expect(moved.folders['menu-folder'].stepIds).toEqual(['menu', 'details', 'offer']);
+  expect(moved.steps).toEqual(original.steps);
+  await startScreenDragging(page, page.getByTestId('step-nav-offer').locator('.screen-chat'));
+  await dropAtCenter(page, page.getByTestId('folder-tab-menu-folder'));
+  expect(await exported(page)).toEqual(moved);
+  await expect(page.locator('.screen-drag-announcement')).toHaveText('Экран уже в этой папке');
+  await closeSidebar(page);
+  await page.getByRole('button', {name: 'Отменить последнее изменение', exact: true}).click();
+  expect(await exported(page)).toEqual(original);
   await assertNoOverflow(page);
 });

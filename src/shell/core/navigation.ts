@@ -1,4 +1,5 @@
-import type {ShellDocument, StepSummary} from './types';
+import type {Block, ShellDocument, StepSummary, Transition} from './types';
+import {blockTransitionEntries} from './blocks';
 
 /** Folder membership is the single source of screen ownership and display order. */
 export function folderStepIds(document: ShellDocument, folderId: string): string[] {
@@ -34,7 +35,7 @@ export function stepReference(document: ShellDocument, stepId: string): string {
 
 export function stepMessageIds(document: ShellDocument, stepId: string): readonly string[] {
   if(!Object.hasOwn(document.steps, stepId)) throw new Error('Шаг больше не существует.');
-  return document.steps[stepId].messageIds;
+  return document.steps[stepId].blockIds.flatMap(id => {const block = document.blocks[id]; return block.type === 'message' || block.type === 'ask' ? [block.messageId] : [];});
 }
 
 export function stepButtonIds(document: ShellDocument, stepId: string): string[] {
@@ -53,7 +54,7 @@ export function stepReadiness(document: ShellDocument, stepId: string): string |
 
 /** An ending belongs to graph structure, never its position in the author sidebar. */
 export function isTerminalStep(document: ShellDocument, stepId: string): boolean {
-  return stepButtonIds(document, stepId).length === 0 && stepReadiness(document, stepId) === null;
+  return document.steps[stepId].blockIds.every(id => document.blocks[id].type === 'message') && stepButtonIds(document, stepId).length === 0 && stepReadiness(document, stepId) === null;
 }
 
 export function stepSummary(document: ShellDocument, stepId: string): StepSummary {
@@ -68,11 +69,35 @@ export function stepSummary(document: ShellDocument, stepId: string): StepSummar
     characters++;
   }
   return {
-    preview: preview || 'Добавьте сообщение',
+    preview: preview || (stepMessageIds(document, stepId).length ? 'Добавьте сообщение' : blockLabel(document.blocks[document.steps[stepId].blockIds[0]])),
     isEntry: document.entryStepId === stepId,
     isTerminal: isTerminalStep(document, stepId),
-    isEmpty: !collapsed,
+    isEmpty: !collapsed && stepMessageIds(document, stepId).length > 0,
     unassigned: stepButtonIds(document, stepId)
-      .filter(id => document.buttons[id].targetStepId === null).length
+      .filter(id => document.buttons[id].transition === null).length
   };
+}
+
+export function messageBlockId(document: ShellDocument, stepId: string, messageId: string): string {
+  const id = document.steps[stepId]?.blockIds.find(id => {const block = document.blocks[id]; return (block.type === 'message' || block.type === 'ask') && block.messageId === messageId;});
+  if(!id) throw new Error('Сообщение не принадлежит этому экрану.');
+  return id;
+}
+
+function blockLabel(block: Block): string {
+  return {message: 'Сообщение', ask: 'Вопрос', decision: 'Условие', action: 'Действие', wait: 'Ожидание', code: 'Код'}[block.type];
+}
+
+export function documentTransitions(document: ShellDocument): {stepId: string; blockId: string; buttonId?: string; label: string; transition: Transition}[] {
+  return allStepIds(document).flatMap(stepId => document.steps[stepId].blockIds.flatMap(blockId => {
+    const block = document.blocks[blockId];
+    const result: ReturnType<typeof documentTransitions> = blockTransitionEntries(block).map(item => ({stepId, blockId, ...item}));
+    if(block.type === 'message' || block.type === 'ask') {
+      for(const buttonId of document.messages[block.messageId].rows.flatMap(row => row.buttonIds)) {
+        const transition = document.buttons[buttonId].transition;
+        if(transition) result.push({stepId, blockId, buttonId, label: `«${document.content.buttons[buttonId].trim() || 'Без подписи'}»`, transition});
+      }
+    }
+    return result;
+  }));
 }

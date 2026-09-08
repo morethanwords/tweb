@@ -1,7 +1,7 @@
 import {ShellLimits} from './types';
 import type {DocumentCommand, EditorState, KeyboardDraft, ShellDocument} from './types';
 import {documentBytes, serializeDocument, validId, validateDocument} from './document';
-import {allStepIds, stepFolderId, isFallbackStep, stepButtonIds, stepReference} from './navigation';
+import {allStepIds, stepFolderId, isFallbackStep, stepReference, stepMessageIds, messageBlockId, documentTransitions} from './navigation';
 import {FolderDefaults} from './defaults';
 
 function error(state: EditorState, cause: unknown): EditorState {
@@ -34,20 +34,26 @@ function addScreenData(document: ShellDocument, stepId: string, messageId: strin
   if(Object.hasOwn(document.steps, stepId)) throw new Error('Идентификатор шага уже используется.');
   if(Object.hasOwn(document.messages, messageId)) throw new Error('Идентификатор сообщения уже используется.');
   if(document.nextStepNumber > ShellLimits.stepNumber) throw new Error('Закончились доступные номера экранов.');
-  document.steps[stepId] = {number: document.nextStepNumber++, messageIds: [messageId]};
+  document.steps[stepId] = {number: document.nextStepNumber++, blockIds: [messageId]};
+  if(Object.hasOwn(document.blocks, messageId)) throw new Error('Идентификатор блока уже используется.');
+  document.blocks[messageId] = {id: messageId, type: 'message', messageId};
   document.messages[messageId] = {rows: []};
   document.content.steps[stepId] = {title: content.title};
   document.content.messages[messageId] = content.text;
 }
 
 function removeScreenData(document: ShellDocument, stepId: string): void {
-  for(const id of document.steps[stepId].messageIds) removeMessageData(document, id);
+  for(const id of document.steps[stepId].blockIds) {
+    const block = document.blocks[id];
+    if(block.type === 'message' || block.type === 'ask') removeMessageData(document, block.messageId);
+    delete document.blocks[id];
+  }
   delete document.steps[stepId]; delete document.content.steps[stepId];
 }
 
 function requireMessage(document: ShellDocument, stepId: string, messageId: string): void {
   requireStep(document, stepId);
-  if(!document.steps[stepId].messageIds.includes(messageId)) throw new Error('Сообщение не принадлежит этому экрану.');
+  if(!stepMessageIds(document, stepId).includes(messageId)) throw new Error('Сообщение не принадлежит этому экрану.');
 }
 
 function removeMessageData(document: ShellDocument, messageId: string): void {
@@ -99,18 +105,20 @@ export function keyboardDraft(document: ShellDocument, stepId: string, messageId
   return {rows, buttons, labels};
 }
 
+function incomingReferences(document: ShellDocument, stepId: string): string[] {
+  return documentTransitions(document)
+    .filter(item => item.stepId !== stepId && item.transition.type === 'screen' && item.transition.screenId === stepId)
+    .map(item => `${item.label} — ${stepReference(document, item.stepId)}`);
+}
+
 export function deletionReason(document: ShellDocument, stepId: string): string | null {
   if(!Object.hasOwn(document.steps, stepId)) return 'Шаг больше не существует.';
   if(stepId === document.entryStepId) return 'Сначала выберите другой начальный шаг.';
   if(isFallbackStep(document, stepId)) return 'Ответ по умолчанию удаляется только вместе с пустой папкой.';
-  const references = allStepIds(document).filter((id) => id !== stepId).flatMap((id) => {
-    return stepButtonIds(document, id)
-      .filter((buttonId) => document.buttons[buttonId].targetStepId === stepId)
-      .map((buttonId) => `«${document.content.buttons[buttonId].trim() || 'Без подписи'}» — ${stepReference(document, id)}`);
-  });
+  const references = incomingReferences(document, stepId);
   if(references.length) {
     const remaining = references.length > 5 ? `; ещё ${references.length - 5}` : '';
-    return `На этот шаг ведут кнопки: ${references.slice(0, 5).join('; ')}${remaining}. Сначала измените их переходы.`;
+    return `На этот шаг ведут переходы: ${references.slice(0, 5).join('; ')}${remaining}. Сначала измените их переходы.`;
   }
   return null;
 }
@@ -120,10 +128,8 @@ export function folderDeletionReason(document: ShellDocument, folderId: string):
   if(document.folders[folderId].stepIds.length) return 'Сначала перенесите или удалите обычные экраны папки.';
   if(document.folderOrder.length === 1) return 'В боте должна остаться хотя бы одна папка.';
   const fallbackId = document.folders[folderId].fallbackStepId;
-  const references = allStepIds(document).filter(id => id !== fallbackId).flatMap(id => stepButtonIds(document, id)
-    .filter(buttonId => document.buttons[buttonId].targetStepId === fallbackId)
-    .map(buttonId => `«${document.content.buttons[buttonId].trim() || 'Без подписи'}» — ${stepReference(document, id)}`));
-  if(references.length) return `На ответ папки ведут кнопки: ${references.slice(0, 5).join('; ')}${references.length > 5 ? `; ещё ${references.length - 5}` : ''}. Сначала измените их переходы.`;
+  const references = incomingReferences(document, fallbackId);
+  if(references.length) return `На ответ папки ведут переходы: ${references.slice(0, 5).join('; ')}${references.length > 5 ? `; ещё ${references.length - 5}` : ''}. Сначала измените их переходы.`;
   return null;
 }
 
@@ -180,7 +186,7 @@ export function command(state: EditorState, operation: DocumentCommand, expected
         addScreenData(document, operation.stepId, operation.messageId, {title: FolderDefaults.stepTitle, text: FolderDefaults.stepText});
         addScreenData(document, operation.fallbackStepId, operation.fallbackMessageId, {title: FolderDefaults.fallbackTitle, text: FolderDefaults.fallbackText});
         document.messages[operation.fallbackMessageId].rows = [{id: operation.rowId, buttonIds: [operation.buttonId]}];
-        document.buttons[operation.buttonId] = {targetStepId: operation.stepId, color: 'default'};
+        document.buttons[operation.buttonId] = {transition: {type: 'screen', screenId: operation.stepId}, color: 'default'};
         document.content.buttons[operation.buttonId] = FolderDefaults.fallbackButton;
         document.folderOrder.push(operation.folderId);
         document.folders[operation.folderId] = {stepIds: [operation.stepId], fallbackStepId: operation.fallbackStepId};
@@ -231,9 +237,11 @@ export function command(state: EditorState, operation: DocumentCommand, expected
         validId(operation.messageId, 'messageId');
         if(Object.hasOwn(document.content.messages, operation.messageId)) throw new Error('Идентификатор сообщения уже используется.');
         if(operation.afterMessageId !== null) requireMessage(document, operation.stepId, operation.afterMessageId);
-        const ids = document.steps[operation.stepId].messageIds;
-        const index = operation.afterMessageId === null ? 0 : ids.indexOf(operation.afterMessageId) + 1;
+        if(Object.hasOwn(document.blocks, operation.messageId)) throw new Error('Идентификатор блока уже используется.');
+        const ids = document.steps[operation.stepId].blockIds;
+        const index = operation.afterMessageId === null ? 0 : ids.indexOf(messageBlockId(document, operation.stepId, operation.afterMessageId)) + 1;
         ids.splice(index, 0, operation.messageId);
+        document.blocks[operation.messageId] = {id: operation.messageId, type: 'message', messageId: operation.messageId};
         document.content.messages[operation.messageId] = operation.text;
         document.messages[operation.messageId] = {rows: []};
         break;
@@ -241,9 +249,10 @@ export function command(state: EditorState, operation: DocumentCommand, expected
       case 'delete_message': {
         commandFields(operation, ['type', 'stepId', 'messageId']);
         requireMessage(document, operation.stepId, operation.messageId);
-        const ids = document.steps[operation.stepId].messageIds;
-        if(ids.length === 1) throw new Error('На экране должно остаться хотя бы одно сообщение.');
-        ids.splice(ids.indexOf(operation.messageId), 1);
+        const ids = document.steps[operation.stepId].blockIds;
+        if(ids.length === 1) throw new Error('На экране должен остаться хотя бы один блок.');
+        const blockId = messageBlockId(document, operation.stepId, operation.messageId);
+        ids.splice(ids.indexOf(blockId), 1); delete document.blocks[blockId];
         removeMessageData(document, operation.messageId);
         break;
       }
@@ -285,14 +294,59 @@ export function command(state: EditorState, operation: DocumentCommand, expected
         steps.splice(operation.index, 0, operation.stepId);
         break;
       }
-      case 'set_button_target':
-        commandFields(operation, ['type', 'buttonId', 'targetStepId']);
-        validId(operation.buttonId, 'buttonId');
-        validId(operation.targetStepId, 'targetStepId');
+      case 'set_button_transition':
+        commandFields(operation, ['type', 'buttonId', 'transition']);
         if(!Object.hasOwn(document.buttons, operation.buttonId)) throw new Error('Кнопка больше не существует.');
-        requireStep(document, operation.targetStepId);
-        document.buttons[operation.buttonId].targetStepId = operation.targetStepId;
+        document.buttons[operation.buttonId].transition = operation.transition;
         break;
+      case 'add_block': {
+        commandFields(operation, ['type', 'stepId', 'afterBlockId', 'block', 'messageText']);
+        requireStep(document, operation.stepId); validId(operation.block.id, 'blockId');
+        if(Object.hasOwn(document.blocks, operation.block.id)) throw new Error('Идентификатор блока уже используется.');
+        const ids = document.steps[operation.stepId].blockIds;
+        if(operation.afterBlockId !== null && !ids.includes(operation.afterBlockId)) throw new Error('Начальный блок не принадлежит экрану.');
+        if(operation.block.type === 'message' || operation.block.type === 'ask') {
+          const messageId = operation.block.messageId; validId(messageId, 'messageId');
+          if(Object.hasOwn(document.messages, messageId) || typeof operation.messageText !== 'string') throw new Error('Новый блок требует уникальное сообщение и текст.');
+          document.messages[messageId] = {rows: []}; document.content.messages[messageId] = operation.messageText;
+        } else if(operation.messageText !== null) throw new Error('Этот блок не содержит сообщения.');
+        ids.splice(operation.afterBlockId === null ? 0 : ids.indexOf(operation.afterBlockId) + 1, 0, operation.block.id);
+        document.blocks[operation.block.id] = operation.block;
+        break;
+      }
+      case 'set_block': {
+        commandFields(operation, ['type', 'stepId', 'block', 'messageText']); requireStep(document, operation.stepId);
+        if(!document.steps[operation.stepId].blockIds.includes(operation.block.id)) throw new Error('Блок не принадлежит экрану.');
+        const previous = document.blocks[operation.block.id];
+        if(previous.type !== operation.block.type) throw new Error('Для другого типа добавьте новый блок.');
+        if(operation.block.type === 'message' || operation.block.type === 'ask') {
+          if(!('messageId' in previous) || previous.messageId !== operation.block.messageId) throw new Error('Идентичность сообщения блока нельзя изменить.');
+          if(operation.messageText !== null) document.content.messages[operation.block.messageId] = operation.messageText;
+        } else if(operation.messageText !== null) throw new Error('Этот блок не содержит сообщения.');
+        document.blocks[operation.block.id] = operation.block;
+        break;
+      }
+      case 'delete_block': {
+        commandFields(operation, ['type', 'stepId', 'blockId']); requireStep(document, operation.stepId);
+        const ids = document.steps[operation.stepId].blockIds;
+        if(!ids.includes(operation.blockId)) throw new Error('Блок не принадлежит экрану.');
+        if(ids.length === 1) throw new Error('На экране должен остаться хотя бы один блок.');
+        const block = document.blocks[operation.blockId];
+        if(block.type === 'message' || block.type === 'ask') removeMessageData(document, block.messageId);
+        ids.splice(ids.indexOf(operation.blockId), 1); delete document.blocks[operation.blockId]; break;
+      }
+      case 'move_block': {
+        commandFields(operation, ['type', 'stepId', 'blockId', 'index']); requireStep(document, operation.stepId);
+        const ids = document.steps[operation.stepId].blockIds;
+        if(!ids.includes(operation.blockId) || !Number.isInteger(operation.index) || operation.index < 0 || operation.index >= ids.length) throw new Error('Позиция блока вне экрана.');
+        ids.splice(ids.indexOf(operation.blockId), 1); ids.splice(operation.index, 0, operation.blockId); break;
+      }
+      case 'set_variable':
+        commandFields(operation, ['type', 'variable']); document.variables[operation.variable.id] = operation.variable; break;
+      case 'delete_variable':
+        commandFields(operation, ['type', 'variableId']);
+        if(!Object.hasOwn(document.variables, operation.variableId)) throw new Error('Переменная отсутствует.');
+        delete document.variables[operation.variableId]; break;
       case 'set_keyboard': {
         commandFields(operation, ['type', 'stepId', 'messageId', 'keyboard']);
         requireMessage(document, operation.stepId, operation.messageId);
@@ -329,13 +383,13 @@ export function command(state: EditorState, operation: DocumentCommand, expected
 }
 
 /** A provisional insertion shares its entire history boundary with its first text session. */
-export function beginNewMessage(state: EditorState, stepId: string, messageId: string): EditorState {
+export function beginNewMessage(state: EditorState, stepId: string, messageId: string, afterBlockId?: string | null): EditorState {
   try {
     if(state.textEdit?.creation && state.textEdit.stepId === stepId && state.textEdit.messageId === messageId) return {...state, error: null};
     const base = finishTextEdit(state);
     if(base.error) return base;
     requireStep(base.document, stepId);
-    const added = command(base, {type: 'add_message', stepId, messageId, afterMessageId: base.document.steps[stepId].messageIds.at(-1)!, text: ''}, base.revision);
+    const added = command(base, {type: 'add_block', stepId, afterBlockId: afterBlockId === undefined ? base.document.steps[stepId].blockIds.at(-1)! : afterBlockId, block: {id: messageId, type: 'message', messageId}, messageText: ''}, base.revision);
     if(added.error) return error(state, new Error(added.error));
     return {...added, history: base.history, selectedStepId: stepId,
       textEdit: {stepId, messageId, before: validateDocument(base.document), creation: {changedBefore: base.changed}}};

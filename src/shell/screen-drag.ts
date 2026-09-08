@@ -18,7 +18,7 @@ export type ScreenDragOptions = {
   onDragStart: () => boolean | void;
   onMove: (stepId: string, index: number, baseRevision: number) => void;
   onExternalHover: (stepId: string, x: number, y: number) => boolean;
-  onExternalDrop: (stepId: string, x: number, y: number, baseRevision: number) => 'changed' | 'noop' | false;
+  onExternalDrop: (stepId: string, x: number, y: number, baseRevision: number) => 'changed' | 'noop' | 'moved' | 'kept' | false;
   onExternalCancel: () => void;
 };
 
@@ -72,7 +72,9 @@ export function createScreenDrag(options: ScreenDragOptions) {
       const held = gesture, container = options.container();
       if(!held?.active || held.external || !container) return;
       const box = container.getBoundingClientRect();
-      const delta = held.currentY < box.top + 34 ? -10 : held.currentY > box.bottom - 34 ? 10 : 0;
+      // Keep a neutral middle even when the keyboard leaves less than one row visible.
+      const edge = Math.min(34, box.height / 3);
+      const delta = held.currentY < box.top + edge ? -10 : held.currentY > box.bottom - edge ? 10 : 0;
       if(!delta) return;
       const before = container.scrollTop; container.scrollTop += delta;
       if(container.scrollTop !== before) updateTarget(held.currentX, held.currentY);
@@ -91,6 +93,8 @@ export function createScreenDrag(options: ScreenDragOptions) {
     if(held.acquired) options.onExternalCancel();
     if(linked === 'changed') setAnnouncement('Экран назначен кнопке');
     else if(linked === 'noop') setAnnouncement('Кнопка уже ведёт на этот экран');
+    else if(linked === 'moved') setAnnouncement('Экран перемещён в папку');
+    else if(linked === 'kept') setAnnouncement('Экран уже в этой папке');
     else if(commit && held.active && held.targetIndex !== null && valid(held)) {
       options.onMove(held.stepId, held.targetIndex, held.revision); setAnnouncement('Порядок экранов изменён');
     } else if(held.active) setAnnouncement('Перемещение отменено');
@@ -109,7 +113,7 @@ export function createScreenDrag(options: ScreenDragOptions) {
     clone.querySelectorAll('button, input').forEach(element => element.setAttribute('tabindex', '-1'));
     Object.assign(clone.style, {left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px`});
     document.body.append(clone); held.ghost = clone; container.setPointerCapture(held.pointerId); setDragging(held.stepId);
-    setAnnouncement('Перетащите экран в списке или на кнопку');
+    setAnnouncement('Перетащите экран в списке, на папку или на кнопку');
   }
   function begin(stepId: string, event: PointerEvent): void {
     if(options.disabled() || event.button !== 0 || !event.isPrimary || gesture) return;
@@ -135,7 +139,10 @@ export function createScreenDrag(options: ScreenDragOptions) {
     updateTarget(event.clientX, event.clientY); autoScroll();
   }
   const up = (event: PointerEvent) => {
-    if(gesture?.pointerId === event.pointerId) clearGesture(true);
+    if(gesture?.pointerId === event.pointerId) {
+      if(gesture.active) updateTarget(event.clientX, event.clientY);
+      clearGesture(true);
+    }
     if(suppressedPointerId === event.pointerId) releaseClickGuard();
   };
   const cancelPointer = (event: PointerEvent) => {if(gesture?.pointerId === event.pointerId) {clearGesture(false); if(suppressedPointerId === event.pointerId) releaseClickGuard(500);}};

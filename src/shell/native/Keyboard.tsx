@@ -11,6 +11,7 @@ export interface KeyboardProps {
   rows: VisualKeyboardRow[];
   onButton: (id: string, element: HTMLButtonElement) => void;
   add?: () => void;
+  addLinkTarget?: boolean;
   editing?: {
     onPointerDown: (id: string, element: HTMLButtonElement, event: PointerEvent) => void;
     onKeyDown: (id: string, event: KeyboardEvent) => void;
@@ -91,6 +92,6 @@ export default function Keyboard(props: KeyboardProps): JSX.Element {
         </div>}</For>
       </div>
     </Show>
-    <Show when={props.add}><button type="button" class="shell-add-button" onClick={(event) => { event.stopPropagation(); props.add?.(); }}>＋ Добавить кнопку</button></Show>
+    <Show when={props.add}><button type="button" class="shell-add-button" classList={{'is-link-target': props.addLinkTarget}} onClick={(event) => { event.stopPropagation(); props.add?.(); }}>＋ Добавить кнопку</button></Show>
   </>;
 }

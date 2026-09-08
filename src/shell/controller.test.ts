@@ -50,7 +50,7 @@ describe('AI identity and effect lifecycle', () => {
       const {requests, adapter} = controlled(); const c = createController({aiAdapter: adapter});
       const before = c.editor(); const promise = c.applyAi('bad', null);
       const candidate = structuredClone(requests[0].request.document);
-      if(invalid === 'identity') candidate.id = 'another'; else candidate.buttons['start-offer'].targetStepId = 'missing';
+      if(invalid === 'identity') candidate.id = 'another'; else candidate.buttons['start-offer'].transition = {type: 'screen', screenId: 'missing'};
       requests[0].resolve({candidate}); await promise;
       expect(c.editor().document).toBe(before.document); expect(c.editor().revision).toBe(before.revision);
       expect(c.notice()).not.toBe(''); c.dispose();
@@ -201,7 +201,7 @@ describe('document observers and shutdown boundaries', () => {
     vi.useFakeTimers(); vi.setSystemTime(10_000);
     const c = createController(); c.startTest();
     c.activate(c.run()!.activeMessageId, 'start-menu');
-    const dueAt = c.run()!.pending!.dueAt;
+    const dueAt = (c.run()!.pending as {dueAt: number}).dueAt;
     vi.setSystemTime(0);
     vi.advanceTimersByTime(ShellLimits.typingMs);
     expect(c.run()!.phase).toBe('ready');
@@ -270,7 +270,7 @@ describe('visitor text composer', () => {
     expect(c.sendText('Добавь новый экран бота')).toBe(true);
     expect(c.editor()).toBe(before);
     expect(c.run()!.messages.at(-1)).toMatchObject({kind: 'text', text: 'Добавь новый экран бота'});
-    expect(c.run()!.pending?.targetStepId).toBe('start-fallback');
+    expect((c.run()!.pending as {targetStepId: string})?.targetStepId).toBe('start-fallback');
     expect(requests).toHaveLength(0); expect(changed).not.toHaveBeenCalled();
     c.dispose();
   });
@@ -290,7 +290,7 @@ describe('visitor text composer', () => {
     const c = createController(); c.startTest();
     const originalMessageId = c.run()!.activeMessageId;
     expect(c.sendText('Посмотреть материал')).toBe(true);
-    expect(c.run()!.pending?.targetStepId).toBe('start-fallback');
+    expect((c.run()!.pending as {targetStepId: string})?.targetStepId).toBe('start-fallback');
     vi.advanceTimersByTime(ShellLimits.typingMs);
     expect(c.run()!.messages.at(-1)).toMatchObject({kind: 'bot', stepId: 'start-fallback'});
     c.activate(originalMessageId, 'start-offer');
@@ -530,7 +530,7 @@ describe('explicit Test keyboard edits and title changes', () => {
     c.mutate({type: 'set_keyboard', stepId: 'start', messageId: 'start-message', keyboard: {rows: [], buttons: {}, labels: {}}});
     c.startTest(); expect(c.run()!.phase).toBe('ended');
     const before = c.editor(); const runBefore = c.run()!; const source = runBefore.activeMessageId;
-    const keyboard = {rows: [{id: 'new-row', buttonIds: ['new-button']}], buttons: {'new-button': {targetStepId: 'offer', color: 'green' as const}}, labels: {'new-button': 'Открыть предложение'}};
+    const keyboard = {rows: [{id: 'new-row', buttonIds: ['new-button']}], buttons: {'new-button': {transition: {type: 'screen' as const, screenId: 'offer'}, color: 'green' as const}}, labels: {'new-button': 'Открыть предложение'}};
     expect(c.applyRunKeyboard(source, keyboard, before.revision)).toBe(true);
     expect(c.run()!.phase).toBe('ready'); expect(c.run()!.messages).toBe(runBefore.messages);
     expect(c.editor().document.messages['start-message']).toEqual(c.run()!.document.messages['start-message']);
@@ -548,7 +548,7 @@ describe('explicit Test keyboard edits and title changes', () => {
     const source = c.run()!.activeMessageId; c.activate(source, 'start-offer');
     const pending = c.run()!.pending; const user = c.run()!.messages.at(-1)!;
     expect(user).toMatchObject({kind: 'user', text: 'Посмотреть материал'});
-    const changed = {rows: [{id: 'changed-row', buttonIds: ['start-offer']}], buttons: {'start-offer': {targetStepId: 'details', color: 'red' as const}}, labels: {'start-offer': 'Другой текст'}};
+    const changed = {rows: [{id: 'changed-row', buttonIds: ['start-offer']}], buttons: {'start-offer': {transition: {type: 'screen' as const, screenId: 'details'}, color: 'red' as const}}, labels: {'start-offer': 'Другой текст'}};
     expect(c.applyRunKeyboard(source, changed, c.editor().revision)).toBe(true);
     expect(c.run()!.pending).toBe(pending); expect(c.run()!.phase).toBe('waiting'); expect(vi.getTimerCount()).toBe(1);
     expect(c.run()!.messages.at(-1)).toBe(user); expect(c.run()!.document.content.buttons['start-offer']).toBe('Другой текст');
@@ -559,7 +559,7 @@ describe('explicit Test keyboard edits and title changes', () => {
 
   it('rejects mismatched owner baselines, absent pinned destinations and stale run occurrences without partial edits', () => {
     const c = createController(); c.startTest(); const source = c.run()!.activeMessageId;
-    const keyboard = {rows: [{id: 'new-row', buttonIds: ['new-button']}], buttons: {'new-button': {targetStepId: 'offer', color: 'blue' as const}}, labels: {'new-button': 'Next'}};
+    const keyboard = {rows: [{id: 'new-row', buttonIds: ['new-button']}], buttons: {'new-button': {transition: {type: 'screen' as const, screenId: 'offer'}, color: 'blue' as const}}, labels: {'new-button': 'Next'}};
     c.mutate({type: 'set_keyboard', stepId: 'start', messageId: 'start-message', keyboard});
     const before = c.editor().document; const pinned = c.run()!.document;
     expect(c.applyRunKeyboard(source, {rows: [], buttons: {}, labels: {}}, c.editor().revision)).toBe(false);
@@ -567,9 +567,9 @@ describe('explicit Test keyboard edits and title changes', () => {
     c.startTest(); expect(c.applyRunKeyboard(source, keyboard, c.editor().revision)).toBe(false);
     const current = c.run()!.activeMessageId;
     c.mutate({type: 'add_step', stepId: 'new-target', messageId: 'new-text', afterStepId: 'start', content: {title: 'New target', text: 'Only in author'}});
-    const afterAdd = c.editor().document; const newDestination = {...keyboard, buttons: {'new-button': {targetStepId: 'new-target', color: 'blue' as const}}};
+    const afterAdd = c.editor().document; const newDestination = {...keyboard, buttons: {'new-button': {transition: {type: 'screen' as const, screenId: 'new-target'}, color: 'blue' as const}}};
     expect(c.applyRunKeyboard(current, newDestination, c.editor().revision)).toBe(false);
-    expect(c.editor().document).toBe(afterAdd); expect(c.run()!.document.buttons['new-button'].targetStepId).toBe('offer');
+    expect(c.editor().document).toBe(afterAdd); expect(c.run()!.document.buttons['new-button'].transition?.type === 'screen' ? (c.run()!.document.buttons['new-button'].transition as {screenId: string}).screenId : null).toBe('offer');
     c.dispose();
   });
 

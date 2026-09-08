@@ -29,8 +29,13 @@ export async function artifactServer({directory = 'dist', manifestPath = 'artifa
     if (body.length !== entry.bytes || createHash('sha256').update(body).digest('hex') !== entry.sha256) throw new Error('Artifact differs from manifest: ' + entry.path);
     contents.set(entry.path, body);
   }
+  const workers = manifest.workers ?? [];
+  const workerFiles = new Set(manifest.workerFiles ?? []);
+  for(const file of [...workers, ...workerFiles]) if(!contents.has(file) || !file.endsWith('.js')) throw new Error('Worker is outside the verified artifact.');
+  const appCsp = workers.length ? CSP.replace("worker-src 'none'", 'worker-src ' + workers.map(file => 'http://127.0.0.1:*' + file).join(' ')) : CSP;
+  const workerCsp = CSP.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'");
   return createServer((request, response) => {
-    response.setHeader('Content-Security-Policy', CSP);
+    response.setHeader('Content-Security-Policy', workerFiles.has(requestPath(request.url)) ? workerCsp : appCsp);
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'no-referrer');
     response.setHeader('X-Frame-Options', 'DENY');

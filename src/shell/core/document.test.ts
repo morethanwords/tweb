@@ -10,13 +10,14 @@ function largeDocument(stepCount: number, buttonCount: number): ShellDocument {
   const steps = Array.from({length: stepCount}, (_, index) => `step-${index}`);
   document.entryStepId = steps[0];
   document.nextStepNumber = stepCount + 1;
-  document.steps = {}; document.messages = {};
+  document.steps = {}; document.messages = {}; document.blocks = {};
   document.buttons = {};
   document.folderOrder = ['main'];
   document.folders = {main: {stepIds: steps.slice(0, -1), fallbackStepId: steps.at(-1)!}};
   document.content = {folders: {main: {title: 'Main'}}, steps: {}, messages: {}, buttons: {}};
   steps.forEach((stepId, index) => {
-    document.steps[stepId] = {number: index + 1, messageIds: [`${stepId}-message`]};
+    document.steps[stepId] = {number: index + 1, blockIds: [`${stepId}-message`]};
+    document.blocks[`${stepId}-message`] = {id: `${stepId}-message`, type: 'message', messageId: `${stepId}-message`};
     document.messages[`${stepId}-message`] = {rows: []};
     document.content.steps[stepId] = {title: stepId};
     document.content.messages[`${stepId}-message`] = `Содержимое ${stepId}`;
@@ -27,13 +28,29 @@ function largeDocument(stepCount: number, buttonCount: number): ShellDocument {
     if(index % 8 === 0) rows.push({id: `row-${index}`, buttonIds: []});
     const id = `button-${index}`;
     rows[rows.length - 1].buttonIds.push(id);
-    document.buttons[id] = {targetStepId: document.entryStepId, color: 'default'};
+    document.buttons[id] = {transition: {type: 'screen', screenId: document.entryStepId}, color: 'default'};
     document.content.buttons[id] = id;
   }
   return document;
 }
 
 describe('document boundary', () => {
+  it('migrates a valid v5 snapshot once while preserving authored IDs, folders and explicit button destinations', () => {
+    const current = createFixture();
+    const legacy: Record<string, unknown> = {...current, schemaVersion: 5,
+      steps: Object.fromEntries(Object.entries(current.steps).map(([id, step]) => [id, {number: step.number, messageIds: [...step.blockIds]}])),
+      buttons: Object.fromEntries(Object.entries(current.buttons).map(([id, button]) => [id, {color: button.color,
+        targetStepId: button.transition?.type === 'screen' ? button.transition.screenId : null}]))};
+    delete legacy.blocks; delete legacy.variables;
+    const before = JSON.stringify(legacy);
+    const migrated = validateDocument(legacy);
+    expect(migrated).toEqual(current);
+    expect(migrated.blocks['start-message']).toEqual({id: 'start-message', type: 'message', messageId: 'start-message'});
+    expect(migrated.buttons['start-offer'].transition).toEqual({type: 'screen', screenId: 'offer'});
+    expect(JSON.stringify(legacy)).toBe(before);
+    expect(serializeDocument(validateDocument(migrated))).toBe(serializeDocument(current));
+  });
+
   it('returns detached native data and preserves public content, branches and loops', () => {
     const input = createFixture();
     const document = validateDocument(input);
@@ -42,7 +59,7 @@ describe('document boundary', () => {
     expect(input.content.messages['start-message']).not.toBe('Изменено');
     expect(input.messages['start-message'].rows[0].buttonIds).toEqual(['start-offer', 'start-menu']);
     expect(allStepIds(document)).toHaveLength(7);
-    expect(document.buttons['menu-start'].targetStepId).toBe('start');
+    expect(document.buttons['menu-start'].transition).toEqual({type: 'screen', screenId: 'start'});
   });
 
   it('canonicalizes all maps in visual order with one trailing newline', () => {
@@ -92,7 +109,7 @@ describe('document boundary', () => {
 
   it('rejects unknown schema, duplicate ordering, missing entry and orphan content', () => {
     const schema = {...createFixture(), schemaVersion: 4};
-    expect(() => validateDocument(schema)).toThrow(/только версия 5/);
+    expect(() => validateDocument(schema)).toThrow(/версии 5 и 6/);
     const duplicate = createFixture();
     duplicate.folders['start-folder'].stepIds.push('start');
     expect(() => validateDocument(duplicate)).toThrow(/повторов/);
@@ -108,7 +125,7 @@ describe('document boundary', () => {
     duplicate.messages['menu-message'].rows[0].buttonIds.push('start-offer');
     expect(() => validateDocument(duplicate)).toThrow(/больше одного раза/);
     const orphan = createFixture();
-    orphan.buttons.orphan = {targetStepId: null, color: 'default'};
+    orphan.buttons.orphan = {transition: null, color: 'default'};
     orphan.content.buttons.orphan = 'Нет владельца';
     expect(() => validateDocument(orphan)).toThrow(/принадлежать/);
     const missing = createFixture();
@@ -123,10 +140,10 @@ describe('document boundary', () => {
     const draft = createFixture();
     draft.content.messages['start-message'] = '';
     draft.content.buttons['start-offer'] = '';
-    draft.buttons['start-offer'].targetStepId = null;
+    draft.buttons['start-offer'].transition = null;
     expect(validateDocument(draft)).toEqual(draft);
-    draft.buttons['start-offer'].targetStepId = 'missing';
-    expect(() => validateDocument(draft)).toThrow(/целевой шаг/);
+    draft.buttons['start-offer'].transition = {type: 'screen', screenId: 'missing'};
+    expect(() => validateDocument(draft)).toThrow(/целевой экран/);
   });
 
   it('preserves plain text exactly, including markup, CRLF and composed Unicode', () => {
@@ -139,7 +156,7 @@ describe('document boundary', () => {
 
   it('rejects prototype keys and inherited records without executing accessors', () => {
     const document = createFixture();
-    Object.defineProperty(document.buttons, '__proto__', {value: {targetStepId: null, color: 'default'}, enumerable: true});
+    Object.defineProperty(document.buttons, '__proto__', {value: {transition: null, color: 'default'}, enumerable: true});
     expect(() => validateDocument(document)).toThrow();
     expect(() => validateDocument({...createFixture(), id: 'constructor'})).toThrow();
     expect(() => validateDocument(Object.create(createFixture()))).toThrow();
@@ -195,4 +212,3 @@ describe('document boundary', () => {
     expect(() => validateDocument(document)).toThrow(/1 MiB/);
   });
 });
-

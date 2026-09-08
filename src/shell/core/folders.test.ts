@@ -19,7 +19,8 @@ function emptyMenuFolder(): EditorState {
 
 function appendPlainStep(document: ShellDocument, stepId: string): void {
   document.folders['start-folder'].stepIds.push(stepId);
-  document.steps[stepId] = {number: document.nextStepNumber++, messageIds: [`${stepId}-message`]};
+  document.steps[stepId] = {number: document.nextStepNumber++, blockIds: [`${stepId}-message`]};
+  document.blocks[`${stepId}-message`] = {id: `${stepId}-message`, type: 'message', messageId: `${stepId}-message`};
   document.messages[`${stepId}-message`] = {rows: []}; document.content.messages[`${stepId}-message`] = 'Текст';
   document.content.steps[stepId] = {title: stepId};
 }
@@ -27,7 +28,7 @@ function appendPlainStep(document: ShellDocument, stepId: string): void {
 describe('folder document ownership', () => {
   it('uses one folder order with implicit final fallback and retains all existing human screen numbers', () => {
     const document = createFixture();
-    expect(document.schemaVersion).toBe(5);
+    expect(document.schemaVersion).toBe(6);
     expect(folderStepIds(document, 'start-folder')).toEqual(['start', 'offer', 'material', 'start-fallback']);
     expect(folderStepIds(document, 'menu-folder')).toEqual(['menu', 'details', 'menu-fallback']);
     expect(allStepIds(document)).toEqual(['start', 'offer', 'material', 'start-fallback', 'menu', 'details', 'menu-fallback']);
@@ -43,7 +44,7 @@ describe('folder document ownership', () => {
   });
 
   it('rejects legacy and mixed schema contracts instead of silently assigning fallback ownership', () => {
-    for(const schemaVersion of [1, 2, 3, 4, 6]) expect(() => validateDocument({...createFixture(), schemaVersion})).toThrow(/только версия 5/);
+    for(const schemaVersion of [1, 2, 3, 4, 7]) expect(() => validateDocument({...createFixture(), schemaVersion})).toThrow(/версии 5 и 6/);
     for(const mutation of [
       (doc: ShellDocument) => Object.assign(doc, {stepOrder: allStepIds(doc)}),
       (doc: ShellDocument) => Object.assign(doc, {fallbacks: {message: 'ignore', command: 'ignore'}}),
@@ -101,7 +102,7 @@ describe('atomic folder commands', () => {
     expect(folderStepIds(created.document, 'extra-folder')).toEqual(['extra', 'extra-fallback']);
     expect(created.document.steps.extra.number).toBe(8); expect(created.document.steps['extra-fallback'].number).toBe(9);
     expect(created.document.nextStepNumber).toBe(10);
-    expect(created.document.buttons['extra-fallback-back'].targetStepId).toBe('extra');
+    expect(created.document.buttons['extra-fallback-back'].transition).toEqual({type: 'screen', screenId: 'extra'});
     expect(() => startRun(created.document, 'new-folder', 0, 'extra')).not.toThrow();
     expect(command(created, operation, original.revision).document).toBe(created.document);
     expect(apply(created, operation).document).toBe(created.document);
@@ -168,7 +169,7 @@ describe('atomic folder commands', () => {
     expect(apply(original, {type: 'delete_folder', folderId: 'menu-folder'}).document).toBe(original.document);
     const empty = emptyMenuFolder();
     expect(folderDeletionReason(empty.document, 'menu-folder')).toBeNull();
-    const linked = structuredClone(empty.document); linked.buttons['start-offer'].targetStepId = 'menu-fallback';
+    const linked = structuredClone(empty.document); linked.buttons['start-offer'].transition = {type: 'screen', screenId: 'menu-fallback'};
     expect(folderDeletionReason(linked, 'menu-folder')).toContain('«Посмотреть материал» — 01');
     const blocked = createEditor(linked);
     expect(apply(blocked, {type: 'delete_folder', folderId: 'menu-folder'}).document).toBe(blocked.document);
@@ -210,7 +211,8 @@ describe('atomic folder commands', () => {
     for(const stepId of allStepIds(messages)) {
       for(let index = 1; index < 10; index++) {
         const id = `${stepId}-extra-${index}`;
-        messages.steps[stepId].messageIds.push(id); messages.messages[id] = {rows: []}; messages.content.messages[id] = 'Текст';
+        messages.steps[stepId].blockIds.push(id); messages.messages[id] = {rows: []}; messages.content.messages[id] = 'Текст';
+        messages.blocks[id] = {id, type: 'message', messageId: id};
       }
     }
     const fullMessages = createEditor(messages);
@@ -222,17 +224,18 @@ describe('atomic folder commands', () => {
       while(structure.rows.length < ShellLimits.rows && count < ShellLimits.buttons) {
         const row = {id: `extra-row-${count}`, buttonIds: [] as string[]}; structure.rows.push(row);
         for(let index = 0; index < ShellLimits.buttonsPerRow && count < ShellLimits.buttons; index++) {
-          const id = `extra-button-${count++}`; row.buttonIds.push(id); buttons.buttons[id] = {targetStepId: 'start', color: 'default'}; buttons.content.buttons[id] = 'Перейти';
+          const id = `extra-button-${count++}`; row.buttonIds.push(id); buttons.buttons[id] = {transition: {type: 'screen', screenId: 'start'}, color: 'default'}; buttons.content.buttons[id] = 'Перейти';
         }
       }
     }
     for(let message = 0; count < ShellLimits.buttons; message++) {
       const messageId = `capacity-message-${message}`;
-      buttons.steps.start.messageIds.push(messageId); buttons.messages[messageId] = {rows: []}; buttons.content.messages[messageId] = 'Текст';
+      buttons.steps.start.blockIds.push(messageId); buttons.messages[messageId] = {rows: []}; buttons.content.messages[messageId] = 'Текст';
+      buttons.blocks[messageId] = {id: messageId, type: 'message', messageId};
       while(buttons.messages[messageId].rows.length < ShellLimits.rows && count < ShellLimits.buttons) {
         const row = {id: `extra-row-${count}`, buttonIds: [] as string[]}; buttons.messages[messageId].rows.push(row);
         for(let index = 0; index < ShellLimits.buttonsPerRow && count < ShellLimits.buttons; index++) {
-          const id = `extra-button-${count++}`; row.buttonIds.push(id); buttons.buttons[id] = {targetStepId: 'start', color: 'default'}; buttons.content.buttons[id] = 'Перейти';
+          const id = `extra-button-${count++}`; row.buttonIds.push(id); buttons.buttons[id] = {transition: {type: 'screen', screenId: 'start'}, color: 'default'}; buttons.content.buttons[id] = 'Перейти';
         }
       }
     }

@@ -2,6 +2,7 @@
 .folder-rail { flex: 0 0 65px; display: flex; flex-direction: column; min-height: 0; background: color-mix(in srgb, var(--surface-soft) 70%, var(--surface)); border-right: 1px solid var(--line); }
 .folder-rail-list { overflow-y: auto; min-height: 0; padding: 8px 4px; scrollbar-width: thin; }
 .folder-tab { width: 56px; min-height: 66px; padding: 9px 3px 8px; margin-bottom: 3px; border: 0; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; background: transparent; color: var(--muted); &.selected { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); } }
+.folder-tab.is-drop-target { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
 .folder-tab-icon { display: grid; place-items: center; }
 .folder-tab-name { width: 100%; font-size: 10px; font-weight: 500; line-height: 1.25; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .folder-add { flex: 0 0 44px; width: 44px; height: 44px; margin: 0 auto 8px; padding: 0; border: 0; border-radius: 12px; display: grid; place-items: center; color: var(--accent); background: transparent; }
@@ -12,6 +13,8 @@
 .folder-screen-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .folder-menu-trigger { flex: 0 0 32px; width: 32px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 25px; }
 .folder-screen-list { position: relative; overflow-y: auto; min-height: 0; flex: 1; padding: 0 5px 8px; scrollbar-width: thin; }
+.folder-screen-pinned { flex: 0 0 auto; padding: 0 5px 8px; border-top: 1px solid var(--line); }
+.folder-screen-pinned .is-folder-fallback { border-top: 0; margin-top: 4px; padding-top: 0; }
 .screen-chat-row[data-screen-sortable='true'] .screen-chat { cursor: grab; touch-action: pan-y; -webkit-touch-callout: none; }
 .screen-chat-row.is-dragging { opacity: .35; }
 .screen-chat-row.is-link-target .screen-chat {
@@ -42,6 +45,7 @@
   .screen-chat-copy { gap: 4px; }
   .screen-badge { font-size: 9px; padding: 2px 3px; }
   .screen-rename-action { right: 0; width: 27px; top: 6px; }
+  .screen-delete-action { right: 0; width: 27px; top: 40px; height: 30px; }
   .sidebar-name-editor { left: 50px; right: 29px; top: 10px; }
   .sidebar-name-editor .screen-title-input { font-size: 13px; }
   .add-step { padding: 13px 8px; font-size: 12px; }
@@ -58,3 +62,5 @@
   button[aria-disabled='true'] { opacity: .45; cursor: default; }
 }
 @media (hover: hover) { .folder-tab:hover, .folder-add:hover, .folder-menu-trigger:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 8%, transparent); } .folder-title:hover:not(:disabled) { color: var(--accent); } }
+/* The avatar peeks its screen on hover, so it gets its own cursor over the draggable row. */
+@media (hover: hover) { .folder-sidebar.is-peekable .screen-avatar { cursor: zoom-in; } }

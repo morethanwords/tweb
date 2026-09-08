@@ -24,7 +24,7 @@ describe('screen summaries', () => {
 
   it('counts only unassigned destinations and leaves other readiness reasons to buttonReadiness', () => {
     const document = createFixture();
-    document.buttons['start-offer'].targetStepId = null;
+    document.buttons['start-offer'].transition = null;
     document.content.buttons['start-menu'] = '';
     expect(stepSummary(document, 'start').unassigned).toBe(1);
     expect(stepSummary(document, 'start').isTerminal).toBe(false);

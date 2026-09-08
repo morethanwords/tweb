@@ -2,7 +2,10 @@ import {defineConfig} from '@playwright/test';
 
 const baseURL = 'http://127.0.0.1:3122';
 export default defineConfig({
-  testDir: './tests/browser', fullyParallel: false, workers: 1,
+  testDir: './tests/browser', fullyParallel: true,
+  // Every test opens its own page against shared read-only servers, so tests are independent.
+  // SHELL_BROWSER_WORKERS=1 restores the serial run for a constrained or flaky host.
+  workers: process.env.SHELL_BROWSER_WORKERS ? Number(process.env.SHELL_BROWSER_WORKERS) : '50%',
   timeout: 45_000, expect: {timeout: 6000},
   reporter: [['list']], outputDir: 'artifacts/browser-results',
   use: {baseURL, trace: 'retain-on-failure', screenshot: 'only-on-failure', contextOptions: {reducedMotion: 'reduce'}},

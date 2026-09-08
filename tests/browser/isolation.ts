@@ -1,7 +1,7 @@
 import {test as base, expect, type Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 
-interface Manifest {files: {path: string}[]}
+interface Manifest {files: {path: string}[]; workers?: string[]}
 interface Reports {attempts: string[]; violations: string[]; copies: string[]}
 declare global {interface Window {__shellIsolation: () => Reports}}
 export const test = base.extend<{artifact: 'production' | 'reference'; clipboard: 'native' | 'mock'; isolation: {assertClean: () => Promise<void>}}>({
@@ -18,7 +18,7 @@ export const test = base.extend<{artifact: 'production' | 'reference'; clipboard
     page.on('console', message => {
       if (message.text().startsWith('__SHELL_ISOLATION__:')) lifetimeReports.push(message.text());
     });
-    await page.addInitScript(installBrowserGuards, {mockCopy: clipboard === 'mock'});
+    await page.addInitScript(installBrowserGuards, {mockCopy: clipboard === 'mock', workers: manifest.workers ?? []});
     await page.route('**/*', async route => {
       const request = route.request();
       const url = new URL(request.url());
@@ -46,7 +46,7 @@ export async function assertNoOverflow(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 }
 
-export function installBrowserGuards(options?: {mockCopy?: boolean}): void {
+export function installBrowserGuards(options?: {mockCopy?: boolean; workers?: string[]; companion?: boolean}): void {
   const attempts: string[] = [];
   const violations: string[] = [];
   const copies: string[] = [];
@@ -66,7 +66,22 @@ export function installBrowserGuards(options?: {mockCopy?: boolean}): void {
   const getter = (object: object, key: string, name: string) => {
     try { Object.defineProperty(object, key, {configurable: true, get: blocked(name), set: blocked(name)}); } catch { record('attempt', 'guard-install:' + name); }
   };
-  for (const key of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'Worker', 'SharedWorker', 'RTCPeerConnection', 'webkitRTCPeerConnection', 'BroadcastChannel', 'Audio', 'AudioContext', 'webkitAudioContext', 'open', 'showOpenFilePicker', 'showSaveFilePicker', 'showDirectoryPicker']) method(window, key, key);
+  const nativeFetch = window.fetch.bind(window);
+  for (const key of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'SharedWorker', 'RTCPeerConnection', 'webkitRTCPeerConnection', 'BroadcastChannel', 'Audio', 'AudioContext', 'webkitAudioContext', 'open', 'showOpenFilePicker', 'showSaveFilePicker', 'showDirectoryPicker']) method(window, key, key);
+  if(options?.companion) window.fetch = (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+    const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    const allowed = url.origin === location.origin && !url.search && !url.hash &&
+      (method === 'GET' && ['/api/session', '/api/document', '/api/context'].includes(url.pathname) || method === 'POST' && url.pathname === '/api/command');
+    if(!allowed) return blocked('Unauthorized companion fetch')();
+    return nativeFetch(input, init);
+  };
+  const NativeWorker = window.Worker;
+  window.Worker = new Proxy(NativeWorker, {construct(target, args) {
+    const url = new URL(String(args[0]), location.href);
+    if(url.origin !== location.origin || url.search || url.hash || !options?.workers?.includes(url.pathname) || args[1]?.type !== 'module') return blocked('Unauthorized Worker')();
+    return Reflect.construct(target, args);
+  }});
   for (const key of ['localStorage', 'sessionStorage', 'indexedDB', 'caches']) getter(window, key, key);
   getter(Document.prototype, 'cookie', 'cookie');
   for (const key of ['serviceWorker', 'mediaDevices', 'geolocation', 'storage']) getter(navigator, key, 'navigator.' + key);

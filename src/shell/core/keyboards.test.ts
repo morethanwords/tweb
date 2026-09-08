@@ -7,10 +7,11 @@ import {isTerminalStep, stepSummary} from './navigation';
 
 function twoKeyboards() {
   const document = createFixture();
-  document.steps.start.messageIds.push('second');
+  document.steps.start.blockIds.push('second');
+  document.blocks.second = {id: 'second', type: 'message', messageId: 'second'};
   document.messages.second = {rows: [{id: 'second-row', buttonIds: ['second-details']}]};
   document.content.messages.second = 'Дополнительное сообщение со своей кнопкой.';
-  document.buttons['second-details'] = {targetStepId: 'details', color: 'green'};
+  document.buttons['second-details'] = {transition: {type: 'screen', screenId: 'details'}, color: 'green'};
   document.content.buttons['second-details'] = 'Подробнее';
   return document;
 }
@@ -60,7 +61,7 @@ describe('message-owned keyboard document', () => {
     for(const id of ['start-offer', 'start-menu']) {delete document.buttons[id]; delete document.content.buttons[id];}
     expect(isTerminalStep(document, 'start')).toBe(false);
     expect(deletionReason(document, 'details')).toContain('Подробнее');
-    document.buttons['second-details'].targetStepId = null;
+    document.buttons['second-details'].transition = null;
     expect(stepSummary(document, 'start').unassigned).toBe(1);
     document.messages.second.rows = []; delete document.buttons['second-details']; delete document.content.buttons['second-details'];
     expect(isTerminalStep(document, 'start')).toBe(true);
@@ -91,7 +92,7 @@ describe('latest screen batch keyboards', () => {
     const action = pending.messages.at(-1)!; const originalText = messageText(pending, action);
     const editor = createEditor(pending.document);
     const modified = keyboardDraft(editor.document, 'start', 'start-message');
-    modified.labels['start-offer'] = 'Completely different label'; modified.buttons['start-offer'].targetStepId = 'details';
+    modified.labels['start-offer'] = 'Completely different label'; modified.buttons['start-offer'].transition = {type: 'screen', screenId: 'details'};
     const afterChange = command(editor, {type: 'set_keyboard', stepId: 'start', messageId: 'start-message', keyboard: modified}, editor.revision);
     const changedRun = refreshRunPhase({...pending, document: afterChange.document});
     expect(messageText(changedRun, action)).toBe(originalText); expect(changedRun.pending).toBe(pending.pending);

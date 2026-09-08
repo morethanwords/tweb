@@ -137,7 +137,7 @@ describe('editor transactions', () => {
     expect(replaceDocument(state, {...createFixture(), id: 'different'}, 0).error).toMatch(/Идентификатор/);
     const candidate = createFixture();
     candidate.content.messages['start-message'] = 'Would otherwise change';
-    candidate.buttons['start-offer'].targetStepId = 'missing';
+    candidate.buttons['start-offer'].transition = {type: 'screen', screenId: 'missing'};
     const failed = replaceDocument(state, candidate, 0);
     expect(failed.document).toBe(state.document);
     expect(failed.revision).toBe(0);
@@ -193,7 +193,8 @@ describe('editor transactions', () => {
     const issued = undo(apply(initial, {type: 'add_step', stepId: 'temporary', messageId: 'temporary-message', afterStepId: 'offer', content: {title: 'Временный', text: 'Текст'}}));
     const reused = structuredClone(issued.document);
     reused.folders['start-folder'].stepIds.push('reused');
-    reused.steps.reused = {number: 8, messageIds: ['reused-message']};
+    reused.steps.reused = {number: 8, blockIds: ['reused-message']};
+    reused.blocks['reused-message'] = {id: 'reused-message', type: 'message', messageId: 'reused-message'};
     reused.messages['reused-message'] = {rows: []};
     reused.content.steps.reused = {title: 'Повтор'};
     reused.content.messages['reused-message'] = 'Текст';
@@ -211,7 +212,7 @@ describe('editor transactions', () => {
   it('refuses entry and inbound step deletion without any implicit rewiring', () => {
     const state = createEditor(createFixture());
     expect(deletionReason(state.document, 'start')).toMatch(/начальный/);
-    expect(deletionReason(state.document, 'offer')).toMatch(/ведут кнопки/);
+    expect(deletionReason(state.document, 'offer')).toMatch(/ведут переходы/);
     expect(deletionReason(state.document, 'offer')).toContain('«Посмотреть материал» — 01 · Знакомство');
     expect(deletionReason(state.document, 'offer')).toContain('«О материале» — 05 · Меню');
     const result = apply(state, {type: 'delete_step', stepId: 'offer'});
@@ -222,7 +223,7 @@ describe('editor transactions', () => {
   it('deletes an unreferenced step including its own self-loop atomically and undo restores selection validity', () => {
     let state = apply(createEditor(createFixture()), {type: 'add_step', stepId: 'extra', messageId: 'extra-message', afterStepId: 'menu', content: {title: 'Дополнительно', text: 'Текст'}});
     state = apply(state, {type: 'set_keyboard', stepId: 'extra', messageId: 'extra-message', keyboard: {
-      rows: [{id: 'extra-row', buttonIds: ['extra-self']}], buttons: {'extra-self': {targetStepId: 'extra', color: 'default'}}, labels: {'extra-self': 'Снова'}
+      rows: [{id: 'extra-row', buttonIds: ['extra-self']}], buttons: {'extra-self': {transition: {type: 'screen', screenId: 'extra'}, color: 'default'}}, labels: {'extra-self': 'Снова'}
     }});
     expect(deletionReason(state.document, 'extra')).toBeNull();
     state = apply(state, {type: 'delete_step', stepId: 'extra'});
@@ -230,7 +231,7 @@ describe('editor transactions', () => {
     expect(state.document.buttons['extra-self']).toBeUndefined();
     expect(state.document.content.buttons['extra-self']).toBeUndefined();
     expect(state.selectedStepId).toBe('menu');
-    expect(undo(state).document.buttons['extra-self'].targetStepId).toBe('extra');
+    expect(undo(state).document.buttons['extra-self'].transition).toEqual({type: 'screen', screenId: 'extra'});
   });
 
   it('moves buttons across rows with labels and destinations intact; draft is detached', () => {
@@ -239,34 +240,34 @@ describe('editor transactions', () => {
     draft.rows[0].buttonIds.push(draft.rows[1].buttonIds.shift()!);
     draft.rows[0].buttonIds.reverse();
     draft.labels['offer-more'] = 'Подробнее';
-    draft.buttons['offer-more'].targetStepId = 'menu';
+    draft.buttons['offer-more'].transition = {type: 'screen', screenId: 'menu'};
     const result = apply(state, {type: 'set_keyboard', stepId: 'offer', messageId: 'offer-message', keyboard: draft});
     expect(result.error).toBeNull();
     expect(result.document.messages['offer-message'].rows[0].buttonIds).toEqual(['offer-more', 'offer-material']);
     expect(result.document.content.buttons['offer-more']).toBe('Подробнее');
-    expect(result.document.buttons['offer-more'].targetStepId).toBe('menu');
+    expect(result.document.buttons['offer-more'].transition).toEqual({type: 'screen', screenId: 'menu'});
     expect(result.document.steps.start).toEqual(state.document.steps.start);
-    expect(state.document.buttons['offer-more'].targetStepId).toBe('details');
+    expect(state.document.buttons['offer-more'].transition).toEqual({type: 'screen', screenId: 'details'});
     draft.labels['offer-more'] = 'External';
     expect(result.document.content.buttons['offer-more']).toBe('Подробнее');
   });
 
   it('sets only a button target with revision safety, no-op detection and undo', () => {
     const original = createEditor(createFixture());
-    const changed = apply(original, {type: 'set_button_target', buttonId: 'start-offer', targetStepId: 'details'});
+    const changed = apply(original, {type: 'set_button_transition', buttonId: 'start-offer', transition: {type: 'screen', screenId: 'details'}});
     expect(changed.error).toBeNull();
     expect(changed.revision).toBe(original.revision + 1);
     expect(changed.history).toHaveLength(1);
-    expect(changed.document.buttons['start-offer']).toEqual({...original.document.buttons['start-offer'], targetStepId: 'details'});
+    expect(changed.document.buttons['start-offer']).toEqual({...original.document.buttons['start-offer'], transition: {type: 'screen', screenId: 'details'}});
     expect(changed.document.content.buttons).toEqual(original.document.content.buttons);
     expect(changed.document.messages).toEqual(original.document.messages);
     expect(undo(changed).document).toEqual(original.document);
-    const unchanged = apply(original, {type: 'set_button_target', buttonId: 'start-offer', targetStepId: 'offer'});
+    const unchanged = apply(original, {type: 'set_button_transition', buttonId: 'start-offer', transition: {type: 'screen', screenId: 'offer'}});
     expect(unchanged.revision).toBe(original.revision);
     expect(unchanged.history).toHaveLength(0);
-    expect(command(original, {type: 'set_button_target', buttonId: 'start-offer', targetStepId: 'details'}, 1).document).toBe(original.document);
-    expect(apply(original, {type: 'set_button_target', buttonId: 'missing', targetStepId: 'details'}).document).toBe(original.document);
-    expect(apply(original, {type: 'set_button_target', buttonId: 'start-offer', targetStepId: 'missing'}).document).toBe(original.document);
+    expect(command(original, {type: 'set_button_transition', buttonId: 'start-offer', transition: {type: 'screen', screenId: 'details'}}, 1).document).toBe(original.document);
+    expect(apply(original, {type: 'set_button_transition', buttonId: 'missing', transition: {type: 'screen', screenId: 'details'}}).document).toBe(original.document);
+    expect(apply(original, {type: 'set_button_transition', buttonId: 'start-offer', transition: {type: 'screen', screenId: 'missing'}}).document).toBe(original.document);
   });
 
   it('deletes the last keyboard row and all corresponding label/action data in one commit', () => {
@@ -283,7 +284,7 @@ describe('editor transactions', () => {
     const state = createEditor(createFixture());
     const stolen = keyboardDraft(state.document, 'offer', 'offer-message');
     stolen.rows[0].buttonIds.push('start-offer');
-    stolen.buttons['start-offer'] = {targetStepId: 'menu', color: 'default'};
+    stolen.buttons['start-offer'] = {transition: {type: 'screen', screenId: 'menu'}, color: 'default'};
     stolen.labels['start-offer'] = 'Stolen';
     expect(apply(state, {type: 'set_keyboard', stepId: 'offer', messageId: 'offer-message', keyboard: stolen}).error).toMatch(/другому сообщению/);
     const orphan = keyboardDraft(state.document, 'offer', 'offer-message');
@@ -338,7 +339,7 @@ describe('provisional authored-message creation', () => {
   ] as const)('discards %s creation on blur without history or a dirty document', (_name, inputs) => {
     const original = createEditor(createFixture());
     let state = beginNewMessage(original, 'start', 'temporary');
-    expect(state.document.steps.start.messageIds).toEqual(['start-message', 'temporary']);
+    expect(state.document.steps.start.blockIds).toEqual(['start-message', 'temporary']);
     expect(state.history).toBe(original.history); expect(state.textEdit?.creation).toBeTruthy();
     for(const text of inputs) state = inputText(state, text);
     const revision = state.revision;
@@ -377,7 +378,7 @@ describe('provisional authored-message creation', () => {
     expect(beginNewMessage(first, 'start', 'first').document).toBe(first.document);
     const second = beginNewMessage(first, 'start', 'second');
     expect(second.document.content.messages.first).toBeUndefined();
-    expect(second.document.steps.start.messageIds).toEqual(['start-message', 'second']);
+    expect(second.document.steps.start.blockIds).toEqual(['start-message', 'second']);
     const committed = finishTextEdit(inputText(second, 'Second message'));
     expect(committed.history).toHaveLength(1); expect(undo(committed).document).toEqual(original.document);
   });
@@ -399,7 +400,7 @@ describe('provisional authored-message creation', () => {
   it('does not remove an existing authored message when its ordinary edit is emptied', () => {
     const original = createEditor(createFixture());
     const edited = finishTextEdit(inputText(beginTextEdit(original, 'start', 'start-message'), ''));
-    expect(edited.document.steps.start.messageIds).toEqual(['start-message']);
+    expect(edited.document.steps.start.blockIds).toEqual(['start-message']);
     expect(edited.document.content.messages['start-message']).toBe(''); expect(edited.history).toHaveLength(1);
   });
 });

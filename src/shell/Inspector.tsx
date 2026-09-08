@@ -16,7 +16,7 @@ export function Inspector(props: {controller: Controller; inspection: Inspection
     const last = [...original.rows].reverse().find(row => row.buttonIds.length < ShellLimits.buttonsPerRow);
     if(last && last.buttonIds.length < ShellLimits.buttonsPerRow) last.buttonIds.push(buttonId);
     else original.rows.push({id: c.id('row'), buttonIds: [buttonId]});
-    original.buttons[buttonId] = {targetStepId: null, color: 'default'};
+    original.buttons[buttonId] = {transition: null, color: 'default'};
     original.labels[buttonId] = '';
   }
   const [draft, setDraft] = createSignal(original);
@@ -112,8 +112,8 @@ export function Inspector(props: {controller: Controller; inspection: Inspection
     <header class="inspector-header"><h2 id="inspector-title">{props.inspection.buttonId ? 'Кнопка' : 'Новая кнопка'}</h2><button type="button" class="icon-button" aria-label="Закрыть инспектор" onClick={() => {if(!composing) props.close();}}>×</button></header>
     <div class="inspector-body"><div class="inspector-scroll-content" ref={element => {content = element;}}>
       <label class="field">Подпись<input ref={element => {input = element;}} onCompositionStart={() => {composing = true;}} onCompositionEnd={() => {composing = false;}} value={draft().labels[buttonId]} placeholder="Например, Узнать подробнее" onInput={event => update(value => {value.labels[buttonId] = event.currentTarget.value;})} /></label>
-      <label class="field">Куда перейти<select value={draft().buttons[buttonId].targetStepId ?? ''} onChange={event => update(value => {value.buttons[buttonId].targetStepId = event.currentTarget.value || null;})}>
-        <option value="">Выбрать экран</option><For each={allStepIds(c.editor().document)}>{id => <option value={id}>{stepReference(c.editor().document, id)}</option>}</For>
+      <label class="field">Куда перейти<select value={draft().buttons[buttonId].transition?.type === 'screen' ? (draft().buttons[buttonId].transition as {type: 'screen'; screenId: string}).screenId : draft().buttons[buttonId].transition?.type ?? ''} onChange={event => update(value => {const target = event.currentTarget.value; value.buttons[buttonId].transition = !target ? null : target === 'continue' || target === 'end' ? {type: target} : {type: 'screen', screenId: target};})}>
+        <option value="">Выбрать переход</option><option value="continue">Продолжить ниже</option><option value="end">Завершить</option><For each={allStepIds(c.editor().document)}>{id => <option value={id}>{stepReference(c.editor().document, id)}</option>}</For>
       </select></label>
       <div class="button-colors" role="group" aria-label="Цвет кнопки"><span>Цвет</span><div class="button-color-options"><For each={ButtonColors}>{color => <button type="button" class="button-color-swatch" data-button-color={color} aria-label={colorLabels[color]} title={colorLabels[color]} aria-pressed={draft().buttons[buttonId].color === color} onClick={() => update(value => {value.buttons[buttonId].color = color;})}>
         <Show when={draft().buttons[buttonId].color === color}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></Show>

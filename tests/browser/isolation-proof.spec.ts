@@ -29,7 +29,7 @@ test('attempt guard detects forbidden APIs before any network or persistent writ
     for (const operation of operations) { try { operation(); } catch { /* The guard must record and reject synchronously. */ } }
     return window.__shellIsolation();
   });
-  expect(reports.attempts).toEqual(['fetch', 'XMLHttpRequest', 'WebSocket', 'Worker', 'SharedWorker', 'RTCPeerConnection', 'EventSource', 'localStorage', 'sessionStorage', 'indexedDB', 'navigator.serviceWorker', 'sendBeacon', 'navigator.mediaDevices', 'cookie', 'non-JSON object URL', 'open']);
+  expect(reports.attempts).toEqual(['fetch', 'XMLHttpRequest', 'WebSocket', 'Unauthorized Worker', 'SharedWorker', 'RTCPeerConnection', 'EventSource', 'localStorage', 'sessionStorage', 'indexedDB', 'navigator.serviceWorker', 'sendBeacon', 'navigator.mediaDevices', 'cookie', 'non-JSON object URL', 'open']);
   expect(requests).toEqual([]);
 });
 

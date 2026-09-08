@@ -7,7 +7,8 @@ import {isTerminalStep, stepReadiness, stepSummary, stepText} from './navigation
 import {ShellLimits, type ShellDocument} from './types';
 
 function append(document: ShellDocument, stepId: string, messageId: string, text: string): void {
-  document.steps[stepId].messageIds.push(messageId);
+  document.steps[stepId].blockIds.push(messageId);
+  document.blocks[messageId] = {id: messageId, type: 'message', messageId};
   document.messages[messageId] = {rows: []};
   document.content.messages[messageId] = text;
 }
@@ -24,22 +25,22 @@ describe('authored message ownership', () => {
   it('has one canonical text location, stable IDs and deterministic export in explicit message order', () => {
     const document = multi();
     const validated = validateDocument(document);
-    expect(validated.schemaVersion).toBe(5);
+    expect(validated.schemaVersion).toBe(6);
     expect(validated.content.steps.start).toEqual({title: 'Знакомство'});
-    expect(validated.steps.start.messageIds).toEqual(['start-message', 'start-second']);
+    expect(validated.steps.start.blockIds).toEqual(['start-message', 'start-second']);
     expect(stepText(validated, 'start')).toBe(document.content.messages['start-message'] + '\n\nЕщё одно приветствие');
     const shuffled = {...document, content: {...document.content, messages: Object.fromEntries(Object.entries(document.content.messages).reverse())}};
     expect(serializeDocument(shuffled)).toBe(serializeDocument(validated));
-    validated.steps.start.messageIds.reverse();
-    expect(document.steps.start.messageIds[0]).toBe('start-message');
+    validated.steps.start.blockIds.reverse();
+    expect(document.steps.start.blockIds[0]).toBe('start-message');
   });
 
   it('rejects shared, missing, orphaned and zero-message screens without partial normalization', () => {
     const cases = [
-      (doc: ShellDocument) => {doc.steps.start.messageIds = [];},
-      (doc: ShellDocument) => {doc.steps.start.messageIds.push('start-message');},
-      (doc: ShellDocument) => {doc.steps.offer.messageIds.push('start-message');},
-      (doc: ShellDocument) => {doc.steps.start.messageIds.push('missing');},
+      (doc: ShellDocument) => {doc.steps.start.blockIds = [];},
+      (doc: ShellDocument) => {doc.steps.start.blockIds.push('start-message');},
+      (doc: ShellDocument) => {doc.steps.offer.blockIds.push('start-message');},
+      (doc: ShellDocument) => {doc.steps.start.blockIds.push('missing');},
       (doc: ShellDocument) => {doc.content.messages.orphan = 'Unowned';},
       (doc: ShellDocument) => {delete doc.content.messages['start-message'];}
     ];
@@ -48,11 +49,11 @@ describe('authored message ownership', () => {
 
   it('accepts exactly ten messages per screen and 500 overall, then rejects the next authored message', () => {
     const document = createFixture();
-    document.folderOrder = ['main']; document.folders = {main: {stepIds: [], fallbackStepId: 's49'}}; document.content.folders = {main: {title: 'Main'}}; document.steps = {}; document.messages = {}; document.buttons = {};
+    document.folderOrder = ['main']; document.folders = {main: {stepIds: [], fallbackStepId: 's49'}}; document.content.folders = {main: {title: 'Main'}}; document.steps = {}; document.messages = {}; document.buttons = {}; document.blocks = {};
     document.content.steps = {}; document.content.messages = {}; document.content.buttons = {};
     for(let step = 0; step < 50; step++) {
       const stepId = `s${step}`;
-      if(step < 49) document.folders.main.stepIds.push(stepId); document.steps[stepId] = {number: step + 1, messageIds: []};
+      if(step < 49) document.folders.main.stepIds.push(stepId); document.steps[stepId] = {number: step + 1, blockIds: []};
       document.content.steps[stepId] = {title: stepId};
       for(let index = 0; index < 10; index++) append(document, stepId, `m${step}-${index}`, `Сообщение ${index}`);
     }
@@ -63,7 +64,7 @@ describe('authored message ownership', () => {
     expect(() => validateDocument(extra)).toThrow();
     const perStep = createFixture();
     for(let index = 1; index <= 9; index++) append(perStep, 'start', `a${index}`, 'Text');
-    expect(validateDocument(perStep).steps.start.messageIds).toHaveLength(10);
+    expect(validateDocument(perStep).steps.start.blockIds).toHaveLength(10);
     append(perStep, 'start', 'a10', 'Text'); expect(() => validateDocument(perStep)).toThrow();
   });
 
@@ -81,20 +82,20 @@ describe('authored message ownership', () => {
   it('adds, edits and deletes by authored identity as independent undoable operations', () => {
     let state = createEditor(createFixture());
     state = command(state, {type: 'add_message', stepId: 'start', messageId: 'extra', afterMessageId: 'start-message', text: ''}, state.revision);
-    expect(state.document.steps.start.messageIds).toEqual(['start-message', 'extra']);
+    expect(state.document.steps.start.blockIds).toEqual(['start-message', 'extra']);
     const before = state.document.content.messages['start-message'];
     state = inputText(beginTextEdit(state, 'start', 'extra'), 'Второе сообщение');
     state = finishTextEdit(state);
     expect(state.document.content.messages['start-message']).toBe(before);
     const edited = state;
     state = command(state, {type: 'delete_message', stepId: 'start', messageId: 'start-message'}, state.revision);
-    expect(state.document.steps.start.messageIds).toEqual(['extra']);
+    expect(state.document.steps.start.blockIds).toEqual(['extra']);
     expect(state.document.content.messages['start-message']).toBeUndefined();
     expect(state.document.buttons['start-offer']).toBeUndefined();
     expect(state.document.buttons['start-menu']).toBeUndefined();
     expect(undo(state).document).toEqual(edited.document);
     const rejected = command(state, {type: 'delete_message', stepId: 'start', messageId: 'extra'}, state.revision);
-    expect(rejected.document).toBe(state.document); expect(rejected.error).toContain('хотя бы одно');
+    expect(rejected.document).toBe(state.document); expect(rejected.error).toContain('хотя бы один блок');
     expect(command(state, {type: 'set_message_text', stepId: 'offer', messageId: 'extra', text: 'Steal'}, state.revision).document).toBe(state.document);
     expect(command(state, {type: 'add_message', stepId: 'start', messageId: 'new', afterMessageId: 'missing', text: 'Bad'}, state.revision).document).toBe(state.document);
   });
@@ -114,7 +115,7 @@ describe('authored message ownership', () => {
     const draft = keyboardDraft(original.document, 'start', 'start-message');
     draft.buttons['start-offer'].color = 'green'; draft.rows[0].buttonIds.reverse();
     const edited = command(original, {type: 'set_keyboard', stepId: 'start', messageId: 'start-message', keyboard: draft}, original.revision);
-    expect(edited.error).toBeNull(); expect(edited.document.buttons['start-offer']).toEqual({targetStepId: 'offer', color: 'green'});
+    expect(edited.error).toBeNull(); expect(edited.document.buttons['start-offer']).toEqual({transition: {type: 'screen', screenId: 'offer'}, color: 'green'});
     expect(JSON.parse(serializeDocument(edited.document)).buttons['start-offer'].color).toBe('green');
     expect(undo(edited).document).toEqual(original.document);
     for(const color of [undefined, 'purple', '#ff0000', {value: 'green'}]) {

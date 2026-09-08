@@ -265,12 +265,12 @@
   width: 100%;
   min-height: 44px;
   margin-top: 6px;
-  border: 1px dashed #ffffff80;
+  border: 0;
   border-radius: 12px;
-  background: var(--service-background);
-  color: var(--service-text);
+  background: transparent;
+  color: color-mix(in srgb, var(--ink) 76%, transparent);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 .shell-typing-label { margin-inline-start: 6px; font-size: 14px; }

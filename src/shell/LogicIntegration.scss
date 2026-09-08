@@ -1,0 +1,29 @@
+.screen-block { position: relative; }
+.screen-block > .logic-insertion { height: 12px; position: relative; z-index: 2; }
+.screen-block:first-of-type > .logic-insertion { height: 0; }
+.logic-insertion .logic-add-element { position: absolute; inset: -15px 0 auto; margin: 0; opacity: 0; pointer-events: none; transition: opacity .12s; }
+.logic-insertion:hover .logic-add-element, .logic-insertion:focus-within .logic-add-element { opacity: 1; pointer-events: auto; }
+.logic-insertion .logic-add-trigger { min-height: 28px; padding: 2px 11px; font-size: 11px; }
+.screen-add-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: center; margin-top: 6px; transform: translateY(16px); }
+.screen-add-actions .logic-add-element { margin: 0; }
+.screen-add-actions .logic-add-trigger { justify-content: center; width: 40px; min-height: 40px; padding: 0; background: transparent; border: 0; box-shadow: none; color: var(--accent); }
+.screen-block-tools { display: flex; gap: 4px; justify-content: flex-end; opacity: 0; height: 0; position: relative; top: -28px; right: 8px; pointer-events: none; }
+.screen-block:focus-within > .screen-block-tools, .screen-block:hover > .screen-block-tools { opacity: 1; pointer-events: auto; }
+.screen-block-tools .logic-card-grip { min-width: 44px; min-height: 44px; border-radius: 8px; }
+.logic-test-tools { flex-shrink: 0; }
+.logic-code-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: #0005; }
+.logic-code-dialog { width: min(100%, 940px); height: min(85dvh, 800px); max-height: 100%; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 20px 80px #0005; overflow: hidden; }
+.logic-code-dialog > header, .logic-code-dialog > footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-shrink: 0; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.logic-code-dialog > header > div { display: grid; gap: 5px; }
+.logic-code-dialog > header span { color: var(--muted); font-size: 12px; }
+.logic-code-dialog > footer { justify-content: flex-end; border-top: 1px solid var(--line); border-bottom: 0; }
+.logic-code-dialog > .code-editor { flex: 1; min-height: 0; overflow: auto; }
+.logic-code-loading { padding: 24px; flex: 1; }
+@media (max-width: 899px) {
+  .logic-code-overlay { padding: 0; }
+  .logic-code-dialog { width: 100%; height: 100%; border-radius: 0; }
+  .logic-code-dialog > header, .logic-code-dialog > footer { padding: 12px; }
+  .screen-block-tools { opacity: 1; pointer-events: auto; position: static; height: auto; margin-top: 6px; }
+}
+
+.screen-connections { display: block; font-size: 10px; line-height: 1.6; color: var(--muted); }

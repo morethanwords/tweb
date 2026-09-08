@@ -1,64 +1,11 @@
 import {ButtonColors, ShellLimits, type ButtonColor} from './types';
 import type {ShellDocument} from './types';
-
-const forbiddenIds = new Set(['__proto__', 'prototype', 'constructor']);
+import {validateLegacyDocument} from './legacy-v5';
+import {VariableCatalog, validateVariable} from './values';
+import {validateBlock, validateTransition} from './blocks';
+import {fail, object, fields, validId, string, array, matchingKeys} from './validation';
+export {validId} from './validation';
 const encoder = new TextEncoder();
-
-function fail(path: string, reason: string): never {
-  throw new Error(`${path}: ${reason}`);
-}
-
-export function validId(value: unknown, path = 'id'): asserts value is string {
-  if(typeof value !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(value) || forbiddenIds.has(value)) {
-    fail(path, 'нужен безопасный идентификатор длиной 1–64 символа');
-  }
-}
-
-function object(value: unknown, path: string): Record<string, unknown> {
-  if(value === null || typeof value !== 'object' || Array.isArray(value)) fail(path, 'ожидается объект');
-  const prototype = Object.getPrototypeOf(value);
-  if(prototype !== Object.prototype && prototype !== null) fail(path, 'ожидается простой объект');
-  for(const key of Reflect.ownKeys(value)) {
-    if(typeof key !== 'string') fail(path, 'символьные поля недопустимы');
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if(!descriptor || !('value' in descriptor) || !descriptor.enumerable) fail(path, 'ожидаются обычные поля данных');
-  }
-  return value as Record<string, unknown>;
-}
-
-function fields(value: unknown, expected: string[], path: string): Record<string, unknown> {
-  const result = object(value, path);
-  const actual = Object.keys(result);
-  if(actual.length !== expected.length || actual.some((key) => !expected.includes(key))) {
-    fail(path, `допустимы только поля: ${expected.join(', ')}`);
-  }
-  return result;
-}
-
-function string(value: unknown, path: string): string {
-  if(typeof value !== 'string') fail(path, 'ожидается текст');
-  if(value.length > ShellLimits.documentBytes) fail(path, 'текст превышает предел размера документа');
-  return value;
-}
-
-function array(value: unknown, path: string, maximum: number): unknown[] {
-  if(!Array.isArray(value) || value.length > maximum) fail(path, `ожидается массив, максимум ${maximum}`);
-  // Sparse arrays and extra own properties must not disappear during JSON serialization.
-  if(Object.keys(value).length !== value.length || Object.keys(value).some((key, index) => key !== String(index))) {
-    fail(path, 'ожидается плотный массив без дополнительных полей');
-  }
-  if(Reflect.ownKeys(value).length !== value.length + 1) fail(path, 'дополнительные поля массива недопустимы');
-  for(let index = 0; index < value.length; index++) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-    if(!descriptor || !('value' in descriptor)) fail(path, 'ожидаются обычные элементы данных');
-  }
-  return value;
-}
-
-function matchingKeys(map: Record<string, unknown>, ids: string[], path: string): void {
-  const keys = Object.keys(map);
-  if(keys.length !== ids.length || keys.some((key) => !ids.includes(key))) fail(path, 'идентификаторы должны точно соответствовать структуре');
-}
 
 /** Strict data boundary. Returns detached canonical data, never the input reference. */
 export function validateDocument(value: unknown): ShellDocument {
@@ -69,9 +16,16 @@ export function validateDocument(value: unknown): ShellDocument {
     if(textBytes > ShellLimits.documentBytes) fail('document', 'размер документа превышает 1 MiB');
     return result;
   }
-  const raw = object(value, 'document');
-  if(raw.schemaVersion !== 5) fail('document.schemaVersion', 'поддерживается только версия 5');
-  const source = fields(raw, ['schemaVersion', 'id', 'bot', 'entryStepId', 'nextStepNumber', 'folderOrder', 'folders', 'steps', 'buttons', 'content', 'messages'], 'document');
+  let raw = object(value, 'document');
+  if(raw.schemaVersion === 5) {
+    const old = validateLegacyDocument(value);
+    raw = {...old, schemaVersion: 6, variables: structuredClone(VariableCatalog),
+      steps: Object.fromEntries(Object.entries(old.steps).map(([id, step]) => [id, {number: step.number, blockIds: [...step.messageIds]}])),
+      blocks: Object.fromEntries(Object.values(old.steps).flatMap(step => step.messageIds.map(id => [id, {id, type: 'message', messageId: id}]))),
+      buttons: Object.fromEntries(Object.entries(old.buttons).map(([id, button]) => [id, {color: button.color, transition: button.targetStepId === null ? null : {type: 'screen', screenId: button.targetStepId}}]))};
+  }
+  if(raw.schemaVersion !== 6) fail('document.schemaVersion', 'поддерживаются версии 5 и 6');
+  const source = fields(raw, ['schemaVersion', 'id', 'bot', 'entryStepId', 'nextStepNumber', 'folderOrder', 'folders', 'steps', 'buttons', 'content', 'messages', 'blocks', 'variables'], 'document');
   validId(source.id, 'document.id');
   validId(source.entryStepId, 'document.entryStepId');
   const bot = fields(source.bot, ['username', 'title', 'status'], 'document.bot');
@@ -127,11 +81,18 @@ export function validateDocument(value: unknown): ShellDocument {
   if(!Number.isSafeInteger(nextStepNumber) || (nextStepNumber as number) < 1 || (nextStepNumber as number) > ShellLimits.stepNumber + 1) {
     fail('document.nextStepNumber', `ожидается целое число от 1 до ${ShellLimits.stepNumber + 1}`);
   }
+  const rawVariables = object(source.variables, 'document.variables');
+  if(Object.keys(rawVariables).length > 100) fail('document.variables', 'максимум 100 переменных');
+  const variables = Object.fromEntries(Object.keys(rawVariables).sort().map(id => [id, validateVariable(rawVariables[id], id)]));
+  const rawBlocks = object(source.blocks, 'document.blocks');
+  const blockIds = Object.keys(rawBlocks);
+  if(blockIds.length > ShellLimits.blocks) fail('document.blocks', `максимум ${ShellLimits.blocks} блоков`);
+  blockIds.forEach(id => validId(id, 'blockId'));
   const result: ShellDocument = {
-    schemaVersion: 5, id: source.id,
+    schemaVersion: 6, id: source.id,
     bot: {username, title: readText(bot.title, 'document.bot.title'), status: 'bot'},
     entryStepId: source.entryStepId, nextStepNumber: nextStepNumber as number,
-    folderOrder, folders: validatedFolders, steps: {}, messages: {}, buttons: {},
+    folderOrder, folders: validatedFolders, steps: {}, blocks: {}, variables, messages: {}, buttons: {},
     content: {folders: validatedFolderContent, steps: {}, messages: {}, buttons: {}}
   };
   const usedMessages = new Set<string>();
@@ -150,14 +111,10 @@ export function validateDocument(value: unknown): ShellDocument {
         if(!Object.hasOwn(buttons, id)) fail(rowPath, `кнопка ${id} отсутствует`);
         if(usedButtons.has(id)) fail(rowPath, `кнопка ${id} используется больше одного раза`);
         usedButtons.add(id);
-        const button = fields(buttons[id], ['targetStepId', 'color'], `document.buttons.${id}`);
-        if(button.targetStepId !== null) {
-          validId(button.targetStepId, `document.buttons.${id}.targetStepId`);
-          if(!stepOrder.includes(button.targetStepId)) fail(`document.buttons.${id}.targetStepId`, 'целевой шаг отсутствует');
-        }
+        const button = fields(buttons[id], ['transition', 'color'], `document.buttons.${id}`);
         const color = button.color;
         if(typeof color !== 'string' || !ButtonColors.includes(color as ButtonColor)) fail(`document.buttons.${id}.color`, 'нужен допустимый цвет кнопки');
-        result.buttons[id] = {targetStepId: button.targetStepId, color: color as ButtonColor};
+        result.buttons[id] = {transition: validateTransition(button.transition, result, true), color: color as ButtonColor};
         result.content.buttons[id] = readText(labels[id], `document.content.buttons.${id}`);
         return id;
       });
@@ -165,30 +122,40 @@ export function validateDocument(value: unknown): ShellDocument {
       return {id: row.id, buttonIds: rowButtons};
     });
   }
+  const usedBlocks = new Set<string>();
   for(const stepId of stepOrder) {
-    const step = fields(steps[stepId], ['number', 'messageIds'], `document.steps.${stepId}`);
+    const step = fields(steps[stepId], ['number', 'blockIds'], `document.steps.${stepId}`);
     const stepNumber = step.number;
     if(!Number.isSafeInteger(stepNumber) || (stepNumber as number) < 1 || (stepNumber as number) > ShellLimits.stepNumber) fail(`document.steps.${stepId}.number`, `ожидается целое число от 1 до ${ShellLimits.stepNumber}`);
     if(usedStepNumbers.has(stepNumber as number)) fail(`document.steps.${stepId}.number`, 'номер экрана уже используется');
     usedStepNumbers.add(stepNumber as number);
-    const ids = array(step.messageIds, `document.steps.${stepId}.messageIds`, ShellLimits.messagesPerStep).map(id => {
-      validId(id, `document.steps.${stepId}.messageIds`);
-      if(!Object.hasOwn(messages, id)) fail(`document.steps.${stepId}.messageIds`, `сообщение ${id} отсутствует`);
-      return id;
+    const ids = array(step.blockIds, `document.steps.${stepId}.blockIds`, ShellLimits.blocksPerStep).map(id => {
+      validId(id, 'blockId');
+      if(!Object.hasOwn(rawBlocks, id)) fail('blockId', 'блок отсутствует');
+      if(usedBlocks.has(id)) fail('blockId', 'блок используется больше одного раза');
+      usedBlocks.add(id); return id;
     });
-    if(!ids.length) fail(`document.steps.${stepId}.messageIds`, 'нужно хотя бы одно сообщение');
-    for(const id of ids) {
-      if(usedMessages.has(id)) fail(`document.steps.${stepId}.messageIds`, `сообщение ${id} используется больше одного раза`);
-      usedMessages.add(id);
-      result.content.messages[id] = readText(messages[id], `document.content.messages.${id}`);
-      const structure = fields(messageStructures[id], ['rows'], `document.messages.${id}`);
-      const rows = structure.rows;
-      result.messages[id] = {rows: readRows(rows, `document.messages.${id}.rows`)};
-    }
-    result.steps[stepId] = {number: stepNumber as number, messageIds: ids};
+    if(!ids.length) fail(`document.steps.${stepId}.blockIds`, 'нужен хотя бы один блок');
+    result.steps[stepId] = {number: stepNumber as number, blockIds: ids};
     const text = fields(stepContent[stepId], ['title'], `document.content.steps.${stepId}`);
     result.content.steps[stepId] = {title: readText(text.title, `document.content.steps.${stepId}.title`)};
   }
+  for(const stepId of stepOrder) {
+    let textCount = 0;
+    for(const blockId of result.steps[stepId].blockIds) {
+      const block = validateBlock(rawBlocks[blockId], blockId, {...result, messages: messageStructures as ShellDocument['messages']});
+      result.blocks[blockId] = block;
+      if(block.type !== 'message' && block.type !== 'ask') continue;
+      if(++textCount > ShellLimits.messagesPerStep) fail(`steps.${stepId}`, `максимум ${ShellLimits.messagesPerStep} сообщений`);
+      const id = block.messageId;
+      if(usedMessages.has(id)) fail(`blocks.${blockId}.messageId`, 'сообщение используется больше одного раза');
+      usedMessages.add(id);
+      result.content.messages[id] = readText(messages[id], `document.content.messages.${id}`);
+      const structure = fields(messageStructures[id], ['rows'], `document.messages.${id}`);
+      result.messages[id] = {rows: readRows(structure.rows, `document.messages.${id}.rows`)};
+    }
+  }
+  if(usedBlocks.size !== blockIds.length) fail('document.blocks', 'каждый блок должен принадлежать одному экрану');
   if(result.nextStepNumber <= Math.max(...usedStepNumbers)) fail('document.nextStepNumber', 'должен быть больше всех выданных номеров экранов');
   if(usedMessages.size !== messageIds.length) fail('document.content.messages', 'каждое сообщение должно принадлежать одному экрану');
   if(usedButtons.size !== buttonIds.length) fail('document.buttons', 'каждая кнопка должна принадлежать одному ряду');

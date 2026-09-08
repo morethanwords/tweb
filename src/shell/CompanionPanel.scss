@@ -1,0 +1,8 @@
+.companion-panel { box-sizing: border-box; flex: 0 1 auto; min-height: 0; max-height: 42dvh; overflow-y: auto; overscroll-behavior: contain; }
+.companion-report { overflow-wrap: anywhere; }
+.companion-failure { margin: 10px 0; color: var(--ink); }
+.companion-failure strong { font-weight: 500; }
+.companion-failure dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; margin: 6px 0; }
+.companion-failure dt { color: var(--muted); }
+.companion-failure dd { margin: 0; white-space: pre-wrap; }
+.companion-report-data pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px; background: var(--surface-soft); border-radius: 8px; font-size: 11px; }

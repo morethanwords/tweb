@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {request as httpRequest} from 'node:http';
 import {spawnSync} from 'node:child_process';
 import {artifactServer, requestPath, CSP} from './serve-artifact.mjs';
-import {allowedModule, validateAssetReferences} from './check-artifact.mjs';
+import {allowedModule, validateAssetReferences, validateJavaScript} from './check-artifact.mjs';
 
 test('paths reject traversal, encoded separators and absolute URLs without fallback', () => {
   for (const path of ['/../secret', '/%2e%2e/secret', '/a/./b', '/%2fsecret', '/%5csecret', '/a\\b', '/%00', '/%', '//evil/x', 'https://evil/x']) assert.equal(requestPath(path), null, path);
@@ -62,4 +62,17 @@ test('unused external CSS and unlisted HTML references fail static verification'
   for (const css of ['.unused{background:url(https://example.invalid/a.svg)}', '@import "https://example.invalid/a.css";', '.unused{src:url(data:abc)}', '.unused{src:url(./missing.woff2)}']) assert.throws(() => validateAssetReferences('/assets/main.css', css, paths), /asset/);
   assert.throws(() => validateAssetReferences('/index.html', '<script src="/not-built.js"></script>', paths), /asset/);
   assert.throws(() => validateAssetReferences('/index.html', '<script>sideEffect()</script>', paths), /Inline/);
+});
+
+test('executable imports and worker URLs stay within exact artifact even in lazy code', () => {
+  const paths = new Set(['/assets/app.js', '/assets/lazy.js', '/assets/worker.js']);
+  validateJavaScript('/assets/app.js', 'import("./lazy.js"); const documentation="import(dynamicExpression)";', paths, [], false);
+  validateJavaScript('/assets/lazy.js', 'new Worker(new URL("/assets/worker.js",import.meta.url),{type:"module"})', paths, ['/assets/worker.js'], true);
+  for(const source of ['import(variable)', 'import("https://external.invalid/a.js")', 'import("/missing.js")', 'new Worker(new URL("./app.js",import.meta.url))']) {
+    assert.throws(() => validateJavaScript('/assets/lazy.js', source, paths, ['/assets/worker.js'], true), /module source|Unlisted|Unauthorized/);
+  }
+  assert.throws(() => validateJavaScript('/assets/app.js', 'new Worker(new URL("./worker.js",import.meta.url))', paths, ['/assets/worker.js'], false), /Unauthorized/);
+  for(const source of ['import {value} from "./worker.js"', 'import("./worker.js")', 'export {value} from "./worker.js"']) {
+    assert.throws(() => validateJavaScript('/assets/lazy.js', source, paths, ['/assets/worker.js'], false), /Worker entry imported/);
+  }
 });

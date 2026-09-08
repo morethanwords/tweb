@@ -1,0 +1,117 @@
+.logic-themed {
+  --surface: #fff; --surface-soft: #f4f5f6; --ink: #202124; --muted: #707579; --line: #e8eaec; --accent: #3390ec;
+  color: var(--ink); color-scheme: light;
+  &.night { --surface: #212121; --surface-soft: #2c2c2c; --ink: #f5f5f5; --muted: #a2acb4; --line: #373737; --accent: #8774e1; color-scheme: dark; }
+}
+.logic-add-element { margin: 10px 0; }
+.logic-add-trigger { display: flex; align-items: center; gap: 7px; min-height: 42px; margin: auto; padding: 7px 14px; border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); border-radius: 22px; color: var(--accent); background: var(--surface); font: inherit; font-size: 13px; box-shadow: 0 1px 2px #10232f14; }
+.logic-add-trigger:disabled { opacity: .45; }
+.logic-add-trigger > span { font-size: 21px; line-height: 1; }
+.logic-element-menu { position: fixed; z-index: 25; box-sizing: border-box; padding: 7px; border-radius: 15px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 9px 35px #0003; overflow: auto; overscroll-behavior: contain; visibility: hidden; }
+.logic-element-menu.is-positioned { visibility: visible; }
+.logic-element-menu button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 57px; border: 0; border-radius: 9px; padding: 8px 10px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
+.logic-element-menu button:hover, .logic-element-menu button:focus-visible { background: var(--surface-soft); }
+.logic-element-menu strong { display: block; font-size: 14px; font-weight: 550; }
+.logic-element-menu small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.logic-element-symbol { color: var(--accent); width: 26px; display: grid; place-items: center; }
+.logic-card { box-sizing: border-box; width: 100%; max-width: 480px; margin: 10px 0; color: var(--ink); }
+.logic-card-header { display: flex; min-height: 44px; gap: 2px; align-items: center; }
+.logic-card-trigger { min-width: 0; min-height: 36px; max-width: 100%; display: flex; align-items: center; gap: 7px; padding: 6px 10px; color: var(--service-text); background: var(--service-background); border: 0; border-radius: 18px; text-align: left; font: inherit; cursor: pointer; }
+.logic-card-trigger:focus-visible, .logic-routes:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.logic-card-trigger:disabled { cursor: default; opacity: .55; }
+@media (hover: hover) { .logic-card-trigger:not(:disabled):hover { background: color-mix(in srgb, var(--service-background) 90%, var(--service-text)); } }
+.logic-card-symbol { display: grid; place-items: center; width: 18px; flex: 0 0 auto; }
+.logic-card-caption { min-width: 0; }
+.logic-card-caption strong { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.logic-draft-dot { width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: currentColor; }
+.logic-card-grip { width: 30px; min-height: 44px; display: grid; place-items: center; background: none; border: 0; color: var(--muted); cursor: grab; touch-action: none; }
+.logic-card-grip:active { cursor: grabbing; }
+.logic-card-grip:disabled { opacity: .35; cursor: default; }
+[data-block-id][data-logic-drop='before'] { box-shadow: 0 -3px 0 var(--accent); }
+[data-block-id][data-logic-drop='after'] { box-shadow: 0 3px 0 var(--accent); }
+.logic-drag-ghost { position: fixed; z-index: 40; pointer-events: none; padding: 10px 15px; border-radius: 12px; color: white; background: #3390ec; box-shadow: 0 5px 18px #0003; font: 13px system-ui; }
+.logic-card-chevron { flex: 0 0 16px; width: 16px; height: 16px; opacity: .8; transition: transform 140ms ease; }
+.logic-card-trigger[aria-expanded='true'] .logic-card-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .logic-card-chevron { transition: none; } }
+.logic-routes { display: flex; flex-wrap: wrap; gap: 5px; max-width: 100%; padding: 0 0 3px 32px; border: 0; border-radius: 8px; background: transparent; color: var(--service-text); text-align: left; font: inherit; font-size: 11px; line-height: 1.5; cursor: pointer; }
+.logic-route, .logic-route-more { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 2px 5px; padding: 4px 9px; background: var(--service-background); border-radius: 12px; overflow-wrap: anywhere; }
+.logic-card-body { padding: 3px 14px 12px; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 2px #10232f12; }
+.logic-card.is-question > .bubble { margin-bottom: 0; }
+.logic-card.is-question .logic-card-header { min-height: 40px; }
+.logic-card.is-question .logic-card-body { padding: 0; background: none; box-shadow: none; }
+.logic-ask-fields { padding-top: 0; }
+.logic-ask-fields > .bubble { width: 100%; margin: 0; }
+.logic-ask-fields > .logic-field { display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; }
+.logic-ask-fields > .logic-field > span { white-space: nowrap; color: var(--service-text); }
+.logic-ask-fields > .logic-field > select { width: auto; }
+.logic-ask-fields > .logic-section { padding: 0; }
+.logic-card.is-question .logic-ask-fields > details:not([open]) > summary { color: var(--service-text); background: var(--service-background); border-radius: 16px; padding: 7px 10px; }
+.logic-ask-fields > details[open] { padding: 10px 12px; background: var(--surface); border-radius: 12px; color: var(--ink); }
+.logic-card.is-question .logic-card-footer { padding-bottom: 6px; }
+.logic-fields { display: grid; gap: 13px; padding-top: 13px; min-width: 0; }
+.logic-field { display: grid; gap: 6px; min-width: 0; margin: 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.logic-field > span { font-weight: 500; }
+.logic-field input, .logic-field select, .logic-field textarea { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; border: 0; border-radius: 7px; padding: 9px 10px; background: var(--surface-soft); color: var(--ink); font: inherit; font-size: 14px; line-height: 1.45; }
+.logic-field input:focus, .logic-field select:focus, .logic-field textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 1px; }
+.logic-field textarea { min-height: 78px; resize: vertical; }
+.logic-field textarea.logic-json { min-height: 95px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.logic-field input[aria-invalid='true'], .logic-field textarea[aria-invalid='true'] { outline: 1px solid #d84b4b; }
+.logic-inline-fields { display: flex; gap: 9px; align-items: flex-start; }
+.logic-inline-fields > * { flex: 1; min-width: 0; }
+.logic-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-height: 35px; }
+.logic-toggle input { accent-color: var(--accent); }
+.logic-section { padding: 0; display: grid; gap: 10px; }
+.logic-card-body details { display: block; font-size: 12px; color: var(--muted); }
+.logic-card-body summary { cursor: pointer; width: fit-content; min-height: 32px; box-sizing: border-box; padding: 7px 0; }
+.logic-card-body details[open] > summary { margin-bottom: 6px; }
+.logic-card-body details > .logic-fields { padding-top: 0; }
+.logic-condition { display: grid; grid-template-columns: minmax(0, 2fr) minmax(88px, 1fr); gap: 8px; align-items: start; }
+.logic-condition > .logic-field:first-child { grid-column: 1 / -1; }
+.logic-condition > .logic-field > span, .logic-condition .logic-value-source > .logic-field > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.logic-branch-settings { margin-top: -4px; }
+.logic-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; }
+.logic-section-heading button, .logic-link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: 12px; padding: 6px 0; min-height: 32px; text-align: left; }
+.logic-section-heading button { color: var(--muted); padding: 3px 5px; }
+.logic-link:disabled { color: var(--muted); opacity: .55; }
+.logic-note { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.logic-error { margin: 0; padding: 9px 10px; border-radius: 8px; background: #dc464610; color: #c33c3c; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.logic-card-footer { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.logic-card-footer button { min-height: 40px; padding: 8px 11px; border: 0; border-radius: 8px; font: inherit; font-size: 12px; background: transparent; color: var(--muted); }
+.logic-card-footer .logic-apply { background: var(--accent); color: #fff; }
+.logic-card-footer .logic-delete { color: #c33c3c; background: transparent; margin-right: auto; }
+.logic-value-source { display: grid; gap: 3px; min-width: 0; }
+.logic-value-source > .logic-link { width: fit-content; min-height: 28px; padding: 4px 0; color: var(--muted); font-size: 11px; }
+.logic-value-options { margin-top: 3px; }
+.logic-key-value { display: grid; gap: 8px; }
+.logic-key-value-row { display: flex; align-items: start; gap: 7px; }
+.logic-key-value-row > .logic-field:first-child { flex: .75; }
+.logic-key-value-row > .logic-value-source { flex: 1.25; min-width: 0; }
+.logic-key-value-row > button { margin-top: 22px; border: 0; background: transparent; color: var(--muted); min-width: 28px; min-height: 34px; }
+.logic-code-open { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px; min-height: 48px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--accent); font: inherit; font-size: 13px; }
+.logic-test-tools { border-top: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.logic-test-tools > details > summary { cursor: pointer; padding: 10px 14px; font-size: 12px; color: var(--muted); }
+.logic-test-status { padding: 8px 14px; }
+.logic-test-status > span { flex: 1; }
+.logic-test-body summary { font-size: 12px; color: var(--muted); cursor: pointer; padding: 5px 0; }
+.logic-test-clock { float: right; font-variant-numeric: tabular-nums; }
+.logic-current-values { display: grid; gap: 6px; margin: 8px 0; font-size: 11px; }
+.logic-current-values > div { display: flex; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.logic-current-values dt { flex: 1; font-family: ui-monospace, monospace; color: var(--muted); }
+.logic-current-values dd { flex: 1; margin: 0; overflow-wrap: anywhere; }
+.logic-test-body { max-height: 280px; overflow: auto; padding: 0 14px 12px; display: grid; gap: 12px; }
+.logic-test-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 12px; }
+.logic-test-toolbar button { border: 1px solid var(--line); border-radius: 8px; min-height: 36px; padding: 6px 9px; background: var(--surface-soft); color: var(--ink); font: inherit; }
+.logic-trace { list-style: none; display: grid; gap: 3px; padding: 0; margin: 0; }
+.logic-trace button { width: 100%; display: flex; align-items: baseline; gap: 9px; border: 0; padding: 7px; border-radius: 7px; text-align: left; background: var(--surface-soft); color: var(--ink); font: inherit; font-size: 11px; }
+.logic-trace-time { flex-shrink: 0; font-variant-numeric: tabular-nums; color: var(--muted); }
+.logic-trace-label { overflow-wrap: anywhere; }
+@media(max-width: 599px) {
+  .logic-card { max-width: 100%; }
+  .logic-card-body { padding-right: 11px; padding-left: 11px; }
+  .logic-field input, .logic-field select, .logic-field textarea { font-size: 16px; }
+  .logic-inline-fields { flex-wrap: wrap; }
+  .logic-inline-fields > * { flex-basis: 130px; }
+  .logic-key-value-row { flex-wrap: wrap; }
+  .logic-key-value-row > .logic-field:first-child { flex-basis: 100%; }
+  .logic-key-value-row > button { margin-top: 23px; }
+}

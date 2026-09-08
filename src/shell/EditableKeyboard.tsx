@@ -18,6 +18,7 @@ export interface EditableKeyboardProps {
   onExternalDrop?: (buttonId: string, x: number, y: number, baseRevision: number) => 'changed' | 'noop' | false;
   onExternalCancel?: () => void;
   linkTargetButtonId?: string | null;
+  linkTargetAdd?: boolean;
   newRowId: () => string;
   onInteractionStart: () => boolean | void;
 }
@@ -232,7 +233,8 @@ export function EditableKeyboard(props: EditableKeyboardProps): JSX.Element {
     event.preventDefault(); event.stopPropagation();
     clearGesture(false);
     if(props.onInteractionStart() === false) return;
-    const targetStepId = props.document.buttons[buttonId]?.targetStepId;
+    const transition = props.document.buttons[buttonId]?.transition;
+    const targetStepId = transition?.type === 'screen' ? transition.screenId : null;
     if(targetStepId && props.document.steps[targetStepId]) props.onNavigate(targetStepId);
     else props.onInspect(buttonId, element);
   }
@@ -291,7 +293,7 @@ export function EditableKeyboard(props: EditableKeyboardProps): JSX.Element {
       // loss belongs to the button, not to our active capture.
       if(event.target === host && gesture?.active && gesture.pointerId === event.pointerId && !host.hasPointerCapture(event.pointerId)) clearGesture(false);
     }}>
-    <Keyboard rows={visualRows()} add={props.onAdd}
+    <Keyboard rows={visualRows()} add={props.onAdd} addLinkTarget={props.linkTargetAdd}
       onButton={(id, element) => { if(!suppressClick) props.onInspect(id, element); }}
       editing={{onPointerDown: begin, onKeyDown: keyMove, onContextMenu: openTarget, draggingId: dragging, linkTargetId: () => props.linkTargetButtonId ?? null}} />
     <Show when={dragging()}><div class="keyboard-drop-overlay" aria-hidden="true">
