@@ -1,0 +1,51 @@
+.editable-keyboard {
+  position: relative;
+  .reply-markup-button { cursor: grab; -webkit-touch-callout: none; }
+  .reply-markup-button[data-dragging='true'] { opacity: .35; }
+  .reply-markup-button.is-link-target { z-index: 2; box-shadow: inset 0 0 0 3px var(--primary-color), 0 0 0 3px color-mix(in srgb, var(--primary-color) 22%, transparent); }
+  &.is-dragging, &.is-dragging * { cursor: grabbing; user-select: none; }
+}
+.keyboard-drop-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 8; }
+.keyboard-row-gap {
+  position: absolute;
+  inset-inline: 0;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  &::after {
+    content: '';
+    width: 100%;
+    border-top: 2px dashed var(--primary-color);
+    opacity: .45;
+  }
+  &.is-target::after {
+    border-top: 3px solid var(--primary-color);
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--surface-color);
+  }
+}
+.keyboard-insertion {
+  position: absolute;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 3px;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--surface-color);
+}
+.keyboard-drag-ghost {
+  position: fixed !important;
+  z-index: 10000 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  opacity: .92;
+  box-shadow: 0 5px 18px #0005;
+  contain: layout style;
+}
+.keyboard-drag-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

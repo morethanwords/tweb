@@ -1,0 +1,136 @@
+{
+  "inspection": "FreeType FT_Get_Sfnt_Name on each retained WOFF2 binary; name IDs 0, 1, 2, 5, 7, 8, 9, 11, 13 and 14 inspected; absent IDs omitted.",
+  "licenseText": {
+    "path": "notices/LICENSE-Roboto-Apache-2.0.txt",
+    "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "fonts": [
+    {
+      "path": "src/shell/assets/fonts/KFOlCnqEu92Fr1MmEU9fABc4AMP6lbBP.woff2",
+      "sha256": "af2fdef955568dc79de38bfb097d53586855945811b638d6c41513bd62e25cc4",
+      "nameTable": {
+        "0": [
+          "Copyright 2011 Google Inc. All Rights Reserved."
+        ],
+        "1": [
+          "Roboto Medium"
+        ],
+        "2": [
+          "Regular"
+        ],
+        "5": [
+          "Version 2.137; 2017"
+        ],
+        "14": [
+          "http://www.apache.org/licenses/LICENSE-2.0"
+        ]
+      }
+    },
+    {
+      "path": "src/shell/assets/fonts/KFOlCnqEu92Fr1MmEU9fBBc4AMP6lQ.woff2",
+      "sha256": "ce897833ac6e362df7c91ac8223fe511c6defcf33964928a81004600a2dd4c2e",
+      "nameTable": {
+        "0": [
+          "Copyright 2011 Google Inc. All Rights Reserved."
+        ],
+        "1": [
+          "Roboto Medium"
+        ],
+        "2": [
+          "Regular"
+        ],
+        "5": [
+          "Version 2.137; 2017"
+        ],
+        "14": [
+          "http://www.apache.org/licenses/LICENSE-2.0"
+        ]
+      }
+    },
+    {
+      "path": "src/shell/assets/fonts/KFOlCnqEu92Fr1MmEU9fChc4AMP6lbBP.woff2",
+      "sha256": "ac4f45c63e7192b1c9fb64be19be7a03084e16dc33b4dcfedabb44cb390c25a2",
+      "nameTable": {
+        "0": [
+          "Copyright 2011 Google Inc. All Rights Reserved."
+        ],
+        "1": [
+          "Roboto Medium"
+        ],
+        "2": [
+          "Regular"
+        ],
+        "5": [
+          "Version 2.137; 2017"
+        ],
+        "14": [
+          "http://www.apache.org/licenses/LICENSE-2.0"
+        ]
+      }
+    },
+    {
+      "path": "src/shell/assets/fonts/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2",
+      "sha256": "5d1bc9b443f3f81fa4b4ad4634c1bb9702194c1898e3a9de0ab5e2cdc0e9f479",
+      "nameTable": {
+        "0": [
+          "Copyright 2011 Google Inc. All Rights Reserved."
+        ],
+        "1": [
+          "Roboto"
+        ],
+        "2": [
+          "Regular"
+        ],
+        "5": [
+          "Version 2.137; 2017"
+        ],
+        "14": [
+          "http://www.apache.org/licenses/LICENSE-2.0"
+        ]
+      }
+    },
+    {
+      "path": "src/shell/assets/fonts/KFOmCnqEu92Fr1Mu5mxKKTU1Kvnz.woff2",
+      "sha256": "daf6c28c5a080458eba26ba64a95b1fcff823944d429ccb84e8a4f3a0baf05ca",
+      "nameTable": {
+        "0": [
+          "Copyright 2011 Google Inc. All Rights Reserved."
+        ],
+        "1": [
+          "Roboto"
+        ],
+        "2": [
+          "Regular"
+        ],
+        "5": [
+          "Version 2.137; 2017"
+        ],
+        "14": [
+          "http://www.apache.org/licenses/LICENSE-2.0"
+        ]
+      }
+    },
+    {
+      "path": "src/shell/assets/fonts/KFOmCnqEu92Fr1Mu7GxKKTU1Kvnz.woff2",
+      "sha256": "f36d71c69bcec4ce625d2923d36a4b1f64bbc2e5691c99cf8a4f3b0f79d1edb4",
+      "nameTable": {
+        "0": [
+          "Copyright 2011 Google Inc. All Rights Reserved."
+        ],
+        "1": [
+          "Roboto"
+        ],
+        "2": [
+          "Regular"
+        ],
+        "5": [
+          "Version 2.137; 2017"
+        ],
+        "14": [
+          "http://www.apache.org/licenses/LICENSE-2.0"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+// Compile frozen, ORIGINAL upstream style rules, independently of native/native.scss.
+@use './upstream/src/scss/variables' with ($fonts-path: './upstream/public/assets/fonts');
+@use './upstream/src/scss/base';
+@use './upstream/src/scss/fonts/roboto';
+@use './upstream/src/scss/partials/chatBubble';
+@use './upstream/src/scss/partials/avatar';
+@use './upstream/src/scss/partials/peerTyping';
+@use './upstream/src/scss/partials/ripple';
+@use './theme';

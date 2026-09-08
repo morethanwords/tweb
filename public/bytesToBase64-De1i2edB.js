@@ -1,2 +1,0 @@
-import{p as e}from"./userAgent-CAySW5Wl.js";function t(e,t){let n=e.length;if(n!==t.length)return!1;for(let r=0;r<n;++r)if(e[r]!==t[r])return!1;return!0}function n(e){let t,n=``;for(let i=e.length,a=0,o=0;o<i;++o)t=o%3,a|=e[o]<<(16>>>t&24),(t===2||i-o===1)&&(n+=String.fromCharCode(r(a>>>18&63),r(a>>>12&63),r(a>>>6&63),r(a&63)),a=0);return n.replace(/A(?=A$|$)/g,`=`)}function r(e){return e<26?e+65:e<52?e+71:e<62?e-4:e===62?43:e===63?47:65}e.bytesToBase64=n;export{t as n,n as t};
-//# sourceMappingURL=bytesToBase64-De1i2edB.js.map

@@ -1,119 +1,59 @@
 {
   "compilerOptions": {
-    /* Basic Options */
-    // "incremental": true,                   /* Enable incremental compilation */
-    // "target": "es5",                       /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
-    "target": "es2015",                       /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
-    "module": "es2020",                       /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'. */
-    "lib": ["es2015", "dom", "webworker", "ES2021.WeakRef", "DOM.Iterable", "ES2022.Intl"],    /* Specify library files to be included in the compilation. */
-    "allowJs": true,                          /* Allow javascript files to be compiled. */
-    // "checkJs": true,                       /* Report errors in .js files. */
-    "jsx": "preserve",                        /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
-    "jsxImportSource": "solid-js",
-    // "allowImportingTsExtensions": false,
-    // "declaration": true,                   /* Generates corresponding '.d.ts' file. */
-    // "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
-    "sourceMap": true,                        /* Generates corresponding '.map' file. */
-    // "outFile": "./",                       /* Concatenate and emit output to single file. */
-    // "outDir": "./dist/",                   /* Redirect output structure to the directory. */
-    // "rootDir": "./src/",                   /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
-    // "composite": true,                     /* Enable project compilation */
-    // "tsBuildInfoFile": "./",               /* Specify file to store incremental compilation information */
-    "removeComments": false,                  /* Do not emit comments to output. */
-    "noEmit": true,                           /* Do not emit outputs. */
-    // "importHelpers": true,                 /* Import emit helpers from 'tslib'. */
-    "isolatedModules": true,                  /* Transpile each file as a separate module (similar to 'ts.transpileModule'). */
-
-    /* Strict Type-Checking Options */
-    "strict": true,                           /* Enable all strict type-checking options. */
-    "noImplicitAny": true,                    /* Raise error on expressions and declarations with an implied 'any' type. */
-    "strictNullChecks": false,                /* Enable strict null checks. */
-    // "strictFunctionTypes": true,           /* Enable strict checking of function types. */
-    // "strictBindCallApply": true,           /* Enable strict 'bind', 'call', and 'apply' methods on functions. */
-    "strictPropertyInitialization": false,    /* Enable strict checking of property initialization in classes. */
-    "skipLibCheck": true,
-    "useDefineForClassFields": false,         // ! important, https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#the-usedefineforclassfields-flag-and-the-declare-property-modifier
-    // "noImplicitThis": true,                /* Raise error on 'this' expressions with an implied 'any' type. */
-    // "alwaysStrict": true,                  /* Parse in strict mode and emit "use strict" for each source file. */
-
-    /* Additional Checks */
-    // "noUnusedLocals": true,                /* Report errors on unused locals. */
-    // "noUnusedParameters": true,            /* Report errors on unused parameters. */
-    // "noImplicitReturns": true,             /* Report error when not all code paths in function return a value. */
-    // "noFallthroughCasesInSwitch": true,    /* Report errors for fallthrough cases in switch statement. */
-
-    /* Module Resolution Options */
-    "moduleResolution": "bundler",             /* Specify module resolution strategy: 'bundler' for Vite projects. */
-    // "baseUrl": "./src",                       /* Base directory to resolve non-absolute module names. */
-    "paths": {                                /* A series of entries which re-map imports to lookup locations relative to the 'baseUrl'. */
-      "solid-js": ["./src/vendor/solid"],
-      "solid-js/web": ["./src/vendor/solid/web"],
-      "solid-js/store": ["./src/vendor/solid/store"],
-      "solid-js/jsx-runtime": ["./src/vendor/solid"],
-      "solid-js/jsx-dev-runtime": ["./src/vendor/solid"],
-      "solid-transition-group": ["./src/vendor/solid-transition-group"],
-      "@components/*": ["./src/components/*"],
-      "@helpers/*": ["./src/helpers/*"],
-      "@hooks/*": ["./src/hooks/*"],
-      "@stores/*": ["./src/stores/*"],
-      "@lib/*": ["./src/lib/*"],
-      "@appManagers/*": ["./src/lib/appManagers/*"],
-      "@richTextProcessor/*": ["./src/lib/richTextProcessor/*"],
-      "@environment/*": ["./src/environment/*"],
-      "@customEmoji/*": ["./src/lib/customEmoji/*"],
-      "@config/*": ["./src/config/*"],
-      "@vendor/*": ["./src/vendor/*"],
-      "@layer": ["./src/layer.d.ts"],
-      "@types": ["./src/types.d.ts"],
-      "@/*": ["./src/*"]
-    },
-    // "rootDirs": [],                        /* List of root folders whose combined content represents the structure of the project at runtime. */
-    // "typeRoots": [],                       /* List of folders to include type definitions from. */
-    "types": [                                /* Type declaration files to be included in compilation. */
-      "vite/client",
-      "vitest/globals",
-      "chrome",
-      "dom-webcodecs"
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
     ],
-    "allowSyntheticDefaultImports": true,     /* Allow default imports from modules with no default export. This does not affect code emit, just typechecking. */
-    "esModuleInterop": true,                  /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
-    // "preserveSymlinks": true,              /* Do not resolve the real path of symlinks. */
-    // "allowUmdGlobalAccess": true,          /* Allow accessing UMD globals from modules. */
-    "resolveJsonModule": true
-    /* Source Map Options */
-    // "sourceRoot": "",                      /* Specify the location where debugger should locate TypeScript files instead of source locations. */
-    // "mapRoot": "",                         /* Specify the location where debugger should locate map files instead of generated locations. */
-    // "inlineSourceMap": true,               /* Emit a single file with source maps instead of having a separate file. */
-    // "inlineSources": true,                 /* Emit the source alongside the sourcemaps within a single file; requires '--inlineSourceMap' or '--sourceMap' to be set. */
-
-    /* Experimental Options */
-    // "experimentalDecorators": true,        /* Enables experimental support for ES7 decorators. */
-    // "emitDecoratorMetadata": true,         /* Enables experimental support for emitting type metadata for decorators. */
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "paths": {
+      "solid-js": [
+        "./src/vendor/solid/types/index.d.ts"
+      ],
+      "solid-js/web": [
+        "./src/vendor/solid/web/types/index.d.ts"
+      ],
+      "solid-js/store": [
+        "./src/vendor/solid/store/types/index.d.ts"
+      ],
+      "solid-js/jsx-runtime": [
+        "./src/vendor/solid/types/jsx.d.ts"
+      ],
+      "solid-js/jsx-dev-runtime": [
+        "./src/vendor/solid/types/jsx.d.ts"
+      ]
+    },
+    "allowImportingTsExtensions": true
   },
-  /* tsc --watch (run by vite-plugin-checker in dev) must NOT recurse the .claude
-     git worktrees or node_modules. With no "include", tsc sets up a recursive
-     watcher on the project root; descending into .claude (40k+ dirs across ~18
-     worktrees, each with its own node_modules) opens enough fs.watch handles to
-     crash the dev server with "EMFILE: too many open files, watch" on macOS.
-     excludeDirectories prunes those subtrees from the watcher entirely. */
-  "watchOptions": {
-    "watchFile": "useFsEvents",
-    "watchDirectory": "useFsEvents",
-    "fallbackPolling": "dynamicPriority",
-    "excludeDirectories": ["**/node_modules", "**/.claude", "dist", "public", "coverage"]
-  },
+  "include": [
+    "src/shell/**/*.ts",
+    "src/shell/**/*.tsx",
+    "scripts/**/*.ts",
+    "tests/browser/**/*.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ],
   "exclude": [
     "node_modules",
-    ".claude",
-    "public",
     "dist",
-    "coverage",
-    "src/scripts",
-    "src/solid",
-    "src/opus-recorder",
-    "src/vendor/**/*.js",
-    "*.js",
-    "*.cjs",
-    "tweb-design"
+    "reference-dist",
+    "artifacts"
   ]
 }

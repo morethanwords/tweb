@@ -1,0 +1,6 @@
+[
+  {"id":"incoming","text":"Привет! Я Максим. Здесь — идеи, эксперименты и материалы об AI.\nВыбери, с чего начнём 👋","outgoing":false,"time":"12:00","rows":[{"id":"r1","buttons":[{"id":"material","label":"Получить материал"},{"id":"about","label":"О блоге"}]}]},
+  {"id":"outgoing","text":"Хочу узнать больше","outgoing":true,"time":"12:01","rows":[]},
+  {"id":"grid","text":"Выбери интересную тему. Можно вернуться к этому меню в любой момент.","outgoing":false,"time":"12:02","rows":[{"id":"r2","buttons":[{"id":"ai","label":"AI и технологии"},{"id":"people","label":"Люди и психология"}]},{"id":"r3","buttons":[{"id":"projects","label":"Мои проекты"},{"id":"start","label":"В начало"}]}]},
+  {"id":"long","text":"Длинное сообщение с переносами и проверкой текста.\n\nВажная мысль: можно пробовать новое, ошибаться и создавать. Нажми на кнопку, чтобы продолжить.\n\nhttps://example.invalid/this-is-a-long-unbroken-path-with-many-characters","outgoing":false,"time":"12:03","rows":[]}
+]

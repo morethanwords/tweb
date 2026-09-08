@@ -1,9 +1,0 @@
-enum GROUP_CALL_STATE {
-  UNMUTED,
-  MUTED,
-  MUTED_BY_ADMIN,
-  CONNECTING,
-  CLOSED
-}
-
-export default GROUP_CALL_STATE;

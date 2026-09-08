@@ -1,0 +1,4 @@
+.test-keyboard {
+  .reply-markup-button { -webkit-touch-callout: none; }
+  .reply-markup-button[aria-disabled='true'] { opacity: .55; cursor: default; }
+}

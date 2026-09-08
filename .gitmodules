@@ -1,7 +1,0 @@
-[submodule "src/opus-recorder"]
-	path = src/opus-recorder
-	url = https://github.com/morethanwords/opus-recorder.git
-[submodule "src/solid"]
-	path = src/solid
-	url = https://github.com/morethanwords/solid
-  branch = no-errors

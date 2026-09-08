@@ -1,0 +1,35 @@
+.inspector.shell-inspector {
+  inset: auto;
+  max-width: none;
+  overflow: hidden;
+  background: var(--surface);
+  padding: 0;
+  overscroll-behavior: contain;
+
+  &[open] { display: flex; flex-direction: column; }
+  .inspector-header, .inspector-footer, .sheet-handle { flex: 0 0 auto; }
+  .inspector-header { min-width: 0; }
+  .inspector-header h2 { overflow-wrap: anywhere; }
+  .inspector-body { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .inspector-scroll-content { display: flow-root; min-width: 0; }
+  .inspector-scroll-content > p { font-size: 12px; overflow-wrap: anywhere; }
+  .field { min-width: 0; }
+  .field input, .field select { min-width: 0; max-width: 100%; }
+  .inspector-footer { position: static; flex-wrap: wrap; gap: 4px; }
+
+  &[data-position='bottom-sheet'] {
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  // In an exceptionally short viewport even header + footer cannot fit together.
+  // Let the whole sheet scroll rather than making either action unreachable.
+  &[data-compact='true'] {
+    display: block;
+    overflow: auto;
+    .inspector-body { overflow: visible; }
+  }
+}
+.button-colors { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 14px; font-size: 13px; color: var(--muted); }
+.button-color-options { display: flex; gap: 6px; }
+.button-color-swatch { box-sizing: border-box; width: 36px; height: 36px; display: grid; place-items: center; border: 3px solid var(--surface); outline: 1px solid transparent; border-radius: 50%; background: var(--button-fill); color: white; }
+.button-color-swatch[aria-pressed='true'] { outline-color: var(--accent); }

@@ -30,3 +30,6 @@ ignore
 
 .claude/bugs-cache
 .pnpm-store/
+/reference-dist/
+/artifacts/
+/releases/

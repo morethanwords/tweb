@@ -1,0 +1,39 @@
+// Fixed comparator inputs: day/night colorMap from original helpers/themeController.ts.
+// Dynamic wallpaper highlighting is frozen; no Telegram theme manager is executed.
+:root {
+  --primary-color: #3390ec;
+  --primary-color-rgb: 51, 144, 236;
+  --primary-text-color: #000;
+  --secondary-text-color: #707579;
+  --surface-color: #fff;
+  --surface-color-rgb: 255, 255, 255;
+  --background-color: #f4f4f5;
+  --body-background-color: #fff;
+  --secondary-color: #c4c9cc;
+  --message-background-color: #fff;
+  --message-out-background-color: #e3fee0;
+  --message-out-primary-color: #5ca853;
+  --avatar-color-top: #6fb3f4;
+  --avatar-color-bottom: #3390ec;
+}
+.night {
+  --primary-color: #8774e1;
+  --primary-color-rgb: 135, 116, 225;
+  --primary-text-color: #fff;
+  --secondary-text-color: #aaa;
+  --surface-color: #212121;
+  --surface-color-rgb: 33, 33, 33;
+  --background-color: #181818;
+  --body-background-color: #181818;
+  --message-background-color: #212121;
+  --message-out-background-color: #8774e1;
+  --message-out-primary-color: #fff;
+}
+.chat {
+  --message-highlighting-color: hsla(85.5319, 36.9171%, 40.402%, .4);
+  --message-highlighting-hover-color: hsla(85.5319, 36.9171%, 40.402%, .64);
+}
+.night .chat {
+  --message-highlighting-color: rgba(97, 77, 129, .72);
+  --message-highlighting-hover-color: rgba(117, 91, 155, .9);
+}

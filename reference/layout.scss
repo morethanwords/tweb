@@ -1,0 +1,10 @@
+// Test stage only. Native bubble geometry is supplied independently by each entry.
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { margin: 0; padding: 0; width: 100%; height: auto; overflow: auto; }
+.visual-fixture { box-sizing: border-box; padding: 24px; width: min(100%, 680px); background: #c3d6ac; font-family: 'Roboto', sans-serif; }
+.night .visual-fixture { background: #292333; }
+.fixture-content { width: 100%; }
+.fixture-content > .avatar { margin-bottom: 18px; }
+.fixture-bubble-wrapper { display: contents; }
+.fixture-typing-label { margin-inline-start: 6px; font-size: 14px; }
+*, *::before, *::after { animation-play-state: paused !important; }

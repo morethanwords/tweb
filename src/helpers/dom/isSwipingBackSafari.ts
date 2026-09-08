@@ -1,5 +1,0 @@
-import {IS_MOBILE_SAFARI} from '@environment/userAgent';
-
-export default function isSwipingBackSafari(e: TouchEvent | MouseEvent) {
-  return IS_MOBILE_SAFARI && e instanceof TouchEvent && e.touches[0].clientX < 30;
-}

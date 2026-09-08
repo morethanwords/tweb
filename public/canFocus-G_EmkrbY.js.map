@@ -1,1 +1,0 @@
-{"version":3,"file":"canFocus-G_EmkrbY.js","names":[],"sources":["../src/helpers/dom/canFocus.ts"],"sourcesContent":["import {IS_MOBILE_SAFARI} from '@environment/userAgent';\n\nexport function canFocus(isFirstInput: boolean) {\n  return !IS_MOBILE_SAFARI || !isFirstInput;\n}\n"],"mappings":"4CAEA,SAAgB,EAAS,EAAuB,CAC9C,MAAO,CAAC,GAAoB,CAAC,CAC/B"}

@@ -1,31 +1,19 @@
-import {defineConfig, devices} from '@playwright/test';
+import {defineConfig} from '@playwright/test';
 
-// Browser tests for lottie sticker rendering.
-//
-// The first-frame / blink bug only reproduces in the REAL pipeline (SharedWorker + transferred
-// OffscreenCanvas + the page compositor); jsdom/vitest can't render lottie at all, and a
-// self-contained worker would be a *dedicated* worker with different commit timing. So these run
-// against the actual dev server in a real browser. Lottie renders without login (the login page
-// itself plays .tgs animations), so a plain HTTP Vite preview is enough - no auth/seed needed.
-const PORT = 8099;
-
+const baseURL = 'http://127.0.0.1:3122';
 export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: false,
-  workers: 1, // one sticker on screen at a time keeps the screenshot detector unambiguous
-  timeout: 60_000,
-  reporter: [['list']],
-  use: {
-    baseURL: `http://localhost:${PORT}/`,
-    headless: true,
-    viewport: {width: 800, height: 600}
-  },
-  projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}],
-  webServer: {
-    command: `pnpm exec vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}/`,
-    env: {TWEB_PREVIEW: '1'},
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000
-  }
+  testDir: './tests/browser', fullyParallel: false, workers: 1,
+  timeout: 45_000, expect: {timeout: 6000},
+  reporter: [['list']], outputDir: 'artifacts/browser-results',
+  use: {baseURL, trace: 'retain-on-failure', screenshot: 'only-on-failure', contextOptions: {reducedMotion: 'reduce'}},
+  projects: (['chromium', 'webkit'] as const).flatMap(browserName =>
+      [{width: 375, height: 812}, {width: 900, height: 900}, {width: 1280, height: 900}, {width: 375, height: 480}].map(viewport => ({
+        name: browserName + '-' + viewport.width + 'x' + viewport.height,
+        use: {browserName, viewport}
+      }))
+    ),
+  webServer: [
+    {command: 'node scripts/serve-artifact.mjs --port 3122', url: baseURL, reuseExistingServer: false, timeout: 15_000},
+    {command: 'node scripts/serve-artifact.mjs --port 3123 --dir reference-dist --manifest artifacts/reference-manifest.json', url: 'http://127.0.0.1:3123', reuseExistingServer: false, timeout: 15_000}
+  ]
 });

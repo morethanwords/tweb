@@ -1,21 +1,15 @@
-# Security Policy
+# Offline shell boundary
 
-## Supported Versions
+The served application may load only the local manifest's JS, CSS, fonts and images.
+The server accepts GET/HEAD, rejects other methods and unknown paths, and serves no
+source tree or fallback HTML. Production CSP forbids connections, workers, media,
+frames, objects, forms and script evaluation. Browser tests record attempted forbidden
+API use, including attempts blocked by CSP, before any application script runs.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+All imported/callback candidate data is untrusted plain data. The strict validator
+rejects unknown fields, unsafe IDs, invalid topology and resource-limit overflow.
+Text uses DOM text/textarea rendering; there is no HTML interpretation, executable
+expression, URL button action, provider callback, authentication or credential input.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
-
-## Reporting a Vulnerability
-
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Only the versioned document is downloadable. Export starts a local Blob download;
+it does not assert successful filesystem storage. No permanent browser storage is used.

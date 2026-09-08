@@ -1,2 +1,0 @@
-function e(e,t){let n=!1,r=0,i=()=>{if(!(n||t&&!t())){if(e.isConnected){e.focus();return}r=requestAnimationFrame(i)}};return r=requestAnimationFrame(i),()=>{n=!0,cancelAnimationFrame(r)}}export{e as t};
-//# sourceMappingURL=focusWhenConnected-DGHdhyGP.js.map
