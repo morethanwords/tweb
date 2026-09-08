@@ -2,6 +2,7 @@ import {createEffect, createRoot, createSignal, on} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
+import DialogsContextMenu from '@components/dialogsContextMenu';
 import Scrollable, {ScrollableX} from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
 import SidebarSlider, {SliderSuperTab} from '@components/slider';
@@ -1159,7 +1160,16 @@ export class AppSidebarLeft extends SidebarSlider {
       globalContacts: createSearchGroup({name: 'GlobalSearch', type: 'contacts', onFound: close, middleware}),
       messages: createSearchGroup({name: 'SearchMessages', type: 'messages', middleware}),
       people: createSearchGroup({name: false, type: 'contacts', className: 'search-group-people', autonomous: false, onFound: close, noIcons: true, middleware, scrollableX: true}),
-      recent: createSearchGroup({name: 'Recent', type: 'contacts', className: 'search-group-recent', onFound: close, middleware})
+      recent: createSearchGroup({
+        name: 'Recent',
+        type: 'contacts',
+        className: 'search-group-recent',
+        onFound: (element) => {
+          this.managers.appUsersManager.pushRecentSearch(element.dataset.peerId.toPeerId());
+          close();
+        },
+        middleware
+      })
     };
 
     this.searchGroups.messages.createPlaceholder = () => {
@@ -1228,6 +1238,18 @@ export class AppSidebarLeft extends SidebarSlider {
       managers: this.managers,
       scrollOffset: 16
     });
+
+    const dialogContextMenus = [
+      this.searchGroups.contacts.list,
+      this.searchGroups.globalContacts.list,
+      this.searchGroups.messages.list,
+      this.searchGroups.people.list,
+      this.searchGroups.recent.list,
+      searchSuper.mediaTabs.find((tab) => tab.type === 'channels').contentTab
+    ].map((list) => new DialogsContextMenu(this.managers, {
+      useDialogFolder: true,
+      recentSearch: list === this.searchGroups.recent.list
+    }).attach(list));
 
     let prevTab: SearchSuperMediaType;
     searchSuper.onChangeTab = (tab) => {
@@ -1480,6 +1502,8 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     searchSuper.tabs.inputMessagesFilterEmpty.addEventListener('mousedown', (e) => {
+      if(e.button !== 0) return;
+
       const target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG) as HTMLElement;
       if(!target) {
         return;
@@ -1511,6 +1535,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.inputSearch.onClear = undefined;
 
       searchSuper.destroy();
+      dialogContextMenus.forEach((menu) => menu.destroy());
       helperMiddlewareHelper.destroy();
       searchContainer.replaceChildren();
       searchListenerSetter.removeAll();

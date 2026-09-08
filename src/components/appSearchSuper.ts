@@ -1778,8 +1778,12 @@ export default class AppSearchSuper {
         createRoot((dispose) => {
           middleware.onClean(dispose);
 
+          // Keep this panel's order until it reopens, but apply removals immediately.
+          const recentSearch = unwrap(appState.recentSearch).slice();
           const arr = For({
-            each: appState.recentSearch,
+            get each() {
+              return recentSearch.filter((peerId) => appState.recentSearch.includes(peerId));
+            },
             children: (peerId) => {
               const middlewareHelper = createMiddleware();
               const {dom} = appDialogsManager.addDialogNew({

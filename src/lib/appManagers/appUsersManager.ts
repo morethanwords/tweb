@@ -70,16 +70,7 @@ export class AppUsersManager extends AppManager {
     this.rootScope.addEventListener('state_synchronized', this.updateUsersStatuses);
 
     this.rootScope.addEventListener('peer_deleted', (peerId) => {
-      this.appStateManager.getState().then((state) => {
-        const recentSearch = state.recentSearch;
-        if(!recentSearch) return;
-        const idx = recentSearch.indexOf(peerId);
-        if(idx !== -1) {
-          recentSearch.splice(idx, 1);
-          this.peersStorage.releasePeer(peerId, 'recentSearch');
-          this.appStateManager.pushToState('recentSearch', recentSearch);
-        }
-      });
+      this.removeRecentSearch(peerId);
     });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -289,6 +280,16 @@ export class AppUsersManager extends AppManager {
           this.peersStorage.requestPeer(peerId, 'recentSearch');
         }
       }
+    });
+  }
+
+  public removeRecentSearch(peerId: PeerId) {
+    return this.appStateManager.getState().then((state) => {
+      const recentSearch = state.recentSearch;
+      if(!recentSearch || indexOfAndSplice(recentSearch, peerId) === undefined) return;
+
+      this.peersStorage.releasePeer(peerId, 'recentSearch');
+      this.appStateManager.pushToState('recentSearch', recentSearch);
     });
   }
 

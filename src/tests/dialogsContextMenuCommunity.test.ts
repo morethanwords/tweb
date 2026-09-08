@@ -84,6 +84,8 @@ vi.mock('@components/communities/leaveCommunity', () => ({
 vi.mock('@components/clearHistory', () => ({default: vi.fn()}));
 
 import DialogsContextMenu from '@components/dialogsContextMenu';
+import appDialogsManager from '@lib/appDialogsManager';
+import showChatPreviewPopup from '@components/popups/chatPreview';
 
 const communityId = 10 as ChatId;
 const communityPeerId = communityId.toPeerId(true);
@@ -91,6 +93,10 @@ const chatId = 20 as ChatId;
 const peerId = chatId.toPeerId(true);
 
 const managers = {
+  appUsersManager: {
+    pushRecentSearch: vi.fn(),
+    removeRecentSearch: vi.fn()
+  },
   appCommunitiesManager: {
     isCommunityMuted: vi.fn(),
     markCommunityRead: vi.fn(),
@@ -102,6 +108,7 @@ const managers = {
     getChat: async(id: ChatId) => mocks.chats.get(+id)
   },
   appMessagesManager: {
+    toggleDialogPin: vi.fn().mockResolvedValue(undefined),
     isDialogUnread: mocks.isDialogUnread
   },
   appNotificationsManager: {
@@ -136,8 +143,8 @@ function makeRow(options: {
   return li;
 }
 
-async function openMenu(li: HTMLElement) {
-  const menu = new DialogsContextMenu(managers);
+async function openMenu(li: HTMLElement, options: ConstructorParameters<typeof DialogsContextMenu>[1] = {}) {
+  const menu = new DialogsContextMenu(managers, options);
   menu.attach(document.createElement('ul'));
   await mocks.contextMenuOptions.onOpen(undefined, li);
   const buttons: any[] = [];
@@ -201,6 +208,84 @@ describe('DialogsContextMenu on a Community chat row', () => {
       'ClearHistory',
       'Delete'
     ]);
+  });
+
+  it('can remove a recent search peer even when it has no dialog', async() => {
+    mocks.dialogs.clear();
+    const buttons = await openMenu(makeRow({peerId}), {recentSearch: true});
+
+    expect(texts(buttons)).toEqual(['OpenInNewTab', 'DeleteFromRecent']);
+    expect(managers.appUsersManager.pushRecentSearch).not.toHaveBeenCalled();
+    buttons.find((button) => button.text === 'DeleteFromRecent').onClick();
+    expect(managers.appUsersManager.removeRecentSearch).toHaveBeenCalledWith(peerId);
+  });
+
+  it('promotes a recent search peer opened in a new tab', async() => {
+    const row = makeRow({peerId});
+    const buttons = await openMenu(row, {recentSearch: true});
+
+    buttons.find((button) => button.text === 'OpenInNewTab').onClick(new MouseEvent('click'));
+    expect(appDialogsManager.openDialogInNewTab).toHaveBeenCalledWith(row);
+    expect(managers.appUsersManager.pushRecentSearch).toHaveBeenCalledWith(peerId);
+  });
+
+  it('uses the main chat list pin state in recent search while a folder is selected', async() => {
+    appDialogsManager.filterId = 2;
+    try {
+      const buttons = await openMenu(makeRow({peerId}), {recentSearch: true});
+      expect(texts(buttons)).toContain('ChatList.Context.Pin');
+      expect(texts(buttons)).toContain('DeleteFromRecent');
+    } finally {
+      appDialogsManager.filterId = 0;
+    }
+  });
+
+  it('offers dialog actions for top peers independently of the selected folder', async() => {
+    appDialogsManager.filterId = 2;
+    try {
+      const buttons = await openMenu(makeRow({peerId}), {useDialogFolder: true});
+      expect(texts(buttons)).toContain('OpenInNewTab');
+      expect(texts(buttons)).toContain('ChatList.Context.Pin');
+      expect(texts(buttons)).toContain('MarkAsRead');
+      expect(texts(buttons)).not.toContain('DeleteFromRecent');
+    } finally {
+      appDialogsManager.filterId = 0;
+    }
+  });
+
+  it('previews the matching message when opened from a message search result', async() => {
+    const row = makeRow({peerId});
+    row.dataset.mid = '123';
+    const buttons = await openMenu(row, {useDialogFolder: true});
+
+    buttons.find((button) => button.text === 'ChatList.Context.Preview').onClick();
+    expect(showChatPreviewPopup).toHaveBeenCalledWith(expect.objectContaining({
+      peerId,
+      lastMsgId: 123
+    }));
+  });
+
+  it('allows cleanup again after a search menu has closed', async() => {
+    const row = makeRow({peerId});
+    await openMenu(row, {useDialogFolder: true});
+    mocks.contextMenuOptions.onClose();
+
+    expect(row.classList.contains('menu-open')).toBe(false);
+    expect(() => mocks.contextMenuOptions.onClose()).not.toThrow();
+  });
+
+  it('pins archived search results in the archive', async() => {
+    mocks.dialogs.get(+peerId).folder_id = 1;
+    for(const options of [{useDialogFolder: true}, {recentSearch: true}]) {
+      const buttons = await openMenu(makeRow({peerId}), options);
+      buttons.find((button) => button.text === 'ChatList.Context.Pin').onClick();
+
+      expect(managers.appMessagesManager.toggleDialogPin).toHaveBeenLastCalledWith({
+        peerId,
+        filterId: 1,
+        topicOrSavedId: undefined
+      });
+    }
   });
 
   it('drops the chat-list placement actions while the Community is folded', async() => {
