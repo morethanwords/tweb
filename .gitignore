@@ -33,3 +33,10 @@ ignore
 /reference-dist/
 /artifacts/
 /releases/
+
+/.semantic-local/
+/semantic-dist/
+/companion-dist/
+
+semantic-artifacts/
+/output/
