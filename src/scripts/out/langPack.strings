@@ -343,6 +343,7 @@
 "Link.Available" = "Link is available";
 "Link.Taken" = "Link is already taken";
 "Link.Invalid" = "Link is invalid";
+"Link.NotSupported" = "This link is not supported on Telegram Web.";
 "LiteMode.Key.chat.Title" = "Chat Animations";
 "LiteMode.Key.chat_background.Title" = "Wallpaper rotation";
 "LiteMode.Key.chat_spoilers.Title" = "Animated spoiler effect";

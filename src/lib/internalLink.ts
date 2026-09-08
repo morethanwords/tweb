@@ -28,6 +28,7 @@ export enum INTERNAL_LINK_TYPE {
   NEW,
   SETTINGS,
   CONTACTS,
+  CHATS,
   CONFERENCE_CALL,
   ADD_AI_STYLE
 };
@@ -58,6 +59,7 @@ export type InternalLink =
   InternalLink.InternalLinkNew |
   InternalLink.InternalLinkSettings |
   InternalLink.InternalLinkContacts |
+  InternalLink.InternalLinkChats |
   InternalLink.InternalLinkConferenceCall |
   InternalLink.InternalLinkAddAiStyle;
 
@@ -227,6 +229,11 @@ export namespace InternalLink {
     type?: 'search' | 'sort' | 'new' | 'invite' | 'manage'
   }
 
+  export interface InternalLinkChats {
+    _: INTERNAL_LINK_TYPE.CHATS,
+    type?: 'search' | 'emoji-status'
+  }
+
   // t.me/call/<slug> and tg://call?slug=<slug> — invite link for a
   // TdE2E-encrypted conference call. The slug resolves to an
   // `inputGroupCallSlug` that we feed straight into
@@ -268,6 +275,7 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.NEW]: InternalLink.InternalLinkNew,
   [INTERNAL_LINK_TYPE.SETTINGS]: InternalLink.InternalLinkSettings,
   [INTERNAL_LINK_TYPE.CONTACTS]: InternalLink.InternalLinkContacts,
+  [INTERNAL_LINK_TYPE.CHATS]: InternalLink.InternalLinkChats,
   [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: InternalLink.InternalLinkConferenceCall,
   [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: InternalLink.InternalLinkAddAiStyle,
 };

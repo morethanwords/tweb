@@ -60,6 +60,15 @@ import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
 import searchByTag from '@lib/richTextProcessor/searchByTag';
 
+/**
+ * A link whose section we know but whose path we do not — the one thing worse
+ * than not opening it is doing nothing about it. tdesktop answers the same way
+ * (`Router::showUnsupportedMessage`).
+ */
+const showUnsupportedLinkToast = () => {
+  toastNew({langPackKey: 'Link.NotSupported'});
+};
+
 export class InternalLinkProcessor {
   protected managers: AppManagers;
   private processingAddAiStyleSlugs: Set<string> = new Set();
@@ -753,7 +762,7 @@ export class InternalLinkProcessor {
       name: 'new',
       protocol: 'tg',
       callback: ({pathnameParams}) => {
-        const [type] = pathnameParams;
+        const [type = ''] = pathnameParams;
         switch(type) {
           case 'contact':
             return showCreateContactPopup();
@@ -761,8 +770,11 @@ export class InternalLinkProcessor {
             return appSidebarLeft.createTab(AppNewChannelTab).open({});
           case 'group':
             return createNewGroupTab(appSidebarLeft);
-          default:
+          case '':
+            // the screen every "new" starts from
             return appSidebarLeft.createTab(AppContactsTab).open();
+          default:
+            return showUnsupportedLinkToast();
         }
       }
     });
@@ -774,7 +786,10 @@ export class InternalLinkProcessor {
       name: 'settings',
       protocol: 'tg',
       callback: ({pathnameParams, uriParams}) => {
-        const path = pathnameParams.join('/');
+        // the table is written with trailing slashes in places
+        // (`tg://settings/privacy/phone-number/`) and the generated index strips
+        // them, so a path has to arrive here the same way it was addressed there
+        const path = pathnameParams.join('/').replace(/\/$/, '');
         switch(path) {
           case '':
             // reuse the open Settings instead of stacking a second one
@@ -785,6 +800,7 @@ export class InternalLinkProcessor {
           case 'edit/last-name':
           case 'edit/bio':
           case 'edit/username':
+          case 'edit/channel':
           case 'profile-photo': {
             // `noSame` hands back the editor when it is already open, and a tab
             // inits once — so the field is pointed at afterwards, from outside,
@@ -799,7 +815,7 @@ export class InternalLinkProcessor {
                 return;
               }
 
-              const [{findSettingsLink}, {focusControl}] = await Promise.all([
+              const [{findSettingsLink}, {focusControl, highlightSettingsEntry}] = await Promise.all([
                 import('@lib/settingsSearch/link'),
                 import('@lib/settingsSearch/highlight')
               ]);
@@ -807,9 +823,18 @@ export class InternalLinkProcessor {
               // which label a path names is the link table's business, the same
               // table the search copies links from
               const key = findSettingsLink(path)?.highlight;
-              if(key) {
-                focusControl(key, {root: tab.container, middleware: tab.middlewareHelper.get()});
+              if(!key) {
+                return;
               }
+
+              // the personal channel is a row opening a picker, not a field to
+              // type in, so it is flashed the way the search points at it
+              if(path === 'edit/channel') {
+                highlightSettingsEntry(tab, key);
+                return;
+              }
+
+              focusControl(key, {root: tab.container, middleware: tab.middlewareHelper.get()});
             });
           }
           case 'edit/birthday':
@@ -847,43 +872,10 @@ export class InternalLinkProcessor {
           }
           // case 'edit/change-number':
           // case 'edit/your-color':
-          // case 'edit/channel':
 
-          case 'emoji-status': {
-            // iOS opens the picker itself, from where it always opens — for us
-            // that is the status button in the chat list header.
-            const statusBtn = appSidebarLeft.sidebarEl.querySelector<HTMLElement>('.sidebar-emoji-status');
-
-            // no button means no premium — the same promo the control itself
-            // shows when it is used without it (tdesktop: ShowPremiumPreviewBox).
-            // Nothing to reach, so nothing is closed to reach it.
-            if(!statusBtn) {
-              return PopupPremium.show({feature: 'emoji_status'});
-            }
-
-            return appImManager.selectTab(APP_TABS.CHATLIST).then(async() => {
-              // the button belongs to the chat list's own header, so whatever is
-              // stacked over the list has to go — the natural way, letting a tab
-              // that asks before closing ask
-              if(!await appSidebarLeft.closeEverythingInsideNaturally()) {
-                return;
-              }
-
-              // the button opens the picker on its own, and plays its animation
-              // when the status changes; only a collapsed column hides it, and a
-              // hidden anchor would leave the picker in the corner of the screen
-              if(statusBtn.offsetParent) {
-                simulateClickEvent(statusBtn);
-                return;
-              }
-
-              const {openEmojiStatusPicker} = await import('@components/sidebarLeft/emojiStatusPicker');
-              openEmojiStatusPicker({
-                managers: this.managers,
-                anchorElement: statusBtn.closest('.sidebar-header')
-              });
-            });
-          }
+          // an alias of `tg://chats/emoji-status`, the way tdesktop keeps it
+          case 'emoji-status':
+            return this.showEmojiStatusPicker();
 
           // destinations that are a screen of their own: tdesktop opens the
           // Premium and Credits sections, and ours live in popups
@@ -915,8 +907,10 @@ export class InternalLinkProcessor {
             // Every section the settings search indexes is addressable — see
             // @lib/settingsSearch/link. Imported lazily to keep the index out of
             // the startup bundle.
-            return import('@lib/settingsSearch/navigate').then(({openSettingsDeepLink}) => {
-              return openSettingsDeepLink(path, uriParams.highlight, appSidebarLeft);
+            return import('@lib/settingsSearch/navigate').then(async({openSettingsDeepLink}) => {
+              if(!await openSettingsDeepLink(path, uriParams.highlight, appSidebarLeft)) {
+                showUnsupportedLinkToast();
+              }
             }).catch((err) => console.error('settings link failed', path, err));
         }
       }
@@ -934,7 +928,7 @@ export class InternalLinkProcessor {
       name: 'contacts',
       protocol: 'tg',
       callback: ({pathnameParams}) => {
-        const [type] = pathnameParams;
+        const [type = ''] = pathnameParams;
         switch(type) {
           case 'new':
             return showCreateContactPopup();
@@ -944,6 +938,30 @@ export class InternalLinkProcessor {
           // case 'invite':
           // case 'manage':
           // case 'sort':
+          default:
+            return showUnsupportedLinkToast();
+        }
+      }
+    });
+
+    // tg://chats/search
+    // tg://chats/emoji-status
+    addAnchorListener<{
+      pathnameParams: [InternalLink.InternalLinkChats['type'] | '']
+    }>({
+      name: 'chats',
+      protocol: 'tg',
+      callback: ({pathnameParams}) => {
+        const [type] = pathnameParams;
+        switch(type) {
+          case 'search':
+            return this.openChatListSearch();
+          case 'emoji-status':
+            return this.showEmojiStatusPicker();
+          // tdesktop's `chats` section answers to these two paths and nothing
+          // else — a bare `tg://chats` included
+          default:
+            return showUnsupportedLinkToast();
         }
       }
     });
@@ -964,6 +982,58 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+  }
+
+  /** What `tg://chats/emoji-status` — and its `tg://settings` alias — opens. */
+  private showEmojiStatusPicker() {
+    // iOS opens the picker itself, from where it always opens — for us
+    // that is the status button in the chat list header.
+    const statusBtn = appSidebarLeft.sidebarEl.querySelector<HTMLElement>('.sidebar-emoji-status');
+
+    // no button means no premium — the same promo the control itself
+    // shows when it is used without it (tdesktop: ShowPremiumPreviewBox).
+    // Nothing to reach, so nothing is closed to reach it.
+    if(!statusBtn) {
+      return PopupPremium.show({feature: 'emoji_status'});
+    }
+
+    return appImManager.selectTab(APP_TABS.CHATLIST).then(async() => {
+      // the button belongs to the chat list's own header, so whatever is
+      // stacked over the list has to go — the natural way, letting a tab
+      // that asks before closing ask
+      if(!await appSidebarLeft.closeEverythingInsideNaturally()) {
+        return;
+      }
+
+      // the button opens the picker on its own, and plays its animation
+      // when the status changes; only a collapsed column hides it, and a
+      // hidden anchor would leave the picker in the corner of the screen
+      if(statusBtn.offsetParent) {
+        simulateClickEvent(statusBtn);
+        return;
+      }
+
+      const {openEmojiStatusPicker} = await import('@components/sidebarLeft/emojiStatusPicker');
+      openEmojiStatusPicker({
+        managers: this.managers,
+        anchorElement: statusBtn.closest('.sidebar-header')
+      });
+    });
+  }
+
+  /**
+   * Puts the caret in the chat list's search — what tdesktop's `chats/search`
+   * does (`searchMessages(QString(), Dialogs::Key())`): the field, empty, with
+   * nothing left over it.
+   */
+  private async openChatListSearch() {
+    await appImManager.selectTab(APP_TABS.CHATLIST);
+
+    if(!await appSidebarLeft.closeEverythingInsideNaturally()) {
+      return;
+    }
+
+    appSidebarLeft.initSearch().open();
   }
 
   /** Points at a control that lives in the menu behind `toggle`. */

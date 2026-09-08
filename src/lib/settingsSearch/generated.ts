@@ -420,6 +420,7 @@ const generated: GeneratedSettingsSearchData = {
     {path: 'devices/terminate-sessions', sectionId: 'AppActiveSessionsTab', highlight: 'TerminateAllSessions'},
     {path: 'edit', sectionId: 'AppEditProfileTab'},
     {path: 'edit/bio', sectionId: 'AppEditProfileTab', highlight: 'EditProfile.BioLabel'},
+    {path: 'edit/channel', sectionId: 'AppEditProfileTab', highlight: 'EditProfile.PersonalChannel.Title'},
     {path: 'edit/first-name', sectionId: 'AppEditProfileTab', highlight: 'EditProfile.FirstNameLabel'},
     {path: 'edit/last-name', sectionId: 'AppEditProfileTab', highlight: 'Login.Register.LastName.Placeholder'},
     {path: 'edit/log-out', sectionId: 'AppSettingsTab', highlight: 'EditAccount.Logout'},

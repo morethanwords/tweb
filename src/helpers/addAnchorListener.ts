@@ -34,6 +34,7 @@ type InternalLinkAnchorType =
   | 'new'
   | 'settings'
   | 'contacts'
+  | 'chats'
   | 'addstyle'
 ;
 
