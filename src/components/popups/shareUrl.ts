@@ -1,10 +1,11 @@
 import rootScope from '@lib/rootScope';
 import {LangPackKey} from '@lib/langPack';
+import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import appImManager from '@lib/appImManager';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
+import {createCopyLinkFooter, showSharingPickerPopup} from '@components/popups/pickUser';
 
 // Shared "send a URL via the standard sharing picker" helper. Subsumes the
 // near-identical onSelect handlers in giftLink.tsx, appMediaViewerRtmp.ts
@@ -36,8 +37,20 @@ export type ShareUrlOptions = {
 };
 
 export default function shareUrlToPeers(options: ShareUrlOptions): void {
-  showSharingPickerPopup({
+  // Only in multi-select: a single-select picker sends on the row click and has
+  // no footer of its own to take over.
+  const copyFooter = options.multiSelect && createCopyLinkFooter({
+    confirmLangKey: 'Send',
+    copy: () => {
+      copyTextToClipboard(options.url);
+      toastNew({langPackKey: 'LinkCopied'});
+    },
+    confirm: () => popup.finalize()
+  });
+
+  const popup = showSharingPickerPopup({
     multiSelect: options.multiSelect,
+    ...(copyFooter || {}),
     onSelect: async(chosen) => {
       let sent = 0;
       for(const {peerId, threadId, monoforumThreadId} of chosen) {

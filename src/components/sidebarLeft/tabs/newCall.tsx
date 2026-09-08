@@ -98,10 +98,12 @@ const NewCall = () => {
     }
 
     try {
-      const {link} = await tab.managers.appGroupCallsManager.createConferenceCallLink();
+      const {call, link} = await tab.managers.appGroupCallsManager.createConferenceCallLink();
       tab.close();
-      showCallLinkPopup({link, initial: true});
+      showCallLinkPopup({link, initial: true, callId: call.id, canManage: true});
     } catch(err) {
+      // Swallowing this left "An error occurred" with nothing behind it.
+      console.error('create conference call link failed', err);
       toastNew({langPackKey: 'Error.AnError'});
     }
   };

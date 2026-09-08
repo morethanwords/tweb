@@ -52,7 +52,7 @@ class FakeWorker {
 }
 
 let fake: FakeWorker;
-vi.mock('@lib/calls/e2e/encryptWorker?worker', () => ({
+vi.mock('@lib/calls/e2e/encrypt.worker?worker', () => ({
   default: class {
     constructor() {
       return fake as unknown as Worker;
@@ -218,7 +218,7 @@ describe('EncryptWorkerHost.createKey', () => {
   });
 });
 
-// Load a fresh encryptWorker module against mocked keys / call / crypto modules
+// Load a fresh encrypt.worker module against mocked keys / call / crypto modules
 // and capture the message handler it installs. `restore` undoes everything.
 async function loadWorker(modules: {keys: unknown, call: unknown, crypto?: Record<string, unknown>}) {
   vi.resetModules();
@@ -247,8 +247,8 @@ async function loadWorker(modules: {keys: unknown, call: unknown, crypto?: Recor
   };
 
   try {
-    await import('@lib/calls/e2e/encryptWorker');
-    if(!messageHandler) throw new Error('encryptWorker did not install its message handler');
+    await import('@lib/calls/e2e/encrypt.worker');
+    if(!messageHandler) throw new Error('encrypt.worker did not install its message handler');
   } catch(err) {
     restore();
     throw err;
@@ -265,7 +265,7 @@ async function loadWorker(modules: {keys: unknown, call: unknown, crypto?: Recor
   return {dispatch, postMessage, restore};
 }
 
-describe('encryptWorker request seed lifecycle', () => {
+describe('encrypt.worker request seed lifecycle', () => {
   it('wipes every request seed and destroys a key whose init hydration fails', async() => {
     const derivedFrom: number[][] = [];
     const keys: Array<{destroy: ReturnType<typeof vi.fn>}> = [];
@@ -359,7 +359,7 @@ describe('encryptWorker request seed lifecycle', () => {
   });
 });
 
-describe('encryptWorker rejoin transaction', () => {
+describe('encrypt.worker rejoin transaction', () => {
   it('commits only the latest prepared block and queues one final-round verification broadcast', async() => {
     const firstPrepared = new Uint8Array([10]);
     const finalPrepared = new Uint8Array([20]);
@@ -437,7 +437,7 @@ describe('encryptWorker rejoin transaction', () => {
   });
 });
 
-describe('encryptWorker key ownership', () => {
+describe('encrypt.worker key ownership', () => {
   const selfParticipant = {
     userId: BigInt(7),
     publicKey: new Uint8Array(32),

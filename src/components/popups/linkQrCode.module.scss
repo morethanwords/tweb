@@ -1,0 +1,36 @@
+.popup {
+  --popup-width: 22.5rem;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-inline: 1.5rem;
+}
+
+// QrCodeScreen.swift:600-618 — the code always sits on a white card with a
+// 24pt corner radius, whatever the app theme is, so it stays scannable.
+.card {
+  width: 16rem;
+  height: 16rem;
+  flex: 0 0 auto;
+  border-radius: 1.5rem;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+// 240pt of code inside a 256pt card (QrCodeScreen.swift:653-654).
+.qr {
+  width: 15rem !important;
+  height: 15rem !important;
+}
+
+.about {
+  margin-top: 1.0625rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+}

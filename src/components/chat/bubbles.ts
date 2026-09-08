@@ -8907,8 +8907,14 @@ export default class ChatBubbles {
     const isOut = context.isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(context.messageMessage, true);
 
+    // A call bubble prints the message's time itself, at the head of its status
+    // line, and has no delivery state worth showing — tdesktop says the same
+    // with `customInfoLayout() = true` (history_view_call.h:39). So it gets no
+    // message-info block at all, rather than one parked in a corner.
+    const noMessageInfo = isSponsored || context.messageMedia?._ === 'messageMediaCall';
+
     let timeSpan: HTMLElement, _clearfix: HTMLElement;
-    if(!isSponsored) {
+    if(!noMessageInfo) {
       timeSpan = bubble.timeSpan = MessageRender.setTime({
         chat: this.chat,
         chatType: this.chat.type,
@@ -8932,7 +8938,7 @@ export default class ChatBubbles {
       if(isBroadcast) {
         setUnreadObserver?.(timeSpan);
       }
-    } else {
+    } else if(isSponsored) {
       bubble.classList.add('is-sponsored');
     }
 
@@ -9955,13 +9961,15 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaCall': {
-          const {element, subtitle} = wrapCallBubble({
+          const {element} = wrapCallBubble({
             action: context.messageMedia.action,
             isOut,
-            mid: message.mid
+            mid: message.mid,
+            date: message.date,
+            fromId: message.fromId,
+            middleware,
+            loadPromises
           });
-
-          appendBubbleTime(bubble, subtitle, () => subtitle.append(timeSpan));
 
           noAttachmentDivNeeded = true;
 
@@ -11167,7 +11175,10 @@ export default class ChatBubbles {
       const timeSpan = bubble.timeSpan;
       const messageDiv = bubble.querySelector('.message');
 
-      appendBubbleTime(bubble, reactionsElement, () => reactionsElement.append(timeSpan));
+      // A bubble that shows no message info (a call) has no time to carry over.
+      if(timeSpan) {
+        appendBubbleTime(bubble, reactionsElement, () => reactionsElement.append(timeSpan));
+      }
 
       if(bubble.classList.contains('is-multiple-documents')) {
         const documentContainer = messageDiv.lastElementChild as HTMLElement;

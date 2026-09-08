@@ -1373,7 +1373,12 @@
   &-call {
     cursor: pointer;
     padding: .125rem 0;
-    padding-left: 2.5625rem;
+    // The icon hangs off the end of the block, the way every official client
+    // draws it — tdesktop paints it at `paintw - historyCallIconPosition.x`
+    // (history_view_call.cpp:120), iOS at `boundingWidth - width - 8`
+    // (ChatMessageCallBubbleContentNode.swift:351).
+    padding-inline-start: .125rem;
+    padding-inline-end: 2.5625rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1382,7 +1387,10 @@
 
     &-icon {
       position: absolute;
-      left: .3125rem;
+      inset-inline-end: .3125rem;
+      inset-block: 0;
+      height: 1.5rem;
+      margin-block: auto;
       font-size: 1.5rem;
     }
 
@@ -1412,9 +1420,25 @@
       margin-top: .0625rem;
       margin-left: -.1875rem;
       line-height: var(--messages-secondary-line-height);
+    }
 
-      &.is-reason:before {
-        margin-right: .0625rem;
+    &-status {
+      white-space: nowrap;
+    }
+
+    // Who was on the call — iOS puts their faces and a count on the status line
+    // (ChatMessageCallBubbleContentNode.swift:246-345), Android the same
+    // (ChatMessageCell.java:8896-8926). Insets are iOS' avatarsLeft/RightInset.
+    &-participants {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+      margin-inline-start: .3125rem;
+
+      .stacked-avatars {
+        // The rings punch through to the bubble, not to the surface behind it.
+        --border-color: var(--message-background-color);
+        margin-inline-end: .3125rem;
       }
     }
   }

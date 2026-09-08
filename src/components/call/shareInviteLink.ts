@@ -41,6 +41,24 @@ export default async function shareGroupCallInviteLink(
   if(!isAlive()) return;
 
   try {
+    if(instance.e2e) {
+      // A conference link is handed over in the Call Link box, not thrown
+      // straight at the sharing picker — tdesktop's own "share the conference
+      // link" goes through `ShowConferenceCallLinkBox`
+      // (calls_group_panel.cpp:1087). The box is what carries copy, share and
+      // the link's own menu; the picker alone offers no way to just take the
+      // link. Imported here because the box reaches back into the call stack.
+      const {default: showCallLinkPopup} = await import('@components/call/callLinkPopup');
+      if(!isAlive()) return;
+
+      showCallLinkPopup({
+        link,
+        callId: instance.id,
+        canManage: !!(instance.groupCall as GroupCall.groupCall)?.pFlags?.creator
+      });
+      return;
+    }
+
     shareUrlToPeers({
       url: link,
       multiSelect: true,

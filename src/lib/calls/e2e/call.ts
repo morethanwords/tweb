@@ -866,7 +866,7 @@ export class E2eCall {
     // after it, so a block applied during the await produced exactly that
     // mismatch — and because the torn entry already claimed the tip height,
     // the forget-scheduling check below skipped it and the superseded key
-    // never expired. Worker RPCs are serialised now (encryptWorker.ts), so the
+    // never expired. Worker RPCs are serialised now (encrypt.worker.ts), so the
     // interleaving cannot occur; reading from one snapshot makes the epoch
     // internally consistent regardless.
     const state = this.state;

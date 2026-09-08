@@ -13,7 +13,11 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import {i18n} from '@lib/langPack';
 import appImManager from '@lib/appImManager';
+import confirmationPopup from '@components/confirmationPopup';
+import showLinkQrCodePopup from '@components/popups/linkQrCode';
+import rootScope from '@lib/rootScope';
 import noop from '@helpers/noop';
+import type {GroupCallId} from '@appManagers/appGroupCallsManager';
 import styles from '@components/call/callLinkPopup.module.scss';
 
 /**
@@ -33,7 +37,14 @@ export type CallLinkPopupOptions = {
    * offers "be the first to join" — tdesktop gates the whole footer on
    * `args.initial` (calls_group_common.cpp:424).
    */
-  initial?: boolean
+  initial?: boolean,
+  /** The call the link belongs to. Revoking needs it; without it that item is hidden. */
+  callId?: GroupCallId,
+  /**
+   * Whether this account may reset the link. tdesktop's `canManage()` for a
+   * conference is the `creator` flag and nothing else (data_group_call.cpp:154).
+   */
+  canManage?: boolean
 };
 
 /**
@@ -43,21 +54,49 @@ export type CallLinkPopupOptions = {
  * link itself and what you can do with it.
  */
 export default function showCallLinkPopup(options: CallLinkPopupOptions) {
-  const {link, initial} = options;
+  const {initial, callId, canManage} = options;
+  // Revoking mints a new link in place, so nothing may capture the old one.
+  const [link, setLink] = createSignal(options.link);
   const [show, setShow] = createSignal(false);
 
   const share = () => {
     setShow(false);
     shareUrlToPeers({
-      url: link,
+      url: link(),
       multiSelect: true,
       toastKey: 'InviteLinkSentSingle',
       toastKeyForMany: 'InviteLinkSentMany'
     });
   };
 
-  // The shared link box — the link itself (click to copy) with its actions
-  // underneath, here two of them.
+  /**
+   * `reset_invite_hash` is how tdesktop revokes a call link
+   * (calls_group_common.cpp:315-337): reset it, then show the box again on the
+   * link the server just minted.
+   */
+  const revoke = async() => {
+    await confirmationPopup({
+      titleLangKey: 'RevokeLink',
+      descriptionLangKey: 'CallLink.RevokeAlert',
+      button: {langKey: 'RevokeButton', isDanger: true}
+    });
+
+    try {
+      const managers = rootScope.managers.appGroupCallsManager;
+      await managers.toggleGroupCallSettings(callId, {resetInviteHash: true});
+      const newLink = await managers.exportGroupCallInvite(callId);
+      setLink(newLink);
+      inviteLink.setUrl(newLink);
+      toastNew({langPackKey: 'CallLink.Revoked'});
+    } catch(err) {
+      console.error('revoke call link failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
+    }
+  };
+
+  // The shared link box — the link itself (click to copy), a menu on it the way
+  // iOS hangs one off an invite link (InviteLinkInviteController.swift:384),
+  // and its actions underneath.
   const listenerSetter = createListenerSetter();
   const shareButton = Button('', {text: 'Share'});
   const copyButton = Button('', {text: 'Copy'});
@@ -65,16 +104,33 @@ export default function showCallLinkPopup(options: CallLinkPopupOptions) {
   attachClickEvent(copyButton, () => inviteLink.copyLink(), {listenerSetter});
   const inviteLink = new InviteLink({
     listenerSetter,
-    url: link,
-    class: styles.inviteLink,
-    // The link box copies on click and there is a Copy button right below it;
-    // a third copy affordance inside the box would be noise.
-    noRightButton: true,
+    url: options.link,
+    class: classNames(styles.inviteLink, !initial && styles.inviteLinkLast),
+    buttons: [{
+      icon: 'copy',
+      text: 'CopyLink',
+      onClick: () => inviteLink.copyLink()
+    }, {
+      icon: 'qr',
+      text: 'InviteLink.ContextGetQRCode',
+      onClick: () => showLinkQrCodePopup({
+        url: link(),
+        aboutLangKey: 'InviteLink.QRCode.InfoGroupCall'
+      })
+    }, {
+      icon: 'delete',
+      className: 'danger',
+      text: 'RevokeLink',
+      onClick: () => void revoke().catch(noop),
+      // The box that opens right after creating a link never offers to throw
+      // it away, and only the creator may (calls_group_common.cpp:315).
+      verify: () => !!callId && !initial && !!canManage
+    }],
     button: [shareButton, copyButton]
   });
 
   const join = () => {
-    const slug = extractConferenceSlug(link);
+    const slug = extractConferenceSlug(link());
     if(!slug) {
       toastNew({langPackKey: 'Error.AnError'});
       return;

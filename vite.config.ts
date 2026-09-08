@@ -203,7 +203,15 @@ export default defineConfig({
   // public/*.js build artifacts with merge-conflict markers) aborts the whole scan
   // and disables dependency pre-bundling — making cold dev loads slow and reload-prone.
   optimizeDeps: {
-    entries: ['index.html']
+    // Worker entry points are scanned too. A dep reached ONLY through a worker
+    // (aes-js + libsodium-wrappers behind the conference's encrypt.worker, and
+    // the mtproto worker's own set) is otherwise first seen when the worker is
+    // constructed: vite re-optimizes right then, the browser hash changes, and
+    // the worker's in-flight import of the previous `?v=` hash gets a 504. A
+    // page survives that with a full reload — a worker just fails to load with
+    // an empty error event, which is what killed every conference call with
+    // "An error occurred".
+    entries: ['index.html', 'src/**/*.worker.{ts,js}']
   },
   build: {
     target: 'es2020',

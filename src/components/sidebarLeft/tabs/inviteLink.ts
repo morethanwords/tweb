@@ -5,6 +5,7 @@ import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
+import {MiddleEllipsisElement} from '@components/middleEllipsis';
 import shareUrlToPeers from '@components/popups/shareUrl';
 import ripple from '@components/ripple';
 import {toastNew} from '@components/toast';
@@ -110,7 +111,13 @@ export class InviteLink {
     if(s.includes('//')) {
       s = url.split('//').slice(1).join('//');
     }
-    this.textElement.replaceChildren(wrapPlainText(s));
+
+    // Middle truncation, so both ends of the link survive a narrow box: the
+    // same element documents and audio trim their file names with.
+    const element = new MiddleEllipsisElement();
+    element.textContent = wrapPlainText(s);
+
+    this.textElement.replaceChildren(element);
     this.url = url;
   }
 

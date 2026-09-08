@@ -41,7 +41,8 @@ import {
   getMicrophoneControlAccessibility,
   performMicrophoneControlAction
 } from '@components/groupCall/microphoneControl';
-import showPickUserPopup from '@components/popups/pickUser';
+import showPickUserPopup, {createCopyLinkFooter} from '@components/popups/pickUser';
+import {copyTextToClipboard} from '@helpers/clipboard';
 import shareGroupCallInviteLink from '@components/call/shareInviteLink';
 import createInviteViaLinkRow from '@components/groupCall/inviteViaLinkRow';
 import {
@@ -458,10 +459,35 @@ export default class PopupGroupCall extends PopupElement {
     return this.runControlAction(
       this.btnInvite,
       async() => {
-        const participants = await instance.participants;
+        // The link is fetched with the participants rather than on the click:
+        // the clipboard only accepts a write in the same tick as the user
+        // gesture, and a round trip in between loses that activation.
+        const [participants, link] = await Promise.all([
+          instance.participants,
+          this.managers.appGroupCallsManager.exportGroupCallInvite(instance.id).catch((err): string => {
+            console.error('export group call invite failed', err);
+            return undefined;
+          })
+        ]);
         if(!this.isConferenceInviteContextCurrent(instance)) return;
 
         await new Promise<void>((resolve) => {
+          // Confirming with nothing picked used to be a dead button. It is the
+          // moment you want the link itself, so that is what it offers.
+          const copyFooter = createCopyLinkFooter({
+            confirmLangKey: 'ConferenceCall.Invite.Button',
+            copy: () => {
+              if(!link) {
+                toastNew({langPackKey: 'Error.AnError'});
+                return;
+              }
+
+              copyTextToClipboard(link);
+              toastNew({langPackKey: 'LinkCopied'});
+            },
+            confirm: () => popup.finalize()
+          });
+
           // tdesktop's conference invite box (calls_group_invite_controller.cpp:806):
           // a multi-select list with an "Invite via Link" row above it, one
           // request per person, and a single toast that reports every verdict.
@@ -471,7 +497,7 @@ export default class PopupGroupCall extends PopupElement {
             placeholder: 'Search',
             exceptSelf: true,
             multiSelect: true,
-            footerButtonProps: {langKey: 'ConferenceCall.Invite.Button'},
+            ...copyFooter,
             excludePeerIds: new Set([
               ...participants.keys(),
               ...instance.memberWithAccessPeerIds

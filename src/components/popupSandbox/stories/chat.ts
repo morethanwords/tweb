@@ -168,6 +168,17 @@ defineStories('Chat & moderation', [
     }
   },
   {
+    id: 'linkQrCode',
+    title: 'Invite by QR code',
+    open: async() => {
+      const {default: showLinkQrCodePopup} = await import('@components/popups/linkQrCode');
+      showLinkQrCodePopup({
+        url: 'https://t.me/call/AbCdEfGhIjKlMnOpQr',
+        aboutLangKey: 'InviteLink.QRCode.InfoGroupCall'
+      });
+    }
+  },
+  {
     id: 'birthday',
     title: 'Set your birthday',
     open: async(ctx) => {

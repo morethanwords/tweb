@@ -81,13 +81,6 @@ export default mergeConfig(baseConfig as any, {
     'import.meta.env.VITE_PREVIEW': JSON.stringify(true),
     'import.meta.env.VITE_NO_WORKER': JSON.stringify(process.env.TWEB_NO_WORKER === '1')
   },
-  // the project's public/ holds stale build chunks with unresolved git merge
-  // markers; vite would otherwise crawl public/index.html etc. as dep-scan
-  // entries and choke — scope the scan to the real app entry. The worker
-  // entries are listed explicitly too: their deps (@cryptography/aes, fflate,
-  // js-md5, …) are reached only through workers, and if the scan misses them
-  // vite re-optimizes + full-reloads mid-boot.
-  optimizeDeps: {entries: ['index.html', 'src/**/*.worker.{ts,js}']},
   plugins: [{
     name: 'preview-auth-seed',
     transformIndexHtml(html: string) {

@@ -278,7 +278,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       }
 
       if(b.iconLeft || b.iconRight) {
-        const i = Icon(b.iconLeft || b.iconRight, 'popup-button-icon', b.iconLeft ? 'left' : 'right');
+        const i = Icon(b.iconLeft || b.iconRight, 'popup-button-icon', 'inline-icon', b.iconLeft ? 'left' : 'right');
         button.classList.add('with-icon');
         if(b.iconLeft) button.prepend(i);
         else button.append(i);

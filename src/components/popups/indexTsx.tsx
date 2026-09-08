@@ -592,7 +592,7 @@ PopupElement.Button = (props: {
       disabled={props.disabled || disabled()}
       icon={props.iconLeft}
       iconAfter={props.iconRight}
-      iconClass={classNames('popup-button-icon', props.iconLeft ? 'left' : 'right')}
+      iconClass={classNames('popup-button-icon', 'inline-icon', props.iconLeft ? 'left' : 'right')}
       text={props.langKey}
       textArgs={props.langArgs}
       ref={(_ref) => {

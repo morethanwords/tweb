@@ -20,7 +20,7 @@ import {getWallPaperColors, darkenToMaxLuminance} from '@helpers/color';
 import roundRect from '@helpers/canvas/roundRect';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {toastNew} from '@components/toast';
-import {copyTextToClipboard, writeClipboardItem} from '@helpers/clipboard';
+import copyQrCode from '@helpers/qrCode/copyQrCode';
 import classNames from '@helpers/string/classNames';
 import {BaseTheme, Chat, Theme, User, WallPaper} from '@layer';
 import {AppTheme, DEFAULT_THEME} from '@config/state';
@@ -939,31 +939,8 @@ function FooterSlot(props: {shared: QrPopupShared, getBlob: () => Blob | undefin
   const {profileUrl} = props.shared;
 
   const onCopyClick = async() => {
-    const blob = props.getBlob();
-    if(blob) {
-      try {
-        await writeClipboardItem({'image/png': blob});
-        toastNew({langPackKey: 'QRCode.Copied'});
-        return;
-      } catch(err) {
-        // Image-write may still fail on Safari (no `image/png` write support)
-        // or if the user denied clipboard permission at the OS / Chrome
-        // policy level. Fall through to the link copy.
-        console.error('QRCode image copy failed', err);
-      }
-    }
-
-    // No blob baked yet (first frame still in flight) OR write was rejected —
-    // copy the profile link instead. `copyTextToClipboard` wraps
-    // `clipboard.writeText` with a `document.execCommand('copy')` fallback,
-    // so this path works even when the modern API is blocked.
-    try {
-      await copyTextToClipboard(profileUrl());
-      toastNew({langPackKey: 'QRCode.CopiedLink'});
-    } catch(fallbackErr) {
-      console.error('QRCode link copy failed', fallbackErr);
-      toastNew({langPackKey: 'Error.AnError'});
-    }
+    const outcome = await copyQrCode({blob: props.getBlob(), url: profileUrl()});
+    toastNew({langPackKey: outcome === 'image' ? 'QRCode.Copied' : outcome === 'link' ? 'QRCode.CopiedLink' : 'Error.AnError'});
   };
 
   return (

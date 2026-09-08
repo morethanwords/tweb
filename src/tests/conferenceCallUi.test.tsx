@@ -36,6 +36,31 @@ vi.mock('@lib/richTextProcessor/wrapEmojiText', () => ({
   default: (text: string) => document.createTextNode(text)
 }));
 
+// The clock format follows the language pack, which no unit test loads — pin it
+// so the status line can be asserted verbatim.
+const CALL_TIME = '12:00';
+vi.mock('@helpers/date', async(importOriginal) => ({
+  ...(await importOriginal<typeof import('@helpers/date')>()),
+  formatTime: () => {
+    const element = document.createElement('time');
+    element.textContent = CALL_TIME;
+    return element;
+  }
+}));
+
+// The participants row only needs to prove WHICH faces it asks for — painting
+// them pulls in the avatar stack, which wants a worker and a session.
+const stackedAvatars = vi.hoisted(() => ({render: vi.fn()}));
+vi.mock('@components/stackedAvatars', () => ({
+  default: class StackedAvatarsMock {
+    public container = document.createElement('div');
+    public render(peerIds: PeerId[]) {
+      stackedAvatars.render(peerIds);
+      return Promise.resolve([]);
+    }
+  }
+}));
+
 import ListenerSetter from '@helpers/listenerSetter';
 import I18n from '@lib/langPack';
 import makeButton, {setCallButtonBusy, setCallButtonDisabled} from '@components/call/button';
@@ -45,8 +70,19 @@ import {
   performMicrophoneControlAction
 } from '@components/groupCall/microphoneControl';
 import GroupCallTitleElement from '@components/groupCall/title';
-import wrapCallBubble from '@components/wrappers/callBubble';
+import wrapCallBubble, {getConferenceCallParticipants} from '@components/wrappers/callBubble';
 import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
+
+/** A fixed moment for the call bubbles' status line. Rendered as `CALL_TIME`. */
+const CALL_DATE = 1757270400;
+
+// The status line composes time + duration through a lang string, like every
+// official client ("{time}, {duration}"). Nothing loads the pack in a unit test.
+I18n.strings.set('Chat.CallMessage.TimeAndDuration', {
+  _: 'langPackString',
+  key: 'Chat.CallMessage.TimeAndDuration',
+  value: '%1$@, %2$@'
+});
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -219,7 +255,8 @@ describe('conference verification and entry UI', () => {
     const wrap = (action: any, isOut?: boolean) => wrapCallBubble({
       action,
       isOut: !!isOut,
-      mid: 456
+      mid: 456,
+      date: CALL_DATE
     }).element;
 
     const invitation = wrap({_: 'messageActionConferenceCall', pFlags: {}, call_id: '7'});
@@ -247,11 +284,98 @@ describe('conference verification and entry UI', () => {
     expect(ended.querySelector('.bubble-call-subtitle').textContent).toContain('Minutes');
   });
 
+  it('leads the status line with the call time and adds the duration after it', () => {
+    const status = (action: any) => wrapCallBubble({
+      action,
+      isOut: false,
+      mid: 456,
+      date: CALL_DATE
+    }).element.querySelector('.bubble-call-status').textContent;
+
+    // No `MessageRender.setTime` in sight: the time IS the status line, the way
+    // tdesktop's `customInfoLayout` bubble prints it.
+    expect(status({_: 'messageActionConferenceCall', pFlags: {missed: true}, call_id: '7'}))
+    .toBe(CALL_TIME);
+
+    const withDuration = status({_: 'messageActionConferenceCall', pFlags: {}, call_id: '7', duration: 65});
+    expect(withDuration.startsWith(CALL_TIME + ', ')).toBe(true);
+    expect(withDuration).toContain('Minutes');
+  });
+
+  it('says in the title how a 1-on-1 call ended, like every official client', () => {
+    const title = (action: any, isOut?: boolean) => wrapCallBubble({
+      action,
+      isOut: !!isOut,
+      mid: 456,
+      date: CALL_DATE
+    }).element.querySelector('.bubble-call-title').textContent;
+
+    const call = (reason: string, video?: boolean) => ({
+      _: 'messageActionPhoneCall',
+      pFlags: video ? {video: true} : {},
+      reason: {_: reason}
+    });
+
+    expect(title(call('phoneCallDiscardReasonHangup'))).toBe('CallMessageIncoming');
+    expect(title(call('phoneCallDiscardReasonMissed'))).toBe('CallMessageIncomingMissed');
+    expect(title(call('phoneCallDiscardReasonBusy'))).toBe('CallMessageIncomingDeclined');
+    // Outgoing: nobody picked up means cancelled, and busy is not the caller's
+    // verdict to report (tdesktop's MediaCall::Text keeps it on the outgoing key).
+    expect(title(call('phoneCallDiscardReasonMissed'), true)).toBe('CallMessageOutgoingMissed');
+    expect(title(call('phoneCallDiscardReasonBusy'), true)).toBe('CallMessageOutgoing');
+    expect(title(call('phoneCallDiscardReasonMissed', true))).toBe('CallMessageVideoIncomingMissed');
+    expect(title(call('phoneCallDiscardReasonBusy', true))).toBe('CallMessageVideoIncomingDeclined');
+  });
+
+  it('puts the people a conference was shared with on its status line', () => {
+    stackedAvatars.render.mockClear();
+
+    const action = {
+      _: 'messageActionConferenceCall',
+      pFlags: {missed: true},
+      call_id: '7',
+      // The author is named twice on purpose: Android dedupes the row into a
+      // set, and the count under the faces follows the deduped list.
+      other_participants: [{_: 'peerUser', user_id: 1}, {_: 'peerUser', user_id: 2}]
+    } as any;
+
+    expect(getConferenceCallParticipants(action, 1 as PeerId)).toEqual([1, 2]);
+
+    const {element} = wrapCallBubble({
+      action,
+      isOut: false,
+      mid: 456,
+      date: CALL_DATE,
+      fromId: 1 as PeerId,
+      middleware: (() => true) as any
+    });
+
+    expect(stackedAvatars.render).toHaveBeenCalledWith([1, 2]);
+    expect(element.querySelector('.bubble-call-participants-count')).not.toBeNull();
+  });
+
+  it('leaves the status line alone when a conference names no participants', () => {
+    stackedAvatars.render.mockClear();
+
+    const {element} = wrapCallBubble({
+      action: {_: 'messageActionConferenceCall', pFlags: {}, call_id: '7'} as any,
+      isOut: false,
+      mid: 456,
+      date: CALL_DATE,
+      fromId: 1 as PeerId,
+      middleware: (() => true) as any
+    });
+
+    expect(stackedAvatars.render).not.toHaveBeenCalled();
+    expect(element.querySelector('.bubble-call-participants')).toBeNull();
+  });
+
   it('carries the invite message id a conference bubble is joined by', () => {
     const conference = wrapCallBubble({
       action: {_: 'messageActionConferenceCall', pFlags: {}, call_id: '7'} as any,
       isOut: false,
-      mid: MESSAGE_ID_OFFSET + 456
+      mid: MESSAGE_ID_OFFSET + 456,
+      date: CALL_DATE
     }).element;
 
     // The click handler joins through inputGroupCallInviteMessage, which takes
@@ -266,7 +390,8 @@ describe('conference verification and entry UI', () => {
         reason: {_: 'phoneCallDiscardReasonMissed'}
       } as any,
       isOut: false,
-      mid: MESSAGE_ID_OFFSET + 456
+      mid: MESSAGE_ID_OFFSET + 456,
+      date: CALL_DATE
     }).element;
 
     expect(phoneCall.dataset.conferenceMsgId).toBeUndefined();

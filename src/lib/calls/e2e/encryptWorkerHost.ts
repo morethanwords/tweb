@@ -1,5 +1,5 @@
 /*
- * Main-thread proxy to an `encryptWorker.ts` instance. One host per call.
+ * Main-thread proxy to an `encrypt.worker.ts` instance. One host per call.
  *
  * Lifecycle:
  *   - `new EncryptWorkerHost()`           — spawns the worker.
@@ -13,13 +13,17 @@
  */
 
 import EventListenerBase from '@helpers/eventListenerBase';
-// Vite's `?worker` suffix bundles encryptWorker.ts into a CLASSIC worker
-// (IIFE). RTCRtpScriptTransform delivery to receivers (recv direction) is
-// flaky in Chrome with module workers — Chrome 146 pumped only ~6 frames
-// before silently stopping under our SFU's setup, even with a no-op
-// passthrough handler. The W3C reference samples + production WebRTC apps
-// use classic workers, so we switch to that path.
-import EncryptWorker from './encryptWorker.ts?worker';
+// `?worker` follows the build's global `worker.format`, which is `es`
+// (vite.config.ts) — so this is a MODULE worker, and the file name matters:
+// `optimizeDeps.entries` scans `*.worker.ts` so the deps only it reaches
+// (aes-js, libsodium-wrappers) are pre-bundled before the worker asks for them.
+//
+// NOTE: this import used to be documented as producing a classic (IIFE) worker,
+// chosen because RTCRtpScriptTransform delivery to receivers looked flaky in
+// Chrome with module workers. That was never what shipped — `worker.format` has
+// been `es` since the vite migration, so a module worker is what has always run
+// here, and switching would be a global change to every worker in the app.
+import EncryptWorker from './encrypt.worker.ts?worker';
 import type {
   HostRequest,
   HostResponse,

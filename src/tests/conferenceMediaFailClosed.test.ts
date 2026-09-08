@@ -34,7 +34,7 @@ import {localToServer} from '@lib/calls/e2e/tl';
 import {PERM_ADD_USERS, PERM_REMOVE_USERS} from '@lib/calls/e2e/tlTypes';
 
 // Imported for its side effects: installs the `message` handler + onrtctransform.
-import '@lib/calls/e2e/encryptWorker';
+import '@lib/calls/e2e/encrypt.worker';
 
 const ALICE_ID = BigInt(94001); // us
 const BOB_ID = BigInt(94002); // a mapped remote sender

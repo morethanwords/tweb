@@ -11,10 +11,12 @@ const mocks = vi.hoisted(() => ({
   exportGroupCallInvite: vi.fn(),
   getChatInviteLink: vi.fn(),
   shareUrlToPeers: vi.fn(),
+  showCallLinkPopup: vi.fn(),
   toastNew: vi.fn()
 }));
 
 vi.mock('@components/popups/shareUrl', () => ({default: mocks.shareUrlToPeers}));
+vi.mock('@components/call/callLinkPopup', () => ({default: mocks.showCallLinkPopup}));
 vi.mock('@components/toast', () => ({toastNew: mocks.toastNew}));
 vi.mock('@lib/rootScope', () => ({
   default: {
@@ -33,6 +35,15 @@ function makeInstance(rtmp = false) {
     id: 'call-1',
     chatId: 5,
     groupCall: {_: 'groupCall', id: 'call-1', pFlags: rtmp ? {rtmp_stream: true} : {}}
+  } as unknown as GroupCallInstance;
+}
+
+/** A conference — the link belongs to the call itself, not to a chat behind it. */
+function makeConference(creator?: boolean) {
+  return {
+    id: 'call-1',
+    e2e: {},
+    groupCall: {_: 'groupCall', id: 'call-1', pFlags: {conference: true, creator: creator || undefined}}
   } as unknown as GroupCallInstance;
 }
 
@@ -71,6 +82,23 @@ describe('shareGroupCallInviteLink', () => {
     expect(mocks.getChatInviteLink).not.toHaveBeenCalled();
     expect(mocks.shareUrlToPeers).not.toHaveBeenCalled();
     expect(mocks.toastNew).toHaveBeenCalledWith({langPackKey: 'Error.AnError'});
+  });
+
+  it('hands a conference link to the Call Link box instead of the sharing picker', async() => {
+    await shareGroupCallInviteLink(makeConference(true), {canManage: false});
+
+    expect(mocks.shareUrlToPeers).not.toHaveBeenCalled();
+    expect(mocks.showCallLinkPopup).toHaveBeenCalledWith({
+      link: 'https://t.me/+listener',
+      callId: 'call-1',
+      canManage: true
+    });
+  });
+
+  it('only lets the creator of a conference revoke its link', async() => {
+    await shareGroupCallInviteLink(makeConference(), {canManage: false});
+
+    expect(mocks.showCallLinkPopup).toHaveBeenCalledWith(expect.objectContaining({canManage: false}));
   });
 
   it('stays silent when the sharing surface is gone by the time the export fails', async() => {

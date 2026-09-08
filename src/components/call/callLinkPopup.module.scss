@@ -15,6 +15,13 @@
   margin-inline: .5rem;
 }
 
+// Nothing follows the link box unless the "or / be the first to join" footer
+// does, so it closes the popup itself and carries the bottom gap. Marked from
+// the caller rather than matched with `:last-child`.
+.inviteLinkLast {
+  margin-bottom: .5rem;
+}
+
 .joinLine {
   margin-bottom: 1rem;
   margin-top: .125rem;
