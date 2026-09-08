@@ -12,8 +12,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import wrapLocalSticker from '@components/wrappers/localSticker';
 import {For, JSX} from 'solid-js';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import PopupElement from '@components/popups';
-import PopupGiftLink from '@components/popups/giftLink';
+import showGiftLinkPopup from '@components/popups/giftLink';
 import classNames from '@helpers/string/classNames';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {IconTsx} from '@components/iconTsx';
@@ -184,7 +183,7 @@ export async function onGiveawayClick(message: Message.message) {
   });
 
   if(isWinner) {
-    PopupElement.createPopup(PopupGiftLink, giveawayInfo.gift_code_slug);
+    showGiftLinkPopup(giveawayInfo.gift_code_slug);
   }
 }
 

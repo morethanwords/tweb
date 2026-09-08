@@ -14,7 +14,7 @@ import rootScope from '@lib/rootScope';
 import {PeerTitleOptions} from '@components/peerTitle';
 import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupGiftLink from '@components/popups/giftLink';
+import {shareGiftLink} from '@components/popups/giftLink';
 import lastItem from '@helpers/array/lastItem';
 import maybe2x from '@helpers/maybe2x';
 import wrapSticker from '@components/wrappers/sticker';
@@ -173,7 +173,7 @@ export default class PromoSlideTab {
               [
                 anchorCallback(async() => {
                   this.close();
-                  PopupGiftLink.shareGiftLink(url);
+                  shareGiftLink(url);
                 })
               ]
             );

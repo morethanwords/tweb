@@ -46,12 +46,6 @@
     }
   }
 
-  // the popup packs its checkbox rows tighter than a settings list
-  &-checkbox-row.row {
-    min-height: 3rem;
-    padding-block: .25rem;
-  }
-
   .popup-description-features {
     margin: 0;
     padding-inline-start: 1.25rem;

@@ -153,7 +153,6 @@ export default function showStorySettingsPopup(props: {
                 anchorCallback(() => editList('hideFrom', 'StorySettingsHideFrom')),
                 ...(settings.hideFrom.length ? [i18n('StoryPrivacyOptionPeople', [settings.hideFrom.length])] : [])
               ])}
-              noShadow
             >
               <fieldset class={styles.fields} disabled={saving()} role="radiogroup" aria-labelledby={name + '-title'}>
                 <For each={AUDIENCES}>{(option) => (
@@ -192,7 +191,7 @@ export default function showStorySettingsPopup(props: {
             </Section>
           </Show>
           <Show when={!props.editing || isChatStory()}>
-            <Section caption={keepCaption()} captionArgs={isChatStory() ? undefined : [i18n('Hours', [props.periodHours ?? 24])]} noShadow>
+            <Section caption={keepCaption()} captionArgs={isChatStory() ? undefined : [i18n('Hours', [props.periodHours ?? 24])]}>
               <Show when={!props.editing}>
                 <Row disabled={saving()}>
                   <Row.CheckboxFieldToggle>

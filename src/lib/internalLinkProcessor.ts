@@ -28,7 +28,7 @@ import shake from '@helpers/dom/shake';
 import PopupPremium from '@components/popups/premium';
 import rootScope from '@lib/rootScope';
 import PopupBoost from '@components/popups/boost';
-import PopupGiftLink from '@components/popups/giftLink';
+import showGiftLinkPopup from '@components/popups/giftLink';
 import PopupStars, {showGiftStarsPicker} from '@components/popups/stars';
 import PopupSendGift from '@components/popups/sendGift';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
@@ -1501,7 +1501,7 @@ export class InternalLinkProcessor {
   };
 
   public processGiftCodeLink = (link: InternalLink.InternalLinkGiftCode) => {
-    PopupElement.createPopup(PopupGiftLink, link.slug, link.stack);
+    showGiftLinkPopup(link.slug, link.stack);
   };
 
   public processBusinessChatLink = async(link: InternalLink.InternalLinkBusinessChat) => {

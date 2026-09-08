@@ -222,12 +222,8 @@ defineStories('Boosts & invites', [
       appPaymentsManager: {checkGiftCode: () => checkedGiftCode}
     },
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupGiftLink}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/giftLink')
-      ]);
-
-      PopupElement.createPopup(PopupGiftLink, 'sandbox-gift-code');
+      const {default: showGiftLinkPopup} = await import('@components/popups/giftLink');
+      showGiftLinkPopup('sandbox-gift-code');
     }
   },
   {

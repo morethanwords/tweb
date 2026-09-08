@@ -21,7 +21,7 @@ import Icon from '@components/icon';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import rootScope from '@lib/rootScope';
-import PopupGiftLink from '@components/popups/giftLink';
+import showGiftLinkPopup from '@components/popups/giftLink';
 import {toastNew} from '@components/toast';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import appImManager from '@lib/appImManager';
@@ -255,8 +255,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
             if(peerId && !boost.pFlags.gift && !boost.pFlags.unclaimed && !boost.pFlags.giveaway) {
               appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
             } else if(peerId && peerId !== rootScope.myId) {
-              PopupElement.createPopup(
-                PopupGiftLink,
+              showGiftLinkPopup(
                 slug,
                 undefined,
                 {
@@ -274,7 +273,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
                 }
               );
             } else if(slug) {
-              PopupElement.createPopup(PopupGiftLink, slug);
+              showGiftLinkPopup(slug);
             } else {
               toastNew({langPackKey: 'BoostingRecipientWillBeSelected'});
             }

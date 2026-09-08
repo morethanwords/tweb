@@ -15,7 +15,7 @@ import rootScope from '@lib/rootScope';
 import safeAssign from '@helpers/object/safeAssign';
 import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import PopupGiftLink from '@components/popups/giftLink';
+import {applyGiftCode} from '@components/popups/giftLink';
 
 export type PopupPremiumProps = {
   order: PremiumPromoFeatureType[],
@@ -237,7 +237,7 @@ export default class PopupPremium extends PopupElement {
     if(this.props.type === 'gift') {
       callback = () => {
         const gift = this.props.gift as PaymentsCheckedGiftCode;
-        PopupGiftLink.applyGiftCode(gift.slug, this.actionButton, this);
+        applyGiftCode(gift.slug, this.actionButton, () => this.hide());
       };
     } else {
       callback = () => {

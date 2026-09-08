@@ -153,7 +153,7 @@ import addAnchorListener, {UNSAFE_ANCHOR_LINK_TYPES} from '@helpers/addAnchorLis
 import {formatDaysDuration, formatMonthsDuration} from '@helpers/date';
 import {JSX} from 'solid-js';
 import Giveaway, {getGiftAssetName, onGiveawayClick} from '@components/chat/giveaway';
-import PopupGiftLink from '@components/popups/giftLink';
+import showGiftLinkPopup from '@components/popups/giftLink';
 import PopupPremium from '@components/popups/premium';
 import getParents from '@helpers/dom/getParents';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -7997,7 +7997,7 @@ export default class ChatBubbles {
             subtitle,
             buttonText: i18n('BoostingReceivedGiftOpenBtn'),
             buttonCallback: () => {
-              PopupElement.createPopup(PopupGiftLink, action.slug);
+              showGiftLinkPopup(action.slug);
             }
           }), bubbleContainer, middleware);
         } else if(action._ === 'messageActionChannelMigrateFrom') {

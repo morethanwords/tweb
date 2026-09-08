@@ -50,7 +50,8 @@ export default class PopupPeer extends PopupElement {
       overlayClosable: true,
       ...options,
       title: true,
-      buttons: options.buttons && addCancelButton(options.buttons)
+      buttons: options.buttons && addCancelButton(options.buttons),
+      old: true
     });
 
     if(options.avatar) {
