@@ -1,4 +1,4 @@
-import {expect, test} from '@playwright/test';
+import {expect, Page, test} from '@playwright/test';
 
 /*
  * Opens every popup the sandbox knows about and asserts it actually renders.
@@ -24,11 +24,49 @@ declare global {
       closePopups(): void,
       unhandled(): Array<{manager: string, method: string}>
     };
+    /** Where `openStory` parks the outcome for the poller below to pick up. */
+    popupSandboxOutcome: {error: string} | undefined;
   }
 }
 
 // A popup reveals itself a couple of frames after construction, and some wait on a lottie decode.
 const SHOWN_TIMEOUT = 10_000;
+// Generous: the slowest story builds its popup in well under a second.
+const OPEN_TIMEOUT = 30_000;
+
+/**
+ * Opens one story and returns the message it threw with, or null.
+ *
+ * Deliberately not `page.evaluate(async ...)`. An async evaluate hands the returned promise to
+ * Chromium's inspector, which holds it with a WEAK handle (`Runtime.callFunctionOn` with
+ * `awaitPromise`). Opening a popup allocates enough for a GC to land inside that window, and the
+ * handle is then collected before the resolution is reported: the protocol answers
+ * `-32000 Promise was collected`, which Playwright rewrites into the thoroughly misleading
+ * "Execution context was destroyed, most likely because of a navigation." Nothing navigates and
+ * nothing hangs — the story opens and its promise resolves (a few ms BEFORE that error arrives);
+ * only the trip back to the test is lost. It used to take out `transaction/history-stars-self`,
+ * the heaviest open in the registry, on nearly every full run.
+ *
+ * So: start the work from a synchronous evaluate that parks the outcome on the page, then poll for
+ * it with short synchronous evaluates that never leave a pending promise with the debugger.
+ */
+async function openStory(page: Page, id: string): Promise<string> {
+  await page.evaluate((storyId) => {
+    window.popupSandboxOutcome = undefined;
+    window.popupSandbox.open(storyId).then(
+      () => {window.popupSandboxOutcome = {error: null};},
+      (err) => {window.popupSandboxOutcome = {error: (err as Error)?.message || String(err)};}
+    );
+  }, id);
+
+  const deadline = Date.now() + OPEN_TIMEOUT;
+  for(;;) {
+    const outcome = await page.evaluate(() => window.popupSandboxOutcome);
+    if(outcome) return outcome.error;
+    if(Date.now() > deadline) return `did not settle within ${OPEN_TIMEOUT}ms`;
+    await page.waitForTimeout(50);
+  }
+}
 
 test('every popup story opens and becomes visible', async({page}) => {
   // One test walks the whole registry, so it needs far more than the config's per-test default.
@@ -56,14 +94,7 @@ test('every popup story opens and becomes visible', async({page}) => {
     pageErrors.length = 0;
     renderErrors.length = 0;
 
-    const opened = await page.evaluate(async(id) => {
-      try {
-        await window.popupSandbox.open(id);
-        return null;
-      } catch(err) {
-        return (err as Error).message;
-      }
-    }, story.id);
+    const opened = await openStory(page, story.id);
 
     if(opened) {
       failed.push(`${story.id}: threw while opening — ${opened}`);
