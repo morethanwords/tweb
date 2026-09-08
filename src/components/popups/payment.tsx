@@ -44,7 +44,7 @@ import PopupPaymentShipping, {PaymentShippingAddress} from '@components/popups/p
 import PopupPaymentShippingMethods from '@components/popups/paymentShippingMethods';
 import PopupPaymentVerification from '@components/popups/paymentVerification';
 import type PopupStars from '@components/popups/stars';
-import PopupStarsPay from '@components/popups/starsPay';
+import showStarsPayPopup from '@components/popups/starsPay';
 import {renderComponent} from '@helpers/solid/renderComponent';
 
 const USE_NATIVE_SYMBOL = true;
@@ -106,6 +106,14 @@ export function PaymentButton(options: {
 export type PaymentsCredentialsToken = {type: 'card', token?: string, id?: string};
 
 export type PopupPaymentResult = 'paid' | 'cancelled' | 'pending' | 'failed';
+
+/**
+ * What {@link PopupPayment.create} hands back. The card popup is still a class and the Stars one is a
+ * function, so callers see only what they all use: the `finish` event.
+ */
+export type PopupPaymentHandle = {
+  addEventListener(name: 'finish', callback: (result: PopupPaymentResult) => void): void
+};
 
 export class InputRightNumber {
   public input: HTMLInputElement;
@@ -1013,7 +1021,7 @@ export default class PopupPayment extends PopupElement<{
     this.onContentUpdate();
   }
 
-  public static async create(options: ConstructorParameters<typeof PopupPayment>[0]) {
+  public static async create(options: ConstructorParameters<typeof PopupPayment>[0]): Promise<PopupPaymentHandle> {
     let promise: Promise<PaymentsPaymentForm | PaymentsPaymentReceipt>;
     if(!options.paymentForm && !options.transaction && !options.noPaymentForm) {
       if(options.isReceipt) promise = rootScope.managers.appPaymentsManager.getPaymentReceipt(options.message.peerId, (options.message.media as MessageMedia.messageMediaInvoice).receipt_msg_id || (options.inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
@@ -1023,17 +1031,21 @@ export default class PopupPayment extends PopupElement<{
     }
 
     const paymentForm = await promise;
-    const constructor = options.noPaymentForm ||
+    const isStars = options.noPaymentForm ||
       options.transaction ||
       options.giftAction ||
       paymentForm._ === 'payments.paymentFormStars' ||
       paymentForm._ === 'payments.paymentReceiptStars' ||
-      paymentForm._ === 'payments.paymentFormStarGift' ? PopupStarsPay : PopupPayment;
+      paymentForm._ === 'payments.paymentFormStarGift';
 
-    const popup = PopupElement.createPopup(constructor as any, options) as PopupStarsPay | PopupPayment;
+    if(isStars) {
+      return showStarsPayPopup({...options, paymentForm}) as PopupPaymentHandle;
+    }
+
+    const popup = PopupElement.createPopup(PopupPayment, options);
     popup.setPaymentForm(paymentForm as any);
 
-    return popup;
+    return popup as PopupPaymentHandle;
   }
 
   public static getCardDetailsInfo(card: PaymentCardDetailsResult) {

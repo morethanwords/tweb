@@ -61,9 +61,9 @@ export default function showStarsRatingPopup(props: {
     });
 
     return (
-      <PopupElement class={styles.popup} containerClass={styles.popupContainer}>
-        <PopupElement.Header class={styles.popupHeader}>
-          <PopupElement.CloseButton class={styles.popupCloseButton} />
+      <PopupElement class={styles.popup} containerClass={styles.popupContainer} old>
+        <PopupElement.Header floating>
+          <PopupElement.CloseButton />
         </PopupElement.Header>
         <PopupElement.Body>
           <LimitLineTsx
@@ -142,7 +142,7 @@ export default function showStarsRatingPopup(props: {
             args={[wrapEmojiText(props.user.first_name)]}
           />
 
-          <div class={styles.list}>
+          <div>
             <Row class={styles.row}>
               <Row.Icon class={styles.rowIcon} icon="gift_filled" />
               <Row.Title class="text-bold">

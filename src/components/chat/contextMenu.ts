@@ -72,7 +72,7 @@ import showAboutAdPopup from '@components/popups/aboutAd';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import deepEqual from '@helpers/object/deepEqual';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
-import PopupStarReaction from '@components/popups/starReaction';
+import showStarReactionPopup from '@components/popups/starReaction';
 import getUniqueCustomEmojisFromMessage from '@appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import {getFullDate} from '@helpers/date/getFullDate';
@@ -407,7 +407,7 @@ export default class ChatContextMenu {
 
     const paidReactionElement = (e.target as HTMLElement).closest('.reaction.is-paid');
     if(paidReactionElement) {
-      PopupElement.createPopup(PopupStarReaction, bubble.dataset.peerId.toPeerId(), mid, this.chat);
+      showStarReactionPopup(bubble.dataset.peerId.toPeerId(), mid, this.chat);
       return;
     }
 
@@ -1795,7 +1795,7 @@ export default class ChatContextMenu {
           }
 
           if(reaction._ === 'reactionPaid') {
-            PopupElement.createPopup(PopupStarReaction, reactionsMessage.peerId, reactionsMessage.mid, this.chat);
+            showStarReactionPopup(reactionsMessage.peerId, reactionsMessage.mid, this.chat);
             return;
           }
 

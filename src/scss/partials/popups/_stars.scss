@@ -1,16 +1,15 @@
 @use "../../shared" as *;
 
- .popup-stars {
+.popup-stars {
   --popup-min-width: 26.25rem;
   --popup-max-width: 26.25rem;
   $parent: ".popup";
 
   #{$parent} {
     &-header {
-      height: 3.5rem;
-      padding-inline: .5rem;
-
       .stars-balance {
+        // the balance sits at the far end of the header, whether or not there is a title next to it
+        margin-inline-start: auto;
         margin-top: .25rem;
         margin-inline-end: .75rem;
       }
@@ -18,8 +17,6 @@
 
     &-container {
       max-height: calc(var(--100vh) - 5rem);
-      padding: 0;
-      border-radius: 1rem;
     }
 
     &-body {
@@ -238,10 +235,6 @@
   $parent: ".popup";
 
   #{$parent} {
-    &-header {
-      margin-bottom: 0;
-    }
-
     &-body {
       background-color: var(--surface-color);
       margin: -3.5rem 0 0;
@@ -388,21 +381,11 @@
 
   #{$parent} {
     &-header {
-      margin-bottom: -.25rem;
       z-index: 2;
     }
 
     &-body {
       background-color: var(--surface-color);
-    }
-
-    &-footer {
-      .button-icon {
-        font-size: 18.5px;
-        vertical-align: bottom;
-        line-height: inherit;
-        margin-inline-start: .25rem;
-      }
     }
   }
 
@@ -495,6 +478,7 @@
     &-delimiter {
       padding: 0 1rem;
       margin-top: 1.625rem;
+      width: 100%;
     }
 
     &-text {
@@ -590,11 +574,6 @@
     display: flex;
     justify-content: center;
     margin-top: 1rem;
-
-    &-row {
-      padding-inline-start: 3.5rem;
-      border-radius: $border-radius-medium;
-    }
   }
 
   .popup-stars-slider {
@@ -635,9 +614,5 @@
         overflow: visible;
       }
     }
-  }
-
-  .stars-balance {
-    margin-left: auto;
   }
 }

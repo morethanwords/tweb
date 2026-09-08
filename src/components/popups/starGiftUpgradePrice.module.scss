@@ -51,15 +51,15 @@
 
   &Hint {
     font-family: var(--font-rounded);
-    font-weight: 700;
-    font-size: 24px;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-24);
     line-height: 1;
   }
 }
 
 .title {
-  font-weight: 600;
-  font-size: 24px;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-24);
   text-align: center;
   margin-top: 1.5rem;
 }

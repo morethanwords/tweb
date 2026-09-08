@@ -301,12 +301,8 @@ defineStories('Stars & payments (more)', [
     id: 'starReaction',
     title: 'Send a paid (star) reaction',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupStarReaction}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/starReaction')
-      ]);
-
-      PopupElement.createPopup(PopupStarReaction, ctx.peer('channel'), ctx.mid('channel'), ctx.chat());
+      const {default: showStarReactionPopup} = await import('@components/popups/starReaction');
+      showStarReactionPopup(ctx.peer('channel'), ctx.mid('channel'), ctx.chat());
     }
   },
   {

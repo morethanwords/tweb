@@ -32,7 +32,9 @@ export type ScrollableContextValue = {
   container: HTMLDivElement,
   onSizeChange: () => void,
   setScrollPositionSilently: (value: number) => void,
-  checkForTriggers: () => void
+  checkForTriggers: () => void,
+  isScrolledToStart: boolean,
+  isScrolledToEnd: boolean
 };
 
 export const ScrollableContext = createContext<ScrollableContextValue>();
@@ -47,6 +49,12 @@ export default function Scrollable(props: {
   style?: JSX.CSSProperties,
   axis?: 'x' | 'y',
   withBorders?: 'both' | 'top' | 'bottom' | 'manual',
+  /**
+   * Keep `isScrolledToStart` / `isScrolledToEnd` up to date without drawing the borders.
+   * `withBorders` implies it; this is for a consumer that only reads the state off the context
+   * (a floating popup header, say) and doesn't want a border on the scrollable itself.
+   */
+  trackEnds?: boolean,
   onScrolledTop?: () => void,
   onScrolledBottom?: () => void,
   onScroll?: () => void,
@@ -216,7 +224,10 @@ export default function Scrollable(props: {
     }, {capture: true, passive: false, once: true});
   };
 
-  const onScrollCallbacks = createMemo(() => [props.onScroll, props.withBorders && checkEnds].filter(Boolean));
+  const onScrollCallbacks = createMemo(() => [
+    props.onScroll,
+    (props.withBorders || props.trackEnds) && checkEnds
+  ].filter(Boolean));
 
   const onThumbMouseMove = (e: MouseEvent) => {
     cancelEvent(e);
@@ -285,7 +296,13 @@ export default function Scrollable(props: {
     },
     onSizeChange,
     setScrollPositionSilently,
-    checkForTriggers
+    checkForTriggers,
+    get isScrolledToStart() {
+      return isScrolledToStart();
+    },
+    get isScrolledToEnd() {
+      return isScrolledToEnd();
+    }
   };
 
   if(props.contextRef) {

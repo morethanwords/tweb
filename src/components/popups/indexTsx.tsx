@@ -1,4 +1,4 @@
-import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
+import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, createRenderEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
@@ -68,7 +68,12 @@ export type PopupContextValue = {
   middlewareHelper: MiddlewareHelper,
   lateMiddlewareHelper: MiddlewareHelper,
   navigationItem: NavigationItem | undefined,
-  scrollableRef?: ScrollableContextValue,
+  // Reactive: the header renders before the scrollable, so its class effect must re-run once
+  // the scrollable registers itself.
+  scrollableRef: ScrollableContextValue | undefined,
+  setScrollableRef: (ref: ScrollableContextValue) => void,
+  hasFloatingHeader: boolean,
+  setHasFloatingHeader: (value: boolean) => void,
   withoutOverlay: boolean,
   night: boolean,
   confirmShortcutIsSendShortcut: boolean,
@@ -126,6 +131,8 @@ const PopupElement = (props: {
   const [store, setStore] = createStore<PopupContextValue['store']>({});
   const [buttons, setButtons] = createStore<PopupButton[]>([]);
   const [navigationItem, setNavigationItem] = createSignal<NavigationItem | undefined>();
+  const [scrollableRef, setScrollableRef] = createSignal<ScrollableContextValue | undefined>();
+  const [hasFloatingHeader, setHasFloatingHeader] = createSignal(false);
   const controllerContext = useContext(PopupControllerContext);
 
   const managers = props.managers || PopupElement.MANAGERS;
@@ -284,6 +291,10 @@ const PopupElement = (props: {
     middlewareHelper,
     lateMiddlewareHelper,
     get navigationItem() { return navigationItem(); },
+    get scrollableRef() { return scrollableRef(); },
+    setScrollableRef,
+    get hasFloatingHeader() { return hasFloatingHeader(); },
+    setHasFloatingHeader,
     // get scrollable() { return scrollable(); },
     withoutOverlay,
     night,
@@ -384,10 +395,28 @@ PopupElement.MANAGERS = undefined as any;
 
 PopupElement.Header = (props: {
   class?: string,
-  children?: JSX.Element
+  children?: JSX.Element,
+  floating?: boolean
 }) => {
-  return useContext(PopupContext).register('header', (
-    <div class={classNames('popup-header', props.class)}>
+  const context = useContext(PopupContext);
+
+  createRenderEffect(() => context.setHasFloatingHeader(!!props.floating));
+  onCleanup(() => context.setHasFloatingHeader(false));
+
+  // A body that can't scroll (or hasn't registered yet) reads as "still at the top": the
+  // background and the title stay hidden until the content actually moves under the header.
+  const isScrolledToStart = () => context.scrollableRef?.isScrolledToStart ?? true;
+
+  return context.register('header', (
+    <div class={classNames(
+      'popup-header',
+      props.class,
+      props.floating && 'is-floating',
+      props.floating && isScrolledToStart() && 'scrolled-start'
+    )}>
+      <Show when={props.floating}>
+        <div class="popup-header-background" />
+      </Show>
       {props.children}
     </div>
   ));
@@ -461,11 +490,13 @@ PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
   const context = useContext(PopupContext);
   return context.register('body', (
     <Scrollable
+      {...props}
+      // after the spread: a caller passing its own contextRef must not unregister the popup's
       contextRef={(ref) => {
-        context.scrollableRef = ref;
+        context.setScrollableRef(ref);
         props.contextRef?.(ref);
       }}
-      {...props}
+      trackEnds={props.trackEnds || context.hasFloatingHeader}
       class={classNames(
         'popup-scrollable',
         props.class

@@ -289,14 +289,14 @@
     }
 
     &-icon {
+      font-size: 1.25rem;
+
       &.left {
-        font-size: 1.25rem;
         margin-inline: -.1875rem .1875rem;
       }
 
       &.right {
-        font-size: 1.5rem;
-        margin-inline-start: .625rem;
+        margin-inline: .1875rem -.1875rem;
       }
     }
   }

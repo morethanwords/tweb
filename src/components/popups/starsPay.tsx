@@ -1,25 +1,24 @@
-import PopupElement from '@components/popups';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import PopupElementOld from '@components/popups';
+import Scrollable from '@components/scrollable2';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {formatFullSentTime} from '@helpers/date';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
-import toggleDisability from '@helpers/dom/toggleDisability';
 import maybe2x from '@helpers/maybe2x';
 import getGiftAssetName from '@helpers/getGiftAssetName';
-import safeAssign from '@helpers/object/safeAssign';
-import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, MessageExtendedMedia, Photo, Document, ChatInvite, StarsSubscription, Chat, MessageAction, Boost, WebDocument} from '@layer';
+import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, Photo, Document, Chat, WebDocument} from '@layer';
 import appImManager from '@lib/appImManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {replaceButtonIcon} from '@components/button';
 import {putPreloader} from '@components/putPreloader';
 import Table, {TablePeer} from '@components/table';
 import {toastNew} from '@components/toast';
-import PopupPayment, {PopupPaymentResult} from '@components/popups/payment';
+import type PopupPayment from '@components/popups/payment';
+import type {PopupPaymentResult} from '@components/popups/payment';
 import PopupStars, {getStarsTransactionTitleAndMedia, StarsAmount, StarsBalance, StarsChange} from '@components/popups/stars';
-import {JSX} from 'solid-js';
+import {createSignal, JSX} from 'solid-js';
 import partition from '@helpers/array/partition';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -42,544 +41,196 @@ import DEBUG from '@config/debug';
 import makeError from '@helpers/makeError';
 import bigInt from 'big-integer';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {getMiddleware} from '@helpers/middleware';
 
 const TEST_FIRST_TIME = DEBUG && false;
 
-export default class PopupStarsPay extends PopupElement<{
+export type StarsPayOptions = ConstructorParameters<typeof PopupPayment>[0];
+
+type StarsPaymentForm =
+  | PaymentsPaymentForm.paymentsPaymentFormStars
+  | PaymentsPaymentReceipt.paymentsPaymentReceiptStars
+  | PaymentsPaymentForm.paymentsPaymentFormStarGift;
+
+/** What the caller gets back: the same `finish` event the class popup dispatched. */
+export type StarsPayHandle = EventListenerBase<{
   finish: (result: PopupPaymentResult) => void
-}> {
-  private paymentForm:
-    | PaymentsPaymentForm.paymentsPaymentFormStars
-    | PaymentsPaymentReceipt.paymentsPaymentReceiptStars
-    | PaymentsPaymentForm.paymentsPaymentFormStarGift;
-  private result: PopupPaymentResult;
-  private inputInvoice: InputInvoice;
-  private isReceipt: boolean;
-  private isTopUp: boolean;
-  private paidMedia: MessageMedia.messageMediaPaidMedia;
-  private message: Message.message;
-  private peerId: PeerId;
-  private transaction: StarsTransaction;
-  private ledgerPeerId: PeerId;
-  private chatInvite: ChatInvite.chatInvite;
-  private subscription: StarsSubscription;
-  private isOutGift: boolean;
-  private boost: Boost;
-  private noShowIfStars: boolean;
-  private purpose: ConstructorParameters<typeof PopupPayment>[0]['purpose'];
+}>;
 
-  private onConfirm: () => void;
+export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHandle {
+  const emitter: StarsPayHandle = new EventListenerBase();
+  const managers = rootScope.managers;
+  const middlewareHelper = getMiddleware();
+  const middleware = middlewareHelper.get();
 
-  constructor(options: ConstructorParameters<typeof PopupPayment>[0]) {
-    super('popup-stars popup-stars-pay', {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      scrollable: true,
-      footer: true,
-      withConfirm: true,
-      title: true,
-      old: true
-    });
+  const {
+    inputInvoice, paidMedia, message, transaction, ledgerPeerId,
+    chatInvite, subscription, boost, noShowIfStars, purpose
+  } = options;
 
-    safeAssign(this, options);
-    this.footer.classList.add('abitlarger');
-    this.result = 'cancelled';
-    let test = TEST_FIRST_TIME;
+  let paymentForm = options.paymentForm as StarsPaymentForm;
+  const isReceipt = !!transaction || paymentForm?._ === 'payments.paymentReceiptStars';
+  const isOutGift = !!transaction?.pFlags.gift && getStarsTransactionPresentation(transaction).outgoing;
+  const form = paymentForm || transaction;
 
-    const onConfirm = this.onConfirm = async() => {
-      const {paymentForm} = this;
-      if(this.isReceipt || this.subscription?.pFlags.bot_canceled || (!paymentForm && !this.chatInvite && !this.subscription)) {
-        this.hide();
-        return;
-      }
-
-      const isTon = paymentForm?.invoice.currency === TON_CURRENCY
-      const itemPrice = paymentForm ? +paymentForm.invoice.prices[0].amount : (this.chatInvite ? +this.chatInvite.subscription_pricing.amount : +this.subscription.pricing.amount)
-
-      const d = putPreloader(this.btnConfirm);
-      const toggle = toggleDisability([this.btnConfirm], true);
-      this.result = 'pending';
-
-      let result: Promise<any>;
-      if(test) {
-        test = false;
-        result = Promise.reject(makeError('BALANCE_TOO_LOW'));
-        // result = Promise.resolve();
-      } else if(this.subscription) {
-        result = this.managers.appPaymentsManager.changeStarsSubscription(
-          this.subscription.id,
-          !this.subscription.pFlags.canceled
-        );
-      } else {
-        const balance = await this.managers.appPaymentsManager[isTon ? 'getStarsStatusTon' : 'getStarsStatus']();
-        if(bigInt(balance.balance.amount as number).lt(itemPrice)) {
-          result = Promise.reject(makeError('BALANCE_TOO_LOW'));
-        } else {
-          result = this.managers.appPaymentsManager.sendStarsForm(
-            this.inputInvoice,
-            (paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars)?.form_id || this.chatInvite.subscription_form_id
-          );
-        }
-      }
-
-      try {
-        await result;
-        this.result = 'paid';
-        this.hide();
-      } catch(err) {
-        let shouldRetry = false;
-        if((err as ApiError).type === 'BALANCE_TOO_LOW') {
-          PopupElement.createPopup(PopupStars, {
-            itemPrice,
-            paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars,
-            ton: isTon,
-            onTopup: async() => {
-              await this.reloadForm();
-              onConfirm();
-            },
-            onCancel: () => {
-              this.result = 'cancelled';
-              this.hide();
-            },
-            purpose: this.purpose,
-            spendPurposePeerId: this.peerId
-          });
-        } else if((err as ApiError).type === 'FORM_EXPIRED') {
-          await this.reloadForm();
-          shouldRetry = true;
-        } else {
-          this.result = 'failed';
-        }
-
-        toggle();
-        d.remove();
-
-        if(shouldRetry) {
-          onConfirm();
-        }
-      }
-    };
-
-    attachClickEvent(this.btnConfirm, onConfirm, {listenerSetter: this.listenerSetter});
+  let peerId: PeerId;
+  if(chatInvite || paymentForm?._ === 'payments.paymentFormStarGift') {
+    peerId = NULL_PEER_ID;
+  } else if(paymentForm) {
+    peerId = paymentForm.bot_id.toPeerId(false);
+  } else if(subscription) {
+    peerId = getPeerId(subscription.peer);
+  } else if(transaction.peer._ === 'starsTransactionPeer') {
+    peerId = getPeerId(transaction.peer.peer);
   }
 
-  private get form() {
-    return this.paymentForm || this.transaction;
-  }
+  const isTon = transaction?.amount._ === 'starsTonAmount' || paymentForm?.invoice.currency === TON_CURRENCY;
 
-  public hide() {
-    this.dispatchEvent('finish', this.result);
-    return super.hide();
-  }
+  let result: PopupPaymentResult = 'cancelled';
+  let finished = false;
+  let popupOpened = false;
+  const deferredCloseCallbacks: (() => void)[] = [];
 
-  private async reloadForm() {
-    if(!this.paymentForm) {
+  const [show, setShow] = createSignal(true);
+  const [paying, setPaying] = createSignal(false);
+  const [fulfilling, setFulfilling] = createSignal(false);
+
+  const emitFinish = () => {
+    if(finished) return;
+    finished = true;
+    emitter.dispatchEvent('finish', result);
+  };
+
+  const drainDeferred = () => deferredCloseCallbacks.splice(0).forEach((callback) => callback());
+
+  /** The popup only exists once its content has loaded — before that, finishing is all there is to do. */
+  const closePopup = () => {
+    if(popupOpened) {
+      setShow(false);
       return;
     }
 
-    this.paymentForm = await this.managers.appPaymentsManager.getPaymentForm(this.inputInvoice) as PaymentsPaymentForm.paymentsPaymentFormStars;
-  }
+    middlewareHelper.destroy();
+    emitFinish();
+    drainDeferred();
+  };
 
-  public setPaymentForm(paymentForm: PopupStarsPay['paymentForm']) {
-    this.paymentForm = paymentForm;
-    this.isReceipt = !!this.transaction || paymentForm?._ === 'payments.paymentReceiptStars';
-    this.isOutGift = !!this.transaction?.pFlags.gift && getStarsTransactionPresentation(this.transaction).outgoing;
-    this.construct();
-  }
+  const hidePopupsWithCallback = (callback: () => void, e?: Event) => {
+    cancelEvent(e);
+    deferredCloseCallbacks.push(callback);
+    closePopup();
+    const starsPopups = PopupElementOld.getPopups(PopupStars);
+    starsPopups?.[0]?.hide();
+  };
 
-  private _construct(
-    image: HTMLElement,
-    _title: HTMLElement | DocumentFragment,
-    avatar: HTMLElement,
-    link?: string
-  ) {
-    const isTon = this.transaction?.amount._ === 'starsTonAmount' || this.paymentForm?.invoice.currency === TON_CURRENCY;
-    const subscriptionUser = this.subscription && this.peerId.isUser() && useUser(this.peerId.toUserId());
-    const subscriptionPresentation = this.subscription && getStarsSubscriptionPresentation(this.subscription, tsNow(true), subscriptionUser && subscriptionUser._ === 'user' && !subscriptionUser.pFlags.bot);
-    if(!this.isReceipt && (!this.subscription || tsNow(true) > this.subscription.until_date)) {
-      this.header.append(StarsBalance({ton: isTon}) as HTMLElement);
+  const reloadForm = async() => {
+    if(!paymentForm) {
+      return;
     }
 
-    this.footer.append(this.btnConfirm);
-    this.body.after(this.footer);
-    let amount: Long;
-    if(this.paymentForm) {
-      const labeledPrice = this.paymentForm.invoice.prices[0];
-      amount = isTon ? formatNanoton(labeledPrice.amount, 9, false) : labeledPrice.amount;
-    } else if(this.chatInvite) {
-      amount = this.chatInvite.subscription_pricing.amount;
-    } else if(this.subscription) {
-      amount = this.subscription.pricing.amount;
+    paymentForm = await managers.appPaymentsManager.getPaymentForm(inputInvoice) as PaymentsPaymentForm.paymentsPaymentFormStars;
+  };
+
+  let test = TEST_FIRST_TIME;
+  const onConfirm = async() => {
+    if(isReceipt || subscription?.pFlags.bot_canceled || (!paymentForm && !chatInvite && !subscription)) {
+      closePopup();
+      return;
+    }
+
+    const itemPrice = paymentForm ? +paymentForm.invoice.prices[0].amount : (chatInvite ? +chatInvite.subscription_pricing.amount : +subscription.pricing.amount);
+
+    setPaying(true);
+    result = 'pending';
+
+    let promise: Promise<any>;
+    if(test) {
+      test = false;
+      promise = Promise.reject(makeError('BALANCE_TOO_LOW'));
+    } else if(subscription) {
+      promise = managers.appPaymentsManager.changeStarsSubscription(
+        subscription.id,
+        !subscription.pFlags.canceled
+      );
     } else {
-      amount = formatStarsAmountExact(this.transaction.amount);
-    }
-
-    if(this.isReceipt) {
-      this.btnConfirm.append(i18n('OK'));
-    } else if(this.chatInvite) {
-      this.btnConfirm.append(i18n('Stars.Subscribe.Button'));
-      const terms = i18n('Stars.Subscribe.Terms');
-      terms.classList.add('popup-footer-caption');
-      this.btnConfirm.after(terms);
-    } else if(this.subscription) {
-      if(this.subscription.pFlags.bot_canceled) {
-        this.btnConfirm.append(i18n('OK'));
-      } else if(this.subscription.pFlags.canceled) {
-        this.btnConfirm.append(i18n('Stars.Subscription.Renew'));
+      const balance = await managers.appPaymentsManager[isTon ? 'getStarsStatusTon' : 'getStarsStatus']();
+      if(bigInt(balance.balance.amount as number).lt(itemPrice)) {
+        promise = Promise.reject(makeError('BALANCE_TOO_LOW'));
       } else {
-        this.btnConfirm.className = 'btn-primary btn-secondary btn-primary-transparent danger';
-        this.btnConfirm.append(i18n('Stars.Subscription.Cancel'));
-      }
-
-      if(subscriptionPresentation.canRefulfill || (!this.subscription.pFlags.bot_canceled && !this.peerId.isUser() && !subscriptionPresentation.expired)) {
-        const chat = !this.peerId.isUser() && useChat(this.peerId.toChatId());
-        if(subscriptionPresentation.canRefulfill || (chat as Chat.channel)?.pFlags?.left) {
-          const btnFulfill = document.createElement('button');
-          btnFulfill.classList.add('btn-primary', 'btn-color-primary');
-          btnFulfill.append(i18n(this.peerId.isUser() ? 'Stars.Subscription.Restore' : 'Stars.Subscription.Fulfill'));
-          btnFulfill.style.marginTop = '.5rem';
-          attachClickEvent(btnFulfill, async() => {
-            const toggle = toggleDisability([this.btnConfirm, btnFulfill], true);
-            try {
-              await this.managers.appPaymentsManager.fulfillStarsSubscription(this.subscription.id);
-              hidePopupsWithCallback(() => {
-                appImManager.setInnerPeer({peerId: this.peerId});
-              });
-            } catch(err) {
-              console.error('fulfill error', err);
-              toggle();
-            }
-          }, {listenerSetter: this.listenerSetter});
-          this.btnConfirm.after(btnFulfill);
-        }
-      }
-    } else {
-      this.btnConfirm.append(i18n('Stars.ConfirmPurchaseButton', [amount]));
-      replaceButtonIcon(this.btnConfirm, isTon ? 'ton' : 'star');
-    }
-
-    const hidePopupsWithCallback = (callback: () => void, e?: Event) => {
-      cancelEvent(e);
-      this.hideWithCallback(callback);
-      const starsPopups = PopupElement.getPopups(PopupStars);
-      starsPopups?.[0]?.hide();
-    };
-
-    let noStarsChange = false;
-    let title: JSX.Element, subtitle: JSX.Element;
-    const presentation = this.transaction && getStarsTransactionPresentation(this.transaction);
-    if(this.transaction && !this.boost) {
-      title = presentation.kind === 'payment' && this.transaction.title ? wrapEmojiText(this.transaction.title) : i18n(presentation.titleKey, presentation.titleArgs);
-      subtitle = (this.transaction.description || (presentation.kind === 'subscription' && this.transaction.title)) && wrapEmojiText(this.transaction.description || this.transaction.title);
-      if(['messages', 'live'].includes(presentation.kind) && presentation.incoming && !this.transaction.pFlags.refund) {
-        const commission = this.transaction.starref_commission_permille;
-        subtitle = commission === undefined ? undefined : i18n('PaidMessages.YouReceiveWithCommissionNotice', [(1000 - commission) / 10]);
-      }
-    } else if(this.paidMedia) {
-      const [photos, videos] = partition(this.paidMedia.extended_media, (extendedMedia) => {
-        if(extendedMedia._ === 'messageExtendedMedia') {
-          return extendedMedia.media._ !== 'messageMediaDocument';
-        } else {
-          return extendedMedia.video_duration === undefined;
-        }
-      });
-
-      const multiplePhotosLang = i18n('Stars.Unlock.Photos', [photos.length]);
-      const multipleVideosLang = i18n('Stars.Unlock.Videos', [videos.length]);
-
-      title = i18n('StarsConfirmPurchaseTitle');
-      subtitle = i18n(this.peerId.isUser() ? 'Stars.Unlock.FromBot' : 'Stars.Unlock', [
-        photos.length && videos.length ?
-          i18n('Stars.Unlock.Media', [multiplePhotosLang, multipleVideosLang]) :
-          (photos.length || videos.length) === 1 ? i18n(photos.length ? 'Stars.Unlock.Photo' : 'Stars.Unlock.Video') : (photos.length ? multiplePhotosLang : multipleVideosLang),
-        _title,
-        i18n('Stars.Unlock.Stars', [amount])
-      ]);
-    } else if(this.transaction?.giveaway_post_id) {
-      title = i18n(!this.transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [formatStarsAmount(this.transaction.amount)]);
-      if(!this.transaction.id) {
-        subtitle = (
-          <span class="popup-stars-pay-boosts">
-            <IconTsx icon="boost_filled" />
-            {i18n('BoostingBoostsCountTitle', [this.boost.multiplier || 1])}
-          </span>
+        promise = managers.appPaymentsManager.sendStarsForm(
+          inputInvoice,
+          (paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars)?.form_id || chatInvite.subscription_form_id
         );
-        noStarsChange = true;
       }
-    } else if(this.form?._ === 'payments.paymentFormStarGift') {
-      title = i18n('StarsConfirmPurchaseTitle');
-      subtitle = i18n(this.inputInvoice._ === 'inputInvoiceStarGiftTransfer' ? (isTon ? 'Stars.Transaction.ConfirmGramTransfer' : 'StarGiftConfirmTransferText') : (isTon ? 'Stars.Transaction.ConfirmGramPurchase' : 'StarGiftConfirmPurchaseText'), [amount]);
-    } else if(this.inputInvoice?._ === 'inputInvoiceStarGiftDropOriginalDetails') {
-      title = i18n('StarGiftDropOriginalDetailsTitle');
-      subtitle = i18n('StarGiftDropOriginalDetailsText');
-    } else if(this.chatInvite) {
-      title = i18n('Stars.Subscribe.Title');
-      if(_title instanceof HTMLElement) _title.style.display = 'inline';
-      subtitle = i18n('Stars.Subscribe.Description', [_title, i18n('Stars.Unlock.Stars', [amount])]);
-    } else if(this.subscription) {
-      title = this.subscription.title ? wrapEmojiText(this.subscription.title) : i18n('Stars.Subscription');
-      subtitle = this.subscription.pricing.period === 2592000 ?
-        i18n('Stars.Subscription.Fee', [StarsAmount({stars: amount}) as HTMLElement]) :
-        i18n('Stars.Subscription.FeeForPeriod', [StarsAmount({stars: amount}) as HTMLElement, wrapDuration(this.subscription.pricing.period)]);
-      (subtitle as HTMLElement).classList.add('secondary');
-    } else {
-      title = this.isReceipt ? wrapEmojiText(this.form.title) : i18n('StarsConfirmPurchaseTitle');
-      subtitle = this.isReceipt ?
-        wrapEmojiText(this.form.description) :
-        i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText((this.paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars).title), _title]);
     }
 
-    const transactionId = this.transaction?.id ?? (this.paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceiptStars)?.transaction_id;
-    const onTransactionClick = () => {
-      copyTextToClipboard(transactionId);
-      toastNew({langPackKey: 'StarsTransactionIDCopied'});
-    };
-
-    const messagePeerId = this.transaction && getStarsTransactionMessagePeerId(this.transaction, this.ledgerPeerId || rootScope.myId, rootScope.myId);
-    const messageMid = this.transaction && (this.transaction.giveaway_post_id || this.transaction.msg_id);
-    const messageAnchor = messagePeerId && messageMid && anchorCallback((e) => {
-      hidePopupsWithCallback(() => appImManager.setInnerPeer({peerId: messagePeerId, lastMsgId: messageMid}), e);
-    });
-    if(messageAnchor) messageAnchor.append(link || i18n('Message'));
-
-    const makeTablePeer = (peerId: PeerId) => TablePeer({
-      peerId,
-      onClick: () => {
-        hidePopupsWithCallback(() => {
-          appImManager.setInnerPeer({
-            peerId,
-            stack: this.message ? {
-              peerId: this.message.peerId,
-              mid: this.message.mid
-            } : undefined
-          });
+    try {
+      await promise;
+      result = 'paid';
+      closePopup();
+    } catch(err) {
+      let shouldRetry = false;
+      if((err as ApiError).type === 'BALANCE_TOO_LOW') {
+        PopupElementOld.createPopup(PopupStars, {
+          itemPrice,
+          paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars,
+          ton: isTon,
+          onTopup: async() => {
+            await reloadForm();
+            onConfirm();
+          },
+          onCancel: () => {
+            result = 'cancelled';
+            closePopup();
+          },
+          purpose,
+          spendPurposePeerId: peerId
         });
+      } else if((err as ApiError).type === 'FORM_EXPIRED') {
+        await reloadForm();
+        shouldRetry = true;
+      } else {
+        result = 'failed';
       }
-    });
 
-    const tablePeer = (this.isReceipt || this.subscription) && this.peerId && makeTablePeer(this.peerId);
+      setPaying(false);
 
-    const transactionIdSpan = transactionId && (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
-
-    let tableContent: Parameters<typeof Table>[0]['content'];
-    if(this.subscription) {
-      tableContent = [
-        ['Stars.Subscription', tablePeer],
-        ['Stars.Subscription.Subscribed', formatFullSentTime(this.subscription.until_date - this.subscription.pricing.period)],
-        [subscriptionPresentation.dateLabelKey, formatFullSentTime(this.subscription.until_date)],
-        subscriptionPresentation.statusKey && ['StarGiftStatus', i18n(subscriptionPresentation.statusKey)]
-      ];
-    } else if(this.transaction && !this.boost) {
-      const transaction = this.transaction;
-      const ownerId = this.ledgerPeerId || rootScope.myId;
-      const amountElement = (value: StarsTransaction['amount']) => <StarsChange reverse noSign inline stars={formatStarsAmountExact(value)} ton={value._ === 'starsTonAmount'} />;
-      const provider = starsTransactionProviders[transaction.peer._];
-      const hasAffiliate = transaction.starref_peer && !['messages', 'live', 'resale', 'offer'].includes(presentation.kind);
-      let peerLabel: LangPackKey = presentation.incoming ? 'BoostingFrom' : 'BoostingTo';
-      if(presentation.kind === 'affiliate') peerLabel = 'Stars.Transaction.MiniApp';
-      else if(hasAffiliate) peerLabel = 'Stars.Transaction.Referred';
-      else if(presentation.kind === 'resale') peerLabel = presentation.outgoing ? 'Stars.Transaction.BoughtFrom' : 'Stars.Transaction.SoldTo';
-      tableContent = [
-        this.peerId ? [peerLabel, tablePeer] : presentation.anonymousGift ? ['BoostingFrom', i18n('Stars.Transaction.UnknownPeer')] : ['Stars.Via', i18n(provider || 'Stars.Transaction.Unsupported')],
-        transaction.giveaway_post_id && ['BoostingTo', makeTablePeer(ownerId)],
-        transaction.giveaway_post_id && ['BoostingGift', amountElement(transaction.amount)],
-        messageAnchor && [transaction.giveaway_post_id ? 'BoostingReason' : transaction.extended_media?.length ? 'StarsTransactionMedia' : 'Message', messageAnchor]
-      ];
-      if(presentation.kind === 'affiliate' || hasAffiliate) {
-        tableContent.push(['BoostingReason', i18n('Stars.Transaction.AffiliateProgram')]);
+      if(shouldRetry) {
+        onConfirm();
       }
-      const gift = transaction.stargift;
-      if(gift) {
-        const giftTitle = gift._ === 'starGiftUnique' ? `${gift.title} #${gift.num}` : gift.title || i18n('StarGiftTitle');
-        const giftAnchor = gift._ === 'starGiftUnique' && anchorCallback(() => {
-          hidePopupsWithCallback(() => appImManager.openUrl(`https://t.me/nft/${gift.slug}`));
-        });
-        if(giftAnchor) giftAnchor.append(giftTitle);
-        tableContent.push(['StarGiftTitle', giftAnchor || giftTitle]);
-        if(gift._ === 'starGiftUnique') {
-          for(const attribute of gift.attributes) {
-            const key = attribute._ === 'starGiftAttributeModel' ? 'StarGiftModel' : attribute._ === 'starGiftAttributeBackdrop' ? 'StarGiftBackdrop' : attribute._ === 'starGiftAttributePattern' ? 'StarGiftPattern' : undefined;
-            if(key && 'name' in attribute) tableContent.push([key, wrapEmojiText(attribute.name)]);
-          }
-          tableContent.push(['StarGiftAvailability', i18n('StarGiftAvailabilityIssued', [gift.availability_issued, gift.availability_total])]);
-        } else if(gift.availability_total !== undefined) {
-          tableContent.push(['StarGiftAvailability', i18n('StarGiftAvailabilityValue2', [gift.availability_remains || 0, gift.availability_total])]);
-        }
-      }
-      if(hasAffiliate) {
-        tableContent.push(['Stars.Transaction.Referrer', makeTablePeer(getPeerId(transaction.starref_peer))]);
-      }
-      if(transaction.starref_amount) {
-        tableContent.push(['Stars.Transaction.CommissionAmount', amountElement(transaction.starref_amount)]);
-      }
-      const fullAmount = getStarsTransactionFullAmount(transaction);
-      if(fullAmount) tableContent.push(['PaidMessages.FullPrice', amountElement(fullAmount)]);
-
-      if(transaction.starref_commission_permille !== undefined) {
-        tableContent.push(['Stars.Transaction.CommissionLabel', `${transaction.starref_commission_permille / 10}%`]);
-      }
-      if(transaction.subscription_period) {
-        tableContent.push(['Stars.Transaction.Period', i18n('Stars.Transaction.PeriodSeconds', [transaction.subscription_period])]);
-      }
-      if(transaction.premium_gift_months) {
-        tableContent.push(['Stars.Transaction.Duration', i18n('Stars.Transaction.Months', [transaction.premium_gift_months])]);
-      }
-      if(transaction.floodskip_number !== undefined || transaction.paid_messages !== undefined) {
-        tableContent.push(['Stars.Transaction.Messages', String(transaction.floodskip_number ?? transaction.paid_messages)]);
-      }
-      if(transaction.ads_proceeds_from_date !== undefined && transaction.ads_proceeds_to_date !== undefined) {
-        tableContent.push(['Stars.Transaction.RevenuePeriod', <>{formatFullSentTime(transaction.ads_proceeds_from_date)}{' — '}{formatFullSentTime(transaction.ads_proceeds_to_date)}</>]);
-      }
-      tableContent.push(transactionIdSpan && ['StarsTransactionID', transactionIdSpan], ['StarsTransactionDate', formatFullSentTime(transaction.date, undefined, true)]);
-      if(presentation.statusKey) tableContent.push(['StarGiftStatus', i18n(presentation.statusKey)]);
-      if(!transaction.pFlags.pending && !transaction.pFlags.failed) {
-        if(transaction.transaction_date) tableContent.push(['Stars.Transaction.Completed', formatFullSentTime(transaction.transaction_date, undefined, true)]);
-        if(transaction.transaction_url && /^https?:\/\//i.test(transaction.transaction_url)) {
-          const anchor = anchorCallback(() => safeWindowOpen(transaction.transaction_url));
-          anchor.append(i18n('Stars.Transaction.View'));
-          tableContent.push(['Stars.Transaction.Blockchain', anchor]);
-        }
-      }
-    } else if(this.transaction?.giveaway_post_id) {
-      messageAnchor?.replaceChildren(i18n('BoostingGiveaway'));
-      tableContent = [
-        ['BoostingFrom', tablePeer],
-        this.transaction.id && ['BoostingTo', makeTablePeer(rootScope.myId)],
-        [this.transaction.id ? 'BoostingGift' : 'Giveaway.Prize', i18n('Stars', [formatStarsAmount(this.transaction.amount)])],
-        ['BoostingReason', messageAnchor],
-        this.transaction.id && ['StarsTransactionID', transactionIdSpan],
-        ['StarsTransactionDate',  formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
-      ];
-    } else if(this.isReceipt) {
-      tableContent = [
-        this.peerId ? [
-          this.transaction?.subscription_period ? 'Stars.Subscription' : 'BoostingTo',
-          tablePeer
-        ] : ['Stars.Via', _title],
-        ['StarsTransactionID', transactionIdSpan],
-        ['StarsTransactionDate', formatFullSentTime((this.form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
-      ];
     }
+  };
 
-    return (
-      <div class="popup-stars-pay-padding">
-        {image}
-        <div class="popup-stars-pay-images">
-          <div
-            class="popup-stars-pay-avatar"
-            onClick={async() => {
-              if(!this.isReceipt || !this.transaction?.extended_media?.length) {
-                return;
-              }
-
-              const extendedMedia = this.transaction.extended_media;
-              const media = extendedMedia.map((messageMedia) => {
-                return (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
-                  (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
-              });
-
-              const message = await this.managers.appMessagesManager.generateStandaloneOutgoingMessage(messagePeerId || this.peerId);
-              message.media = {
-                _: 'messageMediaPaidMedia',
-                extended_media: extendedMedia.map((messageMedia) => {
-                  return {_: 'messageExtendedMedia', media: messageMedia};
-                }),
-                stars_amount: 0
-              };
-              message.id = getServerMessageId(this.transaction.msg_id);
-              message.mid = this.transaction.msg_id;
-
-              const targets: AppMediaViewer['target'][] = media.map((media, index) => {
-                return {element: null as HTMLElement, mid: 0, peerId: 0, index, message};
-              });
-
-              targets[0].element = avatar;
-
-              new AppMediaViewer(true)
-              .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
-              .openMedia({
-                message,
-                target: targets[0].element,
-                fromRight: 0,
-                reverse: false,
-                prevTargets: [],
-                nextTargets: targets.slice(1)
-              });
-            }}
-          >{avatar}</div>
-        </div>
-        <div class="popup-stars-title">{title}</div>
-        {tableContent && !this.subscription && !noStarsChange && (
-          <StarsChange
-            stars={!this.transaction ? (String(amount).startsWith('-') ? String(amount).slice(1) : '-' + amount) : amount}
-            isRefund={!!this.transaction?.pFlags?.refund}
-            noSign={this.isOutGift}
-            ton={isTon}
-          />
-        )}
-        {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !this.subscription && !this.boost && 'mt')}>{subtitle}</div>}
-        {tableContent && (
-          <>
-            <Table class="popup-stars-pay-table" content={tableContent.filter(Boolean)} />
-            <div class="popup-stars-pay-tos">{i18n(isTon ? 'Stars.Transaction.GramTOS' : 'Stars.TransactionTOS')}</div>
-            {this.subscription && (
-              <div class={classNames('popup-stars-pay-tos', 'popup-stars-pay-tos2', subscriptionPresentation.statusKey && 'danger')}>{
-                i18n(
-                  subscriptionPresentation.captionKey,
-                  [formatFullSentTime(this.subscription.until_date)]
-                )
-              }</div>
-            )}
-          </>
-        )}
-      </div>
-    );
-  }
-
-  private async construct() {
-    if(this.chatInvite || this.paymentForm?._ === 'payments.paymentFormStarGift') {
-      this.peerId = NULL_PEER_ID;
-    } else if(this.paymentForm) {
-      this.peerId = this.paymentForm.bot_id.toPeerId(false);
-    } else if(this.subscription) {
-      this.peerId = getPeerId(this.subscription.peer);
-    } else if(this.transaction.peer._ === 'starsTransactionPeer') {
-      this.peerId = getPeerId(this.transaction.peer.peer);
-    }
-
-    const [image, {title, media}, link] = await Promise.all([
+  const construct = async() => {
+    const [image, {title: transactionTitle, media: avatar}, link] = await Promise.all([
       (async() => {
         const img = document.createElement('img');
         img.classList.add('popup-stars-image');
-        await renderImageFromUrlPromise(img, `assets/img/${maybe2x(this.boost ? 'stars' : 'stars_pay')}.png`);
+        await renderImageFromUrlPromise(img, `assets/img/${maybe2x(boost ? 'stars' : 'stars_pay')}.png`);
         return img;
       })(),
       (async() => {
         const result = await getStarsTransactionTitleAndMedia({
-          transaction: this.transaction,
-          middleware: this.middlewareHelper.get(),
+          transaction,
+          middleware,
           size: 90,
-          paidMedia: this.paidMedia,
-          paidMediaPeerId: this.message ? this.message.fwdFromId || this.message.fromId : this.peerId,
-          chatInvite: this.chatInvite,
-          subscription: this.subscription,
-          photo: this.form?._ === 'payments.paymentFormStarGift' ? undefined : this.form?.photo as WebDocument.webDocument
+          paidMedia,
+          paidMediaPeerId: message ? message.fwdFromId || message.fromId : peerId,
+          chatInvite,
+          subscription,
+          photo: form?._ === 'payments.paymentFormStarGift' ? undefined : form?.photo as WebDocument.webDocument
         });
 
-        if(this.boost) {
+        if(boost) {
           result.media = undefined;
-          // const img = document.createElement('img');
-          // await renderImageFromUrlPromise(img, `assets/img/${maybe2x('stars')}.png`);
-          // result.media = img;
-          // img.classList.add('popup-stars-pay-star');
-        } else if(this.transaction && (this.transaction.pFlags.gift || this.transaction.giveaway_post_id || this.transaction.premium_gift_months)) {
+        } else if(transaction && (transaction.pFlags.gift || transaction.giveaway_post_id || transaction.premium_gift_months)) {
           const size = 128;
           result.media = await wrapLocalSticker({
             width: size,
             height: size,
-            assetName: this.transaction.premium_gift_months ? getGiftAssetName(this.transaction.premium_gift_months * 30) : this.transaction.amount._ === 'starsTonAmount' ? 'Diamond' : 'Gift3',
-            middleware: this.middlewareHelper.get(),
+            assetName: transaction.premium_gift_months ? getGiftAssetName(transaction.premium_gift_months * 30) : transaction.amount._ === 'starsTonAmount' ? 'Diamond' : 'Gift3',
+            middleware,
             loop: false,
             autoplay: liteMode.isAvailable('stickers_chat')
           }).then(({container, promise}) => {
@@ -587,7 +238,7 @@ export default class PopupStarsPay extends PopupElement<{
             container.style.width = container.style.height = size + 'px';
             // A decorative first frame must not delay opening a receipt (the container is still detached).
             void promise.catch(() => {
-              if(this.middlewareHelper.get()()) container.replaceChildren(IconTsx({icon: this.transaction.amount._ === 'starsTonAmount' ? 'ton' : 'gift'}) as HTMLElement);
+              if(middleware()) container.replaceChildren(IconTsx({icon: transaction.amount._ === 'starsTonAmount' ? 'ton' : 'gift'}) as HTMLElement);
             });
             return container as HTMLDivElement;
           });
@@ -598,21 +249,419 @@ export default class PopupStarsPay extends PopupElement<{
         return result;
       })(),
       (async() => {
-        const transaction = this.transaction;
         if(!transaction) return;
-        const peerId = getStarsTransactionMessagePeerId(transaction, this.ledgerPeerId || rootScope.myId, rootScope.myId);
+        const peerId = getStarsTransactionMessagePeerId(transaction, ledgerPeerId || rootScope.myId, rootScope.myId);
         const mid = transaction.giveaway_post_id || transaction.msg_id;
         if(!peerId || !mid) return;
         const serverMsgId = getServerMessageId(mid);
         return peerId.isUser() ? undefined : `https://t.me/c/${peerId.toChatId()}/${serverMsgId}`;
       })()
     ]);
-    this.body.classList.toggle('is-receipt', this.isReceipt);
-    this.appendSolid(() => this._construct(image, title, media, link));
-    if(this.noShowIfStars) {
-      this.onConfirm();
-    } else {
-      this.show();
+
+    if(noShowIfStars) {
+      onConfirm();
+      return;
     }
-  }
+
+    popupOpened = true;
+    createPopup(() => {
+      const _title = transactionTitle;
+
+      // `useUser` / `useChat` are store subscriptions — they belong to this root, and reading them
+      // once here keeps the footer and the table on the same snapshot
+      const subscriptionUser = subscription && peerId.isUser() && useUser(peerId.toUserId());
+      const subscriptionPresentation = subscription && getStarsSubscriptionPresentation(
+        subscription,
+        tsNow(true),
+        subscriptionUser && subscriptionUser._ === 'user' && !subscriptionUser.pFlags.bot
+      );
+
+      /** The price the popup talks about — from the form, the invite, the subscription or the transaction. */
+      let amount: Long;
+      if(paymentForm) {
+        const labeledPrice = paymentForm.invoice.prices[0];
+        amount = isTon ? formatNanoton(labeledPrice.amount, 9, false) : labeledPrice.amount;
+      } else if(chatInvite) {
+        amount = chatInvite.subscription_pricing.amount;
+      } else if(subscription) {
+        amount = subscription.pricing.amount;
+      } else {
+        amount = formatStarsAmountExact(transaction.amount);
+      }
+
+      const Footer = () => {
+        let confirmText: JSX.Element, confirmColor: 'danger', confirmIcon: Icon;
+        let caption: JSX.Element, fulfillKey: LangPackKey;
+
+        if(isReceipt) {
+          confirmText = i18n('OK');
+        } else if(chatInvite) {
+          confirmText = i18n('Stars.Subscribe.Button');
+          caption = <div class="popup-footer-caption">{i18n('Stars.Subscribe.Terms')}</div>;
+        } else if(subscription) {
+          if(subscription.pFlags.bot_canceled) {
+            confirmText = i18n('OK');
+          } else if(subscription.pFlags.canceled) {
+            confirmText = i18n('Stars.Subscription.Renew');
+          } else {
+            confirmText = i18n('Stars.Subscription.Cancel');
+            confirmColor = 'danger';
+          }
+
+          if(subscriptionPresentation.canRefulfill || (!subscription.pFlags.bot_canceled && !peerId.isUser() && !subscriptionPresentation.expired)) {
+            const chat = !peerId.isUser() && useChat(peerId.toChatId());
+            if(subscriptionPresentation.canRefulfill || (chat as Chat.channel)?.pFlags?.left) {
+              fulfillKey = peerId.isUser() ? 'Stars.Subscription.Restore' : 'Stars.Subscription.Fulfill';
+            }
+          }
+        } else {
+          confirmText = i18n('Stars.ConfirmPurchaseButton', [amount]);
+          confirmIcon = isTon ? 'ton' : 'star';
+        }
+
+        const onFulfill = async() => {
+          setFulfilling(true);
+          try {
+            await managers.appPaymentsManager.fulfillStarsSubscription(subscription.id);
+            hidePopupsWithCallback(() => {
+              appImManager.setInnerPeer({peerId});
+            });
+          } catch(err) {
+            console.error('fulfill error', err);
+            setFulfilling(false);
+          }
+        };
+
+        return (
+          <PopupElement.Footer>
+            <PopupElement.FooterButton
+              color={confirmColor}
+              iconRight={confirmIcon}
+              disabled={paying() || fulfilling()}
+              callback={() => {
+                onConfirm();
+                return false; // * `onConfirm` decides when (and whether) the popup closes
+              }}
+            >
+              {confirmText}
+              {paying() && putPreloader(undefined, true)}
+            </PopupElement.FooterButton>
+            {caption}
+            {fulfillKey && (
+              <PopupElement.FooterButton
+                disabled={paying() || fulfilling()}
+                callback={() => {
+                  onFulfill();
+                  return false;
+                }}
+              >
+                {i18n(fulfillKey)}
+              </PopupElement.FooterButton>
+            )}
+          </PopupElement.Footer>
+        );
+      };
+
+      const Content = () => {
+        const presentation = transaction && getStarsTransactionPresentation(transaction);
+
+        let noStarsChange = false;
+        let title: JSX.Element, subtitle: JSX.Element;
+        if(transaction && !boost) {
+          title = presentation.kind === 'payment' && transaction.title ? wrapEmojiText(transaction.title) : i18n(presentation.titleKey, presentation.titleArgs);
+          subtitle = (transaction.description || (presentation.kind === 'subscription' && transaction.title)) && wrapEmojiText(transaction.description || transaction.title);
+          if(['messages', 'live'].includes(presentation.kind) && presentation.incoming && !transaction.pFlags.refund) {
+            const commission = transaction.starref_commission_permille;
+            subtitle = commission === undefined ? undefined : i18n('PaidMessages.YouReceiveWithCommissionNotice', [(1000 - commission) / 10]);
+          }
+        } else if(paidMedia) {
+          const [photos, videos] = partition(paidMedia.extended_media, (extendedMedia) => {
+            if(extendedMedia._ === 'messageExtendedMedia') {
+              return extendedMedia.media._ !== 'messageMediaDocument';
+            } else {
+              return extendedMedia.video_duration === undefined;
+            }
+          });
+
+          const multiplePhotosLang = i18n('Stars.Unlock.Photos', [photos.length]);
+          const multipleVideosLang = i18n('Stars.Unlock.Videos', [videos.length]);
+
+          title = i18n('StarsConfirmPurchaseTitle');
+          subtitle = i18n(peerId.isUser() ? 'Stars.Unlock.FromBot' : 'Stars.Unlock', [
+            photos.length && videos.length ?
+              i18n('Stars.Unlock.Media', [multiplePhotosLang, multipleVideosLang]) :
+              (photos.length || videos.length) === 1 ? i18n(photos.length ? 'Stars.Unlock.Photo' : 'Stars.Unlock.Video') : (photos.length ? multiplePhotosLang : multipleVideosLang),
+            _title,
+            i18n('Stars.Unlock.Stars', [amount])
+          ]);
+        } else if(transaction?.giveaway_post_id) {
+          title = i18n(!transaction.id ? 'Stars' : 'StarsGiveawayPrizeReceived', [formatStarsAmount(transaction.amount)]);
+          if(!transaction.id) {
+            subtitle = (
+              <span class="popup-stars-pay-boosts">
+                <IconTsx icon="boost_filled" />
+                {i18n('BoostingBoostsCountTitle', [boost.multiplier || 1])}
+              </span>
+            );
+            noStarsChange = true;
+          }
+        } else if(form?._ === 'payments.paymentFormStarGift') {
+          title = i18n('StarsConfirmPurchaseTitle');
+          subtitle = i18n(inputInvoice._ === 'inputInvoiceStarGiftTransfer' ? (isTon ? 'Stars.Transaction.ConfirmGramTransfer' : 'StarGiftConfirmTransferText') : (isTon ? 'Stars.Transaction.ConfirmGramPurchase' : 'StarGiftConfirmPurchaseText'), [amount]);
+        } else if(inputInvoice?._ === 'inputInvoiceStarGiftDropOriginalDetails') {
+          title = i18n('StarGiftDropOriginalDetailsTitle');
+          subtitle = i18n('StarGiftDropOriginalDetailsText');
+        } else if(chatInvite) {
+          title = i18n('Stars.Subscribe.Title');
+          if(_title instanceof HTMLElement) _title.style.display = 'inline';
+          subtitle = i18n('Stars.Subscribe.Description', [_title, i18n('Stars.Unlock.Stars', [amount])]);
+        } else if(subscription) {
+          title = subscription.title ? wrapEmojiText(subscription.title) : i18n('Stars.Subscription');
+          subtitle = subscription.pricing.period === 2592000 ?
+            i18n('Stars.Subscription.Fee', [StarsAmount({stars: amount}) as HTMLElement]) :
+            i18n('Stars.Subscription.FeeForPeriod', [StarsAmount({stars: amount}) as HTMLElement, wrapDuration(subscription.pricing.period)]);
+          (subtitle as HTMLElement).classList.add('secondary');
+        } else {
+          title = isReceipt ? wrapEmojiText(form.title) : i18n('StarsConfirmPurchaseTitle');
+          subtitle = isReceipt ?
+            wrapEmojiText(form.description) :
+            i18n('StarsConfirmPurchaseText', [amount, wrapEmojiText((paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars).title), _title]);
+        }
+
+        const transactionId = transaction?.id ?? (paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceiptStars)?.transaction_id;
+        const onTransactionClick = () => {
+          copyTextToClipboard(transactionId);
+          toastNew({langPackKey: 'StarsTransactionIDCopied'});
+        };
+
+        const messagePeerId = transaction && getStarsTransactionMessagePeerId(transaction, ledgerPeerId || rootScope.myId, rootScope.myId);
+        const messageMid = transaction && (transaction.giveaway_post_id || transaction.msg_id);
+        const messageAnchor = messagePeerId && messageMid && anchorCallback((e) => {
+          hidePopupsWithCallback(() => appImManager.setInnerPeer({peerId: messagePeerId, lastMsgId: messageMid}), e);
+        });
+        if(messageAnchor) messageAnchor.append(link || i18n('Message'));
+
+        const makeTablePeer = (tablePeerId: PeerId) => TablePeer({
+          peerId: tablePeerId,
+          onClick: () => {
+            hidePopupsWithCallback(() => {
+              appImManager.setInnerPeer({
+                peerId: tablePeerId,
+                stack: message ? {
+                  peerId: message.peerId,
+                  mid: message.mid
+                } : undefined
+              });
+            });
+          }
+        });
+
+        const tablePeer = (isReceipt || subscription) && peerId && makeTablePeer(peerId);
+
+        const transactionIdSpan = transactionId && (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
+
+        let tableContent: Parameters<typeof Table>[0]['content'];
+        if(subscription) {
+          tableContent = [
+            ['Stars.Subscription', tablePeer],
+            ['Stars.Subscription.Subscribed', formatFullSentTime(subscription.until_date - subscription.pricing.period)],
+            [subscriptionPresentation.dateLabelKey, formatFullSentTime(subscription.until_date)],
+            subscriptionPresentation.statusKey && ['StarGiftStatus', i18n(subscriptionPresentation.statusKey)]
+          ];
+        } else if(transaction && !boost) {
+          const ownerId = ledgerPeerId || rootScope.myId;
+          const amountElement = (value: StarsTransaction['amount']) => <StarsChange reverse noSign inline stars={formatStarsAmountExact(value)} ton={value._ === 'starsTonAmount'} />;
+          const provider = starsTransactionProviders[transaction.peer._];
+          const hasAffiliate = transaction.starref_peer && !['messages', 'live', 'resale', 'offer'].includes(presentation.kind);
+          let peerLabel: LangPackKey = presentation.incoming ? 'BoostingFrom' : 'BoostingTo';
+          if(presentation.kind === 'affiliate') peerLabel = 'Stars.Transaction.MiniApp';
+          else if(hasAffiliate) peerLabel = 'Stars.Transaction.Referred';
+          else if(presentation.kind === 'resale') peerLabel = presentation.outgoing ? 'Stars.Transaction.BoughtFrom' : 'Stars.Transaction.SoldTo';
+          tableContent = [
+            peerId ? [peerLabel, tablePeer] : presentation.anonymousGift ? ['BoostingFrom', i18n('Stars.Transaction.UnknownPeer')] : ['Stars.Via', i18n(provider || 'Stars.Transaction.Unsupported')],
+            transaction.giveaway_post_id && ['BoostingTo', makeTablePeer(ownerId)],
+            transaction.giveaway_post_id && ['BoostingGift', amountElement(transaction.amount)],
+            messageAnchor && [transaction.giveaway_post_id ? 'BoostingReason' : transaction.extended_media?.length ? 'StarsTransactionMedia' : 'Message', messageAnchor]
+          ];
+          if(presentation.kind === 'affiliate' || hasAffiliate) {
+            tableContent.push(['BoostingReason', i18n('Stars.Transaction.AffiliateProgram')]);
+          }
+          const gift = transaction.stargift;
+          if(gift) {
+            const giftTitle = gift._ === 'starGiftUnique' ? `${gift.title} #${gift.num}` : gift.title || i18n('StarGiftTitle');
+            const giftAnchor = gift._ === 'starGiftUnique' && anchorCallback(() => {
+              hidePopupsWithCallback(() => appImManager.openUrl(`https://t.me/nft/${gift.slug}`));
+            });
+            if(giftAnchor) giftAnchor.append(giftTitle);
+            tableContent.push(['StarGiftTitle', giftAnchor || giftTitle]);
+            if(gift._ === 'starGiftUnique') {
+              for(const attribute of gift.attributes) {
+                const key = attribute._ === 'starGiftAttributeModel' ? 'StarGiftModel' : attribute._ === 'starGiftAttributeBackdrop' ? 'StarGiftBackdrop' : attribute._ === 'starGiftAttributePattern' ? 'StarGiftPattern' : undefined;
+                if(key && 'name' in attribute) tableContent.push([key, wrapEmojiText(attribute.name)]);
+              }
+              tableContent.push(['StarGiftAvailability', i18n('StarGiftAvailabilityIssued', [gift.availability_issued, gift.availability_total])]);
+            } else if(gift.availability_total !== undefined) {
+              tableContent.push(['StarGiftAvailability', i18n('StarGiftAvailabilityValue2', [gift.availability_remains || 0, gift.availability_total])]);
+            }
+          }
+          if(hasAffiliate) {
+            tableContent.push(['Stars.Transaction.Referrer', makeTablePeer(getPeerId(transaction.starref_peer))]);
+          }
+          if(transaction.starref_amount) {
+            tableContent.push(['Stars.Transaction.CommissionAmount', amountElement(transaction.starref_amount)]);
+          }
+          const fullAmount = getStarsTransactionFullAmount(transaction);
+          if(fullAmount) tableContent.push(['PaidMessages.FullPrice', amountElement(fullAmount)]);
+
+          if(transaction.starref_commission_permille !== undefined) {
+            tableContent.push(['Stars.Transaction.CommissionLabel', `${transaction.starref_commission_permille / 10}%`]);
+          }
+          if(transaction.subscription_period) {
+            tableContent.push(['Stars.Transaction.Period', i18n('Stars.Transaction.PeriodSeconds', [transaction.subscription_period])]);
+          }
+          if(transaction.premium_gift_months) {
+            tableContent.push(['Stars.Transaction.Duration', i18n('Stars.Transaction.Months', [transaction.premium_gift_months])]);
+          }
+          if(transaction.floodskip_number !== undefined || transaction.paid_messages !== undefined) {
+            tableContent.push(['Stars.Transaction.Messages', String(transaction.floodskip_number ?? transaction.paid_messages)]);
+          }
+          if(transaction.ads_proceeds_from_date !== undefined && transaction.ads_proceeds_to_date !== undefined) {
+            tableContent.push(['Stars.Transaction.RevenuePeriod', <>{formatFullSentTime(transaction.ads_proceeds_from_date)}{' — '}{formatFullSentTime(transaction.ads_proceeds_to_date)}</>]);
+          }
+          tableContent.push(transactionIdSpan && ['StarsTransactionID', transactionIdSpan], ['StarsTransactionDate', formatFullSentTime(transaction.date, undefined, true)]);
+          if(presentation.statusKey) tableContent.push(['StarGiftStatus', i18n(presentation.statusKey)]);
+          if(!transaction.pFlags.pending && !transaction.pFlags.failed) {
+            if(transaction.transaction_date) tableContent.push(['Stars.Transaction.Completed', formatFullSentTime(transaction.transaction_date, undefined, true)]);
+            if(transaction.transaction_url && /^https?:\/\//i.test(transaction.transaction_url)) {
+              const anchor = anchorCallback(() => safeWindowOpen(transaction.transaction_url));
+              anchor.append(i18n('Stars.Transaction.View'));
+              tableContent.push(['Stars.Transaction.Blockchain', anchor]);
+            }
+          }
+        } else if(transaction?.giveaway_post_id) {
+          messageAnchor?.replaceChildren(i18n('BoostingGiveaway'));
+          tableContent = [
+            ['BoostingFrom', tablePeer],
+            transaction.id && ['BoostingTo', makeTablePeer(rootScope.myId)],
+            [transaction.id ? 'BoostingGift' : 'Giveaway.Prize', i18n('Stars', [formatStarsAmount(transaction.amount)])],
+            ['BoostingReason', messageAnchor],
+            transaction.id && ['StarsTransactionID', transactionIdSpan],
+            ['StarsTransactionDate', formatFullSentTime((form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
+          ];
+        } else if(isReceipt) {
+          tableContent = [
+            peerId ? [
+              transaction?.subscription_period ? 'Stars.Subscription' : 'BoostingTo',
+              tablePeer
+            ] : ['Stars.Via', _title],
+            ['StarsTransactionID', transactionIdSpan],
+            ['StarsTransactionDate', formatFullSentTime((form as PaymentsPaymentReceipt.paymentsPaymentReceiptStars).date, undefined, true)]
+          ];
+        }
+
+        return (
+          <div class="popup-stars-pay-padding">
+            {image}
+            <div class="popup-stars-pay-images">
+              <div
+                class="popup-stars-pay-avatar"
+                onClick={async() => {
+                  if(!isReceipt || !transaction?.extended_media?.length) {
+                    return;
+                  }
+
+                  const extendedMedia = transaction.extended_media;
+                  const media = extendedMedia.map((messageMedia) => {
+                    return (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+                      (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
+                  });
+
+                  const standaloneMessage = await managers.appMessagesManager.generateStandaloneOutgoingMessage(messagePeerId || peerId);
+                  standaloneMessage.media = {
+                    _: 'messageMediaPaidMedia',
+                    extended_media: extendedMedia.map((messageMedia) => {
+                      return {_: 'messageExtendedMedia', media: messageMedia};
+                    }),
+                    stars_amount: 0
+                  };
+                  standaloneMessage.id = getServerMessageId(transaction.msg_id);
+                  standaloneMessage.mid = transaction.msg_id;
+
+                  const targets: AppMediaViewer['target'][] = media.map((media, index) => {
+                    return {element: null as HTMLElement, mid: 0, peerId: 0, index, message: standaloneMessage};
+                  });
+
+                  targets[0].element = avatar;
+
+                  new AppMediaViewer(true)
+                  .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
+                  .openMedia({
+                    message: standaloneMessage,
+                    target: targets[0].element,
+                    fromRight: 0,
+                    reverse: false,
+                    prevTargets: [],
+                    nextTargets: targets.slice(1)
+                  });
+                }}
+              >{avatar}</div>
+            </div>
+            <div class="popup-stars-title">{title}</div>
+            {tableContent && !subscription && !noStarsChange && (
+              <StarsChange
+                stars={!transaction ? (String(amount).startsWith('-') ? String(amount).slice(1) : '-' + amount) : amount}
+                isRefund={!!transaction?.pFlags?.refund}
+                noSign={isOutGift}
+                ton={isTon}
+              />
+            )}
+            {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !subscription && !boost && 'mt')}>{subtitle}</div>}
+            {tableContent && (
+              <>
+                <Table class="popup-stars-pay-table" content={tableContent.filter(Boolean)} />
+                <div class="popup-stars-pay-tos">{i18n(isTon ? 'Stars.Transaction.GramTOS' : 'Stars.TransactionTOS')}</div>
+                {subscription && (
+                  <div class={classNames('popup-stars-pay-tos', 'popup-stars-pay-tos2', subscriptionPresentation.statusKey && 'danger')}>{
+                    i18n(
+                      subscriptionPresentation.captionKey,
+                      [formatFullSentTime(subscription.until_date)]
+                    )
+                  }</div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <PopupElement
+          class="popup-stars popup-stars-pay"
+          closable
+          old
+          show={show()}
+          onClose={emitFinish}
+          onCloseAfterTimeout={() => {
+            middlewareHelper.destroy();
+            drainDeferred();
+          }}
+        >
+          <PopupElement.Header>
+            <PopupElement.CloseButton />
+            {!isReceipt && (!subscription || tsNow(true) > subscription.until_date) && <StarsBalance ton={isTon} />}
+          </PopupElement.Header>
+          <PopupElement.Body class={isReceipt ? 'is-receipt' : undefined}>
+            <Scrollable withBorders="both">
+              <Content />
+            </Scrollable>
+          </PopupElement.Body>
+          <Footer />
+        </PopupElement>
+      );
+    });
+  };
+
+  construct();
+
+  return emitter;
 }
