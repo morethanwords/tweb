@@ -79,10 +79,12 @@ button { -webkit-tap-highlight-color: transparent; }
 .step-options input { border: 1px solid var(--line); padding: 8px; border-radius: 8px; min-width: 0; background: var(--surface-soft); color: var(--ink); }
 .step-tools { display: flex; gap: 5px; margin-top: 6px; }
 .step-tools button { border: 0; background: transparent; color: var(--accent); padding: 8px; font-size: 12px; }
-.message-editor { display: block; box-sizing: border-box; width: 100%; min-width: 180px; min-height: calc(var(--messages-text-size) * var(--messages-line-height)); resize: none; overflow: hidden; padding: 0; border: 0; background: transparent; font: inherit; line-height: inherit; color: inherit; outline: none; user-select: text; -webkit-user-select: text; }
+.message-editor-frame { display: grid; box-sizing: border-box; min-width: 180px; max-width: 100%; }
+.message-editor-frame::after { content: attr(data-value) ' '; visibility: hidden; white-space: pre-wrap; overflow-wrap: anywhere; grid-area: 1 / 1; min-width: 0; max-width: 100%; font: inherit; line-height: inherit; }
+.message-editor { display: block; box-sizing: border-box; grid-area: 1 / 1; width: 100%; min-width: 0; min-height: calc(var(--messages-text-size) * var(--messages-line-height)); resize: none; overflow: hidden; padding: 0; border: 0; background: transparent; font: inherit; line-height: inherit; color: inherit; outline: none; user-select: text; -webkit-user-select: text; }
 .message-editor:focus-visible { outline: none; }
 .bubble .message .message-editor { min-width: 0; }
-.bubble-content:has(.message-editor) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), 0 1px 2px #10232f26; }
+.bubble-content:has(.message-editor:focus) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), 0 1px 2px #10232f26; }
 .message-editor::placeholder { color: var(--secondary-text-color); }
 .bubble.is-empty-message { --max-width: min(100%, 560px); }
 .bubble.is-empty-message .bubble-content-wrapper { width: min(560px, 100%); }
@@ -95,7 +97,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .bubble-delete-action:hover { background: var(--surface-soft); }
 .screen-message { margin-bottom: 6px; scroll-margin: 16px; }
 .run-message:has(.bubble:not(.is-group-last)) { margin-bottom: 6px; }
-.add-message { display: block; width: fit-content; min-height: 40px; margin: 22px auto 0; padding: 8px 16px; border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-radius: 20px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--accent); box-shadow: 0 1px 2px #10232f14; font-size: 13px; font-weight: 500; }
+.add-message { display: block; width: fit-content; min-height: 40px; margin: 6px auto 0; padding: 8px 16px; transform: translateY(16px); border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-radius: 20px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--accent); box-shadow: 0 1px 2px #10232f14; font-size: 13px; font-weight: 500; }
 @media (hover: hover) {
   .shell-add-button:not(:disabled):hover { background: color-mix(in srgb, var(--service-background), #536d50 15%); }
   .add-message:not(:disabled):hover { background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%); }

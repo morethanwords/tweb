@@ -107,6 +107,18 @@ async function selectAllAcrossFrame(page: Page, editor: Locator) {
   await page.clock.runFor(32);
   expect(await selection()).toEqual([0, length]);
 }
+async function focusAuthoredMessage(screen: Locator, index = 0) {
+  const editor = screen.locator('.message-editor').nth(index);
+  await editor.focus();
+  await expect(editor).toBeFocused();
+  await expect(editor).toHaveAttribute('aria-label', 'Текст сообщения');
+  return editor;
+}
+async function expectAuthoredMessages(screen: Locator, values: string[]) {
+  const editors = screen.locator('.message-editor');
+  await expect(editors).toHaveCount(values.length);
+  for (let index = 0; index < values.length; index++) await expect(editors.nth(index)).toHaveValue(values[index]);
+}
 
 test('Edit inspects one button; rows, destinations and export agree; Test uses occurrence keyboards', async ({page}, info) => {
   await page.goto('/');
@@ -234,26 +246,20 @@ test('screen numbers are stable references across reorder, delete, creation and 
 test('text edit undo and missing-target failure preserve document; new step has an empty usable keyboard', async ({page}) => {
   await page.goto('/');
   const start = page.getByTestId('story-step-start');
-  await start.locator('.message-text').click();
+  const originalText = await start.locator('.message-editor').inputValue();
+  await expect(start.locator('.message-editor')).toHaveCount(1);
+  await expect(start.getByRole('button', {name: 'Изменить текст сообщения', exact: true})).toHaveCount(0);
   await expect(page.getByLabel('Текст сообщения', {exact: true})).toHaveCount(0);
-  const edit = start.getByRole('button', {name: 'Изменить текст сообщения', exact: true});
-  expect(await edit.evaluate(element => element.tagName)).toBe('BUTTON');
-  const bubbleBox = await start.locator('.bubble-content').boundingBox();
-  const editBox = await edit.boundingBox();
-  expect(bubbleBox).not.toBeNull(); expect(editBox).not.toBeNull();
-  expect(editBox!.x).toBeGreaterThanOrEqual(bubbleBox!.x + bubbleBox!.width - 1);
-  await edit.click();
-  const text = page.getByLabel('Текст сообщения', {exact: true});
-  await expect(text).toBeFocused();
+  const text = await focusAuthoredMessage(start);
   await text.fill('Мой новый текст\nВторая строка');
   await text.press('Escape');
-  await expect(start).toContainText('Привет! Я');
-  await start.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
+  await expectAuthoredMessages(start, [originalText]);
+  await focusAuthoredMessage(start);
   await text.fill('Сохранённая вручную правка');
   await text.press('ControlOrMeta+Enter');
-  await expect(start).toContainText('Сохранённая вручную правка');
+  await expectAuthoredMessages(start, ['Сохранённая вручную правка']);
   await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
-  await expect(start).toContainText('Привет! Я');
+  await expectAuthoredMessages(start, [originalText]);
   await start.getByRole('button', {name: 'Добавить кнопку'}).click();
   const inspector = page.getByTestId('keyboard-inspector');
   await expect(inspector.getByLabel('Подпись', {exact: true})).toBeFocused();
@@ -271,7 +277,7 @@ test('text edit undo and missing-target failure preserve document; new step has 
   await expect(page.locator('[data-testid^="story-step-"]')).toHaveCount(1);
   await page.getByLabel('Текст сообщения', {exact: true}).fill('Дополнительная полезная информация');
   await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
-  const empty = page.locator('[data-testid^="story-step-"]').filter({hasText: 'Дополнительная полезная информация'});
+  const empty = page.locator('[data-testid^="story-step-"]');
   await expect(empty.getByRole('button', {name: 'Добавить кнопку'})).toBeVisible();
   await empty.getByRole('button', {name: 'Добавить кнопку'}).click();
   await inspector.getByLabel('Подпись', {exact: true}).fill('Вернуться');
@@ -301,15 +307,15 @@ test('offline examples are explicit; arbitrary prompt stays intact; reload reset
   await assertNoOverflow(page);
   page.on('dialog', dialog => void dialog.accept());
   await page.reload();
-  await expect(page.getByTestId('story-step-start')).toContainText('Привет! Я');
+  await expect(page.getByTestId('story-step-start').locator('.message-editor')).toHaveValue(/Привет! Я/);
   await expect(page.locator('.shell')).toHaveAttribute('data-theme', 'day');
 });
 
 test('typing preserves the node and caret; composition, dark inspector and drawer resize keep context', async ({page}, info) => {
   await page.goto('/');
   const start = page.getByTestId('story-step-start');
-  await start.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  const input = page.getByLabel('Текст сообщения', {exact: true});
+  const originalText = await start.locator('.message-editor').inputValue();
+  const input = await focusAuthoredMessage(start);
   await input.fill('alpha omega');
   await input.evaluate(element => {element.setAttribute('data-caret-identity', 'original'); (element as HTMLTextAreaElement).setSelectionRange(6, 6);});
   await input.pressSequentially('NEW ');
@@ -330,10 +336,10 @@ test('typing preserves the node and caret; composition, dark inspector and drawe
   await expect(page.getByTestId('folder-tab-start-folder')).toHaveAttribute('aria-current', 'page');
   await input.dispatchEvent('compositionend', {data: '漢'});
   await input.press('ControlOrMeta+Enter');
-  await expect(input).toHaveCount(0);
-  await expect(start).toContainText('alpha NEW 漢 omega');
+  await expect(page.getByLabel('Текст сообщения', {exact: true})).toHaveCount(0);
+  await expect(start.locator('.message-editor')).toHaveValue(/^alpha NEW 漢 omega\n?$/);
   await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
-  await expect(start).toContainText('Привет! Я');
+  await expectAuthoredMessages(start, [originalText]);
   await page.getByRole('button', {name: 'Тёмная тема', exact: true}).click();
   await start.getByRole('button', {name: 'Посмотреть материал', exact: true}).click();
   const inspector = page.getByTestId('keyboard-inspector');
@@ -367,7 +373,7 @@ test('page lifecycle restoration resets the session and cancels an older pending
   await page.clock.fastForward(1000);
   await expect(page.getByTestId('run-user')).toHaveCount(0);
   await expect(page.getByTestId('run-bot')).toHaveCount(0);
-  await expect(page.getByTestId('story-step-start')).toContainText('Привет! Я');
+  await expect(page.getByTestId('story-step-start').locator('.message-editor')).toHaveValue(/Привет! Я/);
 });
 
 test('screen chats stay separate, previews follow edits and start/end badges follow the graph', async ({page}) => {
@@ -378,14 +384,14 @@ test('screen chats stay separate, previews follow edits and start/end badges fol
   await expect(page.locator('[data-testid^="step-end-"]')).toHaveCount(0);
   await selectScreen(page, 'details');
   await expect(page.getByTestId('story-step-start')).toHaveCount(0);
-  await page.getByTestId('story-step-details').getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill('Мой полезный ответ.\nЗдесь находится инструкция.');
-  await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+  const detailsEditor = await focusAuthoredMessage(page.getByTestId('story-step-details'));
+  await detailsEditor.fill('Мой полезный ответ.\nЗдесь находится инструкция.');
+  await detailsEditor.press('ControlOrMeta+Enter');
   await expect(page.getByTestId('step-preview-details')).toHaveText('Мой полезный ответ. Здесь находится инструкция.');
   await selectScreen(page, 'offer');
-  await expect(page.getByTestId('story-step-offer')).toContainText('Три шага');
+  await expect(page.getByTestId('story-step-offer').locator('.message-editor')).toHaveValue(/Три шага/);
   await selectScreen(page, 'details');
-  await expect(page.getByTestId('story-step-details')).toContainText('Мой полезный ответ.');
+  await expect(page.getByTestId('story-step-details').locator('.message-editor')).toHaveValue(/Мой полезный ответ/);
 
   await selectScreen(page, 'start');
   await page.getByRole('button', {name: 'Настройки экрана', exact: true}).click();
@@ -558,16 +564,16 @@ test('folder fallback is an editable full screen and follows runtime ownership r
   const reply = 'Старт: выберите материал. <b>Текст без HTML</b>';
   await selectScreen(page, 'start-fallback');
   const screen = page.getByTestId('story-step-start-fallback');
-  await screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill(reply);
-  await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+  const firstEditor = await focusAuthoredMessage(screen);
+  await firstEditor.fill(reply);
+  await firstEditor.press('ControlOrMeta+Enter');
   await screen.getByRole('button', {name: 'Добавить сообщение', exact: true}).click();
   await page.getByLabel('Текст сообщения', {exact: true}).fill('Дополнительная инструкция из этой же папки.');
   await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
   await selectScreen(page, 'menu-fallback');
-  await page.getByTestId('story-step-menu-fallback').getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill('Меню: такой команды нет. Выберите раздел.');
-  await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+  const menuFallbackEditor = await focusAuthoredMessage(page.getByTestId('story-step-menu-fallback'));
+  await menuFallbackEditor.fill('Меню: такой команды нет. Выберите раздел.');
+  await menuFallbackEditor.press('ControlOrMeta+Enter');
   await selectScreen(page, 'start');
   await page.clock.install({time: new Date('2026-09-08T12:00:00Z')});
   await page.clock.pauseAt(new Date('2026-09-08T12:00:01Z'));
@@ -625,10 +631,10 @@ test('a blank fallback in any folder blocks Test launch until authored content i
   await page.goto('/');
   await selectScreen(page, 'menu-fallback');
   const fallback = page.getByTestId('story-step-menu-fallback');
-  const text = await fallback.locator('.message-text').textContent();
-  await fallback.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill('');
-  await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+  const text = await fallback.locator('.message-editor').inputValue();
+  const fallbackEditor = await focusAuthoredMessage(fallback);
+  await fallbackEditor.fill('');
+  await fallbackEditor.press('ControlOrMeta+Enter');
   await selectScreen(page, 'start');
   await page.getByRole('button', {name: 'Пройти', exact: true}).click();
   await expect(page.getByTestId('run-bot')).toHaveCount(0);
@@ -641,9 +647,9 @@ test('a blank fallback in any folder blocks Test launch until authored content i
   await expect(page.getByTestId('run-bot')).toHaveCount(0);
   await expect(page.locator('.notice[role="status"]')).toContainText('Папка «Меню»');
   await selectScreen(page, 'menu-fallback');
-  await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeVisible();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill(text!);
-  await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+  const restoredEditor = await focusAuthoredMessage(page.getByTestId('story-step-menu-fallback'));
+  await restoredEditor.fill(text);
+  await restoredEditor.press('ControlOrMeta+Enter');
   await page.getByRole('button', {name: 'Пройти', exact: true}).click();
   await expect(page.getByTestId('run-bot')).toHaveCount(1);
   await expect(page.getByTestId('run-bot')).toContainText('Привет! Я');
@@ -918,9 +924,9 @@ test('emulated touch scrolls button labels and a whole-button hold arms dragging
   await selectScreen(page, 'menu');
   const screen = page.getByTestId('story-step-menu');
   await expect(screen.locator('[data-keyboard-grip], .keyboard-grip')).toHaveCount(0);
-  await screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill(Array.from({length: 14}, (_, index) => `Шаг ${index + 1}: попробуйте идею и сохраните результат.`).join('\n'));
-  await screen.getByRole('button', {name: 'Готово', exact: true}).click();
+  const menuEditor = await focusAuthoredMessage(screen);
+  await menuEditor.fill(Array.from({length: 14}, (_, index) => `Шаг ${index + 1}: попробуйте идею и сохраните результат.`).join('\n'));
+  await menuEditor.press('ControlOrMeta+Enter');
   const source = screen.locator('.editable-keyboard [data-button-id="menu-offer"]');
   const scroller = page.getByTestId('chat-scroll');
   await source.scrollIntoViewIfNeeded();
@@ -966,9 +972,9 @@ test('inspector remains anchored on desktop and keeps mobile actions inside the 
   const mobile = (page.viewportSize()?.width ?? 1280) < 900;
   const start = page.getByTestId('story-step-start');
   if (!mobile) {
-    await start.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-    await page.getByLabel('Текст сообщения', {exact: true}).fill(Array.from({length: 28}, (_, index) => `Полезная строка ${index + 1}`).join('\n'));
-    await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
+    const editor = await focusAuthoredMessage(start);
+    await editor.fill(Array.from({length: 28}, (_, index) => `Полезная строка ${index + 1}`).join('\n'));
+    await editor.press('ControlOrMeta+Enter');
   }
   const anchor = start.getByRole('button', {name: 'Посмотреть материал', exact: true});
   await anchor.click();
@@ -1027,8 +1033,8 @@ test('native message insets and timestamp stay inside the bubble in narrow view 
   await page.goto('/');
   await page.evaluate(() => document.fonts.ready);
   const start = page.getByTestId('story-step-start');
-  await start.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill('Полезный материал для вашего проекта.\nПоследняя строка заканчивается здесь.');
+  const editor = await focusAuthoredMessage(start);
+  await editor.fill('Полезный материал для вашего проекта.\nПоследняя строка заканчивается здесь.');
   const geometry = async () => start.locator('.bubble-content').evaluate(element => {
     const bubble = element.getBoundingClientRect();
     const message = element.querySelector<HTMLElement>('.message')!;
@@ -1060,7 +1066,7 @@ test('native message insets and timestamp stay inside the bubble in narrow view 
   await assertNoOverflow(page);
 });
 
-test('short and multiline message editing keeps the bubble width stable and Done saves without hiding the timestamp', async ({page}, info) => {
+test('persistent authoring textarea keeps native bubble geometry through focus, save and multiline edits', async ({page}, info) => {
   await page.goto('/');
   await page.evaluate(() => document.fonts.ready);
   await page.clock.install({time: new Date('2026-09-07T12:00:00Z')});
@@ -1076,27 +1082,28 @@ test('short and multiline message editing keeps the bubble width stable and Done
   await expect(editor).toHaveValue('Готово.');
   await page.getByTestId('screen-boundary').click();
   await expect(editor).toHaveCount(0);
-  await screen.locator('.message-text').click();
-  await expect(editor).toHaveCount(0);
+  const persistent = screen.locator('.message-editor');
+  await expect(persistent).toHaveCount(1);
+  await expect(persistent).toHaveValue('Готово.');
+  await expect(screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true})).toHaveCount(0);
 
   const width = async () => (await screen.locator('.bubble-content').boundingBox())!.width;
   const shortWidth = await width();
-  await screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await expect(editor).toBeFocused();
+  await focusAuthoredMessage(screen);
   expect(await width()).toBeCloseTo(shortWidth, 0);
-  expect(await editor.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-  await selectAllAcrossFrame(page, editor);
-  await editor.pressSequentially('Готово. Ваш материал здесь.');
-  await expect(editor).toHaveValue('Готово. Ваш материал здесь.');
-  await editor.fill('Готово. Ваш материал здесь.\n\nСохраните идею и попробуйте её сегодня.\nНапишите, что получилось.');
-  expect(await width()).toBeCloseTo(shortWidth, 0);
-  expect(await editor.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-  await screen.getByRole('button', {name: 'Готово', exact: true}).click();
+  expect(await persistent.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  await selectAllAcrossFrame(page, persistent);
+  await persistent.pressSequentially('Готово. Ваш материал здесь.');
+  await expect(persistent).toHaveValue('Готово. Ваш материал здесь.');
+  await persistent.fill('Готово. Ваш материал здесь.\n\nСохраните идею и попробуйте её сегодня.\nНапишите, что получилось.');
+  expect(await persistent.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  const activeWidth = await width();
+  await persistent.press('ControlOrMeta+Enter');
   await expect(editor).toHaveCount(0);
-  await expect(screen.locator('.message-text')).toContainText('Сохраните идею');
-  const longWidth = await width();
-  await screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  expect(await width()).toBeCloseTo(longWidth, 0);
+  await expect(persistent).toHaveValue(/Сохраните идею/);
+  expect(await width()).toBeCloseTo(activeWidth, 0);
+  await focusAuthoredMessage(screen);
+  expect(await width()).toBeCloseTo(activeWidth, 0);
   const bounds = await screen.locator('.bubble-content').evaluate(element => {
     const bubble = element.getBoundingClientRect();
     const textarea = element.querySelector('textarea')!.getBoundingClientRect();
@@ -1108,9 +1115,9 @@ test('short and multiline message editing keeps the bubble width stable and Done
   expect(bounds).toEqual({textareaInside: true, timeInside: true, timeAfterText: true});
   await mkdir('artifacts/screenshots', {recursive: true});
   await page.screenshot({path: `artifacts/screenshots/${info.project.name}-editing.png`});
-  await editor.press('Escape');
+  await persistent.press('Escape');
   await expect(editor).toHaveCount(0);
-  await expect(screen.locator('.message-text')).toContainText('Сохраните идею');
+  await expect(persistent).toHaveValue(/Сохраните идею/);
   await assertNoOverflow(page);
 });
 
@@ -1118,16 +1125,16 @@ test('ordered screen messages keep independent keyboards and every button in the
   await page.goto('/');
   const screen = page.getByTestId('story-step-start');
   const messages = ['Сначала познакомимся.', 'Затем покажу полезный материал.', 'Теперь выберите, куда перейти.'];
-  await screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-  await page.getByLabel('Текст сообщения', {exact: true}).fill(messages[0]);
-  await screen.getByRole('button', {name: 'Готово', exact: true}).click();
+  const firstEditor = await focusAuthoredMessage(screen);
+  await firstEditor.fill(messages[0]);
+  await firstEditor.press('ControlOrMeta+Enter');
   for (const text of messages.slice(1)) {
     await screen.getByRole('button', {name: 'Добавить сообщение', exact: true}).click();
     await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeFocused();
     await page.getByLabel('Текст сообщения', {exact: true}).fill(text);
-    await screen.getByRole('button', {name: 'Готово', exact: true}).click();
+    await page.getByLabel('Текст сообщения', {exact: true}).press('ControlOrMeta+Enter');
   }
-  await expect(screen.locator('.message-text')).toHaveText(messages);
+  await expectAuthoredMessages(screen, messages);
   const bubbles = screen.locator('.bubble');
   await expect(bubbles).toHaveCount(3);
   await expect(bubbles.nth(0).locator('.reply-markup')).toHaveCount(1);
@@ -1156,16 +1163,16 @@ test('ordered screen messages keep independent keyboards and every button in the
 
   await page.clock.install({time: new Date('2026-09-07T12:00:00Z')});
   await page.clock.pauseAt(new Date('2026-09-07T12:00:01Z'));
-  await bubbles.nth(1).getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
+  await focusAuthoredMessage(screen, 1);
   messages[1] = 'Внутри — три шага от вашей идеи до результата.';
   const editor = page.getByLabel('Текст сообщения', {exact: true});
   await expect(editor).toBeFocused();
   await selectAllAcrossFrame(page, editor);
   await editor.pressSequentially(messages[1]);
   await expect(editor).toHaveValue(messages[1]);
-  await screen.getByRole('button', {name: 'Готово', exact: true}).click();
-  await expect(screen.locator('.message-text')).toHaveText(messages);
-  await bubbles.nth(2).getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
+  await editor.press('ControlOrMeta+Enter');
+  await expectAuthoredMessages(screen, messages);
+  await focusAuthoredMessage(screen, 2);
   await screen.getByRole('button', {name: 'Удалить сообщение', exact: true}).click();
   await expect(bubbles).toHaveCount(2);
   await expect(bubbles.nth(1).locator('.reply-markup')).toHaveCount(1);
@@ -1175,7 +1182,7 @@ test('ordered screen messages keep independent keyboards and every button in the
   expect(Object.hasOwn(deleted.content.messages, ids[2])).toBe(false);
   expect(Object.hasOwn(deleted.messages, ids[2])).toBe(false);
   await page.getByRole('button', {name: '↶ Отменить', exact: true}).click();
-  await expect(screen.locator('.message-text')).toHaveText(messages);
+  await expectAuthoredMessages(screen, messages);
   const restored = await exported(page);
   expect(restored.steps.start.messageIds).toEqual(ids);
   expect(ids.map(id => restored.content.messages[id])).toEqual(messages);
@@ -1242,7 +1249,7 @@ test('abandoned new messages disappear without undo history; filled messages com
     }
     await expect(editor).toHaveCount(0);
     await expect(screen.locator('.bubble')).toHaveCount(1);
-    await expect(screen.locator('.message-text')).toHaveText(original.content.messages['start-message']);
+    await expectAuthoredMessages(screen, [original.content.messages['start-message']]);
     await expect(screen.locator('.bubble').first().locator('.reply-markup')).toHaveCount(1);
     await expect(undo).toBeDisabled();
     expect(await exported(page)).toEqual(original);
@@ -1252,7 +1259,7 @@ test('abandoned new messages disappear without undo history; filled messages com
   await editor.fill(addedText);
   await badge.click();
   await expect(editor).toHaveCount(0);
-  await expect(screen.locator('.message-text')).toHaveText([original.content.messages['start-message'], addedText]);
+  await expectAuthoredMessages(screen, [original.content.messages['start-message'], addedText]);
   await undo.click();
   await expect(screen.locator('.bubble')).toHaveCount(1);
   await expect(undo).toBeDisabled();
@@ -1378,7 +1385,7 @@ test('Test message editing preserves pending replies and updates authored text a
   await expect(page.locator('.run-message')).toHaveCount(transcriptSize);
   await expect(bot.last().getByRole('button', {name: 'Посмотреть материал', exact: true})).toBeEnabled();
   await page.getByRole('button', {name: 'В редактор', exact: true}).click();
-  await expect(page.getByTestId('story-step-start').locator('.message-text')).toHaveText(finalText);
+  await expectAuthoredMessages(page.getByTestId('story-step-start'), [finalText]);
   const document = await exported(page);
   expect(document.content.messages[document.steps.start.messageIds[0]]).toBe(finalText);
   await assertNoOverflow(page);
@@ -1439,7 +1446,7 @@ test('Test navigation folds preceding messages and cancels pending replies; sele
   await assertNoOverflow(page);
 });
 
-test('double-click edits every bot bubble from its text, timestamp or free bubble area on the first gesture', async ({page}) => {
+test('Edit uses direct textareas while Test double-click edits bot bubbles from every free surface', async ({page}) => {
   await page.goto('/');
   const doubleClickVisibleTime = async (bubble: Locator) => {
     const bounds = await bubble.locator('.time-inner').boundingBox();
@@ -1447,17 +1454,10 @@ test('double-click edits every bot bubble from its text, timestamp or free bubbl
     await page.mouse.dblclick(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);
   };
   const authored = page.getByTestId('story-step-start').locator('.bubble').first();
-  await authored.locator('.message-text').dblclick();
-  await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeFocused();
-  await page.getByLabel('Текст сообщения', {exact: true}).press('Escape');
-  await doubleClickVisibleTime(authored);
-  await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeFocused();
-  await page.getByLabel('Текст сообщения', {exact: true}).press('Escape');
-  const freeArea = await authored.locator('.bubble-content-wrapper').boundingBox();
-  expect(freeArea).not.toBeNull();
-  await page.mouse.dblclick(freeArea!.x + 2, freeArea!.y + 2);
-  await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeFocused();
-  await page.getByLabel('Текст сообщения', {exact: true}).press('Escape');
+  await expect(authored.locator('.message-editor')).toHaveCount(1);
+  await authored.locator('.message-editor').click();
+  await expect(authored.locator('.message-editor')).toBeFocused();
+  await authored.locator('.message-editor').press('Escape');
 
   await page.getByRole('button', {name: 'Пройти', exact: true}).click();
   const tested = page.getByTestId('run-bot').first().locator('.bubble');
@@ -1470,7 +1470,7 @@ test('double-click edits every bot bubble from its text, timestamp or free bubbl
   await assertNoOverflow(page);
 });
 
-test('the authoring screen stays vertically centered without moving when message editing starts or finishes', async ({page}) => {
+test('the authoring screen stays vertically centered when its persistent textarea gains or loses focus', async ({page}) => {
   await page.goto('/');
   const scroller = page.getByTestId('chat-scroll');
   const story = scroller.locator('.chat-story');
@@ -1491,7 +1491,7 @@ test('the authoring screen stays vertically centered without moving when message
   const idle = await geometry();
   if(idle.storyFits) expect(Math.abs(idle.storyCenterDelta)).toBeLessThanOrEqual(10);
   expect(Math.abs(idle.bubbleCenterDelta)).toBeLessThanOrEqual(16);
-  await bubble.locator('.message-text').dblclick();
+  await bubble.locator('.message-editor').focus();
   await expect(page.getByLabel('Текст сообщения', {exact: true})).toBeFocused();
   const editing = await geometry();
   expect(Math.abs(editing.bubbleCenterDelta - idle.bubbleCenterDelta)).toBeLessThanOrEqual(8);
@@ -1547,10 +1547,9 @@ test('screen names edit in the header and sidebar with Enter, blur and Escape, a
   await rename.click();
   await headerInput.dispatchEvent('compositionstart', {data: ''});
   await headerInput.fill('Незавершённый ввод');
-  await screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
+  await expect(screen.locator('.message-editor')).toHaveCount(1);
+  await expect(screen.getByRole('button', {name: 'Изменить текст сообщения', exact: true})).toHaveCount(0);
   await expect(headerInput).toHaveCount(1);
-  await expect(headerInput).toBeFocused();
-  await expect(page.getByLabel('Текст сообщения', {exact: true})).toHaveCount(0);
   await headerInput.dispatchEvent('compositionend', {data: ''});
   await headerInput.press('Escape');
   await page.getByRole('button', {name: 'Пройти', exact: true}).click();
@@ -1639,9 +1638,9 @@ test.describe('explicit plain-text copying', () => {
   test('Copy writes exactly the selected literal text once, and visitor messages have no Edit action', async ({page}) => {
     await page.goto('/');
     const literal = '<b>Точный текст</b>\nВторая строка & символы';
-    await page.getByRole('button', {name: 'Изменить текст сообщения', exact: true}).click();
-    await page.getByLabel('Текст сообщения', {exact: true}).fill(literal);
-    await page.getByRole('button', {name: 'Готово', exact: true}).click();
+    const editor = await focusAuthoredMessage(page.getByTestId('story-step-start'));
+    await editor.fill(literal);
+    await editor.press('ControlOrMeta+Enter');
     await page.clock.install({time: new Date('2026-09-08T12:00:00Z')});
     await page.clock.pauseAt(new Date('2026-09-08T12:00:01Z'));
     await page.getByRole('button', {name: 'Пройти', exact: true}).click();

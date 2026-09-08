@@ -346,7 +346,7 @@ export function App(props: Dependencies = {}) {
           groupLast={props.index === historyCount() - 1 || !groupedWith(props.index + 1)}
           hasKeyboard={rows().length > 0} editorWidth={testEditWidth()}
           onEdit={bot ? beginRunEditing : undefined} showEditAction={editing()} onFinishEdit={() => c.finishText()}
-          editor={<Show when={editing() && bot}><InlineText stepId={message.stepId} value={messageText(run(), message)} onInput={c.inputText} onFinish={cancel => c.finishText(cancel)} composing={setComposing} /></Show>}>
+          editor={<Show when={editing() && bot}><InlineText stepId={message.stepId} value={messageText(run(), message)} active onInput={c.inputText} onFinish={cancel => c.finishText(cancel)} composing={setComposing} /></Show>}>
           <Show when={bot}>{source => <TestKeyboard
             rows={rows().map(row => ({id: row.id, buttons: row.buttonIds.map(id => ({id,
               label: run().document.content.buttons[id], color: run().document.buttons[id].color,
@@ -409,7 +409,7 @@ export function App(props: Dependencies = {}) {
                   if(!editing() && finishRename()) c.beginText(id, messageId);
                 };
                 return <div class="screen-message" id={`message-${messageId}`} data-message-id={messageId}>
-              <Bubble class={blankCanvas() ? 'is-empty-message' : ''} groupFirst={index() === 0} groupLast={index() === document().steps[id].messageIds.length - 1} hasKeyboard={document().messages[messageId].rows.length > 0} text={document().content.messages[messageId] || 'Напишите сообщение…'} time="12:00" onEdit={() => {if(!finishRename()) return; c.select(id); setShowOptions(false); beginEditing(); centerMessage(messageId);}} onFinishEdit={() => {c.finishText(); centerMessage(messageId);}} onDelete={document().steps[id].messageIds.length > 1 ? () => deleteMessage(id, messageId) : undefined} editor={<Show when={editing() || blankCanvas()}><InlineText stepId={id} value={document().content.messages[messageId]} deferredFocus={blankCanvas()} onBegin={beginEditing} onInput={text => {beginEditing(); c.inputText(text);}} onResize={() => centerMessage(messageId)} onFinish={cancel => {if(editing()) {c.finishText(cancel); centerMessage(messageId);}}} composing={setComposing} /></Show>}>
+              <Bubble class={blankCanvas() ? 'is-empty-message' : ''} groupFirst={index() === 0} groupLast={index() === document().steps[id].messageIds.length - 1} hasKeyboard={document().messages[messageId].rows.length > 0} text={document().content.messages[messageId] || 'Напишите сообщение…'} time="12:00" onDelete={editing() && document().steps[id].messageIds.length > 1 ? () => deleteMessage(id, messageId) : undefined} editor={<InlineText stepId={id} value={document().content.messages[messageId]} active={editing()} autoFocus={editing() || blankCanvas()} deferredFocus={blankCanvas()} persistent onBegin={() => {setShowOptions(false); beginEditing();}} onInput={text => {beginEditing(); c.inputText(text);}} onResize={() => centerMessage(messageId)} onFinish={cancel => {if(editing()) {c.finishText(cancel); centerMessage(messageId);}}} composing={setComposing} />}>
                 <EditableKeyboard document={document()} stepId={id} messageId={messageId} revision={c.editor().revision} onInspect={(buttonId, element) => inspect(id, messageId, element, buttonId)} onNavigate={select} onAdd={() => {const anchor = window.document.querySelector<HTMLElement>(`#message-${messageId} .shell-add-button`); if(anchor) inspect(id, messageId, anchor);}} newRowId={() => c.id('row')} onInteractionStart={beginDragInteraction}
                   onDragStart={() => acquireDrag('button')} onExternalHover={hoverButtonOnScreen} onExternalDrop={dropButtonOnScreen} onExternalCancel={() => finishDrag('button')} linkTargetButtonId={screenDropButtonId()}
                   onMove={(rows, baseRevision) => {
@@ -432,7 +432,7 @@ export function App(props: Dependencies = {}) {
 
   </div>;
 }
-function InlineText(props: {stepId: string; value: string; deferredFocus?: boolean; onBegin?: () => void; onInput: (text: string) => void; onResize?: () => void; onFinish: (cancel?: boolean) => void; composing: (value: boolean) => void}) {
+function InlineText(props: {stepId: string; value: string; active?: boolean; autoFocus?: boolean; deferredFocus?: boolean; persistent?: boolean; onBegin?: () => void; onInput: (text: string) => void; onResize?: () => void; onFinish: (cancel?: boolean) => void; composing: (value: boolean) => void}) {
   let textarea!: HTMLTextAreaElement;
   let ime = false;
   let blurred = false;
@@ -441,11 +441,18 @@ function InlineText(props: {stepId: string; value: string; deferredFocus?: boole
   let focusFrame: number | undefined;
   let lastWidth = 0;
   const resize = () => {textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; props.onResize?.();};
+  createEffect(() => {
+    const value = props.value;
+    if(!textarea) return;
+    if(resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {resizeFrame = undefined; if(textarea.value === value) resize();});
+  });
   onMount(() => {
     resize();
     const origin = window.document.activeElement;
-    if(!props.deferredFocus) {textarea.focus(); textarea.setSelectionRange(textarea.value.length, textarea.value.length);}
-    if(props.deferredFocus) focusFrame = requestAnimationFrame(() => {
+    const autoFocus = props.autoFocus ?? !props.persistent;
+    if(autoFocus && !props.deferredFocus) {textarea.focus(); textarea.setSelectionRange(textarea.value.length, textarea.value.length);}
+    if(autoFocus && props.deferredFocus) focusFrame = requestAnimationFrame(() => {
       focusFrame = undefined;
       const active = window.document.activeElement;
       // Keep selection if the user reached the editor before this frame, and
@@ -464,12 +471,14 @@ function InlineText(props: {stepId: string; value: string; deferredFocus?: boole
     observer.observe(textarea);
   });
   onCleanup(() => {observer?.disconnect(); if(resizeFrame !== undefined) cancelAnimationFrame(resizeFrame); if(focusFrame !== undefined) cancelAnimationFrame(focusFrame); props.composing(false);});
-  return <textarea ref={element => {textarea = element;}} class="message-editor" aria-label="Текст сообщения" placeholder="Напишите сообщение…" data-testid={`editor-${props.stepId}`} value={props.value} rows={1}
-    onFocus={() => props.onBegin?.()}
-    onInput={event => {props.onInput(event.currentTarget.value); resize();}}
-    onCompositionStart={() => {ime = true; props.composing(true);}}
-    onCompositionEnd={event => {ime = false; props.composing(false); props.onInput(event.currentTarget.value); if(blurred) props.onFinish();}}
-    onBlur={() => {if(ime) blurred = true; else props.onFinish();}}
-    onKeyDown={event => {if(ime || event.isComposing) return; if(event.key === 'Escape' || event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {event.preventDefault(); event.stopPropagation(); const action = textarea.closest<HTMLElement>('.bubble-content-wrapper')?.querySelector<HTMLButtonElement>('.bubble-edit-action'); const message = textarea.closest<HTMLElement>('.message-actions-host'); props.onFinish(event.key === 'Escape'); queueMicrotask(() => (action?.isConnected ? action : message)?.focus({preventScroll: true}));}}}
-  />;
+  return <span class="message-editor-frame" data-value={props.value || 'Напишите сообщение…'}>
+    <textarea ref={element => {textarea = element;}} class="message-editor" aria-label={props.active ? 'Текст сообщения' : 'Редактировать сообщение'} placeholder="Напишите сообщение…" data-testid={`editor-${props.stepId}`} value={props.value} rows={1}
+      onFocus={() => props.onBegin?.()}
+      onInput={event => {props.onInput(event.currentTarget.value); resize();}}
+      onCompositionStart={() => {ime = true; props.composing(true);}}
+      onCompositionEnd={event => {ime = false; props.composing(false); props.onInput(event.currentTarget.value); if(blurred) props.onFinish();}}
+      onBlur={() => {if(ime) blurred = true; else props.onFinish();}}
+      onKeyDown={event => {if(ime || event.isComposing) return; if(event.key === 'Escape' || event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {event.preventDefault(); event.stopPropagation(); const action = textarea.closest<HTMLElement>('.bubble-content-wrapper')?.querySelector<HTMLButtonElement>('.bubble-edit-action'); const message = textarea.closest<HTMLElement>('.message-actions-host'); props.onFinish(event.key === 'Escape'); queueMicrotask(() => props.persistent ? textarea.blur() : (action?.isConnected ? action : message)?.focus({preventScroll: true}));}}}
+    />
+  </span>;
 }
