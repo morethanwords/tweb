@@ -8,6 +8,7 @@ import {FocusDirection} from '@helpers/fastSmoothScroll';
 import CheckboxField from '@components/checkboxField';
 import {i18n, LangPackKey} from '@lib/langPack';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
+import {ROW_SELECTION_CHECKBOX_CLASS, ROW_SELECTION_MEDIA_CLASS, ROW_WITH_CHECKBOX_AND_MEDIA_CLASS} from '@components/rowFieldClasses';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import InputSearch from '@components/inputSearch';
 import windowSize from '@helpers/windowSize';
@@ -1162,9 +1163,17 @@ export default class AppSelectPeers {
 
       const {dom} = dialogElement;
 
+      if(this.design === 'square') {
+        dom.containerEl.classList.add(ROW_WITH_CHECKBOX_AND_MEDIA_CLASS);
+        dialogElement.media?.classList.add(ROW_SELECTION_MEDIA_CLASS);
+      }
+
       if(this.multiSelect !== 'disabled') {
         const selected = this.selected.has(key);
         const checkbox = this.checkbox(selected);
+        if(this.design === 'square') {
+          checkbox.classList.add(ROW_SELECTION_CHECKBOX_CLASS);
+        }
         checkboxes.push({key, input: checkbox.querySelector('input')});
         if(this.checkboxSide === 'right') {
           dom.containerEl.append(checkbox);

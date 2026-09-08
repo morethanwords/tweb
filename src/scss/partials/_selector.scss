@@ -294,22 +294,6 @@
     }
   }
 
-  &-square {
-    $add: 3rem;
-
-    .checkbox-field {
-      inset-inline-start: 1.25rem !important;
-    }
-
-    .chatlist-chat.row-with-padding {
-      padding-inline-start: #{4.5rem + $add} !important; // 4.5 + x
-    }
-
-    .dialog-avatar {
-      margin-inline-start: #{$add} !important;
-    }
-  }
-
   &-empty-placeholder {
     position: absolute;
     top: 50%;

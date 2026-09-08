@@ -1,0 +1,22 @@
+.popup {
+  --popup-width: 26.25rem;
+}
+
+.audienceIcon {
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.error {
+  color: var(--danger-color);
+  font-size: var(--font-size-14);
+  margin-bottom: .75rem;
+}

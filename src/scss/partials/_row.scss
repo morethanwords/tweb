@@ -485,6 +485,27 @@ $row-border-radius: $border-radius-medium;
     }
   }
 
+  // A leading selection control followed by media, shared with AppSelectPeers.
+  $selection-width: 3rem;
+
+  &-with-checkbox-and-media {
+    &.row-with-padding {
+      padding-inline-start: #{4.5rem + $selection-width} !important;
+    }
+  }
+
+  &-selection-media {
+    margin-inline-start: $selection-width !important;
+  }
+
+  &-selection-checkbox {
+    inset-inline-start: 1.25rem !important;
+  }
+
+  &-selection-radio.row-radio-field {
+    --offset-left: 1.25rem;
+  }
+
   &.menu-open {
     background-color: var(--light-secondary-text-color);
   }

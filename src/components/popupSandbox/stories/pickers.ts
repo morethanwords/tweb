@@ -55,6 +55,21 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'pickUser/leftCheckboxes',
+    title: 'Pick peers — left checkboxes with media',
+    open: async() => {
+      const {default: showPickUserPopup} = await import('@components/popups/pickUser');
+      showPickUserPopup({
+        peerType: ['contacts'],
+        titleLangKey: 'Contacts',
+        multiSelect: true,
+        design: 'square',
+        checkboxSide: 'left',
+        onSelect: noop
+      });
+    }
+  },
+  {
     id: 'pickUser/contacts',
     title: 'Contact picker',
     open: async(ctx) => {

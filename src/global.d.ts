@@ -246,6 +246,7 @@ declare global {
     | 'FORM_EXPIRED'
     | `FLOOD_PREMIUM_WAIT_${number}`
     | 'STORY_ID_TOO_MANY'
+    | 'STORY_NOT_MODIFIED'
     | `FILE_REFERENCE_${number}_EXPIRED`
     | 'ADDRESS_STREET_LINE1_INVALID'
     | 'ADDRESS_STREET_LINE2_INVALID'

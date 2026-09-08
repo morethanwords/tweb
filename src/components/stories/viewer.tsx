@@ -99,6 +99,7 @@ import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import {showStoryReport} from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
+import {showStorySettingsForStory} from '@components/popups/storySettings';
 import {useAppConfig} from '@stores/appState';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 import {handleShareStory} from './share';
@@ -922,6 +923,32 @@ const Stories = (props: {
     }
   };
 
+  const settingsMiddleware = createMiddleware().get();
+  let openingSettings = false;
+  const openStorySettings = async(previouslyPlaying?: boolean) => {
+    const story = currentStory();
+    if(story?._ !== 'storyItem' || openingSettings) return;
+    openingSettings = true;
+    const storyId = story.id;
+    const resume = wasPlayingOr(previouslyPlaying);
+    const isRelevant = () => settingsMiddleware() && isActive() && currentStory()?.id === storyId;
+    const onClose = () => {
+      openingSettings = false;
+      if(isRelevant()) onAnyPopupClose(resume);
+    };
+    actions.pause();
+    try {
+      if(!await rootScope.managers.appStoriesManager.canEditStorySettings(props.state.peerId, storyId)) {
+        onClose();
+        return;
+      }
+      await showStorySettingsForStory({peerId: props.state.peerId, storyId, onClose, isRelevant});
+    } catch{
+      if(isRelevant()) toastNew({langPackKey: 'StorySettingsLoadError'});
+      onClose();
+    }
+  };
+
   const onShareClick = (_wasPlaying?: boolean) => {
     const wasPlaying = wasPlayingOr(_wasPlaying);
     actions.pause();
@@ -1252,7 +1279,7 @@ const Stories = (props: {
 
   const setStoryMeta = (story: StoryItem.storyItemSkipped | StoryItem.storyItem) => {
     let privacyType = getStoryPrivacyType(story as StoryItem.storyItem);
-    if(/* !isMe &&  */privacyType === 'public') {
+    if(!isMe && privacyType === 'public') {
       privacyType = undefined;
     }
 
@@ -2108,6 +2135,14 @@ const Stories = (props: {
     ignoreOnClose = false;
   const btnMenu = ButtonMenuToggle({
     buttons: [{
+      icon: 'settings',
+      text: 'StorySettings',
+      onClick: () => {
+        ignoreOnClose = true;
+        void openStorySettings(wasPlaying);
+      },
+      verify: () => story?._ === 'storyItem' && rootScope.managers.appStoriesManager.canEditStorySettings(peerId, story.id)
+    }, {
       icon: 'plusround',
       text: 'Story.AddToProfile',
       onClick: () => togglePinned(true),
@@ -2269,6 +2304,10 @@ const Stories = (props: {
   };
 
   const onPrivacyIconClick = async() => {
+    if(isMe) {
+      await openStorySettings();
+      return;
+    }
     const type = privacyType();
     const peerTitle = await wrapPeerTitle({peerId: props.state.peerId, onlyFirstName: true});
     const {close} = showTooltip({

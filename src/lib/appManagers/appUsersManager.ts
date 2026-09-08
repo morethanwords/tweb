@@ -499,6 +499,64 @@ export class AppUsersManager extends AppManager {
     });
   }
 
+  public async getCloseFriends() {
+    const contacts = await this.getContacts();
+    return contacts.filter((id) => this.getUser(id)?.pFlags.close_friend).map((id) => id.toPeerId());
+  }
+
+  public async updateCloseFriends(added: PeerId[], removed: PeerId[]) {
+    if(!added.length && !removed.length) return;
+    const current = await this.getCloseFriends();
+    const next = new Set(current.filter((peerId) => !removed.includes(peerId)));
+    added.forEach((peerId) => next.add(peerId));
+    const result = await this.apiManager.invokeApi('contacts.editCloseFriends', {
+      id: [...next].map((peerId) => peerId.toUserId())
+    });
+    if(!result) throw new Error('CLOSE_FRIENDS_NOT_UPDATED');
+
+    for(const peerId of new Set([...current, ...next])) {
+      const user = this.getUser(peerId.toUserId());
+      if(!user || !!user.pFlags.close_friend === next.has(peerId)) continue;
+      this.saveApiUser({...user, pFlags: {...user.pFlags, close_friend: next.has(peerId) || undefined}});
+    }
+  }
+
+  public async getStoryBlockedPeerIds() {
+    const peerIds: PeerId[] = [];
+    let count = Infinity;
+    while(peerIds.length < count) {
+      const page = await this.getBlocked(peerIds.length, 100, true);
+      if(!page.peerIds.length) {
+        if(peerIds.length < page.count) throw new Error('STORY_BLOCKLIST_INCOMPLETE');
+        break;
+      }
+      peerIds.push(...page.peerIds);
+      count = page.count;
+    }
+    return peerIds;
+  }
+
+  public async updateStoryBlockedPeers(added: PeerId[], removed: PeerId[]) {
+    if(!added.length && !removed.length) return;
+    const current = await this.getStoryBlockedPeerIds();
+    const next = new Set(current.filter((peerId) => !removed.includes(peerId)));
+    added.forEach((peerId) => next.add(peerId));
+    const result = await this.apiManager.invokeApi('contacts.setBlocked', {
+      my_stories_from: true,
+      id: [...next].map((peerId) => this.appPeersManager.getInputPeerById(peerId)),
+      limit: Math.max(current.length, next.size)
+    });
+    if(!result) throw new Error('STORY_BLOCKLIST_NOT_UPDATED');
+
+    for(const peerId of new Set([...added, ...removed])) {
+      if(!peerId.isUser()) continue;
+      this.appProfileManager.modifyCachedFullUser(peerId.toUserId(), (userFull) => {
+        // Story blocking is independent of blocking messages from this peer.
+        userFull.pFlags.blocked_my_stories_from = next.has(peerId) || undefined;
+      });
+    }
+  }
+
   public testSelfSearch(query: string) {
     const user = this.getSelf();
     const index = this.createSearchIndex();
@@ -1051,13 +1109,13 @@ export class AppUsersManager extends AppManager {
     });
   }
 
-  public getBlocked(offset = 0, limit = 0) {
-    return this.apiManager.invokeApiSingle('contacts.getBlocked', {offset, limit}).then((contactsBlocked) => {
+  public getBlocked(offset = 0, limit = 0, myStoriesFrom?: boolean) {
+    return this.apiManager.invokeApiSingle('contacts.getBlocked', {offset, limit, my_stories_from: myStoriesFrom}).then((contactsBlocked) => {
       this.saveApiUsers(contactsBlocked.users);
       this.appChatsManager.saveApiChats(contactsBlocked.chats);
-      const count = contactsBlocked._ === 'contacts.blocked' ? contactsBlocked.users.length + contactsBlocked.chats.length : contactsBlocked.count;
+      const count = contactsBlocked._ === 'contacts.blocked' ? contactsBlocked.blocked.length : contactsBlocked.count;
 
-      const peerIds: PeerId[] = contactsBlocked.users.map((u) => u.id.toPeerId()).concat(contactsBlocked.chats.map((c) => c.id.toPeerId(true)));
+      const peerIds = contactsBlocked.blocked.map((blocked) => this.appPeersManager.getPeerId(blocked.peer_id));
 
       return {count, peerIds};
     });

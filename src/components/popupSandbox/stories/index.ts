@@ -10,3 +10,4 @@ import './transactions';
 import './transactionSubscriptions';
 import './gifts';
 import './misc';
+import './storySettings';

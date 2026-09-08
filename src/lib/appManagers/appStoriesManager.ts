@@ -10,7 +10,11 @@ import deepEqual from '@helpers/object/deepEqual';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import pause from '@helpers/schedulers/pause';
 import tsNow from '@helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum, StoriesStealthMode} from '@layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
+import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
+import getStoryPrivacyType from '@appManagers/utils/stories/privacyType';
+import {StorySettings, StorySettingsSaveResult} from '@appManagers/utils/stories/storySettings';
+import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import {ReferenceContext} from '@lib/storages/references';
 import {AppManager} from '@appManagers/manager';
@@ -59,6 +63,7 @@ const TEST_READ = false;
 const TEST_EXPIRING = 0;
 
 export default class AppStoriesManager extends AppManager {
+  private settingsSaveQueue: SerializedQueue;
   private cache: {[userId: UserId]: StoriesPeerCache};
   private lists: {[type in StoriesListType]: PeerId[]};
   private changelogPeerId: PeerId;
@@ -710,6 +715,106 @@ export default class AppStoriesManager extends AppManager {
     });
 
     return promise;
+  }
+
+  public async getStorySettings(peerId: PeerId, id: number): Promise<StorySettings> {
+    this.assertStorySettingsRights(peerId, id);
+    const personal = peerId.isUser();
+    const [result, closeFriends, hideFrom] = await Promise.all([
+      this.apiManager.invokeApiSingle('stories.getStoriesByID', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id: [id]
+      }),
+      personal ? this.appUsersManager.getCloseFriends() : [],
+      personal ? this.appUsersManager.getStoryBlockedPeerIds() : []
+    ]);
+    const items = this.saveStoriesStories(result, this.getPeerStoriesCache(peerId), undefined, true);
+    const story = items.find((story) => story.id === id);
+    if(!story || (personal && !story.privacy)) throw new Error('STORY_ID_INVALID');
+    this.assertStorySettingsRights(peerId, id);
+    const privacyType = personal ? getStoryPrivacyType(story) || 'selected' : 'public';
+    const {allowPeers, disallowPeers} = getPrivacyRulesDetails(personal ? story.privacy : []);
+    const toPeerIds = (peers: typeof allowPeers) => peers.users.map((id) => id.toPeerId())
+    .concat(peers.chats.map((id) => id.toPeerId(true)));
+    const excluded = toPeerIds(disallowPeers);
+    return {
+      ...(!personal ? {peerType: this.appChatsManager.isMegagroup(peerId.toChatId()) ? 'group' as const : 'channel' as const} : {}),
+      privacyType,
+      everyoneExcept: privacyType === 'public' ? excluded : [],
+      contactsExcept: privacyType === 'contacts' ? excluded : [],
+      selectedContacts: toPeerIds(allowPeers),
+      closeFriends,
+      hideFrom,
+      allowScreenshots: !story.pFlags.noforwards,
+      keepOnPage: !!story.pFlags.pinned
+    };
+  }
+
+  public canEditStorySettings(peerId: PeerId, id: number) {
+    if(peerId.isUser()) return peerId === this.appPeersManager.peerId;
+    return this.appChatsManager.getChat(peerId.toChatId())?._ === 'channel' && this.hasRights(peerId, id, 'pin');
+  }
+
+  private assertStorySettingsRights(peerId: PeerId, id: number) {
+    if(!this.canEditStorySettings(peerId, id)) throw new Error('STORY_EDIT_FORBIDDEN');
+  }
+
+  public saveStorySettings(peerId: PeerId, id: number, settings: StorySettings, previous: StorySettings) {
+    // Account lists are shared by all stories and tabs. Serialize their read/modify/write cycle.
+    return (this.settingsSaveQueue ??= createSerializedQueue()).enqueue(() => this.saveStorySettingsInternal(peerId, id, settings, previous));
+  }
+
+  private async saveStorySettingsInternal(peerId: PeerId, id: number, settings: StorySettings, previous: StorySettings): Promise<StorySettingsSaveResult> {
+    this.assertStorySettingsRights(peerId, id);
+    if(!peerId.isUser()) {
+      if(settings.keepOnPage !== previous.keepOnPage) {
+        await this.togglePinned(peerId, id, settings.keepOnPage);
+      }
+      return {saved: true, applied: {keepOnPage: settings.keepOnPage}};
+    }
+    const privacyList = (value: StorySettings) => value.privacyType === 'public' ? value.everyoneExcept :
+      value.privacyType === 'contacts' ? value.contactsExcept : value.privacyType === 'selected' ? value.selectedContacts : [];
+    const privacyChanged = settings.privacyType !== previous.privacyType ||
+      !deepEqual([...privacyList(settings)].sort(), [...privacyList(previous)].sort());
+    const rules: InputPrivacyRule[] = [];
+    const list = privacyList(settings);
+    const users = list.filter((peerId) => peerId.isUser()).map((peerId) => this.appUsersManager.getUserInput(peerId.toUserId()));
+    const chats = list.filter((peerId) => peerId.isAnyChat()).map((peerId) => peerId.toChatId());
+    // Exceptions must precede the catch-all audience rule.
+    if(users.length || settings.privacyType === 'selected') rules.push({_: settings.privacyType === 'selected' ? 'inputPrivacyValueAllowUsers' : 'inputPrivacyValueDisallowUsers', users});
+    if(chats.length) rules.push({_: settings.privacyType === 'selected' ? 'inputPrivacyValueAllowChatParticipants' : 'inputPrivacyValueDisallowChatParticipants', chats});
+    switch(settings.privacyType) {
+      case 'public': rules.push({_: 'inputPrivacyValueAllowAll'}); break;
+      case 'contacts': rules.push({_: 'inputPrivacyValueAllowContacts'}); break;
+      case 'close': rules.push({_: 'inputPrivacyValueAllowCloseFriends'}); break;
+      case 'selected': break;
+      default: throw new Error('PRIVACY_VALUE_INVALID');
+    }
+
+    const added = (key: 'closeFriends' | 'hideFrom') => settings[key].filter((peerId) => !previous[key].includes(peerId));
+    const removed = (key: 'closeFriends' | 'hideFrom') => previous[key].filter((peerId) => !settings[key].includes(peerId));
+    const applied: Partial<StorySettings> = {};
+    try {
+      await this.appUsersManager.updateCloseFriends(added('closeFriends'), removed('closeFriends'));
+      applied.closeFriends = [...settings.closeFriends];
+      await this.appUsersManager.updateStoryBlockedPeers(added('hideFrom'), removed('hideFrom'));
+      applied.hideFrom = [...settings.hideFrom];
+      if(privacyChanged) {
+        try {
+          const updates = await this.apiManager.invokeApi('stories.editStory', {
+            peer: this.appPeersManager.getInputPeerById(peerId),
+            id,
+            privacy_rules: rules
+          });
+          this.apiUpdatesManager.processUpdateMessage(updates);
+        } catch(error) {
+          if((error as ApiError).type !== 'STORY_NOT_MODIFIED') throw error;
+        }
+      }
+      return {saved: true, applied: {...settings}};
+    } catch{
+      return {saved: false, applied};
+    }
   }
 
   public togglePinned(peerId: PeerId, storyId: StoryItem['id'] | StoryItem['id'][], pinned: boolean) {
@@ -1475,7 +1580,7 @@ export default class AppStoriesManager extends AppManager {
 
     const chatId = peerId.toChatId();
     const story = this.getStoryByIdCached(peerId, storyId) as StoryItem.storyItem;
-    const isMyStory = !!story.pFlags.out;
+    const isMyStory = !!story?.pFlags.out;
 
     const canEdit = this.appChatsManager.hasRights(chatId, 'edit_stories');
     const canPost = this.appChatsManager.hasRights(chatId, 'post_stories');
