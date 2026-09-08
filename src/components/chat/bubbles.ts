@@ -104,7 +104,7 @@ import middlewarePromise from '@helpers/middlewarePromise';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import noop from '@helpers/noop';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
-import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
+import paymentsWrapCurrencyAmount, {GRAM_CURRENCY_SYMBOL, formatNanoton, nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
 import PopupPayment from '@components/popups/payment';
 import isInDOM from '@helpers/dom/isInDOM';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
@@ -7946,18 +7946,18 @@ export default class ChatBubbles {
                 transaction: {
                   _: 'starsTransaction',
                   date: message.date,
-                  id: action.transaction_id || (isSent ? '' : '1'),
+                  id: action.transaction_id || '',
                   peer: {
                     _: 'starsTransactionPeer',
                     peer: isPrize ? action.boost_peer : {
                       _: 'peerUser',
-                      user_id: isSent ? message.peerId : rootScope.myId
+                      user_id: isSent ? message.peerId : message.fromId
                     }
                   },
                   pFlags: {
                     gift: isPrize ? undefined : true
                   },
-                  amount: formatStarsAmount(action.stars),
+                  amount: formatStarsAmount(isSent && !isPrize ? '-' + action.stars : action.stars),
                   giveaway_post_id: isPrize ? action.giveaway_msg_id : undefined
                 }
               });
@@ -8222,7 +8222,7 @@ export default class ChatBubbles {
 
           const stickers = await this.managers.appStickersManager.getLocalStickerSet('inputStickerSetTonGifts');
           let idx: number;
-          const amountNum = nanotonToJsNumber(action.amount);
+          const amountNum = nanotonToJsNumber(action.crypto_amount);
           if(amountNum > 50) idx = 2;
           else if(amountNum > 10) idx = 1;
           else idx = 0;
@@ -8230,11 +8230,23 @@ export default class ChatBubbles {
           this.wrapSomeSolid(() => PremiumGiftBubble({
             lottieOptions: {middleware},
             sticker: stickers.documents[idx] as MyDocument,
-            title: formatNanoton(action.crypto_amount) + ' ' + action.crypto_currency,
+            title: formatNanoton(action.crypto_amount, 9) + ' ' + GRAM_CURRENCY_SYMBOL,
             subtitle: i18n('TonGiftSubtitle'),
             buttonText: i18n('ActionGiftPremiumView'),
             buttonCallback: () => {
-              PopupElement.createPopup(PopupStars, {ton: true});
+              const isSent = message.fromId === rootScope.myId;
+              PopupPayment.create({
+                message: message as Message.message,
+                noPaymentForm: true,
+                transaction: {
+                  _: 'starsTransaction',
+                  pFlags: {gift: true},
+                  id: action.transaction_id || '',
+                  date: message.date,
+                  peer: {_: 'starsTransactionPeer', peer: {_: 'peerUser', user_id: isSent ? message.peerId : message.fromId}},
+                  amount: {_: 'starsTonAmount', amount: (isSent ? '-' : '') + action.crypto_amount}
+                }
+              });
             }
           }), content, middleware);
 

@@ -240,6 +240,7 @@ export default class PopupPayment extends PopupElement<{
     // * stars only
     isTopUp?: boolean,
     transaction?: StarsTransaction,
+    ledgerPeerId?: PeerId,
     paidMedia?: MessageMedia.messageMediaPaidMedia,
     chatInvite?: ChatInvite.chatInvite,
     noPaymentForm?: boolean,

@@ -39,6 +39,10 @@ vi.mock('@components/buttonTsx', () => {
   };
 });
 
+vi.mock('@components/stars/transactionHistory', () => ({
+  default: (): null => null
+}));
+
 vi.mock('@components/communities/editBotCommunitySection', () => ({
   default: (): null => null
 }));

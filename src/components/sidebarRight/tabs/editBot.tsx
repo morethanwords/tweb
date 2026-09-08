@@ -16,6 +16,7 @@ import EditBotCommunitySection
 from '@components/communities/editBotCommunitySection';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import Section from '@components/section';
+import TransactionHistorySection from '@components/stars/transactionHistory';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppEditBotTab} from '@components/solidJsTabs/tabs';
@@ -220,6 +221,7 @@ function EditBotForm(props: {data: EditBotData}) {
         props.data.user.pFlags.bot &&
         props.data.user.pFlags.bot_can_edit
       }>
+        <TransactionHistorySection peerId={props.data.peerId} stars ton />
         <EditBotCommunitySection
           tab={tab}
           peerId={props.data.peerId}

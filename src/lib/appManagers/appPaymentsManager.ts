@@ -8,13 +8,13 @@ import {
   PaymentsPaymentResult,
   PaymentsStarsStatus,
   StarsAmount,
-  StarsTransactionPeer,
   Update
 } from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
+import {getStarsTransactionMessagePeerId} from '@appManagers/utils/payments/starsTransaction';
 import forEachReverse from '@helpers/array/forEachReverse';
 import makeError from '@helpers/makeError';
 
@@ -206,21 +206,34 @@ export default class AppPaymentsManager extends AppManager {
     return this.apiManager.invokeApi('payments.getStarsTopupOptions');
   }
 
-  private saveStarsStatus = (starsStatus: PaymentsStarsStatus) => {
+  private saveStarsStatus = (starsStatus: PaymentsStarsStatus, ownerPeerId = this.rootScope.myId) => {
     this.appPeersManager.saveApiPeers(starsStatus);
 
     starsStatus.history?.forEach((transaction) => {
-      const transactionPeer = transaction.peer as StarsTransactionPeer.starsTransactionPeer;
-      const peerId = transactionPeer && this.appPeersManager.getPeerId(transactionPeer.peer);
-      if(transaction.msg_id) {
+      const transactionPeerId = transaction.peer._ === 'starsTransactionPeer' ?
+        this.appPeersManager.getPeerId(transaction.peer.peer) : undefined;
+      const peerId = getStarsTransactionMessagePeerId(transaction, ownerPeerId, this.rootScope.myId);
+      if(transaction.msg_id && peerId) {
         transaction.msg_id = this.appMessagesIdsManager.generateMessageId(
           transaction.msg_id,
           this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined
         );
       }
 
+      if(transaction.giveaway_post_id && transactionPeerId) {
+        transaction.giveaway_post_id = this.appMessagesIdsManager.generateMessageId(
+          transaction.giveaway_post_id,
+          this.appPeersManager.isChannel(transactionPeerId) ? transactionPeerId.toChatId() : undefined
+        );
+      }
+
+      if(transaction.stargift) {
+        const gift = this.appGiftsManager.wrapGift(transaction.stargift);
+        if(transaction.stargift._ === 'starGift') transaction.stargift.sticker = gift.sticker;
+      }
+
       if(transaction.extended_media) {
-        const removedIds = transaction.extended_media.map((messageMedia, idx) => {
+        forEachReverse(transaction.extended_media, (messageMedia, idx, media) => {
           const m = {media: messageMedia};
           this.appMessagesManager.saveMessageMedia(
             m,
@@ -228,14 +241,10 @@ export default class AppPaymentsManager extends AppManager {
             {type: 'starsTransaction', peerId, mid: transaction.msg_id}
           );
 
-          if(!m.media) {
-            return idx;
-          }
-        });
-
-        forEachReverse(removedIds, (idx, _, arr) => {
-          if(idx !== undefined) {
-            arr.splice(idx, 1);
+          if(m.media) {
+            media[idx] = m.media;
+          } else {
+            media.splice(idx, 1);
           }
         });
       }
@@ -282,18 +291,29 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
-  public getStarsTransactions(offset: string = '', inbound?: boolean, ton?: boolean) {
+  public getPeerStarsStatus(peerId: PeerId, ton?: boolean) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.getStarsStatus',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        ton
+      },
+      processResult: (starsStatus) => this.saveStarsStatus(starsStatus, peerId)
+    });
+  }
+
+  public getStarsTransactions(offset: string = '', inbound?: boolean, ton?: boolean, peerId = this.rootScope.myId) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsTransactions',
       params: {
-        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         offset,
         inbound,
         outbound: inbound === false,
         limit: 30,
         ton
       },
-      processResult: this.saveStarsStatus
+      processResult: (starsStatus) => this.saveStarsStatus(starsStatus, peerId)
     });
   }
 
@@ -341,13 +361,16 @@ export default class AppPaymentsManager extends AppManager {
     }).then(this.processPaymentResult);
   }
 
-  public getStarsTransactionsByID(transactionId: string) {
+  public getStarsTransactionsByID(transactionId: string, ton?: boolean, refund?: boolean, peerId = this.rootScope.myId) {
     if(!transactionId) return;
-    return this.apiManager.invokeApi('payments.getStarsTransactionsByID', {
-      peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
-      id: [{_: 'inputStarsTransaction', pFlags: {}, id: transactionId}]
-    }).then((starsStatus) => {
-      return starsStatus.history?.[0];
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.getStarsTransactionsByID',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        ton,
+        id: [{_: 'inputStarsTransaction', pFlags: {refund: refund || undefined}, id: transactionId}]
+      },
+      processResult: (starsStatus) => this.saveStarsStatus(starsStatus, peerId).history?.[0]
     });
   }
 

@@ -64,6 +64,10 @@
     }
   }
 
+  &-history-title {
+    padding-top: 3.5rem;
+  }
+
   &-options {
     overflow: hidden;
     position: relative;
@@ -164,6 +168,20 @@
   }
 
   &-transaction {
+    &-row {
+      .row-midtitle,
+      .row-subtitle {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      @include respond-to(handhelds) {
+        grid-template-columns: 3.5rem minmax(0, 1fr) !important;
+        grid-template-areas: "left title" "left midtitle" "left subtitle" "right right" !important;
+      }
+    }
+
     &-media {
       position: absolute;
       inset: 0;

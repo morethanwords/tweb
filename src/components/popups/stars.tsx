@@ -1,6 +1,6 @@
 /* @refresh reload */
 
-import PopupElement from '.';
+import PopupElement from '@components/popups';
 import maybe2x from '@helpers/maybe2x';
 import {InputInvoice, MessageMedia, PaymentsPaymentForm, Photo, Document, StarsTopupOption, StarsTransaction, StarsTransactionPeer, MessageExtendedMedia, ChatInvite, StarsSubscription, StarsGiftOption, InputStorePaymentPurpose, WebDocument} from '@layer';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
@@ -25,9 +25,13 @@ import {Middleware} from '@helpers/middleware';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
 import wrapPhoto from '@components/wrappers/photo';
+import isWebDocument from '@appManagers/utils/webDocs/isWebDocument';
 import currencyStarIcon from '@components/currencyStarIcon';
 import {wrapChatInviteAvatar, wrapChatInviteTitle} from '@components/popups/joinChatInvite';
 import tsNow from '@helpers/tsNow';
+import {wrapCallDuration as wrapDuration} from '@components/wrappers/wrapDuration';
+import {getStarsSubscriptionPresentation} from '@appManagers/utils/payments/starsSubscription';
+import {useUser} from '@stores/peers';
 import Button from '@components/buttonTsx';
 import showPickUserPopup, {showContactPickerPopup} from '@components/popups/pickUser';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -36,7 +40,9 @@ import appImManager from '@lib/appImManager';
 import {toastNew} from '@components/toast';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {MoreButton} from '@components/sidebarRight/tabs/statistics';
-import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
+import formatStarsAmount, {formatStarsAmountExact} from '@appManagers/utils/payments/formatStarsAmount';
+import {getStarsTransactionPresentation, starsTransactionProviders} from '@appManagers/utils/payments/starsTransaction';
+import wrapSticker from '@components/wrappers/sticker';
 import wrapLocalSticker from '@components/wrappers/localSticker';
 import bigInt from 'big-integer';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -115,12 +121,12 @@ export function StarsStar() {
   return currencyStarIcon();
 }
 
-export function StarsBalance() {
-  const stars = useStars();
+export function StarsBalance(props: {ton?: boolean} = {}) {
+  const stars = useStars(props.ton);
   return (
     <div class="stars-balance">
       <div class="stars-balance-title">{i18n('StarsBalance')}</div>
-      <div class="stars-balance-subtitle"><StarsStar />{'' + (stars() ?? 0)}</div>
+      <div class="stars-balance-subtitle">{props.ton ? <IconTsx icon="ton" /> : <StarsStar />}{props.ton ? formatNanoton(stars() ?? 0, 9) : '' + (stars() ?? 0)}</div>
     </div>
   );
 }
@@ -143,7 +149,7 @@ export function StarsChange(props: {
   ton?: boolean
 }) {
   return (
-    <div class={classNames('popup-stars-pay-amount', +props.stars > 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
+    <div class={classNames('popup-stars-pay-amount', +props.stars >= 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
       {`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}
       {props.ton ? <IconTsx icon="ton" /> : <StarsStar />}
       {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
@@ -152,23 +158,8 @@ export function StarsChange(props: {
 }
 
 export function getStarsTransactionTitle(transaction: StarsTransaction) {
-  if(transaction.subscription_period) {
-    return i18n('Stars.Subscription.Title');
-  }
-
-  if(transaction.pFlags.gift) {
-    return i18n('StarsGiftReceived');
-  }
-
-  const map: {[key in StarsTransactionPeer['_']]?: LangPackKey} = {
-    starsTransactionPeerFragment: 'Stars.Via.Fragment',
-    starsTransactionPeerPremiumBot: 'Stars.Via.Bot',
-    starsTransactionPeerAppStore: 'Stars.Via.App',
-    starsTransactionPeerPlayMarket: 'Stars.Via.App'
-  };
-
-  const key = map[transaction.peer._] ?? 'Stars.Via.Unsupported';
-  return i18n(key);
+  const presentation = getStarsTransactionPresentation(transaction);
+  return i18n(presentation.titleKey, presentation.titleArgs);
 }
 
 export function getExamplesAnchor(hide: (callback: () => void) => void) {
@@ -199,6 +190,16 @@ export function getExamplesAnchor(hide: (callback: () => void) => void) {
   return anchor;
 }
 
+const starsTransactionPeerIcons: Partial<Record<StarsTransactionPeer['_'], Icon>> = {
+  starsTransactionPeerAppStore: 'apple_filled',
+  starsTransactionPeerPlayMarket: 'android_filled',
+  starsTransactionPeerPremiumBot: 'premium',
+  starsTransactionPeerFragment: 'ton',
+  starsTransactionPeerAds: 'ads',
+  starsTransactionPeerAPI: 'bots',
+  starsTransactionPeerUnsupported: 'info'
+};
+
 export async function getStarsTransactionTitleAndMedia({
   transaction,
   middleware,
@@ -218,6 +219,7 @@ export async function getStarsTransactionTitleAndMedia({
   subscription?: StarsSubscription,
   photo?: WebDocument.webDocument
 }) {
+  const presentation = transaction && getStarsTransactionPresentation(transaction);
   const [title, media] = await Promise.all([
     (() => {
       if(subscription) {
@@ -228,8 +230,14 @@ export async function getStarsTransactionTitleAndMedia({
         return wrapChatInviteTitle(chatInvite, middleware);
       }
 
-      if(paidMedia || transaction?.extended_media) {
+      if(paidMedia?.extended_media?.length || transaction?.extended_media?.length) {
         return wrapPeerTitle({peerId: paidMediaPeerId || getPeerId((transaction.peer as StarsTransactionPeer.starsTransactionPeer).peer)});
+      }
+
+      if(transaction?.stargift) {
+        const gift = transaction.stargift;
+        const title = gift._ === 'starGiftUnique' ? `${gift.title} #${gift.num}` : gift.title;
+        if(title) return wrapEmojiText(title);
       }
 
       if(!transaction || transaction.peer._ === 'starsTransactionPeer') {
@@ -238,9 +246,18 @@ export async function getStarsTransactionTitleAndMedia({
         });
       }
 
-      return getStarsTransactionTitle(transaction);
+      if(getStarsTransactionPresentation(transaction).anonymousGift) return i18n('Stars.Transaction.UnknownPeer');
+      const provider = starsTransactionProviders[transaction.peer._];
+      return i18n(provider || 'Stars.Transaction.Unsupported');
     })(),
     (async() => {
+      const renderIcon = () => {
+        const container = document.createElement('div');
+        container.classList.add('popup-stars-transaction-media');
+        const icon = presentation?.anonymousGift ? 'gift' : presentation?.kind === 'search' ? 'search' : presentation?.kind === 'api' ? 'bots' : presentation?.kind === 'adsProceeds' ? 'ads' : starsTransactionPeerIcons[transaction?.peer._] || presentation?.icon || 'star';
+        container.append(Icon(icon));
+        return container;
+      };
       const _wrapPhoto = async(container: HTMLElement, photo: Parameters<typeof wrapPhoto>[0]['photo']) => {
         const loadPromises: Promise<any>[] = [];
         wrapPhoto({
@@ -251,16 +268,18 @@ export async function getStarsTransactionTitleAndMedia({
           middleware,
           loadPromises,
           withoutPreloader: true,
-          size: photo._ === 'webDocument' ? {_: 'photoSizeEmpty', type: ''} : undefined
+          size: isWebDocument(photo) ? {_: 'photoSizeEmpty', type: ''} : undefined
         });
 
         await Promise.all(loadPromises);
       };
 
-      if(photo) {
+      const itemPhoto = photo || subscription?.photo;
+      if(itemPhoto) {
         const container = document.createElement('div');
-        container.classList.add('popup-stars-pay-item');
-        await _wrapPhoto(container, photo);
+        container.classList.add('popup-stars-transaction-media');
+        container.style.width = container.style.height = size + 'px';
+        await _wrapPhoto(container, itemPhoto);
         return container;
       }
 
@@ -269,7 +288,7 @@ export async function getStarsTransactionTitleAndMedia({
         return avatar.node;
       }
 
-      if(paidMedia || transaction?.extended_media) {
+      if(paidMedia?.extended_media?.length || transaction?.extended_media?.length) {
         const array = paidMedia?.extended_media || transaction.extended_media;
         let media: Photo.photo | Document.document;
 
@@ -282,6 +301,7 @@ export async function getStarsTransactionTitleAndMedia({
             (extendedMedia as MessageMedia.messageMediaDocument).document as Document.document;
         }
 
+        if(!media) return renderIcon();
         const container = document.createElement('div');
         container.classList.add('popup-stars-transaction-media', 'is-paid-media');
 
@@ -309,12 +329,26 @@ export async function getStarsTransactionTitleAndMedia({
         return container;
       }
 
+      if(transaction?.stargift) {
+        const container = document.createElement('div');
+        container.classList.add('popup-stars-transaction-media');
+        const gift = await rootScope.managers.appGiftsManager.wrapGift(transaction.stargift);
+        if(gift?.sticker) {
+          await wrapSticker({doc: gift.sticker, div: container, width: size, height: size, middleware, play: false, loop: false});
+        } else {
+          container.append(Icon('gift'));
+        }
+        return container;
+      }
+
       if(transaction?.photo) {
         const container = document.createElement('div');
         container.classList.add('popup-stars-transaction-media', 'is-paid-media');
         await _wrapPhoto(container, transaction?.photo);
         return container;
       }
+
+      if(presentation && ['search', 'api', 'adsProceeds'].includes(presentation.kind)) return renderIcon();
 
       let peerId: PeerId;
       if(subscription) {
@@ -331,10 +365,7 @@ export async function getStarsTransactionTitleAndMedia({
         return avatar.node;
       }
 
-      const div = document.createElement('div');
-      div.classList.add('popup-stars-transaction-media');
-      div.append(Icon('star'));
-      return div;
+      return renderIcon();
     })()
   ]);
 
@@ -354,6 +385,122 @@ export function showGiftStarsPicker() {
   });
 }
 
+export async function renderStarsTransaction(transaction: StarsTransaction, middleware: Middleware, ledgerPeerId?: PeerId) {
+  const {title, media} = await getStarsTransactionTitleAndMedia({
+    transaction,
+    middleware,
+    size: 42
+  });
+
+  return createRoot((dispose) => {
+    middleware.onDestroy(dispose);
+
+    const presentation = getStarsTransactionPresentation(transaction);
+    const operation = getStarsTransactionTitle(transaction);
+    const useOperationTitle = ['media', 'search', 'api', 'adsProceeds', 'business'].includes(presentation.kind);
+    const productTitle = ['payment', 'subscription'].includes(presentation.kind) && transaction.title;
+    const _title = useOperationTitle ? operation : productTitle ? wrapEmojiText(productTitle) : title;
+    const midtitle = useOperationTitle || productTitle ? title : operation;
+    const subtitle = formatFullSentTime(transaction.date);
+    const amount = formatStarsAmountExact(transaction.amount);
+    const subtitleStatus = presentation.statusKey && i18n(presentation.statusKey);
+
+    let container: HTMLDivElement;
+    (
+      <Row
+        ref={container}
+        class="popup-stars-transaction-row"
+        noWrap
+        role="button"
+        tabIndex={0}
+        style={{
+          'grid-template-columns': amount.length > 14 ? '3.5rem minmax(0, 1fr)' : '3.5rem minmax(0, 1fr) auto',
+          'grid-template-areas': amount.length > 14 ? '"left title" "left midtitle" "left subtitle" "right right"' : undefined
+        }}
+        clickable={() => {
+          PopupPayment.create({
+            transaction,
+            ledgerPeerId
+          });
+        }}
+      >
+        <Row.Title><b>{_title}</b></Row.Title>
+        <Row.Midtitle>{midtitle}</Row.Midtitle>
+        <Row.Subtitle>{subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}</Row.Subtitle>
+        <Row.RightContent><StarsChange stars={amount} ton={transaction.amount._ === 'starsTonAmount'} /></Row.RightContent>
+        <Row.Media size="abitbigger">{media}</Row.Media>
+      </Row>
+    );
+
+    return container;
+  });
+}
+
+export function StarsTransactionsList(props: {
+  peerId?: PeerId,
+  ton?: boolean,
+  middleware: Middleware,
+  setLoadMore: (callback: () => void) => void
+}) {
+  const [tab, setTab] = createSignal(0);
+  const lists = [undefined, true, false].map((inbound) => {
+    const [rows, setRows] = createSignal<HTMLElement[]>([]);
+    const [loading, setLoading] = createSignal(false);
+    const [error, setError] = createSignal(false);
+    const [ended, setEnded] = createSignal(false);
+    let offset = '';
+    const seen = new Set<string>();
+    const key = (transaction: StarsTransaction) => `${transaction.id}:${!!transaction.pFlags.refund}:${getStarsTransactionPresentation(transaction).incoming}`;
+    const load = async() => {
+      if(loading() || ended()) return;
+      setLoading(true);
+      setError(false);
+      try {
+        const status = await rootScope.managers.appPaymentsManager.getStarsTransactions(offset, inbound, props.ton, props.peerId);
+        if(!props.middleware()) return;
+        const transactions = (status.history || []).filter((transaction) => !seen.has(key(transaction)));
+        const rendered = await Promise.all(transactions.map((transaction) => renderStarsTransaction(transaction, props.middleware, props.peerId)));
+        if(!props.middleware()) return;
+        transactions.forEach((transaction) => seen.add(key(transaction)));
+        setRows((rows) => [...rows, ...rendered]);
+        setEnded(!status.next_offset || status.next_offset === offset);
+        offset = status.next_offset;
+      } catch(err) {
+        if(props.middleware()) setError(true);
+      } finally {
+        if(props.middleware()) setLoading(false);
+      }
+    };
+    return {rows, loading, error, ended, load};
+  });
+  void lists[0].load();
+  props.setLoadMore(() => {
+    const list = lists[tab()];
+    if(!list.error()) void list.load();
+  });
+  return (
+    <Section class="popup-stars-transactions-section">
+      <Tabs.Simple
+        tab={tab}
+        onChange={(index) => {
+          setTab(index);
+          if(!lists[index].rows().length) void lists[index].load();
+        }}
+        class="popup-stars-transactions"
+        menu={[i18n('StarsTransactionsAll'), i18n('StarsTransactionsIncoming'), i18n('StarsTransactionsOutgoing')]}
+        content={lists.map((list) => (
+          <div>
+            {list.rows()}
+            <Show when={list.error()}><Button class="btn-primary btn-transparent" text="Stars.Transaction.Retry" onClick={() => void list.load()} /></Show>
+            <Show when={list.ended() && !list.rows().length}><div class="popup-stars-subtitle">{i18n('Stars.Transaction.Empty')}</div></Show>
+            <Show when={!list.ended() && !list.error()}><Button class="btn-primary btn-transparent" text={list.loading() ? 'Loading' : 'ShowMoreOptions'} disabled={list.loading()} onClick={() => void list.load()} /></Show>
+          </div>
+        ))}
+      />
+    </Section>
+  );
+}
+
 export default class PopupStars extends PopupElement {
   private options: (StarsTopupOption | StarsGiftOption)[];
   private paymentForm: PaymentsPaymentForm.paymentsPaymentFormStars;
@@ -366,6 +513,7 @@ export default class PopupStars extends PopupElement {
   private appConfig: MTAppConfig;
   private toppedUp: boolean;
   private ton: boolean;
+  private historyPeerId: PeerId;
   private spendPurposePeerId: PeerId;
   private purposePeerId: PeerId;
   private purchaseBlocked: boolean;
@@ -379,6 +527,7 @@ export default class PopupStars extends PopupElement {
     giftPeerId?: PeerId,
     peerId?: PeerId,
     ton?: boolean,
+    historyPeerId?: PeerId,
     spendPurposePeerId?: PeerId
   } = {}) {
     super('popup-stars', {
@@ -397,75 +546,16 @@ export default class PopupStars extends PopupElement {
     this.construct();
   }
 
-  private renderTransaction = async(transaction: StarsTransaction) => {
-    const middleware = this.middlewareHelper.get();
-    const {title, media} = await getStarsTransactionTitleAndMedia({
-      transaction,
-      middleware,
-      size: 42
-    });
-
-    return createRoot((dispose) => {
-      middleware.onDestroy(dispose);
-
-      const _title = transaction.extended_media ? i18n('StarMediaPurchase') : title;
-      let midtitle: HTMLElement | DocumentFragment;
-      if(transaction.extended_media) {
-        midtitle = title;
-      } else if(transaction.description) {
-        midtitle = wrapEmojiText(transaction.description);
-      } else if(transaction.pFlags.reaction) {
-        midtitle = i18n('StarsReactionTitle');
-      } else if(transaction.giveaway_post_id) {
-        midtitle = i18n('StarsGiveawayPrizeReceived');
-      } else if(transaction.paid_messages) {
-        midtitle = i18n('PaidMessages.FeeForMessages', [transaction.paid_messages]);
-      } else if(formatStarsAmount(transaction.amount) > 0) {
-        midtitle = transaction.pFlags.gift ? i18n('StarsGiftReceived') : i18n('Stars.TopUp');
-      } else if(transaction.subscription_period) {
-        midtitle = i18n('Stars.Subscription.Title');
-      }
-
-      const subtitle = formatFullSentTime(transaction.date);
-
-      let subtitleStatus: HTMLElement;
-      if(transaction.pFlags.refund) subtitleStatus = i18n('StarsRefunded');
-      else if(transaction.pFlags.failed) subtitleStatus = i18n('StarsFailed');
-      else if(transaction.pFlags.pending) subtitleStatus = i18n('StarsPending');
-
-      let container: HTMLDivElement;
-      (
-        <Row
-          ref={container}
-          clickable={() => {
-            PopupPayment.create({
-              transaction
-            });
-          }}
-        >
-          <Row.Title><b>{_title}</b></Row.Title>
-          <Row.Midtitle>{midtitle}</Row.Midtitle>
-          <Row.Subtitle>{subtitleStatus ? [subtitle, ' — ', subtitleStatus] : subtitle}</Row.Subtitle>
-          <Row.RightContent><StarsChange stars={formatStarsAmount(transaction.amount)} ton={transaction.amount._ === 'starsTonAmount'} /></Row.RightContent>
-          <Row.Media size="abitbigger">{media}</Row.Media>
-        </Row>
-      );
-
-      return container;
-    });
-  };
-
   private renderSubscription = async(subscription: StarsSubscription) => {
     const middleware = this.middlewareHelper.get();
 
     const peerId = getPeerId(subscription.peer);
     const title = await wrapPeerTitle({peerId});
     title.classList.add('text-bold');
-    const avatar = untrack(() => avatarNew({peerId, size: 42, middleware}));
-    await avatar.readyThumbPromise;
-
-    const isCancelled = !!subscription.pFlags.canceled;
-    const isExpired = tsNow(true) > subscription.until_date;
+    const {media} = await getStarsTransactionTitleAndMedia({transaction: undefined, subscription, middleware, size: 42});
+    const user = peerId.isUser() && useUser(peerId.toUserId());
+    const business = user && user._ === 'user' && !user.pFlags.bot;
+    const presentation = getStarsSubscriptionPresentation(subscription, tsNow(true), business);
 
     return createRoot((dispose) => {
       middleware.onDestroy(dispose);
@@ -474,6 +564,9 @@ export default class PopupStars extends PopupElement {
       (
         <Row
           ref={container}
+          class="popup-stars-transaction-row"
+          noWrap
+          style={{'grid-template-columns': '3.5rem minmax(0, 1fr) auto'}}
           clickable={async() => {
             const popup = await PopupPayment.create({
               subscription,
@@ -487,16 +580,13 @@ export default class PopupStars extends PopupElement {
             });
           }}
         >
-          <Row.Title titleRight={!isCancelled && (<StarsAmount stars={subscription.pricing.amount} />)}>{title}</Row.Title>
-          <Row.Subtitle subtitleRight={!isCancelled && i18n('Stars.Subscriptions.PerMonth')}>{
-            i18n(
-              isExpired ? 'Stars.Subscriptions.Expired' : isCancelled ?
-                'Stars.Subscriptions.Expires' :
-                'Stars.Subscriptions.Renews',
-              [formatFullSentTime(subscription.until_date, undefined, true)]
-            )}</Row.Subtitle>
-          <Row.RightContent>{isCancelled && (<span class="popup-stars-cancelled danger">{i18n('Stars.Subscriptions.Cancelled')}</span>)}</Row.RightContent>
-          <Row.Media size="abitbigger">{avatar.node}</Row.Media>
+          <Row.Title titleRight={presentation.showPrice && (<StarsAmount stars={subscription.pricing.amount} />)}>{title}</Row.Title>
+          <Row.Midtitle>{subscription.title && wrapEmojiText(subscription.title)}</Row.Midtitle>
+          <Row.Subtitle subtitleRight={presentation.showPrice && (subscription.pricing.period === 2592000 ? i18n('Stars.Subscriptions.PerMonth') : i18n('Stars.Subscription.PerPeriod', [wrapDuration(subscription.pricing.period)]))}>{
+            i18n(presentation.dateKey, [formatFullSentTime(subscription.until_date, undefined, true)])
+          }</Row.Subtitle>
+          <Row.RightContent>{presentation.statusKey && (<span class="popup-stars-cancelled danger">{i18n(presentation.statusKey)}</span>)}</Row.RightContent>
+          <Row.Media size="abitbigger">{media}</Row.Media>
         </Row>
       );
 
@@ -509,9 +599,7 @@ export default class PopupStars extends PopupElement {
     peerTitle?: HTMLElement,
     avatar?: HTMLElement
   ) {
-    if(!this.ton) {
-      this.header.append(StarsBalance() as HTMLElement);
-    }
+    this.header.append(StarsBalance({ton: this.ton}) as HTMLElement);
 
     const stars = useStars(this.ton);
     const starsNeeded = createMemo(() => {
@@ -587,7 +675,7 @@ export default class PopupStars extends PopupElement {
     }
 
     const firstSection = !this.purchaseBlocked && (
-      <Section caption="Stars.TOS">
+      <Section caption={this.ton ? 'Stars.Transaction.GramTOS' : 'Stars.TOS'}>
         <div class="popup-stars-options" style={{height: (displayingRows() * 79 + (displayingRows() - 1) * 8) + 'px'}}>
           <Show when={this.ton}>
             <Button
@@ -689,53 +777,6 @@ export default class PopupStars extends PopupElement {
       </Section>
     );
 
-    const createLoader = (inbound?: boolean) => {
-      const middleware = this.middlewareHelper.get();
-      let offset = '', loading = false;
-      const loadMore = async() => {
-        if(loading) {
-          return;
-        }
-
-        loading = true;
-        const starsStatus = await this.managers.appPaymentsManager.getStarsTransactions(offset, inbound, this.ton);
-        if(!middleware()) return;
-
-        const promises = (starsStatus.history || []).map(this.renderTransaction);
-        const rendered = await Promise.all(promises);
-        if(!middleware()) return;
-
-        setF((value) => {
-          // value.count = starsStatus.count;
-          offset = starsStatus.next_offset;
-          if(!offset) {
-            value.loadMore = undefined;
-          }
-
-          value.rendered.push(...rendered);
-          return value;
-        });
-
-        loading = false;
-      };
-
-      const [f, setF] = createLoadableList({loadMore});
-      return f;
-    };
-
-    const lists = [undefined, true, false].map((inbound) => {
-      const list = createLoader(inbound);
-      list().loadMore();
-      return list;
-    });
-
-    const [tab, setTab] = createSignal(0);
-
-    this.scrollable.onScrolledBottom = () => {
-      const list = lists[tab()];
-      list().loadMore?.();
-    };
-
     const middleware = this.middlewareHelper.get();
     let subscriptionsOffset: string;
     const loadMoreSubscriptions = async() => {
@@ -764,7 +805,7 @@ export default class PopupStars extends PopupElement {
       loadMore: loadMoreSubscriptions
     });
 
-    subscriptionsLoader().loadMore();
+    if(!this.ton) subscriptionsLoader().loadMore();
     const subscriptionsSection = (
       <Section class="popup-stars-subscriptions-section" name="Stars.Subscriptions">
         <div>{subscriptionsLoader().rendered}</div>
@@ -777,23 +818,7 @@ export default class PopupStars extends PopupElement {
       </Section>
     );
 
-    const transactionsSection = (
-      <Section class="popup-stars-transactions-section">
-        <Tabs.Simple
-          tab={tab}
-          onChange={setTab}
-          class="popup-stars-transactions"
-          menu={[
-            i18n('StarsTransactionsAll'),
-            i18n('StarsTransactionsIncoming'),
-            i18n('StarsTransactionsOutgoing')
-          ]}
-          content={lists.map((list) => {
-            return <div>{list().rendered}</div>
-          })}
-        />
-      </Section>
-    );
+    const transactionsSection = <StarsTransactionsList ton={this.ton} middleware={middleware} setLoadMore={(load) => this.scrollable.onScrolledBottom = load} />;
 
     const restSection = (
       <>
@@ -848,6 +873,21 @@ export default class PopupStars extends PopupElement {
   }
 
   private async construct() {
+    if(this.historyPeerId) {
+      const middleware = this.middlewareHelper.get();
+      const title = await wrapPeerTitle({peerId: this.historyPeerId});
+      if(!middleware()) return;
+      this.appendSolid(() => (
+        <>
+          <div class="popup-stars-title popup-stars-history-title">{title}</div>
+          <div class="popup-stars-subtitle">{i18n('Stars.Transaction.History')}</div>
+          <StarsTransactionsList peerId={this.historyPeerId} ton={this.ton} middleware={middleware} setLoadMore={(load) => this.scrollable.onScrolledBottom = load} />
+        </>
+      ));
+      this.show();
+      return;
+    }
+
     const [image, peerTitle, options, avatar, appConfig, _] = await Promise.all([
       (async() => {
         if(this.ton) {

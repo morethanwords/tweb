@@ -1,11 +1,10 @@
 import {formatFullSentTime, formatMonthsDuration} from '@helpers/date';
 import liteMode from '@helpers/liteMode';
-import clamp from '@helpers/number/clamp';
+import getGiftAssetName from '@helpers/getGiftAssetName';
 import {Message, MessageMedia} from '@layer';
 import appImManager from '@lib/appImManager';
 import I18n, {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {LottieAssetName} from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import {getCountryEmoji} from '@vendor/emoji';
 import AppSelectPeers from '@components/appSelectPeers';
@@ -20,16 +19,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import {IconTsx} from '@components/iconTsx';
 import {setPeerColorToElement} from '@components/peerColors';
 
-export function getGiftAssetName(days?: number) {
-  const months = days === undefined ? days : Math.round(days / 30);
-  const durationAssetMap: {[key: number]: LottieAssetName} = {
-    3: 'Gift3',
-    6: 'Gift6',
-    12: 'Gift12'
-  };
-
-  return durationAssetMap[clamp(months ?? 0, 3, 12)];
-}
+export {default as getGiftAssetName} from '@helpers/getGiftAssetName';
 
 export function DelimiterWithText(props: {
   langKey: LangPackKey,
@@ -346,7 +336,7 @@ export default function Giveaway(props: {
   const promise = wrapLocalSticker({
     width: size,
     height: size,
-    assetName: isResults ? 'Congratulations' : getGiftAssetName(giveaway.months),
+    assetName: isResults ? 'Congratulations' : getGiftAssetName(giveaway.months * 30),
     middleware,
     loop: false,
     autoplay: liteMode.isAvailable('stickers_chat')

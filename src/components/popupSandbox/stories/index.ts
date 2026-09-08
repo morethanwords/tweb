@@ -6,5 +6,7 @@ import './pickers';
 import './premium';
 import './chat';
 import './payments';
+import './transactions';
+import './transactionSubscriptions';
 import './gifts';
 import './misc';

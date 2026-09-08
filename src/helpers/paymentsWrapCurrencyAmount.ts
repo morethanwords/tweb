@@ -32,7 +32,7 @@ function number_format(number: any, decimals: any, dec_point: any, thousands_sep
 }
 
 const NANOTON_DECIMALS = 9;
-const GRAM_CURRENCY_SYMBOL = 'GRAM';
+export const GRAM_CURRENCY_SYMBOL = 'GRAM';
 
 export function formatNanoton(amount: number | string | BigInteger, maxDecimals: number = 2, withThousandsSep = true) {
   let amountStr = String(amount);
@@ -54,17 +54,17 @@ export function formatNanoton(amount: number | string | BigInteger, maxDecimals:
   const nextDigit = fracPart.length > maxDecimals ? parseInt(fracPart[maxDecimals], 10) : 0;
 
   if(nextDigit >= 5) {
-    const asNum = parseInt(frac2, 10) + 1;
+    const asNum = Number(frac2) + 1;
     if(asNum >= 10 ** maxDecimals) {
       intPart = bigInt(intPart).plus(1).toString();
-      frac2 = '00';
+      frac2 = '0'.repeat(maxDecimals);
     } else {
-      frac2 = asNum.toString().padStart(2, '0');
+      frac2 = asNum.toString().padStart(maxDecimals, '0');
     }
   }
 
   let res = ''
-  if(negative) res += '-';
+  if(negative && (intPart !== '0' || Number(frac2) !== 0)) res += '-';
 
   if(withThousandsSep) {
     res += intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -87,10 +87,12 @@ export function nanotonToJsNumber(nanoton: number | string) {
 }
 
 export function parseNanotonFromDecimal(decimal: string) {
-  const [int, frac = '0'] = decimal.split('.');
+  const negative = decimal.startsWith('-');
+  const [int, frac = '0'] = (negative ? decimal.slice(1) : decimal).split('.');
   const intPart = int + '0'.repeat(NANOTON_DECIMALS);
   const fracPart = frac.padEnd(NANOTON_DECIMALS, '0').slice(0, NANOTON_DECIMALS);
-  return bigInt(intPart).plus(bigInt(fracPart));
+  const amount = bigInt(intPart).plus(bigInt(fracPart));
+  return negative ? amount.negate() : amount;
 }
 
 export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
