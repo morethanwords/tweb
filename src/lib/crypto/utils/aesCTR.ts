@@ -1,6 +1,7 @@
 import {BigInteger} from 'big-integer';
 import {bigIntFromBytes, bigIntToBytes} from '@helpers/bigInt/bigIntConversion';
 import addPadding from '@helpers/bytes/addPadding';
+import bufferConcats from '@helpers/bytes/bufferConcats';
 import subtle from '@lib/crypto/subtle';
 
 const COUNTER_LENGTH = 16;
@@ -54,6 +55,13 @@ export default class CTR {
     return arrayBuffer;
   }
 
+  // * concatenate with the helper, NOT with `Uint8Array.prototype.concat` from
+  // * `@lib/polyfill`: the queue is drained by a fire-and-forget `release()`, so an
+  // * `_update` can outlive every caller awaiting it, and the polyfill only patches
+  // * whichever `Uint8Array` was the global one when it was imported. Under vitest's
+  // * jsdom environment that is fatal — the patch lands on jsdom's `Uint8Array`,
+  // * teardown puts Node's unpatched one back, and a leftover chunk then dies on an
+  // * unhandled `.concat is not a function`.
   private async _update(data: Uint8Array) {
     let toEncrypt = data;
     let head: Uint8Array/* , tail: Uint8Array */;
@@ -62,7 +70,7 @@ export default class CTR {
       const leftLength = this.leftLength;
       const leftLength2 = COUNTER_LENGTH - leftLength;
       // const left = this.encLeft.concat(toEncrypt.slice(0, leftLength2));
-      const left = (new Uint8Array(leftLength)).concat(toEncrypt.slice(0, leftLength2));
+      const left = bufferConcats(new Uint8Array(leftLength), toEncrypt.slice(0, leftLength2));
 
       const performed = await this.perform(left);
 
@@ -75,7 +83,7 @@ export default class CTR {
 
     const tail = new Uint8Array(await this.perform(toEncrypt));
 
-    const result = head ? head.concat(tail) : tail;
+    const result = head ? bufferConcats(head, tail) : tail;
 
     let length = toEncrypt.length;
     const leftAfter = length % COUNTER_LENGTH;
