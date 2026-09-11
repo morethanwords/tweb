@@ -28,6 +28,7 @@ import idleController from '@helpers/idleController';
 import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {makeWorkerURL} from '@helpers/setWorkerProxy';
+import usableWorkerURL from '@helpers/usableWorkerURL';
 import ServiceWorkerURL from '../../sw?worker&url';
 import MainWorkerURL from './mainWorker/index.worker.ts?worker&url';
 import setDeepProperty, {joinDeepPath, splitDeepPath} from '@helpers/object/setDeepProperty';
@@ -959,8 +960,21 @@ class ApiManagerProxy extends MTProtoMessagePort {
     // Keep MTProto/crypto on the shared worker, but hand the lottie pool per-tab dedicated Workers.
     const constructor = IS_SHARED_WORKER_SUPPORTED && !(IS_SAFARI && type === 'lottie') ? SharedWorker : Worker;
 
+    // Ports of workers this tab had to build for itself (see usableWorkerURL) - they must not travel
+    // to the main worker: a tab-local worker dies with its tab, while the main worker counts threaded
+    // ports up to a cap and never counts them back down, so one closed tab would starve the pool for
+    // every other one. The tab drives its own fallback worker directly; the main worker keeps the
+    // shared members it already has.
+    const tabLocalPorts = new Set<MessageEventSource>();
+
     superMessagePort.addEventListener('port', (payload, source, event) => {
-      this.invokeVoid('threadedPort', type, undefined, [event.ports[0]]);
+      const port = event.ports[0];
+      if(tabLocalPorts.has(source)) {
+        port.close();
+        return;
+      }
+
+      this.invokeVoid('threadedPort', type, undefined, [port]);
     });
 
     const firstWorker = createWorker(originalUrl);
@@ -968,11 +982,22 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     const blob = await get(originalUrl);
     const urlsPromise = await this.invoke('createProxyWorkerURLs', {originalUrl, blob, type});
-    const workers = urlsPromise.slice(1).map(createWorker);
-    workers.forEach(attachWorkerToPort);
+    const usableUrls = await Promise.all(
+      urlsPromise.slice(1).map((url) => usableWorkerURL(
+        url,
+        blob,
+        () => this.log.warn(type, 'threaded worker URL is not loadable in this tab, using a local one')
+      ))
+    );
+    usableUrls.forEach((url, index) => {
+      const port = attachWorkerToPort(createWorker(url));
+      if(url !== urlsPromise[index + 1]) {
+        tabLocalPorts.add(port);
+      }
+    });
 
     if(DEBUG) {
-      console.log('Workers URLs', type, urlsPromise);
+      console.log('Workers URLs', type, [originalUrl, ...usableUrls]);
     }
   }
 
@@ -1049,6 +1074,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
     worker.addEventListener('error', (err) => {
       this.log.error(type, 'worker error', err);
     });
+
+    return port;
   }
 
   private onWorkerFirstMessage(worker: any) {

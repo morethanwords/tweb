@@ -22,7 +22,12 @@ export interface AnimationItem {
   liteModeKey?: LiteModeKey,
   controlled?: boolean | Middleware,
   type: AnimationItemType,
-  locked?: boolean
+  locked?: boolean,
+  // Out-of-DOM reclaim state (see checkAnimation): an item registered before its element is
+  // inserted must not be reclaimed on the observer's first "not intersecting" report.
+  wasInDOM?: boolean,
+  neverShownExpired?: boolean,
+  staleTimer?: ReturnType<typeof setTimeout>
 };
 
 export type AnimationItemType = 'lottie' | 'dots' | 'video' | 'emoji';
@@ -39,6 +44,10 @@ export interface AnimationItemWrapper {
   onPlaybackParamsMutated?: () => void;
   // onVisibilityChange?: (visible: boolean) => boolean;
 };
+
+// How long an animation whose element has never been inserted is kept before the out-of-DOM reclaim
+// takes it anyway - bounds the leak for a subtree that is built and then dropped without ever showing.
+const NEVER_SHOWN_RECLAIM_TIMEOUT = 60000;
 
 export class AnimationIntersector {
   private observer: IntersectionObserver;
@@ -70,10 +79,16 @@ export class AnimationIntersector {
           continue;
         }
 
-        // Same semantics as the previous byGroups scan: act on the first item whose group is not
-        // intersection-locked, then stop (the old loop `break`ed after the first match).
-        const animation = items.find((p) => !this.intersectionLockedGroups[p.group]);
-        if(animation) {
+        // Every item on this element, not just the first one: several players can share a single
+        // observed container (the login monkey puts its idle and its tracking player into one
+        // `.media-sticker-wrapper`), and acting only on the first left the others never played,
+        // never paused and never reclaimed. Reverse order because checkAnimation can reclaim an
+        // item and splice it out of this very array.
+        forEachReverse(items, (animation) => {
+          if(this.intersectionLockedGroups[animation.group]) {
+            return;
+          }
+
           if(entry.isIntersecting) {
             this.visible.add(animation);
             this.checkAnimation(animation, false);
@@ -100,7 +115,7 @@ export class AnimationIntersector {
               animation.load();
             } */
           }
-        }
+        });
       }
     };
 
@@ -211,12 +226,17 @@ export class AnimationIntersector {
     const elementItems = this.byElement.get(el);
     if(elementItems) {
       indexOfAndSplice(elementItems, player);
-      if(!elementItems.length) {
-        this.byElement.delete(el);
-      }
     }
 
-    this.observer.unobserve(el);
+    // One element can carry several items (the login monkey puts its idle and its tracking player
+    // into one wrapper) - keep observing it until the last of them is gone, or the survivors would
+    // stop getting callbacks entirely.
+    if(!elementItems?.length) {
+      this.byElement.delete(el);
+      this.observer.unobserve(el);
+    }
+
+    clearTimeout(player.staleTimer);
     this.visible.delete(player);
     this.byPlayer.delete(animation);
   }
@@ -254,7 +274,8 @@ export class AnimationIntersector {
       controlled,
       liteModeKey,
       type,
-      locked
+      locked,
+      wasInDOM: isInDOM(observeElement)
     };
 
     if(controlled && typeof(controlled) !== 'boolean') {
@@ -264,9 +285,14 @@ export class AnimationIntersector {
     }
 
     if(item.type === 'lottie') {
+      // The auth cards load their stickers during the bootstrap, before the settings store is filled -
+      // reading `.stickers.loop` off an empty store threw right here, and the throw travelled out of
+      // loadAnimationWorker, rejecting the caller's load promise (the login monkey lost its input
+      // wiring). Leave playback params alone until the settings are actually there.
       const [appSettings] = useAppSettings();
-      if(!appSettings.stickers.loop && animation.loop) {
-        animation.loop = appSettings.stickers.loop;
+      const stickers = appSettings?.stickers;
+      if(stickers && !stickers.loop && animation.loop) {
+        animation.loop = stickers.loop;
       }
     }
 
@@ -327,7 +353,30 @@ export class AnimationIntersector {
     // * whole subtree: 4 047 detached nodes hung off animationIntersector in a day-old tab. An
     // * element that is out of the DOM has no playback left to control, and `controlled` still
     // * protects the items an owner deliberately keeps for re-insertion.
-    if(destroy || (!this.lockedGroups[group] && !isInDOM(el))) {
+    // * An animation can be registered BEFORE its element is inserted: <Transition mode="outin"> (auth
+    // * cards) creates the incoming card and runs its onMount while the outgoing one is still leaving,
+    // * so the player loads into a detached subtree. The observer reports that element as "not
+    // * intersecting" right away, and reclaiming there destroyed the sticker before it was ever shown
+    // * (Safari lost that race - the code card came up with no monkey until a reload). Only reclaim an
+    // * element that has been in the DOM at least once; one that never made it there is reclaimed on
+    // * its own NEVER_SHOWN_RECLAIM_TIMEOUT deadline below, so a dropped subtree still can't pile up.
+    const inDOM = isInDOM(el);
+    if(inDOM) {
+      player.wasInDOM = true;
+    }
+
+    const canReclaim = player.wasInDOM || player.neverShownExpired;
+    if(!inDOM && !canReclaim && player.staleTimer === undefined) {
+      // the observer reports a detached element once and then goes quiet, so the deadline needs its
+      // own timer - otherwise a subtree that is never inserted would sit here until the next sweep
+      player.staleTimer = setTimeout(() => {
+        player.staleTimer = undefined;
+        player.neverShownExpired = true;
+        this.checkAnimation(player);
+      }, NEVER_SHOWN_RECLAIM_TIMEOUT);
+    }
+
+    if(destroy || (!this.lockedGroups[group] && !inDOM && canReclaim)) {
       if(player.type === 'video') {
         animation.pause();
       }
