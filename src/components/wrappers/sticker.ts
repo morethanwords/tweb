@@ -62,6 +62,9 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
+/** Below this CSS size, low-res photoSize thumbs are OK for list performance; at/above prefer full Lottie/WebM. */
+const FULL_MEDIA_SIZE_THRESHOLD = 64;
+
 export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, initFrame, keepThumb, noOffscreen, compositorDelivery}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
@@ -125,6 +128,18 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     const size = makeMediaSize(doc.w, doc.h).aspectFitted(boxSize);
     width = size.width;
     height = size.height;
+  }
+
+  // Large stickers/emoji must not stay on photoSize thumbs (blurry upscale), even if
+  // the caller passed `static: true`. Tiny list slots (< threshold) still use thumbs.
+  const forcedStatic = stickerType === StickerType.Static ||
+    (stickerType === StickerType.WebM && !IS_WEBM_SUPPORTED);
+  if(
+    asStatic &&
+    !forcedStatic &&
+    Math.max(width || 0, height || 0) >= FULL_MEDIA_SIZE_THRESHOLD
+  ) {
+    asStatic = false;
   }
 
   if(stickerType === StickerType.Lottie) {
