@@ -1,10 +1,12 @@
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {MOUNT_CLASS_TO} from '@config/debug';
 import {logger, LogTypes} from '@lib/logger';
 import fastSmoothScroll, {ScrollOptions} from '@helpers/fastSmoothScroll';
-import useHeavyAnimationCheck from '@hooks/useHeavyAnimationCheck';
+import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
+import WeakRefSet from '@helpers/weakRefSet';
 /*
 var el = $0;
 var height = 0;
@@ -65,6 +67,35 @@ function cancelMeasurement(id: number): void {
   }
 }
 
+// * ONE subscription for every scrollable, instead of one per instance. A scrollable used to hold
+// * two things that outlive it - a window `resize` listener and the module-level heavy-animation
+// * handlers - and each of those closures captures `this`, so an instance whose owner never called
+// * destroy() stayed reachable from `window` and kept `container` with every node under it. In a
+// * day-old production tab all 227 instances were still subscribed and 200 of them had a DETACHED
+// * container; cutting exactly these two subscriptions in the heap graph made 1 009 609 nodes
+// * unreachable. Nothing in the app calls destroy() reliably, so the registry is what has to let go:
+// * it holds WeakRefs, and liveness follows the ELEMENT - the container's own scroll listener keeps
+// * the instance alive for as long as the element is. Same shape as the fix in lazyLoadQueue.ts.
+const listeningScrollables = new WeakRefSet<ScrollableBase>();
+let subscribedToWindow = false;
+
+// * Exposed for diagnosis: memoryReport counts it, and a set that keeps growing while the tab is
+// * idle means scrollables are being created and abandoned faster than they are collected
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.listeningScrollables = listeningScrollables);
+
+const subscribeToWindow = () => {
+  if(subscribedToWindow) {
+    return;
+  }
+
+  subscribedToWindow = true;
+  window.addEventListener('resize', () => listeningScrollables.forEachLive((scrollable) => scrollable.onScroll()), {passive: true});
+  useHeavyAnimationCheck(
+    () => listeningScrollables.forEachLive((scrollable) => scrollable.onHeavyAnimationStart()),
+    () => listeningScrollables.forEachLive((scrollable) => scrollable.onHeavyAnimationEnd())
+  );
+};
+
 export class ScrollableBase {
   protected log: ReturnType<typeof logger>;
 
@@ -96,7 +127,7 @@ export class ScrollableBase {
   protected thumb: HTMLElement;
   protected thumbContainer: HTMLElement;
 
-  protected removeHeavyAnimationListener: () => void;
+  protected selfRef: WeakRef<ScrollableBase>;
   protected addedScrollListener: boolean;
 
   constructor(
@@ -136,45 +167,53 @@ export class ScrollableBase {
   }
 
   public setListeners() {
-    if(this.removeHeavyAnimationListener) {
+    if(this.selfRef) {
       return;
     }
 
-    window.addEventListener('resize', this.onScroll, {passive: true});
+    subscribeToWindow();
+    this.selfRef = listeningScrollables.track(this);
     this.addScrollListener();
 
-    this.removeHeavyAnimationListener = useHeavyAnimationCheck(() => {
-      this.isHeavyAnimationInProgress = true;
+    // * A shared subscription cannot deliver a start that has already fired, which the per-instance
+    // * useHeavyAnimationCheck did for free - so an instance that appears mid-animation catches up
+    if(!getHeavyAnimationPromise().isFulfilled) {
+      this.onHeavyAnimationStart();
+    }
+  }
 
-      if(this.onScrollMeasure) {
-        this.cancelMeasure();
-        this.needCheckAfterAnimation = true;
-      }
-    }, () => {
-      this.isHeavyAnimationInProgress = false;
+  public onHeavyAnimationStart() {
+    this.isHeavyAnimationInProgress = true;
 
-      if(this.needCheckAfterAnimation) {
-        this.onScroll();
-        this.needCheckAfterAnimation = false;
-      }
-    });
+    if(this.onScrollMeasure) {
+      this.cancelMeasure();
+      this.needCheckAfterAnimation = true;
+    }
+  }
+
+  public onHeavyAnimationEnd() {
+    this.isHeavyAnimationInProgress = false;
+
+    if(this.needCheckAfterAnimation) {
+      this.onScroll();
+      this.needCheckAfterAnimation = false;
+    }
   }
 
   public removeListeners() {
-    if(!this.removeHeavyAnimationListener) {
+    if(!this.selfRef) {
       return;
     }
 
-    window.removeEventListener('resize', this.onScroll);
+    listeningScrollables.delete(this.selfRef);
+    this.selfRef = undefined;
+
     if(this.thumb) {
       this.thumb.removeEventListener('mousedown', this.onMouseMove);
       window.removeEventListener('mousemove', this.onMouseMove);
       window.removeEventListener('mouseup', this.onMouseUp);
     }
     this.removeScrollListener();
-
-    this.removeHeavyAnimationListener();
-    this.removeHeavyAnimationListener = undefined;
   }
 
   public destroy() {
@@ -352,7 +391,7 @@ export class ScrollableBase {
   }
 
   public ignoreNextScrollEvent() {
-    if(this.removeHeavyAnimationListener) {
+    if(this.selfRef) {
       this.removeScrollListener();
       this.container.addEventListener('scroll', (e) => {
         cancelEvent(e);

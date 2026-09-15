@@ -48,6 +48,7 @@ import toArray from '@helpers/array/toArray';
 import computeLockColor from '@helpers/computeLockColor';
 import createAvatarVideo from '@components/createAvatarVideo';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import WeakRefSet from '@helpers/weakRefSet';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -66,7 +67,7 @@ type TrackedAvatar = {render: (...args: any[]) => any, updateStoriesSegments: (.
 // * its entry with it.
 // * `believeMe` below is the same kind of registry and gets the same treatment, so both share the
 // * type and the finalizer rather than growing a second copy of this bookkeeping
-type AvatarRegistry = Map<string, Set<WeakRef<TrackedAvatar>>>;
+type AvatarRegistry = Map<string, WeakRefSet<TrackedAvatar>>;
 
 const avatarsMap: AvatarRegistry = new Map();
 const avatarByElement: WeakMap<HTMLElement, TrackedAvatar> = new WeakMap();
@@ -86,15 +87,7 @@ const forEachAvatar = (map: AvatarRegistry, key: string, callback: (avatar: Trac
     return;
   }
 
-  for(const ref of set) {
-    const avatar = ref.deref();
-    if(!avatar) {
-      set.delete(ref);
-      continue;
-    }
-
-    callback(avatar);
-  }
+  set.forEachLive(callback);
 
   if(!set.size) {
     map.delete(key);
@@ -937,11 +930,10 @@ export const AvatarNew = (props: {
 
       let set = avatarsMap.get(key);
       if(!set) {
-        avatarsMap.set(key, set = new Set());
+        avatarsMap.set(key, set = new WeakRefSet());
       }
 
-      selfRef = new WeakRef(ret);
-      set.add(selfRef);
+      selfRef = set.track(ret);
       collectedAvatars.register(ret, {map: avatarsMap, key, ref: selfRef}, ret);
     }
 
@@ -961,9 +953,11 @@ export const AvatarNew = (props: {
         const key = getKey();
         let set = believeMe.get(key);
         if(!set) {
-          believeMe.set(key, set = new Set());
+          believeMe.set(key, set = new WeakRefSet());
         }
 
+        // * one ref for this avatar's lifetime, reused when the key changes - so not set.track(),
+        // * which mints a new one every call and would leave the old key holding a stale entry
         believeRef ??= new WeakRef(ret);
         set.add(believeRef);
         // * no unregister token: a finalizer that fires after the entry is gone finds nothing to
@@ -1004,12 +998,8 @@ export const AvatarNew = (props: {
         believeRef = undefined;
       }
 
-      const arr = Array.from(set);
       believeMe.delete(key);
-
-      for(let i = 0, length = arr.length; i < length; ++i) {
-        arr[i].deref()?.render();
-      }
+      set.forEachLive((avatar) => avatar.render());
     }
 
     const result = await promise;

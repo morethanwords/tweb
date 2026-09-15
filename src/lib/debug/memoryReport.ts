@@ -176,13 +176,16 @@ export default async function memoryReport(options?: {quiet?: boolean}) {
 
   // * Both avatar registries point at avatars they must not own; a count that climbs while the tab
   // * is idle means one of them started owning again (see avatarNew.tsx)
-  const countRefs = (map: Map<string, Set<any>>) => {
+  const countRefs = (registry: Map<string, Set<any>> | Set<any>) => {
     let refs = 0, live = 0;
-    map?.forEach((set) => set.forEach((ref) => {
+    const countSet = (set: Set<any>) => set?.forEach((ref) => {
       ++refs;
       if(ref?.deref ? ref.deref() : ref) ++live;
-    }));
-    return {keys: map?.size || 0, refs, live};
+    });
+
+    if(registry instanceof Set) countSet(registry);
+    else registry?.forEach(countSet);
+    return {keys: registry instanceof Map ? registry.size : 0, refs, live};
   };
 
   const tracked = countRefs(ctx.avatarsMap);
@@ -193,6 +196,13 @@ export default async function memoryReport(options?: {quiet?: boolean}) {
   metrics.avatarsTrackedLive = tracked.live;
   metrics.avatarsBelievedRefs = believed.refs;
   metrics.avatarsBelievedLive = believed.live;
+
+  // * Scrollables subscribe to window resize and heavy animations through one shared, weak registry;
+  // * refs far above live means instances are being abandoned without their elements being collected
+  const scrollables = countRefs(ctx.listeningScrollables);
+  report.scrollables = `${scrollables.refs} refs | ${scrollables.live} live`;
+  metrics.scrollablesRefs = scrollables.refs;
+  metrics.scrollablesLive = scrollables.live;
 
   const canvases = document.querySelectorAll('canvas');
   let domCanvasBytes = 0;
