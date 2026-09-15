@@ -62,7 +62,8 @@ export async function collectLogs(): Promise<LogEntry[]> {
   return all;
 }
 
-function buildMeta(count: number): LogsMeta {
+/** The envelope every debug export starts with - memoryWatch writes the same one. */
+export function buildExportMeta(count: number, extra?: Record<string, any>): LogsMeta {
   return {
     __meta: true,
     version: import.meta.env.VITE_VERSION,
@@ -71,14 +72,15 @@ function buildMeta(count: number): LogsMeta {
     ua: navigator.userAgent,
     href: location.href,
     exportedAt: new Date().toISOString(),
-    count
+    count,
+    ...extra
   };
 }
 
 /** Build the NDJSON payload (meta line first, then one entry per line). */
 export async function serializeLogs(): Promise<string> {
   const entries = await collectLogs();
-  const lines = [JSON.stringify(buildMeta(entries.length))];
+  const lines = [JSON.stringify(buildExportMeta(entries.length))];
   for(const e of entries) {
     lines.push(JSON.stringify(e));
   }

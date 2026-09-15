@@ -24,6 +24,7 @@ import '@helpers/peerIdPolyfill';
 import '@lib/polyfill';
 import '@lib/debug/mountLogExport'; // main-thread-only: wires window.downloadLogs / collectLogs
 import '@lib/debug/memoryReport'; // main-thread-only: wires window.memoryReport
+import '@lib/debug/memoryWatch'; // main-thread-only: wires window.memoryWatch (crash-proof memory series)
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getProxiedManagers from '@lib/getProxiedManagers';
 import themeController from '@helpers/themeController';

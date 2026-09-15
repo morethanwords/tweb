@@ -64,20 +64,24 @@ type TrackedAvatar = {render: (...args: any[]) => any, updateStoriesSegments: (.
 // * weakly: an avatar whose element is still reachable - mounted, or deliberately kept for
 // * re-mounting like the chat list does - keeps updating, and one that was dropped for good takes
 // * its entry with it.
-const avatarsMap: Map<string, Set<WeakRef<TrackedAvatar>>> = new Map();
+// * `believeMe` below is the same kind of registry and gets the same treatment, so both share the
+// * type and the finalizer rather than growing a second copy of this bookkeeping
+type AvatarRegistry = Map<string, Set<WeakRef<TrackedAvatar>>>;
+
+const avatarsMap: AvatarRegistry = new Map();
 const avatarByElement: WeakMap<HTMLElement, TrackedAvatar> = new WeakMap();
-const collectedAvatars = new FinalizationRegistry<{key: string, ref: WeakRef<TrackedAvatar>}>(({key, ref}) => {
-  const set = avatarsMap.get(key);
+const collectedAvatars = new FinalizationRegistry<{map: AvatarRegistry, key: string, ref: WeakRef<TrackedAvatar>}>(({map, key, ref}) => {
+  const set = map.get(key);
   if(!set?.delete(ref) || set.size) {
     return;
   }
 
-  avatarsMap.delete(key);
+  map.delete(key);
 });
 
 // * Iterating also prunes refs whose avatar is already gone but whose finalizer has not run yet
-const forEachAvatar = (key: string, callback: (avatar: TrackedAvatar) => void) => {
-  const set = avatarsMap.get(key);
+const forEachAvatar = (map: AvatarRegistry, key: string, callback: (avatar: TrackedAvatar) => void) => {
+  const set = map.get(key);
   if(!set?.size) {
     return;
   }
@@ -93,7 +97,7 @@ const forEachAvatar = (key: string, callback: (avatar: TrackedAvatar) => void) =
   }
 
   if(!set.size) {
-    avatarsMap.delete(key);
+    map.delete(key);
   }
 };
 
@@ -101,19 +105,28 @@ const forEachAvatar = (key: string, callback: (avatar: TrackedAvatar) => void) =
 // * is the cheapest way to tell whether avatars are still being released (see memoryReport)
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.avatarsMap = avatarsMap);
 
-const believeMe: Map<string, Set<ReturnType<typeof AvatarNew>>> = new Map();
+// * Avatars queued for a peer nobody has rendered yet, so the first render can wake the rest. An
+// * entry leaves only when that render happens - and for an avatar whose row is dropped before it
+// * ever scrolls into view, it never does. Holding them strongly kept 3 430 avatars, and through
+// * `element` their whole detached rows, in a day-old tab: the map's 286 peers outnumbered the 10
+// * avatars actually on screen. Weak for the same reason as avatarsMap above
+const believeMe: AvatarRegistry = new Map();
 const seen: Set<PeerId> = new Set();
+
+// * Exposed for the same reason as avatarsMap: memoryReport counts both, and a believeMe that keeps
+// * growing while the tab sits idle is the signature of this leak coming back
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.believeMe = believeMe);
 
 function getAvatarQueueKey(peerId: PeerId, threadId?: number) {
   return peerId + (threadId ? '_' + threadId : '');
 }
 
 const onAvatarUpdate = ({peerId, threadId}: {peerId: PeerId, threadId?: number}) => {
-  forEachAvatar(getAvatarQueueKey(peerId, threadId), (avatar) => avatar.render());
+  forEachAvatar(avatarsMap, getAvatarQueueKey(peerId, threadId), (avatar) => avatar.render());
 };
 
 const onAvatarStoriesUpdate = ({peerId}: {peerId: PeerId}) => {
-  forEachAvatar(getAvatarQueueKey(peerId), (avatar) => avatar.updateStoriesSegments());
+  forEachAvatar(avatarsMap, getAvatarQueueKey(peerId), (avatar) => avatar.updateStoriesSegments());
 };
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
@@ -514,13 +527,14 @@ export const AvatarNew = (props: {
       return;
     }
 
-    const set = believeMe.get(lastKey);
-    if(set) {
-      set.delete(this);
-      if(!set.size) {
-        believeMe.delete(lastKey);
-      }
+    // * this used to delete `this`, which is undefined inside this arrow - so a key change never
+    // * took the avatar out of believeMe, and nothing else did either
+    const set = believeRef && believeMe.get(lastKey);
+    if(set?.delete(believeRef) && !set.size) {
+      believeMe.delete(lastKey);
     }
+
+    believeRef = undefined;
 
     const avatarsSet = avatarsMap.get(lastKey);
     if(!selfRef || !avatarsSet?.delete(selfRef)) {
@@ -914,6 +928,7 @@ export const AvatarNew = (props: {
 
   let lastKey: string;
   let selfRef: WeakRef<TrackedAvatar>;
+  let believeRef: WeakRef<TrackedAvatar>;
   const render = async(_props?: Modify<typeof props, {size?: never, peerId?: PeerId}>) => {
     const key = getKey();
     if(key !== lastKey) {
@@ -927,7 +942,7 @@ export const AvatarNew = (props: {
 
       selfRef = new WeakRef(ret);
       set.add(selfRef);
-      collectedAvatars.register(ret, {key, ref: selfRef}, ret);
+      collectedAvatars.register(ret, {map: avatarsMap, key, ref: selfRef}, ret);
     }
 
     if(_props?.peerId !== undefined && props.peerId !== _props.peerId) {
@@ -949,10 +964,17 @@ export const AvatarNew = (props: {
           believeMe.set(key, set = new Set());
         }
 
-        set.add(ret);
+        believeRef ??= new WeakRef(ret);
+        set.add(believeRef);
+        // * no unregister token: a finalizer that fires after the entry is gone finds nothing to
+        // * delete and returns, so the stale registration costs nothing
+        collectedAvatars.register(ret, {map: believeMe, key, ref: believeRef});
 
         props.lazyLoadQueue.push({
           div: node,
+          // * without this the queue cannot purge the item when the owner dies, and the item holds
+          // * `node` - the same detached subtree this map used to keep
+          middleware,
           load: () => {
             seen.add(props.peerId);
             return render();
@@ -977,12 +999,16 @@ export const AvatarNew = (props: {
 
     const set = believeMe.get(key);
     if(set) {
-      set.delete(ret);
+      if(believeRef) {
+        set.delete(believeRef);
+        believeRef = undefined;
+      }
+
       const arr = Array.from(set);
       believeMe.delete(key);
 
       for(let i = 0, length = arr.length; i < length; ++i) {
-        arr[i].render();
+        arr[i].deref()?.render();
       }
     }
 
