@@ -104,9 +104,29 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
     })();
   }
 
+  /**
+   * Unlike `loadEncrypted`, will not re-read the store when the data is already in memory
+   */
+  public async ensureLoaded() {
+    if(!this.data && !this.loadingDataPromise) this.loadEncrypted();
+    await this.waitToLoad();
+  }
+
   public async loadDecrypted(data: StoredData) {
     this.log('loading decrypted', data);
     this.data = data;
+    await this.saveToIDB();
+  }
+
+  /**
+   * Folds data that was left in the unencrypted store into this one. \
+   * The already encrypted values win, they are the newer ones
+   */
+  public async mergeDecrypted(data: StoredData) {
+    await this.ensureLoaded();
+
+    this.log('merging decrypted', data);
+    this.data = {...data, ...this.data};
     await this.saveToIDB();
   }
 
@@ -121,6 +141,11 @@ export default class EncryptedStorageLayer<T extends Database<any>> implements S
 
 
     const encryptedData = await EncryptedStorageLayer.encrypt(this.data);
+    if(!encryptedData) { // * nothing left to store, the previous value must not stay behind
+      await this.storage.delete(EncryptedStorageLayer.STORAGE_KEY);
+      return;
+    }
+
     const encryptedDataSize = encryptedData.length;
 
     const encryptionTime = performance.now();

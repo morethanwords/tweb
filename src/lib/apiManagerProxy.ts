@@ -764,9 +764,20 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.invokeVoid('hello', undefined);
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
     this.serviceMessagePort.invokeVoid('setLogBufferEnabled', DEBUG);
+    this.sendPasscodeStateToServiceWorker();
+  }
 
-    DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
-      this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {type: 'init', isUsingPasscode: value});
+  /**
+   * The service worker keeps the passcode state only in memory, and the browser restarts it at will -
+   * so it is told again on every `hello`, with the key when this tab is unlocked
+   */
+  private sendPasscodeStateToServiceWorker() {
+    DeferredIsUsingPasscode.isUsingPasscode().then((isUsingPasscode) => {
+      const encryptionKey = isUsingPasscode ? EncryptionKeyStore.getUndeferred() : undefined;
+      this.serviceMessagePort.invokeVoid('toggleUsingPasscode', encryptionKey ?
+        {type: 'full', isUsingPasscode, encryptionKey} :
+        {type: 'init', isUsingPasscode}
+      );
     });
   }
 
@@ -890,6 +901,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
           this.log('got hello from service worker');
           this.serviceMessagePort.resendLockTask(source);
           this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
+          this.sendPasscodeStateToServiceWorker();
         },
 
         share: (payload) => {

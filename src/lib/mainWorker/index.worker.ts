@@ -249,7 +249,11 @@ port.addMultipleEventsListeners({
 
   toggleUsingPasscode: async(payload, source) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-    EncryptionKeyStore.save(payload.encryptionKey);
+    // * when disabling, the old key stays until everything is decrypted - a store nobody has opened
+    // * yet still has to be read with it
+    if(payload.isUsingPasscode) {
+      EncryptionKeyStore.save(payload.encryptionKey);
+    }
 
     await Promise.all([
       AppStorage.toggleEncryptedForAll(payload.isUsingPasscode),
@@ -257,6 +261,10 @@ port.addMultipleEventsListeners({
         sessionStorage.encryptEncryptable() :
         sessionStorage.decryptEncryptable()
     ]);
+
+    if(!payload.isUsingPasscode) {
+      EncryptionKeyStore.save(null);
+    }
 
     pushSingleManager.registerAgain();
 
@@ -267,6 +275,13 @@ port.addMultipleEventsListeners({
 
   changePasscode: async({toStore, encryptionKey}, source) => {
     await commonStateStorage.set({passcode: toStore});
+
+    // * the storages have to be read while the old key is still around, the ones that were never
+    // * opened would otherwise stay encrypted with it and become unreadable
+    await Promise.all([
+      AppStorage.loadEncryptedForAll(),
+      sessionStorage.loadEncryptable()
+    ]);
 
     EncryptionKeyStore.save(encryptionKey);
     await Promise.all([

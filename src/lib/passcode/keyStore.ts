@@ -12,6 +12,13 @@ export default class EncryptionKeyStore extends StaticUtilityClass {
     return this.key;
   }
 
+  /**
+   * Whatever is in memory right now, `null` while nothing has been saved yet
+   */
+  public static getUndeferred() {
+    return this.key;
+  }
+
   public static async getAsBase64() {
     const key = await this.get();
     if(!key) return null;

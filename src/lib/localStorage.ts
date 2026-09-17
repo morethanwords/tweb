@@ -304,6 +304,16 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     this.encryptionDeferred = undefined;
   }
 
+  /**
+   * Reads the encrypted store into memory with the current key, to be awaited before that key is replaced
+   */
+  public async loadEncryptable() {
+    if(this.warnAboutEncrypting('loadEncryptable')) return;
+
+    const encryptedStorage = await this.getEncryptedStorage();
+    await encryptedStorage.ensureLoaded();
+  }
+
   public async reEncryptEncryptable() {
     if(this.warnAboutEncrypting('reEncryptEncryptable')) return;
 

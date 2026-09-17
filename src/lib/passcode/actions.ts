@@ -105,6 +105,9 @@ export function usePasscodeActions() {
     await enableCacheStorages();
 
     commonStateStorage.delete('passcode');
+
+    // * the reverse of the strip `enablePasscode` does
+    await AccountController.updateStorageForLegacy(await AccountController.get(1));
   }
 
   /**

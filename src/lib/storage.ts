@@ -46,6 +46,7 @@ export default class AppStorage<
   private static STORAGES: AppStorage<any, Database<any>>[] = [];
 
   private storage: StorageLayer;
+  private storagePromise: Promise<StorageLayer>;
 
   // private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage>;
@@ -98,20 +99,57 @@ export default class AppStorage<
   }
 
 
-  private async getStorage(): Promise<StorageLayer> {
-    if(this.storage) return this.storage;
+  private getPlainStorage() {
+    return new IDBStorage(this.db, this.storeName);
+  }
 
+  private getEncryptedStorage() {
+    return EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
+  }
+
+  private getStorage(): Promise<StorageLayer> {
+    if(this.storage) return Promise.resolve(this.storage);
+
+    return this.storagePromise ??= this.createStorage()
+    .then((storage) => this.storage ??= storage)
+    .finally(() => this.storagePromise = undefined); // * a failed open must not be cached, the next call retries
+  }
+
+  private async createStorage(): Promise<StorageLayer> {
     const isEncryptable = this.isEncryptable ?
       await DeferredIsUsingPasscode.isUsingPasscode() :
       false;
 
-    const storage = this.storage = isEncryptable ?
-      EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName) :
-      new IDBStorage(this.db, this.storeName);
+    if(!isEncryptable) {
+      return this.getPlainStorage();
+    }
 
-    if(storage instanceof EncryptedStorageLayer) storage.loadEncrypted();
+    const storage = this.getEncryptedStorage();
+    await storage.ensureLoaded();
+    await this.encryptLeftovers(storage);
 
     return storage;
+  }
+
+  /**
+   * A store that was never opened while the passcode was being enabled had nothing to migrate back then
+   * (see `toggleEncrypted`), so its data was left lying in the unencrypted store - fold it in on the first open
+   */
+  private async encryptLeftovers(encryptedStorage: EncryptedStorageLayer<T>) {
+    const plainStorage = this.getPlainStorage();
+
+    // * best effort: the store has to open whatever happens here, the leftovers get another try next time
+    try {
+      const entries = await plainStorage.getAllEntries();
+      if(!entries.length) return;
+
+      this.log.warn('found unencrypted entries, encrypting them', entries.length);
+
+      await encryptedStorage.mergeDecrypted(Object.fromEntries(entries));
+      await plainStorage.clear();
+    } catch(err) {
+      this.log.error('encrypt leftovers error', err);
+    }
   }
 
   private _save = async() => {
@@ -357,20 +395,14 @@ export default class AppStorage<
       }
     }
 
-    try
-    {
-      const currentStorage = await this.getStorage();
-      await currentStorage.clear();
-
-      if(currentStorage instanceof EncryptedStorageLayer) {
-        const otherStorage = new IDBStorage(this.db, this.storeName);
-        await otherStorage.clear();
-      } else if(this.isEncryptable) {
-        const otherStorage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
-        await otherStorage.clear();
-      }
-    }
-    catch{}
+    // * both stores are wiped directly, without opening the storage: opening the encrypted one waits for
+    // * the passcode key, and clearing has to work while locked (logging out from the lock screen)
+    try {
+      await Promise.all([
+        this.getPlainStorage().clear(),
+        this.isEncryptable && this.getEncryptedStorage().clear()
+      ]);
+    } catch{}
   }
 
   public async unfreezeAsync(callback: () => Promise<unknown>) {
@@ -427,28 +459,53 @@ export default class AppStorage<
     this.STORAGES.forEach((storage) => storage.savingFreezed = false);
   }
 
+  /**
+   * The direction is taken from the argument, never from `this.storage`: the store might not have been
+   * opened yet, and by the time this runs `getStorage` would already answer with the layer the new flag
+   * dictates, so the data would be read from the empty destination and left in the source
+   */
   private async toggleEncrypted(shouldEncrypt: boolean) {
     if(!this.isEncryptable) return;
 
-    const isEncrypted = this.storage instanceof EncryptedStorageLayer;
-    if(shouldEncrypt === isEncrypted) return;
-
-    const entries = await this.getAllEntries();
-
-    await this.storage.clear();
+    const encryptedStorage = this.getEncryptedStorage();
+    const plainStorage = this.getPlainStorage();
 
     if(shouldEncrypt) {
-      const storage = this.storage = EncryptedStorageLayer.getInstance(this.db, this.encryptedStoreName);
-      const data = Object.fromEntries(entries);
+      // * an unreadable store is left alone rather than wiped, `encryptLeftovers` picks it up on the next open
+      const entries = await plainStorage.getAllEntries().catch((err) => {
+        this.log.error('toggle encrypted read error', err);
+        return undefined as IDBStorage.Entries;
+      });
 
-      await storage.loadDecrypted(data);
+      await encryptedStorage.mergeDecrypted(Object.fromEntries(entries || []));
+      if(entries) await plainStorage.clear();
+
+      this.storage = encryptedStorage;
     } else {
-      const storage = this.storage = new IDBStorage(this.db, this.storeName);
-      const keys = entries.map(entry => entry[0] as string);
-      const values = entries.map(entry => entry[1]);
+      await encryptedStorage.ensureLoaded();
+      const entries = await encryptedStorage.getAllEntries();
 
-      await storage.save(keys, values);
+      if(entries.length) {
+        await plainStorage.save(entries.map((entry) => entry[0] as string), entries.map((entry) => entry[1]));
+      }
+
+      await encryptedStorage.clear();
+
+      this.storage = plainStorage;
     }
+
+    this.storagePromise = undefined;
+  }
+
+  /**
+   * Has to be awaited BEFORE the encryption key is replaced, otherwise a store nobody has opened yet
+   * would stay encrypted with the old key and become unreadable
+   */
+  private async loadEncrypted() {
+    if(!this.isEncryptable) return;
+    if(!(await DeferredIsUsingPasscode.isUsingPasscode())) return;
+
+    await this.getStorage();
   }
 
   private async reEncrypt() {
@@ -459,15 +516,23 @@ export default class AppStorage<
 
   public static async toggleEncryptedForAll(shouldEncrypt: boolean) {
     // this.freezeSaving()
-    this.freezeSavingAsync(async() => {
+    await this.freezeSavingAsync(async() => {
       await Promise.all(
         this.STORAGES.map((storage) => storage.toggleEncrypted(shouldEncrypt))
       );
     });
   }
 
+  public static async loadEncryptedForAll() {
+    await Promise.all(
+      this.STORAGES.map((storage) => storage.loadEncrypted().catch((err) => {
+        storage.log.error('load encrypted error', err);
+      }))
+    );
+  }
+
   public static async reEncryptEncrypted() {
-    this.freezeSavingAsync(async() => {
+    await this.freezeSavingAsync(async() => {
       await Promise.all(
         this.STORAGES.map((storage) => storage.reEncrypt())
       );
