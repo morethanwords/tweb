@@ -9,7 +9,7 @@ import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import {CONFERENCE_CALL_SLUG_REGEXP} from '@lib/calls/constants';
-import addAnchorListener from '@helpers/addAnchorListener';
+import addAnchorListener, {listenForMaskedAnchorAuxClicks} from '@helpers/addAnchorListener';
 import assumeType from '@helpers/assumeType';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -83,6 +83,10 @@ export class InternalLinkProcessor {
 
   public construct(managers: AppManagers) {
     this.managers = managers;
+
+    // a middle click never reaches an anchor's inline `onclick`, so the alert below is wired to it
+    // separately — otherwise the masked link opens in a new tab with nothing asked
+    listenForMaskedAnchorAuxClicks();
 
     addAnchorListener<{}>({
       name: 'showMaskedAlert',
