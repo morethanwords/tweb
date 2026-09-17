@@ -31,6 +31,8 @@ declare global {
 
 // A popup reveals itself a couple of frames after construction, and some wait on a lottie decode.
 const SHOWN_TIMEOUT = 10_000;
+// A second look, for content that settles after the popup is already on screen.
+const LAYOUT_SETTLE = 300;
 // Generous: the slowest story builds its popup in well under a second.
 const OPEN_TIMEOUT = 30_000;
 
@@ -66,6 +68,121 @@ async function openStory(page: Page, id: string): Promise<string> {
     if(Date.now() > deadline) return `did not settle within ${OPEN_TIMEOUT}ms`;
     await page.waitForTimeout(50);
   }
+}
+
+/**
+ * What the popup shell promises about the layout it assembles, asserted on whatever popup is open.
+ *
+ * All of it is measured relatively — one box against another, never against the viewport — so a
+ * popup still running its open transform, or one of its own, reads the same as a settled one.
+ *
+ * Every rule here stands for a bug that shipped: a body pulled out of its scroll by a margin meant
+ * for the container (the whole popup stopped scrolling), a card's shadow cut off at the edge that
+ * clips it, a divider that vanished when the scroll stopped drawing it, an end state left stale
+ * from before the popup was visible.
+ */
+function collectLayoutComplaints() {
+  const popup = [...document.querySelectorAll('.popup.active')].pop() as HTMLElement;
+  if(!popup) return [] as string[];
+
+  // Inlined rather than shared with the test: this function is serialized into the page, where
+  // nothing from this file exists. How far past its own box a card paints (`--section-box-shadow`
+  // is 1px down, 4px wide).
+  const shadowReach = 3;
+
+  const complaints: string[] = [];
+  const container = popup.querySelector('.popup-container') as HTMLElement;
+  const scroll = popup.querySelector('.popup-scrollable') as HTMLElement;
+  const shadedFooter = popup.querySelector('.popup-footer-shaded') as HTMLElement;
+  const round = (value: number) => Math.round(value * 10) / 10;
+
+  // A footer in the flow ends where the popup does. A floating one is free to sit elsewhere —
+  // `forward` keeps its footer translated out of sight until there is something to send.
+  if(container && shadedFooter) {
+    const gap = round(container.getBoundingClientRect().bottom - shadedFooter.getBoundingClientRect().bottom);
+    if(Math.abs(gap) > 1) complaints.push(`flow footer sits ${gap}px off the popup's bottom`);
+  }
+
+  // The body inside a scroll is the scrolled content: it starts where the scroll does, and anything
+  // taller than the scrollport is reachable by scrolling rather than simply cut off.
+  const body = scroll?.querySelector(':scope > .popup-body') as HTMLElement;
+  if(scroll && body) {
+    const escaped = round(scroll.getBoundingClientRect().top - body.getBoundingClientRect().top);
+    if(escaped > 1) complaints.push(`body starts ${escaped}px above its scroll`);
+
+    const overflow = round(body.getBoundingClientRect().height - scroll.clientHeight);
+    const canScroll = scroll.scrollHeight - scroll.clientHeight;
+    if(overflow > 1 && canScroll <= 1) complaints.push(`body overflows its scroll by ${overflow}px with nothing to scroll`);
+  }
+
+  // The scroll lends the footer below it a few pixels of room for the shadow of the last card —
+  // and hands them straight back, so the pair has to cancel out or the layout moves.
+  popup.querySelectorAll('.popup-scrollable').forEach((element) => {
+    const style = getComputedStyle(element);
+    const margin = parseFloat(style.marginBottom) || 0;
+    const padding = parseFloat(style.paddingBottom) || 0;
+    const lendsToFooter = (element.nextElementSibling as HTMLElement)?.classList.contains('popup-footer-shaded');
+    if(lendsToFooter) {
+      if(margin >= 0) complaints.push('scroll above a flow footer takes no bleed');
+      else if(Math.abs(padding + margin) > 0.5) complaints.push(`scroll's bleed does not cancel: ${padding}px padding against ${margin}px margin`);
+    } else if(margin < -0.5) {
+      complaints.push(`scroll pulls ${margin}px into whatever follows it, which is no flow footer`);
+    }
+  });
+
+  // The line between the content and the footer is drawn from this state, so it has to be the
+  // scroll's actual one — a popup is laid out while still hidden, where it can read differently.
+  if(scroll && shadedFooter) {
+    const atEnd = scroll.scrollHeight - scroll.clientHeight <= 1;
+    if(shadedFooter.classList.contains('scrolled-end') !== atEnd) {
+      complaints.push(`footer reads ${atEnd ? 'mid-scroll while the scroll cannot move' : 'settled while the scroll still has ' + (scroll.scrollHeight - scroll.clientHeight) + 'px to go'}`);
+    }
+  }
+
+  // A row of buttons does not shade itself, so the scroll draws that border instead.
+  if(scroll && popup.querySelector('.popup-buttons') && !scroll.classList.contains('scrollable-y-bordered-bottom')) {
+    complaints.push('scroll above a row of buttons draws no border against it');
+  }
+
+  // A card that ends where its content ends needs room for the shadow it paints below itself.
+  // Only at the end of the scroll: anywhere else the card's edge is a scroll position, and a list
+  // still filling itself passes through every position on its way.
+  popup.querySelectorAll('.sidebar-left-section').forEach((section) => {
+    if(getComputedStyle(section).boxShadow === 'none') return;
+
+    for(let clipper = section.parentElement; clipper && popup.contains(clipper); clipper = clipper.parentElement) {
+      const style = getComputedStyle(clipper);
+      if(style.overflowY === 'visible' && style.overflowX === 'visible') continue;
+
+      const atEnd = clipper.scrollHeight - clipper.clientHeight - clipper.scrollTop <= 1;
+      const clipEdge = clipper.getBoundingClientRect().bottom - (parseFloat(style.borderBottomWidth) || 0);
+      const room = round(clipEdge - section.getBoundingClientRect().bottom);
+      if(atEnd && room >= 0 && room < shadowReach) {
+        complaints.push(`a card's shadow is cut off: ${room}px of room inside .${clipper.className.split(' ')[0]}`);
+      }
+
+      break;
+    }
+  });
+
+  // What a floating footer takes out of the content has to be at least as tall as the footer is.
+  const placeholder = popup.querySelector('.popup-footer-placeholder') as HTMLElement;
+  const floatingFooter = popup.querySelector('.popup-footer-floating') as HTMLElement;
+  if(placeholder && floatingFooter) {
+    const short = round(floatingFooter.getBoundingClientRect().height - placeholder.getBoundingClientRect().height);
+    if(short > 0.5) complaints.push(`floating footer is ${short}px taller than the room reserved for it`);
+  }
+
+  return complaints;
+}
+
+/** Complaints that survive a second look — content that settles late is not a violation. */
+async function layoutComplaints(page: Page): Promise<string[]> {
+  const first = await page.evaluate(collectLayoutComplaints);
+  if(!first.length) return first;
+
+  await page.waitForTimeout(LAYOUT_SETTLE);
+  return await page.evaluate(collectLayoutComplaints);
 }
 
 test('every popup story opens and becomes visible', async({page}) => {
@@ -110,6 +227,10 @@ test('every popup story opens and becomes visible', async({page}) => {
 
       if(pageErrors.length) {
         failed.push(`${story.id}: page error — ${pageErrors.join(' | ')}`);
+      }
+
+      for(const complaint of await layoutComplaints(page)) {
+        failed.push(`${story.id}: ${complaint}`);
       }
     }
 
