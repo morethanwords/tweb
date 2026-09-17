@@ -20,14 +20,13 @@ import {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
 import {AccountAuthorizations, Authorization, ConnectedBot} from '@layer';
-import PopupElement from '@components/popups';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
 import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars, {hasTonTransactions} from '@stores/stars';
-import PopupStars from '@components/popups/stars';
+import showStarsPopup from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import showMyQrCodePopup from '@components/popups/myQrCode';
@@ -418,12 +417,12 @@ const Settings = () => {
       </Section>
       <Show when={!premiumBlocked()}>
         <Section>
-          <Row clickable={() => PopupPremium.show()}>
+          <Row clickable={() => showPremiumPopup()}>
             <Row.Icon icon="premium_badge" />
             <Row.Title>{i18n('Premium.Boarding.Title')}</Row.Title>
           </Row>
           <Show when={!!stars()}>
-            <Row clickable={() => PopupElement.createPopup(PopupStars)}>
+            <Row clickable={() => showStarsPopup()}>
               <Row.Icon icon="star_circle_filled" />
               <Row.Title titleRight={'' + stars()} titleRightSecondary>
                 {i18n('MenuTelegramStars')}
@@ -431,7 +430,7 @@ const Settings = () => {
             </Row>
           </Show>
           <Show when={hasTonTransactions() || String(starsTon()) !== '0'}>
-            <Row clickable={() => PopupElement.createPopup(PopupStars, {ton: true})}>
+            <Row clickable={() => showStarsPopup({ton: true})}>
               <Row.Icon icon="gram_filled" />
               <Row.Title titleRight={formatNanoton(starsTon())} titleRightSecondary>
                 {i18n('MenuTelegramStarsTon')}

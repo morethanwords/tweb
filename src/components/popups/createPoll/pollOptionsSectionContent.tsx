@@ -56,17 +56,6 @@ export const PollOptionsSectionContent = (props: {
 
   const optionsLeft = createMemo(() => Math.max(0, maxOptions() - mappedItems().length));
 
-  const visibleOptionsLeft = createMemo(() => {
-    if(context.store.pollOptions.length === 2 && !checkOptionHasValue(context.store.pollOptions[0])) {
-      return maxOptions();
-    }
-
-    return (
-      optionsLeft() +
-      (context.store.pollOptions.length && checkOptionHasValue(lastItem(context.store.pollOptions)) ? 0 : 1)
-    );
-  });
-
   const canShowAddOption = createMemo(() => optionsLeft() > 0);
 
   const sortable = createSortableList({
@@ -93,23 +82,17 @@ export const PollOptionsSectionContent = (props: {
     );
   };
 
-  type MappedItemOrOptionsLeft = MappedItem | {
-    type: 'optionsLeft';
-  } | {
+  type MappedItemOrAddOption = MappedItem | {
     type: 'addOption'
   };
 
-  const optionsLeftItem: MappedItemOrOptionsLeft = {
-    type: 'optionsLeft'
-  };
-
   // Discarded add button
-  // const addOptionItem: MappedItemOrOptionsLeft = {
+  // const addOptionItem: MappedItemOrAddOption = {
   //   type: 'addOption'
   // };
 
   const items = createMemo(() => {
-    const result: MappedItemOrOptionsLeft[] = [...mappedItems(), optionsLeftItem];
+    const result: MappedItemOrAddOption[] = [...mappedItems()];
 
     // if(delayedCanShowAddOption()) {
     //   result.push(addOptionItem);
@@ -146,14 +129,6 @@ export const PollOptionsSectionContent = (props: {
                     />
                   </>
                 )}
-              </Match>
-              <Match when={item.type === 'optionsLeft'}>
-                <SimpleFormField.Caption class={styles.captionOverride}>
-                  <Space amount='0.5rem' />
-                  <Show when={visibleOptionsLeft() > 0} fallback={<I18nTsx key='NewPoll.MaxOptions' />}>
-                    <I18nTsx key='NewPoll.OptionsLeft' args={visibleOptionsLeft().toString()} />
-                  </Show>
-                </SimpleFormField.Caption>
               </Match>
               <Match when={item.type === 'addOption'}>
                 <div style={{height: !canShowAddOption() ? '0' : undefined}}>

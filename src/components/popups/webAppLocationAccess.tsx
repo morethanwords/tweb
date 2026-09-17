@@ -1,59 +1,32 @@
-import PopupElement from '.';
-import safeAssign from '@helpers/object/safeAssign';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
 import rootScope from '@lib/rootScope';
 import {AvatarNewTsx} from '@components/avatarNew';
 import {IconTsx} from '@components/iconTsx';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
+import MediaHeader from '@components/mediaHeader';
 
 import css from '@components/popups/webAppLocationAccess.module.scss';
 
-export default class PopupWebAppLocationAccess extends PopupElement<{
-  finish: (result: boolean) => void
-}> {
-  private botId: PeerId;
+export default function showWebAppLocationAccessPopup(options: {
+  botId: PeerId,
+  onFinish: (result: boolean) => void
+}) {
+  const {botId} = options;
+  // closing without answering reads as a decline, but the buttons answer for themselves
+  let finished = false;
+  const finish = (result: boolean) => {
+    finished = true;
+    options.onFinish(result);
+  };
 
-  constructor(options: {
-    botId: PeerId,
-  }) {
-    let finished = false;
-    super(css.popup, {
-      overlayClosable: true,
-      body: true,
-      buttons: [
-        {
-          langKey: 'Allow',
-          callback: () => {
-            finished = true
-            this.dispatchEvent('finish', true);
-          }
-        },
-        {
-          langKey: 'Decline',
-          callback: () => {
-            finished = true
-            this.dispatchEvent('finish', false);
-          }
-        }
-      ]
-    });
-
-    this.addEventListener('close', () => {
-      if(!finished) {
-        this.dispatchEvent('finish', false);
-      }
-    });
-
-    safeAssign(this, options);
-
-    this.header.remove()
-
-    this.appendSolidBody(() => this._construct());
-  }
-
-  protected _construct() {
-    return (
-      <>
+  createPopup(() => (
+    <PopupElement
+      class={css.popup}
+      closable
+      onClose={() => !finished && options.onFinish(false)}
+    >
+      <PopupElement.Body>
         <div class={/* @once */ css.graph}>
           <div class={/* @once */ css.avatarWrap}>
             <AvatarNewTsx
@@ -66,21 +39,25 @@ export default class PopupWebAppLocationAccess extends PopupElement<{
           </div>
           <IconTsx icon="next" />
           <AvatarNewTsx
-            peerId={this.botId}
+            peerId={botId}
             size={64}
           />
         </div>
 
-        <div class={/* @once */ css.text}>
+        <MediaHeader.Subtitle>
           <I18nTsx
             key="BotLocationAccessText"
             args={[
-              <PeerTitleTsx peerId={this.botId} />,
-              <PeerTitleTsx peerId={this.botId} />
+              <PeerTitleTsx peerId={botId} />,
+              <PeerTitleTsx peerId={botId} />
             ]}
           />
-        </div>
-      </>
-    )
-  }
+        </MediaHeader.Subtitle>
+      </PopupElement.Body>
+      <PopupElement.Buttons>
+        <PopupElement.Button langKey="Allow" callback={() => finish(true)} />
+        <PopupElement.Button langKey="Decline" callback={() => finish(false)} />
+      </PopupElement.Buttons>
+    </PopupElement>
+  ));
 }

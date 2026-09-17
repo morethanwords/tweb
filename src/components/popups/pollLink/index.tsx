@@ -43,23 +43,25 @@ const PollLinkEditorPopup = (props: PollLinkEditorPopupProps) => {
           <PopupElement.CloseButton />
           <PopupElement.Title><I18nTsx key='Chat.Poll.AttachLink' /></PopupElement.Title>
         </PopupElement.Header>
-        <PopupElement.Body>
-          <Section noMarginBottom>
-            <InputFieldTsx
-              label='URL'
-              name='url'
-              plainText
-              autocomplete='off'
-              value={url()}
-              onRawInput={setUrl}
-              instanceRef={(value) => {
-                inputField = value;
-                inputField.input.setAttribute('autocapitalize', 'off');
-                inputField.input.spellcheck = false;
-              }}
-            />
-          </Section>
-        </PopupElement.Body>
+        <PopupElement.Scrollable>
+          <PopupElement.Body>
+            <Section noMarginBottom>
+              <InputFieldTsx
+                label='URL'
+                name='url'
+                plainText
+                autocomplete='off'
+                value={url()}
+                onRawInput={setUrl}
+                instanceRef={(value) => {
+                  inputField = value;
+                  inputField.input.setAttribute('autocapitalize', 'off');
+                  inputField.input.spellcheck = false;
+                }}
+              />
+            </Section>
+          </PopupElement.Body>
+        </PopupElement.Scrollable>
         <PopupElement.Footer>
           <PopupElement.FooterButton
             confirm

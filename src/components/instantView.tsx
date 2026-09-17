@@ -899,7 +899,7 @@ function Block(props: {
           class={classNames(
             styles.Padding,
             isHeader ? styles.Header : styles.Subheader,
-            level() && styles[`HeadingH${level()}`]
+            level() && styles[`HeadingH${level()}` as keyof typeof styles]
           )}
         >
           <RichTextRenderer text={block.text} />
@@ -1024,7 +1024,7 @@ function Block(props: {
       );
     case 'pageBlockCover':
       return (
-        <div class={styles.Cover}>
+        <div>
           <StablePageBlocks blocks={[block.cover]} paddings={props.paddings} />
         </div>
       );
@@ -1253,7 +1253,6 @@ function Block(props: {
                   class={classNames(
                     styles.RelatedArticle,
                     photo() && styles.WithPhoto,
-                    idx() && styles.BorderTop,
                     !hasDisabledNavigation(context) && 'hover-effect'
                   )}
                   // @ts-ignore
@@ -1319,8 +1318,7 @@ function Block(props: {
             ref={mediaRef}
             class={classNames(
               styles.Media,
-              styles.Embed,
-              isFullWidth() ? styles.EmbedFullWidth : styles.EmbedAutoWidth,
+              !isFullWidth() && styles.EmbedAutoWidth,
               height() && styles.EmbedHasHeight
             )}
             style={{

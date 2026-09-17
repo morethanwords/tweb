@@ -5,15 +5,10 @@
     background-color: var(--surface-color);
     padding: .5rem 0;
     border-radius: #{$section-rounded-border-radius};
-    margin-bottom: var(--section-padding-bottom);
     box-shadow: var(--section-box-shadow);
 
     &.no-shadow {
       box-shadow: none;
-    }
-
-    &.no-margin-bottom {
-      margin-bottom: 0;
     }
 
     &-content {
@@ -56,20 +51,43 @@
     }
 
     &-caption {
-      margin: -0.375rem 0 1rem;
+      // the distance down from the panel, stated plainly
+      margin-top: .625rem;
       font-size: var(--font-size-14);
       line-height: var(--line-height-14);
       color: var(--secondary-text-color);
       padding: 0 1rem;
 
+      // a live validation hint sits in the DOM with nothing to say until it has something,
+      // and until then it takes no room
+      &:empty {
+        margin-top: 0;
+      }
+
+      // `captionTop` puts the caption above the panel; the distance above it comes from
+      // whatever precedes the section
       &:first-child {
-        margin-top: .8125rem;
+        margin-top: 0;
         margin-bottom: .8125rem;
+      }
+
+      // `captionOld` keeps the caption inside the panel's card, where it spaces itself
+      // against the content above and the card's own bottom padding
+      .sidebar-left-section > & {
+        margin-top: -0.375rem;
+        margin-bottom: var(--section-padding-bottom);
       }
     }
 
     &-container {
       padding-inline: var(--section-padding-inline);
+      // the gap to whatever follows belongs to the section as a whole — inside its own box,
+      // so it neither collapses nor depends on whether the section carries a caption
+      padding-bottom: var(--section-padding-bottom);
+
+      &.no-margin-bottom {
+        padding-bottom: 0;
+      }
 
       a {
         cursor: pointer;

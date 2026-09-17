@@ -18,7 +18,7 @@ import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Icon from '@components/icon';
 import PeerTitle from '@components/peerTitle';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import SetTransition from '@components/singleTransition';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 
@@ -163,7 +163,7 @@ export default class ChatSendAs {
       return {
         onClick: idx ? async() => {
           if(sendAsPeer.needPremium && !rootScope.premium) {
-            PopupPremium.show();
+            showPremiumPopup();
             return;
           }
 

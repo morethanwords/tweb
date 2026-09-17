@@ -1,7 +1,7 @@
 import {Component, createSignal} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
-import {renderComponent} from '@helpers/solid/renderComponent';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {Chat, ChatFull} from '@layer';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {i18n} from '@lib/langPack';
@@ -10,7 +10,7 @@ import AppSelectPeers from '@components/appSelectPeers';
 import ButtonCorner from '@components/buttonCorner';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import Row from '@components/rowTsx';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {createSelectorForParticipants} from './participantsSelector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -58,11 +58,6 @@ const ChatMembers: Component = () => {
     selector = _selector;
 
     if(canHideMembers) {
-      const section = new SettingSection({
-        noDelimiter: true,
-        caption: 'ChannelHideMembersInfo'
-      });
-
       const checked = !!channelFull?.pFlags?.participants_hidden;
       const hiddenSignal = createSignal(checked);
       const [busy, setBusy] = createSignal(false);
@@ -86,9 +81,8 @@ const ChatMembers: Component = () => {
         .finally(() => setBusy(false));
       };
 
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      const section = wrapSolidComponent(() => (
+        <Section noDelimiter caption="ChannelHideMembersInfo">
           <Row disabled={busy()}>
             <Row.Icon icon="hide" />
             <Row.CheckboxFieldToggle>
@@ -101,11 +95,10 @@ const ChatMembers: Component = () => {
             </Row.CheckboxFieldToggle>
             <Row.Title>{i18n('ChannelHideMembers')}</Row.Title>
           </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+        </Section>
+      ), tab.middlewareHelper.get());
 
-      selector.scrollable.append(section.container, selector.scrollable.container.lastElementChild);
+      selector.scrollable.append(section, selector.scrollable.container.lastElementChild);
     }
 
     createParticipantContextMenu({

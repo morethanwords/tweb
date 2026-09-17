@@ -19,6 +19,7 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createMemo, createSignal, mergeProps, Show} from 'solid-js';
 import {useCreateToneLimits} from './limits';
 import styles from './styles.module.scss';
+import Section from '@components/section';
 
 keepMe(ripple);
 
@@ -112,16 +113,16 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
   instructionsInputField.setValueSilently(props.initialValues?.prompt ?? '');
 
   return (
-    <PopupElement class={tonePopupShellStyles.popup} containerClass={tonePopupShellStyles.popupContainer}>
-      <PopupElement.Header class={tonePopupShellStyles.popupHeader}>
-        <PopupElement.CloseButton class={tonePopupShellStyles.popupCloseButton} />
+    <PopupElement class={tonePopupShellStyles.popup}>
+      <PopupElement.Header>
+        <PopupElement.CloseButton />
         <PopupElement.Title title={props.titleLangKey} />
       </PopupElement.Header>
-      <PopupElement.Body class={styles.popupBody}>
+      <PopupElement.Body>
         <div class={styles.header}>
           <div class={styles.emojiButton} ref={setEmojiButton}>
             <div class={styles.emoji}>
-              <Show when={docId()} fallback={<IconTsx icon='ai_style_tone' class={styles.emojiIcon} />} keyed>
+              <Show when={docId()} fallback={<IconTsx icon='ai_style_tone' />} keyed>
                 {(docId) =>
                   <EmojiDocumentIcon
                     docId={docId}
@@ -136,7 +137,7 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
           </div>
         </div>
 
-        <SimpleFormField.Section>
+        <Section caption="AiEditor.NewStyle.StyleNameDescription">
           <SimpleFormField
             value={styleName()}
             onChange={setStyleName}
@@ -146,15 +147,9 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
             </SimpleFormField.Label>
             <SimpleFormField.Input forceFieldValue />
           </SimpleFormField>
-        </SimpleFormField.Section>
+        </Section>
 
-        <SimpleFormField.Caption>
-          <I18nTsx key="AiEditor.NewStyle.StyleNameDescription" />
-        </SimpleFormField.Caption>
-
-        <Space amount='1rem' />
-
-        <SimpleFormField.Section>
+        <Section caption="AiEditor.NewStyle.InstructionsDescription">
           <SimpleFormField
             value={instructions()}
             onChange={setInstructions}
@@ -169,13 +164,7 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
               </Scrollable>
             </SimpleFormField.InputStub>
           </SimpleFormField>
-        </SimpleFormField.Section>
-
-        <SimpleFormField.Caption>
-          <I18nTsx key="AiEditor.NewStyle.InstructionsDescription" />
-        </SimpleFormField.Caption>
-
-        <Space amount='1rem' />
+        </Section>
 
         <div class={styles.checkboxContainer} onClick={() => setDisplayAuthor(p => !p)} use:ripple>
           <StaticCheckbox round checked={displayAuthor()} />
@@ -185,7 +174,7 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
         </div>
 
       </PopupElement.Body>
-      <PopupElement.Footer class={tonePopupShellStyles.popupFooter}>
+      <PopupElement.Footer>
         <PopupElement.FooterButton
           disabled={!canSubmit() || submitMutation.isPending()}
           langKey={props.submitLangKey}

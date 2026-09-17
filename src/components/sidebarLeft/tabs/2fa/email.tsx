@@ -4,12 +4,11 @@ import InputField from '@components/inputField';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import {putPreloader} from '@components/putPreloader';
 import {AppTwoStepVerificationEmailConfirmationTab, AppTwoStepVerificationSetTab} from '@components/solidJsTabs/tabs';
-import PopupPeer from '@components/popups/peer';
+import showPeerPopup from '@components/popups/peer';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {canFocus} from '@helpers/dom/canFocus';
 import matchEmail from '@lib/richTextProcessor/matchEmail';
 import Section from '@components/section';
-import PopupElement from '@components/popups';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppTwoStepVerificationEmailTab} from '@components/solidJsTabs/tabs';
@@ -88,7 +87,7 @@ const TwoStepVerificationEmail: Component = () => {
   };
 
   const onSkipClick = () => {
-    const popup = PopupElement.createPopup(PopupPeer, 'popup-skip-email', {
+    showPeerPopup('popup-skip-email', {
       buttons: [{
         langKey: 'Cancel',
         isCancel: true
@@ -113,8 +112,6 @@ const TwoStepVerificationEmail: Component = () => {
       titleLangKey: 'YourEmailSkipWarning',
       descriptionLangKey: 'YourEmailSkipWarningText'
     });
-
-    popup.show();
   };
 
   onMount(() => {

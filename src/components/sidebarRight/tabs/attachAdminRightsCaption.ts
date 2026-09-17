@@ -1,11 +1,11 @@
-import type SettingSection from '@components/settingSection';
 import type {ChatAdministratorRights}
 from '@components/sidebarRight/tabs/groupPermissions/sharedPermissions';
 import type ListenerSetter from '@helpers/listenerSetter';
 import {i18n} from '@lib/langPack';
 
 export default function attachAdminRightsCaption(options: {
-  section: SettingSection,
+  /** The section's caption element, rewritten whenever the add-admins right flips. */
+  caption: HTMLElement,
   permissions: ChatAdministratorRights,
   canEdit: boolean,
   listenerSetter: ListenerSetter
@@ -14,7 +14,7 @@ export default function attachAdminRightsCaption(options: {
     (field) => field.flags[0] === 'add_admins'
   );
   const update = () => {
-    options.section.caption.replaceChildren(i18n(
+    options.caption.replaceChildren(i18n(
       options.canEdit ?
         (field.checkboxField.checked ?
           'Channel.Admin.AdminAccess' :

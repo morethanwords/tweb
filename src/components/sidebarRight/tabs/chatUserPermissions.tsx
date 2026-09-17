@@ -10,7 +10,8 @@ import Button from '@components/button';
 import confirmationPopup from '@components/confirmationPopup';
 import {toastNew} from '@components/toast';
 import InputField from '@components/inputField';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {
   ChatAdministratorRights,
@@ -37,7 +38,6 @@ import type {AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import limitBotAdminRights from '@appManagers/utils/bots/limitBotAdminRights';
 import attachAdminRightsCaption from './attachAdminRightsCaption';
 import appendPermissionsPeerDialog from './permissionsPeerDialog';
-import {renderComponent} from '@helpers/solid/renderComponent';
 
 const ChatUserPermissions: Component = () => {
   const [tab] = useSuperTab<typeof AppUserPermissionsTab>();
@@ -105,17 +105,25 @@ const ChatUserPermissions: Component = () => {
     // it is stored on the chat (channelFull.guard_bot_id), not in the participant's admin rights
     let confirmGuardBotChange: () => Promise<void>;
     let applyGuardBotChange: () => Promise<void>;
-    let guardBotSection: SettingSection;
+    let guardBotSection: HTMLElement;
 
     let chatPermissions: ChatPermissions;
     {
-      const section = new SettingSection({
-        name: editingAdmin ? 'EditAdminWhatCanDo' : 'UserRestrictionsCanDo',
-        caption: editingAdmin ? true : undefined
-      });
+      let sectionContent!: HTMLElement, sectionTitle!: HTMLElement, sectionCaption: HTMLElement;
+      const section = wrapSolidComponent(() => (
+        <Section
+          name={editingAdmin ? 'EditAdminWhatCanDo' : 'UserRestrictionsCanDo'}
+          // when editing an admin the caption is filled in by attachAdminRightsCaption
+          caption={editingAdmin ? true : undefined}
+          contentProps={{ref: (element) => sectionContent = element}}
+          nameRef={(element) => sectionTitle = element}
+          captionRef={(element) => sectionCaption = element}
+        />
+      ), tab.middlewareHelper.get());
 
       appendPermissionsPeerDialog({
-        section,
+        content: sectionContent,
+        title: sectionTitle,
         userId,
         user,
         middleware: tab.middlewareHelper.get()
@@ -131,7 +139,7 @@ const ChatUserPermissions: Component = () => {
       const options: ConstructorParameters<typeof ChatAdministratorRights | typeof ChatPermissions>[0] = {
         chatId,
         listenerSetter: tab.listenerSetter,
-        appendTo: section.content,
+        appendTo: sectionContent,
         participant: goodTypes.includes(participant._) ? participant as any : undefined,
         rights: editingAdmin ? initialAdminRights : undefined,
         chat,
@@ -150,7 +158,7 @@ const ChatUserPermissions: Component = () => {
         options.onSomethingChanged();
 
         attachAdminRightsCaption({
-          section,
+          caption: sectionCaption,
           permissions: p,
           canEdit: _canEditAdmin,
           listenerSetter: tab.listenerSetter
@@ -220,37 +228,35 @@ const ChatUserPermissions: Component = () => {
       }
 
       if(addingBot && !isBroadcast && !addingBot.existingAdmin) {
-        const addAsAdminSection = new SettingSection({});
         const addAsAdminField = new CheckboxField({
           name: 'add-as-admin',
           toggle: true,
           checked: true,
           listenerSetter: tab.listenerSetter
         });
-        renderComponent({
-          element: addAsAdminSection.content,
-          Component: () => (
+        const addAsAdminSection = wrapSolidComponent(() => (
+          <Section>
             <Row>
               <Row.CheckboxFieldToggle>{addAsAdminField.label}</Row.CheckboxFieldToggle>
               <Row.Title>{i18n('EditAdmin')}</Row.Title>
             </Row>
-          ),
-          middleware: tab.middlewareHelper.get()
-        });
+          </Section>
+        ), tab.middlewareHelper.get());
+
         const onAddAsAdminChange = () => {
           addAsAdmin = addAsAdminField.checked;
-          section.container.classList.toggle('hide', !addAsAdmin);
+          section.classList.toggle('hide', !addAsAdmin);
           // a bot that is not being made an admin cannot be the chat's guard bot either
-          guardBotSection?.container.classList.toggle('hide', !addAsAdmin);
+          guardBotSection?.classList.toggle('hide', !addAsAdmin);
           solidState.set({addAsAdmin});
         };
 
         tab.listenerSetter.add(addAsAdminField.input)('change', onAddAsAdminChange);
-        tab.scrollable.append(addAsAdminSection.container);
+        tab.scrollable.append(addAsAdminSection);
         onAddAsAdminChange();
       }
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(section);
     }
 
     if(
@@ -271,34 +277,28 @@ const ChatUserPermissions: Component = () => {
 
       const wasEnabled = isThisBot(await getCurrentGuardBotId());
 
-      const section = guardBotSection = new SettingSection({
-        caption: 'GuardBotProcessJoinRequestsInfo'
-      });
-
       const checkboxField = new CheckboxField({
         toggle: true,
         checked: wasEnabled,
         listenerSetter: tab.listenerSetter
       });
 
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      const section = guardBotSection = wrapSolidComponent(() => (
+        <Section caption="GuardBotProcessJoinRequestsInfo">
           <Row>
             <Row.CheckboxFieldToggle>{checkboxField.label}</Row.CheckboxFieldToggle>
             <Row.Title>{i18n('GuardBotProcessJoinRequests')}</Row.Title>
           </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+        </Section>
+      ), tab.middlewareHelper.get());
 
       solidState.setInitial({processJoinRequests: wasEnabled});
       tab.listenerSetter.add(checkboxField.input)('change', () => {
         solidState.set({processJoinRequests: checkboxField.checked});
       });
 
-      section.container.classList.toggle('hide', !addAsAdmin);
-      tab.scrollable.append(section.container);
+      section.classList.toggle('hide', !addAsAdmin);
+      tab.scrollable.append(section);
 
       confirmGuardBotChange = async() => {
         const currentGuardBotId = await getCurrentGuardBotId();
@@ -370,12 +370,6 @@ const ChatUserPermissions: Component = () => {
     let rankInputField: InputField;
     if(editingAdmin && isGroup) {
       const rankKey: LangPackKey = isParticipantCreator(participant) ? 'Chat.OwnerBadge' : 'ChatAdmin';
-      const section = new SettingSection({
-        name: 'EditAdminRank',
-        caption: 'EditAdminRankInfo',
-        captionArgs: [i18n(rankKey)]
-      });
-
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
@@ -399,8 +393,16 @@ const ChatUserPermissions: Component = () => {
       });
 
       inputWrapper.append(inputField.container);
-      section.content.append(inputWrapper);
-      tab.scrollable.append(section.container);
+
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section
+          name="EditAdminRank"
+          caption="EditAdminRankInfo"
+          captionArgs={[i18n(rankKey)]}
+        >
+          {inputWrapper}
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     const saveSomethingDifferent = async(btn: HTMLElement, _callback: () => Promise<any>) => {
@@ -421,7 +423,7 @@ const ChatUserPermissions: Component = () => {
     };
 
     if(editingAdmin) {
-      const section = new SettingSection({});
+      let btnDelete: HTMLElement;
 
       if(
         !isCreator &&
@@ -429,7 +431,7 @@ const ChatUserPermissions: Component = () => {
         isAdmin &&
         getParticipantPeerId(participant) !== rootScope.myId
       ) {
-        const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'Channel.Admin.Dismiss'});
+        btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'Channel.Admin.Dismiss'});
 
         const removeAdmin = () => tab.managers.appChatsManager.editAdmin(
           chatId,
@@ -441,15 +443,16 @@ const ChatUserPermissions: Component = () => {
         attachClickEvent(btnDelete, () => {
           saveSomethingDifferent(btnDelete, removeAdmin);
         }, {listenerSetter: tab.listenerSetter});
-        section.content.append(btnDelete);
       }
 
-      if(section.content.childElementCount) {
-        tab.scrollable.append(section.container);
+      if(btnDelete) {
+        tab.scrollable.append(wrapSolidComponent(() => (
+          <Section>
+            {btnDelete}
+          </Section>
+        ), tab.middlewareHelper.get()));
       }
     } else {
-      const sectionDuration = new SettingSection({});
-
       const wrapDuration = (duration: number) => {
         return wrapFormattedDuration(formatDuration(duration, 1));
       };
@@ -479,43 +482,32 @@ const ChatUserPermissions: Component = () => {
         }
       }];
 
-      renderComponent({
-        element: sectionDuration.content,
-        Component: () => {
-          const getSubtitle = () => {
-            const timestamp = (solidState.store.rights as ChatBannedRights).until_date;
-            return timestamp === BANNED_RIGHTS_UNTIL_FOREVER ?
-              i18n('UserPermissions.Duration.Forever') :
-              formatDate(new Date(timestamp * 1000), {withTime: true});
-          };
+      const sectionDuration = wrapSolidComponent(() => {
+        const getSubtitle = () => {
+          const timestamp = (solidState.store.rights as ChatBannedRights).until_date;
+          return timestamp === BANNED_RIGHTS_UNTIL_FOREVER ?
+            i18n('UserPermissions.Duration.Forever') :
+            formatDate(new Date(timestamp * 1000), {withTime: true});
+        };
 
-          return (
+        return (
+          <Section>
             <Row contextMenu={{buttons: durationButtons}}>
               <Row.Title>{i18n('UserPermissions.Duration')}</Row.Title>
               <Row.Subtitle>{getSubtitle()}</Row.Subtitle>
             </Row>
-          );
-        },
-        middleware: tab.middlewareHelper.get()
-      });
+          </Section>
+        );
+      }, tab.middlewareHelper.get());
 
       const restrictedByPeerId = (participant as ChannelParticipant.channelParticipantBanned)?.kicked_by?.toPeerId(false);
       const anchor = restrictedByPeerId ? anchorCallback(() => {
         appImManager.setInnerPeer({peerId: restrictedByPeerId});
       }) : undefined;
       if(restrictedByPeerId) anchor.append(await wrapPeerTitle({peerId: restrictedByPeerId}));
-      const section = new SettingSection({
-        ...(anchor ? {
-          caption: 'UserPermissions.RestrictedBy',
-          captionArgs: [
-            anchor,
-            formatFullSentTime((participant as ChannelParticipant.channelParticipantBanned).date)
-          ]
-        } : {})
-      });
-
+      let btnDeleteException: HTMLElement;
       if(participant._ === 'channelParticipantBanned') {
-        const btnDeleteException = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'GroupPermission.Delete'});
+        btnDeleteException = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'GroupPermission.Delete'});
 
         const clearChannelParticipantBannedRights = () => {
           return tab.managers.appChatsManager.clearChannelParticipantBannedRights(
@@ -527,8 +519,6 @@ const ChatUserPermissions: Component = () => {
         attachClickEvent(btnDeleteException, () => {
           saveSomethingDifferent(btnDeleteException, clearChannelParticipantBannedRights);
         }, {listenerSetter: tab.listenerSetter});
-
-        section.content.append(btnDeleteException);
       }
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'UserRestrictionsBlock'});
@@ -553,9 +543,20 @@ const ChatUserPermissions: Component = () => {
         saveSomethingDifferent(btnDelete, kickFromChat);
       }, {listenerSetter: tab.listenerSetter});
 
-      section.content.append(btnDelete);
+      const section = wrapSolidComponent(() => (
+        <Section
+          caption={anchor ? 'UserPermissions.RestrictedBy' : undefined}
+          captionArgs={anchor ? [
+            anchor,
+            formatFullSentTime((participant as ChannelParticipant.channelParticipantBanned).date)
+          ] : undefined}
+        >
+          {btnDeleteException}
+          {btnDelete}
+        </Section>
+      ), tab.middlewareHelper.get());
 
-      tab.scrollable.append(sectionDuration.container, section.container);
+      tab.scrollable.append(sectionDuration, section);
     }
   })());
 

@@ -1,11 +1,12 @@
 @use "../../../../scss/variables" as *;
 @use "../../../../scss/mixins" as *;
 
+.popupBody {
+  padding: 0 1rem;
+}
+
 .header {
   padding-block: 2.5rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .emoji {
@@ -20,26 +21,14 @@
 }
 
 .emojiButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
   background-color: var(--surface-color);
   border-radius: 50%;
 }
 
-.title {
-  font-size: 1.25rem;
-  font-weight: var(--font-weight-bold);
-  text-align: center;
-}
-
 .description {
-  text-align: center;
-  font-size: 0.875rem;
-  max-width: 180px;
-  margin: 0 auto;
-  color: var(--secondary-text-color);
+  // a deliberately narrow column; the subtitle's own inline padding sits inside the cap
+  max-width: calc(180px + 2rem);
+  margin-inline: auto;
 }
 
 .comparison {

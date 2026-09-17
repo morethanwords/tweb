@@ -627,7 +627,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     });
   }
 
-  // Subclasses (PopupGroupCall via GroupCallInstance / PopupCall via
+  // Subclasses (the group-call panel via GroupCallInstance / the call panel via
   // CallInstance) override to walk their own RTCPeerConnection senders.
   // Optional — base class is happy with just the streamManager swap.
   protected replaceSenderTrack?(

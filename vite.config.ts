@@ -10,6 +10,7 @@ import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
+import {watchScssTypes} from './scss-types.js';
 import devChecks from './scripts/dev-checks.mjs';
 import settingsSearchPlugin from './scripts/settings-search-plugin.mjs';
 import path from 'path';
@@ -39,6 +40,10 @@ if(isDEV) {
   }
 
   watchLangFile();
+  // the dev server is what runs while the SCSS is being edited, so it is what keeps the generated
+  // `*.module.d.scss.ts` in step — otherwise the editor (and `typecheck:watch`) reports a class
+  // that was just renamed as missing until someone remembers to regenerate.
+  watchScssTypes();
 }
 
 const handlebarsPlugin = handlebars({
@@ -86,7 +91,12 @@ const serverOptions: ServerOptions = {
     // ".claude/worktrees/<name>/", so a bare '**/.claude/**' glob would also match
     // the worktree's OWN src and silently disable all HMR there. Anchoring ignores
     // only this checkout's .claude (and, from the main repo, the worktrees inside it).
-    ignored: [resolve(rootDir, '.claude') + '/**']
+    ignored: [
+      resolve(rootDir, '.claude') + '/**',
+      // nothing imports the generated `*.module.scss` types, but a rewritten one still wakes the
+      // watcher — and anything listening for updates (the popup sandbox reloads on them) reacts
+      '**/*.module.d.scss.ts'
+    ]
   },
   sourcemapIgnoreList(sourcePath, sourcemapPath) {
     return sourcePath.includes('node_modules') ||

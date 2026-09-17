@@ -1,8 +1,7 @@
 import {Message, Reaction} from '@layer';
 import {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
-import PopupElement from '@components/popups';
-import PopupDeleteMegagroupMessages from '@components/popups/deleteMegagroupMessages';
+import showDeleteMegagroupMessagesPopup from '@components/popups/deleteMegagroupMessages';
 
 export default async function deleteParticipantReaction({
   message,
@@ -27,7 +26,7 @@ export default async function deleteParticipantReaction({
     return;
   }
 
-  PopupElement.createPopup(PopupDeleteMegagroupMessages, {
+  showDeleteMegagroupMessagesPopup({
     reaction: {
       message,
       participantPeerId,

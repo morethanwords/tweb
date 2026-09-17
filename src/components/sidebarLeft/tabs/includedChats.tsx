@@ -9,7 +9,7 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import {REAL_FOLDERS} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {DialogFilter} from '@layer';
 import showLimitPopup from '@components/popups/limit';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
@@ -53,13 +53,6 @@ const IncludedChats: Component = () => {
     confirmBtn.style.display = type === 'excluded' ? '' : 'none';
     // title is set by the scaffold (function of payload.type)
 
-    const categoriesSection = new SettingSection({
-      noDelimiter: true,
-      name: 'FilterChatTypes'
-    });
-
-    categoriesSection.container.classList.add('folder-categories');
-
     let details: {[flag: string]: {ico: Icon, icoFilled?: Icon, text: LangPackKey}};
     if(type === 'excluded') {
       details = {
@@ -88,14 +81,24 @@ const IncludedChats: Component = () => {
       managers: tab.managers
     });
 
-    const f = document.createDocumentFragment();
-    for(const key in details) {
+    const categoryButtons = Object.keys(details).map((key) => {
       const button = Button('btn-primary btn-transparent folder-category-button', {icon: details[key].ico, text: details[key].text});
       button.dataset.peerId = key;
       button.append(selector.checkbox());
-      f.append(button);
-    }
-    categoriesSection.content.append(f);
+      return button;
+    });
+
+    let categoriesContent!: HTMLElement;
+    const categoriesSection = (
+      <Section
+        class="folder-categories"
+        noDelimiter
+        name="FilterChatTypes"
+        contentProps={{ref: (element) => categoriesContent = element}}
+      >
+        {categoryButtons}
+      </Section>
+    ) as HTMLElement;
 
     const selectedPeers = (type === 'included' ? filter.includePeerIds : (filter as DialogFilter.dialogFilter).excludePeerIds).slice();
 
@@ -120,7 +123,7 @@ const IncludedChats: Component = () => {
     };
 
     selector.scrollable.append(
-      categoriesSection.container,
+      categoriesSection,
       selector.scrollable.container.lastElementChild
     );
 
@@ -130,7 +133,7 @@ const IncludedChats: Component = () => {
     const pFlags = (filter as DialogFilter.dialogFilter).pFlags;
     if(pFlags) for(const flag in pFlags) {
       if(details.hasOwnProperty(flag) && !!pFlags[flag as keyof typeof pFlags]) {
-        simulateClickEvent(categoriesSection.content.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement);
+        simulateClickEvent(categoriesContent.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement);
       }
     }
   };

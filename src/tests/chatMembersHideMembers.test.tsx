@@ -25,17 +25,6 @@ vi.mock('@components/solidJsTabs/tabs', () => ({
   AppChatMembersTab: class AppChatMembersTab {}
 }));
 
-vi.mock('@helpers/solid/renderComponent', async() => {
-  const {createComponent} = await import('solid-js');
-  const {render} = await import('solid-js/web');
-
-  return {
-    renderComponent: ({element, Component}: any) => {
-      mocks.disposes.push(render(() => createComponent(Component, {}), element));
-    }
-  };
-});
-
 vi.mock('@components/rowTsx', async() => {
   const {createEffect} = await import('solid-js');
   const {insert} = await import('solid-js/web');
@@ -81,17 +70,6 @@ vi.mock('@components/checkboxFieldTsx', async() => {
     }
   };
 });
-
-vi.mock('@components/settingSection', () => ({
-  default: class SettingSection {
-    public container = document.createElement('section');
-    public content = document.createElement('div');
-
-    constructor() {
-      this.container.append(this.content);
-    }
-  }
-}));
 
 vi.mock('@components/sidebarRight/tabs/participantsSelector', () => ({
   createSelectorForParticipants: () => {
@@ -186,7 +164,11 @@ describe('ChatMembers Hide Members', () => {
         }
       },
       middlewareHelper: {
-        get: () => Object.assign(() => true, {onDestroy: vi.fn()})
+        // the section is mounted through wrapSolidComponent, which parks its dispose on onClean
+        get: () => Object.assign(() => true, {
+          onDestroy: vi.fn(),
+          onClean: (callback: VoidFunction) => mocks.disposes.push(callback)
+        })
       },
       payload: 42 as ChatId,
       slider: {}

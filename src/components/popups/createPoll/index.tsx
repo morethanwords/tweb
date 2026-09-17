@@ -2,6 +2,7 @@ import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.modu
 import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
+import Section from '@components/section';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {toastNew} from '@components/toast';
@@ -26,7 +27,7 @@ import {
 } from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
-import {createFormFieldClickHandler, getFinalPayload, hasMeaningfulChanges, interactableClass, useCanSubmit, useSupportsMedia, validateCountryRestriction} from './utils';
+import {createFormFieldClickHandler, getFinalPayload, hasMeaningfulChanges, interactableClass, useCanSubmit, useSupportsMedia, useVisibleOptionsLeft, validateCountryRestriction} from './utils';
 
 
 type CreatePollPopupProps = {
@@ -81,7 +82,6 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
             popupContext()?.destroy();
           }}
         />
-        <hr class={styles.hr} />
         <PopupElement.Body>
           <BodyContent setCountriesElement={setCountriesElement} />
         </PopupElement.Body>
@@ -96,8 +96,8 @@ const Header = (props: {
   const canSubmit = useCanSubmit();
 
   return (
-    <PopupElement.Header class={styles.header}>
-      <PopupElement.CloseButton class={styles.closeButton} />
+    <PopupElement.Header>
+      <PopupElement.CloseButton />
 
       <PopupElement.Title>
         <I18nTsx key='NewPoll' />
@@ -209,48 +209,35 @@ const QuestionAndDescription = () => {
 const BodyContent = (props: {
   setCountriesElement: Setter<HTMLElement>
 }) => {
+  const context = useCreatePollContext();
   const [scrollable, setScrollable] = createSignal<HTMLElement>();
+  const visibleOptionsLeft = useVisibleOptionsLeft();
 
   return (
-    <Scrollable ref={setScrollable}>
-      <Space amount='1rem' />
+    <PopupElement.Scrollable ref={setScrollable}>
+      <Section>
+        <QuestionAndDescription />
+      </Section>
 
-      <div class={styles.sectionWrapper}>
-        <SimpleFormField.Section>
-          <QuestionAndDescription />
-        </SimpleFormField.Section>
-      </div>
+      <Section
+        name='PollOptions'
+        caption={
+          <Show when={visibleOptionsLeft() > 0} fallback={<I18nTsx key='NewPoll.MaxOptions' />}>
+            <I18nTsx key='NewPoll.OptionsLeft' args={visibleOptionsLeft().toString()} />
+          </Show>
+        }
+      >
+        <PollOptionsSectionContent scrollable={scrollable()} />
+      </Section>
 
-      <Space amount='1rem' />
-
-      <div class={styles.sectionWrapper}>
-        <SimpleFormField.Section>
-          <div class={styles.sectionTitle}>
-            <I18nTsx key='PollOptions' />
-          </div>
-
-          <Space amount='0.5rem' />
-
-          <PollOptionsSectionContent scrollable={scrollable()} />
-        </SimpleFormField.Section>
-      </div>
-
-      <Space amount='1rem' />
-
-      <div class={styles.sectionWrapper}>
-        <SimpleFormField.Section>
-          <div class={styles.sectionTitle}>
-            <I18nTsx key='Settings' />
-          </div>
-
-          <Space amount='0.5rem' />
-
-          <PollSettingsSectionContent countriesElementRef={props.setCountriesElement} />
-        </SimpleFormField.Section>
-      </div>
-
-      <Space amount='1.5rem' />
-    </Scrollable>
+      <Section
+        name='Settings'
+        /* the note belongs to the explanation field, which only exists in quiz mode */
+        caption={context.store.hasCorrectAnswer ? <I18nTsx key='AddAnExplanationInfo' /> : undefined}
+      >
+        <PollSettingsSectionContent countriesElementRef={props.setCountriesElement} />
+      </Section>
+    </PopupElement.Scrollable>
   );
 };
 

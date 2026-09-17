@@ -74,14 +74,14 @@ import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
 import limitSymbols from '@helpers/string/limitSymbols';
 import filterAsync from '@helpers/array/filterAsync';
 import pause from '@helpers/schedulers/pause';
-import AccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
+import showAccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {SliderSuperTabConstructable} from '@components/sliderTab';
-import SettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
+import showSettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
 import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import {addShortcutListener} from '@helpers/shortcutListener';
 import tsNow from '@helpers/tsNow';
@@ -1727,9 +1727,8 @@ export class AppSidebarLeft extends SidebarSlider {
   ) {
     const ctorsToOpenInPopup = [AppSettingsTab, AppEditFolderTab, AppChatFoldersTab]
     if(this.isCollapsed() && !mediaSizes.isLessThanFloatingLeftSidebar && ctorsToOpenInPopup.includes(ctor as any)) {
-      const popup = new SettingsSliderPopup(this.managers);
-      popup.show();
-      return popup.slider.createTab(ctor, destroyable, doNotAppend);
+      const slider = showSettingsSliderPopup(this.managers);
+      return slider.createTab(ctor, destroyable, doNotAppend);
     }
     return super.createTab(ctor, destroyable, doNotAppend);
   }
@@ -1764,7 +1763,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
 
     if(totalAccounts === MAX_ACCOUNTS_FREE && !hasSomeonePremium) {
-      new AccountsLimitPopup().show();
+      showAccountsLimitPopup();
       return;
     }
 

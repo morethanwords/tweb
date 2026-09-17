@@ -6,7 +6,7 @@ import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {Reaction} from '@layer';
 import rootScope from '@lib/rootScope';
 import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import ChatContextMenu from '@components/chat/contextMenu';
 import {ChatReactionsMenu} from '@components/chat/reactionsMenu';
 
@@ -116,7 +116,7 @@ export default class SendMenu {
 
               const stickerDocId = (reaction as Reaction.reactionCustomEmoji).document_id;
               if(!rootScope.premium && !reactionsMenu.freeCustomEmoji.has(stickerDocId)) {
-                PopupPremium.show({feature: 'premium_stickers'});
+                showPremiumPopup({feature: 'premium_stickers'});
                 return;
               }
 

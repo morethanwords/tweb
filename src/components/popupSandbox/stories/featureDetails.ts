@@ -50,7 +50,22 @@ defineStories('Feature details', [
     id: 'frozen',
     title: 'Account frozen',
     open: async(ctx) => {
-      const {default: showFrozenPopup} = await import('@components/popups/frozen');
+      const [{default: showFrozenPopup}, {appState, setAppStateSilent}] = await Promise.all([
+        import('@components/popups/frozen'),
+        import('@stores/appState')
+      ]);
+
+      // The popup reads the freeze deadline and appeal link off the app config, and a live session
+      // keeps its own — which has neither, because the account is not frozen. Fill just those two
+      // in (never `freeze_since_date`, which is what would put the app itself in read-only mode).
+      if(!appState.appConfig.freeze_appeal_url) {
+        setAppStateSilent('appConfig', {
+          ...appState.appConfig,
+          freeze_appeal_url: 'https://t.me/spambot',
+          freeze_until_date: 1719792000
+        });
+      }
+
       showFrozenPopup();
     }
   },

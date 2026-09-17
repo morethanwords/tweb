@@ -9,7 +9,7 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import createChatPinnedMessage, {ChatPinnedMessageController} from '@components/chat/pinnedMessage';
 import getPinnedMessagesKey from '@appManagers/utils/messages/getPinnedMessagesKey';
 import ListenerSetter from '@helpers/listenerSetter';
-import PopupDeleteDialog from '@components/popups/deleteDialog';
+import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import {showPeerReport} from '@components/popups/reportAd';
 import appNavigationController from '@components/appNavigationController';
 import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
@@ -23,12 +23,12 @@ import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, User, UserFull} from '@layer';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
-import PopupPeer, {PopupPeerCheckboxOptions} from '@components/popups/peer';
+import showPeerPopup, {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import {AppEditBotTab, AppEditContactTab} from '@components/solidJsTabs/tabs';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import {CallType} from '@lib/calls/types';
-import PopupMute from '@components/popups/mute';
+import showMutePopup from '@components/popups/mute';
 import {AppManagers} from '@lib/managers';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -37,7 +37,6 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {FOLDER_ID_ALL} from '@appManagers/constants';
 import formatNumber from '@helpers/number/formatNumber';
-import PopupElement from '@components/popups';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import callbackify from '@helpers/callbackify';
 import confirmationPopup from '@components/confirmationPopup';
@@ -50,8 +49,8 @@ import setBadgeContent from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
-import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
-import PopupSendGift from '@components/popups/sendGift';
+import {showRtmpStartStreamPopup} from '@components/rtmp/adminPopup';
+import showSendGiftPopup from '@components/popups/sendGift';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import {createTopbarPlates, TopbarPlates} from '@components/chat/topbarPlates';
@@ -72,7 +71,7 @@ import {getCachedFullPeer} from '@stores/fullPeers';
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import openBoosts from '@components/openBoosts';
@@ -639,7 +638,7 @@ export default class ChatTopbar {
             if(preparedPaymentResult) return void send();
 
             return new Promise((resolve, reject) => {
-              PopupElement.createPopup(PopupPeer, '', {
+              showPeerPopup('', {
                 titleLangKey: 'SendMessageTitle',
                 descriptionLangKey: 'SendContactToGroupText',
                 descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
@@ -656,9 +655,8 @@ export default class ChatTopbar {
                   },
                   isCancel: true
                 }],
-                peerId,
-                overlayClosable: true
-              }).show();
+                peerId
+              });
             });
           }
         });
@@ -667,7 +665,7 @@ export default class ChatTopbar {
     }, {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
-      onClick: () => PopupElement.createPopup(PopupSendGift, {peerId: this.peerId}),
+      onClick: () => showSendGiftPopup({peerId: this.peerId}),
       verify: async() => (
         this.chat.isChannel || (this.chat.peerId.isUser() && !this.chat.isBot && (await this.managers.appUsersManager.isRegularUser(this.peerId)))
       ) && !(this.chat.type === ChatType.Logs)
@@ -758,7 +756,7 @@ export default class ChatTopbar {
       text: 'DisableSharing',
       onClick: () => {
         if(!rootScope.premium) {
-          PopupPremium.show({feature: 'pm_noforwards'});
+          showPremiumPopup({feature: 'pm_noforwards'});
           return;
         }
 
@@ -854,8 +852,7 @@ export default class ChatTopbar {
       danger: true,
       text: 'Delete',
       onClick: () => {
-        PopupElement.createPopup(
-          PopupDeleteDialog,
+        showDeleteDialogPopup(
           this.chat.monoforumThreadId || this.peerId,
           undefined,
           undefined,
@@ -974,9 +971,9 @@ export default class ChatTopbar {
   };
 
   private onFilterActionsClick = wrapAsyncClickHandler(async() => {
-    const {default: LogFiltersPopup} = await import('./logFiltersPopup');
+    const {default: showLogFiltersPopup} = await import('./logFiltersPopup');
 
-    new LogFiltersPopup({
+    showLogFiltersPopup({
       channelId: this.peerId.toChatId(),
       isBroadcast: this.chat.isBroadcast,
       committedFilters: this.chat.bubbles.committedLogsFilters,
@@ -984,7 +981,7 @@ export default class ChatTopbar {
       onFinish: ({committedFilters}) => {
         this.chat.bubbles.setLogFilters(committedFilters);
       }
-    }).show();
+    });
   })
 
   private get peerId() {
@@ -1013,7 +1010,7 @@ export default class ChatTopbar {
         icon: 'link',
         text: 'Rtmp.Topbar.StreamWith',
         onClick: () => {
-          PopupElement.createPopup(RtmpStartStreamPopup, {peerId: this.peerId}).show();
+          showRtmpStartStreamPopup({peerId: this.peerId});
         },
         verify: () => IS_LIVE_STREAM_SUPPORTED
       }],
@@ -1173,7 +1170,7 @@ export default class ChatTopbar {
   };
 
   private onMuteClick = () => {
-    PopupElement.createPopup(PopupMute, this.peerId);
+    showMutePopup(this.peerId);
   };
 
   private onUnmuteClick = () => {

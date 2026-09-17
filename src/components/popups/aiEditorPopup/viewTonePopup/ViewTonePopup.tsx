@@ -2,6 +2,7 @@ import tonePopupShellStyles from '@/scss/modulePartials/tonePopupShell.module.sc
 import {AutoHeight} from '@components/autoHeight';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
+import MediaHeader from '@components/mediaHeader';
 import PopupElement from '@components/popups/indexTsx';
 import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
@@ -125,35 +126,39 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
   };
 
   return (
-    <PopupElement class={tonePopupShellStyles.popup} containerClass={tonePopupShellStyles.popupContainer} show={show()}>
-      <PopupElement.Header class={tonePopupShellStyles.popupHeader}>
-        <PopupElement.CloseButton class={tonePopupShellStyles.popupCloseButton} />
+    <PopupElement class={tonePopupShellStyles.popup} show={show()}>
+      <PopupElement.Header>
+        <PopupElement.CloseButton />
       </PopupElement.Header>
       <PopupElement.Body class={styles.popupBody}>
-        <Show when={docId()} keyed>
-          {(docId) => (
-            <div class={styles.header}>
-              <div class={styles.emojiButton}>
-                <div class={styles.emoji}>
-                  <EmojiDocumentIcon
-                    docId={docId}
-                    managers={rootScope.managers}
-                    color='primary-text-color'
-                    size={64}
-                    onFail={() => setDocId()}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </Show>
+        <MediaHeader class={styles.header}>
+          <Show when={docId()} keyed>
+            {(docId) => (
+              <MediaHeader.Sticker
+                class={styles.emojiButton}
+                size={96}
+                element={(
+                  <div class={styles.emoji}>
+                    <EmojiDocumentIcon
+                      docId={docId}
+                      managers={rootScope.managers}
+                      color='primary-text-color'
+                      size={64}
+                      onFail={() => setDocId()}
+                    />
+                  </div>
+                )}
+              />
+            )}
+          </Show>
 
-        <div class={styles.title}>
-          {props.tone.title}
-        </div>
-        <div class={styles.description}>
-          <I18nTsx key="AiEditor.ViewStyle.Description" />
-        </div>
+          <MediaHeader.Title size={20}>
+            {props.tone.title}
+          </MediaHeader.Title>
+          <MediaHeader.Subtitle color="secondary" class={styles.description}>
+            <I18nTsx key="AiEditor.ViewStyle.Description" />
+          </MediaHeader.Subtitle>
+        </MediaHeader>
 
         <Space amount='1rem' />
 
@@ -207,7 +212,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
         </Show>
       </PopupElement.Body>
       <Show when={hasFooterButton()}>
-        <PopupElement.Footer class={tonePopupShellStyles.popupFooter}>
+        <PopupElement.Footer>
           <PopupElement.FooterButton
             disabled={mutation.isPending()}
             color={isCreator() || props.isSaved ? 'danger' : 'primary'}

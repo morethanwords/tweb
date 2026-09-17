@@ -14,7 +14,7 @@ import rootScope from '@lib/rootScope';
 import AppSelectPeers from '@components/appSelectPeers';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {toastNew} from '@components/toast';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -137,10 +137,8 @@ const SharedFolder: Component = () => {
       }
     });
 
-    let linkSection: SettingSection;
+    let linkSection: HTMLElement;
     if(chatlistInvite) {
-      const section = linkSection = new SettingSection({name: 'InviteLink'});
-
       const inviteLink: InviteLink = new InviteLink({
         buttons: [{
           icon: 'copy',
@@ -164,7 +162,11 @@ const SharedFolder: Component = () => {
         url: chatlistInvite.url
       });
 
-      section.content.append(inviteLink.container);
+      linkSection = (
+        <Section name="InviteLink">
+          {inviteLink.container}
+        </Section>
+      ) as HTMLElement;
     }
 
     {
@@ -271,7 +273,7 @@ const SharedFolder: Component = () => {
     selector.scrollable.prepend(...[
       stickerContainer,
       caption,
-      linkSection?.container
+      linkSection
     ].filter(Boolean));
 
     promiseCollector.collect(Promise.all([

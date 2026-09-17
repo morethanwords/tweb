@@ -1,19 +1,18 @@
-import PopupElement from '.';
-import {createEffect, createRoot, createSignal, JSX, Show, Signal} from 'solid-js';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import {Component, createEffect, createMemo, createRoot, createSignal, For, JSX, Show, Signal} from 'solid-js';
+import {Dynamic} from 'solid-js/web';
 import Currencies from '@config/currencies';
 import {FontFamily, FontFull, FontSize} from '@config/font';
 import accumulate from '@helpers/array/accumulate';
 import {getAppWindow} from '@helpers/appWindow';
 import assumeType from '@helpers/assumeType';
+import classNames from '@helpers/string/classNames';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {detectUnifiedCardBrand} from '@helpers/cards/cardBrands';
-import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
-import findUpClassName from '@helpers/dom/findUpClassName';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
-import setInnerHTML from '@helpers/dom/setInnerHTML';
-import toggleDisability from '@helpers/dom/toggleDisability';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import makeError from '@helpers/makeError';
 import {makeMediaSize} from '@helpers/mediaSize';
@@ -21,31 +20,29 @@ import safeAssign from '@helpers/object/safeAssign';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import ScrollSaver from '@helpers/scrollSaver';
 import tsNow from '@helpers/tsNow';
-import {AccountTmpPassword, Boost, ChatInvite, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageAction, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsSubscription, StarsTransaction, User} from '@layer';
-import I18n, {i18n, LangPackKey, _i18n} from '@lib/langPack';
+import {AccountTmpPassword, Boost, ChatInvite, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageAction, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsSubscription, StarsTransaction, User, WebDocument} from '@layer';
+import {i18n, LangPackKey} from '@lib/langPack';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
 import {useUser} from '@stores/peers';
 import {avatarNew} from '@components/avatarNew';
-import Button from '@components/button';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import PeerTitle from '@components/peerTitle';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {putPreloader} from '@components/putPreloader';
 import Row from '@components/rowTsx';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapPhoto from '@components/wrappers/photo';
-import PopupPaymentCard, {PaymentCardDetails, PaymentCardDetailsResult} from '@components/popups/paymentCard';
-import PopupPaymentCardConfirmation from '@components/popups/paymentCardConfirmation';
-import PopupPaymentMethods from '@components/popups/paymentMethods';
-import PopupPaymentShipping, {PaymentShippingAddress} from '@components/popups/paymentShipping';
-import PopupPaymentShippingMethods from '@components/popups/paymentShippingMethods';
-import PopupPaymentVerification from '@components/popups/paymentVerification';
-import type PopupStars from '@components/popups/stars';
+import showPaymentCardPopup, {PaymentCardDetails, PaymentCardDetailsResult} from '@components/popups/paymentCard';
+import showPaymentCardConfirmationPopup from '@components/popups/paymentCardConfirmation';
+import showPaymentMethodsPopup from '@components/popups/paymentMethods';
+import showPaymentShippingPopup, {PaymentShippingAddress} from '@components/popups/paymentShipping';
+import showPaymentShippingMethodsPopup from '@components/popups/paymentShippingMethods';
+import showPaymentVerificationPopup from '@components/popups/paymentVerification';
+import type showStarsPopup from '@components/popups/stars';
 import showStarsPayPopup from '@components/popups/starsPay';
-import {renderComponent} from '@helpers/solid/renderComponent';
 
 const USE_NATIVE_SYMBOL = true;
 const iconPath = 'assets/img/';
@@ -70,46 +67,13 @@ export function getPaymentBrandIconPath(brand: string) {
   return `${iconPath}${brand}.svg`;
 }
 
-export function PaymentButton(options: {
-  onClick: () => Promise<any> | void,
-  key?: LangPackKey,
-  textEl?: I18n.IntlElement
-}) {
-  const textEl = options.textEl ?? new I18n.IntlElement({key: options.key ?? 'PaymentInfo.Done'});
-  const key = textEl.key;
-  const payButton = Button('btn-primary btn-color-primary payment-item-pay');
-  payButton.append(textEl.element);
-  attachClickEvent(payButton, async() => {
-    const result = options.onClick();
-    if(!(result instanceof Promise)) {
-      return;
-    }
-
-    const d = putPreloader(payButton);
-    const toggle = toggleDisability([payButton], true);
-    textEl.compareAndUpdate({key: 'PleaseWait'});
-    try {
-      await result;
-    } catch(err) {
-      if(!(err as ApiError).handled) {
-        console.error('payment button error', err);
-      }
-
-      toggle();
-      textEl.compareAndUpdate({key});
-      d.remove();
-    }
-  });
-  return payButton;
-}
-
 export type PaymentsCredentialsToken = {type: 'card', token?: string, id?: string};
 
 export type PopupPaymentResult = 'paid' | 'cancelled' | 'pending' | 'failed';
 
 /**
- * What {@link PopupPayment.create} hands back. The card popup is still a class and the Stars one is a
- * function, so callers see only what they all use: the `finish` event.
+ * What {@link createPaymentPopup} hands back — the card flow and the Stars one are separate popups,
+ * so callers see only what they both have: the `finish` event.
  */
 export type PopupPaymentHandle = {
   addEventListener(name: 'finish', callback: (result: PopupPaymentResult) => void): void
@@ -189,7 +153,7 @@ const className = 'payment-item';
 type PaymentRowState = {
   title: Signal<JSX.Element>,
   subtitleVisible: Signal<boolean>,
-  media: Signal<HTMLElement>,
+  media: Signal<JSX.Element>,
   hidden: Signal<boolean>
 };
 
@@ -200,9 +164,32 @@ const createPaymentRowState = (options: {
 } = {}): PaymentRowState => ({
   title: createSignal<JSX.Element>(options.title || ''),
   subtitleVisible: createSignal(options.subtitleVisible ?? !!options.title),
-  media: createSignal<HTMLElement>(),
+  media: createSignal<JSX.Element>(),
   hidden: createSignal(!!options.hidden)
 });
+
+/** The invoice illustration: a `WebDocument` the photo wrapper fills the container with. */
+const PaymentItemPhoto = (props: {photo: WebDocument}) => {
+  const boxSize = makeMediaSize(100, 100);
+  const sizeAttribute = props.photo.attributes.find(
+    (attribute) => attribute._ === 'documentAttributeImageSize'
+  ) as DocumentAttribute.documentAttributeImageSize;
+  const fittedSize = sizeAttribute && makeMediaSize(sizeAttribute.w, sizeAttribute.h).aspectFitted(boxSize);
+
+  return (
+    <div
+      class={`${className}-details-photo media-container-contain`}
+      style={fittedSize && {width: fittedSize.width + 'px', height: fittedSize.height + 'px'}}
+      ref={(container) => wrapPhoto({
+        photo: props.photo,
+        container,
+        boxWidth: boxSize.width,
+        boxHeight: boxSize.height,
+        size: {_: 'photoSizeEmpty', type: ''}
+      })}
+    />
+  );
+};
 
 const PaymentRow = (props: {
   state: PaymentRowState,
@@ -220,7 +207,7 @@ const PaymentRow = (props: {
     noWrap
   >
     <Show when={props.state.media[0]()} fallback={props.icon && <Row.Icon icon={props.icon} />}>
-      {(media) => <Row.Media element={media()} size="small" class={props.mediaClass} />}
+      {(media) => <Row.Media size="small" class={props.mediaClass}>{media()}</Row.Media>}
     </Show>
     <Row.Title>{props.state.title[0]() || i18n(props.label, props.labelArgs)}</Row.Title>
     <Row.Subtitle class={props.state.subtitleVisible[0]() ? undefined : 'hide'}>
@@ -229,67 +216,150 @@ const PaymentRow = (props: {
   </Row>
 );
 
-export default class PopupPayment extends PopupElement<{
-  finish: (result: PopupPaymentResult) => void
-}> {
-  private tipButtonsMap: Map<number, HTMLElement>;
-  private result: PopupPaymentResult;
-  private message: Message.message;
-  private inputInvoice: InputInvoice;
-  private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt;
-  private isReceipt: boolean;
+import {getMiddleware} from '@helpers/middleware';
+import EventListenerBase from '@helpers/eventListenerBase';
+import ListenerSetter from '@helpers/listenerSetter';
+import {ScrollableContextValue} from '@components/scrollable2';
+import {onCleanup} from 'solid-js';
+import Section from '@components/section';
 
-  constructor(options: {
-    message?: Message.message,
-    inputInvoice?: InputInvoice,
-    paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt,
-    isReceipt?: boolean,
+export type PopupPaymentOptions = {
+  message?: Message.message,
+  inputInvoice?: InputInvoice,
+  paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt,
+  isReceipt?: boolean,
 
-    // * stars only
-    isTopUp?: boolean,
-    transaction?: StarsTransaction,
-    ledgerPeerId?: PeerId,
-    paidMedia?: MessageMedia.messageMediaPaidMedia,
-    chatInvite?: ChatInvite.chatInvite,
-    noPaymentForm?: boolean,
-    subscription?: StarsSubscription,
-    giftAction?: MessageAction.messageActionGiftStars,
-    boost?: Boost,
-    giftPeerId?: PeerId,
-    noShowIfStars?: boolean,
-    purpose?: ConstructorParameters<typeof PopupStars>[0]['purpose']
-  }) {
-    super('popup-payment', {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      scrollable: true,
-      title: true
+  // * stars only
+  isTopUp?: boolean,
+  transaction?: StarsTransaction,
+  ledgerPeerId?: PeerId,
+  paidMedia?: MessageMedia.messageMediaPaidMedia,
+  chatInvite?: ChatInvite.chatInvite,
+  noPaymentForm?: boolean,
+  subscription?: StarsSubscription,
+  giftAction?: MessageAction.messageActionGiftStars,
+  boost?: Boost,
+  giftPeerId?: PeerId,
+  noShowIfStars?: boolean,
+  purpose?: Parameters<typeof showStarsPopup>[0]['purpose']
+};
+
+export default function showPaymentPopup(options: PopupPaymentOptions): PopupPaymentHandle {
+  const emitter: PopupPaymentHandle & EventListenerBase<{finish: (result: PopupPaymentResult) => void}> =
+    new EventListenerBase() as any;
+  const middlewareHelper = getMiddleware();
+  const middleware = middlewareHelper.get();
+  const listenerSetter = new ListenerSetter();
+  const inputInvoice = options.inputInvoice;
+
+  const [show, setShow] = createSignal(true);
+  const [loading, setLoading] = createSignal(true);
+  const [titleKey, setTitleKey] = createSignal<LangPackKey>('PaymentCheckout');
+  const [titleSuffix, setTitleSuffix] = createSignal('');
+  const [scrollableRef, setScrollableRef] = createSignal<ScrollableContextValue>();
+  // the pay button only exists once the form has resolved; its label is a node the total rewrites in place
+  const [payButton, setPayButton] = createSignal<{
+    callback: () => MaybePromise<boolean | void>,
+    label: () => JSX.Element
+  }>();
+  const [payDisabled, setPayDisabled] = createSignal(false);
+  let payButtonElement: HTMLButtonElement;
+
+  const paymentForm = options.paymentForm;
+  let result: PopupPaymentResult = 'cancelled';
+  let opened = false;
+  // The form resolves in two stages, so the content does too: the item itself is known from the
+  // invoice and renders right away, everything priced waits for the server. Both are components
+  // rather than elements — `build` defines them, the popup instantiates them under its own owner.
+  const [item, setItem] = createSignal<{
+    photo?: WebDocument,
+    title: string,
+    description: string,
+    botPeerId: PeerId
+  }>();
+  const [Prices, setPrices] = createSignal<Component>();
+  const [Rows, setRows] = createSignal<Component>();
+
+  function openPopup() {
+    if(opened) return;
+    opened = true;
+
+    createPopup(() => {
+      onCleanup(() => {
+        listenerSetter.removeAll();
+        middlewareHelper.destroy();
+      });
+
+      return (
+        <PopupElement
+          class={'popup-payment' + (loading() ? ' is-loading' : '')}
+          closable
+          show={show()}
+          onClose={() => emitter.dispatchEvent('finish', result)}
+        >
+          <PopupElement.Header>
+            <PopupElement.CloseButton />
+            <PopupElement.Title>{i18n(titleKey())}{titleSuffix()}</PopupElement.Title>
+          </PopupElement.Header>
+          <PopupElement.Scrollable contextRef={setScrollableRef}>
+            <PopupElement.Body>
+              <Show when={item()}>
+                {(item) => (
+                  <Section>
+                    <div class={className}>
+                      <div class={`${className}-details`}>
+                        <Show when={item().photo}>
+                          {(photo) => <PaymentItemPhoto photo={photo()} />}
+                        </Show>
+                        <div class={`${className}-details-lines`}>
+                          <div class={`${className}-details-lines-title`}>{wrapEmojiText(item().title)}</div>
+                          <div class={`${className}-details-lines-description`}>{wrapEmojiText(item().description)}</div>
+                          <div class={`${className}-details-lines-bot-name`}>
+                            <PeerTitleTsx peerId={item().botPeerId} />
+                          </div>
+                        </div>
+                      </div>
+                      <Show when={Prices()} keyed>
+                        {(Prices) => <Dynamic component={Prices} />}
+                      </Show>
+                    </div>
+                  </Section>
+                )}
+              </Show>
+              <Show when={loading()}>
+                <div class={`${className}-preloader-container`}>{putPreloader(undefined, true)}</div>
+              </Show>
+              <Show when={Rows()} keyed>
+                {(Rows) => (
+                  <Section>
+                    <Dynamic component={Rows} />
+                  </Section>
+                )}
+              </Show>
+            </PopupElement.Body>
+          </PopupElement.Scrollable>
+          <Show when={payButton()}>
+            <PopupElement.Footer>
+              <PopupElement.FooterButton
+                confirm
+                preloader
+                pendingLangKey="PleaseWait"
+                disabled={payDisabled()}
+                callback={payButton().callback}
+                ref={(element) => payButtonElement = element}
+              >
+                {payButton().label()}
+              </PopupElement.FooterButton>
+            </PopupElement.Footer>
+          </Show>
+        </PopupElement>
+      );
     });
-
-    safeAssign(this, options);
-
-    this.result = 'cancelled';
-
-    this.tipButtonsMap = new Map();
   }
 
-  public hide() {
-    this.dispatchEvent('finish', this.result);
-    return super.hide();
-  }
-
-  public setPaymentForm(paymentForm: PaymentsPaymentForm | PaymentsPaymentReceipt) {
-    this.paymentForm = paymentForm;
-    this.d().catch((err) => {
-      console.error('payment popup error', err);
-      this.hide();
-    });
-  }
-
-  private async d() {
-    this.element.classList.add('is-loading');
-    this.show();
+  async function build() {
+    setLoading(true);
+    openPopup();
 
     let confirmed = false;
     const onConfirmed = () => {
@@ -297,22 +367,20 @@ export default class PopupPayment extends PopupElement<{
         return;
       }
 
-      this.result = 'paid';
+      result = 'paid';
       confirmed = true;
-      if(popupPaymentVerification) {
-        popupPaymentVerification.hide();
-      }
+      hideVerification?.();
 
-      this.hide();
+      setShow(false);
     };
 
-    const {paymentForm, message} = this;
+    const {message} = options;
     if(paymentForm._ === 'payments.paymentFormStarGift') {
       throw new Error('not implemented');
     }
 
     if(message) {
-      this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
+      listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
         if(message.peerId === peerId && message.mid === mid) {
           onConfirmed();
         }
@@ -320,7 +388,7 @@ export default class PopupPayment extends PopupElement<{
     }
 
     const mediaInvoice = message?.media as MessageMedia.messageMediaInvoice;
-    const isReceipt = this.isReceipt ??
+    const isReceipt = options.isReceipt ??
       (
         mediaInvoice ?
           !!mediaInvoice.receipt_msg_id || mediaInvoice.extended_media?._ === 'messageExtendedMedia' :
@@ -333,72 +401,12 @@ export default class PopupPayment extends PopupElement<{
     const title = mediaInvoice ? mediaInvoice.title : paymentForm.title;
     const description = mediaInvoice ? mediaInvoice.description : paymentForm.description;
 
-    _i18n(this.title, isReceipt ? 'PaymentReceipt' : 'PaymentCheckout');
+    setTitleKey(isReceipt ? 'PaymentReceipt' : 'PaymentCheckout');
     if(isTest) {
-      this.title.append(' (Test)');
+      setTitleSuffix(' (Test)');
     }
 
-    const itemEl = document.createElement('div');
-    itemEl.classList.add(className);
-
-    const detailsClassName = className + '-details';
-    const details = document.createElement('div');
-    details.classList.add(detailsClassName);
-
-    let photoEl: HTMLElement;
-    if(photo) {
-      photoEl = document.createElement('div');
-      photoEl.classList.add(detailsClassName + '-photo', 'media-container-contain');
-      const sizeAttribute = photo.attributes.find((attribute) => attribute._ === 'documentAttributeImageSize') as DocumentAttribute.documentAttributeImageSize;
-      const boxSize = makeMediaSize(100, 100);
-      if(sizeAttribute) {
-        const photoSize = makeMediaSize(sizeAttribute.w, sizeAttribute.h);
-        const fittedSize = photoSize.aspectFitted(boxSize);
-        photoEl.style.width = fittedSize.width + 'px';
-        photoEl.style.height = fittedSize.height + 'px';
-      }
-
-      wrapPhoto({
-        photo: photo,
-        container: photoEl,
-        boxWidth: boxSize.width,
-        boxHeight: boxSize.height,
-        size: {_: 'photoSizeEmpty', type: ''}
-      });
-      details.append(photoEl);
-    }
-
-    const linesClassName = detailsClassName + '-lines';
-    const linesEl = document.createElement('div');
-    linesEl.classList.add(linesClassName);
-
-    const titleEl = document.createElement('div');
-    titleEl.classList.add(linesClassName + '-title');
-
-    const descriptionEl = document.createElement('div');
-    descriptionEl.classList.add(linesClassName + '-description');
-
-    const botName = document.createElement('div');
-    botName.classList.add(linesClassName + '-bot-name');
-
-    linesEl.append(titleEl, descriptionEl, botName);
-
-    setInnerHTML(titleEl, wrapEmojiText(title));
-    setInnerHTML(descriptionEl, wrapEmojiText(description));
-
-    const peerTitle = new PeerTitle();
-    botName.append(peerTitle.element);
-
-    details.append(linesEl);
-    itemEl.append(details);
-    this.scrollable.append(itemEl);
-
-    const preloaderContainer = document.createElement('div');
-    preloaderContainer.classList.add(className + '-preloader-container');
-    const preloader = putPreloader(preloaderContainer, true);
-    this.scrollable.append(preloaderContainer);
-
-    const inputInvoice = this.inputInvoice;
+    setItem({photo, title, description, botPeerId: paymentForm.bot_id.toPeerId()});
 
     let savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).info;
     const savedCredentials = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_credentials?.[0];
@@ -407,20 +415,16 @@ export default class PopupPayment extends PopupElement<{
       passwordState,
       providerPeerTitle
     ] = await Promise.all([
-      !isReceipt && savedInfo && this.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo).catch((err: ApiError) => {
+      !isReceipt && savedInfo && rootScope.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo).catch((err: ApiError) => {
         console.error('validateRequestedInfo', err, savedInfo);
         // savedInfo = undefined;
         return undefined as PaymentsValidatedRequestedInfo;
       }),
-      savedCredentials && this.managers.passwordManager.getState(),
+      savedCredentials && rootScope.managers.passwordManager.getState(),
       wrapPeerTitle({peerId: isStars ? NULL_PEER_ID : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).provider_id.toPeerId()})
     ]);
 
     // console.log(paymentForm, lastRequestedInfo);
-
-    await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
-    preloaderContainer.remove();
-    this.element.classList.remove('is-loading');
 
     const wrapAmount = (amount: string | number, skipSymbol?: boolean) => {
       return paymentsWrapCurrencyAmount(amount, currency, skipSymbol, USE_NATIVE_SYMBOL, true);
@@ -432,191 +436,109 @@ export default class PopupPayment extends PopupElement<{
     const isRecurring = invoice.pFlags.recurring && !isReceipt;
     const hasTerms = !!invoice.terms_url;
 
-    await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
     const peerTitle2 = isRecurring || hasTerms ? await wrapPeerTitle({peerId: paymentForm.bot_id.toPeerId()}) : undefined;
-    preloaderContainer.remove();
-    this.element.classList.remove('is-loading');
+    setLoading(false);
 
-    const makeLabel = () => {
-      const labelEl = document.createElement('div');
-      labelEl.classList.add(pricesClassName + '-price');
-
-      const left = document.createElement('span');
-      const right = document.createElement('span');
-      labelEl.append(left, right);
-      return {label: labelEl, left, right};
-    };
-
-    const pricesClassName = className + '-prices';
-    const prices = document.createElement('div');
-    prices.classList.add(pricesClassName);
-    const makePricesElements = (prices: LabeledPrice[]) => {
-      return prices.map((price) => {
-        const {amount, label} = price;
-
-        const _label = makeLabel();
-        _label.left.append(wrapEmojiText(label));
-
-        const wrappedAmount = wrapAmount(amount);
-        _label.right.textContent = wrappedAmount;
-
-        return _label.label;
-      });
-    };
-
-    const pricesElements = makePricesElements(invoice.prices);
-
-    let getTipsAmount = (): number => 0;
-    let shippingAmount = 0;
-
-    const getTotalTotal = () => totalAmount + getTipsAmount() + shippingAmount;
-    const setTotal = () => {
-      const wrapped = wrapAmount(getTotalTotal());
-      totalLabel.right.textContent = wrapped;
-      payI18n.compareAndUpdate({
-        key: 'PaymentCheckoutPay',
-        args: [wrapped]
-      });
-    };
-
-    const payI18n = new I18n.IntlElement();
-
-    const totalLabel = makeLabel();
-    totalLabel.label.classList.add('is-total');
-    _i18n(totalLabel.left, 'PaymentTransactionTotal');
     const totalAmount = accumulate(invoice.prices.map(({amount}) => +amount), 0);
+    const canTip = (invoice.max_tip_amount !== undefined && !isReceipt) ||
+      !!(paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).tip_amount;
 
-    const canTip = (invoice.max_tip_amount !== undefined && !isReceipt) || !!(paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).tip_amount;
+    // What the server prices (the invoice) does not cover: the chosen shipping option and the tip.
+    // Both feed the total, and the total feeds the pay button's label.
+    const [shippingPrices, setShippingPrices] = createSignal<LabeledPrice[]>([]);
+    const [tipAmount, setTipAmount] = createSignal(0);
+
+    const getShippingAmount = () => accumulate(shippingPrices().map(({amount}) => +amount), 0);
+    const getTipsAmount = () => canTip ? tipAmount() : 0;
+    const getTotalTotal = () => totalAmount + getTipsAmount() + getShippingAmount();
+
+    // The tip is typed into a plain input that keeps the caret pinned to the end, so the input owns
+    // the text and the signal mirrors it — every write goes through here.
+    const inputRightNumber = canTip ? new InputRightNumber({fontWeight: 500}) : undefined;
+    const setTip = (amount: number) => {
+      amount = Math.min(+amount, +invoice.max_tip_amount);
+      inputRightNumber.value = wrapAmount(amount, true);
+      setTipAmount(amount);
+    };
+
     if(canTip) {
-      const tipsClassName = className + '-tips';
-
-      const currencyData = Currencies[currency];
-
-      getTipsAmount = () => +inputRightNumber.value.replace(/\D/g, '');
-
-      const setInputValue = (amount: string | number) => {
-        amount = Math.min(+amount, +invoice.max_tip_amount);
-        const wrapped = wrapAmount(amount, true);
-
-        inputRightNumber.value = wrapped;
-
-        unsetActiveTip?.();
-        const tipEl = this.tipButtonsMap.get(amount);
-        if(tipEl) {
-          tipEl.classList.add('active');
-        }
-
-        setTotal();
-      };
-
-      const tipsLabel = makeLabel();
-      _i18n(tipsLabel.left, isReceipt ? 'PaymentTip' : 'PaymentTipOptional');
-      const inputRightNumber = new InputRightNumber({fontWeight: 500});
-      const {input} = inputRightNumber;
-      input.classList.add('input-clear', tipsClassName + '-input');
-      tipsLabel.right.append(input);
-
-      if(!isReceipt) {
-        tipsLabel.label.style.cursor = 'text';
-      } else {
-        tipsLabel.label.classList.add('disable-hover');
-      }
-
-      tipsLabel.label.addEventListener('mousedown', (e) => {
-        if(!findUpAsChild(e.target as HTMLElement, input)) {
-          placeCaretAtEnd(input);
-        }
+      inputRightNumber.input.classList.add('input-clear', `${className}-tips-input`);
+      inputRightNumber.input.addEventListener('input', () => {
+        setTip(+inputRightNumber.value.replace(/\D/g, ''));
       });
 
-      input.addEventListener('input', () => {
-        setInputValue(getTipsAmount());
-      });
-
-      const s = [
-        USE_NATIVE_SYMBOL ? currencyData.native || currencyData.symbol : currencyData.symbol,
-        currencyData.space_between ? ' ' : ''
-      ];
-      if(!currencyData.symbol_left) s.reverse();
-      tipsLabel.right[currencyData.symbol_left ? 'prepend' : 'append'](s.join(''));
-
-      pricesElements.push(tipsLabel.label);
-
-      //
-      let unsetActiveTip: () => void;
-      if(!isReceipt) {
-        const tipsEl = document.createElement('div');
-        tipsEl.classList.add(tipsClassName);
-
-        const tipClassName = tipsClassName + '-tip';
-        const tipButtons = invoice.suggested_tip_amounts.map((tipAmount) => {
-          const button = Button(tipClassName, {noRipple: true});
-          button.textContent = wrapAmount(tipAmount);
-
-          this.tipButtonsMap.set(+tipAmount, button);
-          return button;
-        });
-
-        unsetActiveTip = () => {
-          const prevTipEl = tipsEl.querySelector('.active');
-          if(prevTipEl) {
-            prevTipEl.classList.remove('active');
-          }
-        };
-
-        attachClickEvent(tipsEl, (e) => {
-          const tipEl = findUpClassName(e.target, tipClassName);
-          if(!tipEl) {
-            return;
-          }
-
-          let tipAmount = 0;
-          if(tipEl.classList.contains('active')) {
-            tipEl.classList.remove('active');
-          } else {
-            unsetActiveTip();
-            tipEl.classList.add('active');
-
-            for(const [amount, el] of this.tipButtonsMap) {
-              if(el === tipEl) {
-                tipAmount = amount;
-                break;
-              }
-            }
-          }
-
-          setInputValue(tipAmount);
-        });
-
-        setInputValue(0);
-
-        tipsEl.append(...tipButtons);
-        pricesElements.push(tipsEl);
-      } else {
-        setInputValue((paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).tip_amount);
-      }
-    } else {
-      setTotal();
+      setTip(isReceipt ? +(paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).tip_amount : 0);
     }
 
-    pricesElements.push(totalLabel.label);
+    // the tip is typed without its currency, so the symbol sits next to the input on the side the
+    // currency puts it, with the currency's own spacing
+    const currencyData = Currencies[currency];
+    const symbolParts = [
+      USE_NATIVE_SYMBOL ? currencyData.native || currencyData.symbol : currencyData.symbol,
+      currencyData.space_between ? ' ' : ''
+    ];
+    if(!currencyData.symbol_left) symbolParts.reverse();
+    const currencySymbol = symbolParts.join('');
 
-    prices.append(...pricesElements);
-    itemEl.append(prices);
+    const PriceLine = (props: {label: JSX.Element, amount: JSX.Element, class?: string}) => (
+      <div class={classNames(`${className}-prices-price`, props.class)}>
+        <span>{props.label}</span>
+        <span>{props.amount}</span>
+      </div>
+    );
+
+    setPrices(() => () => (
+      <div class={`${className}-prices`}>
+        <For each={[...invoice.prices, ...shippingPrices()]}>
+          {(price) => <PriceLine label={wrapEmojiText(price.label)} amount={wrapAmount(price.amount)} />}
+        </For>
+        <Show when={canTip}>
+          <div
+            class={classNames(`${className}-prices-price`, isReceipt && 'disable-hover')}
+            style={isReceipt ? undefined : {cursor: 'text'}}
+            onMouseDown={(e) => {
+              if(!findUpAsChild(e.target as HTMLElement, inputRightNumber.input)) {
+                placeCaretAtEnd(inputRightNumber.input);
+              }
+            }}
+          >
+            <span>{i18n(isReceipt ? 'PaymentTip' : 'PaymentTipOptional')}</span>
+            <span>
+              {currencyData.symbol_left && currencySymbol}
+              {inputRightNumber.input}
+              {!currencyData.symbol_left && currencySymbol}
+            </span>
+          </div>
+          <Show when={!isReceipt}>
+            <div class={`${className}-tips`}>
+              <For each={invoice.suggested_tip_amounts}>
+                {(suggested) => (
+                  <button
+                    class={`${className}-tips-tip`}
+                    classList={{active: tipAmount() === +suggested}}
+                    onClick={() => setTip(tipAmount() === +suggested ? 0 : +suggested)}
+                  >{wrapAmount(suggested)}</button>
+                )}
+              </For>
+            </div>
+          </Show>
+        </Show>
+        <PriceLine
+          class="is-total"
+          label={i18n('PaymentTransactionTotal')}
+          amount={wrapAmount(getTotalTotal())}
+        />
+      </div>
+    ));
 
     // /
 
+    // The brand logo is swapped in only once it has decoded, so the row never flashes a blank box.
     const setRowIcon = async(row: PaymentRowState, icon?: string) => {
-      const img = document.createElement('img');
+      const img = new Image();
       img.classList.add('media-photo');
       await renderImageFromUrlPromise(img, getPaymentBrandIconPath(icon));
-      let container = row.media[0]();
-      if(!container) {
-        container = document.createElement('div');
-        container.append(img);
-        row.media[1](container);
-      } else {
-        container.replaceChildren(img);
-      }
+      row.media[1](img);
     };
 
     const setRowTitle = (row: PaymentRowState, title: JSX.Element) => {
@@ -625,7 +547,7 @@ export default class PopupPayment extends PopupElement<{
     };
 
     const setCardSubtitle = (card: PaymentCardDetailsResult) => {
-      const {brand, str, icon} = PopupPayment.getCardDetailsInfo(card);
+      const {brand, str, icon} = getCardDetailsInfo(card);
 
       setRowIcon(methodRow, icon || brand.toLowerCase());
       setRowTitle(methodRow, str);
@@ -635,34 +557,28 @@ export default class PopupPayment extends PopupElement<{
       const user = useUser(rootScope.myId) as User.user;
       assumeType<PaymentsPaymentForm.paymentsPaymentForm>(paymentForm);
 
-      let popup: PopupPaymentMethods | PopupPaymentCard;
-      if(paymentForm.additional_methods) {
-        popup = PopupElement.createPopup(
-          PopupPaymentMethods,
-          paymentForm,
-          user,
-          previousCardDetails as PaymentCardDetails
-        );
-        popup = await popup.waitForMethodPopup();
-
-        // * reusing same card
-        if(!popup) {
-          return;
-        }
-      } else {
-        popup = PopupElement.createPopup(
-          PopupPaymentCard,
-          paymentForm,
-          user,
-          previousCardDetails as PaymentCardDetails
-        );
-      }
-
-      popup.addEventListener('finish', ({token, card}) => {
+      // whichever popup takes the card details answers the same way
+      const onFinish = ({token, card}: {token: PaymentsCredentialsToken, card: PaymentCardDetailsResult}) => {
         previousToken = token, previousCardDetails = card;
 
         setCardSubtitle(card);
-      });
+      };
+
+      if(paymentForm.additional_methods) {
+        showPaymentMethodsPopup({
+          paymentForm,
+          user,
+          savedCard: previousCardDetails as PaymentCardDetails,
+          onFinish
+        });
+      } else {
+        showPaymentCardPopup({
+          paymentForm,
+          user,
+          savedCard: previousCardDetails as PaymentCardDetails,
+          onFinish
+        });
+      }
     };
 
     let previousCardDetails: PaymentCardDetailsResult, previousToken: PaymentsCredentialsToken;
@@ -677,16 +593,14 @@ export default class PopupPayment extends PopupElement<{
     const providerRow = createPaymentRowState({title: providerPeerTitle});
 
     const providerAvatar = avatarNew({
-      middleware: this.middlewareHelper.get(),
+      middleware: middleware,
       size: 32,
       peerId: isStars ? NULL_PEER_ID : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).provider_id.toPeerId()
     });
-    const providerMedia = document.createElement('div');
-    providerMedia.append(providerAvatar.node);
-    providerRow.media[1](providerMedia);
+    providerRow.media[1](providerAvatar.node);
 
     let shippingAddressRow: PaymentRowState, shippingNameRow: PaymentRowState, shippingEmailRow: PaymentRowState, shippingPhoneRow: PaymentRowState, shippingMethodRow: PaymentRowState;
-    let lastShippingOption: ShippingOption, onShippingAddressClick: (focus?: ConstructorParameters<typeof PopupPaymentShipping>[2]) => void, onShippingMethodClick: () => void;
+    let lastShippingOption: ShippingOption, onShippingAddressClick: (focus?: Parameters<typeof showPaymentShippingPopup>[0]['focus']) => void, onShippingMethodClick: () => void;
     const setShippingTitle = invoice.pFlags.shipping_address_requested ? (shippingAddress?: PaymentShippingAddress) => {
       if(!shippingAddress) {
         shippingMethodRow.title[1](i18n('PaymentShippingAddress'));
@@ -713,68 +627,47 @@ export default class PopupPayment extends PopupElement<{
 
     if(!isReceipt) {
       onShippingAddressClick = (focus) => {
-        PopupElement.createPopup(
-          PopupPaymentShipping,
-          paymentForm as PaymentsPaymentForm.paymentsPaymentForm,
+        showPaymentShippingPopup({
+          paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentForm,
           inputInvoice,
-          focus
-        ).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
-          lastRequestedInfo = requestedInfo;
-          savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info = shippingAddress;
-          setShippingInfo(shippingAddress);
+          focus,
+          onFinish: ({shippingAddress, requestedInfo}) => {
+            lastRequestedInfo = requestedInfo;
+            savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info = shippingAddress;
+            setShippingInfo(shippingAddress);
+          }
         });
       };
     }
 
     if(invoice.pFlags.shipping_address_requested) {
+      // The rows appear above the fold, so adding them would push the content the user is looking at.
       const setShippingOption = (shippingOption?: ShippingOption) => {
-        const scrollSaver = new ScrollSaver(this.scrollable, undefined, true);
+        const scrollSaver = new ScrollSaver(scrollableRef()?.container as any, undefined, true);
         scrollSaver.save();
-        if(lastShippingPricesElements) {
-          lastShippingPricesElements.forEach((node) => node.remove());
+
+        if(shippingOption) {
+          lastShippingOption = shippingOption;
+          setRowTitle(shippingMethodRow, shippingOption.title);
         }
 
-        if(!shippingOption) {
-          shippingAmount = 0;
+        setShippingPrices(shippingOption ? shippingOption.prices : []);
 
-          setTotal();
-          scrollSaver.restore();
-          this.onContentUpdate();
-          return;
-        }
-
-        lastShippingOption = shippingOption;
-        setRowTitle(shippingMethodRow, shippingOption.title);
-
-        shippingAmount = accumulate(shippingOption.prices.map(({amount}) => +amount), 0);
-        lastShippingPricesElements = makePricesElements(shippingOption.prices);
-        let l = totalLabel.label;
-        if(canTip) {
-          l = l.previousElementSibling as any;
-          if(!isReceipt) {
-            l = l.previousElementSibling as any;
-          }
-        }
-
-        lastShippingPricesElements.forEach((element) => l.parentElement.insertBefore(element, l));
-
-        setTotal();
         scrollSaver.restore();
-        this.onContentUpdate();
+        scrollableRef()?.onSizeChange();
       };
 
       shippingAddressRow = createPaymentRowState();
 
-      let lastShippingPricesElements: HTMLElement[];
       shippingMethodRow = createPaymentRowState({hidden: true});
       onShippingMethodClick = () => {
-        PopupElement.createPopup(
-          PopupPaymentShippingMethods,
-          paymentForm as PaymentsPaymentForm,
-          lastRequestedInfo,
-          lastShippingOption
-        ).addEventListener('finish', (shippingOption) => {
-          setShippingOption(shippingOption);
+        showPaymentShippingMethodsPopup({
+          paymentForm: paymentForm as PaymentsPaymentForm,
+          requestedInfo: lastRequestedInfo,
+          shippingOption: lastShippingOption,
+          onFinish: (shippingOption) => {
+            setShippingOption(shippingOption);
+          }
         });
       };
 
@@ -802,16 +695,12 @@ export default class PopupPayment extends PopupElement<{
 
     const acceptTermsSignal = createSignal(!(!isReceipt && (isRecurring || hasTerms)));
 
-    const rowsContainer = document.createElement('div');
-    this.scrollable.append(document.createElement('hr'), rowsContainer);
-    renderComponent({
-      element: rowsContainer,
-      Component: () => (
-        <>
+    setRows(() => () => (
+      <div>
           <PaymentRow
             state={methodRow}
             label="PaymentCheckoutMethod"
-            icon="card"
+            icon="card_filled"
             class={`${className}-method-row`}
             mediaClass="media-container-cover"
             clickable={isReceipt ? undefined : onMethodClick}
@@ -821,7 +710,7 @@ export default class PopupPayment extends PopupElement<{
             <PaymentRow
               state={shippingAddressRow}
               label="PaymentShippingAddress"
-              icon="location"
+              icon="location_filled"
               clickable={isReceipt ? undefined : onShippingAddressClick.bind(null, undefined)}
             />
           </Show>
@@ -868,14 +757,12 @@ export default class PopupPayment extends PopupElement<{
                 [wrapRichText(invoice.terms_url), peerTitle2]
               )}</Row.Title>
             </Row>
-          </Show>
-        </>
-      ),
-      middleware: this.middlewareHelper.get()
-    });
+        </Show>
+      </div>
+    ));
 
     // /
-    let popupPaymentVerification: PopupPaymentVerification, lastTmpPasword: AccountTmpPassword;
+    let hideVerification: () => void, lastTmpPasword: AccountTmpPassword;
     const onClick = () => {
       const missingInfo = invoice.pFlags.name_requested && !savedInfo?.name ? 'name' : (invoice.pFlags.email_requested && !savedInfo?.email ? 'email' : (invoice.pFlags.phone_requested && !savedInfo?.phone ? 'phone' : undefined));
       if(invoice.pFlags.shipping_address_requested) {
@@ -897,23 +784,23 @@ export default class PopupPayment extends PopupElement<{
           return;
         }
 
-        Promise.resolve(passwordState ?? this.managers.passwordManager.getState()).then((_passwordState) => {
-          PopupElement.createPopup(
-            PopupPaymentCardConfirmation,
-            savedCredentials.title,
-            _passwordState
-          ).addEventListener('finish', (tmpPassword) => {
-            passwordState = undefined;
-            lastTmpPasword = tmpPassword;
-            simulateClickEvent(payButton);
+        Promise.resolve(passwordState ?? rootScope.managers.passwordManager.getState()).then((_passwordState) => {
+          showPaymentCardConfirmationPopup({
+            card: savedCredentials.title,
+            passwordState: _passwordState,
+            onFinish: (tmpPassword) => {
+              passwordState = undefined;
+              lastTmpPasword = tmpPassword;
+              simulateClickEvent(payButtonElement);
 
-            // * reserve 5 seconds
-            const diff = tmpPassword.valid_until - tsNow(true) - 5;
-            setTimeout(() => {
-              if(lastTmpPasword === tmpPassword) {
-                lastTmpPasword = undefined;
-              }
-            }, diff * 1000);
+              // * reserve 5 seconds
+              const diff = tmpPassword.valid_until - tsNow(true) - 5;
+              setTimeout(() => {
+                if(lastTmpPasword === tmpPassword) {
+                  lastTmpPasword = undefined;
+                }
+              }, diff * 1000);
+            }
           });
         });
 
@@ -937,8 +824,8 @@ export default class PopupPayment extends PopupElement<{
         };
 
         try {
-          this.result = 'pending';
-          const paymentResult = await this.managers.appPaymentsManager.sendPaymentForm(
+          result = 'pending';
+          const paymentResult = await rootScope.managers.appPaymentsManager.sendPaymentForm(
             inputInvoice,
             (paymentForm as PaymentsPaymentForm).form_id,
             lastRequestedInfo?.id,
@@ -950,28 +837,26 @@ export default class PopupPayment extends PopupElement<{
           if(paymentResult._ === 'payments.paymentResult') {
             onConfirmed();
           } else {
-            popupPaymentVerification = PopupElement.createPopup(
-              PopupPaymentVerification,
-              paymentResult.url,
-              !mediaInvoice?.extended_media
-            );
-            popupPaymentVerification.addEventListener('finish', () => {
-              popupPaymentVerification = undefined;
-
-              onConfirmed();
-            });
             await new Promise<void>((resolve, reject) => {
-              popupPaymentVerification.addEventListener('close', () => {
-                popupPaymentVerification = undefined;
-                if(confirmed) {
-                  resolve();
-                } else {
-                  const err = makeError(undefined, 'payment not finished');
-                  (err as ApiError).handled = true;
-                  reject(err);
-                  this.result = 'failed';
+              hideVerification = showPaymentVerificationPopup({
+                url: paymentResult.url,
+                openPathAfter: !mediaInvoice?.extended_media,
+                onFinish: () => {
+                  hideVerification = undefined;
+                  onConfirmed();
+                },
+                onClose: () => {
+                  hideVerification = undefined;
+                  if(confirmed) {
+                    resolve();
+                  } else {
+                    const err = makeError(undefined, 'payment not finished');
+                    (err as ApiError).handled = true;
+                    reject(err);
+                    result = 'failed';
+                  }
                 }
-              });
+              }).hide;
             });
           }
         } catch(err) {
@@ -980,10 +865,10 @@ export default class PopupPayment extends PopupElement<{
             (err as ApiError).handled = true;
           } else if((err as ApiError).type === 'TMP_PASSWORD_INVALID') {
             passwordState = lastTmpPasword = undefined;
-            simulateClickEvent(payButton);
+            simulateClickEvent(payButtonElement);
             (err as ApiError).handled = true;
           } else {
-            this.result = 'failed';
+            result = 'failed';
           }
 
           throw err;
@@ -992,75 +877,77 @@ export default class PopupPayment extends PopupElement<{
     };
 
     const onChange = () => {
-      payButton.disabled = !acceptTermsSignal[0]();
+      setPayDisabled(!acceptTermsSignal[0]());
     };
 
-    let payButton: HTMLButtonElement;
     if(isReceipt) {
-      payButton = PaymentButton({
-        onClick: () => this.hide(),
-        key: 'Done'
-      });
+      setPayButton({callback: () => {}, label: () => i18n('Done')});
     } else {
-      payButton = PaymentButton({
-        onClick: onClick,
-        textEl: payI18n
+      setPayButton({
+        // the missing-info branches open a sub-popup rather than pay, and checkout has to stay up
+        callback: () => {
+          const result = onClick();
+          return result instanceof Promise ? result : false;
+        },
+        label: () => i18n('PaymentCheckoutPay', [wrapAmount(getTotalTotal())])
       });
     }
 
     onChange();
     if(!isReceipt && (isRecurring || hasTerms)) {
       createRoot((dispose) => {
-        this.middlewareHelper.onDestroy(dispose);
+        middlewareHelper.onDestroy(dispose);
         createEffect(onChange);
       });
     }
 
-    this.body.append(this.btnConfirmOnEnter = payButton);
-
-    this.onContentUpdate();
+    scrollableRef()?.onSizeChange();
   }
 
-  public static async create(options: ConstructorParameters<typeof PopupPayment>[0]): Promise<PopupPaymentHandle> {
-    let promise: Promise<PaymentsPaymentForm | PaymentsPaymentReceipt>;
-    if(!options.paymentForm && !options.transaction && !options.noPaymentForm) {
-      if(options.isReceipt) promise = rootScope.managers.appPaymentsManager.getPaymentReceipt(options.message.peerId, (options.message.media as MessageMedia.messageMediaInvoice).receipt_msg_id || (options.inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
-      else promise = rootScope.managers.appPaymentsManager.getPaymentForm(options.inputInvoice);
-    } else {
-      promise = Promise.resolve(options.paymentForm);
-    }
+  build().catch((err) => {
+    console.error('payment popup error', err);
+    setShow(false);
+  });
 
-    const paymentForm = await promise;
-    const isStars = options.noPaymentForm ||
-      options.transaction ||
-      options.giftAction ||
-      paymentForm._ === 'payments.paymentFormStars' ||
-      paymentForm._ === 'payments.paymentReceiptStars' ||
-      paymentForm._ === 'payments.paymentFormStarGift';
+  return emitter;
+}
 
-    if(isStars) {
-      return showStarsPayPopup({...options, paymentForm}) as PopupPaymentHandle;
-    }
-
-    const popup = PopupElement.createPopup(PopupPayment, options);
-    popup.setPaymentForm(paymentForm as any);
-
-    return popup as PopupPaymentHandle;
+export async function createPaymentPopup(options: PopupPaymentOptions): Promise<PopupPaymentHandle> {
+  let promise: Promise<PaymentsPaymentForm | PaymentsPaymentReceipt>;
+  if(!options.paymentForm && !options.transaction && !options.noPaymentForm) {
+    if(options.isReceipt) promise = rootScope.managers.appPaymentsManager.getPaymentReceipt(options.message.peerId, (options.message.media as MessageMedia.messageMediaInvoice).receipt_msg_id || (options.inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
+    else promise = rootScope.managers.appPaymentsManager.getPaymentForm(options.inputInvoice);
+  } else {
+    promise = Promise.resolve(options.paymentForm);
   }
 
-  public static getCardDetailsInfo(card: PaymentCardDetailsResult) {
-    let brand: string;
-    let str: string;
-    let icon: string;
-    if('title' in card) {
-      brand = card.title.split(' ').shift();
-      str = card.title;
-      icon = card.icon;
-    } else {
-      brand = detectUnifiedCardBrand(card.cardNumber);
-      str = brand + ' *' + card.cardNumber.split(' ').pop();
-    }
+  const paymentForm = await promise;
+  const isStars = options.noPaymentForm ||
+    options.transaction ||
+    options.giftAction ||
+    paymentForm._ === 'payments.paymentFormStars' ||
+    paymentForm._ === 'payments.paymentReceiptStars' ||
+    paymentForm._ === 'payments.paymentFormStarGift';
 
-    return {brand, str, icon};
+  if(isStars) {
+    return showStarsPayPopup({...options, paymentForm}) as PopupPaymentHandle;
   }
+
+  return showPaymentPopup({...options, paymentForm});
+}
+
+export function getCardDetailsInfo(card: PaymentCardDetailsResult) {
+  let brand: string;
+  let str: string;
+  let icon: string;
+  if('title' in card) {
+    brand = card.title.split(' ').shift();
+    str = card.title;
+    icon = card.icon;
+  } else {
+    brand = detectUnifiedCardBrand(card.cardNumber);
+    str = brand + ' *' + card.cardNumber.split(' ').pop();
+  }
+
+  return {brand, str, icon};
 }

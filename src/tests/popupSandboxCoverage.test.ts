@@ -23,7 +23,6 @@ const ENTRY = /^export\s+(?:default\s+)?(?:async\s+)?(?:class\s+(\w*Popup\w*)|fu
 const REACHED_INDIRECTLY: {[file: string]: string} = {
   'aiEditorPopup/aiEditorPopup.tsx': 'the `aiEditor` story imports the folder index, which re-exports it',
   'starsPay.tsx': 'the `payment/starsPay` story goes through `PopupPayment.create`, which picks it for a Stars form',
-  'index.ts': 'the popup base class, not a popup',
   'indexTsx.tsx': 'the popup base component, not a popup'
 };
 

@@ -1144,7 +1144,7 @@ export function MessageTextStreamingTail() {
   return (
     <span class={styles.Dots} aria-hidden="true">
       {' '}
-      <span class={`${styles.Dot} ${styles.Dot1}`}>.</span>
+      <span class={styles.Dot}>.</span>
       <span class={`${styles.Dot} ${styles.Dot2}`}>.</span>
       <span class={`${styles.Dot} ${styles.Dot3}`}>.</span>
     </span>

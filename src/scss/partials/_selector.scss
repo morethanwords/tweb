@@ -270,18 +270,29 @@
     }
   }
 
+  // the round checkbox is painted over the row instead of being laid out in it
+  $checkbox-inset: 1.125rem;
+  $checkbox-size: 1.25rem;
+
   .checkbox-field-round {
-    inset-inline-end: 1.125rem;
-    --size: 1.25rem;
+    inset-inline-end: $checkbox-inset;
+    --size: #{$checkbox-size};
 
     .checkbox-box-border {
       z-index: unset;
     }
   }
 
+  // ...so the row has to keep its own content out of that lane, or a long subtitle runs
+  // under the checkbox. The lane stays reserved while the checkboxes are merely hidden,
+  // so nothing reflows when the selection brings them back.
+  .selector-row-with-checkbox {
+    padding-inline-end: $checkbox-inset + $checkbox-size + .5rem;
+  }
+
   &-left {
     .checkbox-field-round {
-      inset-inline: 1.125rem auto;
+      inset-inline: $checkbox-inset auto;
     }
   }
 

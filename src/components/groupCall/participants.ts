@@ -1,4 +1,4 @@
-import PopupGroupCall from '.';
+import {GROUP_CALL_POPUP_KIND} from '.';
 import {getOverlayRoot} from '@helpers/appWindow';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -18,7 +18,7 @@ import {
 } from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
 import PeerTitle from '@components/peerTitle';
-import PopupElement from '@components/popups';
+import PopupElement from '@components/popups/indexTsx';
 import Scrollable from '@components/scrollable';
 import GroupCallParticipantsList from '@components/groupCall/participantsList';
 import GroupCallParticipantsVideoElement from '@components/groupCall/participantVideos';
@@ -91,7 +91,7 @@ export class GroupCallParticipantContextMenu {
       listenerSetter,
       findElement: (e) => findUpClassName(e.target, 'group-call-participant'),
       resolveAppendTo: () => isFullScreen() ?
-        PopupElement.getPopups(PopupGroupCall)[0]?.getContainer() ?? getOverlayRoot() :
+        PopupElement.getPopups(GROUP_CALL_POPUP_KIND)[0]?.container ?? getOverlayRoot() :
         getOverlayRoot(),
       onOpen: async(_e, li) => {
         const generation = ++this.openGeneration;
@@ -151,7 +151,7 @@ export class GroupCallParticipantContextMenu {
   }
 
   private onOpenProfileClick = () => {
-    const popup = PopupElement.getPopups(PopupGroupCall)[0];
+    const popup = PopupElement.getPopups(GROUP_CALL_POPUP_KIND)[0];
     if(popup) {
       popup.hide();
     }

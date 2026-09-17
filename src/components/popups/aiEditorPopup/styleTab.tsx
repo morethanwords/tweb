@@ -1,4 +1,4 @@
-import fieldSectionStyles from '@/scss/modulePartials/fieldSectionPanel.module.scss';
+import fieldSectionStyles from '@/scss/modulePartials/fieldSectionCaption.module.scss';
 import {AutoHeight} from '@components/autoHeight';
 import {IconTsx} from '@components/iconTsx';
 import Scrollable from '@components/scrollable2';

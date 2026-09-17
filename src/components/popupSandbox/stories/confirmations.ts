@@ -7,6 +7,7 @@
  */
 
 import noop from '@helpers/noop';
+import showPeerPopup from '@components/popups/peer';
 import {defineStories} from '../registry';
 
 defineStories('Confirmations', [
@@ -14,36 +15,26 @@ defineStories('Confirmations', [
     id: 'peer/basic',
     title: 'PopupPeer — title + description',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupPeer}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/peer')
-      ]);
-
-      PopupElement.createPopup(PopupPeer, 'popup-sandbox', {
+      showPeerPopup('popup-sandbox', {
         peerId: ctx.peer('private'),
         titleLangKey: 'AppName',
         descriptionLangKey: 'Chat.Message.Sponsored.What',
         buttons: [{langKey: 'OK', isDanger: true}]
-      }).show();
+      });
     }
   },
   {
     id: 'peer/with-checkbox',
     title: 'PopupPeer — with a checkbox',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupPeer}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/peer')
-      ]);
-
-      PopupElement.createPopup(PopupPeer, 'popup-sandbox', {
+      showPeerPopup('popup-sandbox', {
         peerId: ctx.peer('supergroup'),
         titleLangKey: 'DeleteChatUser',
         descriptionLangKey: 'AreYouSureDeleteThisChatWithUser',
         descriptionLangArgs: ['Alice'],
         checkboxes: [{text: 'DeleteMessagesOption'}],
         buttons: [{langKey: 'Delete', isDanger: true}]
-      }).show();
+      });
     }
   },
   {
@@ -62,8 +53,8 @@ defineStories('Confirmations', [
     id: 'simpleConfirmation',
     title: 'SimpleConfirmationPopup (auth flow)',
     open: async(ctx) => {
-      const {SimpleConfirmationPopup} = await import('@components/popups/simpleConfirmation');
-      SimpleConfirmationPopup.show({
+      const {default: simpleConfirmation} = await import('@components/popups/simpleConfirmation');
+      simpleConfirmation({
         titleLangKey: 'LogOut',
         descriptionLangKey: 'LogOut.Description',
         button: {langKey: 'LogOut', isDanger: true}
@@ -78,9 +69,9 @@ defineStories('Confirmations', [
       appMessagesManager: {getMessageByPeer: () => ctx.message('private'), canDeleteMessage: () => true}
     }),
     open: async(ctx) => {
-      const {default: PopupDeleteMessages} = await import('@components/popups/deleteMessages');
+      const {default: showDeleteMessagesPopup} = await import('@components/popups/deleteMessages');
       const {ChatType} = await import('@components/chat/chatType');
-      new PopupDeleteMessages(ctx.peer('private'), [ctx.mid('private')], ChatType.Chat);
+      showDeleteMessagesPopup(ctx.peer('private'), [ctx.mid('private')], ChatType.Chat);
     }
   },
   {
@@ -90,8 +81,8 @@ defineStories('Confirmations', [
       appPeersManager: {isSavedDialog: () => false, getDialogType: () => 'chat'}
     },
     open: async(ctx) => {
-      const {default: PopupDeleteDialog} = await import('@components/popups/deleteDialog');
-      new PopupDeleteDialog(ctx.peer('private'));
+      const {default: showDeleteDialogPopup} = await import('@components/popups/deleteDialog');
+      showDeleteDialogPopup(ctx.peer('private'));
     }
   },
   {
@@ -101,20 +92,16 @@ defineStories('Confirmations', [
       appPeersManager: {isSavedDialog: () => false, getDialogType: () => 'channel'}
     },
     open: async(ctx) => {
-      const {default: PopupDeleteDialog} = await import('@components/popups/deleteDialog');
-      new PopupDeleteDialog(ctx.peer('channel'));
+      const {default: showDeleteDialogPopup} = await import('@components/popups/deleteDialog');
+      showDeleteDialogPopup(ctx.peer('channel'));
     }
   },
   {
     id: 'sendNow/one',
     title: 'Send scheduled message now',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupSendNow}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/sendNow')
-      ]);
-
-      PopupElement.createPopup(PopupSendNow, ctx.peer('private'), [ctx.mid('private')]);
+      const {default: showSendNowPopup} = await import('@components/popups/sendNow');
+      showSendNowPopup(ctx.peer('private'), [ctx.mid('private')]);
     }
   },
   {
@@ -124,8 +111,8 @@ defineStories('Confirmations', [
       appPeersManager: {canPinMessage: () => true}
     },
     open: async(ctx) => {
-      const {default: PopupPinMessage} = await import('@components/popups/unpinMessage');
-      new PopupPinMessage(ctx.peer('supergroup'), ctx.mid('private'), true);
+      const {default: showPinMessagePopup} = await import('@components/popups/unpinMessage');
+      showPinMessagePopup(ctx.peer('supergroup'), ctx.mid('private'), true);
     }
   },
   {
@@ -135,26 +122,24 @@ defineStories('Confirmations', [
       appPeersManager: {canPinMessage: () => true, isBroadcast: () => false}
     },
     open: async(ctx) => {
-      const {default: PopupPinMessage} = await import('@components/popups/unpinMessage');
-      new PopupPinMessage(ctx.peer('supergroup'), ctx.mid('private'));
+      const {default: showPinMessagePopup} = await import('@components/popups/unpinMessage');
+      showPinMessagePopup(ctx.peer('supergroup'), ctx.mid('private'));
     }
   },
   {
     id: 'mute/peer',
     title: 'Mute chat',
     open: async(ctx) => {
-      const {default: PopupMute} = await import('@components/popups/mute');
-      const {default: PopupElement} = await import('@components/popups');
-      PopupElement.createPopup(PopupMute, ctx.peer('private'));
+      const {default: showMutePopup} = await import('@components/popups/mute');
+      showMutePopup(ctx.peer('private'));
     }
   },
   {
     id: 'sponsored/what-is-this',
     title: 'What are sponsored messages?',
     open: async(ctx) => {
-      const {default: PopupSponsored} = await import('@components/popups/sponsored');
-      const {default: PopupElement} = await import('@components/popups');
-      PopupElement.createPopup(PopupSponsored);
+      const {default: showSponsoredPopup} = await import('@components/popups/sponsored');
+      showSponsoredPopup();
     }
   },
   {

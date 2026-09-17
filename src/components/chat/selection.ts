@@ -6,13 +6,13 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import CheckboxField from '@components/checkboxField';
-import PopupDeleteMessages from '@components/popups/deleteMessages';
+import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
 import {showSelectedMessagesReport} from '@components/popups/reportAd';
 import SetTransition from '@components/singleTransition';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import ListenerSetter from '@helpers/listenerSetter';
-import PopupSendNow from '@components/popups/sendNow';
+import showSendNowPopup from '@components/popups/sendNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import {i18n, _i18n} from '@lib/langPack';
@@ -34,7 +34,6 @@ import {AppManagers} from '@lib/managers';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import appImManager from '@lib/appImManager';
 import {Message} from '@layer';
-import PopupElement from '@components/popups';
 import flatten from '@helpers/array/flatten';
 import IS_STANDALONE from '@environment/standalone';
 import {toastNew} from '@components/toast';
@@ -755,8 +754,7 @@ export class SearchSelection extends AppSelection {
           this.selectionDeleteBtn = ButtonIcon(`delete danger ${BASE_CLASS}-delete`);
           attachClickEvent(this.selectionDeleteBtn, () => {
             const peerId = this.searchSuper.searchContext.peerId;
-            PopupElement.createPopup(
-              PopupDeleteMessages,
+            showDeleteMessagesPopup(
               peerId,
               this.getSelectedMids(),
               ChatType.Chat,
@@ -1166,8 +1164,7 @@ export default class ChatSelection extends AppSelection {
         // Left slot — delete.
         this.selectionDeleteBtn = ButtonIcon('delete danger selection-container-delete');
         attachClickEvent(this.selectionDeleteBtn, () => {
-          PopupElement.createPopup(
-            PopupDeleteMessages,
+          showDeleteMessagesPopup(
             this.chat.peerId,
             this.getSelectedMids(),
             this.chat.type,
@@ -1182,7 +1179,7 @@ export default class ChatSelection extends AppSelection {
         if(this.chat.type === ChatType.Scheduled) {
           rightButton = this.selectionSendNowBtn = ButtonIcon('send2 selection-container-send');
           attachClickEvent(this.selectionSendNowBtn, () => {
-            PopupElement.createPopup(PopupSendNow, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
+            showSendNowPopup(this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
               this.cancelSelection();
             });
           }, attachClickOptions);

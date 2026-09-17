@@ -3,8 +3,7 @@ import showStickersPopup from '@components/popups/stickers';
 import rootScope from '@lib/rootScope';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import PopupElement from '@components/popups';
-import PopupNewMedia from '@components/popups/newMedia';
+import showNewMediaPopup from '@components/popups/newMedia';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import ChatInput from '@components/chat/input';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -133,7 +132,7 @@ export default function createStickersContextMenu({
     text: 'Chat.Send.WithCaption',
     onClick: () => {
       onSend?.();
-      PopupElement.createPopup(PopupNewMedia, chatInput.chat, [], 'media', false, doc);
+      showNewMediaPopup(chatInput.chat, [], 'media', false, doc);
     },
     verify: () => !!(isGif && chatInput && chatInput.chat.peerId)
   }, {

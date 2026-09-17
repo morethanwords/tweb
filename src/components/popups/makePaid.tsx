@@ -1,15 +1,16 @@
-import PopupElement from '.';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import shake from '@helpers/dom/shake';
 import {Middleware} from '@helpers/middleware';
 import {LangPackKey} from '@lib/langPack';
-import Button from '@components/button';
 import currencyStarIcon from '@components/currencyStarIcon';
 import InputField from '@components/inputField';
 import Section from '@components/section';
-import PopupStars from '@components/popups/stars';
+import showStarsPopup from '@components/popups/stars';
+import rootScope from '@lib/rootScope';
+import {createSignal, onMount} from 'solid-js';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
 export function InputStarsField(options: {
   middleware: Middleware,
@@ -50,76 +51,64 @@ export function InputStarsField(options: {
   return inputField;
 }
 
-export default class PopupMakePaid extends PopupElement {
-  private inputField: InputField;
+export default async function showMakePaidPopup(onSave: (value: number) => void, editingFrom?: number) {
+  const appConfig = await rootScope.managers.apiManager.getAppConfig();
+  const [show, setShow] = createSignal(true);
 
-  constructor(onSave: (value: number) => void, private editingFrom?: number) {
-    super('popup-make-paid', {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      title: 'PaidMedia.Title',
-      withConfirm: 'PaidMedia.Button',
-      footer: true,
-      withFooterConfirm: true
+  createPopup(() => {
+    const inputField = InputStarsField({
+      middleware: createMiddleware().get(),
+      label: 'PaidMedia.Enter',
+      max: appConfig.stars_paid_post_amount_max
     });
-
-    this.footer.classList.add('abitlarger');
-
-    attachClickEvent(this.btnConfirm, () => {
-      const value = parseInt(this.inputField.value || '0');
-      if(value > 0) {
-        onSave(value);
-        this.hide();
-      } else {
-        shake(this.inputField.container);
-      }
-    }, {listenerSetter: this.listenerSetter});
 
     if(editingFrom) {
-      const button = Button('btn-primary btn-primary-transparent primary', {text: 'PaidMedia.KeepFree'});
-      attachClickEvent(button, () => {
-        onSave(0);
-        this.hide();
-      }, {listenerSetter: this.listenerSetter});
-      this.btnConfirm.after(button);
+      inputField.value = '' + editingFrom;
     }
 
-    this.d();
-  }
+    onMount(() => placeCaretAtEnd(inputField.input));
 
-  private async d() {
-    const appConfig = await this.managers.apiManager.getAppConfig();
-    this.appendSolid(() => {
-      const inputField = this.inputField = InputStarsField({
-        middleware: this.middlewareHelper.get(),
-        label: 'PaidMedia.Enter',
-        max: appConfig.stars_paid_post_amount_max
-      });
+    return (
+      <PopupElement class="popup-make-paid" closable show={show()}>
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title title="PaidMedia.Title" />
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <Section
+            caption="PaidMedia.Caption"
+            captionArgs={[
+              anchorCallback(() => {
+                showStarsPopup();
+              })
+            ]}
+          >
+            {inputField.container}
+          </Section>
+        </PopupElement.Body>
+        <PopupElement.Footer>
+          <PopupElement.FooterButton
+            langKey="PaidMedia.Button"
+            callback={() => {
+              const value = parseInt(inputField.value || '0');
+              if(value > 0) {
+                onSave(value);
+                return;
+              }
 
-      if(this.editingFrom) {
-        inputField.value = '' + this.editingFrom;
-      }
-
-      setTimeout(() => {
-        this.show();
-        placeCaretAtEnd(inputField.input);
-      }, 0);
-
-      return (
-        <Section
-          caption="PaidMedia.Caption"
-          captionArgs={[
-            anchorCallback(() => {
-              PopupElement.createPopup(PopupStars);
-            })
-          ]}
-          noShadow
-          noDelimiter
-        >
-          {inputField.container}
-        </Section>
-      );
-    });
-  }
+              shake(inputField.container);
+              return false;
+            }}
+          />
+          {editingFrom && (
+            <PopupElement.FooterButton
+              color="secondary"
+              langKey="PaidMedia.KeepFree"
+              callback={() => onSave(0)}
+            />
+          )}
+        </PopupElement.Footer>
+      </PopupElement>
+    );
+  });
 }

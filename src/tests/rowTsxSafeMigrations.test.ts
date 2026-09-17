@@ -168,12 +168,15 @@ describe('RowTsx migration boundary', () => {
       'src/components/sidebarRight/tabs/chatType.tsx'
     ), 'utf8');
 
-    expect(payment).toContain('element: rowsContainer');
+    // the payment popup used to mount its rows into an imperative container of its own; it renders
+    // them inside the popup's Solid tree now, which is the direction the rest of these are heading
+    expect(payment).not.toContain('renderComponent');
+    expect(payment).toContain('<Dynamic component={Rows} />');
     expect(editContact.match(/element: rowsContainer/g)).toHaveLength(2);
     expect(editInvite).not.toContain('renderComponent');
     expect(editInvite).toContain('timePeriodContent.append(range.container, row);');
     expect(editInvite).toContain('usersLimitContent.append(range.container, row);');
-    expect(chatType).toContain('publicContainer.append(publicSection.container, usernamesSection);');
+    expect(chatType).toContain('publicContainer.append(publicSection, usernamesSection);');
   });
 
   it('mounts radio forms through Solid component boundaries', () => {
@@ -181,11 +184,13 @@ describe('RowTsx migration boundary', () => {
     const mute = readFileSync(resolve(root, 'src/components/popups/mute.ts'), 'utf8');
     const shippingMethods = readFileSync(resolve(
       root,
-      'src/components/popups/paymentShippingMethods.ts'
+      'src/components/popups/paymentShippingMethods.tsx'
     ), 'utf8');
 
+    // Either boundary is fine — JSX compiles to `createComponent` — but calling the component
+    // as a plain function is not: it would run outside a reactive owner.
     expect(mute).toContain('createComponent(RadioFormTsx<number | string>');
-    expect(shippingMethods).toContain('createComponent(RadioFormTsx<string>');
+    expect(shippingMethods).toContain('<RadioFormTsx<string>');
     expect(mute).not.toContain('RadioFormTsx({');
     expect(shippingMethods).not.toContain('RadioFormTsx({');
   });

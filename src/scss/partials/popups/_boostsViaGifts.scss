@@ -10,44 +10,16 @@
     width: 140px;
     height: 128px;
     margin-left: -4px;
-    margin-top: -2px;
 
     &-container {
-      margin: 0 auto -4px;
       text-align: center;
-      height: 132px;
     }
-  }
-
-  &-title,
-  &-subtitle {
-    text-align: center;
-
-    @include text-overflow(false);
-  }
-
-  &-title {
-    font-size: var(--font-size-20);
-    font-weight: var(--font-weight-bold);
-    line-height: var(--line-height-20);
-    margin-bottom: .5rem;
-  }
-
-  &-subtitle {
-    padding: 0 2.5rem;
-    line-height: var(--line-height-16);
-    margin-bottom: 1rem;
   }
 
   &-type {
-    padding-inline-start: 7.5625rem;
-
+    // the leading checkbox + media layout comes from `row-with-checkbox-and-media`
     .row-title {
       font-weight: var(--font-weight-bold);
-    }
-
-    .row-media {
-      inset-inline-start: 3.5rem !important;
     }
   }
 
@@ -145,29 +117,13 @@
     }
   }
 
-  .scrollable-y {
-    border-top: none !important;
-  }
-
   .sidebar-left-section {
     --link-color: var(--primary-color);
-    box-shadow: none !important;
-    margin-bottom: 0 !important;
-
-    &:not(.no-delimiter) {
-      border-top: 1px solid var(--border-color);
-    }
 
     &-name-right {
       height: 0;
       margin-top: -3px;
       margin-right: -8px;
-    }
-
-    &-caption {
-      font-size: var(--font-size-16);
-      line-height: var(--line-height-16);
-      margin-top: .75rem;
     }
   }
 

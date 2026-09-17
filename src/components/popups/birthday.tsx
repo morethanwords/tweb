@@ -17,8 +17,7 @@ import rootScope from '@lib/rootScope';
 import {doubleRaf} from '@helpers/schedulers';
 import {toastNew} from '@components/toast';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
-import lottieLoader from '@lib/lottie/lottieLoader';
-import LottieAnimation from '@components/lottieAnimation';
+import MediaHeader from '@components/mediaHeader';
 
 const MIN_YEAR = 1900;
 
@@ -217,30 +216,29 @@ export default async function showBirthdayPopup(props: {
     const doubleRafPromise = doubleRaf();
 
     return (
-      <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>
-        <PopupElement.Header class={styles.popupHeader}>
-          <PopupElement.CloseButton class={styles.popupCloseButton} />
+      <PopupElement class={styles.popup} show={show()} old>
+        <PopupElement.Header floating>
+          <PopupElement.CloseButton />
         </PopupElement.Header>
         <PopupElement.Body class={styles.popupBody}>
-          <LottieAnimation
-            class={styles.img}
-            size={120}
-            lottieLoader={lottieLoader}
-            restartOnClick
-            name="UtyanBirthday"
-            onPromise={(promise) => {
-              Promise.all([promise, doubleRafPromise]).then(([p]) => {
-                setShow(true);
-                p.playOrRestart()
-              });
-            }}
-          />
-
-          <I18nTsx
-            class={styles.title}
-            key={props.suggestForPeer ? 'BirthdayPopup.TitleForPeer' : 'BirthdayPopup.Title'}
-            args={[props.suggestForPeer ? <PeerTitleTsx peerId={props.suggestForPeer} /> : undefined]}
-          />
+          <MediaHeader marginBottom>
+            <MediaHeader.Sticker
+              name="UtyanBirthday"
+              size={120}
+              onReady={(animation) => {
+                doubleRafPromise.then(() => {
+                  setShow(true);
+                  animation.playOrRestart();
+                });
+              }}
+            />
+            <MediaHeader.Title>
+              <I18nTsx
+                key={props.suggestForPeer ? 'BirthdayPopup.TitleForPeer' : 'BirthdayPopup.Title'}
+                args={[props.suggestForPeer ? <PeerTitleTsx peerId={props.suggestForPeer} /> : undefined]}
+              />
+            </MediaHeader.Title>
+          </MediaHeader>
 
           <div class={styles.datePicker}>
             {dayField.container}
@@ -251,8 +249,7 @@ export default async function showBirthdayPopup(props: {
           <Show when={!props.suggestForPeer}>
             <div class={styles.privacyInfo}>
               <I18nTsx
-                class={styles.privacyInfoText}
-                key={isContactsOnly ? 'BirthdayPopup.OnlyContacts' : 'BirthdayPopup.Choose'}
+                    key={isContactsOnly ? 'BirthdayPopup.OnlyContacts' : 'BirthdayPopup.Choose'}
                 args={[
                   <a class={styles.privacyInfoLink} onClick={openPrivacySettings}>
                     <I18nTsx key={isContactsOnly ? 'BirthdayPopup.OnlyContactsLink' : 'BirthdayPopup.ChooseLink'} />
@@ -262,7 +259,7 @@ export default async function showBirthdayPopup(props: {
             </div>
           </Show>
         </PopupElement.Body>
-        <PopupElement.Footer class={styles.popupFooter}>
+        <PopupElement.Footer>
           <Show when={props.fromSuggestion && props.initialDate.year}>
             <PopupElement.FooterButton
               langKey="BirthdayPopup.HideYear"

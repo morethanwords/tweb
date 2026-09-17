@@ -18,8 +18,7 @@ import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {GrowHeightReveal} from '@helpers/solid/animations';
-import PopupElement from '@components/popups';
-import PopupDeleteMessages from '@components/popups/deleteMessages';
+import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import confirmationPopup from '@components/confirmationPopup';
 import {ChatType} from '@components/chat/chatType';
 import {toastNew} from '@components/toast';
@@ -323,8 +322,7 @@ const Calls = () => {
   };
 
   const deleteGroup = (group: CallLogGroup) => {
-    PopupElement.createPopup(
-      PopupDeleteMessages,
+    showDeleteMessagesPopup(
       group.peerId,
       group.mids.slice(),
       ChatType.Chat

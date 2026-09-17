@@ -6,8 +6,7 @@ import rootScope from '@lib/rootScope';
 import {AutonomousForumTopicList} from '@components/autonomousDialogList/forumTopics';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {ChatType} from '@components/chat/chatType';
-import PopupElement from '@components/popups';
-import PopupDeleteDialog from '@components/popups/deleteDialog';
+import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import appSidebarLeft from '@components/sidebarLeft';
 import {AppEditTopicTab} from '@components/solidJsTabs/tabs';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
@@ -108,7 +107,7 @@ export class GroupForumTab extends ForumTab {
         danger: true,
         text: 'LeaveMegaMenu',
         onClick: () => {
-          PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, (promise) => {
+          showDeleteDialogPopup(this.peerId, undefined, (promise) => {
             this._close();
           });
         },

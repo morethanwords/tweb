@@ -9,7 +9,7 @@ import useContentSettings from '@stores/contentSettings';
 import confirmationPopup from '@components/confirmationPopup';
 import DotRenderer from '@components/dotRenderer';
 import Icon from '@components/icon';
-import {AgeVerificationPopup} from '@components/popups/ageVerification';
+import createAgeVerification from '@components/popups/ageVerification';
 import SetTransition from '@components/singleTransition';
 import {toastNew} from '@components/toast';
 
@@ -92,7 +92,7 @@ export function onMediaSpoilerClick(options: {
     }
 
     if(contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
-      AgeVerificationPopup.create().then((verified) => {
+      createAgeVerification().then((verified) => {
         if(verified) {
           clearSensitiveSpoilers();
         }

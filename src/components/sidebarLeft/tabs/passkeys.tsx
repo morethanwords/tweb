@@ -104,7 +104,7 @@ const PasskeysTab = () => {
     >
       <MediaHeader>
         <MediaHeader.Sticker name="key" size={100} />
-        <MediaHeader.Subtitle secondary>{i18n('Passkey.Subtitle')}</MediaHeader.Subtitle>
+        <MediaHeader.Subtitle color="secondary">{i18n('Passkey.Subtitle')}</MediaHeader.Subtitle>
       </MediaHeader>
       <div class={styles.items}>
         <For each={tab.payload.passkeys}>

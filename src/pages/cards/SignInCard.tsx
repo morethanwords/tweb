@@ -236,7 +236,6 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   return (
     <AuthCard
-      class={styles.pageSignIn}
       header={
         <MediaHeader>
           <MediaHeader.Sticker

@@ -1,0 +1,17 @@
+.row {
+  // the lane the icon keeps: .75rem in from the edge, 1.875rem wide, then the text
+  padding-inline-start: 3.75rem;
+  margin-top: .75rem;
+}
+
+.icon {
+  // at the top of the row instead of its middle — `.row-with-padding` centres it
+  top: 1rem !important;
+  transform: none !important;
+}
+
+.subtitle {
+  font-size: var(--font-size-16) !important;
+  line-height: var(--line-height-16);
+  margin-top: .0625rem !important;
+}

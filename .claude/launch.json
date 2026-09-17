@@ -33,8 +33,8 @@
     },
     {
       "name": "tweb-popups",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--config.verify-deps-before-run=false", "exec", "vite", "--port", "9007", "--strictPort"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "TWEB_PREVIEW=1 exec pnpm --config.verify-deps-before-run=false exec vite --port 9007 --strictPort"],
       "port": 9007
     }
   ]

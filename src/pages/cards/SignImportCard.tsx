@@ -73,7 +73,7 @@ export default function SignImportCard(props: {spec: Spec}) {
   }
 
   return (
-    <AuthCard class={styles.pageSignImport} inputWrapper={false}>
+    <AuthCard inputWrapper={false}>
       <div ref={preloaderHostEl}/>
     </AuthCard>
   );

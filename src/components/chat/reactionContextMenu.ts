@@ -7,8 +7,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import ButtonMenu, {ButtonMenuItemOptions} from '@components/buttonMenu';
 import ButtonIcon from '@components/buttonIcon';
 import PeerTitle from '@components/peerTitle';
-import PopupElement from '@components/popups';
-import PopupReactedList from '@components/popups/reactedList';
+import showReactedListPopup from '@components/popups/reactedList';
 import ReactionsElement from '@components/chat/reactions';
 import ReactionElement from '@components/chat/reaction';
 import {formatFullSentTime} from '@helpers/date';
@@ -152,7 +151,7 @@ export default async function createReactionContextMenu({
       text: 'ShowAllReactions',
       separator: !!buttons.length,
       onClick: () => {
-        PopupElement.createPopup(PopupReactedList, message as Message.message, reaction);
+        showReactedListPopup(message as Message.message, reaction);
       }
     });
   }

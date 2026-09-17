@@ -1,4 +1,4 @@
-import PopupElement from '.';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import cardFormattingPatterns from '@helpers/cards/cardFormattingPatterns';
 import {detectUnifiedCardBrand} from '@helpers/cards/cardBrands';
 import formatInputValueByPattern from '@helpers/cards/formatInputValueByPattern';
@@ -11,14 +11,13 @@ import {LangPackKey, _i18n} from '@lib/langPack';
 import confirmationPopup from '@components/confirmationPopup';
 import CountryInputField from '@components/countryInputField';
 import InputField, {InputFieldOptions, InputState} from '@components/inputField';
-import {getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken} from '@components/popups/payment';
+import {getPaymentBrandIconPath, PaymentsCredentialsToken} from '@components/popups/payment';
 import {createVerificationIframe} from '@components/popups/paymentVerification';
 import {PasswordInputHelpers} from '@components/passwordInputField';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import TelegramWebView from '@components/telegramWebView';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import PaymentSaveInformationRow from '@components/popups/paymentSaveInformationRow';
-import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -208,71 +207,63 @@ export type PaymentsNativeParams = {
 };
 const SUPPORTED_NATIVE_PROVIDERS: Set<PaymentsNativeProvider> = new Set(['stripe', 'smartglocal']);
 
-export default class PopupPaymentCard extends PopupElement<{
-  finish: (obj: {token: any, card: PaymentCardDetailsResult}) => void
-}> {
-  protected telegramWebView: TelegramWebView;
+import {Component, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {Dynamic} from 'solid-js/web';
+import rootScope from '@lib/rootScope';
 
-  constructor(
-    private paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
-    private user: User.user,
-    private savedCard?: PaymentCardDetails,
-    private method?: PaymentFormMethod
-  ) {
-    super('popup-payment popup-payment-card', {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      scrollable: SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider),
-      title: 'PaymentCardInfo'
+const NATIVE_SUPPORTED = (paymentForm: PaymentsPaymentForm.paymentsPaymentForm, method?: PaymentFormMethod) =>
+  SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider) && !method;
+
+export default function showPaymentCardPopup(options: {
+  paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
+  user: User.user,
+  savedCard?: PaymentCardDetails,
+  method?: PaymentFormMethod,
+  onFinish?: (obj: {token: any, card: PaymentCardDetailsResult}) => void
+}) {
+  const {paymentForm, user, savedCard, method} = options;
+  const [show, setShow] = createSignal(false);
+  const [payDisabled, setPayDisabled] = createSignal(true);
+  const isNative = NATIVE_SUPPORTED(paymentForm, method);
+  // only the native form has a pay button of its own; the webview submits on its own side
+  let onPay: () => Promise<void>;
+  // Whichever branch below applies defines the body; the popup instantiates it under its own owner.
+  let Content: Component;
+
+  let telegramWebView: TelegramWebView;
+  if(!isNative) {
+    telegramWebView = createVerificationIframe({
+      url: method?.url || paymentForm.url
     });
 
-    if(SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider) && !method) {
-      this.d();
-    } else {
-      const telegramWebView = this.telegramWebView = createVerificationIframe({
-        url: method?.url || paymentForm.url
+    telegramWebView.addEventListener('payment_form_submit', (data) => {
+      const cardOut = {title: data.title, save: false} as any as PaymentCardDetails;
+      options.onFinish?.({
+        token: data.credentials,
+        card: cardOut
       });
 
-      telegramWebView.addEventListener('payment_form_submit', (data) => {
-        const cardOut = {title: data.title, save: false} as any as PaymentCardDetails;
-        this.dispatchEvent('finish', {
-          token: data.credentials,
-          card: cardOut
-        });
+      setShow(false);
 
-        this.hide();
+      if(!method && paymentForm.pFlags.can_save_credentials) {
+        confirmationPopup({
+          titleLangKey: 'PaymentCardSavePaymentInformation',
+          descriptionLangKey: 'PaymentCardSavePaymentInformationInfoLine1',
+          button: {
+            langKey: 'Save'
+          }
+        }).then(() => {
+          cardOut.save = true;
+        }, noop);
+      }
+    });
 
-        if(!method && paymentForm.pFlags.can_save_credentials) {
-          confirmationPopup({
-            titleLangKey: 'PaymentCardSavePaymentInformation',
-            descriptionLangKey: 'PaymentCardSavePaymentInformationInfoLine1',
-            button: {
-              langKey: 'Save'
-            }
-          }).then(() => {
-            cardOut.save = true;
-          }, noop);
-        }
-      });
-
-      // putPreloader(this.body, true);
-      this.body.append(telegramWebView.iframe);
-      this.show();
-      telegramWebView.onMount();
-    }
+    Content = () => telegramWebView.iframe;
+    setShow(true);
   }
 
-  protected destroy() {
-    this.telegramWebView?.destroy();
-    return super.destroy();
-  }
-
-  private d() {
-    const savedCard = this.savedCard;
-    const cardSection = new SettingSection({name: 'PaymentInfo.Card.Title', noDelimiter: true, noShadow: true});
-
-    const nativeParams: PaymentsNativeParams = JSON.parse(this.paymentForm.native_params.data);
+  if(isNative) {
+    const nativeParams: PaymentsNativeParams = JSON.parse(paymentForm.native_params.data);
 
     let lastBrand: string, brandIconTempId = 0, lastBrandImg: HTMLImageElement;
     const setBrandIcon = (brand: string) => {
@@ -334,7 +325,7 @@ export default class PopupPaymentCard extends PopupElement<{
       autocomplete: 'cc-name'
     });
 
-    const formatted = formatPhoneNumber(this.user.phone);
+    const formatted = formatPhoneNumber(user.phone);
     const expireInputField = new InputFieldCorrected({
       label: 'SecureId.Identity.Placeholder.ExpiryDate',
       plainText: true,
@@ -420,34 +411,13 @@ export default class PopupPaymentCard extends PopupElement<{
       }
     });
 
-    const inputFieldsRow = document.createElement('div');
-    inputFieldsRow.classList.add('input-fields-row');
-    inputFieldsRow.append(expireInputField.container, cvcInputField.container);
-
-    const form = document.createElement('form');
-    form.append(...[
-      cardInputField.container,
-      inputFieldsRow,
-      nameInputField?.container
-    ].filter(Boolean))
-
-    cardSection.content.append(form);
-
-    let billingSection: SettingSection;
     // let saveCheckboxField: CheckboxField;
     const {countryInputField, postcodeInputField} = createCountryZipFields(nativeParams.need_country, nativeParams.need_zip);
-    if(nativeParams.need_country || nativeParams.need_zip) {
-      billingSection = new SettingSection({name: 'PaymentInfo.Billing.Title', noDelimiter: true, noShadow: true});
+    const hasBilling = !!(nativeParams.need_country || nativeParams.need_zip);
 
-      // const inputFieldsRow2 = inputFieldsRow.cloneNode() as HTMLElement;
-      // inputFieldsRow2.append(countryInputField.container, postcodeInputField.container);
-      // billingSection.content.append(inputFieldsRow2);
-      billingSection.content.append(...[countryInputField, postcodeInputField].filter(Boolean).map((i) => i.container));
-    }
-
-    const canSave = !!this.paymentForm.pFlags.can_save_credentials;
+    const canSave = !!paymentForm.pFlags.can_save_credentials;
     let savePaymentInformation = canSave;
-    const saveRow = wrapSolidComponent(() => (
+    const SaveRow = () => (
       <PaymentSaveInformationRow
         checked={canSave}
         disabled={!canSave}
@@ -455,103 +425,120 @@ export default class PopupPaymentCard extends PopupElement<{
         subtitle={canSave ? 'PaymentCardSavePaymentInformationInfoLine1' : 'Checkout.2FA.Text'}
         onChange={(checked) => savePaymentInformation = checked}
       />
-    ), this.middlewareHelper.get());
+    );
 
-    (billingSection || cardSection).content.append(saveRow);
+    Content = () => (
+      <>
+        <Section name="PaymentInfo.Card.Title">
+          <form class="popup-payment-input-fields">
+            {cardInputField.container}
+            <div class="input-fields-row">
+              {expireInputField.container}
+              {cvcInputField.container}
+            </div>
+            {nameInputField?.container}
+            {/* the save row belongs to the last section on screen, and rides the fields' gap */}
+            {!hasBilling && <SaveRow />}
+          </form>
+        </Section>
+        <Show when={hasBilling}>
+          <Section name="PaymentInfo.Billing.Title">
+            <div class="popup-payment-input-fields">
+              {[countryInputField, postcodeInputField].filter(Boolean).map((i) => i.container)}
+              <SaveRow />
+            </div>
+          </Section>
+        </Show>
+      </>
+    );
 
-    this.scrollable.append(...[cardSection, billingSection].filter(Boolean).map((s) => s.container));
+    onPay = async() => {
+      const data: PaymentCardDetails = {
+        cardNumber: cardInputField.value,
+        expiryFull: expireInputField.value,
+        expiryMonth: expireInputField.value.split('/')[0],
+        expiryYear: expireInputField.value.split('/')[1],
+        cvc: cvcInputField.value,
 
-    const payButton = PaymentButton({
-      key: 'PaymentInfo.Done',
-      onClick: async() => {
-        const data: PaymentCardDetails = {
-          cardNumber: cardInputField.value,
-          expiryFull: expireInputField.value,
-          expiryMonth: expireInputField.value.split('/')[0],
-          expiryYear: expireInputField.value.split('/')[1],
-          cvc: cvcInputField.value,
+        cardholderName: nameInputField?.value,
+        country: countryInputField?.value,
+        zip: postcodeInputField?.value,
 
-          cardholderName: nameInputField?.value,
-          country: countryInputField?.value,
-          zip: postcodeInputField?.value,
+        save: savePaymentInformation
+      };
 
-          save: savePaymentInformation
+      const nativeProvider: PaymentsNativeProvider = paymentForm.native_provider as any;
+      let out: PaymentsCredentialsToken;
+      if(nativeProvider === 'stripe') {
+        const url = new URL('https://api.stripe.com/v1/tokens');
+        url.search = new URLSearchParams({
+          'card[number]': data.cardNumber,
+          'card[exp_month]': data.expiryMonth,
+          'card[exp_year]': data.expiryYear,
+          'card[cvc]': data.cvc,
+          'card[address_zip]': data.zip,
+          'card[address_country]': data.country,
+          'card[name]': data.cardholderName
+        }).toString();
+
+        const response = await fetch(url.toString(), {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Bearer ${nativeParams.publishable_key}`
+          }
+        });
+
+        out = await response.json();
+      } else if(nativeProvider === 'smartglocal') {
+        const params = {
+          card: {
+            number: data.cardNumber.replace(/[^\d]+/g, ''),
+            expiration_month: data.expiryMonth,
+            expiration_year: data.expiryYear,
+            security_code: data.cvc.replace(/[^\d]+/g, '')
+          }
         };
 
-        const nativeProvider: PaymentsNativeProvider = this.paymentForm.native_provider as any;
-        let out: PaymentsCredentialsToken;
-        if(nativeProvider === 'stripe') {
-          const url = new URL('https://api.stripe.com/v1/tokens');
-          url.search = new URLSearchParams({
-            'card[number]': data.cardNumber,
-            'card[exp_month]': data.expiryMonth,
-            'card[exp_year]': data.expiryYear,
-            'card[cvc]': data.cvc,
-            'card[address_zip]': data.zip,
-            'card[address_country]': data.country,
-            'card[name]': data.cardholderName
-          }).toString();
+        let url = /* DEBUG_PAYMENT_SMART_GLOCAL */false ?
+          'https://tgb-playground.smart-glocal.com/cds/v1/tokenize/card' :
+          'https://tgb.smart-glocal.com/cds/v1/tokenize/card';
 
-          const response = await fetch(url.toString(), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Authorization': `Bearer ${nativeParams.publishable_key}`
-            }
-          });
-
-          out = await response.json();
-        } else if(nativeProvider === 'smartglocal') {
-          const params = {
-            card: {
-              number: data.cardNumber.replace(/[^\d]+/g, ''),
-              expiration_month: data.expiryMonth,
-              expiration_year: data.expiryYear,
-              security_code: data.cvc.replace(/[^\d]+/g, '')
-            }
-          };
-
-          let url = /* DEBUG_PAYMENT_SMART_GLOCAL */false ?
-            'https://tgb-playground.smart-glocal.com/cds/v1/tokenize/card' :
-            'https://tgb.smart-glocal.com/cds/v1/tokenize/card';
-
-          const nativeTokenizeUrl = nativeParams.tokenize_url;
-          if(typeof(nativeTokenizeUrl) === 'string' &&
-              nativeTokenizeUrl.startsWith('https://') &&
-              nativeTokenizeUrl.endsWith('.smart-glocal.com/cds/v1/tokenize/card')) {
-            url = nativeTokenizeUrl;
-          }
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'X-PUBLIC-TOKEN': nativeParams.public_token
-            },
-            body: JSON.stringify(params)
-          });
-
-          const json: { // smartglocal
-            data: {
-              info: {
-                card_network: string,
-                card_type: string,
-                masked_card_number: string
-              },
-              token: string
-            },
-            status: 'ok'
-          } = await response.json();
-
-          out = {type: 'card', token: json.data.token}
+        const nativeTokenizeUrl = nativeParams.tokenize_url;
+        if(typeof(nativeTokenizeUrl) === 'string' &&
+            nativeTokenizeUrl.startsWith('https://') &&
+            nativeTokenizeUrl.endsWith('.smart-glocal.com/cds/v1/tokenize/card')) {
+          url = nativeTokenizeUrl;
         }
 
-        this.dispatchEvent('finish', {token: out, card: data});
-        this.hide();
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-PUBLIC-TOKEN': nativeParams.public_token
+          },
+          body: JSON.stringify(params)
+        });
+
+        const json: { // smartglocal
+          data: {
+            info: {
+              card_network: string,
+              card_type: string,
+              masked_card_number: string
+            },
+            token: string
+          },
+          status: 'ok'
+        } = await response.json();
+
+        out = {type: 'card', token: json.data.token}
       }
-    });
+
+      options.onFinish?.({token: out, card: data});
+    };
 
     const inputFields = ([
       cardInputField,
@@ -562,8 +549,7 @@ export default class PopupPaymentCard extends PopupElement<{
       postcodeInputField
     ] as const).filter(Boolean);
     handleInputFieldsOnChange(inputFields, (valid) => {
-      payButton.disabled = !valid;
-      // payButton.classList.toggle('btn-disabled', !valid);
+      setPayDisabled(!valid);
     });
 
     if(savedCard) {
@@ -575,12 +561,45 @@ export default class PopupPaymentCard extends PopupElement<{
       postcodeInputField && (postcodeInputField.value = savedCard.zip);
     }
 
-    this.body.append(this.btnConfirmOnEnter = payButton);
-
-    this.show();
+    setShow(true);
 
     if(!cardInputField.validateNew(undefined, undefined, true)) {
       placeCaretAtEnd(cardInputField.input);
     }
   }
+
+  createPopup(() => {
+    onMount(() => telegramWebView?.onMount());
+    onCleanup(() => telegramWebView?.destroy());
+
+    return (
+      <PopupElement
+        class="popup-payment popup-payment-card"
+        closable
+        show={show()}
+      >
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title title="PaymentCardInfo" />
+        </PopupElement.Header>
+        {isNative ?
+          <PopupElement.Scrollable>
+            <PopupElement.Body><Dynamic component={Content} /></PopupElement.Body>
+          </PopupElement.Scrollable> :
+          <PopupElement.Body><Dynamic component={Content} /></PopupElement.Body>}
+        {isNative && (
+          <PopupElement.Footer>
+            <PopupElement.FooterButton
+              confirm
+              preloader
+              pendingLangKey="PleaseWait"
+              disabled={payDisabled()}
+              langKey="PaymentInfo.Done"
+              callback={onPay}
+            />
+          </PopupElement.Footer>
+        )}
+      </PopupElement>
+    );
+  });
 }

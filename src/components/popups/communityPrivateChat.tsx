@@ -57,7 +57,7 @@ export default function showCommunityPrivateChat(options: {
         <PopupElement.CloseButton />
       </PopupElement.Header>
       <PopupElement.Body>
-        <MediaHeader class={styles.mediaHeader} marginBottom>
+        <MediaHeader marginTop marginBottom>
           <MediaHeader.Sticker
             size={100}
             element={(
@@ -72,7 +72,7 @@ export default function showCommunityPrivateChat(options: {
             <PeerTitleTsx peerId={options.peerId} />
           </MediaHeader.Title>
           <Show when={options.memberCount !== undefined}>
-            <MediaHeader.Subtitle secondary>
+            <MediaHeader.Subtitle color="secondary">
               {i18n(kind() === 'channel' ? 'Subscribers' : 'Members', [
                 options.memberCount
               ])}

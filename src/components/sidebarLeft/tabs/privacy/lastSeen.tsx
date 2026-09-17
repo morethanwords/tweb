@@ -3,7 +3,7 @@ import PrivacySection from '@components/privacySection';
 import {LangPackKey, i18n} from '@lib/langPack';
 import Button from '@components/buttonTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
@@ -79,7 +79,7 @@ const PrivacyLastSeen: Component = () => {
         <Button
           primaryTransparent
           text={isPremium() ? 'PrivacyLastSeenPremiumForPremium' : 'PrivacyLastSeenPremium'}
-          onClick={() => PopupPremium.show()}
+          onClick={() => showPremiumPopup()}
         />
       </Section>
     </>

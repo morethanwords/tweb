@@ -2,10 +2,10 @@ import tsNow from '@helpers/tsNow';
 import {LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import RadioFormTsx from '@components/radioFormTsx';
-import PopupPeer from '@components/popups/peer';
-import createCommunityAvatarElement
-from '@components/communities/communityAvatarElement';
+import showPeerPopup from '@components/popups/peer';
+import createCommunityAvatarElement from '@components/communities/communityAvatarElement';
 import {createComponent} from 'solid-js';
+import rootScope from '@lib/rootScope';
 
 const ONE_HOUR = 3600;
 const times: {value: number | string, langPackKey: LangPackKey, checked?: boolean}[] = [{
@@ -29,56 +29,49 @@ const times: {value: number | string, langPackKey: LangPackKey, checked?: boolea
   checked: true
 }];
 
-export default class PopupMute extends PopupPeer {
-  constructor(
-    peerId?: PeerId,
-    threadId?: number,
-    communityId?: ChatId
-  ) {
-    // a Community can't go through `peerId`: its avatar is the decorated one, built here
-    // so the popup looks like every other mute popup instead of a bare title
-    const communityAvatar = communityId ?
-      createCommunityAvatarElement(communityId, 32) :
-      undefined;
-    super('popup-mute', {
-      peerId: communityId ? undefined : peerId,
-      avatar: communityAvatar?.element,
-      titleLangKey: 'Notifications',
-      buttons: [{
-        langKey: 'ChatList.Context.Mute',
-        callback: () => {
-          const muteUntil = time === -1 ?
-            MUTE_UNTIL :
-            tsNow(true) + time;
-          if(communityId) {
-            this.managers.appCommunitiesManager.muteCommunity(
-              communityId,
-              muteUntil
-            );
-          } else {
-            this.managers.appMessagesManager.mutePeer({
-              peerId,
-              muteUntil,
-              threadId
-            });
-          }
+export default function showMutePopup(
+  peerId?: PeerId,
+  threadId?: number,
+  communityId?: ChatId
+) {
+  // a Community can't go through `peerId`: its avatar is the decorated one, built here
+  // so the popup looks like every other mute popup instead of a bare title
+  const communityAvatar = communityId ?
+    createCommunityAvatarElement(communityId, 32) :
+    undefined;
+
+  let time = +times.find((option) => option.checked).value;
+
+  showPeerPopup('popup-mute', {
+    peerId: communityId ? undefined : peerId,
+    avatar: communityAvatar?.element,
+    titleLangKey: 'Notifications',
+    buttons: [{
+      langKey: 'ChatList.Context.Mute',
+      callback: () => {
+        const muteUntil = time === -1 ?
+          MUTE_UNTIL :
+          tsNow(true) + time;
+        if(communityId) {
+          rootScope.managers.appCommunitiesManager.muteCommunity(
+            communityId,
+            muteUntil
+          );
+        } else {
+          rootScope.managers.appMessagesManager.mutePeer({
+            peerId,
+            muteUntil,
+            threadId
+          });
         }
-      }],
-      body: true
-    });
-
-    if(communityAvatar) {
-      this.addEventListener('closeAfterTimeout', communityAvatar.dispose);
-    }
-
-    let time = +times.find((option) => option.checked).value;
-    this.appendSolid(() => createComponent(RadioFormTsx<number | string>, {
+      }
+    }],
+    content: createComponent(RadioFormTsx<number | string>, {
       values: times,
       onChange: (value) => {
         time = +value;
       }
-    }));
-
-    this.show();
-  }
+    }),
+    onCloseAfterTimeout: communityAvatar?.dispose
+  });
 }

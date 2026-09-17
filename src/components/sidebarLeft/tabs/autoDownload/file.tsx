@@ -68,8 +68,6 @@ export default autoDownloadTab((tab) => {
     setAppSettings('autoDownloadNew', 'file_size_max', sizeMax);
   }, 200, false, true);
 
-  const section = autoDownloadPeerTypeSection('file', 'AutoDownloadFilesTitle', tab.middlewareHelper.get());
-
   const MIN = 512 * 1024;
   // const MAX = 2 * 1024 * 1024 * 1024;
   const MAX = 20 * 1024 * 1024;
@@ -92,7 +90,10 @@ export default autoDownloadTab((tab) => {
 
   range.valueContainer.append(upTo.element);
 
-  section.content.append(range.container);
-
-  tab.scrollable.append(section.container);
+  tab.scrollable.append(autoDownloadPeerTypeSection(
+    'file',
+    'AutoDownloadFilesTitle',
+    tab.middlewareHelper.get(),
+    range.container
+  ));
 });

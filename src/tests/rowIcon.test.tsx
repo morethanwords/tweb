@@ -143,6 +143,24 @@ describe('Row.RadioField', () => {
     expect(row.querySelector(':scope > [data-row-action]')).not.toBe(null);
   });
 
+  test('leaves out an empty Row.RightContent so it claims no grid column', () => {
+    const mount = document.createElement('div');
+    document.body.append(mount);
+
+    dispose = render(() => (
+      <Row>
+        <Row.Title>Choice</Row.Title>
+        <Row.Subtitle>Description</Row.Subtitle>
+        <Row.RightContent>{false}</Row.RightContent>
+      </Row>
+    ), mount);
+
+    const row = mount.querySelector('.row');
+
+    expect(row.querySelector('.row-right')).toBe(null);
+    expect(row.classList.contains('row-grid')).toBe(false);
+  });
+
   test('keeps a regular radio at the row root with left padding', () => {
     const mount = document.createElement('div');
     document.body.append(mount);

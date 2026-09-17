@@ -1,6 +1,5 @@
-import PopupElement from '@components/popups';
 import showPickUserPopup from '@components/popups/pickUser';
-import PopupSendGift from '@components/popups/sendGift';
+import showSendGiftPopup from '@components/popups/sendGift';
 
 type PickUserOptions = Parameters<typeof showPickUserPopup>[0];
 
@@ -17,7 +16,7 @@ export default function showSendGiftPicker(options?: Partial<PickUserOptions>) {
     meAsSaved: false,
     filterPeerTypeBy: ['isRegularUser', 'isBroadcast'],
     onSelect: ([{peerId}]) => {
-      PopupElement.createPopup(PopupSendGift, {peerId});
+      showSendGiftPopup({peerId});
     },
     ...options
   });

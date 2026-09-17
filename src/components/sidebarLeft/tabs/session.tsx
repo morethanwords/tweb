@@ -90,7 +90,7 @@ export default function SessionTab() {
         <MediaHeader.Title class={styles.deviceName}>
           {authorization().device_model || application()}
         </MediaHeader.Title>
-        <MediaHeader.Subtitle secondary>
+        <MediaHeader.Subtitle color="secondary">
           {isCurrent() ?
             i18n('Online') :
             formatDate(

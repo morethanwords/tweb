@@ -8,10 +8,6 @@
   position: absolute;
 }
 
-.mediaHeader {
-  padding-top: 1.5rem;
-}
-
 .info {
   @include text-overflow(false);
 

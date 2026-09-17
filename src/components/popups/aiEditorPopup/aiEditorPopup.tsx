@@ -52,7 +52,7 @@ const AiEditorPopup = (props: AiEditorPopupProps) => {
       containerClass={styles.container}
     >
       <PopupElement.Header class={styles.header}>
-        <PopupElement.CloseButton class={styles.closeButton} />
+        <PopupElement.CloseButton />
         <PopupElement.Title>
           <I18nTsx key='AiEditor.Title' />
         </PopupElement.Title>

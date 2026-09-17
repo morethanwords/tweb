@@ -46,8 +46,7 @@ import {unwrap} from 'solid-js/store';
 import callbackify from '@helpers/callbackify';
 import useIsNightTheme from '@hooks/useIsNightTheme';
 import useStars, {setReservedStars} from '@stores/stars';
-import PopupElement from '@components/popups';
-import PopupStars from '@components/popups/stars';
+import showStarsPopup from '@components/popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTION_SENT_ABORT_REASON, PENDING_PAID_REACTIONS} from '@components/chat/reactions';
 import showUndoablePaidTooltip, {paidReactionLangKeys} from '@components/chat/undoablePaidTooltip';
 import namedPromises from '@helpers/namedPromises';
@@ -1491,7 +1490,7 @@ export default class Chat extends EventListenerBase<{
           pending.abortController.abort();
         }
 
-        PopupElement.createPopup(PopupStars, {
+        showStarsPopup({
           itemPrice: count,
           onTopup: () => {
             this.sendReaction(options);
@@ -1611,21 +1610,21 @@ export default class Chat extends EventListenerBase<{
 
   public async openAutoDeleteMessagesCustomTimePopup() {
     const {
-      popup: {default: AutoDeleteMessagesCustomTimePopup},
+      popup: {default: showAutoDeleteMessagesCustomTimePopup},
       autoDeletePeriod
     } = await namedPromises({
       popup: import('../sidebarLeft/tabs/autoDeleteMessages/customTimePopup'),
       autoDeletePeriod: this.getAutoDeletePeriod().then(ackedResult => ackedResult.result)
     });
 
-    new AutoDeleteMessagesCustomTimePopup({
+    showAutoDeleteMessagesCustomTimePopup({
       HotReloadGuard: SolidJSHotReloadGuardProvider,
       descriptionLangKey: this.isBroadcast ? 'AutoDeleteMessages.InfoChannel' : 'AutoDeleteMessages.InfoChat',
       period: autoDeletePeriod,
       onFinish: (period) => {
         this.managers.appPrivacyManager.setAutoDeletePeriodFor(this.peerId, period);
       }
-    }).show();
+    });
   }
 
   public canManageAutoDelete = async() => {

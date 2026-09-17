@@ -17,7 +17,6 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import Button from '@components/buttonTsx';
 import classNames from '@helpers/string/classNames';
 import Row from '@components/rowTsx';
-import Scrollable from '@components/scrollable2';
 
 const STICKER_EMOJI = '👮‍♀️';
 
@@ -314,11 +313,11 @@ export default function showReportAdPopup(
           />
           <PopupElement.Title>{title}</PopupElement.Title>
         </PopupElement.Header>
-        <PopupElement.Body>
-          <Scrollable>
+        <PopupElement.Scrollable>
+          <PopupElement.Body>
             {body}
-          </Scrollable>
-        </PopupElement.Body>
+          </PopupElement.Body>
+        </PopupElement.Scrollable>
       </>
     );
   }

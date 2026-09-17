@@ -32,7 +32,7 @@ export default function Table(props: {
     >
       <For each={props.content}>
         {([key, value]) => (
-          <tr class={/* @once */ styles.row}>
+          <tr>
             <td class={classNames(keyCellClass, props.cellClass, props.keyCellClass)}>
               {typeof key === 'string' ? i18n(key as LangPackKey) : key}
             </td>
@@ -45,7 +45,7 @@ export default function Table(props: {
         )}
       </For>
       {props.footer && (
-        <tr class={/* @once */ styles.row}>
+        <tr>
           <td class={props.footerClass ?? classNames(styles.cell, props.cellClass)} colspan={2}>
             {props.footer}
           </td>

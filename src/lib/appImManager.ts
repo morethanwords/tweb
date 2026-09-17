@@ -11,7 +11,7 @@ import {logger, LogTypes} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import Chat, {ChatSearchKeys} from '@components/chat/chat';
 import {ChatType} from '@components/chat/chatType';
-import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
+import showNewMediaPopup, {canSendNewMedia, getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import SetTransition from '@components/singleTransition';
@@ -32,7 +32,6 @@ import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import replaceContent from '@helpers/dom/replaceContent';
 import whichChild from '@helpers/dom/whichChild';
-import PopupElement from '@components/popups';
 import singleInstance from '@lib/singleInstance';
 import {hideToast, toast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
@@ -53,7 +52,7 @@ import {Modify, SendMessageEmojiInteractionData} from '@types';
 import htmlToSpan from '@helpers/dom/htmlToSpan';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
-import PopupCall from '@components/call';
+import showCallPopup from '@components/call';
 import copy from '@helpers/object/copy';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import appChatBackground, {AppChatBackground} from '@components/chat/bubbles/chatBackground';
@@ -105,7 +104,7 @@ import partition from '@helpers/array/partition';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '@helpers/liteMode';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
-import PopupGiftPremium from '@components/popups/giftPremium';
+import showGiftPremiumPopup from '@components/popups/giftPremium';
 import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {INTERNAL_LINK_TYPE} from '@lib/internalLink';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
@@ -122,7 +121,7 @@ import {findUpAvatar} from '@components/avatarNew';
 import safePlay from '@helpers/dom/safePlay';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
-import PopupWebApp from '@components/popups/webApp';
+import showWebAppPopup from '@components/popups/webApp';
 import {setPeerColors} from '@appManagers/utils/peers/getPeerColorById';
 import {savedReactionTags} from '@components/chat/reactions';
 import {setAppState, useAppState} from '@stores/appState';
@@ -134,7 +133,7 @@ import {splitFullMid} from '@components/chat/bubbles';
 import getSelectedNodes from '@helpers/dom/getSelectedNodes';
 import showChatToast from '@components/chat/chatToast';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import {openWebAppInAppBrowser, openGameInAppBrowser} from '@components/browser';
 import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
@@ -311,7 +310,7 @@ export class AppImManager extends EventListenerBase<{
         langPackArguments: [
           anchorCallback(() => {
             hideToast();
-            PopupPremium.show({feature: 'double_limits'});
+            showPremiumPopup({feature: 'double_limits'});
           }),
           limitPremium
         ]
@@ -579,7 +578,7 @@ export class AppImManager extends EventListenerBase<{
         textElement: i18n(isUpload ? 'Chat.UploadLimit.Text' : 'Chat.DownloadLimit.Text', [
           anchorCallback(() => {
             hide();
-            PopupPremium.show({feature: 'faster_download'});
+            showPremiumPopup({feature: 'faster_download'});
           }),
           increaseTimes
         ]),
@@ -860,8 +859,6 @@ export class AppImManager extends EventListenerBase<{
         // return;
         // }
 
-        const popup = PopupElement.createPopup(PopupCall, instance);
-
         instance.addEventListener('acceptCallOverride', (accept) => {
           return this.callTransitions.run(async() => {
             try {
@@ -876,16 +873,16 @@ export class AppImManager extends EventListenerBase<{
           });
         });
 
-        popup.addEventListener('close', () => {
-          const currentCall = callsController.currentCall;
-          if(currentCall && currentCall !== instance && !instance.wasTryingToJoin) {
-            void instance.hangUp('phoneCallDiscardReasonBusy').catch((err) => {
-              this.log.error('busy discard after superseded P2P popup close failed', err);
-            });
+        showCallPopup(instance, {
+          onClose: () => {
+            const currentCall = callsController.currentCall;
+            if(currentCall && currentCall !== instance && !instance.wasTryingToJoin) {
+              void instance.hangUp('phoneCallDiscardReasonBusy').catch((err) => {
+                this.log.error('busy discard after superseded P2P popup close failed', err);
+              });
+            }
           }
-        }, {once: true});
-
-        popup.show();
+        });
       });
 
       callsController.addEventListener('incompatible', (userId) => {
@@ -911,19 +908,17 @@ export class AppImManager extends EventListenerBase<{
       // invitation keeps ringing in the registry until it is answered, revoked
       // or superseded, exactly like a 1-on-1 popup that gets closed.
       conferenceInvitesController.addEventListener('instance', (instance) => {
-        const popup = PopupElement.createPopup(PopupCall, instance);
-
         // Unlike a 1-on-1 call, an invitation has nowhere else to live once its
         // panel is gone — no top bar entry to come back to — so closing the
         // panel is the same answer the Decline button gives. Declining an
         // invitation that was already accepted or revoked is a no-op.
-        popup.addEventListener('close', () => {
-          void instance.hangUp().catch((err) => {
-            this.log.error('declining a conference invitation from its popup failed', err);
-          });
-        }, {once: true});
-
-        popup.show();
+        showCallPopup(instance, {
+          onClose: () => {
+            void instance.hangUp().catch((err) => {
+              this.log.error('declining a conference invitation from its popup failed', err);
+            });
+          }
+        });
       });
     }
 
@@ -1013,7 +1008,7 @@ export class AppImManager extends EventListenerBase<{
       showForwardPopup(undefined, async(peerId, threadId) => {
         await this.setPeer({peerId, threadId});
         const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(file)) || isConvertibleMov(file));
-        PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
+        showNewMediaPopup(this.chat, share.files, foundMedia ? 'media' : 'document');
       });
       return;
     }
@@ -1292,7 +1287,7 @@ export class AppImManager extends EventListenerBase<{
       }
 
       if(!IS_WEB_APP_BROWSER_SUPPORTED || options.forcePopup) {
-        PopupElement.createPopup(PopupWebApp, webAppOptions);
+        showWebAppPopup(webAppOptions);
       } else {
         await openWebAppInAppBrowser(webAppOptions);
       }
@@ -2822,7 +2817,7 @@ export class AppImManager extends EventListenerBase<{
         }
       }
 
-      const rights = await PopupNewMedia.canSend({...this.chat.getMessageSendingParams(), onlyVisible: true});
+      const rights = await canSendNewMedia({...this.chat.getMessageSendingParams(), onlyVisible: true});
 
       const _dropsContainer = newMediaPopup ? mediaDropsContainer : dropsContainer;
       const _drops = newMediaPopup ? mediaDrops : drops;
@@ -3073,8 +3068,7 @@ export class AppImManager extends EventListenerBase<{
       chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
 
       if(chatInput.willAttachType) {
-        PopupElement.createPopup(
-          PopupNewMedia,
+        showNewMediaPopup(
           this.chat,
           [file],
           chatInput.willAttachType,
@@ -3088,8 +3082,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     chatInput.willAttachType = attachType || ((MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(files[0])) || isConvertibleMov(files[0])) ? 'media' : 'document');
-    PopupElement.createPopup(
-      PopupNewMedia,
+    showNewMediaPopup(
       this.chat,
       files,
       chatInput.willAttachType,
@@ -3780,8 +3773,7 @@ export class AppImManager extends EventListenerBase<{
 
   public giftPremium(peerId: PeerId) {
     this.managers.appPaymentsManager.getPremiumGiftCodeOptions().then((giftCodeOptions) => {
-      PopupElement.createPopup(
-        PopupGiftPremium,
+      showGiftPremiumPopup(
         peerId,
         giftCodeOptions.filter((option) => option.users === 1 && option.currency !== STARS_CURRENCY)
       );

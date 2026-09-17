@@ -321,12 +321,14 @@ Row.Title = (props: {
 
 Row.Midtitle = (props: {
   children?: JSX.Element,
+  midtitleRight?: JSX.Element,
   ref?: Ref<HTMLDivElement>
 }) => {
   return useContext(RowContext).register('midtitle', (
     <Row.Row
       class="midtitle"
       left={props.children}
+      right={props.midtitleRight}
       leftRef={props.ref}
     />
   ));
@@ -353,7 +355,8 @@ Row.Subtitle = (props: {
 
 Row.Icon = (props: {
   icon: Icon,
-  class?: string
+  class?: string,
+  noBackground?: boolean
 }) => {
   return useContext(RowContext).register('icon', (
     <span
@@ -362,7 +365,7 @@ Row.Icon = (props: {
         'row-icon-colored',
         props.class
       )}
-      style={{
+      style={!props.noBackground && {
         'background-image': getRowIconBackgroundImage(props.icon)
       }}
     >
@@ -388,9 +391,14 @@ Row.RightContent = (inProps: JSX.HTMLAttributes<HTMLDivElement> | ExternalRowEle
     );
   }
 
-  const [props, restProps] = splitProps(inProps, ['class']);
+  const [props, restProps] = splitProps(inProps, ['class', 'children']);
+  const resolved = children(() => props.children);
+  // an empty right column still claims its grid track and the gap before it, so when there is
+  // nothing to put there the row is left without one
   return context.register('rightContent', (
-    <div class={classNames('row-right', props.class)} {...restProps} />
+    <Show when={!!resolved()}>
+      <div class={classNames('row-right', props.class)} {...restProps}>{resolved()}</div>
+    </Show>
   ));
 };
 

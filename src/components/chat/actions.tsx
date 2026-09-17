@@ -13,9 +13,8 @@ import ListenerSetter from '@helpers/listenerSetter';
 import Icon from '@components/icon';
 import PeerTitle from '@components/peerTitle';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import PopupElement from '@components/popups';
-import PopupPeer from '@components/popups/peer';
-import PopupPremium from '@components/popups/premium';
+import showPeerPopup from '@components/popups/peer';
+import showPremiumPopup from '@components/popups/premium';
 import {toastNew} from '@components/toast';
 import formatUserPhone from '@components/wrappers/formatUserPhone';
 import {formatFullSentTime} from '@helpers/date';
@@ -146,7 +145,7 @@ function ActionsPlateBody(props: {
 
               const link = document.createElement('a');
               link.append(i18n('BoostingPremium'));
-              attachClickEvent(link, () => PopupPremium.show({feature: 'emoji_status'}));
+              attachClickEvent(link, () => showPremiumPopup({feature: 'emoji_status'}));
 
               const text = i18n('ReportSpamUserEmojiStatusHint', [emoji, link]);
               text.classList.add('pinned-actions-text');
@@ -293,7 +292,7 @@ export default function createChatActionsPlate(
   };
 
   const showRequestChatInfoPopup = (info: RequestChatInfo) => {
-    PopupElement.createPopup(PopupPeer, 'popup-confirmation', {
+    showPeerPopup('popup-confirmation', {
       titleLangKey: info.isBroadcast ? 'ChatWithAdminChannelTitle' : 'ChatWithAdminGroupTitle',
       descriptionLangKey: 'ChatWithAdminMessage',
       descriptionLangArgs: [wrapEmojiText(info.title), formatFullSentTime(info.date, true, true)],
@@ -306,7 +305,7 @@ export default function createChatActionsPlate(
           managers.appProfileManager.hidePeerSettingsBar(info.peerId);
         }
       }]
-    }).show();
+    });
   };
 
   const onClose = () => {

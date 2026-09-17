@@ -105,8 +105,6 @@ function BotConnectionReviewSuggestion() {
 }
 
 export function renderPendingSuggestion(toElement: HTMLElement) {
-  toElement.classList.add(styles.container);
-
   render(() => {
     const birthdaySuggestions = createBirthdaySuggestions();
     const suggestions: Record<PendingSuggestionType, PendingSuggestionController> = {

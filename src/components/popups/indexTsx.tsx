@@ -16,6 +16,7 @@ import {getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import Button from '@components/buttonTsx';
+import {putPreloader} from '@components/putPreloader';
 import {doubleRaf} from '@helpers/schedulers';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -74,6 +75,12 @@ export type PopupContextValue = {
   setScrollableRef: (ref: ScrollableContextValue) => void,
   hasFloatingHeader: boolean,
   setHasFloatingHeader: (value: boolean) => void,
+  /** A footer that sits in the flow below the content, so it draws the line against it itself. */
+  hasFlowFooter: boolean,
+  setHasFlowFooter: (value: boolean) => void,
+  /** A row of buttons there instead, which does not shade itself — the scroll draws that line. */
+  hasFlowButtons: boolean,
+  setHasFlowButtons: (value: boolean) => void,
   withoutOverlay: boolean,
   night: boolean,
   confirmShortcutIsSendShortcut: boolean,
@@ -82,6 +89,8 @@ export type PopupContextValue = {
   isConfirmationNeededOnClose: PopupOptions['isConfirmationNeededOnClose'],
   closable: boolean,
   element: HTMLElement | undefined,
+  /** `.popup-container` — what an imperative helper wants to render into or measure. */
+  container: HTMLElement | undefined,
   kind: symbol | undefined,
   old?: boolean
 };
@@ -133,6 +142,8 @@ const PopupElement = (props: {
   const [navigationItem, setNavigationItem] = createSignal<NavigationItem | undefined>();
   const [scrollableRef, setScrollableRef] = createSignal<ScrollableContextValue | undefined>();
   const [hasFloatingHeader, setHasFloatingHeader] = createSignal(false);
+  const [hasFlowFooter, setHasFlowFooter] = createSignal(false);
+  const [hasFlowButtons, setHasFlowButtons] = createSignal(false);
   const controllerContext = useContext(PopupControllerContext);
 
   const managers = props.managers || PopupElement.MANAGERS;
@@ -269,6 +280,7 @@ const PopupElement = (props: {
   const [destroyed, setDestroyed] = createSignal(false);
   const [hiding, setHiding] = createSignal(false);
   const [popupElement, setPopupElement] = createSignal<HTMLElement>();
+  const [containerElement, setContainerElement] = createSignal<HTMLElement>();
   const [btnConfirmOnEnter, setBtnConfirmOnEnter] = createSignal<HTMLElement>();
 
   if(props.btnConfirmOnEnter) {
@@ -294,6 +306,10 @@ const PopupElement = (props: {
     get scrollableRef() { return scrollableRef(); },
     setScrollableRef,
     get hasFloatingHeader() { return hasFloatingHeader(); },
+    get hasFlowFooter() { return hasFlowFooter(); },
+    setHasFlowFooter,
+    get hasFlowButtons() { return hasFlowButtons(); },
+    setHasFlowButtons,
     setHasFloatingHeader,
     // get scrollable() { return scrollable(); },
     withoutOverlay,
@@ -304,6 +320,7 @@ const PopupElement = (props: {
     isConfirmationNeededOnClose,
     closable: props.closable || false,
     get element() { return popupElement(); },
+    get container() { return containerElement(); },
     kind: props.kind,
     old: props.old
   };
@@ -335,7 +352,22 @@ const PopupElement = (props: {
     doubleRaf().then(show);
   }
 
+  // The popup is laid out while it is still hidden, so anything that settles once it is on
+  // screen leaves the scroll's idea of where its ends are a couple of pixels stale — and the
+  // footer's line against the content with it.
+  createEffect(() => {
+    const scrollable = scrollableRef();
+    if(!shown() || !scrollable) {
+      return;
+    }
+
+    doubleRaf().then(() => !destroyed() && scrollable.onSizeChange());
+  });
+
   let mouseDownTarget: Element;
+
+  // the container's own ref is the context's, so a caller's ref is called from ours
+  const {ref: containerRef, ...containerPropsWithoutRef} = props.containerProps || {};
 
   return (
     <PopupContext.Provider value={value}>
@@ -374,7 +406,11 @@ const PopupElement = (props: {
           })}
         >
           <div
-            {...(props.containerProps || {})}
+            {...containerPropsWithoutRef}
+            ref={(element) => {
+              setContainerElement(element);
+              (containerRef as (element: HTMLDivElement) => void)?.(element);
+            }}
             class={classNames(
               'popup-container z-depth-1',
               props.containerClass,
@@ -396,7 +432,9 @@ PopupElement.MANAGERS = undefined as any;
 PopupElement.Header = (props: {
   class?: string,
   children?: JSX.Element,
-  floating?: boolean
+  floating?: boolean,
+  /** For a popup whose content fills the header itself (a Mini App's own chrome). */
+  ref?: (element: HTMLDivElement) => void
 }) => {
   const context = useContext(PopupContext);
 
@@ -408,7 +446,7 @@ PopupElement.Header = (props: {
   const isScrolledToStart = () => context.scrollableRef?.isScrolledToStart ?? true;
 
   return context.register('header', (
-    <div class={classNames(
+    <div ref={props.ref} class={classNames(
       'popup-header',
       props.class,
       props.floating && 'is-floating',
@@ -476,19 +514,37 @@ PopupElement.CloseButton = (props: {
 };
 
 PopupElement.Body = (props: {
-  children: JSX.Element,
-  class?: string
+  children?: JSX.Element,
+  class?: string,
+  /** Same as the header's — for content that is appended to the body rather than rendered in it. */
+  ref?: (element: HTMLDivElement) => void
 }) => {
   return useContext(PopupContext).register('body', (
-    <div class={classNames('popup-body', props.class)}>
+    <div ref={props.ref} class={classNames('popup-body', props.class)}>
       {props.children}
     </div>
   ));
 };
 
+/**
+ * The popup's scrolling area. Where a flow footer follows it, the scroll's clip box reaches a
+ * few pixels into the footer's padding, so a card that ends at the very bottom can still paint
+ * its shadow there — see `$popup-scroll-bleed`.
+ */
 PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
   const context = useContext(PopupContext);
-  return context.register('body', (
+
+  // The borders belong to the junctions the scroll has to draw itself. Above: a header that
+  // stays in place — a floating one fades in its own background instead. Below: a row of
+  // buttons, since a footer shades itself while content runs behind its edge, and a border
+  // there would land inside its padding.
+  const borders = (): Parameters<typeof Scrollable>[0]['withBorders'] => {
+    const top = !!context.store.header && !context.hasFloatingHeader;
+    const bottom = context.hasFlowButtons;
+    return top && bottom ? 'both' : top ? 'top' : bottom ? 'bottom' : undefined;
+  };
+
+  return (
     <Scrollable
       {...props}
       // after the spread: a caller passing its own contextRef must not unregister the popup's
@@ -496,13 +552,14 @@ PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
         context.setScrollableRef(ref);
         props.contextRef?.(ref);
       }}
-      trackEnds={props.trackEnds || context.hasFloatingHeader}
-      class={classNames(
-        'popup-scrollable',
-        props.class
-      )}
-    />
-  ));
+      // the footer reads `scrolled-end` to know whether anything is behind it
+      trackEnds={props.trackEnds || context.hasFloatingHeader || context.hasFlowFooter}
+      withBorders={props.withBorders ?? borders()}
+      class={classNames('popup-scrollable', props.class)}
+    >
+      {props.children}
+    </Scrollable>
+  );
 };
 
 PopupElement.Footer = (props: {
@@ -511,12 +568,26 @@ PopupElement.Footer = (props: {
   floating?: boolean,
   sticky?: boolean
 }) => {
-  return useContext(PopupContext).register('footer', (
+  const context = useContext(PopupContext);
+
+  // a footer in the flow is what the scroll hands its bottom edge to; a floating one has the
+  // content pass under it instead and stays where it is written
+  const inFlow = () => !props.floating && !props.sticky;
+  createRenderEffect(() => context.setHasFlowFooter(inFlow()));
+  onCleanup(() => context.setHasFlowFooter(false));
+
+  // A scroll that cannot move (or has not registered yet) reads as "already at the end": with
+  // nothing running behind the footer it stays clear, and the content's own shadows show through.
+  const isScrolledToEnd = () => context.scrollableRef?.isScrolledToEnd ?? true;
+
+  return context.register('footer', (
     <div
       class={classNames(
         'popup-footer popup-footer-abitlarger',
         (props.floating || props.sticky) && 'popup-footer-floating',
         props.sticky && 'popup-footer-sticky',
+        inFlow() && 'popup-footer-shaded',
+        isScrolledToEnd() && 'scrolled-end',
         props.class
       )}
     >
@@ -526,6 +597,11 @@ PopupElement.Footer = (props: {
   ));
 };
 
+/**
+ * Spacer for a floating footer: it stands at the end of the scroll so the last of the content
+ * clears the footer painted over it. It is one button tall (`--popup-footer-height`) — a footer
+ * with more in it than that is taller, and the popup has to reserve the difference itself.
+ */
 PopupElement.FooterPlaceholder = () => {
   return (
     <div class="popup-footer-placeholder" />
@@ -568,17 +644,23 @@ PopupElement.Button = (props: {
   noDefaultClass?: boolean,
   disabled?: boolean,
   ref?: Ref<HTMLButtonElement>,
-  confirm?: boolean
+  confirm?: boolean,
+  /** Overlays a spinner on the button while an async `callback` is in flight. */
+  preloader?: boolean,
+  /** The label to show instead of the button's own while an async `callback` is in flight. */
+  pendingLangKey?: LangPackKey
 }) => {
   const context = useContext(PopupContext);
 
   const [disabled, setDisabled] = createSignal(false);
+  const [pending, setPending] = createSignal(false);
 
   const handleClick = async(e: MouseEvent) => {
     if(context.destroyed) return;
     let result = props.callback?.(e);
     if(result !== undefined && result instanceof Promise) {
       setDisabled(true);
+      setPending(true);
       try {
         result = await result;
       } catch(err) {
@@ -586,8 +668,10 @@ PopupElement.Button = (props: {
         result = false;
       }
 
+      // a resolved callback closes the popup, so only the rejected one is worth restoring
       if(result === false) {
         setDisabled(false);
+        setPending(false);
       }
     }
 
@@ -608,7 +692,20 @@ PopupElement.Button = (props: {
         });
       }
     });
+
+    // the spinner is absolutely positioned over the whole button, so it goes in as a child of its own
+    // rather than through `Button`, whose single slot is taken by the label
+    createEffect(() => {
+      if(!props.preloader || !pending()) {
+        return;
+      }
+
+      const preloader = putPreloader(ref);
+      onCleanup(() => preloader.remove());
+    });
   });
+
+  const pendingLangKey = () => pending() ? props.pendingLangKey : undefined;
 
   let ref: HTMLButtonElement;
   return context.registerButton(props, (
@@ -624,8 +721,8 @@ PopupElement.Button = (props: {
       icon={props.iconLeft}
       iconAfter={props.iconRight}
       iconClass={classNames('popup-button-icon', 'inline-icon', props.iconLeft ? 'left' : 'right')}
-      text={props.langKey}
-      textArgs={props.langArgs}
+      text={pendingLangKey() ?? props.langKey}
+      textArgs={pendingLangKey() ? undefined : props.langArgs}
       ref={(_ref) => {
         ref = _ref as HTMLButtonElement;
         (props.ref as any)?.(ref);
@@ -639,6 +736,11 @@ PopupElement.Buttons = (props: {
   children?: JSX.Element
 }) => {
   const context = useContext(PopupContext);
+
+  // the scroll ends against this row and draws the line itself — the row has no shading of its own
+  createRenderEffect(() => context.setHasFlowButtons(true));
+  onCleanup(() => context.setHasFlowButtons(false));
+
   return context.register('buttons', (
     <div class={classNames('popup-buttons', props.class)}>
       {props.children}

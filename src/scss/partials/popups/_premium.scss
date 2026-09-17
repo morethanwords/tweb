@@ -1,19 +1,7 @@
 @use "../../shared" as *;
 
 .popup-premium {
-  border-bottom: 0.0625rem solid transparent;
-
-  .popup-container {
-    padding: 0;
-    height: 660px;
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-
-    &.no-button {
-      height: 580px;
-    }
-  }
+  --popup-height: 41.25rem;
 
   .popup-close {
     visibility: visible;
@@ -25,7 +13,6 @@
     left: 0;
     position: sticky;
     margin-bottom: 0;
-    padding: .5rem;
     z-index: 1;
     visibility: hidden;
     transition-delay: var(--popup-transition-time);
@@ -105,26 +92,6 @@
   }
 
   &-heading {
-    &-text-title {
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: var(--font-weight-bold);
-      line-height: 32px;
-      margin: .375rem 0;
-
-      &.smaller-text {
-        font-size: var(--font-size-18);
-        line-height: var(--line-height-18);
-        margin-top: .625rem;
-      }
-    }
-
-    &-text-description {
-      text-align: center;
-      font-size: var(--font-size-16);
-      line-height: 22px;
-    }
-
     &-text-container {
       margin-top: calc(100px - 0.75rem);
       padding: 0 .625rem;
@@ -557,13 +524,4 @@
   .invite-link-container {
     margin: .5rem -.625rem -.5rem;
   }
-
-  // * commented, was by design but looks odd
-  // .row {
-  //   padding-inline-start: 5.5rem !important;
-
-  //   &-media {
-  //     inset-inline-start: 1.75rem !important;
-  //   }
-  // }
 }

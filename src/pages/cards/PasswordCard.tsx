@@ -3,7 +3,7 @@ import {createSignal, JSX, onCleanup, onMount} from 'solid-js';
 import Button from '@components/buttonTsx';
 import PasswordInputField from '@components/passwordInputField';
 import PasswordMonkey from '@components/monkeys/password';
-import {SimpleConfirmationPopup} from '@components/popups/simpleConfirmation';
+import simpleConfirmation from '@components/popups/simpleConfirmation';
 import MediaHeader from '@components/mediaHeader';
 import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
@@ -68,7 +68,7 @@ export default function PasswordCard(_props: {spec: Spec}) {
         navigate({name: 'emailRecover', payload: {email_pattern: res.email_pattern}});
       }).catch(async(err: ApiError) => {
         if(err.type === 'PASSWORD_RECOVERY_NA') {
-          await SimpleConfirmationPopup.show({
+          await simpleConfirmation({
             titleLangKey: 'Login.ResetPassword.Title',
             descriptionLangKey: 'Login.ResetPassword.NoEmailText',
             button: {
@@ -77,7 +77,7 @@ export default function PasswordCard(_props: {spec: Spec}) {
             }
           });
 
-          await SimpleConfirmationPopup.show({
+          await simpleConfirmation({
             titleLangKey: 'Login.ResetAccount.Title',
             descriptionLangKey: 'Login.ResetAccount.Text',
             button: {
@@ -90,14 +90,14 @@ export default function PasswordCard(_props: {spec: Spec}) {
             navigate({name: 'signIn'});
           }).catch((err: ApiError) => {
             if(err.type === '2FA_RECENT_CONFIRM') {
-              SimpleConfirmationPopup.show({
+              simpleConfirmation({
                 titleLangKey: 'Login.ResetAccountFail.Title',
                 descriptionLangKey: 'Login.ResetAccountFail.TextCancelled',
                 button: {langKey: 'OK'}
               });
             } else if(err.type.startsWith('2FA_CONFIRM_WAIT_')) {
               const waitTime = +err.type.replace('2FA_CONFIRM_WAIT_', '');
-              SimpleConfirmationPopup.show({
+              simpleConfirmation({
                 titleLangKey: 'Login.ResetAccountFail.Title',
                 descriptionLangKey: 'Login.ResetAccountFail.TextWait',
                 descriptionArgs: [wrapFormattedDuration(formatDuration(waitTime))],

@@ -1,13 +1,13 @@
-import PopupElement from '.';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {i18n} from '@lib/langPack';
 import {PaymentsPaymentForm, User} from '@layer';
-import PopupPayment from '@components/popups/payment';
+import {getCardDetailsInfo} from '@components/popups/payment';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import PopupPaymentCard, {PaymentCardDetails, PaymentCardDetailsResult} from '@components/popups/paymentCard';
-import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import showPaymentCardPopup, {PaymentCardDetails} from '@components/popups/paymentCard';
 import Row from '@components/rowTsx';
-import {JSX} from 'solid-js';
+import {createSignal, JSX} from 'solid-js';
+import Section from '@components/section';
 
 function PaymentMethodRow(props: {
   checked?: boolean,
@@ -32,75 +32,65 @@ function PaymentMethodRow(props: {
   );
 }
 
-export default class PopupPaymentMethods extends PopupElement {
-  private promise: CancellablePromise<PopupPaymentCard>;
+export default function showPaymentMethodsPopup(options: {
+  paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
+  user: User.user,
+  savedCard?: PaymentCardDetails,
+  /** Forwarded to the card popup this one opens — the saved card answers nothing. */
+  onFinish?: Parameters<typeof showPaymentCardPopup>[0]['onFinish']
+}) {
+  const {paymentForm, user, savedCard} = options;
+  const [show, setShow] = createSignal(true);
 
-  constructor(
-    private paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
-    private user: User.user,
-    private savedCard?: PaymentCardDetails
-  ) {
-    super('popup-payment popup-payment-methods', {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      title: 'PaymentMethod'
-    });
-
-    this.promise = deferredPromise();
-    this.addEventListener('closeAfterTimeout', () => {
-      this.promise.reject();
-    });
-    this.construct();
-  }
-
-  public waitForMethodPopup() {
-    return this.promise;
-  }
-
-  private _construct() {
-    const selectMethod = (onClick: () => PopupPaymentCard) => {
-      this.hide();
-      this.promise.resolve(onClick());
+  createPopup(() => {
+    const selectMethod = (onClick: () => void) => {
+      setShow(false);
+      onClick();
     };
 
-    const savedCardTitle = this.savedCard && PopupPayment.getCardDetailsInfo(this.savedCard).str;
+    const savedCardTitle = savedCard && getCardDetailsInfo(savedCard).str;
 
     return (
-      <>
-        <PaymentMethodRow
-          title={i18n('PaymentMethodNewCard')}
-          onSelect={() => selectMethod(() => PopupElement.createPopup(
-            PopupPaymentCard,
-            this.paymentForm,
-            this.user
-          ))}
-        />
-        {savedCardTitle && (
-          <PaymentMethodRow
-            checked
-            title={savedCardTitle}
-            onSelect={() => selectMethod(() => undefined)}
-          />
-        )}
-        {this.paymentForm.additional_methods?.map((method) => (
-          <PaymentMethodRow
-            title={wrapEmojiText(method.title)}
-            onSelect={() => selectMethod(() => PopupElement.createPopup(
-              PopupPaymentCard,
-              this.paymentForm,
-              this.user,
-              undefined,
-              method
+      <PopupElement
+        class="popup-payment popup-payment-methods"
+        closable
+        show={show()}
+      >
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title title="PaymentMethod" />
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <Section>
+            <PaymentMethodRow
+              title={i18n('PaymentMethodNewCard')}
+              onSelect={() => selectMethod(() => showPaymentCardPopup({
+                paymentForm,
+                user,
+                onFinish: options.onFinish
+              }))}
+            />
+            {savedCardTitle && (
+              <PaymentMethodRow
+                checked
+                title={savedCardTitle}
+                onSelect={() => selectMethod(() => {})}
+              />
+            )}
+            {paymentForm.additional_methods?.map((method) => (
+              <PaymentMethodRow
+                title={wrapEmojiText(method.title)}
+                onSelect={() => selectMethod(() => showPaymentCardPopup({
+                  paymentForm,
+                  user,
+                  method,
+                  onFinish: options.onFinish
+                }))}
+              />
             ))}
-          />
-        ))}
-      </>
+          </Section>
+        </PopupElement.Body>
+      </PopupElement>
     );
-  }
-
-  private async construct() {
-    this.appendSolid(() => this._construct());
-    this.show();
-  }
+  });
 }

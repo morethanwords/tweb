@@ -1,6 +1,5 @@
 import type SidebarSlider from '@components/slider';
 import type {AppSidebarRight} from '@components/sidebarRight';
-import PopupElement from '@components/popups';
 import {FormatterArguments, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 
@@ -41,6 +40,6 @@ export default async function openBoosts({peerId, slider, reason}: {
     return;
   }
 
-  const {default: PopupBoost} = await import('@components/popups/boost');
-  PopupElement.createPopup(PopupBoost, peerId, reason);
+  const {default: showBoostPopup} = await import('@components/popups/boost');
+  showBoostPopup(peerId, reason);
 }

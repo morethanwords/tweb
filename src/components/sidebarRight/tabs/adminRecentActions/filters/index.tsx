@@ -62,7 +62,7 @@ export const Filters = (props: FiltersProps) => {
       >
         <Show when={props.open}>
           <div class={styles.Container}>
-            <div class={styles.ContainerBackdrop}>
+            <div>
               <div class={styles.ContainerBackdropFill} />
               <div class={styles.ContainerBackdropExtension} />
             </div>

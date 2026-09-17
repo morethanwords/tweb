@@ -28,7 +28,7 @@ import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import wrapSticker from '@components/wrappers/sticker';
 import {i18n} from '@lib/langPack';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import contextMenuController from '@helpers/contextMenuController';
 import callbackify from '@helpers/callbackify';
 import partition from '@helpers/array/partition';
@@ -118,7 +118,7 @@ export class ChatReactionsMenu {
         [
           anchorCallback(() => {
             contextMenuController.close();
-            PopupPremium.show({feature: 'saved_tags'});
+            showPremiumPopup({feature: 'saved_tags'});
           })
         ]
       );

@@ -4,7 +4,7 @@ import CodeInputFieldCompat from '@components/codeInputField';
 import Icon from '@components/icon';
 import TrackingMonkey from '@components/monkeys/tracking';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
-import {SimpleConfirmationPopup} from '@components/popups/simpleConfirmation';
+import simpleConfirmation from '@components/popups/simpleConfirmation';
 import MediaHeader from '@components/mediaHeader';
 import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
@@ -198,7 +198,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       }
     }).catch((err: ApiError) => {
       if(err.type.includes('TASK_ALREADY_EXISTS')) {
-        SimpleConfirmationPopup.show({
+        simpleConfirmation({
           titleLangKey: 'Login.ResetEmail.NeedPremium',
           descriptionLangKey: 'Login.ResetEmail.NeedPremiumText',
           button: {langKey: 'OK'}
@@ -235,7 +235,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
     if(type.reset_available_period != null) {
       setResetEmailContent(i18n('TroubleEmail', [
         anchorCallback(() => {
-          SimpleConfirmationPopup.show({
+          simpleConfirmation({
             titleLangKey: 'Login.ResetEmail.Title',
             descriptionLangKey: 'Login.ResetEmail.Text',
             descriptionArgs: [wrapFormattedDuration(formatDuration(type.reset_available_period, 2))],

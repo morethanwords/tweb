@@ -1,20 +1,12 @@
 .popup {
+  --popup-width: 26.25rem;
   :global {
-    .popup-container {
-      width: 26.25rem;
-      border-radius: 14px;
-    }
     .popup-header {
       margin: 0;
     }
 
     .popup-body {
-      overflow: visible;
-    }
-
-    .popup-footer {
-      padding: 0;
-      margin-top: 2rem;
+      padding: 1rem;
     }
 
     .profile-name {
@@ -48,9 +40,6 @@
 }
 
 .close {
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
   color: #fff;
 }
 
@@ -68,16 +57,3 @@
   padding-inline: 1rem;
 }
 
-.title {
-  text-align: center;
-  font-size: 20px;
-  line-height: 24px;
-  font-weight: 600;
-}
-
-.subtitle {
-  text-align: center;
-  font-size: 14px;
-  line-height: 24px;
-  margin-bottom: 0.75rem;
-}

@@ -4,11 +4,8 @@ import Section from '@components/section';
 import {i18n} from '@lib/langPack';
 
 export async function showPeerTransactionHistory(peerId: PeerId, ton = false) {
-  const [{default: PopupElement}, {default: PopupStars}] = await Promise.all([
-    import('@components/popups'),
-    import('@components/popups/stars')
-  ]);
-  return PopupElement.createPopup(PopupStars, {historyPeerId: peerId, ton});
+  const {default: showStarsPopup} = await import('@components/popups/stars');
+  return showStarsPopup({historyPeerId: peerId, ton});
 }
 
 export default function TransactionHistorySection(props: {

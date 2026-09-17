@@ -25,7 +25,7 @@ import {
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey} from '@lib/langPack';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import PopupPeer from '@components/popups/peer';
+import showPeerPopup from '@components/popups/peer';
 import Button from '@components/buttonTsx';
 import Section from '@components/section';
 import toggleDisability from '@helpers/dom/toggleDisability';
@@ -35,11 +35,10 @@ import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import noop from '@helpers/noop';
 import {toastNew} from '@components/toast';
-import PopupElement from '@components/popups';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import Icon from '@components/icon';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
-import {AgeVerificationPopup} from '@components/popups/ageVerification';
+import createAgeVerification from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
 import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
@@ -104,7 +103,7 @@ const PrivacyAndSecurity: Component = () => {
   };
 
   const onDeleteClick = () => {
-    const popup = PopupElement.createPopup(PopupPeer, 'popup-delete-drafts', {
+    showPeerPopup('popup-delete-drafts', {
       buttons: [{
         langKey: 'Delete',
         callback: () => {
@@ -118,8 +117,6 @@ const PrivacyAndSecurity: Component = () => {
       titleLangKey: 'AreYouSureClearDraftsTitle',
       descriptionLangKey: 'AreYouSureClearDrafts'
     });
-
-    popup.show();
   };
 
   onMount(() => {
@@ -608,7 +605,7 @@ const PrivacyAndSecurity: Component = () => {
 
           if(newEnabled && contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
             sensitiveSignal[1](false);
-            AgeVerificationPopup.create().then((verified) => {
+            createAgeVerification().then((verified) => {
               if(verified) {
                 sensitiveSignal[1](true);
                 clearSensitiveSpoilers();

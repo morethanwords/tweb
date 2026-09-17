@@ -6,7 +6,7 @@ import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {DisallowedGiftsSettings, GlobalPrivacySettings} from '@layer';
 import rootScope from '@lib/rootScope';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -37,7 +37,7 @@ const PrivacyGifts: Component = () => {
       langPackArguments: [
         anchorCallback(() => {
           hideToast();
-          PopupPremium.show();
+          showPremiumPopup();
         })
       ]
     });

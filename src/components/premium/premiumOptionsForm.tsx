@@ -60,7 +60,10 @@ export default function PremiumOptionsForm<T extends PremiumOption>(props: {
         );
 
         return (
-          <RowTsx class="popup-gift-premium-option">
+          <RowTsx
+            class="popup-gift-premium-option"
+            style={{'--primary-color': ['#C564F3', '#AC64F3', '#9377FF'][index()]}}
+          >
             <RowTsx.Title>
               {props.discountInTitle ? withDiscount(title()) : title()}
             </RowTsx.Title>

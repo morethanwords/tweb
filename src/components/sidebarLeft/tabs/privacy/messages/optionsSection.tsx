@@ -17,7 +17,7 @@ const OptionsSection: Component<{
   isPaid: boolean;
   onExitAnimationPromise: (promise: Promise<any>) => void;
 }> = (props) => {
-  const {PopupPremium, i18n, toastNew, hideToast, Row, usePremium} = useHotReloadGuard();
+  const {showPremiumPopup, i18n, toastNew, hideToast, Row, usePremium} = useHotReloadGuard();
 
   const isPremium = usePremium();
 
@@ -31,7 +31,7 @@ const OptionsSection: Component<{
       langPackArguments: [
         anchorCallback(() => {
           hideToast();
-          PopupPremium.show({
+          showPremiumPopup({
             feature: 'message_privacy'
           });
         })
@@ -88,7 +88,7 @@ const OptionsSection: Component<{
     >
       {
         !props.isPaid ?
-          i18n('Privacy.MessagesInfo', [anchorCallback(() => void PopupPremium.show())]) :
+          i18n('Privacy.MessagesInfo', [anchorCallback(() => void showPremiumPopup())]) :
           i18n('PaidMessages.ChargeForMessagesDescription')
       }
     </Transition>

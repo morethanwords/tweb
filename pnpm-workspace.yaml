@@ -1,6 +1,9 @@
 allowBuilds:
   '@parcel/watcher@2.6.0': true
   'cpu-features@0.0.10': true
+  # typed-scss-modules pulls esbuild 0.17 only to bundle an optional config file we
+  # do not have, so its native binary never runs and never needs building
+  'esbuild@0.17.19': false
   'esbuild@0.27.4': true
   'ssh2@1.17.0': true
 minimumReleaseAgeExclude:

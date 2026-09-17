@@ -13,7 +13,7 @@ import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {AppMessagesAutoDeleteTab} from '@components/solidJsTabs/tabs';
 import Space from '@components/space';
 import {findExistingOrCreateCustomOption, findMatchingCustomOption, getDefaultOptions, Option} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
-import AutoDeleteMessagesCustomTimePopup from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup';
+import showAutoDeleteMessagesCustomTimePopup from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup';
 
 
 const AutoDeleteMessages = () => {
@@ -74,14 +74,14 @@ const AutoDeleteMessages = () => {
   };
 
   const onCustomOptionClick = () => {
-    new AutoDeleteMessagesCustomTimePopup({
+    showAutoDeleteMessagesCustomTimePopup({
       HotReloadGuard,
       descriptionLangKey: 'AutoDeleteMessages.InfoDefault',
       onFinish: (value) => {
         setPeriod(value);
       },
       period: period()
-    }).show();
+    });
   };
 
   return (

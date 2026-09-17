@@ -6,10 +6,6 @@
   $parent: ".popup";
 
   #{$parent} {
-    &-header {
-      margin-bottom: 1rem;
-    }
-
     &-container {
       max-height: calc(var(--100vh) - 5rem);
     }

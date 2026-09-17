@@ -39,7 +39,7 @@
       }
   
       .inner-shadow {
-        --inner-shadow-size: 50%;
+        --inner-shadow-size: 25%;
         z-index: 3;
       }
     }
@@ -56,7 +56,7 @@
 
   &-description {
     text-align: center;
-    margin: 1rem 1.5rem .5rem;
+    margin: 1rem 1.5rem;
   }
 
   &-button {

@@ -1,6 +1,7 @@
 import Scrollable from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
-import SettingSection from '@components/settingSection';
+import Section, {SectionParts} from '@components/section';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import PeerTitle from '@components/peerTitle';
 import {avatarNew} from '@components/avatarNew';
 import Icon from '@components/icon';
@@ -16,7 +17,7 @@ import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 
 export default class SelectorSearch {
-  public section: SettingSection;
+  public section: SectionParts;
   public selectedContainer: HTMLElement;
   public inputSearch: InputSearch;
   public input: HTMLInputElement;
@@ -50,9 +51,6 @@ export default class SelectorSearch {
     this.input.classList.add('selector-search-input');
     this.inputSearch.clearBtn.remove();
 
-    const section = this.section = new SettingSection({});
-    section.innerContainer.classList.add('selector-search-section');
-    section.container.classList.add('selector-search-section-container');
     const topContainer = document.createElement('div');
     topContainer.classList.add('selector-search-container');
 
@@ -75,7 +73,18 @@ export default class SelectorSearch {
       options.onChipClick(key);
     });
 
-    section.content.append(topContainer);
+    let content!: HTMLElement;
+    const container = wrapSolidComponent(() => (
+      <Section
+        class="selector-search-section-container"
+        innerClass="selector-search-section"
+        contentProps={{ref: (element) => content = element}}
+      >
+        {topContainer}
+      </Section>
+    ), this.middlewareHelper.get());
+
+    this.section = {container, content};
 
     this.gradient = Tabs.MenuGradient({
       color: 'background',

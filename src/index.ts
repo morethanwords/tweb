@@ -52,7 +52,7 @@ import sessionStorage from '@lib/sessionStorage';
 import replaceChildrenPolyfill from '@helpers/dom/replaceChildrenPolyfill';
 import listenForWindowPrint from '@helpers/dom/windowPrint';
 import cancelImageEvents from '@helpers/dom/cancelImageEvents';
-import PopupElement from '@components/popups';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from '@layer';
 import commonStateStorage from '@lib/commonStateStorage';
@@ -366,11 +366,7 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
     }
   };
 
-  const isUpdated = reason === 'version';
-  const popup = PopupElement.createPopup(PopupElement, 'popup-instance-deactivated', {overlayClosable: true});
-  const c = document.createElement('div');
-  c.classList.add('instance-deactivated-container');
-  (popup as any).container.replaceWith(c);
+  document.body.classList.add('deactivated');
 
   const header = document.createElement('div');
   header.classList.add('header');
@@ -380,12 +376,14 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
   subtitle.classList.add('subtitle');
   subtitle.append(i18n(map[reason].subtitle));
 
-  c.append(header, subtitle);
-
-  document.body.classList.add('deactivated');
-
-  popup.addEventListener('close', map[reason].onClick);
-  popup.show();
+  // the entry file is plain .ts, so the popup is composed by calling the component
+  createPopup(() => PopupElement({
+    class: 'popup-instance-deactivated',
+    containerClass: 'instance-deactivated-container',
+    closable: true,
+    onClose: map[reason].onClick,
+    children: [header, subtitle]
+  }));
 };
 
 const TIME_LABEL = 'Elapsed time since unlocked';

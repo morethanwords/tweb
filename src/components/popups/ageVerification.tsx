@@ -1,87 +1,75 @@
-import PopupElement from '.';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import deferredPromise from '@helpers/cancellablePromise';
-import safeAssign from '@helpers/object/safeAssign';
 import appImManager from '@lib/appImManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import useContentSettings from '@stores/contentSettings';
 import Button from '@components/buttonTsx';
 import styles from '@components/popups/ageVerification.module.scss';
+import rootScope from '@lib/rootScope';
+import {createSignal} from 'solid-js';
 
-export class AgeVerificationPopup extends PopupElement {
-  private onVerify: (verified: boolean) => void;
+export async function showAgeVerificationPopup(options: {
+  onVerify: (verified: boolean) => void,
+  onClose?: () => void
+}) {
+  const appConfig = await rootScope.managers.apiManager.getAppConfig();
+  const [show, setShow] = createSignal(true);
+  // the web app takes over from here — closing for it must not answer "not verified"
+  let switchedToWebApp = false;
 
-  constructor(options: {
-    onVerify: (verified: boolean) => void
-  }) {
-    super(styles.popup, {
-      title: 'AgeVerification.Title',
-      body: true,
-      closable: true,
-      overlayClosable: true
-    })
+  const textKey: LangPackKey = appConfig.verify_age_country === 'GB' ?
+    'AgeVerification.TextGB' :
+    'AgeVerification.Text';
 
-    safeAssign(this, options);
+  const handleVerify = async() => {
+    const bot = await rootScope.managers.appUsersManager.resolveUserByUsername(
+      appConfig.verify_age_bot_username ?? 'TelegramAge'
+    );
+    switchedToWebApp = true;
+    setShow(false);
+    appImManager.openWebApp({
+      botId: bot.id,
+      main: true,
+      noConfirmation: true,
+      forcePopup: true,
+      onClose: () => {
+        options.onVerify(!!useContentSettings().ageVerified());
+      }
+    });
+  };
 
-    this.construct();
-  }
-
-  _switchedToWebApp = false;
-
-  private async construct() {
-    const appConfig = await this.managers.apiManager.getAppConfig();
-    this.appendSolidBody(() => this._construct({appConfig}));
-  }
-
-  protected _construct({appConfig}: {appConfig: MTAppConfig}) {
-    let textKey: LangPackKey;
-    if(appConfig.verify_age_country === 'GB') {
-      textKey = 'AgeVerification.TextGB';
-    } else {
-      textKey = 'AgeVerification.Text';
-    }
-
-    const handleVerify = async() => {
-      const bot = await this.managers.appUsersManager.resolveUserByUsername(
-        appConfig.verify_age_bot_username ?? 'TelegramAge'
-      );
-      this._switchedToWebApp = true;
-      this.destroy();
-      appImManager.openWebApp({
-        botId: bot.id,
-        main: true,
-        noConfirmation: true,
-        forcePopup: true,
-        onClose: () => {
-          this.onVerify(!!useContentSettings().ageVerified());
-        }
-      });
-    };
-
-    return (
-      <>
+  createPopup(() => (
+    <PopupElement
+      class={styles.popup}
+      closable
+      show={show()}
+      onClose={() => !switchedToWebApp && options.onClose?.()}
+      old
+    >
+      <PopupElement.Header>
+        <PopupElement.CloseButton />
+        <PopupElement.Title title="AgeVerification.Title" />
+      </PopupElement.Header>
+      <PopupElement.Body>
         <div class={styles.text}>
           {i18n(textKey)}
         </div>
-        <Button class={`${styles.button} btn-color-primary btn-primary`} onClick={handleVerify}>
-          {i18n('AgeVerification.Action')}
-        </Button>
-      </>
-    );
-  }
+      </PopupElement.Body>
+      <PopupElement.Footer>
+        <PopupElement.FooterButton langKey="AgeVerification.Action" callback={handleVerify} />
+      </PopupElement.Footer>
+    </PopupElement>
+  ));
+}
 
-  static create(): Promise<boolean> {
-    const promise = deferredPromise<boolean>();
-    const popup = PopupElement.createPopup(AgeVerificationPopup, {
-      onVerify: (verified) => promise.resolve(verified)
-    });
+/** Resolves with what the user answered — `false` when they simply closed it. */
+export default function createAgeVerification(): Promise<boolean> {
+  const promise = deferredPromise<boolean>();
 
-    popup.addEventListener('close', () => {
-      if(!popup._switchedToWebApp) {
-        promise.resolve(false);
-      }
-    });
-    popup.show();
+  showAgeVerificationPopup({
+    onVerify: (verified) => promise.resolve(verified),
+    onClose: () => promise.resolve(false)
+  });
 
-    return promise;
-  }
+  return promise;
 }

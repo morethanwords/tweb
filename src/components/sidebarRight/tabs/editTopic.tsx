@@ -4,7 +4,6 @@ import toggleDisability from '@helpers/dom/toggleDisability';
 import {makeMediaSize} from '@helpers/mediaSize';
 import copy from '@helpers/object/copy';
 import deepEqual from '@helpers/object/deepEqual';
-import {renderComponent} from '@helpers/solid/renderComponent';
 import {ForumTopic} from '@layer';
 import {GENERAL_TOPIC_ID, TOPIC_COLORS} from '@appManagers/constants';
 import {i18n} from '@lib/langPack';
@@ -14,7 +13,8 @@ import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import InputField from '@components/inputField';
 import Row from '@components/rowTsx';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
@@ -142,10 +142,6 @@ const EditTopic: Component = () => {
     }
 
     {
-      const section = new SettingSection({
-        name: isGeneral ? 'CreateGeneralTopicTitle' : 'CreateTopicTitle'
-      });
-
       iconDiv = document.createElement('div');
       iconDiv.classList.add('edit-topic-icon-container');
 
@@ -220,16 +216,25 @@ const EditTopic: Component = () => {
 
       inputWrapper.append(nameInputField.container);
 
-      section.content.append(iconDiv, inputWrapper);
-
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section name={isGeneral ? 'CreateGeneralTopicTitle' : 'CreateTopicTitle'}>
+          {iconDiv}
+          {inputWrapper}
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     const promises: Promise<any>[] = [];
 
     if(!isGeneral) {
-      const section = new SettingSection({});
-      section.container.classList.add('edit-topic-emoticons-container');
+      let sectionContent!: HTMLElement;
+      const section = wrapSolidComponent(() => (
+        <Section
+          class="edit-topic-emoticons-container"
+          contentProps={{ref: (element) => sectionContent = element}}
+        />
+      ), tab.middlewareHelper.get());
+
       const emojiTab = new EmojiTab({
         managers: tab.managers,
         isStandalone: true,
@@ -276,15 +281,14 @@ const EditTopic: Component = () => {
 
       promises.push(promise);
 
-      section.content.replaceWith(emojiTab.container);
-      tab.scrollable.append(section.container);
+      // the emoji picker takes the content element's place, exactly as it did before
+      sectionContent.replaceWith(emojiTab.container);
+      tab.scrollable.append(section);
     } else {
-      const section = new SettingSection({caption: 'EditTopicHideInfo'});
       const hiddenSignal = createSignal(!(topic as ForumTopic.forumTopic).pFlags.hidden);
       const [busy, setBusy] = createSignal(false);
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      const section = wrapSolidComponent(() => (
+        <Section caption="EditTopicHideInfo">
           <Row disabled={busy()}>
             <Row.CheckboxFieldToggle>
               <CheckboxFieldTsx
@@ -305,11 +309,10 @@ const EditTopic: Component = () => {
             </Row.CheckboxFieldToggle>
             <Row.Title>{i18n('EditTopicHide')}</Row.Title>
           </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+        </Section>
+      ), tab.middlewareHelper.get());
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(section);
     }
 
     await Promise.all(promises);

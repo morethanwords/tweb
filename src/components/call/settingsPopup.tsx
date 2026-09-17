@@ -29,8 +29,8 @@ import requestGroupCallLeave from '@components/groupCall/requestLeave';
 
 import '@components/call/settingsPopup.scss';
 
-// The shared in-call settings sheet. Both PopupGroupCall (legacy video chat)
-// and PopupCall (P2P) open this — the only difference is which sections show:
+// The shared in-call settings sheet. Both the group-call panel (legacy video chat)
+// and the 1-on-1 call panel open this — the only difference is which sections show:
 //
 //   group call:  [Mute new participants?] [Speakers] [Microphone+meter] [Share invite] [Leave]
 //   P2P call:    .............................. [Speakers] [Microphone+meter] ........ [End]

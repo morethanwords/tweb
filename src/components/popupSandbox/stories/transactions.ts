@@ -32,9 +32,9 @@ defineStories('Transactions', createTransactionFixtures().map(({id}) => ({
   fixtureOnly: true,
   managers: transactionManagers,
   open: async(ctx) => {
-    const {default: PopupPayment} = await import('@components/popups/payment');
+    const {createPaymentPopup} = await import('@components/popups/payment');
     const transaction = fixturesForContext(ctx).find((entry) => entry.id === id).transaction;
-    await PopupPayment.create({transaction});
+    await createPaymentPopup({transaction});
   }
 })));
 
@@ -58,11 +58,8 @@ defineStories('Transactions', [false, true].flatMap((ton) => (['self', 'channel'
     }
   }),
   open: async(ctx) => {
-    const [{default: PopupElement}, {default: PopupStars}] = await Promise.all([
-      import('@components/popups'),
-      import('@components/popups/stars')
-    ]);
-    PopupElement.createPopup(PopupStars, {ton, historyPeerId: ctx.peer(owner)});
+    const {default: showStarsPopup} = await import('@components/popups/stars');
+    showStarsPopup({ton, historyPeerId: ctx.peer(owner)});
   }
 }))));
 
@@ -95,11 +92,8 @@ defineStories('Transactions', [
       };
     },
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupStars}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/stars')
-      ]);
-      PopupElement.createPopup(PopupStars, {historyPeerId: ctx.peer('self')});
+      const {default: showStarsPopup} = await import('@components/popups/stars');
+      showStarsPopup({historyPeerId: ctx.peer('self')});
     }
   },
   {
@@ -107,8 +101,8 @@ defineStories('Transactions', [
     title: 'Active bot subscription',
     fixtureOnly: true,
     open: async(ctx) => {
-      const {default: PopupPayment} = await import('@components/popups/payment');
-      await PopupPayment.create({
+      const {createPaymentPopup} = await import('@components/popups/payment');
+      await createPaymentPopup({
         noPaymentForm: true,
         subscription: {
           _: 'starsSubscription',
@@ -128,8 +122,8 @@ defineStories('Transactions', [
     title: 'One nanogram payment receipt',
     fixtureOnly: true,
     open: async(ctx) => {
-      const {default: PopupPayment} = await import('@components/popups/payment');
-      await PopupPayment.create({
+      const {createPaymentPopup} = await import('@components/popups/payment');
+      await createPaymentPopup({
         paymentForm: {
           _: 'payments.paymentReceiptStars',
           bot_id: ctx.peer('bot').toUserId(),

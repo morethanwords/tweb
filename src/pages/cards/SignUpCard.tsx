@@ -1,14 +1,10 @@
 import {createSignal, JSX, onMount} from 'solid-js';
 
+import AvatarEdit, {AvatarEditPayload} from '@components/avatarEdit';
 import Button from '@components/buttonTsx';
-import Icon from '@components/icon';
 import InputField from '@components/inputField';
-import PopupElement from '@components/popups';
-import PopupAvatar from '@components/popups/avatar';
 import MediaHeader from '@components/mediaHeader';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
-import type {CancellablePromise} from '@helpers/cancellablePromise';
-import type {InputFile} from '@layer';
 import {LangPackKey, i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 
@@ -35,22 +31,13 @@ export default function SignUpCard(props: {spec: Spec}) {
 
   /* ---------- avatar (sticker slot) ---------- */
 
-  const avatarPreview = document.createElement('canvas');
-  avatarPreview.id = 'canvas-avatar';
-  avatarPreview.className = 'avatar-edit-canvas';
+  let uploadAvatar: AvatarEditPayload | undefined;
 
-  const addIco = Icon('cameraadd', 'avatar-edit-icon');
-
-  const avatarContainer = document.createElement('div');
-  avatarContainer.classList.add('avatar-edit');
-  avatarContainer.append(avatarPreview, addIco);
-  avatarContainer.addEventListener('click', () => {
-    PopupElement.createPopup(PopupAvatar).open(avatarPreview, (_uploadAvatar) => {
-      uploadAvatar = _uploadAvatar;
-    });
+  // the same picker + media editor every other avatar in the app goes through; the payload is
+  // a pair of thunks, so nothing is uploaded until the account exists
+  const avatarEdit = new AvatarEdit((payload) => {
+    uploadAvatar = payload;
   });
-
-  let uploadAvatar: (() => CancellablePromise<InputFile>) | undefined;
 
   /* ---------- inputs ---------- */
 
@@ -82,13 +69,14 @@ export default function SignUpCard(props: {spec: Spec}) {
 
   /* ---------- submit ---------- */
 
-  function sendAvatar() {
-    return new Promise<void>((resolve, reject) => {
-      if(!uploadAvatar) return resolve();
+  async function sendAvatar() {
+    if(!uploadAvatar) return;
 
-      uploadAvatar().then((inputFile) => {
-        managers.appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
-      }, reject);
+    const [file, video] = await Promise.all([uploadAvatar.file(), uploadAvatar.video?.()]);
+    await managers.appProfileManager.uploadProfilePhoto({
+      file,
+      video,
+      videoStartTs: uploadAvatar.videoStartTs
     });
   }
 
@@ -156,7 +144,7 @@ export default function SignUpCard(props: {spec: Spec}) {
       class={styles.pageSignUp}
       header={
         <MediaHeader>
-          <MediaHeader.Sticker element={avatarContainer} size={120}/>
+          <MediaHeader.Sticker element={avatarEdit.container} size={120}/>
           <MediaHeader.Title>{titleContent()}</MediaHeader.Title>
           <MediaHeader.Subtitle>{i18n('Login.Register.Subtitle')}</MediaHeader.Subtitle>
         </MediaHeader>

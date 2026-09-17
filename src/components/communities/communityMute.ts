@@ -1,5 +1,4 @@
-import PopupElement from '@components/popups';
-import PopupMute from '@components/popups/mute';
+import showMutePopup from '@components/popups/mute';
 import type {AppManagers} from '@lib/managers';
 
 /**
@@ -8,7 +7,7 @@ import type {AppManagers} from '@lib/managers';
  * through here so the popup's positional arguments stay in a single place.
  */
 export function showCommunityMutePopup(communityId: ChatId) {
-  PopupElement.createPopup(PopupMute, undefined, undefined, communityId);
+  showMutePopup(undefined, undefined, communityId);
 }
 
 export function unmuteCommunity(communityId: ChatId, managers: AppManagers) {

@@ -225,7 +225,8 @@ $corner-button-size: 2.5rem;
 }
 
 .qrContainer {
-  margin-block: 1rem 1.5rem !important;
+  // the block adds its own .5rem gap below this slot
+  margin-block: 1rem 1rem;
   padding: 1rem;
   background-color: var(--light-filled-primary-color);
   border-radius: $border-radius-medium;

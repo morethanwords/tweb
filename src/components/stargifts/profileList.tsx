@@ -1,8 +1,7 @@
 import {createMemo, createSignal, For, Match, onMount, Show, Switch, untrack} from 'solid-js';
 import rootScope from '@lib/rootScope';
 import {PreloaderTsx} from '@components/putPreloader';
-import PopupElement from '@components/popups';
-import PopupStarGiftInfo from '@components/popups/starGiftInfo';
+import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import {StarGiftsGrid} from '@components/stargifts/stargiftsGrid';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import createButtonMenuCheckboxFilters from '@components/buttonMenuCheckboxFilters';
@@ -22,7 +21,7 @@ import styles from '@components/stargifts/profileList.module.scss';
 import {ALL_COLLECTIONS_ID, createProfileGiftsStore, StarGiftsProfileActions, StarGiftsProfileStore} from '@components/stargifts/profileStore';
 import {Chat, StarGiftCollection, User} from '@layer';
 import {unwrap} from 'solid-js/store';
-import PopupChooseGift from '@components/popups/chooseGiftPopup';
+import showChooseGiftPopup from '@components/popups/chooseGiftPopup';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
@@ -103,14 +102,12 @@ async function openAddGiftsPopup({actions, collectionId, peerId}: {
   collectionId: number
   peerId: PeerId
 }): Promise<void> {
-  const popup = PopupElement.createPopup(PopupChooseGift, {
-    peerId,
-    selectedCollectionId: collectionId
-  })
-  popup.show()
-
   const result = await new Promise<{selected: MyStarGift[], deselected: MyStarGift[]} | null>((resolve) => {
-    popup.addEventListener('finish', resolve);
+    showChooseGiftPopup({
+      peerId,
+      selectedCollectionId: collectionId,
+      onFinish: resolve
+    });
   })
 
   if(!result) return
@@ -307,7 +304,7 @@ export function StarGiftsProfileTab(props: {
               scrollParent={props.scrollParent}
               autoplay={false}
               onClick={(item) => {
-                PopupElement.createPopup(PopupStarGiftInfo, {gift: item});
+                showStarGiftInfoPopup({gift: item});
               }}
             />
           </Match>

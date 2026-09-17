@@ -2,11 +2,11 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import type Chat from '@components/chat/chat';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import PopupDeleteMessages from '@components/popups/deleteMessages';
+import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
-import PopupPinMessage from '@components/popups/unpinMessage';
+import showPinMessagePopup from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import PopupSendNow from '@components/popups/sendNow';
+import showSendNowPopup from '@components/popups/sendNow';
 import {toastNew} from '@components/toast';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -16,13 +16,13 @@ import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
 import {Message, Poll, Chat as MTChat, MessageMedia, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, TextWithEntities, TodoItem, TodoCompletion, MessageReplyHeader, PollAnswer} from '@layer';
 import assumeType from '@helpers/assumeType';
-import PopupSponsored from '@components/popups/sponsored';
+import showSponsoredPopup from '@components/popups/sponsored';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware} from '@helpers/middleware';
 import PeerTitle from '@components/peerTitle';
 import StackedAvatars from '@components/stackedAvatars';
 import {IS_APPLE, IS_MOBILE} from '@environment/userAgent';
-import PopupReactedList from '@components/popups/reactedList';
+import showReactedListPopup from '@components/popups/reactedList';
 import {ChatReactionsMenu, REACTION_CONTAINER_SIZE} from '@components/chat/reactionsMenu';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -44,17 +44,16 @@ import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage
 import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia';
 import {addToProfileMusic, getSavedMusicDocument, removeFromProfileMusic} from '@components/savedMusicActions';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
-import PopupElement from '@components/popups';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import Icon from '@components/icon';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import {ChatInputReplyTo} from '@components/chat/input';
 import {makeFullMid, TEST_BUBBLES_DELETION} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
 import {formatFullSentTime} from '@helpers/date';
-import PopupToggleReadDate from '@components/popups/toggleReadDate';
+import showToggleReadDatePopup from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';
 import ReactionElement from '@components/chat/reaction';
 import ReactionsElement from '@components/chat/reactions';
@@ -131,7 +130,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'info',
       text: 'Chat.Message.Sponsored.What',
       onClick: () => {
-        PopupElement.createPopup(PopupSponsored);
+        showSponsoredPopup();
       },
       verify: () => extraVerify() && !canReport,
       isSponsored: true
@@ -147,7 +146,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'hand',
       text: 'HideAd',
       onClick: () => {
-        PopupPremium.show({feature: 'no_ads'});
+        showPremiumPopup({feature: 'no_ads'});
       },
       verify: () => extraVerify() && !canReport,
       isSponsored: true
@@ -161,7 +160,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'crossround',
       text: 'RemoveAds',
       onClick: () => {
-        PopupPremium.show({feature: 'no_ads'});
+        showPremiumPopup({feature: 'no_ads'});
       },
       verify: () => extraVerify() && !!canReport,
       isSponsored: true
@@ -463,7 +462,7 @@ export default class ChatContextMenu {
       this.reactionElement = tagReactionElement as ReactionElement;
 
       if(this.isTag && !rootScope.premium) {
-        PopupPremium.show({feature: 'saved_tags'});
+        showPremiumPopup({feature: 'saved_tags'});
         return;
       }
 
@@ -903,7 +902,7 @@ export default class ChatContextMenu {
       // secondary: true,
       onClick: () => {
         if(this.canViewReadTime === false) {
-          PopupElement.createPopup(PopupToggleReadDate, this.peerId, 'readTime');
+          showToggleReadDatePopup(this.peerId, 'readTime');
         }
       },
       verify: () => this.peerId.isUser() && this.managers.appMessagesManager.canViewMessageReadParticipants(this.message),
@@ -1148,7 +1147,7 @@ export default class ChatContextMenu {
         const isTextSelected = this.isTextSelected;
 
         if(!this.chat.peerTranslation.canTranslate(true)) {
-          PopupPremium.show({feature: 'translations'});
+          showPremiumPopup({feature: 'translations'});
         } else {
           let textWithEntities: TextWithEntities;
           if(isTextSelected) {
@@ -1332,7 +1331,7 @@ export default class ChatContextMenu {
             peerId: this.viewerPeerId
           });
         } else if(this.canOpenReactedList) {
-          PopupElement.createPopup(PopupReactedList, this.message as Message.message);
+          showReactedListPopup(this.message as Message.message);
         } else {
           return false;
         }
@@ -1800,7 +1799,7 @@ export default class ChatContextMenu {
           }
 
           if(!rootScope.premium && tags) {
-            PopupPremium.show({feature: 'saved_tags'});
+            showPremiumPopup({feature: 'saved_tags'});
             return;
           }
 
@@ -1975,7 +1974,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionSendNowBtn);
     } else {
-      PopupElement.createPopup(PopupSendNow, this.peerId, await this.chat.getMidsByMid(this.messagePeerId, this.mid));
+      showSendNowPopup(this.peerId, await this.chat.getMidsByMid(this.messagePeerId, this.mid));
     }
   };
 
@@ -2120,11 +2119,11 @@ export default class ChatContextMenu {
   };
 
   private onPinClick = () => {
-    PopupElement.createPopup(PopupPinMessage, this.messagePeerId, this.mid);
+    showPinMessagePopup(this.messagePeerId, this.mid);
   };
 
   private onUnpinClick = () => {
-    PopupElement.createPopup(PopupPinMessage, this.messagePeerId, this.mid, true);
+    showPinMessagePopup(this.messagePeerId, this.mid, true);
   };
 
   private onRetractVote = () => {
@@ -2137,7 +2136,7 @@ export default class ChatContextMenu {
 
   private onAddTaskClick = async() => {
     if(!rootScope.premium) {
-      PopupPremium.show();
+      showPremiumPopup();
       return;
     }
 
@@ -2180,8 +2179,7 @@ export default class ChatContextMenu {
     //   return this.chat.bubbles.deleteMessagesByIds(await this.chat.getMidsByMid(mid), true);
     // }
 
-    PopupElement.createPopup(
-      PopupDeleteMessages,
+    showDeleteMessagesPopup(
       peerId,
       this.isTargetAGroupedItem ? [mid] : await this.chat.getMidsByMid(peerId, mid),
       this.chat.type

@@ -1,10 +1,9 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
-import PopupElementOld from '@components/popups';
-import Scrollable from '@components/scrollable2';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {formatFullSentTime} from '@helpers/date';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import maybe2x from '@helpers/maybe2x';
+import MediaHeader from '@components/mediaHeader';
 import getGiftAssetName from '@helpers/getGiftAssetName';
 import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, Photo, Document, Chat, WebDocument} from '@layer';
 import appImManager from '@lib/appImManager';
@@ -15,9 +14,8 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {putPreloader} from '@components/putPreloader';
 import Table, {TablePeer} from '@components/table';
 import {toastNew} from '@components/toast';
-import type PopupPayment from '@components/popups/payment';
-import type {PopupPaymentResult} from '@components/popups/payment';
-import PopupStars, {getStarsTransactionTitleAndMedia, StarsAmount, StarsBalance, StarsChange} from '@components/popups/stars';
+import type {PopupPaymentOptions, PopupPaymentResult} from '@components/popups/payment';
+import showStarsPopup, {STARS_POPUP_KIND, getStarsTransactionTitleAndMedia, StarsAmount, StarsBalance, StarsChange} from '@components/popups/stars';
 import {createSignal, JSX} from 'solid-js';
 import partition from '@helpers/array/partition';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -46,7 +44,7 @@ import {getMiddleware} from '@helpers/middleware';
 
 const TEST_FIRST_TIME = DEBUG && false;
 
-export type StarsPayOptions = ConstructorParameters<typeof PopupPayment>[0];
+export type StarsPayOptions = PopupPaymentOptions;
 
 type StarsPaymentForm =
   | PaymentsPaymentForm.paymentsPaymentFormStars
@@ -120,7 +118,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     cancelEvent(e);
     deferredCloseCallbacks.push(callback);
     closePopup();
-    const starsPopups = PopupElementOld.getPopups(PopupStars);
+    const starsPopups = PopupElement.getPopups(STARS_POPUP_KIND);
     starsPopups?.[0]?.hide();
   };
 
@@ -172,7 +170,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     } catch(err) {
       let shouldRetry = false;
       if((err as ApiError).type === 'BALANCE_TOO_LOW') {
-        PopupElementOld.createPopup(PopupStars, {
+        showStarsPopup({
           itemPrice,
           paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars,
           ton: isTon,
@@ -561,61 +559,63 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
 
         return (
           <div class="popup-stars-pay-padding">
-            {image}
-            <div class="popup-stars-pay-images">
-              <div
-                class="popup-stars-pay-avatar"
-                onClick={async() => {
-                  if(!isReceipt || !transaction?.extended_media?.length) {
-                    return;
-                  }
+            <MediaHeader class="popup-stars-intro">
+              {image}
+              <div class="popup-stars-pay-images">
+                <div
+                  class="popup-stars-pay-avatar"
+                  onClick={async() => {
+                    if(!isReceipt || !transaction?.extended_media?.length) {
+                      return;
+                    }
 
-                  const extendedMedia = transaction.extended_media;
-                  const media = extendedMedia.map((messageMedia) => {
-                    return (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
-                      (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
-                  });
+                    const extendedMedia = transaction.extended_media;
+                    const media = extendedMedia.map((messageMedia) => {
+                      return (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+                        (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
+                    });
 
-                  const standaloneMessage = await managers.appMessagesManager.generateStandaloneOutgoingMessage(messagePeerId || peerId);
-                  standaloneMessage.media = {
-                    _: 'messageMediaPaidMedia',
-                    extended_media: extendedMedia.map((messageMedia) => {
-                      return {_: 'messageExtendedMedia', media: messageMedia};
-                    }),
-                    stars_amount: 0
-                  };
-                  standaloneMessage.id = getServerMessageId(transaction.msg_id);
-                  standaloneMessage.mid = transaction.msg_id;
+                    const standaloneMessage = await managers.appMessagesManager.generateStandaloneOutgoingMessage(messagePeerId || peerId);
+                    standaloneMessage.media = {
+                      _: 'messageMediaPaidMedia',
+                      extended_media: extendedMedia.map((messageMedia) => {
+                        return {_: 'messageExtendedMedia', media: messageMedia};
+                      }),
+                      stars_amount: 0
+                    };
+                    standaloneMessage.id = getServerMessageId(transaction.msg_id);
+                    standaloneMessage.mid = transaction.msg_id;
 
-                  const targets: AppMediaViewer['target'][] = media.map((media, index) => {
-                    return {element: null as HTMLElement, mid: 0, peerId: 0, index, message: standaloneMessage};
-                  });
+                    const targets: AppMediaViewer['target'][] = media.map((media, index) => {
+                      return {element: null as HTMLElement, mid: 0, peerId: 0, index, message: standaloneMessage};
+                    });
 
-                  targets[0].element = avatar;
+                    targets[0].element = avatar;
 
-                  new AppMediaViewer(true)
-                  .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
-                  .openMedia({
-                    message: standaloneMessage,
-                    target: targets[0].element,
-                    fromRight: 0,
-                    reverse: false,
-                    prevTargets: [],
-                    nextTargets: targets.slice(1)
-                  });
-                }}
-              >{avatar}</div>
-            </div>
-            <div class="popup-stars-title">{title}</div>
-            {tableContent && !subscription && !noStarsChange && (
-              <StarsChange
-                stars={!transaction ? (String(amount).startsWith('-') ? String(amount).slice(1) : '-' + amount) : amount}
-                isRefund={!!transaction?.pFlags?.refund}
-                noSign={isOutGift}
-                ton={isTon}
-              />
-            )}
-            {subtitle && <div class={classNames('popup-stars-subtitle', tableContent && !subscription && !boost && 'mt')}>{subtitle}</div>}
+                    new AppMediaViewer(true)
+                    .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
+                    .openMedia({
+                      message: standaloneMessage,
+                      target: targets[0].element,
+                      fromRight: 0,
+                      reverse: false,
+                      prevTargets: [],
+                      nextTargets: targets.slice(1)
+                    });
+                  }}
+                >{avatar}</div>
+              </div>
+              <MediaHeader.Title>{title}</MediaHeader.Title>
+              {tableContent && !subscription && !noStarsChange && (
+                <StarsChange
+                  stars={!transaction ? (String(amount).startsWith('-') ? String(amount).slice(1) : '-' + amount) : amount}
+                  isRefund={!!transaction?.pFlags?.refund}
+                  noSign={isOutGift}
+                  ton={isTon}
+                />
+              )}
+              {subtitle && <MediaHeader.Subtitle>{subtitle}</MediaHeader.Subtitle>}
+            </MediaHeader>
             {tableContent && (
               <>
                 <Table class="popup-stars-pay-table" content={tableContent.filter(Boolean)} />
@@ -651,9 +651,9 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
             {!isReceipt && (!subscription || tsNow(true) > subscription.until_date) && <StarsBalance ton={isTon} />}
           </PopupElement.Header>
           <PopupElement.Body class={isReceipt ? 'is-receipt' : undefined}>
-            <Scrollable withBorders="both">
+            <PopupElement.Scrollable>
               <Content />
-            </Scrollable>
+            </PopupElement.Scrollable>
           </PopupElement.Body>
           <Footer />
         </PopupElement>

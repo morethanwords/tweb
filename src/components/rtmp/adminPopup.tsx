@@ -1,8 +1,8 @@
-import {render} from 'solid-js/web';
-import PopupElement from '@components/popups';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import rootScope from '@lib/rootScope';
 
 import '@components/rtmp/adminPopup.css';
-import {Show, createRoot, createSignal} from 'solid-js';
+import {Show, createSignal} from 'solid-js';
 import {toastNew} from '@components/toast';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {Ripple} from '@components/rippleTsx';
@@ -18,117 +18,86 @@ export interface RtmpAdminPopupProps {
   onEndStream?: () => void
 }
 
-export class RtmpStartStreamPopup extends PopupElement {
-  protected _dispose: () => void;
-  private _setLoading: (loading: boolean) => void;
-  private _setUrl: (url: string) => void;
-  private _setKey: (key: string) => void;
-  protected btnMore: HTMLElement;
+export function showRtmpStartStreamPopup(props: RtmpAdminPopupProps) {
+  const [show, setShow] = createSignal(true);
+  const managers = rootScope.managers;
+  const {active} = props;
 
-  constructor(readonly props: RtmpAdminPopupProps) {
-    super(cnPopup(), {
-      overlayClosable: true,
-      closable: true,
-      title: true,
-      body: true
-    });
+  createPopup(() => {
+    const [url, setUrl] = createSignal('');
+    const [key, setKey] = createSignal('');
+    const [loading, setLoading] = createSignal(true);
 
-    const {active} = props;
-
-    if(!active) {
-      this.btnMore = ButtonMenuToggle({
-        buttons: [{
-          icon: 'stop',
-          regularText: 'Revoke',
-          danger: true,
-          onClick: () => this._revokeKey()
-        }],
-        direction: 'bottom-left'
-      });
-      this.header.append(this.btnMore);
-    }
-
-    this.title.append(active ? i18n('Rtmp.StreamPopup.TitleSettings') : i18n('Rtmp.StreamPopup.Title'));
-    // if(!document.documentElement.classList.contains('night')) {
-    //   this.element.classList.remove('night')
-    // }
-    this._render();
-  }
-
-  private _render() {
-    this._dispose = createRoot((dispose) => {
-      const [url, setUrl] = createSignal('');
-      const [key, setKey] = createSignal('');
-      const [loading, setLoading] = createSignal(true);
-
-      this._setLoading = setLoading;
-      this._setUrl = setUrl;
-      this._setKey = setKey;
-
-      const dispose2 = render(() => (
-        <RtmpStartStreamPopupContent
-          url={url()}
-          key={key()}
-          loading={loading()}
-          active={Boolean(this.props.active)}
-          onStreamStart={() => this._onStreamStart()}
-          onRevoked={() => this._revokeKey()}
-        />
-      ), this.body);
-
-      this._fetchData();
-
-      return () => {
-        setUrl('');
-        setKey('');
+    const fetchData = (revoke = false) => {
+      managers.appGroupCallsManager.fetchRtmpUrl(props.peerId, revoke).then(({url, key}) => {
+        setUrl(url);
+        setKey(key);
         setLoading(false);
-        dispose2();
-        dispose();
-      };
-    });
-  }
-
-  private _revokeKey() {
-    this._setLoading(true);
-    this._fetchData(true);
-  }
-
-  private _fetchData(revoke = false) {
-    this.managers.appGroupCallsManager.fetchRtmpUrl(this.props.peerId, revoke).then(({url, key}) => {
-      this._setUrl(url);
-      this._setKey(key);
-      this._setLoading(false);
-    }).catch(() => {
-      toastNew({
-        langPackKey: 'Error.AnError'
+      }).catch(() => {
+        toastNew({
+          langPackKey: 'Error.AnError'
+        });
+        setShow(false);
       });
-      this.forceHide();
-    });
-  }
+    };
 
-  private _onStreamStart() {
-    this.forceHide();
-    if(this.props.active) {
-      this.props.onEndStream();
-      return;
-    }
-    const peerId = this.props.peerId;
-    const chatId = peerId.toChatId();
-    this.managers.appGroupCallsManager.createGroupCall(
-      chatId,
-      undefined,
-      undefined,
-      true
-    ).then(() => {
-      appImManager.joinLiveStream(peerId);
-      // rtmpCallsController.joinCall(chatId);
-    });
-  }
+    const revokeKey = () => {
+      setLoading(true);
+      fetchData(true);
+    };
 
-  cleanup() {
-    super.cleanup();
-    this._dispose();
-  }
+    const onStreamStart = () => {
+      setShow(false);
+      if(active) {
+        props.onEndStream();
+        return;
+      }
+
+      const peerId = props.peerId;
+      managers.appGroupCallsManager.createGroupCall(
+        peerId.toChatId(),
+        undefined,
+        undefined,
+        true
+      ).then(() => {
+        appImManager.joinLiveStream(peerId);
+      });
+    };
+
+    fetchData();
+
+    return (
+      <PopupElement class={cnPopup()} closable show={show()}>
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title>
+            {active ? i18n('Rtmp.StreamPopup.TitleSettings') : i18n('Rtmp.StreamPopup.Title')}
+          </PopupElement.Title>
+          <Show when={!active}>
+            {ButtonMenuToggle({
+              buttons: [{
+                icon: 'stop',
+                regularText: 'Revoke',
+                danger: true,
+                onClick: () => revokeKey()
+              }],
+              direction: 'bottom-left'
+            })}
+          </Show>
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <RtmpStartStreamPopupContent
+            url={url()}
+            key={key()}
+            loading={loading()}
+            active={Boolean(active)}
+            onStreamStart={onStreamStart}
+            onRevoked={revokeKey}
+          />
+        </PopupElement.Body>
+      </PopupElement>
+    );
+  });
 }
 
 interface RtmpPopupProps {

@@ -1,6 +1,7 @@
 import {JSX, Ref, Show} from 'solid-js';
 
 import LottieAnimation from '@components/lottieAnimation';
+import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import classNames from '@helpers/string/classNames';
 import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
 
@@ -20,21 +21,79 @@ import styles from '@components/mediaHeader.module.scss';
  * ```
  *
  * `MediaHeader.Sticker` accepts either a built-in lottie asset (`name`) or a
- * custom JSX element (`element`) — useful for SVG logos, canvases, monkey
- * components, etc. Cards that need an imperative ref to the slot can pass a
- * stable container element via `element`.
+ * custom JSX element (`element`) — useful for SVG logos, avatars, canvases,
+ * monkey components, etc. Cards that need an imperative ref to the slot can
+ * pass a stable container element via `element`. It is a square, centred box;
+ * media that is not square (a wide illustration) goes straight into
+ * `<MediaHeader>` as a child instead, with its own sizing.
+ *
+ * The type scale is deliberately narrow — a 24px or a 20px title (`size`), body
+ * copy or a smaller grey / danger variant (`color`). Reach for a prop rather
+ * than restyling a copy of it. A subtitle honours the line breaks its language
+ * string carries, so translated copy never needs markup to break a line.
+ *
+ * A header can also sit on a painted backdrop, which is how collectible gifts
+ * are presented — the copy turns white and stacks above it:
+ *
+ * ```tsx
+ * <MediaHeader onBackdrop>
+ *   <MediaHeader.Backdrop><StarGiftBackdrop … /></MediaHeader.Backdrop>
+ *   <MediaHeader.Sticker size={120} ref={stickerContainer} />
+ *   <MediaHeader.Title>{gift.title}</MediaHeader.Title>
+ * </MediaHeader>
+ * ```
+ *
+ * Spacing: the block owns the rhythm between its own pieces (a single `gap`),
+ * and the pieces themselves declare no vertical margins — so a caller is free
+ * to set any margin on any of them without racing this module's declarations
+ * through CSS-module load order. Distance around the whole block comes from
+ * `marginTop` / `marginBottom`; a block that wants a different internal rhythm
+ * overrides `gap` on its own class. A `Title`/`Subtitle` pair rendered loose,
+ * without a `<MediaHeader>` around it, gets no gap at all — wrap the pair.
  */
 function MediaHeader(props: {
   class?: string,
   children?: JSX.Element,
-  marginBottom?: boolean
+  marginTop?: boolean,
+  marginBottom?: boolean,
+  /**
+   * The block sits on a coloured `MediaHeader.Backdrop` — the copy turns white and
+   * stacks above it. Collectible gifts paint their own backdrop this way.
+   */
+  onBackdrop?: boolean,
+  /** Align the copy to the text start instead of centring it — a confirm box reads as a paragraph. */
+  align?: 'start'
 }): JSX.Element {
   return (
-    <div class={classNames(styles.container, props.marginBottom && styles.marginBottom, props.class)}>
+    <div
+      class={classNames(
+        styles.container,
+        props.align === 'start' && styles.alignStart,
+        props.onBackdrop && styles.onBackdrop,
+        props.marginTop && styles.marginTop,
+        props.marginBottom && styles.marginBottom,
+        props.class
+      )}
+    >
       {props.children}
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Backdrop                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fills the header behind everything else — pass the painted element (a gift's
+ * `StarGiftBackdrop`, say) as the child. Needs `onBackdrop` on the header.
+ */
+MediaHeader.Backdrop = function MediaHeaderBackdrop(props: {
+  class?: string,
+  children?: JSX.Element
+}): JSX.Element {
+  return <div class={classNames(styles.backdrop, props.class)}>{props.children}</div>;
+};
 
 /* ------------------------------------------------------------------ */
 /* Sticker                                                            */
@@ -51,8 +110,11 @@ export type MediaHeaderStickerProps = {
   class?: string,
   /** Replay the animation when the sticker is clicked. Defaults to true. */
   restartOnClick?: boolean,
-  /** Fires once the sticker is ready to display (lottie's first frame for `name`, immediately for `element`). */
-  onReady?: () => void,
+  /**
+   * Fires once the sticker is ready to display — with the lottie player for `name`,
+   * with nothing for `element` (which is ready the moment it is handed over).
+   */
+  onReady?: (animation?: LottiePlayer) => void,
   ref?: Ref<HTMLDivElement>
 };
 
@@ -94,12 +156,20 @@ MediaHeader.Sticker = function MediaHeaderSticker(props: MediaHeaderStickerProps
 
 export type MediaHeaderTitleProps = {
   class?: string,
+  /** Font size in px: 24 is the hero scale (default), 20 the compact one narrow popups use. */
+  size?: 20 | 24,
   children?: JSX.Element
 };
 
 MediaHeader.Title = function MediaHeaderTitle(props: MediaHeaderTitleProps): JSX.Element {
   return (
-    <div class={classNames(styles.title, 'text-center text-overflow-wrap', props.class)}>
+    <div
+      class={classNames(
+        styles.title,
+        props.size === 20 && styles.title20,
+        props.class
+      )}
+    >
       {props.children}
     </div>
   );
@@ -111,8 +181,11 @@ MediaHeader.Title = function MediaHeaderTitle(props: MediaHeaderTitleProps): JSX
 
 export type MediaHeaderSubtitleProps = {
   class?: string,
-  /** Render in the smaller secondary-text variant (used by intro popups). */
-  secondary?: boolean,
+  /**
+   * `secondary` is the smaller grey variant intro popups use for a hint;
+   * `danger` reports that the thing is gone or failed. Default is body copy.
+   */
+  color?: 'secondary' | 'danger',
   children?: JSX.Element
 };
 
@@ -121,8 +194,7 @@ MediaHeader.Subtitle = function MediaHeaderSubtitle(props: MediaHeaderSubtitlePr
     <div
       class={classNames(
         styles.subtitle,
-        props.secondary && styles.secondary,
-        'text-center',
+        props.color && styles[props.color],
         props.class
       )}
     >

@@ -2,9 +2,9 @@ import {Message, MessagePeerReaction, Reaction} from '@layer';
 import ListenerSetter from '@helpers/listenerSetter';
 import '@helpers/peerIdPolyfill';
 
-const {createPopupMock, PopupDeleteMegagroupMessagesMock} = vi.hoisted(() => ({
+const {createPopupMock, showDeleteMegagroupMessagesPopupMock} = vi.hoisted(() => ({
   createPopupMock: vi.fn(),
-  PopupDeleteMegagroupMessagesMock: class PopupDeleteMegagroupMessagesMock {}
+  showDeleteMegagroupMessagesPopupMock: vi.fn()
 }));
 const rootScopeMock = vi.hoisted(() => ({myId: 0 as PeerId}));
 
@@ -52,11 +52,11 @@ vi.mock('@components/popups', () => ({
 }));
 
 vi.mock('@components/popups/deleteMegagroupMessages', () => ({
-  default: PopupDeleteMegagroupMessagesMock
+  default: showDeleteMegagroupMessagesPopupMock
 }));
 
 vi.mock('@components/popups/reactedList', () => ({
-  default: class PopupReactedList {}
+  default: () => {}
 }));
 
 vi.mock('@components/chat/reactions', () => ({default: class ReactionsElement {}}));
@@ -87,7 +87,6 @@ vi.mock('@lib/rootScope', () => ({default: rootScopeMock}));
 
 import createReactionContextMenu from '@components/chat/reactionContextMenu';
 import deleteParticipantReaction from '@components/chat/deleteParticipantReaction';
-import PopupDeleteMegagroupMessages from '@components/popups/deleteMegagroupMessages';
 
 const fire: Reaction.reactionEmoji = {_: 'reactionEmoji', emoticon: '🔥'};
 const chatPeerId = (100 as ChatId).toPeerId(true);
@@ -236,7 +235,7 @@ describe('deleteParticipantReaction moderation popup launcher', () => {
 
     expect(result).toBeUndefined();
     expect(canDeleteParticipantReactions).not.toHaveBeenCalled();
-    expect(createPopupMock).not.toHaveBeenCalled();
+    expect(showDeleteMegagroupMessagesPopupMock).not.toHaveBeenCalled();
   });
 
   it('opens singular deletion for a reaction sent as the group itself', async() => {
@@ -256,7 +255,7 @@ describe('deleteParticipantReaction moderation popup launcher', () => {
 
     expect(result).toBe(true);
     expect(canDeleteParticipantReactions).toHaveBeenCalledWith(chatPeerId);
-    expect(createPopupMock).toHaveBeenCalledWith(PopupDeleteMegagroupMessages, {
+    expect(showDeleteMegagroupMessagesPopupMock).toHaveBeenCalledWith({
       reaction: {
         message,
         participantPeerId: chatPeerId,
@@ -266,7 +265,7 @@ describe('deleteParticipantReaction moderation popup launcher', () => {
     });
   });
 
-  it('opens PopupDeleteMegagroupMessages with the selected reaction', async() => {
+  it('opens the megagroup deletion popup with the selected reaction', async() => {
     const canDeleteParticipantReactions = vi.fn().mockResolvedValue(true);
     const message = createMessage([]);
     const onConfirm = vi.fn();
@@ -286,8 +285,8 @@ describe('deleteParticipantReaction moderation popup launcher', () => {
     expect(result).toBe(true);
     expect(canDeleteParticipantReactions).toHaveBeenCalledOnce();
     expect(canDeleteParticipantReactions).toHaveBeenCalledWith(chatPeerId);
-    expect(createPopupMock).toHaveBeenCalledOnce();
-    expect(createPopupMock).toHaveBeenCalledWith(PopupDeleteMegagroupMessages, {
+    expect(showDeleteMegagroupMessagesPopupMock).toHaveBeenCalledOnce();
+    expect(showDeleteMegagroupMessagesPopupMock).toHaveBeenCalledWith({
       reaction: {
         message,
         participantPeerId: otherPeerId,

@@ -26,7 +26,7 @@ import transferStarGift from '@components/popups/transferStarGift';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import tsNow from '@helpers/tsNow';
-import PopupStarGiftWear from '@components/popups/starGiftWear';
+import {openStarGiftWear} from '@components/popups/starGiftWear';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
@@ -153,7 +153,7 @@ function StarGiftGridItem(props: {
                 });
               }
             } else {
-              PopupStarGiftWear.open(props.item, profilePeerId);
+              openStarGiftWear(props.item, profilePeerId);
             }
           }
         },

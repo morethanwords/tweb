@@ -54,7 +54,6 @@ import OverlayClickHandler from '@helpers/overlayClickHandler';
 import getStoryPrivacyType, {StoryPrivacyType} from '@appManagers/utils/stories/privacyType';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import StackedAvatars from '@components/stackedAvatars';
-import PopupElement from '@components/popups';
 import {processDialogElementForReaction} from '@components/popups/reactedList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import focusInput from '@helpers/dom/focusInput';
@@ -1638,7 +1637,7 @@ const Stories = (props: {
       reply.classList.add(styles.ViewerStoryRepost);
       ret.reply = reply;
       setHeaderContent([
-        Icon(STORY_REPOST_ICON, styles.ViewerStoryHeaderRepostIcon),
+        Icon(STORY_REPOST_ICON),
         headerAvatar,
         headerPeerTitle
       ]);

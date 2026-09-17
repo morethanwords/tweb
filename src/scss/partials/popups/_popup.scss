@@ -16,6 +16,11 @@
   // --popup-footer-button-height: #{$popup-footer-button-size};
   --popup-footer-padding: #{$popup-footer-abitlarger-padding};
   --popup-footer-button-height: #{$popup-footer-abitlarger-button-size};
+  // A footer with one button in it, which is what every popup in the app has today. Two things
+  // read it: the height an empty footer still holds (`forward` shows its footer before there is
+  // a button to put in it), and the room a floating footer asks of the content it covers.
+  // Anything more in a footer — a second button, a caption — makes it taller, and CSS cannot
+  // measure that: a popup that floats such a footer reserves the difference itself.
   --popup-footer-height: calc(var(--popup-footer-padding) * 2 + var(--popup-footer-button-height));
   --popup-footer-gradient-start: 50%;
 
@@ -203,12 +208,70 @@
     // }
   }
 
+  // The scroll is the container's own flex child — a scroll is absolutely positioned by default.
+  #{&}-container > #{&}-scrollable {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  // The body inside a scroll is sized by its content — and fills the scrollport when there is
+  // less of it than that. It clips nothing: the shadows the cards paint below themselves are
+  // the scroll's business, not the body's.
+  #{&}-scrollable > #{&}-body {
+    // `min-height` fills the scrollport where the scroll lays out as a block, `flex` where a
+    // popup has made it a column — and never shrinks below what the body actually holds
+    min-height: 100%;
+    flex: 1 0 auto;
+    overflow: visible;
+  }
+
+  // The last card ends flush with the scroll, so its shadow would be cut off at that edge. The
+  // clip box reaches into the footer's padding just far enough to keep it, and the negative
+  // margin hands those pixels straight back — the footer, and everything in it, stays put.
+  // Only against a footer that is right below it in the flow: the pixels have to land in
+  // something that can spare them, and a floating footer is not part of that column at all.
+  &-scrollable:has(+ #{&}-footer-shaded) {
+    padding-bottom: $popup-scroll-bleed;
+    margin-bottom: -$popup-scroll-bleed;
+  }
+
+  // The flow footer draws the line the scroll used to: it lands on the junction itself rather
+  // than inside the bleed, and it is there only while content actually runs behind that edge.
+  #{&}-footer-shaded {
+    // the scroll is positioned, so the footer has to be as well to paint over the bleed
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid transparent;
+    background-color: transparent;
+
+    @include animation-level(2) {
+      transition: background-color var(--transition-standard-in), border-top-color var(--transition-standard-in);
+    }
+
+    &:not(.scrolled-end) {
+      border-top-color: var(--border-color);
+      background-color: var(--popup-background-color);
+    }
+  }
+
+  // A section's trailing gap is the distance to the *next* section; after the last one the
+  // footer's own padding is that distance, so the content stops there.
+  &-body:has(+ #{&}-footer),
+  &-scrollable:has(+ #{&}-footer) {
+    .sidebar-left-section-container:last-child {
+      padding-bottom: 0;
+    }
+  }
+
   &-footer {
     flex: 0 0 auto;
     padding: var(--popup-footer-padding);
+    // a footer with nothing in it yet still stands a button tall
     min-height: var(--popup-footer-height);
 
     &-placeholder {
+      // the room a floating footer takes out of the content behind it
       height: var(--popup-footer-height);
     }
 

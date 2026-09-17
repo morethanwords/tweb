@@ -1,9 +1,9 @@
 import {LangPackKey} from '@lib/langPack';
 import {ApiLimitType} from '@appManagers/apiManagerMethods';
 import rootScope from '@lib/rootScope';
-import PopupPeer from '@components/popups/peer';
+import showPeerPopup, {PopupPeerButton} from '@components/popups/peer';
 import LimitLine from '@components/limit';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 
 const a: {[type in ApiLimitType]?: {
   title: LangPackKey,
@@ -56,72 +56,19 @@ const a: {[type in ApiLimitType]?: {
   }
 };
 
-class P extends PopupPeer {
-  constructor(options: {
-    isPremium: boolean,
-    limit: number,
-    limitPremium: number,
-    feature?: PremiumPromoFeatureType,
-    popupRef?: (popup: P) => any,
-    strings: typeof a[keyof typeof a]
-  }) {
-    super('popup-limit', {
-      buttons: options.isPremium === undefined ? [{
-        langKey: 'LimitReached.Ok',
-        isCancel: true
-      }] : (options.isPremium ? [{
-        langKey: 'OK',
-        isCancel: true
-      }] : [{
-        langKey: 'IncreaseLimit',
-        callback: () => {
-          PopupPremium.show({feature: options.feature});
-        },
-        iconRight: 'premium_double_filled'
-      }, {
-        langKey: 'Cancel',
-        isCancel: true
-      }]),
-      descriptionLangKey: options.isPremium === undefined ? options.strings.descriptionLocked : (options.isPremium ? options.strings.descriptionPremium : options.strings.description),
-      descriptionLangArgs: options.isPremium ? [options.limitPremium] : [options.limit, options.limitPremium],
-      titleLangKey: options.strings.title,
-      body: !!options.popupRef
-    });
-
-    const limit = new LimitLine({
-      limitPremium: options.limitPremium,
-      hint: {
-        icon: options.strings.icon,
-        content: '' + (options.isPremium ? options.limitPremium : options.limit)
-      }
-    });
-
-    if(options.isPremium !== undefined) {
-      limit.setProgress(options.isPremium ? 1 : 0.5);
-    } else {
-      const limitLine = limit.container.querySelector('.limit-line');
-      limitLine?.remove();
-    }
-
-    this.description.before(limit.container);
-
-    // if(options.isPremium === false) {
-    //   this.buttons.pop().element.remove();
-    // }
-
-    limit._setHintActive();
-  }
-}
+/** What `channelsTooMuch` needs to dress the popup: its own body, its buttons and the moment to show. */
+export type LimitPopupContext = {
+  body: HTMLElement,
+  buttons: PopupPeerButton[],
+  show: () => void,
+  hide: () => void,
+  onCloseAfterTimeout: (callback: () => void) => void
+};
 
 export default async function showLimitPopup(
   type: keyof typeof a,
-  popupRef?: ConstructorParameters<typeof P>[0]['popupRef']
+  popupRef?: (context: LimitPopupContext) => void
 ) {
-  // const featureMap: {[type in keyof typeof a]?: PremiumPromoFeatureType} = {
-  //   folders: 'double_limits',
-  //   pin: 'double_limits',
-  //   chatlistInvites: 'double_limits'
-  // };
   const feature: PremiumPromoFeatureType = 'double_limits';
 
   const [appConfig, limit, limitPremium] = await Promise.all([
@@ -129,19 +76,63 @@ export default async function showLimitPopup(
     ...[false, true].map((v) => rootScope.managers.apiManager.getLimit(type, v))
   ]);
   const isLocked = appConfig.premium_purchase_blocked;
-  const popup = new P({
-    isPremium: isLocked ? undefined : rootScope.premium,
-    limit,
+  const isPremium = isLocked ? undefined : rootScope.premium;
+  const strings = a[type];
+
+  const buttons: PopupPeerButton[] = isPremium === undefined ? [{
+    langKey: 'LimitReached.Ok',
+    isCancel: true
+  }] : (isPremium ? [{
+    langKey: 'OK',
+    isCancel: true
+  }] : [{
+    langKey: 'IncreaseLimit',
+    callback: () => {
+      showPremiumPopup({feature});
+    },
+    iconRight: 'premium_double_filled'
+  }, {
+    langKey: 'Cancel',
+    isCancel: true
+  }]);
+
+  const limitLine = new LimitLine({
     limitPremium,
-    // feature: featureMap[type]
-    feature,
-    popupRef,
-    strings: a[type]
+    hint: {
+      icon: strings.icon,
+      content: '' + (isPremium ? limitPremium : limit)
+    }
   });
 
-  if(popupRef) {
-    popupRef(popup);
+  if(isPremium !== undefined) {
+    limitLine.setProgress(isPremium ? 1 : 0.5);
   } else {
-    popup.show();
+    limitLine.container.querySelector('.limit-line')?.remove();
   }
+
+  // the picker `channelsTooMuch` builds lives here, where the popup body used to be
+  const body = popupRef ? document.createElement('div') : undefined;
+  body?.classList.add('popup-body');
+
+  let onCloseAfterTimeout: () => void;
+  const handle = showPeerPopup('popup-limit', {
+    buttons,
+    descriptionLangKey: isPremium === undefined ? strings.descriptionLocked : (isPremium ? strings.descriptionPremium : strings.description),
+    descriptionLangArgs: isPremium ? [limitPremium] : [limit, limitPremium],
+    titleLangKey: strings.title,
+    contentBefore: limitLine.container,
+    content: body,
+    deferShow: !!popupRef,
+    onCloseAfterTimeout: () => onCloseAfterTimeout?.()
+  });
+
+  limitLine._setHintActive();
+
+  popupRef?.({
+    body,
+    buttons,
+    show: handle.show,
+    hide: handle.hide,
+    onCloseAfterTimeout: (callback) => onCloseAfterTimeout = callback
+  });
 }

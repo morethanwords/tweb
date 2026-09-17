@@ -1,5 +1,4 @@
 import AppSelectPeers from '@components/appSelectPeers';
-import PopupElement from '@components/popups';
 import showLimitPopup from '@components/popups/limit';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import deferredPromise from '@helpers/cancellablePromise';
@@ -30,14 +29,13 @@ export async function showChannelsTooMuchPopup() {
   const deferred = deferredPromise<void>();
   showLimitPopup('channels', async(popup) => {
     const middlewareHelper = getMiddleware();
-    popup.addEventListener('closeAfterTimeout', () => {
+    popup.onCloseAfterTimeout(() => {
       deferred.reject();
       middlewareHelper.destroy();
     });
     const datesMap = new Map<PeerId, number>();
     const selector = new AppSelectPeers({
       middleware: middlewareHelper.get(),
-      // @ts-ignore
       appendTo: popup.body,
       onChange: (value) => {
         if(!value) {
@@ -87,7 +85,6 @@ export async function showChannelsTooMuchPopup() {
 
     selector.renderResultsFunc(peerIds);
 
-    // @ts-ignore
     const mainButton = popup.buttons[0];
     const mainButtonChildren = [...mainButton.element.children];
     const mainButtonCallback = mainButton.callback;

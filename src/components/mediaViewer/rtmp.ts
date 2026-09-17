@@ -8,10 +8,9 @@ import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsControl
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {getRtmpShareUrl, getRtmpStreamUrl} from '@lib/rtmp/url';
 import AppMediaViewerBase from '@components/mediaViewer/base';
-import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
+import {showRtmpStartStreamPopup} from '@components/rtmp/adminPopup';
 import showOutputDevicePopup from '@components/rtmp/outputDevicePopup';
-import {RtmpRecordPopup} from '@components/rtmp/recordPopup';
-import PopupElement from '@components/popups';
+import {showRtmpRecordPopup} from '@components/rtmp/recordPopup';
 import SetTransition from '@components/singleTransition';
 import {toastNew} from '@components/toast';
 import safePlay from '@helpers/dom/safePlay';
@@ -161,7 +160,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
             icon: 'radioon',
             text: 'Rtmp.MediaViewer.Menu.StartRecording',
             verify: () => getCall()?.admin && !getCall().call.pFlags.record_video_active,
-            onClick: () => PopupElement.createPopup(RtmpRecordPopup).show()
+            onClick: () => showRtmpRecordPopup()
           }, {
             icon: 'radiooff',
             text: 'Rtmp.MediaViewer.Menu.StopRecording',
@@ -180,11 +179,11 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
             text: 'Rtmp.MediaViewer.Menu.StreamSettings',
             verify: () => getCall()?.admin,
             onClick: () => {
-              PopupElement.createPopup(RtmpStartStreamPopup, {
+              showRtmpStartStreamPopup({
                 peerId: this.peerId,
                 active: true,
                 onEndStream: () => this.close(undefined, true)
-              }).show();
+              });
             }
           }, {
             icon: 'crossround',

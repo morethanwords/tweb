@@ -263,7 +263,7 @@ export default function showChecklistPopup(options: ChecklistPopupOptions): void
         </PopupElement.Header>
         <PopupElement.Scrollable>
           <Show when={titleInput()}>
-            <Section class={css.titleSection} noShadow noDelimiter>
+            <Section noShadow noDelimiter>
               {titleInput().container}
             </Section>
             <Section name="Checklist">
@@ -289,7 +289,7 @@ export default function showChecklistPopup(options: ChecklistPopupOptions): void
               </For>
               <Show when={items().length < maxItems()}>
                 <Button
-                  class={`btn-transparent ${css.addTaskButton}`}
+                  class={`btn-primary btn-transparent ${css.addTaskButton}`}
                   icon="add"
                   onClick={() => addItem?.()}
                   text="ChecklistAddTask"

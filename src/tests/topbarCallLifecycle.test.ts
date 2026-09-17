@@ -41,9 +41,6 @@ const mocks = vi.hoisted(() => {
 
   class CallInstance extends Emitter {}
   class RtmpCallInstance extends Emitter {}
-  class PopupGroupCall {
-    public show = vi.fn();
-  }
 
   class DescriptionWidget {
     public update() {}
@@ -59,7 +56,7 @@ const mocks = vi.hoisted(() => {
     CallInstance,
     DescriptionWidget,
     GroupCallInstance,
-    PopupGroupCall,
+    GROUP_CALL_POPUP_KIND: Symbol('group-call-popup'),
     RtmpCallInstance,
     callsController,
     groupCallsController,
@@ -70,7 +67,7 @@ const mocks = vi.hoisted(() => {
     } | undefined,
     rootScope,
     rtmpCallsController,
-    popupCreate: vi.fn(),
+    showGroupCallPopup: vi.fn(),
     popups: [] as unknown[],
     setTransition: vi.fn(),
     transitionTimeout: undefined as ReturnType<typeof setTimeout> | undefined
@@ -143,19 +140,15 @@ vi.mock('@components/peerTitle', () => ({
     public element = document.createElement('span');
   }
 }));
-vi.mock('@components/groupCall', () => ({default: mocks.PopupGroupCall}));
-vi.mock('@components/call', () => ({default: class PopupCall {}}));
-vi.mock('@components/popups', () => ({
-  default: class PopupElement {
-    public static getPopups(ctor: new(...args: any[]) => unknown): unknown[] {
-      return mocks.popups.filter((popup) => popup instanceof ctor);
-    }
-    public static createPopup(ctor: new(...args: any[]) => unknown): unknown {
-      const popup = new ctor();
-      mocks.popups.push(popup);
-      mocks.popupCreate(popup);
-      return popup;
-    }
+vi.mock('@components/groupCall', () => ({
+  default: mocks.showGroupCallPopup,
+  GROUP_CALL_POPUP_KIND: mocks.GROUP_CALL_POPUP_KIND
+}));
+vi.mock('@components/call', () => ({default: vi.fn()}));
+vi.mock('@components/popups/indexTsx', () => ({
+  // `popups` holds the kind symbol of every popup the test pretends is open
+  default: {
+    getPopups: (kind: symbol): unknown[] => mocks.popups.filter((popup) => popup === kind)
   }
 }));
 vi.mock('@components/mediaViewer/rtmp', () => ({
@@ -185,7 +178,7 @@ describe('topbar call visibility lifecycle', () => {
     mocks.groupCallsController.clear();
     mocks.rootScope.clear();
     mocks.rtmpCallsController.clear();
-    mocks.popupCreate.mockClear();
+    mocks.showGroupCallPopup.mockClear();
     mocks.popups.length = 0;
     mocks.setTransition.mockClear();
     mocks.transitionTimeout = undefined;
@@ -237,7 +230,7 @@ describe('topbar call visibility lifecycle', () => {
     const first = new mocks.GroupCallInstance();
     mocks.groupCallsController.groupCall = first;
     mocks.groupCallsController.dispatchEvent('instance', first);
-    mocks.popups.push(new mocks.PopupGroupCall());
+    mocks.popups.push(mocks.GROUP_CALL_POPUP_KIND);
 
     first.state = GROUP_CALL_STATE.CLOSED;
     first.dispatchEvent('state', GROUP_CALL_STATE.CLOSED);
@@ -247,8 +240,7 @@ describe('topbar call visibility lifecycle', () => {
     mocks.groupCallsController.groupCall = replacement;
     mocks.groupCallsController.dispatchEvent('instance', replacement, true);
 
-    expect(mocks.popupCreate).toHaveBeenCalledTimes(1);
-    expect((mocks.popups[0] as InstanceType<typeof mocks.PopupGroupCall>).show).toHaveBeenCalledTimes(1);
+    expect(mocks.showGroupCallPopup).toHaveBeenCalledTimes(1);
     controller.destroy();
   });
 
@@ -279,7 +271,7 @@ describe('topbar call visibility lifecycle', () => {
     const first = new mocks.GroupCallInstance();
     mocks.groupCallsController.groupCall = first;
     mocks.groupCallsController.dispatchEvent('instance', first);
-    mocks.popups.push(new mocks.PopupGroupCall());
+    mocks.popups.push(mocks.GROUP_CALL_POPUP_KIND);
 
     first.state = GROUP_CALL_STATE.CLOSED;
     first.dispatchEvent('state', GROUP_CALL_STATE.CLOSED);
@@ -289,7 +281,7 @@ describe('topbar call visibility lifecycle', () => {
     mocks.groupCallsController.groupCall = replacement;
     mocks.groupCallsController.dispatchEvent('instance', replacement);
 
-    expect(mocks.popupCreate).not.toHaveBeenCalled();
+    expect(mocks.showGroupCallPopup).not.toHaveBeenCalled();
     controller.destroy();
   });
 });

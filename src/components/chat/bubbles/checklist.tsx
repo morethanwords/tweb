@@ -14,7 +14,7 @@ import classNames from '@helpers/string/classNames';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {IconTsx} from '@components/iconTsx';
 import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ConfettiContainer, ConfettiRef} from '@components/confetti';
@@ -79,7 +79,7 @@ export function ChecklistBubble(props: {
     }
 
     if(!rootScope.premium) {
-      PopupPremium.show();
+      showPremiumPopup();
       return;
     }
 
@@ -118,7 +118,7 @@ export function ChecklistBubble(props: {
               <div
                 class={classNames(
                   styles.item,
-                  isReadonly ? styles.itemReadonly : styles.itemClickable,
+                  isReadonly && styles.itemReadonly,
                   completionsById()[item.id] && styles.itemCompleted
                 )}
                 onClick={(evt) => {

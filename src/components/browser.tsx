@@ -950,7 +950,7 @@ export async function openCatalogueInAppBrowser() {
       icon: IconTsx({icon: 'plus'}),
       dispose,
       content: (
-        <Scrollable class={styles.BrowserCatalogueScrollable}>
+        <Scrollable>
           <div
             class={styles.BrowserCatalogue}
             onClick={(e) => {

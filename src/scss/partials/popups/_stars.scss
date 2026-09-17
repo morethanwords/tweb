@@ -34,31 +34,17 @@
 
   &-image {
     width: 194px;
-    margin: 1.125rem auto .3125rem;
+    margin: 1.125rem auto 0;
     display: block;
     transform: translateX(-3px); // * fix image alignment
   }
 
-  &-title,
-  &-subtitle {
-    @include text-overflow(false);
-    @include text-center();
-  }
-
-  &-title {
-    font-size: 1.5rem;
-    font-weight: var(--font-weight-bold);
-    line-height: 2rem;
-  }
-
-  &-subtitle {
-    line-height: 1.375rem;
-    margin-top: .375rem;
+  &-intro {
     margin-bottom: 1.5rem;
+  }
 
-    &.mt {
-      margin-top: .5rem;
-    }
+  &-empty {
+    margin-block: .375rem 1.5rem;
   }
 
   &-history-title {
@@ -327,7 +313,10 @@
     }
 
     &-status {
-      background-color: rgba(var(--green-color-rgb), .1);
+      // the chip takes the amount's own colour, the way tdesktop paints it (the amount's pen at
+      // 15% alpha for the pill, full strength for the label) — a refund on a negative amount used
+      // to end up as red text inside a green pill
+      background-color: color-mix(in srgb, currentColor 10%, transparent);
       border-radius: $border-radius;
       padding: 0 .375rem;
     }

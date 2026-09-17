@@ -24,24 +24,16 @@ defineStories('Chat & moderation', [
     id: 'toggleReadDate/lastSeen',
     title: 'Show last seen — premium upsell',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupToggleReadDate}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/toggleReadDate')
-      ]);
-
-      PopupElement.createPopup(PopupToggleReadDate, ctx.peer('private'), 'lastSeen');
+      const {default: showToggleReadDatePopup} = await import('@components/popups/toggleReadDate');
+      showToggleReadDatePopup(ctx.peer('private'), 'lastSeen');
     }
   },
   {
     id: 'toggleReadDate/readTime',
     title: 'Show read time — premium upsell',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupToggleReadDate}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/toggleReadDate')
-      ]);
-
-      PopupElement.createPopup(PopupToggleReadDate, ctx.peer('private'), 'readTime');
+      const {default: showToggleReadDatePopup} = await import('@components/popups/toggleReadDate');
+      showToggleReadDatePopup(ctx.peer('private'), 'readTime');
     }
   },
   {
@@ -58,24 +50,16 @@ defineStories('Chat & moderation', [
       }
     },
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupReactedList}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/reactedList')
-      ]);
-
-      PopupElement.createPopup(PopupReactedList, ctx.message('private'));
+      const {default: showReactedListPopup} = await import('@components/popups/reactedList');
+      showReactedListPopup(ctx.message('private'));
     }
   },
   {
     id: 'deleteMegagroupMessages',
     title: 'Delete & ban — supergroup',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupDeleteMegagroupMessages}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/deleteMegagroupMessages')
-      ]);
-
-      PopupElement.createPopup(PopupDeleteMegagroupMessages, {
+      const {default: showDeleteMegagroupMessagesPopup} = await import('@components/popups/deleteMegagroupMessages');
+      showDeleteMegagroupMessagesPopup({
         messages: [{...ctx.message('private'), peerId: ctx.peer('supergroup'), fromId: ctx.peer('private')}]
       });
     }
@@ -106,12 +90,8 @@ defineStories('Chat & moderation', [
     id: 'joinChatInvite',
     title: 'Join a chat by invite link',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupJoinChatInvite}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/joinChatInvite')
-      ]);
-
-      PopupElement.createPopup(PopupJoinChatInvite, 'sandbox-hash', {
+      const {default: showJoinChatInvitePopup} = await import('@components/popups/joinChatInvite');
+      showJoinChatInvitePopup('sandbox-hash', {
         _: 'chatInvite',
         pFlags: {channel: true, broadcast: true},
         title: 'Sandbox Invite Channel',
@@ -126,12 +106,8 @@ defineStories('Chat & moderation', [
     id: 'sharedFolderInvite',
     title: 'Shared folder invite',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupSharedFolderInvite}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/sharedFolderInvite')
-      ]);
-
-      PopupElement.createPopup(PopupSharedFolderInvite, {
+      const {default: showSharedFolderInvitePopup} = await import('@components/popups/sharedFolderInvite');
+      showSharedFolderInvitePopup({
         slug: 'sandbox-folder',
         chatlistInvite: {
           _: 'chatlists.chatlistInvite',
@@ -145,18 +121,6 @@ defineStories('Chat & moderation', [
           users: []
         }
       });
-    }
-  },
-  {
-    id: 'avatar/crop',
-    title: 'Avatar cropper',
-    open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupAvatar}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/avatar')
-      ]);
-
-      PopupElement.createPopup(PopupAvatar).show();
     }
   },
   {
@@ -190,24 +154,16 @@ defineStories('Chat & moderation', [
     id: 'ageVerification',
     title: 'Age verification',
     open: async(ctx) => {
-      const [{default: PopupElement}, {AgeVerificationPopup}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/ageVerification')
-      ]);
-
-      PopupElement.createPopup(AgeVerificationPopup, {onVerify: noop}).show();
+      const {showAgeVerificationPopup} = await import('@components/popups/ageVerification');
+      showAgeVerificationPopup({onVerify: noop});
     }
   },
   {
     id: 'webApp/locationAccess',
     title: 'Mini app wants your location',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupWebAppLocationAccess}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/webAppLocationAccess')
-      ]);
-
-      PopupElement.createPopup(PopupWebAppLocationAccess, {botId: ctx.peer('bot')}).show();
+      const {default: showWebAppLocationAccessPopup} = await import('@components/popups/webAppLocationAccess');
+      showWebAppLocationAccessPopup({botId: ctx.peer('bot'), onFinish: noop});
     }
   },
   {

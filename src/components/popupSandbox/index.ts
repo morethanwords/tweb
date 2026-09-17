@@ -23,7 +23,6 @@ import './bootstrapState';
 import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
-import PopupElement from '@components/popups';
 import PopupElementTsx from '@components/popups/indexTsx';
 import PopupSandboxPanel from './sandbox';
 import {installSandboxEnvironment, getLiveManagers, getMockManagers, useLiveManagers, useMockManagers} from './environment';
@@ -45,17 +44,15 @@ const [droppedOverrides, setDroppedOverrides] = createSignal(false);
 let liveContext: PopupStoryContext;
 let restoreManagers: () => void;
 
+/** Only the standalone sandbox owns the URL; over a running app the hash belongs to the app. */
+let ownsLocationHash = false;
+
 let revertStoryManagers: () => void;
 let readyPromise: Promise<void>;
 let showPromise: Promise<void>;
 let closePanel: () => void;
 
 export function closeAllPopups() {
-  // Both popup implementations keep their own live list; a story may have opened either.
-  for(const popup of [...((PopupElement as any).POPUPS as any[] || [])]) {
-    popup.forceHide?.();
-  }
-
   for(const popup of [...(PopupElementTsx.POPUPS || [])]) {
     popup.destroy?.();
   }
@@ -102,7 +99,37 @@ export async function openStory(story: PopupStory) {
   }
 
   setActiveId(story.id);
+  // The hash is what brings the story back after a reload — and the sandbox reloads on every edit
+  // (see `watchForEdits`). `replaceState` rather than assigning: no history entry, no `hashchange`.
+  if(ownsLocationHash) {
+    const hash = '#' + encodeURIComponent(story.id);
+    if(location.hash !== hash) history.replaceState(null, '', hash);
+  }
+
   await story.open(ctx);
+}
+
+/*
+ * Reload on an edit.
+ *
+ * Vite hot-swaps the edited module in its own graph, but a story re-imports the popup by a URL the
+ * browser has already cached, so `open()` keeps building the popup from the code you just changed
+ * away from — silently. Popup modules also carry module-level state (kind symbols, the current-popup
+ * registry) that a second copy would fork. So take the reload: the open story is in the hash and
+ * comes straight back.
+ *
+ * CSS is left alone — Vite swaps stylesheets in place and that already works.
+ */
+function watchForEdits() {
+  if(!import.meta.hot) {
+    return;
+  }
+
+  import.meta.hot.on('vite:afterUpdate', ({updates}) => {
+    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path))) {
+      location.reload();
+    }
+  });
 }
 
 /**
@@ -169,6 +196,8 @@ async function mountPanel(onClose?: () => void) {
 /** The `?popups=1` entry: the panel owns the page and there is no app to go back to. */
 export function startPopupSandbox() {
   return readyPromise ??= (async() => {
+    ownsLocationHash = true;
+    watchForEdits();
     const close = await mountPanel();
 
     // Deep-link straight into a story: ?popups=1#deleteMessages/private. Editing the hash on an
@@ -181,6 +210,7 @@ export function startPopupSandbox() {
     window.addEventListener('hashchange', openFromHash);
     closePanel = () => {
       window.removeEventListener('hashchange', openFromHash);
+      ownsLocationHash = false;
       close();
     };
 

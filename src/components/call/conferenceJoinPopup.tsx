@@ -57,10 +57,10 @@ export default async function showConferenceJoinPopup(options: ConferenceJoinPop
           <PopupElement.CloseButton />
         </PopupElement.Header>
         <PopupElement.Body class="text-overflow-wrap">
-          <MediaHeader class={styles.mediaHeader}>
+          <MediaHeader marginTop>
             <CallLogo icon="phone_filled" />
             <MediaHeader.Title>{i18n('ConferenceCall.Join.Title')}</MediaHeader.Title>
-            <MediaHeader.Subtitle secondary>{invitation}</MediaHeader.Subtitle>
+            <MediaHeader.Subtitle color="secondary">{invitation}</MediaHeader.Subtitle>
           </MediaHeader>
           <Show when={alreadyJoined}>
             <div class={styles.separator} />

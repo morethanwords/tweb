@@ -342,17 +342,17 @@ export default function showStickersPopup(
           <PopupElement.Title>{titleContent()}</PopupElement.Title>
           {menuEl()}
         </PopupElement.Header>
-        <PopupElement.Body>
-          <PopupElement.Scrollable
+        <PopupElement.Scrollable
             ref={scrollableEl}
             class={!isLoaded() && 'is-loading'}
             withBorders="top"
           >
+          <PopupElement.Body>
             <Show when={isLoaded()} fallback={putPreloader(undefined, true)}>
               {containers()}
             </Show>
-          </PopupElement.Scrollable>
-        </PopupElement.Body>
+          </PopupElement.Body>
+        </PopupElement.Scrollable>
         <PopupElement.Footer floating={isLoaded()}>
           <PopupElement.FooterButton
             noRipple

@@ -250,7 +250,8 @@
 .chat-requests-container {
   .chatlist-chat.no-wrap {
     min-height: 5.75rem;
-    padding-bottom: 2.25rem !important;
+    // the buttons live in the bottom padding, so the copy keeps the top edge to itself
+    padding-block: 0 2.25rem;
 
     .chatlist-chat-buttons {
       position: absolute;

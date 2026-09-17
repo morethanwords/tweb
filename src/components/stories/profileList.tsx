@@ -33,8 +33,7 @@ import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import SidebarSlider from '../slider';
 import InputField from '@components/inputField';
 import confirmationPopup from '@components/confirmationPopup';
-import PopupElement from '@components/popups';
-import PopupChooseStory from '@components/popups/chooseStoryPopup';
+import showChooseStoryPopup from '@components/popups/chooseStoryPopup';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {toastNew} from '@components/toast';
@@ -437,11 +436,8 @@ function StoriesAlbums(props: {
 }
 
 async function openAddToAlbumPopup(peerId: PeerId, albumId: number) {
-  const popup = PopupElement.createPopup(PopupChooseStory, {peerId, albumId});
-  popup.show();
-
   const result = await new Promise<{added: number[], removed: number[]} | null>((resolve) => {
-    popup.addEventListener('finish', resolve);
+    showChooseStoryPopup({peerId, albumId, onFinish: resolve});
   });
 
   if(!result) return;

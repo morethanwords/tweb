@@ -174,13 +174,16 @@ const mountRowController = <T extends SliderSuperTabEventableConstructable = any
   const getSubtitle = () => container.querySelector(
     ':scope > .row-subtitle, :scope > .row-subtitle-row > .row-subtitle:not(.row-subtitle-right)'
   ) as HTMLElement;
+  const getMidtitle = () => container.querySelector(
+    ':scope > .row-midtitle, :scope > .row-midtitle-row > .row-midtitle:not(.row-midtitle-right)'
+  ) as HTMLElement;
   const ensureSubtitle = () => {
     setHasSubtitle(true);
     return parts.subtitle ||= getSubtitle();
   };
   const ensureMidtitle = () => {
     setHasMidtitle(true);
-    return parts.midtitle ||= getPart('row-midtitle');
+    return parts.midtitle ||= getMidtitle();
   };
   let rootDispose: () => void;
   let disposed = false;
@@ -325,7 +328,7 @@ const mountRowController = <T extends SliderSuperTabEventableConstructable = any
   parts.subtitle = getSubtitle();
   parts.subtitleRow = getPart('row-subtitle-row');
   parts.subtitleRight = getPart('row-subtitle-right');
-  parts.midtitle = getPart('row-midtitle');
+  parts.midtitle = getMidtitle();
 
   // a Solid root is a RENDER lifetime, not an event-listener one: when the caller owns a
   // middleware, that owns the disposal. A `listenerSetter` is only the fallback for callers

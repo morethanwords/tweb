@@ -14,12 +14,13 @@ import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {toastNew} from '@components/toast';
 import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import confirmationPopup from '@components/confirmationPopup';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import DotRenderer from '@components/dotRenderer';
 import themeController from '@helpers/themeController';
 import Table, {TablePeer} from '@components/table';
+import MediaHeader from '@components/mediaHeader';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware} from '@helpers/middleware';
 
@@ -76,7 +77,7 @@ export default async function showGiftLinkPopup(
   const isInChat = !!checkedGiftCode;
   const giftCode = checkedGiftCode ?? await rootScope.managers.appPaymentsManager.checkGiftCode(slug);
   if(shouldDisplayGiftCodeAsGift(giftCode)) {
-    PopupPremium.show({gift: giftCode, stack});
+    showPremiumPopup({gift: giftCode, stack});
     return;
   }
 
@@ -185,10 +186,10 @@ export default async function showGiftLinkPopup(
 
     const wrapper = (
       <div class="popup-gift-link-wrapper">
-        <div class="popup-gift-link-header">
-          <img ref={img} class="popup-gift-link-image" />
-          <div class="popup-gift-link-title">{i18n(titleLangKey)}</div>
-          <div class="popup-gift-link-subtitle">
+        <MediaHeader marginTop marginBottom>
+          <MediaHeader.Sticker size={120} element={<img ref={img} />} />
+          <MediaHeader.Title size={20}>{i18n(titleLangKey)}</MediaHeader.Title>
+          <MediaHeader.Subtitle>
             {
               isUsed ?
                 i18n('BoostingLinkUsed') :
@@ -197,8 +198,8 @@ export default async function showGiftLinkPopup(
                   toPeerId ? [new PeerTitle({peerId: toPeerId}).element] : undefined
                 )
             }
-          </div>
-        </div>
+          </MediaHeader.Subtitle>
+        </MediaHeader>
         {inviteLink.container}
         <Table class="popup-gift-link-table" boldKey content={content} />
         {(!isInChat || !isUsed) && (
@@ -232,11 +233,11 @@ export default async function showGiftLinkPopup(
           <PopupElement.CloseButton />
           <PopupElement.Title>{i18n(titleLangKey)}</PopupElement.Title>
         </PopupElement.Header>
-        <PopupElement.Body>
-          <PopupElement.Scrollable>
+        <PopupElement.Scrollable>
+          <PopupElement.Body>
             {wrapper}
-          </PopupElement.Scrollable>
-        </PopupElement.Body>
+          </PopupElement.Body>
+        </PopupElement.Scrollable>
         <PopupElement.Footer>
           <PopupElement.FooterButton
             ref={(element) => confirmButton = element as HTMLButtonElement}

@@ -2,18 +2,18 @@ import {Accessor, createSignal, createUniqueId, For, JSX, Setter} from 'solid-js
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import replaceContent from '@helpers/dom/replaceContent';
-import {renderComponent} from '@helpers/solid/renderComponent';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {InputPrivacyKey, InputPrivacyRule} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import {i18n, join, LangPackKey, _i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import RadioFieldTsx from '@components/radioFieldTsx';
 import Row from '@components/rowTsx';
 import Scrollable from '@components/scrollable';
-import SettingSection from '@components/settingSection';
+import Section, {SectionParts} from '@components/section';
 import {AppAddMembersTab} from '@components/solidJsTabs';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {hideToast, toastNew} from '@components/toast';
@@ -30,8 +30,8 @@ type PrivacyException = {
 
 export type PrivacySectionStr = LangPackKey | '' | HTMLElement;
 export default class PrivacySection {
-  public radioSection: SettingSection;
-  public exceptionsSection: SettingSection;
+  public radioSection: SectionParts;
+  public exceptionsSection: SectionParts;
   public exceptions: Map<PrivacyExceptionKey, PrivacyException>;
   public peerIds: {
     disallow?: PeerId[],
@@ -71,8 +71,6 @@ export default class PrivacySection {
     const managers = options.managers;
     const rulesPromise = options.inputKey ? managers.appPrivacyManager.getPrivacy(options.inputKey) : Promise.resolve();
 
-    this.radioSection = new SettingSection({name: options.title, caption: true});
-
     let radioOptions: Array<{type: PrivacyType, langKey: LangPackKey}> = [{
       type: PrivacyType.Everybody,
       langKey: 'PrivacySettingsController.Everbody'
@@ -98,11 +96,17 @@ export default class PrivacySection {
     this.setSelectedType = setSelectedType;
     this.setLocked = setLocked;
 
-    renderComponent({
-      element: this.radioSection.content,
-      Component: () => {
-        const name = createUniqueId();
-        return (
+    let radioContent!: HTMLElement, radioCaption!: HTMLElement;
+    const radioContainer = wrapSolidComponent(() => {
+      const name = createUniqueId();
+      return (
+        <Section
+          name={options.title}
+          // an empty caption element `replaceCaption` fills in as the type changes
+          caption={true}
+          contentProps={{ref: (element) => radioContent = element}}
+          captionRef={(element) => radioCaption = element}
+        >
           <form>
             <For each={radioOptions}>{({type, langKey}) => {
               const isLocked = () => locked() && type !== PrivacyType.Everybody;
@@ -115,7 +119,7 @@ export default class PrivacySection {
                       langPackArguments: [
                         anchorCallback(() => {
                           hideToast();
-                          PopupPremium.show();
+                          showPremiumPopup();
                         })
                       ]
                     });
@@ -136,17 +140,17 @@ export default class PrivacySection {
               );
             }}</For>
           </form>
-        );
-      },
-      middleware: options.tab.middlewareHelper.get()
-    });
+        </Section>
+      );
+    }, options.tab.middlewareHelper.get());
+
+    this.radioSection = {container: radioContainer, content: radioContent, caption: radioCaption};
+
     if(options.appendTo) {
-      options.appendTo.append(this.radioSection.container);
+      options.appendTo.append(radioContainer);
     }
 
     if(!options.noExceptions) {
-      const section = this.exceptionsSection = new SettingSection({name: 'PrivacyExceptions', caption: 'PrivacySettingsController.PeerInfo'});
-
       const createException = (
         key: PrivacyExceptionKey,
         titleLangKey: LangPackKey,
@@ -164,9 +168,13 @@ export default class PrivacySection {
         createException('allow', options.exceptionTexts[1], 'adduser')
       ]]);
 
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      let exceptionsContent!: HTMLElement;
+      const exceptionsContainer = wrapSolidComponent(() => (
+        <Section
+          name="PrivacyExceptions"
+          caption="PrivacySettingsController.PeerInfo"
+          contentProps={{ref: (element) => exceptionsContent = element}}
+        >
           <For each={[...this.exceptions.values()]}>{(exception) => (
             <Row
               classList={{
@@ -208,12 +216,13 @@ export default class PrivacySection {
               <Row.Subtitle>{exception.subtitle()}</Row.Subtitle>
             </Row>
           )}</For>
-        ),
-        middleware: options.tab.middlewareHelper.get()
-      });
+        </Section>
+      ), options.tab.middlewareHelper.get());
+
+      this.exceptionsSection = {container: exceptionsContainer, content: exceptionsContent};
 
       if(options.appendTo) {
-        options.appendTo.append(section.container);
+        options.appendTo.append(exceptionsContainer);
       }
     }
 

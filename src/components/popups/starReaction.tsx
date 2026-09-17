@@ -6,6 +6,7 @@ import {DelimiterWithText} from '@components/chat/giveaway';
 import {createEffect, createMemo, createSignal, For, on, onCleanup} from 'solid-js';
 import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
 import Row from '@components/rowTsx';
+import MediaHeader from '@components/mediaHeader';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import rootScope from '@lib/rootScope';
 import {Message, MessageReactor, Peer} from '@layer';
@@ -30,7 +31,6 @@ import findAndSplice from '@helpers/array/findAndSplice';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {LimitLineTsx} from '@components/limitLineTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
-import Scrollable from '@components/scrollable2';
 
 export default async function showStarReactionPopup(peerId: PeerId, mid: number, chat: Chat) {
   // * cancel all pending paid reactions
@@ -217,8 +217,8 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
           {sendAsContainer}
           <StarsBalance />
         </PopupElement.Header>
-        <PopupElement.Body>
-          <Scrollable withBorders="both">
+        <PopupElement.Scrollable>
+          <PopupElement.Body>
             <LimitLineTsx
               class="popup-stars-slider"
               filledProgressElement={sparkles as HTMLElement}
@@ -232,8 +232,10 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
               }
               hintIcon="star"
             />
-            <div class="popup-stars-title">{i18n('StarsReactionTitle')}</div>
-            <div class="popup-stars-subtitle">{i18n('StarsReactionText', [peerTitle])}</div>
+            <MediaHeader class="popup-stars-intro">
+              <MediaHeader.Title>{i18n('StarsReactionTitle')}</MediaHeader.Title>
+              <MediaHeader.Subtitle>{i18n('StarsReactionText', [peerTitle])}</MediaHeader.Subtitle>
+            </MediaHeader>
             <div class="popup-star-reaction-senders">
               <DelimiterWithText
                 langKey="StarsReactionTopSenders"
@@ -259,8 +261,8 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
                 <Row.Title>{i18n('StarsReactionShowMeInTopSenders')}</Row.Title>
               </Row>
             </div>
-          </Scrollable>
-        </PopupElement.Body>
+          </PopupElement.Body>
+        </PopupElement.Scrollable>
         <PopupElement.Footer>
           <PopupElement.FooterButton
             iconRight="star"

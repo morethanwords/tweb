@@ -20,16 +20,15 @@ import PasswordMonkey from '@components/monkeys/password';
 import PasswordInputField from '@components/passwordInputField';
 import PeerProfileAvatars from '@components/peerProfileAvatars';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
-import PopupElement from '@components/popups';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import showLimitPopup from '@components/popups/limit';
 import showMyQrCodePopup from '@components/popups/myQrCode';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
-import PopupPremium from '@components/popups/premium';
-import PopupSendGift from '@components/popups/sendGift';
+import showPremiumPopup from '@components/popups/premium';
+import showSendGiftPopup from '@components/popups/sendGift';
 import showStarsRatingPopup from '@components/popups/starsRating';
-import PopupToggleReadDate from '@components/popups/toggleReadDate';
+import showToggleReadDatePopup from '@components/popups/toggleReadDate';
 import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import appSidebarLeft from '@components/sidebarLeft';
@@ -92,7 +91,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       InputFieldTsx,
       PasswordInputField,
       PasswordMonkey,
-      PopupPremium,
+      showPremiumPopup,
       EmoticonsDropdown,
       EmojiTab,
       appDialogsManager,
@@ -101,8 +100,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       I18n,
       i18n,
       join,
-      PopupElement,
-      PopupToggleReadDate,
+      showToggleReadDatePopup,
       wrapSticker,
       wrapTopicNameButton,
       wrapRichText,
@@ -120,7 +118,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       BusinessHours,
       avatarNew,
       PeerTitleTsx,
-      PopupSendGift,
+      showSendGiftPopup,
       showBirthdayPopup,
       saveMyBirthday,
       showMyQrCodePopup,

@@ -271,11 +271,30 @@ export default function Scrollable(props: {
     }
   };
 
+  const tracksEnds = () => !!(props.withBorders || props.trackEnds);
+
+  // which end the content sits at costs a layout read, so it is kept only where it is drawn
+  const checkEndsIfTracked = () => {
+    if(tracksEnds()) {
+      checkEnds();
+    }
+  };
+
   const onSizeChange = () => {
+    checkEndsIfTracked();
+
     if(!IS_OVERLAY_SCROLL_SUPPORTED() && thumbRef) {
       onScroll();
     }
   };
+
+  /**
+   * Which end the content sits at cannot be known before it is laid out — and whether it
+   * matters at all can turn true after mount, since a footer registers itself with the popup
+   * only once the whole body has rendered. Content that grows later says so through
+   * `onSizeChange`.
+   */
+  createEffect(checkEndsIfTracked);
 
   const value: ScrollableContextValue = {
     get scrollPosition() {

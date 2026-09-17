@@ -4,7 +4,6 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import type {State} from '@config/state';
 import type {AnyDialog} from '@lib/storages/dialogs';
 import type {CustomEmojiRendererElement} from '@customEmoji/renderer';
-import PopupElement from '@components/popups';
 import PopupElementTsx from '@components/popups/indexTsx';
 import DialogsContextMenu from '@components/dialogsContextMenu';
 import DotRenderer from '@components/dotRenderer';
@@ -34,10 +33,9 @@ import highlightText, {TextHighlight} from '@helpers/dom/textHighlight';
 import ConnectionStatusComponent from '@components/connectionStatus';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {fastRafPromise} from '@helpers/schedulers';
-import SortedUserList from '@components/sortedUserList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import handleTabSwipe from '@helpers/dom/handleTabSwipe';
-import windowSize from '@helpers/windowSize';
+import {ChatlistContacts, createChatlistContacts} from '@components/sidebarLeft/chatlistContacts';
 import isInDOM from '@helpers/dom/isInDOM';
 import {setSendingStatus} from '@components/sendingStatus';
 import {SortedElementBase} from '@helpers/sortedList';
@@ -73,7 +71,6 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import getDialogMentionBadgeState from '@helpers/dialogMentionBadgeState';
 import {attachRowController, RowMediaSizeType, type RowTsxController} from '@components/rowTsxController'
-import SettingSection from '@components/settingSection';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import formatNumber from '@helpers/number/formatNumber';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
@@ -82,7 +79,7 @@ import shake from '@helpers/dom/shake';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import eachTimeout from '@helpers/eachTimeout';
-import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
+import showSharedFolderInvitePopup from '@components/popups/sharedFolderInvite';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import showLimitPopup from '@components/popups/limit';
 import StoriesList from '@components/stories/list';
@@ -121,7 +118,7 @@ import FoldersTabs from '@components/foldersTabs';
 import clamp from '@helpers/number/clamp';
 import confirmationPopup from '@components/confirmationPopup';
 import ListenerSetter from '@helpers/listenerSetter';
-import type PopupPeer from '@components/popups/peer';
+import type {PopupPeerHandle} from '@components/popups/peer';
 import {toastNew} from '@components/toast';
 import {
   renderChatlistTopNotification,
@@ -131,6 +128,8 @@ import {
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 const DIALOG_LOAD_COUNT = 20;
+// below this many dialogs the sidebar looks empty, so contacts are offered under the chat list
+const MIN_DIALOGS_WITHOUT_CONTACTS = 10;
 
 export function findDialogListElement(target: EventTarget) {
   return findUpTag(target, DIALOG_LIST_ELEMENT_TAG);
@@ -755,8 +754,7 @@ export class AppDialogsManager {
 
   private lastActiveElements: Set<HTMLElement> = new Set();
 
-  public loadContacts: () => void;
-  public processContact: (peerId: PeerId) => void;
+  private contactsPlaceholder: ChatlistContacts;
 
   private initedListeners = false;
 
@@ -933,7 +931,7 @@ export class AppDialogsManager {
       lottieLoader.loadLottieWorkers();
     }, 200);
 
-    PopupElement.MANAGERS = PopupElementTsx.MANAGERS = rootScope.managers = managers;
+    PopupElementTsx.MANAGERS = rootScope.managers = managers;
     appDownloadManager.construct(managers);
     appDownloadManager.showPollCancelConfirmation = (randomId: string) => this.showPollCancelConfirmation(randomId);
     appSidebarLeft.construct(managers);
@@ -1100,7 +1098,7 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('contacts_update', (userId) => {
-      this.processContact?.(userId.toPeerId());
+      this.processContact(userId.toPeerId());
     });
 
     appImManager.addEventListener('peer_changed', ({peerId, threadId, monoforumThreadId, isForum}) => {
@@ -1417,7 +1415,7 @@ export class AppDialogsManager {
       onClick: async() => {
         const data = filterRendered.topNotificationData;
         if(data._ === 'chatlistUpdates') {
-          PopupElement.createPopup(PopupSharedFolderInvite, {
+          showSharedFolderInvitePopup({
             chatlistInvite: {
               ...data.chatlistUpdates,
               already_peers: [],
@@ -1695,14 +1693,22 @@ export class AppDialogsManager {
   }
 
   private removeContactsPlaceholder() {
-    const chatList = this.chatList;
-    const parts = chatList.parentElement.parentElement;
-    const bottom = chatList.parentElement.nextElementSibling as HTMLElement;
+    const parts = this.chatList.parentElement.parentElement;
     parts.classList.remove('with-contacts');
-    bottom.replaceChildren();
-    this.loadContacts = undefined;
-    this.processContact = undefined;
+    this.contactsPlaceholder.element.remove();
+    this.contactsPlaceholder.destroy();
+    this.contactsPlaceholder = undefined;
   }
+
+  /** The chat list scrolled to its end — render the next page of contacts, if they are shown. */
+  public loadContacts = () => {
+    this.contactsPlaceholder?.loadMore();
+  };
+
+  /** A dialog for this peer appeared or went away — the contacts below the chat list follow. */
+  public processContact = (peerId: PeerId) => {
+    this.contactsPlaceholder?.processContact(peerId);
+  };
 
   private _onListLengthChange = () => {
     this.checkIfPlaceholderNeeded();
@@ -1710,100 +1716,28 @@ export class AppDialogsManager {
     if(this.filterId !== FOLDER_ID_ALL) return;
 
     // return;
-    const chatList = this.chatList;
     const count = this.xd?.sortedList.itemsLength() || 0;
 
-    const parts = chatList.parentElement.parentElement;
-    const bottom = chatList.parentElement.nextElementSibling as HTMLElement;
-    const hasContacts = !!bottom.childElementCount;
-
-    if(count >= 10) {
-      if(hasContacts) {
+    if(count >= MIN_DIALOGS_WITHOUT_CONTACTS) {
+      if(this.contactsPlaceholder) {
         this.removeContactsPlaceholder();
       }
 
       return;
-    } else if(hasContacts) return;
+    } else if(this.contactsPlaceholder) return;
 
+    const chatList = this.chatList;
+    const parts = chatList.parentElement.parentElement;
+    const bottom = chatList.parentElement.nextElementSibling as HTMLElement;
     parts.classList.add('with-contacts');
 
-    const section = new SettingSection({
-      name: 'Contacts',
-      noDelimiter: true,
-      fakeGradientDelimiter: true
+    this.contactsPlaceholder = createChatlistContacts({
+      managers: this.managers,
+      onLengthChange: () => this.updateContactsLength(true),
+      attachToList: (list) => this.setListClickListener({list})
     });
 
-    section.container.classList.add('sidebar-left-contacts-section', 'hide');
-
-    this.managers.appUsersManager.getContactsPeerIds(undefined, undefined, 'online').then((contacts) => {
-      let ready = false;
-      const onListLengthChange = () => {
-        if(ready) {
-          section.container.classList.toggle('hide', !sortedUserList.list.childElementCount);
-        }
-
-        this.updateContactsLength(true);
-      };
-
-      const sortedUserList = new SortedUserList({
-        avatarSize: 'abitbigger',
-        createChatListOptions: {
-          dialogSize: 48,
-          new: true
-        },
-        autonomous: false,
-        onListLengthChange,
-        managers: this.managers,
-        middleware: undefined
-      });
-
-      this.loadContacts = () => {
-        const pageCount = windowSize.height / 60 | 0;
-        const promise = filterAsync(contacts.splice(0, pageCount), this.verifyPeerIdForContacts);
-
-        promise.then((arr) => {
-          arr.forEach((peerId) => {
-            sortedUserList.add(peerId);
-          });
-        });
-
-        if(!contacts.length) {
-          this.loadContacts = undefined;
-        }
-      };
-
-      this.loadContacts();
-
-      this.processContact = async(peerId) => {
-        if(peerId.isAnyChat()) {
-          return;
-        }
-
-        const good = await this.verifyPeerIdForContacts(peerId);
-        const added = sortedUserList.has(peerId);
-        if(!added && good) sortedUserList.add(peerId);
-        else if(added && !good) sortedUserList.delete(peerId);
-      };
-
-      const list = sortedUserList.list;
-      list.classList.add('chatlist-new');
-      this.setListClickListener({list});
-      section.content.append(list);
-
-      ready = true;
-      onListLengthChange();
-    });
-
-    bottom.append(section.container);
-  };
-
-  private verifyPeerIdForContacts = async(peerId: PeerId) => {
-    const [isContact, dialog] = await Promise.all([
-      this.managers.appPeersManager.isContact(peerId),
-      this.managers.appMessagesManager.getDialogOnly(peerId)
-    ]);
-
-    return isContact && !dialog;
+    bottom.append(this.contactsPlaceholder.element);
   };
 
   public onSomeDrawerToggle?: () => void;
@@ -2970,7 +2904,7 @@ export class AppDialogsManager {
 
   private showPollCancelConfirmation(randomId: string) {
     const listenerSetter = new ListenerSetter;
-    let popup: PopupPeer;
+    let popup: PopupPeerHandle;
 
     const onSent = () => {
       toastNew({
@@ -2991,7 +2925,7 @@ export class AppDialogsManager {
       button: {
         langKey: 'CancelPollConfirm.Button'
       },
-      onPopup: (p) => {
+      onPopup: (p: PopupPeerHandle) => {
         popup = p;
       }
     }).then(() => {

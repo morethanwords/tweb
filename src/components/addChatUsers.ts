@@ -4,10 +4,9 @@ import {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import {DelimiterWithText} from '@components/chat/giveaway';
-import PopupElement from '@components/popups';
-import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
+import showPeerPopup, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
 import showPickUserPopup from '@components/popups/pickUser';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import {AppAddMembersTab} from '@components/solidJsTabs';
 import SidebarSlider from '@components/slider';
 import {toastNew} from '@components/toast';
@@ -43,7 +42,7 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
   const cantSendMessages = premiumRequireIds.size === missingInviteeIds.length;
 
   const onPremiumClick = () => {
-    PopupPremium.show();
+    showPremiumPopup();
     popup.hide();
   };
 
@@ -189,7 +188,7 @@ export default async function addChatUsers({
 
     descriptionLangArgs.push(await wrapPeerTitle({peerId}));
 
-    PopupElement.createPopup(PopupPeer, 'popup-add-members', {
+    showPeerPopup('popup-add-members', {
       peerId,
       titleLangKey,
       titleLangArgs,
@@ -200,7 +199,7 @@ export default async function addChatUsers({
         callback
       }],
       checkboxes
-    }).show();
+    });
   };
 
   const onError = (err: ApiError) => {

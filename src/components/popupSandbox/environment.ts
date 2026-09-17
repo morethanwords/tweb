@@ -10,7 +10,6 @@
 
 // First import on purpose: it seeds the stores before any app module that reads them on evaluation.
 import {isLiveSession, mockManagers} from './bootstrapState';
-import PopupElement from '@components/popups';
 import PopupElementTsx from '@components/popups/indexTsx';
 import I18n from '@lib/langPack';
 import themeController from '@helpers/themeController';
@@ -75,16 +74,14 @@ export function getLiveManagers() {
 function useManagers(managers: AppManagers) {
   const previous = {
     root: rootScope.managers,
-    popup: PopupElement.MANAGERS,
-    popupTsx: PopupElementTsx.MANAGERS
+    popup: PopupElementTsx.MANAGERS
   };
 
-  rootScope.managers = PopupElement.MANAGERS = PopupElementTsx.MANAGERS = managers;
+  rootScope.managers = PopupElementTsx.MANAGERS = managers;
 
   return () => {
     rootScope.managers = previous.root;
-    PopupElement.MANAGERS = previous.popup;
-    PopupElementTsx.MANAGERS = previous.popupTsx;
+    PopupElementTsx.MANAGERS = previous.popup;
   };
 }
 

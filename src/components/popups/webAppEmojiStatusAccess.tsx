@@ -1,11 +1,11 @@
-import {createSignal, onCleanup} from 'solid-js';
-import PopupElement from '.';
+import {createSignal} from 'solid-js';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import formatDuration from '@helpers/formatDuration';
-import safeAssign from '@helpers/object/safeAssign';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {AvatarNewTsx} from '@components/avatarNew';
 import {StickerTsx} from '@components/wrappers/sticker';
+import MediaHeader from '@components/mediaHeader';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {randomItem, randomItemExcept} from '@helpers/array/randomItem';
 import assumeType from '@helpers/assumeType';
@@ -15,63 +15,25 @@ import css from '@components/popups/webAppEmojiStatusAccess.module.scss';
 import rootScope from '@lib/rootScope';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 
-export default class PopupWebAppEmojiStatusAccess extends PopupElement<{
-  finish: (result: boolean) => void
-}> {
-  private sticker: MyDocument;
-  private defaultStatusEmojis: MyDocument[];
-  private period: number;
-  private botId: PeerId;
+export default function showWebAppEmojiStatusAccessPopup(options: {
+  botId: PeerId,
+  sticker?: MyDocument,
+  defaultStatusEmojis?: MyDocument[],
+  period?: number,
+  onFinish: (result: boolean) => void
+}) {
+  const {botId, sticker: givenSticker, defaultStatusEmojis, period} = options;
+  // closing without answering reads as a decline, but the buttons answer for themselves
+  let finished = false;
+  const finish = (result: boolean) => {
+    finished = true;
+    options.onFinish(result);
+  };
 
-  constructor(options: {
-    botId: PeerId,
-    sticker?: MyDocument,
-    defaultStatusEmojis?: MyDocument[],
-    period?: number
-  }) {
-    let finished = false;
-    super(css.popup, {
-      overlayClosable: true,
-      body: true,
-      buttons: [
-        {
-          langKey: options.sticker ? 'Confirm' : 'Allow',
-          callback: () => {
-            finished = true
-            this.dispatchEvent('finish', true);
-          }
-        },
-        {
-          langKey: options.sticker ? 'Cancel' : 'Decline',
-          callback: () => {
-            finished = true
-            this.dispatchEvent('finish', false);
-          }
-        }
-      ]
-    });
+  createPopup(() => {
+    const [sticker, setSticker] = createSignal<MyDocument>(givenSticker ?? randomItem(defaultStatusEmojis));
 
-    this.addEventListener('close', () => {
-      if(!finished) {
-        this.dispatchEvent('finish', false);
-      }
-    });
-
-    safeAssign(this, options);
-
-    this.header.remove()
-
-    this.appendSolidBody(() => this._construct());
-  }
-
-  protected _construct() {
-    const [sticker, setSticker] = createSignal<MyDocument>(this.sticker);
-
-    if(!this.sticker) {
-      setSticker(randomItem(this.defaultStatusEmojis));
-      this.body.classList.add(css.forOffline)
-    }
-
+    let stickerRef: HTMLElement;
     const renderChip = () => (
       <div class={/* @once */ css.chip}>
         <AvatarNewTsx peerId={rootScope.myId} size={32} />
@@ -89,7 +51,7 @@ export default class PopupWebAppEmojiStatusAccess extends PopupElement<{
           width={20}
           height={20}
           onRender={(player) => {
-            if(this.sticker) return
+            if(givenSticker) return;
             stickerRef.classList.remove(css.switch);
 
             assumeType<LottiePlayer>(player);
@@ -97,59 +59,83 @@ export default class PopupWebAppEmojiStatusAccess extends PopupElement<{
             player.addEventListener('enterFrame', (frameNo) => {
               if(frameNo === player.maxFrame) {
                 player.stop(false);
-                stickerRef.classList.add(css.switch)
+                stickerRef.classList.add(css.switch);
                 stickerRef.addEventListener('transitionend', () => {
-                  setSticker(randomItemExcept(this.defaultStatusEmojis, sticker()));
+                  setSticker(randomItemExcept(defaultStatusEmojis, sticker()));
                 }, {once: true});
               }
             });
           }}
         />
       </div>
-    )
+    );
 
-    let stickerRef: HTMLElement;
+    const renderText = () => (
+      <I18nTsx
+        key={
+          givenSticker ?
+            period ?
+              'BotSetEmojiStatusTextFor' :
+              'BotSetEmojiStatusText' :
+            'BotSetEmojiStatusOffline'
+        }
+        args={givenSticker && period ? [
+          <PeerTitleTsx peerId={botId} />,
+          wrapFormattedDuration(formatDuration(period))
+        ] : [
+          <PeerTitleTsx peerId={botId} />,
+          !givenSticker && <PeerTitleTsx peerId={botId} />
+        ]}
+      />
+    );
+
     return (
-      <>
-        {this.sticker && (
-          <>
-            <StickerTsx
-              autoStyle
-              class={/* @once */ css.sticker}
-              sticker={this.sticker}
-              extraOptions={{play: true}}
-              width={96}
-              height={96}
-            />
-            <div class={/* @once */ css.title}>
-              <I18nTsx key="BotSetEmojiStatusTitle" />
-            </div>
-          </>
-        )}
-
-        {!this.sticker && renderChip()}
-
-        <div class={/* @once */ css.text}>
-          <I18nTsx
-            key={
-              this.sticker ?
-                this.period ?
-                  'BotSetEmojiStatusTextFor' :
-                  'BotSetEmojiStatusText' :
-                'BotSetEmojiStatusOffline'
-            }
-            args={this.sticker && this.period ? [
-              <PeerTitleTsx peerId={this.botId} />,
-              wrapFormattedDuration(formatDuration(this.period))
-            ] : [
-              <PeerTitleTsx peerId={this.botId} />,
-              !this.sticker && <PeerTitleTsx peerId={this.botId} />
-            ]}
+      <PopupElement
+        class={css.popup}
+        closable
+        onClose={() => !finished && options.onFinish(false)}
+        old
+      >
+        <PopupElement.Header floating>
+          <PopupElement.CloseButton />
+        </PopupElement.Header>
+        <PopupElement.Body class={!givenSticker ? css.forOffline : undefined}>
+          {givenSticker ? (
+            <>
+              <MediaHeader marginTop>
+                <MediaHeader.Sticker
+                  size={96}
+                  element={(
+                    <StickerTsx
+                      autoStyle
+                      sticker={givenSticker}
+                      extraOptions={{play: true}}
+                      width={96}
+                      height={96}
+                    />
+                  )}
+                />
+                <MediaHeader.Title size={20}>
+                  <I18nTsx key="BotSetEmojiStatusTitle" />
+                </MediaHeader.Title>
+                <MediaHeader.Subtitle>{renderText()}</MediaHeader.Subtitle>
+              </MediaHeader>
+              {renderChip()}
+            </>
+          ) : (
+            <>
+              {renderChip()}
+              <MediaHeader.Subtitle class={/* @once */ css.text}>{renderText()}</MediaHeader.Subtitle>
+            </>
+          )}
+        </PopupElement.Body>
+        <PopupElement.Footer>
+          <PopupElement.FooterButton
+            langKey={givenSticker ? 'Confirm' : 'Allow'}
+            callback={() => finish(true)}
           />
-        </div>
-
-        {this.sticker && renderChip()}
-      </>
-    )
-  }
+        </PopupElement.Footer>
+      </PopupElement>
+    );
+  });
 }

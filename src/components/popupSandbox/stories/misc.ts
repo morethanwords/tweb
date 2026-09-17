@@ -43,14 +43,13 @@ defineStories('Composer & bots', [
     id: 'newMedia',
     title: 'Attach media',
     open: async(ctx) => {
-      const {default: PopupElement} = await import('@components/popups');
-      const {default: PopupNewMedia} = await import('@components/popups/newMedia');
+      const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
       // A 1×1 PNG is enough to drive the whole attach flow without shipping a binary fixture.
       const bytes = Uint8Array.from(atob(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
       ), (c) => c.charCodeAt(0));
       const file = new File([bytes], 'sandbox.png', {type: 'image/png'});
-      PopupElement.createPopup(PopupNewMedia, ctx.chat(), [file], 'media');
+      showNewMediaPopup(ctx.chat(), [file], 'media');
     }
   },
   {
@@ -136,12 +135,8 @@ defineStories('Composer & bots', [
       }
     }),
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupWebApp}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/webApp')
-      ]);
-
-      PopupElement.createPopup(PopupWebApp, {
+      const {default: showWebAppPopup} = await import('@components/popups/webApp');
+      showWebAppPopup({
         webViewResultUrl: {_: 'webViewResultUrl', pFlags: {}, query_id: '1', url: location.origin + '/'},
         webViewOptions: {botId: ctx.peer('bot').toUserId(), peerId: ctx.peer('private')}
       });
@@ -152,12 +147,8 @@ defineStories('Composer & bots', [
     fixtureOnly: true,
     title: 'Payment verification (3-D Secure)',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupPaymentVerification}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/paymentVerification')
-      ]);
-
-      PopupElement.createPopup(PopupPaymentVerification, location.origin + '/').show();
+      const {default: showPaymentVerificationPopup} = await import('@components/popups/paymentVerification');
+      showPaymentVerificationPopup({url: location.origin + '/'});
     }
   },
   {
@@ -165,12 +156,8 @@ defineStories('Composer & bots', [
     fixtureOnly: true,
     title: 'Mini app wants to share a message',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupWebAppPreparedMessage}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/webAppPreparedMessage')
-      ]);
-
-      PopupElement.createPopup(PopupWebAppPreparedMessage, {
+      const {default: showWebAppPreparedMessagePopup} = await import('@components/popups/webAppPreparedMessage');
+      showWebAppPreparedMessagePopup({
         botId: ctx.peer('bot').toUserId(),
         message: {
           _: 'messages.preparedInlineMessage',
@@ -191,7 +178,7 @@ defineStories('Composer & bots', [
           cache_time: 300,
           users: []
         }
-      }).show();
+      });
     }
   },
   {
@@ -199,16 +186,13 @@ defineStories('Composer & bots', [
     fixtureOnly: true,
     title: 'Mini app wants to set your emoji status',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupWebAppEmojiStatusAccess}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/webAppEmojiStatusAccess')
-      ]);
-
-      PopupElement.createPopup(PopupWebAppEmojiStatusAccess, {
+      const {default: showWebAppEmojiStatusAccessPopup} = await import('@components/popups/webAppEmojiStatusAccess');
+      showWebAppEmojiStatusAccessPopup({
         botId: ctx.peer('bot'),
         sticker: stickerDocument,
-        period: 3600
-      }).show();
+        period: 3600,
+        onFinish: noop
+      });
     }
   }
 ]);
@@ -231,13 +215,12 @@ defineStories('Boosts & invites', [
     fixtureOnly: true,
     title: 'Reassign a boost',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupReassignBoost}, {mockAppConfig}] = await Promise.all([
-        import('@components/popups'),
+      const [{default: showReassignBoostPopup}, {mockAppConfig}] = await Promise.all([
         import('@components/popups/reassignBoost'),
         import('../mockManagers')
       ]);
 
-      PopupElement.createPopup(PopupReassignBoost, ctx.peer('channel'), myBoosts, mockAppConfig);
+      showReassignBoostPopup(ctx.peer('channel'), myBoosts, mockAppConfig);
     }
   },
   {
@@ -251,12 +234,8 @@ defineStories('Boosts & invites', [
       appProfileManager: {getChannelFull: () => ({_: 'channelFull', pFlags: {}, id: channelChat.id})}
     },
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupBoostsViaGifts}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/boostsViaGifts')
-      ]);
-
-      PopupElement.createPopup(PopupBoostsViaGifts, ctx.peer('channel'));
+      const {default: showBoostsViaGiftsPopup} = await import('@components/popups/boostsViaGifts');
+      showBoostsViaGiftsPopup(ctx.peer('channel'));
     }
   },
   {
@@ -273,12 +252,8 @@ defineStories('Boosts & invites', [
       }
     },
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupChooseStory}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/chooseStoryPopup')
-      ]);
-
-      PopupElement.createPopup(PopupChooseStory, {peerId: ctx.peer('self'), albumId: 1}).show();
+      const {default: showChooseStoryPopup} = await import('@components/popups/chooseStoryPopup');
+      showChooseStoryPopup({peerId: ctx.peer('self'), albumId: 1, onFinish: noop});
     }
   }
 ]);
@@ -302,18 +277,18 @@ defineStories('Stars & payments (more)', [
     }
   },
   {
-    // `PopupPayment.create` is the real entry: it resolves the form, then picks the card popup or
+    // `createPaymentPopup` is the real entry: it resolves the form, then picks the card popup or
     // the Stars one from its type. Both stories go through it so that choice is exercised too.
     id: 'payment/invoice',
     fixtureOnly: true,
     title: 'Invoice checkout',
     open: async(ctx) => {
-      const [{default: PopupPayment}, {paymentForm}] = await Promise.all([
+      const [{createPaymentPopup}, {paymentForm}] = await Promise.all([
         import('@components/popups/payment'),
         import('../fixtures')
       ]);
 
-      await PopupPayment.create({
+      await createPaymentPopup({
         paymentForm,
         inputInvoice: {_: 'inputInvoiceMessage', peer: {_: 'inputPeerSelf'}, msg_id: ctx.mid('private')}
       });
@@ -324,12 +299,12 @@ defineStories('Stars & payments (more)', [
     fixtureOnly: true,
     title: 'Pay with Stars',
     open: async(ctx) => {
-      const [{default: PopupPayment}, {starsPaymentForm}] = await Promise.all([
+      const [{createPaymentPopup}, {starsPaymentForm}] = await Promise.all([
         import('@components/popups/payment'),
         import('../fixtures')
       ]);
 
-      await PopupPayment.create({
+      await createPaymentPopup({
         paymentForm: starsPaymentForm,
         inputInvoice: {_: 'inputInvoiceMessage', peer: {_: 'inputPeerSelf'}, msg_id: ctx.mid('private')}
       });
@@ -340,12 +315,8 @@ defineStories('Stars & payments (more)', [
     fixtureOnly: true,
     title: 'Confirm a saved card',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupPaymentCardConfirmation}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/paymentCardConfirmation')
-      ]);
-
-      PopupElement.createPopup(PopupPaymentCardConfirmation, 'Visa •••• 4242', passwordState).show();
+      const {default: showPaymentCardConfirmationPopup} = await import('@components/popups/paymentCardConfirmation');
+      showPaymentCardConfirmationPopup({card: 'Visa •••• 4242', passwordState});
     }
   },
   {

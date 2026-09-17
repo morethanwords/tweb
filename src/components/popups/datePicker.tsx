@@ -814,7 +814,6 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
           ref={(el) => scrollableHostRef = el}
           contextRef={(ctx) => scrollableContextRef = ctx}
           onScroll={onScroll}
-          withBorders="both"
         >
           <div class="date-picker-months" style={{height: totalHeight + 'px'}}>
             <For each={visibleSections()}>{(section) => (

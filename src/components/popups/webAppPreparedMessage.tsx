@@ -1,6 +1,5 @@
 import {createResource, createSignal, onMount} from 'solid-js';
-import PopupElement from '.';
-import safeAssign from '@helpers/object/safeAssign';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
 
 import {BotInlineResult, Message, MessageEntity, MessagesPreparedInlineMessage, Photo, ReplyMarkup, TextWithEntities} from '@layer';
@@ -23,91 +22,72 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {showPickUser2Popup} from '@components/popups/pickUser';
 import appImManager from '@lib/appImManager';
 import generateQId from '@appManagers/utils/inlineBots/generateQId';
+import rootScope from '@lib/rootScope';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
-export default class PopupWebAppPreparedMessage extends PopupElement<{
-  finish: (error?: string) => void
-}> {
-  private message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage;
-  private botId: BotId;
+export default function showWebAppPreparedMessagePopup(options: {
+  message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage,
+  botId: BotId,
+  onFinish?: (error?: string) => void
+}) {
+  const {message, botId} = options;
+  const [show, setShow] = createSignal(true);
+  // closing without sharing reads as a decline, but the buttons answer for themselves
+  let finished = false;
+  const finish = (error?: string) => {
+    if(finished) {
+      return;
+    }
 
-  constructor(options: {
-    message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage
-    botId: BotId
-  }) {
-    let finished = false;
-    super(css.popup, {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      title: 'BotSharePreparedMessageTitle',
-      buttons: [
-        {
-          langKey: 'ShareFile',
-          callback: async() => {
-            const availableTypes = new Set(this.message.peer_types.map(it => it._))
+    finished = true;
+    options.onFinish?.(error);
+  };
 
-            const chosenPeerId = await showPickUser2Popup({
-              peerType: ['dialogs', 'contacts'],
-              filterPeerTypeBy: (peer) => {
-                if(peer._ === 'user') {
-                  if(peer.id === this.botId && availableTypes.has('inlineQueryPeerTypeSameBotPM')) return true
-                  if(peer.pFlags.bot && availableTypes.has('inlineQueryPeerTypeBotPM')) return true
-                  if(availableTypes.has('inlineQueryPeerTypePM')) return true
-                }
-                if(peer._ === 'chat' && availableTypes.has('inlineQueryPeerTypeChat')) return true
-                if(peer._ === 'channel') {
-                  if(peer.pFlags.broadcast && availableTypes.has('inlineQueryPeerTypeBroadcast')) return true
-                  if(peer.pFlags.megagroup && availableTypes.has('inlineQueryPeerTypeChat')) return true
-                }
+  const onShare = async() => {
+    const availableTypes = new Set(message.peer_types.map((it) => it._));
 
-                return false
-              },
-              chatRightsActions: ['send_inline']
-            }).catch(() => undefined as PeerId);
-
-            if(!chosenPeerId) {
-              return false;
-            }
-
-            await appImManager.setInnerPeer({peerId: chosenPeerId});
-            const queryAndResultIds = generateQId(this.message.query_id, this.message.result.id);
-            const sent = await this.managers.appInlineBotsManager.sendInlineResult(chosenPeerId, this.botId, queryAndResultIds, {
-              inlineResult: this.message.result,
-              ...appImManager.chat.getMessageSendingParams(),
-              clearDraft: true
-            })
-            if(!sent) {
-              return false;
-            }
-
-            finished = true
-            this.dispatchEvent('finish');
-            return true
-          }
-        },
-        {
-          langKey: 'Cancel',
-          callback: () => {
-            finished = true
-            this.dispatchEvent('finish', 'USER_DECLINED');
-          }
+    const chosenPeerId = await showPickUser2Popup({
+      peerType: ['dialogs', 'contacts'],
+      filterPeerTypeBy: (peer) => {
+        if(peer._ === 'user') {
+          if(peer.id === botId && availableTypes.has('inlineQueryPeerTypeSameBotPM')) return true;
+          if(peer.pFlags.bot && availableTypes.has('inlineQueryPeerTypeBotPM')) return true;
+          if(availableTypes.has('inlineQueryPeerTypePM')) return true;
         }
-      ]
+        if(peer._ === 'chat' && availableTypes.has('inlineQueryPeerTypeChat')) return true;
+        if(peer._ === 'channel') {
+          if(peer.pFlags.broadcast && availableTypes.has('inlineQueryPeerTypeBroadcast')) return true;
+          if(peer.pFlags.megagroup && availableTypes.has('inlineQueryPeerTypeChat')) return true;
+        }
+
+        return false;
+      },
+      chatRightsActions: ['send_inline']
+    }).catch(() => undefined as PeerId);
+
+    if(!chosenPeerId) {
+      return false;
+    }
+
+    await appImManager.setInnerPeer({peerId: chosenPeerId});
+    const queryAndResultIds = generateQId(message.query_id, message.result.id);
+    const sent = await rootScope.managers.appInlineBotsManager.sendInlineResult(chosenPeerId, botId, queryAndResultIds, {
+      inlineResult: message.result,
+      ...appImManager.chat.getMessageSendingParams(),
+      clearDraft: true
     });
 
-    this.addEventListener('close', () => {
-      if(!finished) {
-        this.dispatchEvent('finish', 'USER_DECLINED');
-      }
-    });
+    if(!sent) {
+      return false;
+    }
 
-    safeAssign(this, options);
+    finish();
+    return true;
+  };
 
-    this.appendSolidBody(() => this._construct());
-  }
-
-  protected _construct() {
-    const result = this.message.result;
+  createPopup(() => {
+    const middleware = createMiddleware().get();
+    const result = message.result;
     const sendMessage = result.send_message
 
     let text: string
@@ -148,7 +128,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
           container: attachmentDiv,
           withTail: true,
           isOut: true,
-          middleware: this.middlewareHelper.get()
+          middleware: middleware
         })
       } else if(result.document) {
         const doc = result.document as MyDocument;
@@ -175,7 +155,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
           wrapSticker({
             doc,
             div: attachmentDiv,
-            middleware: this.middlewareHelper.get(),
+            middleware: middleware,
             play: true,
             liteModeKey: 'stickers_chat',
             loop: true,
@@ -197,7 +177,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
               }
             } as Message.message,
             container: attachmentDiv,
-            middleware: this.middlewareHelper.get(),
+            middleware: middleware,
             boxWidth: mediaSizes.active.regular.width,
             boxHeight: mediaSizes.active.regular.height,
             isOut: true
@@ -222,7 +202,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
                 document: doc
               }
             } as Message.message,
-            middleware: this.middlewareHelper.get(),
+            middleware: middleware,
             sizeType: 'documentName',
             fontSize: appSettings.messagesTextSize,
             canTranscribeVoice: false,
@@ -248,36 +228,51 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
         container: attachmentDiv,
         withTail: true,
         isOut: true,
-        middleware: this.middlewareHelper.get()
+        middleware: middleware
       })
     }
 
     return (
-      <>
-        <FakeBubbles class={css.bubbles} contentClass={css.bubblesContent}>
-          <BubbleLayout
-            class={classNames(css.bubble, bubbleClass)}
-            justMedia={justMedia}
-            contentStyle={bubbleContainerStyle}
-            text={text}
-            textEntities={entities}
-            out
-            tail={!justMedia}
-            via={this.botId}
-            group="single"
-            attachment={attachmentDiv}
-            content={contentDiv}
-            replyMarkup={result.send_message?.reply_markup as ReplyMarkup.replyInlineMarkup}
-          />
-        </FakeBubbles>
+      <PopupElement
+        class={css.popup}
+        closable
+        show={show()}
+        onClose={() => finish('USER_DECLINED')}
+        old
+      >
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title title="BotSharePreparedMessageTitle" />
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <FakeBubbles class={css.bubbles} contentClass={css.bubblesContent}>
+            <BubbleLayout
+              class={classNames(css.bubble, bubbleClass)}
+              justMedia={justMedia}
+              contentStyle={bubbleContainerStyle}
+              text={text}
+              textEntities={entities}
+              out
+              tail={!justMedia}
+              via={botId}
+              group="single"
+              attachment={attachmentDiv}
+              content={contentDiv}
+              replyMarkup={result.send_message?.reply_markup as ReplyMarkup.replyInlineMarkup}
+            />
+          </FakeBubbles>
 
-        <div class={css.text}>
-          <I18nTsx
-            key='BotSharePreparedMessageText'
-            args={<PeerTitleTsx peerId={this.botId.toPeerId()} />}
-          />
-        </div>
-      </>
-    )
-  }
+          <div class={css.text}>
+            <I18nTsx
+              key='BotSharePreparedMessageText'
+              args={<PeerTitleTsx peerId={botId.toPeerId()} />}
+            />
+          </div>
+        </PopupElement.Body>
+        <PopupElement.Footer>
+          <PopupElement.FooterButton langKey="ShareFile" callback={onShare} />
+        </PopupElement.Footer>
+      </PopupElement>
+    );
+  });
 }

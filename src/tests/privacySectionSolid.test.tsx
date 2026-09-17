@@ -24,17 +24,6 @@ vi.mock('@components/rowTsx', () => {
   Row.Title = (props: any) => <div>{props.children}</div>;
   return {default: Row};
 });
-vi.mock('@components/settingSection', () => ({
-  default: class SettingSection {
-    public caption = document.createElement('div');
-    public container = document.createElement('div');
-    public content = document.createElement('div');
-
-    constructor() {
-      this.container.append(this.content, this.caption);
-    }
-  }
-}));
 vi.mock('@components/solidJsTabs', () => ({AppAddMembersTab: class AppAddMembersTab {}}));
 vi.mock('@components/toast', () => ({hideToast: vi.fn(), toastNew: vi.fn()}));
 vi.mock('@lib/rootScope', () => ({

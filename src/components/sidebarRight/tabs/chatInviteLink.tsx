@@ -4,7 +4,6 @@ import {formatFullSentTime} from '@helpers/date';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import {renderComponent} from '@helpers/solid/renderComponent';
 import tsNow from '@helpers/tsNow';
 import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
@@ -13,7 +12,8 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '@components/appSelectPeers';
 import {StarsAmount} from '@components/popups/stars';
 import Row from '@components/rowTsx';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import UsernameRow from '@components/usernameRow';
 import {ChatInviteLink, getImportersLoader} from './chatInviteLinkShared';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -35,12 +35,6 @@ const ChatInviteLinkTab: Component = () => {
     {
       const isExpiring = chatInvite.expire_date && chatInvite.expire_date > tsNow(true);
       const isUsageLimit = chatInvite.usage_limit && chatInvite.usage_limit <= (chatInvite.usage || 0);
-      const section = new SettingSection({
-        name: 'InviteLink',
-        caption: isUsageLimit ? 'LinkIsExpiredLimitReached' : (isExpiring ? 'InviteLinks.ExpiresCaption' : (chatInvite.expire_date ? 'LinkIsExpired' : undefined)),
-        captionArgs: isExpiring ? [formatFullSentTime(chatInvite.expire_date)] : undefined
-      });
-
       const inviteLink = new ChatInviteLink({
         buttons: menuButtons,
         listenerSetter: tab.listenerSetter,
@@ -50,16 +44,20 @@ const ChatInviteLinkTab: Component = () => {
 
       inviteLink.setChatInvite(chatInvite);
 
-      section.content.append(inviteLink.container);
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section
+          name="InviteLink"
+          caption={isUsageLimit ? 'LinkIsExpiredLimitReached' : (isExpiring ? 'InviteLinks.ExpiresCaption' : (chatInvite.expire_date ? 'LinkIsExpired' : undefined))}
+          captionArgs={isExpiring ? [formatFullSentTime(chatInvite.expire_date)] : undefined}
+        >
+          {inviteLink.container}
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     {
-      const section = new SettingSection({name: 'LinkCreatedeBy'});
-
       const div = document.createElement('div');
       div.classList.add('chatlist-container');
-      section.content.append(div);
 
       const list = appDialogsManager.createChatList({new: true});
       div.append(list);
@@ -82,19 +80,21 @@ const ChatInviteLinkTab: Component = () => {
       }, {listenerSetter: tab.listenerSetter});
 
       dom.lastMessageSpan.append(formatFullSentTime(chatInvite.date));
-      tab.scrollable.append(section.container);
+
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section name="LinkCreatedeBy">
+          {div}
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     if(chatInvite.subscription_pricing) {
-      const section = new SettingSection({name: 'InviteLink.Observe.Fee'});
-
       const stars = chatInvite.subscription_pricing.amount;
       const usage = chatInvite.usage ?? 0;
       const title = i18n('InviteLink.Observe.Fee.Title', [StarsAmount({stars}) as HTMLElement, usage]);
       const subtitle = i18n('InviteLink.Observe.Fee.Subtitle', ['$' + (usage * +stars * 0.02).toFixed(2)]);
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section name="InviteLink.Observe.Fee">
           <UsernameRow
             isLink
             icon="link_paid"
@@ -102,33 +102,22 @@ const ChatInviteLinkTab: Component = () => {
             title={title}
             subtitle={subtitle}
           />
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
-
-      tab.scrollable.append(section.container);
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     if(chatInvite.usage_limit && !chatInvite.usage && (!chatInvite.expire_date || chatInvite.expire_date > tsNow(true))) {
-      const section = new SettingSection({});
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section>
           <Row>
             <Row.Title>{i18n('PeopleCanJoinViaLinkCount', [chatInvite.usage_limit])}</Row.Title>
           </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
-      tab.scrollable.append(section.container);
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     const promises: Promise<any>[] = [];
     if(chatInvite.requested) {
-      const section = new SettingSection({
-        name: 'JoinRequests',
-        nameArgs: [chatInvite.requested]
-      });
       const {importersMap, load} = getImportersLoader({
         chatId,
         managers: tab.managers,
@@ -160,8 +149,12 @@ const ChatInviteLinkTab: Component = () => {
       };
 
       const chatlist = appDialogsManager.createChatList();
-      section.content.append(chatlist);
-      tab.scrollable.append(section.container);
+      const section = wrapSolidComponent(() => (
+        <Section name="JoinRequests" nameArgs={[chatInvite.requested]}>
+          {chatlist}
+        </Section>
+      ), tab.middlewareHelper.get());
+      tab.scrollable.append(section);
 
       let target: HTMLElement;
       const toggleRequest = async(add: boolean) => {
@@ -179,7 +172,7 @@ const ChatInviteLinkTab: Component = () => {
 
           if(!--chatInvite.requested) {
             delete chatInvite.requested;
-            section.container.remove();
+            section.remove();
           }
 
           onUpdate?.(chatInvite);

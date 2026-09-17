@@ -8,7 +8,8 @@ import confirmationPopup from '@components/confirmationPopup';
 import useCommunityTabGuard
 from '@components/communities/useCommunityTabGuard';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {
   type AdministratorRightsCheckboxFieldsField,
   ChatAdministratorRights,
@@ -125,12 +126,21 @@ const CommunityUserPermissions: Component = () => {
       );
     const canDismissParticipant = !!participant && canEditParticipant;
 
-    const section = new SettingSection({
-      name: 'EditAdminWhatCanDo',
-      caption: true
-    });
+    let sectionContent!: HTMLElement, sectionTitle!: HTMLElement, sectionCaption!: HTMLElement;
+    const section = wrapSolidComponent(() => (
+      <Section
+        name="EditAdminWhatCanDo"
+        // filled in by attachAdminRightsCaption
+        caption={true}
+        contentProps={{ref: (element) => sectionContent = element}}
+        nameRef={(element) => sectionTitle = element}
+        captionRef={(element) => sectionCaption = element}
+      />
+    ), tab.middlewareHelper.get());
+
     appendPermissionsPeerDialog({
-      section,
+      content: sectionContent,
+      title: sectionTitle,
       userId,
       user,
       middleware: tab.middlewareHelper.get()
@@ -149,7 +159,7 @@ const CommunityUserPermissions: Component = () => {
     >[0] = {
       chatId: communityId,
       listenerSetter: tab.listenerSetter,
-      appendTo: section.content,
+      appendTo: sectionContent,
       participant: participant?._ === 'channelParticipantAdmin' ||
         participant?._ === 'channelParticipantCreator' ?
         participant :
@@ -173,7 +183,7 @@ const CommunityUserPermissions: Component = () => {
     }
 
     attachAdminRightsCaption({
-      section,
+      caption: sectionCaption,
       permissions,
       canEdit: canEditParticipant,
       listenerSetter: tab.listenerSetter
@@ -218,10 +228,9 @@ const CommunityUserPermissions: Component = () => {
       ));
     };
 
-    tab.scrollable.append(section.container);
+    tab.scrollable.append(section);
 
     if(canDismissParticipant) {
-      const dismissSection = new SettingSection({});
       const dismissButton = Button(
         'btn-primary btn-transparent danger',
         {icon: 'deleteuser', text: 'Channel.Admin.Dismiss'}
@@ -260,8 +269,11 @@ const CommunityUserPermissions: Component = () => {
           throw error;
         }
       }, {listenerSetter: tab.listenerSetter});
-      dismissSection.content.append(dismissButton);
-      tab.scrollable.append(dismissSection.container);
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section>
+          {dismissButton}
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
   })());
 

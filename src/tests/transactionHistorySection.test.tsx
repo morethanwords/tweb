@@ -3,9 +3,8 @@ import {createSignal} from 'solid-js';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 
-const mocks = vi.hoisted(() => ({createPopup: vi.fn()}));
-vi.mock('@components/popups', () => ({default: {createPopup: mocks.createPopup}}));
-vi.mock('@components/popups/stars', () => ({default: class PopupStars {}}));
+const mocks = vi.hoisted(() => ({showStarsPopup: vi.fn()}));
+vi.mock('@components/popups/stars', () => ({default: mocks.showStarsPopup}));
 vi.mock('@helpers/dom/createContextMenu', () => ({default: vi.fn()}));
 vi.mock('@lib/langPack', () => ({i18n: (key: string) => document.createTextNode(key)}));
 
@@ -41,8 +40,8 @@ describe('owner transaction history access', () => {
   it('passes the selected owner and currency to the history popup', async() => {
     const owner = (20 as ChatId).toPeerId(true);
     await showPeerTransactionHistory(owner, true);
-    expect(mocks.createPopup).toHaveBeenLastCalledWith(expect.any(Function), {historyPeerId: owner, ton: true});
+    expect(mocks.showStarsPopup).toHaveBeenLastCalledWith({historyPeerId: owner, ton: true});
     await showPeerTransactionHistory(owner);
-    expect(mocks.createPopup).toHaveBeenLastCalledWith(expect.any(Function), {historyPeerId: owner, ton: false});
+    expect(mocks.showStarsPopup).toHaveBeenLastCalledWith({historyPeerId: owner, ton: false});
   });
 });

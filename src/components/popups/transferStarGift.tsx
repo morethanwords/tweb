@@ -1,7 +1,7 @@
 import type {MyStarGift} from '@appManagers/appGiftsManager';
 import deferredPromise from '@helpers/cancellablePromise';
 import rootScope from '@lib/rootScope';
-import PopupPayment from '@components/popups/payment';
+import {createPaymentPopup} from '@components/popups/payment';
 import showPickUserPopup from '@components/popups/pickUser';
 import confirmationPopup from '@components/confirmationPopup';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
@@ -10,7 +10,6 @@ import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import formatDuration from '@helpers/formatDuration';
 import tsNow from '@helpers/tsNow';
-import PopupElementOld from '@components/popups/index';
 import RowTsx from '@components/rowTsx';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
@@ -23,6 +22,7 @@ import styles from '@components/popups/transferStarGift.module.scss'
 import {i18n} from '@lib/langPack';
 import {StarGiftTransferPreview} from '@components/stargifts/transferPreview';
 import {I18nTsx} from '@helpers/solid/i18n';
+import MediaHeader from '@components/mediaHeader';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Table, {TableRow} from '@components/table';
 import {AttributeValue} from '@components/popups/starGiftInfo';
@@ -73,7 +73,8 @@ export function transferStarGiftConfirmationPopup(options: {
     if(gift.value_amount) {
       rows.push([
         'StarGiftValue',
-        `~${paymentsWrapCurrencyAmount(gift.value_amount, gift.value_currency)}`
+        // stars and TON come back as a styled element, so the value cannot be built by interpolation
+        <>~{paymentsWrapCurrencyAmount(gift.value_amount, gift.value_currency)}</>
       ]);
     }
 
@@ -99,29 +100,31 @@ export function transferStarGiftConfirmationPopup(options: {
       }
 
       return (
-        <I18nTsx
-          class={styles.text}
-          key="StarGiftOffer.AcceptOfferText"
-          args={[
-            getCollectibleName(options.gift.raw as StarGift.starGiftUnique),
-            <PeerTitleTsx peerId={options.recipient} onlyFirstName />,
-            amount,
-            amountAfterComission
-          ]}
-        />
+        <MediaHeader.Subtitle>
+          <I18nTsx
+            key="StarGiftOffer.AcceptOfferText"
+            args={[
+              getCollectibleName(options.gift.raw as StarGift.starGiftUnique),
+              <PeerTitleTsx peerId={options.recipient} onlyFirstName />,
+              amount,
+              amountAfterComission
+            ]}
+          />
+        </MediaHeader.Subtitle>
       )
     }
 
     return (
-      <I18nTsx
-        class={styles.text}
-        key={isFreeTransfer ? 'StarGiftConfirmFreeTransferText' : 'StarGiftConfirmTransferPopupText'}
-        args={[
-          getCollectibleName(options.gift.raw as StarGift.starGiftUnique),
-          <PeerTitleTsx peerId={options.recipient} onlyFirstName />,
-          i18n('Stars', [numberThousandSplitterForStars(options.gift.saved.transfer_stars)])
-        ]}
-      />
+      <MediaHeader.Subtitle>
+        <I18nTsx
+          key={isFreeTransfer ? 'StarGiftConfirmFreeTransferText' : 'StarGiftConfirmTransferPopupText'}
+          args={[
+            getCollectibleName(options.gift.raw as StarGift.starGiftUnique),
+            <PeerTitleTsx peerId={options.recipient} onlyFirstName />,
+            i18n('Stars', [numberThousandSplitterForStars(options.gift.saved.transfer_stars)])
+          ]}
+        />
+      </MediaHeader.Subtitle>
     )
   }
 
@@ -161,6 +164,7 @@ export function transferStarGiftConfirmationPopup(options: {
             options.handleCancel?.()
           }
         }}
+        old
       >
         <FloatingStarsBalance class={styles.starsBalance} />
         <PopupElement.Body>
@@ -257,7 +261,7 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
           await rootScope.managers.appGiftsManager.transferStarGift(gift.input, peerId, gift.ownerId);
           deferred.resolve(true)
         } else {
-          const popup = await PopupPayment.create({
+          const popup = await createPaymentPopup({
             inputInvoice: {
               _: 'inputInvoiceStarGiftTransfer',
               stargift: gift.input,

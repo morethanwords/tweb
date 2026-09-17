@@ -217,7 +217,7 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
 
     const TrackSection = (props: {name: LangPackKey, tracks: Track[]}) => (
       <Show when={props.tracks.length}>
-        <Section name={props.name} noDelimiter noShadow>
+        <Section name={props.name}>
           <For each={props.tracks}>
             {(track) => <TrackRow track={track} />}
           </For>

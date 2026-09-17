@@ -203,7 +203,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
         )}</For>
       </div>
 
-      <div class={classNames(styles.Arrow, styles.ArrowPrev)} onClick={handlePrev}>
+      <div class={styles.Arrow} onClick={handlePrev}>
         <IconTsx icon="avatarprevious" class={styles.ArrowIcon} />
       </div>
       <div class={classNames(styles.Arrow, styles.ArrowNext)} onClick={handleNext}>

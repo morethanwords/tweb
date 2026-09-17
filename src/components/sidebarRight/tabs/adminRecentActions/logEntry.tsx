@@ -52,9 +52,7 @@ export const LogEntry = (props: LogEntryProps) => {
         <Show when={props.expanded}>
           <div class={styles.ExpandableContentWrapper}>
             <div class={styles.ExpandableContent}>
-              <div class={styles.ExpandableContentTitle} classList={{
-                [styles.offset]: props.offsetTitle
-              }}>
+              <div class={styles.ExpandableContentTitle}>
                 {props.message}
               </div>
               <Show when={props.expandableContent}>

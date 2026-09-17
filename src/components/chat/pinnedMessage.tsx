@@ -1,5 +1,5 @@
 import type ChatTopbar from '@components/chat/topbar';
-import PopupPinMessage from '@components/popups/unpinMessage';
+import showPinMessagePopup from '@components/popups/unpinMessage';
 import PinnedMessageBorder from '@components/chat/pinnedMessageBorder';
 import {wrapReplyDivAndCaption} from '@components/chat/replyContainer';
 import rootScope from '@lib/rootScope';
@@ -14,7 +14,6 @@ import debounce from '@helpers/schedulers/debounce';
 import throttle from '@helpers/schedulers/throttle';
 import {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
-import PopupElement from '@components/popups';
 import {AnimatedSuper} from '@components/animatedSuper';
 import {AnimatedCounter} from '@components/animatedCounter';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -188,14 +187,14 @@ export default function createChatPinnedMessage(
       icon: 'unpin',
       text: 'UnpinMessage',
       onClick: () => {
-        PopupElement.createPopup(PopupPinMessage, chat.peerId, pinnedMid, true, undefined, chat.threadId);
+        showPinMessagePopup(chat.peerId, pinnedMid, true, undefined, chat.threadId);
       },
       verify: () => managers.appPeersManager.canPinMessage(chat.peerId)
     }, {
       icon: 'eyecross',
       text: 'Popup.Unpin.HideTitle',
       onClick: () => {
-        PopupElement.createPopup(PopupPinMessage, chat.peerId, 0, true, undefined, chat.threadId);
+        showPinMessagePopup(chat.peerId, 0, true, undefined, chat.threadId);
       },
       verify: async() => !(await managers.appPeersManager.canPinMessage(chat.peerId))
     }],
@@ -208,8 +207,7 @@ export default function createChatPinnedMessage(
   attachClickEvent(btnUnpin, async(e) => {
     cancelEvent(e);
     const canPin = await managers.appPeersManager.canPinMessage(chat.peerId);
-    PopupElement.createPopup(
-      PopupPinMessage,
+    showPinMessagePopup(
       chat.peerId,
       canPin ? pinnedMid : 0,
       true,

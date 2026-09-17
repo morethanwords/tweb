@@ -18,7 +18,7 @@ import Button from '@components/button';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
 import {StarsAmount} from '@components/popups/stars';
-import SettingSection from '@components/settingSection';
+import Section, {appendSectionContent} from '@components/section';
 import UsernameRow from '@components/usernameRow';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
@@ -26,7 +26,7 @@ import {ChatInvite, ChatInviteActions, ChatInviteLink, getChatInviteLinksInitArg
 import {AppChatInviteLinkTab, AppChatInviteLinksTab, AppEditChatInviteLinkTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
-import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {mountSolidComponent, wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
 const ChatInviteLinks: Component = () => {
   const [tab] = useSuperTab<typeof AppChatInviteLinksTab>();
@@ -132,11 +132,11 @@ const ChatInviteLinks: Component = () => {
             _menuItem.row.container.replaceWith(createInviteRow(newInvite).container);
           }
 
-          revokedLinks.content.prepend(_menuItem.row.container);
+          revokedLinksContent.prepend(_menuItem.row.container);
           _menuItem.update(editedInvite);
         } else {
           const row = createInviteRow(editedInvite);
-          revokedLinks.content.prepend(row.container);
+          revokedLinksContent.prepend(row.container);
           primaryInvite = newInvite;
           inviteLink.setChatInvite(primaryInvite);
         }
@@ -165,16 +165,12 @@ const ChatInviteLinks: Component = () => {
       verify: () => !!menuInvite?.pFlags?.revoked
     }];
 
-    let inviteLinkSection: SettingSection;
+    let inviteLinkSection: HTMLElement;
     {
-      const section = inviteLinkSection = new SettingSection({
-        name: 'InviteLink',
-        caption: adminId ? 'ManageLinks.Admin.Permanent.Desc' : undefined,
-        captionArgs: adminId ? await Promise.all([
-          wrapPeerTitle({peerId: adminId.toPeerId(false)}),
-          wrapPeerTitle({peerId: chatId.toPeerId(true)})
-        ]) : undefined
-      });
+      const captionArgs = adminId ? await Promise.all([
+        wrapPeerTitle({peerId: adminId.toPeerId(false)}),
+        wrapPeerTitle({peerId: chatId.toPeerId(true)})
+      ]) : undefined;
 
       inviteLink = new ChatInviteLink({
         buttons: menuButtons,
@@ -188,15 +184,26 @@ const ChatInviteLinks: Component = () => {
         openLink(primaryInvite);
       }, {listenerSetter: tab.listenerSetter});
 
-      section.content.append(inviteLink.container);
+      inviteLinkSection = wrapSolidComponent(() => (
+        <Section
+          name="InviteLink"
+          caption={adminId ? 'ManageLinks.Admin.Permanent.Desc' : undefined}
+          captionArgs={captionArgs}
+        >
+          {inviteLink.container}
+        </Section>
+      ), tab.middlewareHelper.get());
     }
 
-    let additionalLinks: SettingSection;
+    let additionalLinks: HTMLElement, additionalLinksContent: HTMLElement;
     {
-      const section = additionalLinks = new SettingSection({
-        name: adminId ? 'LinksCreatedByThisAdmin' : 'InviteLinks.Additional',
-        caption: adminId ? undefined : 'InviteLinks.Description'
-      });
+      additionalLinks = wrapSolidComponent(() => (
+        <Section
+          name={adminId ? 'LinksCreatedByThisAdmin' : 'InviteLinks.Additional'}
+          caption={adminId ? undefined : 'InviteLinks.Description'}
+          contentProps={{ref: (element) => additionalLinksContent = element}}
+        />
+      ), tab.middlewareHelper.get());
 
       if(!adminId) {
         const btn = Button('btn-primary btn-transparent primary', {icon: 'plus', text: 'CreateNewLink'});
@@ -206,28 +213,34 @@ const ChatInviteLinks: Component = () => {
           editTab.eventListener.addEventListener('finish', (chatInvite) => {
             const row = createInviteRow(chatInvite);
             if(primaryInvite) {
-              section.content.prepend(row.container);
+              additionalLinksContent.prepend(row.container);
             } else {
-              section.content.firstElementChild.after(row.container);
+              additionalLinksContent.firstElementChild.after(row.container);
             }
           });
           editTab.open({chatId: chatId});
         }, {listenerSetter: tab.listenerSetter});
 
-        section.content.append(btn);
-        section.content = section.generateContentElement();
+        additionalLinksContent.append(btn);
+        additionalLinksContent = appendSectionContent(additionalLinks);
       }
     }
 
-    let adminsLinks: SettingSection;
+    let adminsLinks: HTMLElement;
     if(!adminId) {
-      const section = adminsLinks = new SettingSection({name: 'LinksCreatedByOtherAdmins'});
+      let adminsLinksContent!: HTMLElement;
+      const section = adminsLinks = wrapSolidComponent(() => (
+        <Section
+          name="LinksCreatedByOtherAdmins"
+          contentProps={{ref: (element) => adminsLinksContent = element}}
+        />
+      ), tab.middlewareHelper.get());
 
       const promise = (p.adminsInvites || Promise.reject()).then((adminsInvites) => {
         let {admins} = adminsInvites;
         admins = admins.filter((admin) => admin.admin_id.toPeerId(false) !== rootScope.myId);
         if(!admins.length) {
-          section.container.classList.add('hide');
+          section.classList.add('hide');
           return;
         }
 
@@ -264,19 +277,24 @@ const ChatInviteLinks: Component = () => {
           });
         }, {listenerSetter: tab.listenerSetter});
 
-        section.content.append(chatlist);
+        adminsLinksContent.append(chatlist);
 
         return Promise.all(loadPromises);
       }, () => {
-        section.container.remove();
+        section.remove();
       });
 
       loadPromises.push(promise);
     }
 
-    let revokedLinks: SettingSection;
+    let revokedLinks: HTMLElement, revokedLinksContent: HTMLElement;
     {
-      const section = revokedLinks = new SettingSection({name: 'RevokedLinks'});
+      revokedLinks = wrapSolidComponent(() => (
+        <Section
+          name="RevokedLinks"
+          contentProps={{ref: (element) => revokedLinksContent = element}}
+        />
+      ), tab.middlewareHelper.get());
 
       const btn = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'DeleteAllRevokedLinks'});
 
@@ -294,24 +312,24 @@ const ChatInviteLinks: Component = () => {
         await tab.managers.appChatInvitesManager.deleteRevokedExportedChatInvites(chatId, adminId);
         toggle();
 
-        Array.from(section.content.children).forEach((el) => {
+        Array.from(revokedLinksContent.children).forEach((el) => {
           const cache = invitesMap.get(el as HTMLElement);
           cache.destroy(true);
         });
         onRevokedLinksUpdate();
       }, {listenerSetter: tab.listenerSetter});
 
-      section.content.append(btn);
-      section.content = section.generateContentElement();
+      revokedLinksContent.append(btn);
+      revokedLinksContent = appendSectionContent(revokedLinks);
     }
 
     tab.scrollable.append(...[
       stickerContainer,
       caption,
-      inviteLinkSection.container,
-      additionalLinks.container,
-      adminsLinks?.container,
-      revokedLinks.container
+      inviteLinkSection,
+      additionalLinks,
+      adminsLinks,
+      revokedLinks
     ].filter(Boolean));
 
     const openLink = (invite: ChatInvite) => {
@@ -546,7 +564,7 @@ const ChatInviteLinks: Component = () => {
     };
 
     const onRevokedLinksUpdate = () => {
-      revokedLinks.container.classList.toggle('hide', !revokedLinks.content.childElementCount);
+      revokedLinks.classList.toggle('hide', !revokedLinksContent.childElementCount);
     };
 
     const loadLinksPromise = Promise.all([p.invites, p.invitesRevoked]).then(([chatInvites, chatInvitesRevoked]) => {
@@ -559,16 +577,16 @@ const ChatInviteLinks: Component = () => {
       inviteLink.setChatInvite(primaryInvite || usernames[0]);
 
       ([
-        [chatInvites, additionalLinks],
-        [chatInvitesRevoked, revokedLinks]
-      ] as Array<[MessagesExportedChatInvites, SettingSection]>).forEach(([chatInvites, section]) => {
+        [chatInvites, additionalLinksContent],
+        [chatInvitesRevoked, revokedLinksContent]
+      ] as Array<[MessagesExportedChatInvites, HTMLElement]>).forEach(([chatInvites, content]) => {
         (chatInvites.invites as ChatInvite[]).forEach((invite) => {
           if(primaryInvite?.link === invite.link) {
             return;
           }
 
           const row = createInviteRow(invite);
-          section.content.append(row.container);
+          content.append(row.container);
         });
       });
 

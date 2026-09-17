@@ -1,6 +1,7 @@
 import {createMemo, createSignal, onCleanup, onMount} from 'solid-js';
 import tsNow from '@helpers/tsNow';
 import {LimitLineTsx} from '@components/limitLineTsx';
+import MediaHeader from '@components/mediaHeader';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 
 import styles from '@components/popups/starGiftUpgradePrice.module.scss';
@@ -13,7 +14,6 @@ import {StarsStar} from '@components/popups/stars';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import I18n from '@lib/langPack';
 import toHHMMSS from '@helpers/string/toHHMMSS';
-import Scrollable from '@components/scrollable2';
 import {fastRaf} from '@helpers/schedulers';
 import {createCurrentTime} from '@helpers/solid/createCurrentTime';
 
@@ -80,12 +80,12 @@ export function createStarGiftUpgradePricePopup(props: {
   return createPopup(() => {
     onMount(() => fastRaf(() => setShow(true)))
     return (
-      <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>
-        <PopupElement.Header class={styles.popupHeader}>
-          <PopupElement.CloseButton class={styles.popupCloseButton} />
+      <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()} old>
+        <PopupElement.Header floating>
+          <PopupElement.CloseButton />
         </PopupElement.Header>
-        <PopupElement.Body class={styles.popupBody}>
-          <Scrollable>
+        <PopupElement.Scrollable>
+          <PopupElement.Body>
             <div class={styles.scrollableContent}>
               <LimitLineTsx
                 class={styles.limitLine}
@@ -101,8 +101,14 @@ export function createStarGiftUpgradePricePopup(props: {
                 hintIcon="star"
               />
 
-              <I18nTsx key="StarGiftUpgradePriceTitle" class={styles.title} />
-              <I18nTsx key="StarGiftUpgradePriceSubtitle" class={styles.subtitle} />
+              <MediaHeader>
+                <MediaHeader.Title>
+                  <I18nTsx key="StarGiftUpgradePriceTitle" />
+                </MediaHeader.Title>
+                <MediaHeader.Subtitle>
+                  <I18nTsx key="StarGiftUpgradePriceSubtitle" />
+                </MediaHeader.Subtitle>
+              </MediaHeader>
 
               <Table
                 class={styles.table}
@@ -120,12 +126,11 @@ export function createStarGiftUpgradePricePopup(props: {
 
               <I18nTsx key="StarGiftUpgradePriceAbout" class={styles.about} />
             </div>
-          </Scrollable>
-        </PopupElement.Body>
+          </PopupElement.Body>
+        </PopupElement.Scrollable>
 
-        <PopupElement.Footer class={styles.popupFooter}>
+        <PopupElement.Footer>
           <PopupElement.FooterButton
-            class={styles.popupButton}
             iconLeft="okay_filled"
             langKey="StarGiftUpgradePriceUnderstood"
             callback={() => setShow(false)}

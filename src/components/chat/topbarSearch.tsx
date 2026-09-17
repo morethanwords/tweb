@@ -4,7 +4,6 @@ import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, on, unt
 import InputSearch from '@components/inputSearch';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import classNames from '@helpers/string/classNames';
-import PopupElement from '@components/popups';
 import showDatePickerPopup from '@components/popups/datePicker';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -42,7 +41,7 @@ import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import Icon from '@components/icon';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import usePremium from '@stores/premium';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Animated from '@helpers/solid/animations';
@@ -1007,7 +1006,7 @@ export default function TopbarSearch(props: {
       }
 
       if(!isPremium()) {
-        PopupPremium.show({feature: 'saved_tags'});
+        showPremiumPopup({feature: 'saved_tags'});
         return;
       }
 

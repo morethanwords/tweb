@@ -5,8 +5,7 @@ import {TransitionSliderTsx} from '@components/transitionTsx';
 import {createEffect, createSignal, onCleanup, onMount, Ref, Show} from 'solid-js';
 
 import styles from '@components/popups/emailSetup.module.scss';
-import LottieAnimation from '@components/lottieAnimation';
-import lottieLoader from '@lib/lottie/lottieLoader';
+import MediaHeader from '@components/mediaHeader';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import {LangPackKey} from '@lib/langPack';
@@ -104,20 +103,15 @@ export function EnterEmailStep(props: {
 
   return (
     <div class={styles.page}>
-      <LottieAnimation
-        class={styles.lottie}
-        lottieLoader={lottieLoader}
-        name="Mailbox"
-        size={120}
-        restartOnClick
-        lottieOptions={{
-          loop: false,
-          autoplay: true
-        }}
-      />
-
-      <I18nTsx class={styles.title} key={props.isInitialSetup ? 'EmailSetup.Title' : 'EmailSetup.ChangeTitle'} />
-      <I18nTsx class={styles.subtitle} key={props.isInitialSetup ? 'EmailSetup.Subtitle' : 'EmailSetup.ChangeSubtitle'} />
+      <MediaHeader>
+        <MediaHeader.Sticker name="Mailbox" size={120} />
+        <MediaHeader.Title>
+          <I18nTsx key={props.isInitialSetup ? 'EmailSetup.Title' : 'EmailSetup.ChangeTitle'} />
+        </MediaHeader.Title>
+        <MediaHeader.Subtitle>
+          <I18nTsx key={props.isInitialSetup ? 'EmailSetup.Subtitle' : 'EmailSetup.ChangeSubtitle'} />
+        </MediaHeader.Subtitle>
+      </MediaHeader>
 
       <InputFieldTsx
         instanceRef={ref => inputRef = ref}
@@ -216,24 +210,18 @@ export function EnterCodeStep(props: {
 
   return (
     <div class={styles.page}>
-      <LottieAnimation
-        class={styles.lottie}
-        lottieLoader={lottieLoader}
-        name="LoveLetter"
-        size={120}
-        restartOnClick
-        lottieOptions={{
-          loop: false,
-          autoplay: true
-        }}
-      />
-
-      <I18nTsx class={styles.title} key="EmailSetup.CheckEmail" />
-      <I18nTsx
-        class={styles.subtitle}
-        key="EmailSetup.CheckEmailSubtitle"
-        args={[wrapEmailPattern(props.sentCode.email_pattern)]}
-      />
+      <MediaHeader>
+        <MediaHeader.Sticker name="LoveLetter" size={120} />
+        <MediaHeader.Title>
+          <I18nTsx key="EmailSetup.CheckEmail" />
+        </MediaHeader.Title>
+        <MediaHeader.Subtitle>
+          <I18nTsx
+            key="EmailSetup.CheckEmailSubtitle"
+            args={[wrapEmailPattern(props.sentCode.email_pattern)]}
+          />
+        </MediaHeader.Subtitle>
+      </MediaHeader>
 
       <CodeInputField
         ref={inputRef}
@@ -306,7 +294,6 @@ export function showEmailSetupPopup(options: {
     return (
       <PopupElement
         class={styles.popup}
-        containerClass={styles.popupContainer}
         show={show()}
         closable={!options.noskip}
         onClose={() => {
@@ -316,12 +303,12 @@ export function showEmailSetupPopup(options: {
         isConfirmationNeededOnClose={() => {
           if(options.noskip && !isSuccess) return Promise.reject()
         }}
+        old
       >
-        <PopupElement.Header class={styles.popupHeader}>
+        <PopupElement.Header floating>
           <Show when={!options.noskip || page() === 1}>
             <PopupElement.CloseButton
-              class={styles.popupCloseButton}
-              canGoBack={page() !== 0}
+                  canGoBack={page() !== 0}
               onBackClick={() => void setPage(0)}
             />
           </Show>

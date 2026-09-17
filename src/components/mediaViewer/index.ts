@@ -20,12 +20,11 @@ import {MediaSearchContext} from '@components/appMediaPlaybackController';
 import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/mediaViewer/base';
 import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import PopupDeleteMessages from '@components/popups/deleteMessages';
+import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
 import Scrollable from '@components/scrollable';
 import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
-import PopupElement from '@components/popups';
 import {ChatType} from '@components/chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import TranslatableMessage from '@components/translatableMessage';
@@ -255,8 +254,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       return;
     }
 
-    PopupElement.createPopup(
-      PopupDeleteMessages,
+    showDeleteMessagesPopup(
       target.peerId,
       [target.mid],
       ChatType.Chat,

@@ -4,7 +4,6 @@ import {Photo, Document} from '@layer';
 import appImManager from '@lib/appImManager';
 import AppMediaViewerBase from '@components/mediaViewer/base';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import PopupElement from '@components/popups';
 import PopupForward from '@components/popups/forward';
 import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';

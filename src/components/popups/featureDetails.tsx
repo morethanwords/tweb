@@ -1,16 +1,9 @@
 import {createSignal, For, JSX, Show} from 'solid-js';
 import PopupElement from '@components/popups/indexTsx';
-import Row from '@components/rowTsx';
+import FeatureRows, {FeatureRow} from '@components/featureRows';
 import {createPopup} from '@components/popups/indexTsx';
 import styles from '@components/popups/featureDetails.module.scss';
-import classNames from '@helpers/string/classNames';
 import MediaHeader, {MediaHeaderStickerProps} from '@components/mediaHeader';
-
-interface FeatureDetailsRow {
-  icon: Icon;
-  title: JSX.Element;
-  subtitle: JSX.Element;
-}
 
 export interface FeatureDetailsButton {
   text: JSX.Element;
@@ -24,7 +17,7 @@ type FeatureDetailsPopupProps = {
   title?: JSX.Element,
   subtitle?: JSX.Element,
   subtitleSecondary?: boolean,
-  rows: FeatureDetailsRow[],
+  rows: FeatureRow[],
   caption?: {
     title?: JSX.Element,
     subtitle?: JSX.Element
@@ -40,31 +33,24 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
   createPopup(() => (
     <PopupElement
       class={styles.popup}
-      containerClass={styles.popupContainer}
       show={show()}
       onClose={props.onClose}
       old
     >
-      <PopupElement.Header class={styles.popupHeader}>
-        <PopupElement.CloseButton class={styles.popupCloseButton} />
+      <PopupElement.Header floating>
+        <PopupElement.CloseButton />
       </PopupElement.Header>
-      <PopupElement.Body>
+      <PopupElement.Body class={styles.popupBody}>
         <MediaHeader>
           <MediaHeader.Sticker {...props.sticker} onReady={() => setShow(true)} />
           <Show when={props.title}>
             <MediaHeader.Title>{props.title}</MediaHeader.Title>
           </Show>
           <Show when={props.subtitle}>
-            <MediaHeader.Subtitle secondary={props.subtitleSecondary}>{props.subtitle}</MediaHeader.Subtitle>
+            <MediaHeader.Subtitle color={props.subtitleSecondary ? 'secondary' : undefined}>{props.subtitle}</MediaHeader.Subtitle>
           </Show>
         </MediaHeader>
-        <For each={props.rows}>{({icon, title, subtitle}) => (
-          <Row class={styles.row}>
-            <Row.Icon class={classNames('primary', styles.rowIcon)} icon={icon} />
-            <Row.Title class="text-bold">{title}</Row.Title>
-            <Row.Subtitle class={styles.rowSubtitle}>{subtitle}</Row.Subtitle>
-          </Row>
-        )}</For>
+        <FeatureRows rows={props.rows} />
         <Show when={props.caption}>
           <div class={styles.caption}>
             <Show when={props.caption.title}>
@@ -76,7 +62,7 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
           </div>
         </Show>
       </PopupElement.Body>
-      <PopupElement.Footer class={styles.popupFooter}>
+      <PopupElement.Footer>
         <For each={props.buttons}>{(button) => (
           <PopupElement.FooterButton
             callback={button.onClick ? () => button.onClick?.(close) : close}

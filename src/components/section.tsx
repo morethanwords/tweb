@@ -1,6 +1,7 @@
 import {JSX, ParentComponent, Ref, splitProps} from 'solid-js';
 import {LangPackKey, FormatterArguments, i18n} from '@lib/langPack';
 import classNames from '@helpers/string/classNames';
+import {generateDelimiter} from '@components/generateDelimiter';
 
 export type SectionOptions = {
   name?: LangPackKey | HTMLElement | DocumentFragment | JSX.Element,
@@ -13,6 +14,8 @@ export type SectionOptions = {
   captionTop?: boolean,
   captionRef?: Ref<HTMLDivElement>,
   noDelimiter?: boolean,
+  /** A gradient band above the section instead of the hairline — what separates it from a list above it. */
+  fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
   noMarginBottom?: boolean,
   noContent?: boolean,
@@ -23,6 +26,17 @@ export type SectionOptions = {
 };
 
 const className = 'sidebar-left-section';
+
+/**
+ * The pieces of a rendered `<Section>` that imperative code still reaches for. Collect them with
+ * `ref` / `contentProps.ref` / `nameRef` / `captionRef` and hand this around instead of an element.
+ */
+export type SectionParts = {
+  container: HTMLElement,
+  content: HTMLElement,
+  title?: HTMLElement,
+  caption?: HTMLElement
+};
 type SectionProps = SectionOptions & Omit<
   JSX.HTMLAttributes<HTMLDivElement>,
   keyof SectionOptions
@@ -49,10 +63,10 @@ const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 
   );
 };
 const Section: ParentComponent<SectionProps> = (props) => {
-  const [, rest] = splitProps(props, ['name', 'nameRef', 'nameArgs', 'nameRight', 'innerClass', 'caption', 'captionArgs', 'captionOld', 'captionTop', 'captionRef', 'noDelimiter', 'noShadow', 'noMarginBottom', 'noContent', 'class', 'contentProps', 'ref']);
+  const [, rest] = splitProps(props, ['name', 'nameRef', 'nameArgs', 'nameRight', 'innerClass', 'caption', 'captionArgs', 'captionOld', 'captionTop', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'noMarginBottom', 'noContent', 'class', 'contentProps', 'ref']);
   return (
     <div
-      class={classNames(className + '-container', props.class)}
+      class={classNames(className + '-container', props.noMarginBottom && 'no-margin-bottom', props.class)}
       ref={props.ref}
       {...rest}
     >
@@ -63,10 +77,10 @@ const Section: ParentComponent<SectionProps> = (props) => {
             className,
             props.noShadow && 'no-shadow',
             props.noDelimiter && 'no-delimiter',
-            props.innerClass,
-            props.noMarginBottom && 'no-margin-bottom'
+            props.innerClass
           )}
         >
+          {props.fakeGradientDelimiter && generateDelimiter()}
           <SectionContent {...props.contentProps}>
             {props.name && (
               <div ref={props.nameRef} class={classNames('sidebar-left-h2', className + '-name')}>
@@ -82,6 +96,19 @@ const Section: ParentComponent<SectionProps> = (props) => {
       {props.caption && !props.captionTop && !props.captionOld && <SectionCaption {...props} />}
     </div>
   );
+}
+
+/**
+ * A `<Section>` renders one content element. Some panels stack several inside the same
+ * section (a button, then a list that is reordered by index), which needs its own element —
+ * this appends one next to the existing content, like the old SettingSection's
+ * `generateContentElement()` did.
+ */
+export function appendSectionContent(section: HTMLElement) {
+  const content = document.createElement('div');
+  content.classList.add(className + '-content');
+  section.querySelector('.' + className).append(content);
+  return content;
 }
 
 export default Section;

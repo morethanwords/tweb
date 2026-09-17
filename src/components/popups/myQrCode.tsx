@@ -906,7 +906,7 @@ function BodySlot(props: {shared: QrPopupShared}) {
         />
       </PopupElement.Header>
 
-      <Section class={styles.bottomSection} noShadow noMarginBottom>
+      <Section noShadow noMarginBottom>
         <ChatThemesPicker
           class={styles.themePicker}
           selectedId={selectedThemeId}

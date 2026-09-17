@@ -13,7 +13,7 @@ export const NoActionsPlaceholder = (props: {
         <div class={styles.Title}>
           <I18nTsx key={props.forFilters ? 'AdminRecentActionsPlaceholder.WithFilterTitle' : 'AdminRecentActionsPlaceholder.Title'} />
         </div>
-        <div class={styles.Description}>
+        <div>
           <I18nTsx key={props.forFilters ? 'AdminRecentActionsPlaceholder.WithFilterDescription' : 'AdminRecentActionsPlaceholder.Description'} />
         </div>
       </div>

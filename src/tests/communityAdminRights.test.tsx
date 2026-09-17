@@ -180,7 +180,9 @@ describe('community admin rights shared tab', () => {
       addCleanup: () => () => true
     };
     const middleware = {
-      onDestroy: vi.fn()
+      onDestroy: vi.fn(),
+      // the sections are mounted through wrapSolidComponent, which parks its dispose here
+      onClean: vi.fn()
     };
     const participant = {
       _: 'channelParticipantAdmin',

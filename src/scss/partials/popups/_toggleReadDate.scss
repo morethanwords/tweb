@@ -6,38 +6,20 @@
   text-align: center;
   @include text-overflow(false);
 
-  .popup-header {
-    margin-bottom: 0;
-  }
-
   .popup-body {
-    margin-top: -2rem;
+    padding: 1rem;
   }
 
   &-sticker {
-    width: 86px;
-    height: 86px;
-    position: relative;
     border-radius: 50%;
     background-color: var(--primary-color);
-    margin: 0 auto 1rem;
-  }
-
-  &-title {
-    font-size: var(--font-size-20);
-    font-weight: var(--font-weight-bold);
-    line-height: var(--line-height-20);
-    margin-bottom: .25rem;
-  }
-
-  &-subtitle {
-    line-height: var(--line-height-16);
+    margin-bottom: 1rem;
   }
 
   &-button {
-    height: 3rem;
     text-transform: initial;
     margin-top: 1rem;
+    border-radius: $section-rounded-border-radius;
   }
 
   .delimiter-with-text {

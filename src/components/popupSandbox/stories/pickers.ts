@@ -150,6 +150,17 @@ defineStories('Pickers', [
     }
   },
   {
+    // The only popup that reserves room for a floating footer with `PopupElement.FooterPlaceholder`,
+    // and until now the only one without a story — so that reserve was rendered nowhere the
+    // sweep could see it. `enumerateDevices` needs no permission to answer, just a list.
+    id: 'outputDevice',
+    title: 'Audio output picker',
+    open: async() => {
+      const {default: showOutputDevicePopup} = await import('@components/rtmp/outputDevicePopup');
+      showOutputDevicePopup({kind: 'audiooutput', onPick: noop});
+    }
+  },
+  {
     id: 'chatPreview',
     title: 'Chat preview (shift-click a dialog)',
     managers: {

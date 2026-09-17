@@ -12,7 +12,7 @@ import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import showStickersPopup from '@components/popups/stickers';
 import Row from '@components/rowTsx';
-import SettingSection from '@components/settingSection';
+import Section, {appendSectionContent} from '@components/section';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import ReactionStickerPreview from '@components/reactionStickerPreview';
 import {AppQuickReactionTab} from '@components/solidJsTabs/tabs';
@@ -20,7 +20,6 @@ import {useAppSettings} from '@stores/appSettings';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
-import {renderComponent} from '@helpers/solid/renderComponent';
 import {IconTsx} from '@components/iconTsx';
 import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
 
@@ -43,7 +42,6 @@ const StickersAndEmoji: Component = () => {
     const promises: Promise<any>[] = [];
 
     {
-      const section = new SettingSection({caption: 'LoopAnimatedStickersInfo'});
       let suggestStickersRow: HTMLElement;
 
       const map: {[k in typeof appSettings.stickers.suggest]: LangPackKey} = {
@@ -57,40 +55,36 @@ const StickersAndEmoji: Component = () => {
         setAppSettings('stickers', 'suggest', value);
       };
 
-      renderComponent({
-        element: section.content,
-        Component: () => (
-          <>
-            <Row
-              havePadding
-              clickable={() => tab.slider.createTab(AppQuickReactionTab).open()}
-            >
-              <Row.Title>{i18n('DoubleTapSetting')}</Row.Title>
+      const section = (
+        <Section caption="LoopAnimatedStickersInfo">
+          <Row
+            havePadding
+            clickable={() => tab.slider.createTab(AppQuickReactionTab).open()}
+          >
+            <Row.Title>{i18n('DoubleTapSetting')}</Row.Title>
             <ReactionStickerPreview sticker={quickReactionDoc()} />
-            </Row>
-            <Row ref={suggestStickersRow} clickable>
-              <Row.Icon icon="lamp_filled" />
-              <Row.Title
-                titleRight={i18n(map[appSettings.stickers.suggest])}
-                titleRightSecondary
-              >
-                {i18n('Stickers.SuggestStickers')}
-              </Row.Title>
-            </Row>
-            <Row>
-              <Row.Icon icon="flip" />
-              <Row.CheckboxFieldToggle>
-                <CheckboxFieldTsx
-                  stateKey={joinDeepPath('settings', 'stickers', 'loop')}
-                  toggle
-                />
-              </Row.CheckboxFieldToggle>
-              <Row.Title>{i18n('InstalledStickers.LoopAnimated')}</Row.Title>
-            </Row>
-          </>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+          </Row>
+          <Row ref={suggestStickersRow} clickable>
+            <Row.Icon icon="lamp_filled" />
+            <Row.Title
+              titleRight={i18n(map[appSettings.stickers.suggest])}
+              titleRightSecondary
+            >
+              {i18n('Stickers.SuggestStickers')}
+            </Row.Title>
+          </Row>
+          <Row>
+            <Row.Icon icon="flip" />
+            <Row.CheckboxFieldToggle>
+              <CheckboxFieldTsx
+                stateKey={joinDeepPath('settings', 'stickers', 'loop')}
+                toggle
+              />
+            </Row.CheckboxFieldToggle>
+            <Row.Title>{i18n('InstalledStickers.LoopAnimated')}</Row.Title>
+          </Row>
+        </Section>
+      ) as HTMLElement;
 
       createContextMenu({
         buttons: [{
@@ -115,71 +109,62 @@ const StickersAndEmoji: Component = () => {
         refetchQuickReaction();
       });
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(section);
     }
 
-    {
-      const section = new SettingSection({name: 'Emoji'});
-      renderComponent({
-        element: section.content,
-        Component: () => (
-          <>
-            <Row>
-              <Row.Icon icon="lamp_filled" />
-              <Row.CheckboxFieldToggle>
-                <CheckboxFieldTsx
-                  stateKey={joinDeepPath('settings', 'emoji', 'suggest')}
-                  toggle
-                />
-              </Row.CheckboxFieldToggle>
-              <Row.Title>{i18n('GeneralSettings.EmojiPrediction')}</Row.Title>
-            </Row>
-            <Row>
-              <Row.Icon icon="emoji_filled" />
-              <Row.CheckboxFieldToggle>
-                <CheckboxFieldTsx
-                  stateKey={joinDeepPath('settings', 'emoji', 'big')}
-                  toggle
-                />
-              </Row.CheckboxFieldToggle>
-              <Row.Title>{i18n('GeneralSettings.BigEmoji')}</Row.Title>
-            </Row>
-          </>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+    tab.scrollable.append((
+      <Section name="Emoji">
+        <Row>
+          <Row.Icon icon="lamp_filled" />
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              stateKey={joinDeepPath('settings', 'emoji', 'suggest')}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('GeneralSettings.EmojiPrediction')}</Row.Title>
+        </Row>
+        <Row>
+          <Row.Icon icon="emoji_filled" />
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              stateKey={joinDeepPath('settings', 'emoji', 'big')}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('GeneralSettings.BigEmoji')}</Row.Title>
+        </Row>
+      </Section>
+    ) as HTMLElement);
 
-      tab.scrollable.append(section.container);
-    }
-
-    {
-      const section = new SettingSection({name: 'DynamicPackOrder', caption: 'DynamicPackOrderInfo'});
-      renderComponent({
-        element: section.content,
-        Component: () => (
-          <Row>
-            <Row.Icon icon="replace_squares" />
-            <Row.CheckboxFieldToggle>
-              <CheckboxFieldTsx
-                stateKey={joinDeepPath('settings', 'stickers', 'dynamicPackOrder')}
-                toggle
-              />
-            </Row.CheckboxFieldToggle>
-            <Row.Title>{i18n('DynamicPackOrder')}</Row.Title>
-          </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
-
-      tab.scrollable.append(section.container);
-    }
+    tab.scrollable.append((
+      <Section name="DynamicPackOrder" caption="DynamicPackOrderInfo">
+        <Row>
+          <Row.Icon icon="replace_squares" />
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              stateKey={joinDeepPath('settings', 'stickers', 'dynamicPackOrder')}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('DynamicPackOrder')}</Row.Title>
+        </Row>
+      </Section>
+    ) as HTMLElement);
 
     {
-      const section = new SettingSection({name: 'Telegram.InstalledStickerPacksController', caption: 'StickersBotInfo'});
+      const section = (
+        <Section
+          name="Telegram.InstalledStickerPacksController"
+          caption="StickersBotInfo"
+        />
+      ) as HTMLElement;
 
       const stickerSets: {[id: string]: {container: HTMLElement, dispose: VoidFunction}} = {};
 
-      const stickersContent = section.generateContentElement();
+      // the sortable list gets a content element of its own: reordering reads the
+      // element's children, so the section's title must not be among them
+      const stickersContent = appendSectionContent(section);
 
       const lazyLoadQueue = new LazyLoadQueue();
       const renderStickerSet = (stickerSet: StickerSet.stickerSet, method: 'append' | 'prepend' = 'append') => {
@@ -273,7 +258,7 @@ const StickersAndEmoji: Component = () => {
         }
       });
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(section);
     }
 
     promiseCollector.collect(Promise.all(promises));

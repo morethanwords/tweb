@@ -35,8 +35,8 @@ defineStories('Transactions', scenarios.map((scenario) => ({
   fixtureOnly: true,
   managers: () => ({appPaymentsManager: {fulfillStarsSubscription: () => true}}),
   open: async(ctx) => {
-    const {default: PopupPayment} = await import('@components/popups/payment');
-    await PopupPayment.create({subscription: makeSubscription(ctx, scenario), noPaymentForm: true});
+    const {createPaymentPopup} = await import('@components/popups/payment');
+    await createPaymentPopup({subscription: makeSubscription(ctx, scenario), noPaymentForm: true});
   }
 })));
 
@@ -55,9 +55,7 @@ defineStories('Transactions', [{
     }
   }),
   open: async() => {
-    const [{default: PopupElement}, {default: PopupStars}] = await Promise.all([
-      import('@components/popups'), import('@components/popups/stars')
-    ]);
-    PopupElement.createPopup(PopupStars);
+    const {default: showStarsPopup} = await import('@components/popups/stars');
+    showStarsPopup();
   }
 }]);

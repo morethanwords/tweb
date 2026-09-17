@@ -81,7 +81,6 @@ import SuperIntersectionObserver, {IntersectionCallback} from '@helpers/dom/supe
 import generateFakeIcon from '@components/generateFakeIcon';
 import copyFromElement from '@helpers/dom/copyFromElement';
 import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
-import PopupElement from '@components/popups';
 import setAttachmentSize, {EXPAND_TEXT_WIDTH} from '@helpers/setAttachmentSize';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import wrapWebPageTitle from '@components/wrappers/webPageTitle';
@@ -105,7 +104,7 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import noop from '@helpers/noop';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import paymentsWrapCurrencyAmount, {GRAM_CURRENCY_SYMBOL, formatNanoton, nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
-import PopupPayment from '@components/popups/payment';
+import {createPaymentPopup} from '@components/popups/payment';
 import isInDOM from '@helpers/dom/isInDOM';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import attachStickerViewerListeners from '@components/stickerViewer';
@@ -154,7 +153,7 @@ import {formatDaysDuration, formatMonthsDuration} from '@helpers/date';
 import {JSX} from 'solid-js';
 import Giveaway, {getGiftAssetName, onGiveawayClick} from '@components/chat/giveaway';
 import showGiftLinkPopup from '@components/popups/giftLink';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import getParents from '@helpers/dom/getParents';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
@@ -196,11 +195,11 @@ import {createMessageSpoilerOverlay} from '@components/messageSpoilerOverlay';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {Sparkles} from '@components/sparkles';
-import PopupStars from '@components/popups/stars';
+import showStarsPopup from '@components/popups/stars';
 import addPaidServiceMessage from '@components/chat/bubbleParts/paidServiceMessage';
 import namedPromises from '@helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '@components/popups/newMedia';
-import PopupStarGiftInfo from '@components/popups/starGiftInfo';
+import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
@@ -237,7 +236,7 @@ import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapDice from '@components/chat/bubbleParts/dice';
 import animateSomethingWithScroll from '@helpers/animateSomethingWithScroll';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
-import PopupBoost from '@components/popups/boost';
+import showBoostPopup from '@components/popups/boost';
 import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@components/chat/bubbles/noForwardsRequest';
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
@@ -3599,7 +3598,7 @@ export default class ChatBubbles {
       const paidMedia = media?._ === 'messageMediaPaidMedia' ? media : undefined;
 
       const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid);
-      const popup = await PopupPayment.create({
+      const popup = await createPaymentPopup({
         message: message as Message.message,
         inputInvoice,
         isReceipt: buyButton.classList.contains('is-receipt'),
@@ -3650,7 +3649,7 @@ export default class ChatBubbles {
 
       if(reactionsElement.getType() === ReactionLayoutType.Tag) {
         if(!rootScope.premium) {
-          PopupPremium.show({feature: 'saved_tags'});
+          showPremiumPopup({feature: 'saved_tags'});
           return;
         }
 
@@ -3766,7 +3765,7 @@ export default class ChatBubbles {
             const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
             if(message) {
               const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid);
-              PopupPayment.create({
+              createPaymentPopup({
                 message: message as Message.message,
                 inputInvoice,
                 isReceipt: true
@@ -4018,7 +4017,7 @@ export default class ChatBubbles {
       const message = this.chat.getMessage(bubbleFullMid);
       const action = (message as Message.messageService)?.action;
       if(action?._ === 'messageActionBoostApply') {
-        PopupElement.createPopup(PopupBoost, this.peerId);
+        showBoostPopup(this.peerId);
         return;
       }
     }
@@ -7945,7 +7944,7 @@ export default class ChatBubbles {
             subtitle,
             buttonText: i18n('ActionGiftPremiumView'),
             buttonCallback: async() => {
-              PopupPayment.create({
+              createPaymentPopup({
                 message: message as Message.message,
                 noPaymentForm: true,
                 transaction: {
@@ -8212,7 +8211,7 @@ export default class ChatBubbles {
                 return;
               }
 
-              PopupPremium.show({
+              showPremiumPopup({
                 gift: action,
                 peerId: this.peerId,
                 isOut: !!message.pFlags.out
@@ -8240,7 +8239,7 @@ export default class ChatBubbles {
             buttonText: i18n('ActionGiftPremiumView'),
             buttonCallback: () => {
               const isSent = message.fromId === rootScope.myId;
-              PopupPayment.create({
+              createPaymentPopup({
                 message: message as Message.message,
                 noPaymentForm: true,
                 transaction: {
@@ -8383,9 +8382,9 @@ export default class ChatBubbles {
                 }
 
                 const upgradedGift = await this.managers.appGiftsManager.wrapGiftFromMessage(upgradeMsg as Message.messageService);
-                PopupElement.createPopup(PopupStarGiftInfo, {gift: upgradedGift});
+                showStarGiftInfoPopup({gift: upgradedGift});
               } else {
-                PopupElement.createPopup(PopupStarGiftInfo, {gift})
+                showStarGiftInfoPopup({gift})
               }
             }
           }), container, middleware)
@@ -8706,7 +8705,7 @@ export default class ChatBubbles {
           textElement: i18n('Summary.Limited.Text', [
             anchorCallback(() => {
               hide();
-              PopupPremium.show();
+              showPremiumPopup();
             })
           ]),
           duration: 10000
@@ -10586,7 +10585,7 @@ export default class ChatBubbles {
       bubbleContainer.prepend(buttons);
       bubble.classList.add('with-beside-button');
       attachClickEvent(hideButton, () => {
-        PopupPremium.show({feature: 'no_ads'});
+        showPremiumPopup({feature: 'no_ads'});
       });
     }
 
@@ -11950,7 +11949,7 @@ export default class ChatBubbles {
             [
               await wrapPeerTitle({peerId: message.peerId, onlyFirstName: true}),
               anchorCallback(() => {
-                PopupPremium.show();
+                showPremiumPopup();
               })
             ]
           ));
@@ -12005,7 +12004,7 @@ export default class ChatBubbles {
 
       const button = Button('bubble-service-button', {noRipple: true, text: 'Chat.PremiumRequiredButton'});
       attachClickEvent(button, () => {
-        PopupPremium.show();
+        showPremiumPopup();
       });
 
       elements.push(stickerDiv, subtitle, button);
@@ -12032,7 +12031,7 @@ export default class ChatBubbles {
       const button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
       button.append(Sparkles({isDiv: true, mode: 'button'}));
       attachClickEvent(button, () => {
-        PopupElement.createPopup(PopupStars, {spendPurposePeerId: this.peerId});
+        showStarsPopup({spendPurposePeerId: this.peerId});
       });
 
       elements.push(stickerDiv, subtitle, button);
@@ -12062,7 +12061,7 @@ export default class ChatBubbles {
         button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
         button.append(Sparkles({isDiv: true, mode: 'button'}));
         attachClickEvent(button, () => {
-          PopupElement.createPopup(PopupStars, {spendPurposePeerId: this.peerId});
+          showStarsPopup({spendPurposePeerId: this.peerId});
         });
       }
 

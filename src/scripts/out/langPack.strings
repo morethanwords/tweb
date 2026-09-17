@@ -361,7 +361,6 @@
 "ForwardedStoryFrom1" = "Story From %s";
 "ForwardedFromAuthor" = "Forwarded from %s (%s)";
 "ForwardedStoryFromAuthor1" = "Story From %s (%s)";
-"Popup.Avatar.Title" = "Drag to Reposition";
 "Popup.Unpin.AllTitle" = "Unpin all messages";
 "Popup.Unpin.HideTitle" = "Hide pinned messages";
 "Popup.Unpin.HideDescription" = "Do you want to hide the pinned message bar? It wil stay hidden until a new message is pinned.";

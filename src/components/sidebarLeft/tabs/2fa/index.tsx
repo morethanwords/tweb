@@ -1,7 +1,6 @@
 import {Component, onMount, Show} from 'solid-js';
 import Button from '@components/buttonTsx';
-import PopupElement from '@components/popups';
-import PopupPeer from '@components/popups/peer';
+import showPeerPopup from '@components/popups/peer';
 import Section from '@components/section';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import {AppSettingsTab} from '@components/solidJsTabs';
@@ -26,7 +25,7 @@ const TwoStepVerification: Component = () => {
   });
 
   const onDisablePassword = () => {
-    const popup = PopupElement.createPopup(PopupPeer, 'popup-disable-password', {
+    showPeerPopup('popup-disable-password', {
       buttons: [{
         langKey: 'Disable',
         callback: () => {
@@ -40,8 +39,6 @@ const TwoStepVerification: Component = () => {
       titleLangKey: 'TurnPasswordOffQuestionTitle',
       descriptionLangKey: 'TurnPasswordOffQuestion'
     });
-
-    popup.show();
   };
 
   return (

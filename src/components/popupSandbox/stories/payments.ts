@@ -14,12 +14,8 @@ defineStories('Payments', [
     fixtureOnly: true,
     title: 'Payment method',
     open: async() => {
-      const [{default: PopupElement}, {default: PopupPaymentMethods}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/paymentMethods')
-      ]);
-
-      PopupElement.createPopup(PopupPaymentMethods, paymentForm, botUser).show();
+      const {default: showPaymentMethodsPopup} = await import('@components/popups/paymentMethods');
+      showPaymentMethodsPopup({paymentForm, user: botUser});
     }
   },
   {
@@ -27,16 +23,15 @@ defineStories('Payments', [
     fixtureOnly: true,
     title: 'Shipping information',
     open: async() => {
-      const [{default: PopupElement}, {default: PopupPaymentShipping}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/paymentShipping')
-      ]);
-
-      PopupElement.createPopup(PopupPaymentShipping, paymentForm, {
-        _: 'inputInvoiceMessage',
-        peer: {_: 'inputPeerSelf'},
-        msg_id: 1
-      }).show();
+      const {default: showPaymentShippingPopup} = await import('@components/popups/paymentShipping');
+      showPaymentShippingPopup({
+        paymentForm,
+        inputInvoice: {
+          _: 'inputInvoiceMessage',
+          peer: {_: 'inputPeerSelf'},
+          msg_id: 1
+        }
+      });
     }
   },
   {
@@ -44,17 +39,12 @@ defineStories('Payments', [
     fixtureOnly: true,
     title: 'Shipping method',
     open: async() => {
-      const [{default: PopupElement}, {default: PopupPaymentShippingMethods}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/paymentShippingMethods')
-      ]);
-
-      PopupElement.createPopup(
-        PopupPaymentShippingMethods,
+      const {default: showPaymentShippingMethodsPopup} = await import('@components/popups/paymentShippingMethods');
+      showPaymentShippingMethodsPopup({
         paymentForm,
-        validatedRequestedInfo,
-        shippingOptions[0]
-      ).show();
+        requestedInfo: validatedRequestedInfo,
+        shippingOption: shippingOptions[0]
+      });
     }
   },
   {
@@ -62,13 +52,10 @@ defineStories('Payments', [
     fixtureOnly: true,
     title: 'Card details',
     open: async() => {
-      const [{default: PopupElement}, {default: PopupPaymentCard}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/paymentCard')
-      ]);
+      const {default: showPaymentCardPopup} = await import('@components/popups/paymentCard');
 
       // The `user` here is the payer, not the bot — the card form derives its country from that phone.
-      PopupElement.createPopup(PopupPaymentCard, paymentForm, selfUser).show();
+      showPaymentCardPopup({paymentForm, user: selfUser});
     }
   }
 ]);

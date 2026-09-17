@@ -50,6 +50,26 @@ export const useCanSubmit = () => {
   }));
 };
 
+/**
+ * How many options the user may still add, the way the caption under the options section counts
+ * them: the trailing option is the empty one being typed into, so it is not spent yet.
+ */
+export const useVisibleOptionsLeft = () => {
+  const {store} = useCreatePollContext();
+  const {maxOptions} = useCreatePollLimits();
+
+  return createMemo(() => {
+    if(store.pollOptions.length === 2 && !checkOptionHasValue(store.pollOptions[0])) {
+      return maxOptions();
+    }
+
+    return (
+      Math.max(0, maxOptions() - store.pollOptions.length) +
+      (store.pollOptions.length && checkOptionHasValue(lastItem(store.pollOptions)) ? 0 : 1)
+    );
+  });
+};
+
 export const validateCountryRestriction = (
   store: CreatePollStore,
   isBroadcast: boolean,

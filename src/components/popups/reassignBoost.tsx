@@ -8,52 +8,46 @@ import {i18n} from '@lib/langPack';
 import AppSelectPeers from '@components/appSelectPeers';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {BoostsConfirmButton} from '@components/popups/boostsViaGifts';
-import PopupPeer from '@components/popups/peer';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import {getMiddleware} from '@helpers/middleware';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import toggleDisability from '@helpers/dom/toggleDisability';
 import {AvatarNew} from '@components/avatarNew';
+import MediaHeader from '@components/mediaHeader';
 import classNames from '@helpers/string/classNames';
 import filterUnique from '@helpers/array/filterUnique';
 import {resolveElements} from '@solid-primitives/refs';
 import liteMode from '@helpers/liteMode';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {hideToast, toastNew} from '@components/toast';
 import tsNow from '@helpers/tsNow';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import {IconTsx} from '@components/iconTsx';
+import rootScope from '@lib/rootScope';
 import {createListTransition} from '@vendor/createListTransition';
 
 const className = 'popup-boost';
 
-export default class PopupReassignBoost extends PopupPeer {
-  private selector: AppSelectPeers;
+export default async function showReassignBoostPopup(
+  peerId: PeerId,
+  myBoosts: PremiumMyBoosts,
+  appConfig: MTAppConfig
+) {
+  const middlewareHelper = getMiddleware();
+  const middleware = middlewareHelper.get();
+  const descriptionPeerTitle = await wrapPeerTitle({peerId});
 
-  constructor(
-    private peerId: PeerId,
-    private myBoosts: PremiumMyBoosts,
-    private appConfig: MTAppConfig
-  ) {
-    super('popup-forward popup-chatlist-invite ' + className, {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      description: true,
-      footer: true,
-      withConfirm: true
-    });
+  const [show, setShow] = createSignal(false);
+  const deferredCloseCallbacks: (() => void)[] = [];
+  const hideWithCallback = (callback: () => void) => {
+    deferredCloseCallbacks.push(callback);
+    setShow(false);
+  };
 
-    this.btnClose.remove();
-    this.header.remove();
+  createPopup(() => {
+    onCleanup(() => middlewareHelper.destroy());
 
-    createRoot((dispose) => {
-      this.middlewareHelper.get().onDestroy(dispose);
-      this.construct();
-    });
-  }
-
-  private async construct() {
     const [selected, setSelected] = createSignal<MyBoost[]>([]);
     const [count, setCount] = createSignal(0);
+    const [processing, setProcessing] = createSignal(false);
     const map = new Map<string, MyBoost>();
 
     const Avatars = () => {
@@ -73,7 +67,7 @@ export default class PopupReassignBoost extends PopupPeer {
         return avatar;
       };
 
-      const avatar = createAvatar({peerId: this.peerId, right: true});
+      const avatar = createAvatar({peerId, right: true});
       const peerIds = createMemo<PeerId[]>((previous) => {
         const previosIndexes: Map<PeerId, number> = new Map();
         previous?.forEach((peerId, index) => {
@@ -140,33 +134,32 @@ export default class PopupReassignBoost extends PopupPeer {
       );
     };
 
-    this.description.before(
-      Avatars() as HTMLElement,
-      (<div class={`${className}-title`}>{i18n('Boost.Replace')}</div>) as HTMLElement
-    );
-
     const leftTimes = new Map<string, Accessor<number>>();
 
-    this.selector = new AppSelectPeers({
-      middleware: this.middlewareHelper.get(),
-      appendTo: this.body,
+    // the picker owns the popup's scrolling area, so it IS the body
+    const body = document.createElement('div');
+    body.classList.add('popup-body');
+
+    const selector: AppSelectPeers = new AppSelectPeers({
+      middleware,
+      appendTo: body,
       onChange: (length) => {
-        setSelected(this.selector.getSelected().map((key) => map.get(key as any as string)));
+        setSelected(selector.getSelected().map((key) => map.get(key as any as string)));
         setCount(length);
       },
       onFirstRender: () => {
-        this.show();
+        setShow(true);
       },
       multiSelect: true,
       noSearch: true,
       sectionNameLangPackKey: 'BoostingRemoveBoostFrom',
       avatarSize: 'abitbigger',
-      managers: this.managers,
+      managers: rootScope.managers,
       peerType: [],
       getSubtitleForElement: (key) => {
         const myBoost = map.get(key as any as string);
         return createRoot((dispose) => {
-          this.middlewareHelper.get().onDestroy(() => {
+          middleware.onDestroy(() => {
             dispose();
             clearInterval(interval);
           });
@@ -200,7 +193,7 @@ export default class PopupReassignBoost extends PopupPeer {
       processElementAfter: (key, dialogElement) => {
         const leftTime = leftTimes.get(key as any as string);
         createRoot((dispose) => {
-          this.middlewareHelper.get().onDestroy(dispose);
+          middleware.onDestroy(dispose);
           createEffect(() => {
             dialogElement.container.classList.toggle('is-unavailable', !!leftTime());
           });
@@ -208,17 +201,17 @@ export default class PopupReassignBoost extends PopupPeer {
       }
     });
 
-    const _add = this.selector.add.bind(this.selector);
-    this.selector.add = (...args) => {
-      const element = this.selector.getElementByKey(args[0].key as any);
+    const _add = selector.add.bind(selector);
+    selector.add = (...args) => {
+      const element = selector.getElementByKey(args[0].key as any);
       if(element.classList.contains('is-unavailable')) {
         toastNew({
           langPackKey: 'Boost.Reassign.Wait',
           langPackArguments: [
-            i18n('MoreBoosts', [this.appConfig.boosts_per_sent_gift ?? 1]),
+            i18n('MoreBoosts', [appConfig.boosts_per_sent_gift ?? 1]),
             anchorCallback(() => {
               hideToast();
-              this.hideWithCallback(() => {
+              hideWithCallback(() => {
                 appImManager.initGifting();
               });
             })
@@ -230,79 +223,80 @@ export default class PopupReassignBoost extends PopupPeer {
       return _add(...args);
     };
 
-    const keys = this.myBoosts.my_boosts.map((myBoost) => {
-      const peerId = getPeerId(myBoost.peer);
-      if(peerId === this.peerId) {
+    const keys = myBoosts.my_boosts.map((myBoost) => {
+      const boostPeerId = getPeerId(myBoost.peer);
+      if(boostPeerId === peerId) {
         return;
       }
 
-      const key = 'S' + myBoost.slot + '_' + peerId;
+      const key = 'S' + myBoost.slot + '_' + boostPeerId;
       map.set(key, myBoost);
       return key;
     }).filter(Boolean);
-    this.scrollable = this.selector.scrollable;
-    this.attachScrollableListeners();
-    this.selector.renderResultsFunc(keys as any as number[]);
+    selector.scrollable.attachBorderListeners();
+    selector.renderResultsFunc(keys as any as number[]);
 
-    let processing = false;
     const onClick = async(e: MouseEvent) => {
       cancelEvent(e);
-      processing = true;
-      const toggle = toggleDisability(this.btnConfirm, true);
+      setProcessing(true);
       try {
         const slots = selected().map((myBoost) => myBoost.slot);
         const uniquePeers = filterUnique(selected().map((myBoost) => getPeerId(myBoost.peer)));
-        await this.managers.appBoostsManager.applyBoost(this.peerId, slots);
-        this.hide();
+        await rootScope.managers.appBoostsManager.applyBoost(peerId, slots);
+        setShow(false);
         toastNew({
           langPackKey: 'BoostingReassignedFromPlural',
           langPackArguments: [slots.length, i18n('BoostingFromOtherChannel', [uniquePeers.length])]
         });
       } catch(err) {
         console.error('error replacing boosts', err);
-        toggle();
       }
-      processing = false;
+      setProcessing(false);
+      return false;
     };
 
-    attachClickEvent(this.btnConfirm, onClick, {listenerSetter: this.listenerSetter});
-
-    BoostsConfirmButton({
-      button: this.btnConfirm,
-      langKey: () => 'Boost.Reassign',
-      langArgs: () => [count() || 1],
-      boosts: count
-    });
-
-    createEffect(() => {
-      if(processing) {
-        return;
-      }
-
-      toggleDisability(this.btnConfirm, !count());
-    });
-
-    this.description.append(
-      i18n(
-        'Boost.Reassign.Description',
-        [
-          await wrapPeerTitle({peerId: this.peerId}),
-          i18n(
-            'Boost.GiftPremium',
+    return (
+      <PopupElement
+        class={className}
+        closable
+        show={show()}
+        onCloseAfterTimeout={() => deferredCloseCallbacks.splice(0).forEach((callback) => callback())}
+      >
+        <PopupElement.Header floating>
+          <PopupElement.CloseButton />
+        </PopupElement.Header>
+        {Avatars()}
+        <MediaHeader.Title class={`${className}-title`} size={20}>{i18n('Boost.Replace')}</MediaHeader.Title>
+        <MediaHeader.Subtitle class={`${className}-description`}>
+          {i18n(
+            'Boost.Reassign.Description',
             [
-              anchorCallback(() => {
-                this.hideWithCallback(() => {
-                  appImManager.initGifting();
-                });
-              })
+              descriptionPeerTitle,
+              i18n(
+                'Boost.GiftPremium',
+                [
+                  anchorCallback(() => {
+                    hideWithCallback(() => {
+                      appImManager.initGifting();
+                    });
+                  })
+                ]
+              ),
+              i18n('Boost.Additional', [appConfig.boosts_per_sent_gift ?? 1])
             ]
-          ),
-          i18n('Boost.Additional', [this.appConfig.boosts_per_sent_gift ?? 1])
-        ]
-      )
+          )}
+        </MediaHeader.Subtitle>
+        {body}
+        <PopupElement.Footer>
+          <BoostsConfirmButton
+            disabled={!count() || processing()}
+            callback={onClick}
+            langKey={() => 'Boost.Reassign'}
+            langArgs={() => [count() || 1]}
+            boosts={count}
+          />
+        </PopupElement.Footer>
+      </PopupElement>
     );
-
-    this.footer.append(this.btnConfirm);
-    this.body.after(this.footer);
-  }
+  });
 }

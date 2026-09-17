@@ -1,8 +1,6 @@
-import {createEffect, createSignal, Match, on, Switch} from 'solid-js';
-import PopupElement from '.';
-import safeAssign from '@helpers/object/safeAssign';
+import {createSignal, Match, Switch} from 'solid-js';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {MyStarGift} from '@appManagers/appGiftsManager';
-import rootScope from '@lib/rootScope';
 
 import styles from '@components/popups/chooseGiftPopup.module.scss';
 import {createProfileGiftsStore} from '@components/stargifts/profileStore';
@@ -13,114 +11,93 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {PreloaderTsx} from '@components/putPreloader';
 import {Transition} from 'solid-transition-group';
 
-export default class PopupChooseGift extends PopupElement<{
-  finish: (result: {selected: MyStarGift[], deselected: MyStarGift[]} | null) => void
-}> {
-  private peerId: PeerId;
-  private selectedCollectionId?: number;
+export default function showChooseGiftPopup(options: {
+  peerId: PeerId,
+  selectedCollectionId?: number,
+  onFinish: (result: {selected: MyStarGift[], deselected: MyStarGift[]} | null) => void
+}) {
+  const {peerId, selectedCollectionId} = options;
+  // closing without confirming answers `null`, but the buttons answer for themselves
+  let finished = false;
+  const finish = (result: {selected: MyStarGift[], deselected: MyStarGift[]} | null) => {
+    finished = true;
+    options.onFinish(result);
+  };
 
-  private finished = false;
-  private selected: () => MyStarGift[];
-  private deselected: () => MyStarGift[];
-
-  constructor(options: {
-    peerId: PeerId,
-    selectedCollectionId?: number
-  }) {
-    super(styles.popup, {
-      overlayClosable: true,
-      closable: true,
-      title: 'StarGiftChoose',
-      body: true,
-      buttons: [
-        {
-          langKey: 'Confirm',
-          callback: () => {
-            this.dispatchEvent('finish', {selected: this.selected(), deselected: this.deselected()});
-          }
-        },
-        {
-          langKey: 'Cancel',
-          callback: () => {
-            this.dispatchEvent('finish', null);
-          }
-        }
-      ]
-    });
-
-    this.addEventListener('close', () => {
-      if(!this.finished) {
-        this.dispatchEvent('finish', null);
-      }
-    });
-
-    safeAssign(this, options);
-
-    this.construct()
-  }
-
-  protected async construct() {
-    this.appendSolidBody(() => this._construct());
-  }
-
-  protected _construct() {
-    const [store, actions] = createProfileGiftsStore({peerId: this.peerId});
+  createPopup(() => {
+    const [store, actions] = createProfileGiftsStore({peerId});
     const [selected, setSelected] = createSignal<MyStarGift[]>([]);
     const [deselected, setDeselected] = createSignal<MyStarGift[]>([]);
-    this.selected = selected;
-    this.deselected = deselected;
     actions.loadNext();
 
     const isGiftSelected = (gift: MyStarGift) => {
-      if(this.selectedCollectionId && gift.saved.collection_id?.includes(this.selectedCollectionId)) {
+      if(selectedCollectionId && gift.saved.collection_id?.includes(selectedCollectionId)) {
         return !deselected().includes(gift);
       }
       return selected().includes(gift);
-    }
+    };
 
     let scrollableRef!: HTMLDivElement;
     return (
-      <Transition name="fade" mode="outin">
-        <Switch>
-          <Match when={store.loading && store.items.length === 0}>
-            <PreloaderTsx />
-          </Match>
-          <Match when={store.items.length === 0}>
-            <div class={styles.empty}>
-              <I18nTsx key="StarGiftCollectionsEmptyOther" />
-            </div>
-          </Match>
-          <Match when={true}>
-            <Scrollable ref={scrollableRef} onScrolledBottom={actions.loadNext}>
-              <StarGiftsGrid
-                class={styles.grid}
-                items={unwrap(store.items)}
-                view="profile"
-                autoplay={false}
-                scrollParent={scrollableRef}
-                selected={isGiftSelected}
-                onClick={(clickedItem) => {
-                  if(this.selectedCollectionId && clickedItem.saved.collection_id?.includes(this.selectedCollectionId)) {
-                    const idx = deselected().indexOf(clickedItem);
-                    if(idx !== -1) {
-                      setDeselected(deselected().filter((it, i) => i !== idx));
-                    } else {
-                      setDeselected([...deselected(), clickedItem]);
-                    }
-                  } else {
-                    const idx = selected().indexOf(clickedItem);
-                    if(idx !== -1) {
-                      setSelected(selected().filter((it, i) => i !== idx));
-                    } else {
-                      setSelected([...selected(), clickedItem]);
-                    }
-                  }
-                }}
-              />
-            </Scrollable>
-          </Match>
-        </Switch>
-      </Transition>
-    )
-  }
+      <PopupElement
+        class={styles.popup}
+        closable
+        onClose={() => !finished && options.onFinish(null)}
+      >
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title title="StarGiftChoose" />
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <Transition name="fade" mode="outin">
+            <Switch>
+              <Match when={store.loading && store.items.length === 0}>
+                <PreloaderTsx />
+              </Match>
+              <Match when={store.items.length === 0}>
+                <div>
+                  <I18nTsx key="StarGiftCollectionsEmptyOther" />
+                </div>
+              </Match>
+              <Match when={true}>
+                <Scrollable ref={scrollableRef} onScrolledBottom={actions.loadNext}>
+                  <StarGiftsGrid
+                    class={styles.grid}
+                    items={unwrap(store.items)}
+                    view="profile"
+                    autoplay={false}
+                    scrollParent={scrollableRef}
+                    selected={isGiftSelected}
+                    onClick={(clickedItem) => {
+                      if(selectedCollectionId && clickedItem.saved.collection_id?.includes(selectedCollectionId)) {
+                        const idx = deselected().indexOf(clickedItem);
+                        if(idx !== -1) {
+                          setDeselected(deselected().filter((it, i) => i !== idx));
+                        } else {
+                          setDeselected([...deselected(), clickedItem]);
+                        }
+                      } else {
+                        const idx = selected().indexOf(clickedItem);
+                        if(idx !== -1) {
+                          setSelected(selected().filter((it, i) => i !== idx));
+                        } else {
+                          setSelected([...selected(), clickedItem]);
+                        }
+                      }
+                    }}
+                  />
+                </Scrollable>
+              </Match>
+            </Switch>
+          </Transition>
+        </PopupElement.Body>
+        <PopupElement.Footer>
+          <PopupElement.FooterButton
+            langKey="Confirm"
+            callback={() => finish({selected: selected(), deselected: deselected()})}
+          />
+        </PopupElement.Footer>
+      </PopupElement>
+    );
+  });
 }

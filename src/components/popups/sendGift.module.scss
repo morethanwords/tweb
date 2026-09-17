@@ -92,24 +92,8 @@
   transform: translate(-3rem);
 }
 
-.mainTitle {
-  margin-top: 0.75rem;
-  font-weight: 500;
-  font-size: 24px;
-  line-height: 32px;
-  text-align: center;
-}
-
-.mainSubtitle {
-  margin-top: 0.375rem;
-  margin-bottom: 0.625rem;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 22px;
-  text-align: center;
-  text-wrap: balance;
-  white-space: pre-wrap;
-  padding-inline: 1rem;
+.intro {
+  margin-block: 0.75rem 0.625rem;
 }
 
 .premiumOptionsContainer {
@@ -243,7 +227,11 @@
 }
 
 .secondPageBody {
-  height: 100%;
+  // the send button below is the fixed part, so the scroll takes whatever is left — sized
+  // with `height: 100%` it keeps the container's full height instead, and the button (with
+  // its margin) is pushed out through the clipped bottom
+  flex: 1;
+  min-height: 0;
   position: relative;
 
   .scrollable {

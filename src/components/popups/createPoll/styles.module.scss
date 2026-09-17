@@ -8,11 +8,6 @@
   max-height: min(800px,100%);
 }
 
-.header {
-  flex-wrap: wrap;
-  margin-bottom: 0;
-}
-
 .flexFull {
   flex-basis: 100%;
 }
@@ -39,12 +34,7 @@
   width: unset;
 }
 
-.sectionTitle {
-  color: var(--primary-color);
-  font-weight: var(--font-weight-bold);
-  padding: 0 1rem;
-}
-
+// a bare `hr` is `display: none !important` globally — the duration block draws its own separator
 .hr {
   display: block !important;
   padding-bottom: 0;
@@ -63,7 +53,8 @@
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 
-  &:hover, &.forceFocused {
+  &:hover,
+  &.forceFocused {
     opacity: 1;
   }
 }
@@ -109,25 +100,6 @@
   }
 }
 
-.sectionWrapper {
-  padding-inline: var(--section-padding-inline);
-}
-
-.mediaIcon {
-  color: white;
-  border-radius: 10px;
-  background: linear-gradient(45deg, var(--gradient-start), var(--gradient-end));
-  inset-inline-start: 1rem !important;
-  font-size: 1.125rem;
-}
-
-/* Overrides fieldSectionCaption base: different font-size, padding, and no top margin */
-.captionOverride {
-  margin-top: 0;
-  font-size: 14px;
-  padding: 0.25rem 1rem;
-}
-
 .mediaAttachmentImage {
   width: 40px;
   height: 40px;
@@ -139,7 +111,7 @@
   position: relative;
 }
 
-.pollDuration{
+.pollDuration {
   color: var(--primary-color);
 }
 

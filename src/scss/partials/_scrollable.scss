@@ -125,20 +125,27 @@ html.custom-scroll {
       transform: translateZ(0);
     }
 
+    // each side is opted into on its own — a scroll with nothing above it wants no top border,
+    // and one with nothing below it no bottom border. The colour then follows the scroll position.
     &.scrollable-y-bordered {
-      border-top: 1px solid transparent;
-      border-bottom: 1px solid transparent;
-
       @include animation-level(2) {
         transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
       }
 
-      &:not(.scrolled-start) {
-        border-top-color: var(--border-color);
+      &-top {
+        border-top: 1px solid transparent;
+
+        &:not(.scrolled-start) {
+          border-top-color: var(--border-color);
+        }
       }
 
-      &:not(.scrolled-end) {
-        border-bottom-color: var(--border-color);
+      &-bottom {
+        border-bottom: 1px solid transparent;
+
+        &:not(.scrolled-end) {
+          border-bottom-color: var(--border-color);
+        }
       }
     }
 

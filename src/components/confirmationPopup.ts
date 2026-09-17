@@ -1,6 +1,6 @@
 import classNames from '@helpers/string/classNames';
-import PopupElement, {addCancelButton} from '@components/popups';
-import PopupPeer, {PopupPeerCheckboxOptions, PopupPeerOptions} from '@components/popups/peer';
+import {addCancelButton} from '@components/popups/indexTsx';
+import showPeerPopup, {PopupPeerCheckboxOptions, PopupPeerHandle, PopupPeerOptions} from '@components/popups/peer';
 
 export type ConfirmationPopupRejectReason = 'canceled' | 'closed';
 
@@ -11,7 +11,7 @@ export type PopupConfirmationOptions = PopupPeerOptions & {
   inputField?: PopupPeerOptions['inputField'],
   rejectWithReason?: boolean,
   className?: string;
-  onPopup?: (popup: PopupPeer) => void;
+  onPopup?: (popup: PopupPeerHandle) => void;
 };
 
 export default function confirmationPopup<T extends PopupConfirmationOptions>(
@@ -36,14 +36,11 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
     options.buttons = buttons;
     options.checkboxes ??= checkbox && [checkbox];
 
-    const popup = PopupElement.createPopup(PopupPeer, classNames('popup-confirmation', options.className), options);
-
-    options.onPopup?.(popup);
-
-    popup.addEventListener('closeAfterTimeout', () => {
+    options.onCloseAfterTimeout = () => {
       reject(rejectWithReason ? 'closed' : undefined);
-    });
+    };
 
-    popup.show();
+    const popup = showPeerPopup(classNames('popup-confirmation', options.className), options);
+    options.onPopup?.(popup);
   });
 }

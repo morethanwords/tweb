@@ -1,6 +1,5 @@
 import {Component, createSignal} from 'solid-js';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {renderComponent} from '@helpers/solid/renderComponent';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {Chat, ChatFull, ExportedChatInvite} from '@layer';
 import Button from '@components/button';
@@ -11,18 +10,17 @@ import Row from '@components/rowTsx';
 import {toastNew} from '@components/toast';
 import {UsernameInputField} from '@components/usernameInputField';
 import {i18n} from '@lib/langPack';
-import PopupPeer from '@components/popups/peer';
+import showPeerPopup from '@components/popups/peer';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import rootScope from '@lib/rootScope';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import UsernamesSection from '@components/usernamesSection';
 import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import confirmationPopup from '@components/confirmationPopup';
-import PopupElement from '@components/popups';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
@@ -58,17 +56,12 @@ const ChatType: Component = () => {
 
     tab.title.replaceChildren(i18n(isBroadcast ? 'ChannelType' : 'GroupType'));
 
-    const section = new SettingSection({
-      name: isBroadcast ? 'ChannelType' : 'GroupType'
-    });
-
-    const privateSection = new SettingSection({});
     const publicContainer = document.createElement('div');
-    let joinRequestSection: SettingSection;
+    let joinRequestSection: HTMLElement;
     let onChange = () => {};
     const onPrivacyChange = (value: 'private' | 'public') => {
       privacySignal[1](value);
-      const a: HTMLElement[][] = [[privateSection.container], [publicContainer]];
+      const a: HTMLElement[][] = [[privateSection], [publicContainer]];
       if(value === 'public') a.reverse();
 
       a[0].forEach((container) => container.classList.remove('hide'));
@@ -77,21 +70,19 @@ const ChatType: Component = () => {
       onChange();
 
       if(joinRequestSection && !linkedChatId && !isBroadcast) {
-        joinRequestSection.container.classList.toggle('hide', value !== 'public');
+        joinRequestSection.classList.toggle('hide', value !== 'public');
       }
     };
 
-    renderComponent({
-      element: section.content,
-      Component: () => (
+    const section = wrapSolidComponent(() => (
+      <Section name={isBroadcast ? 'ChannelType' : 'GroupType'}>
         <RadioFormTsx
           selected={privacySignal[0]()}
           values={privacyValues}
           onChange={onPrivacyChange}
         />
-      ),
-      middleware: tab.middlewareHelper.get()
-    });
+      </Section>
+    ), tab.middlewareHelper.get());
 
     let chat: Chat = apiManagerProxy.getChat(chatId);
 
@@ -109,26 +100,10 @@ const ChatType: Component = () => {
 
     const inviteLinkSignal = createSignal((chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
 
-    renderComponent({
-      element: privateSection.content,
-      Component: () => (
-        <Row
-          clickable={() => {
-            copyTextToClipboard(inviteLinkSignal[0]());
-            toastNew({langPackKey: 'LinkCopied'});
-          }}
-        >
-          <Row.Title>{inviteLinkSignal[0]()}</Row.Title>
-          <Row.Subtitle>{i18n(isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp')}</Row.Subtitle>
-        </Row>
-      ),
-      middleware: tab.middlewareHelper.get()
-    });
-
     const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});
 
     attachClickEvent(btnRevoke, () => {
-      PopupElement.createPopup(PopupPeer, 'revoke-link', {
+      showPeerPopup('revoke-link', {
         buttons: [{
           langKey: 'RevokeButton',
           callback: () => {
@@ -142,15 +117,23 @@ const ChatType: Component = () => {
         }],
         titleLangKey: 'RevokeLink',
         descriptionLangKey: 'RevokeAlert'
-      }).show();
+      });
     }, {listenerSetter: tab.listenerSetter});
 
-    privateSection.content.append(btnRevoke);
-
-    const publicSection = new SettingSection({
-      caption: true,
-      noDelimiter: true
-    });
+    const privateSection = wrapSolidComponent(() => (
+      <Section>
+        <Row
+          clickable={() => {
+            copyTextToClipboard(inviteLinkSignal[0]());
+            toastNew({langPackKey: 'LinkCopied'});
+          }}
+        >
+          <Row.Title>{inviteLinkSignal[0]()}</Row.Title>
+          <Row.Subtitle>{i18n(isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp')}</Row.Subtitle>
+        </Row>
+        {btnRevoke}
+      </Section>
+    ), tab.middlewareHelper.get());
 
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
@@ -185,10 +168,21 @@ const ChatType: Component = () => {
 
     const {setUsername, element: p} = purchaseUsernameCaption();
 
-    publicSection.caption.append(
-      p,
-      i18n(isBroadcast ? 'Channel.UsernameAboutChannel' : 'Channel.UsernameAboutGroup')
-    );
+    const originalValue = placeholder + (getPeerEditableUsername(chat as Chat.channel) || '');
+
+    inputWrapper.append(linkInputField.container);
+
+    const publicSection = wrapSolidComponent(() => (
+      <Section
+        noDelimiter
+        caption={<>
+          {p}
+          {i18n(isBroadcast ? 'Channel.UsernameAboutChannel' : 'Channel.UsernameAboutGroup')}
+        </>}
+      >
+        {inputWrapper}
+      </Section>
+    ), tab.middlewareHelper.get());
 
     const usernamesSection = wrapSolidComponent(
       () => (
@@ -200,12 +194,7 @@ const ChatType: Component = () => {
       ),
       tab.middlewareHelper.get()
     );
-    publicContainer.append(publicSection.container, usernamesSection);
-
-    const originalValue = placeholder + (getPeerEditableUsername(chat as Chat.channel) || '');
-
-    inputWrapper.append(linkInputField.container);
-    publicSection.content.append(inputWrapper);
+    publicContainer.append(publicSection, usernamesSection);
 
     const applyBtn = ButtonCorner({icon: 'check', className: 'is-visible'});
     tab.content.append(applyBtn);
@@ -276,17 +265,12 @@ const ChatType: Component = () => {
       }
     }, {listenerSetter: tab.listenerSetter});
 
-    tab.scrollable.append(section.container, privateSection.container, publicContainer);
+    tab.scrollable.append(section, privateSection, publicContainer);
 
     let originalJoinToSend: boolean, originalJoinRequest: boolean;
     // a channel gets the same approval switch: it gates its invite links, and it is the only place
     // where the guard bot behind those approvals can be seen and taken off again
     {
-      const section = joinRequestSection = new SettingSection({
-        name: isBroadcast ? undefined : 'ChannelSettingsJoinTitle',
-        caption: true
-      });
-
       const canToggleJoinRequest = () => {
         if(isBroadcast) return true;
         return linkedChatId ? joinToSendSignal[0]() : privacySignal[0]() === 'public';
@@ -307,9 +291,14 @@ const ChatType: Component = () => {
         onChange();
       };
 
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      let sectionCaption!: HTMLElement;
+      const section = joinRequestSection = wrapSolidComponent(() => (
+        <Section
+          name={isBroadcast ? undefined : 'ChannelSettingsJoinTitle'}
+          // filled in by updateCaption below (it names the guard bot)
+          caption={true}
+          captionRef={(element) => sectionCaption = element}
+        >
           <>
             {!isBroadcast && (
               <Row classList={{hide: !linkedChatId}}>
@@ -339,9 +328,8 @@ const ChatType: Component = () => {
               )}</Row.Title>
             </Row>
           </>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+        </Section>
+      ), tab.middlewareHelper.get());
 
       addChatUpdateListener(onChatUpdate);
       onChatUpdate();
@@ -370,7 +358,7 @@ const ChatType: Component = () => {
           nodes.push(' ', i18n('GuardBotManagedBy', [anchor]));
         }
 
-        section.caption.replaceChildren(...nodes);
+        sectionCaption.replaceChildren(...nodes);
       };
 
       await updateCaption();
@@ -380,18 +368,15 @@ const ChatType: Component = () => {
         }
       });
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(section);
     }
 
     {
-      const section = new SettingSection({
-        name: 'SavingContentTitle',
-        caption: isBroadcast ? 'RestrictSavingContentInfoChannel' : 'RestrictSavingContentInfoGroup'
-      });
-
-      renderComponent({
-        element: section.content,
-        Component: () => (
+      const section = wrapSolidComponent(() => (
+        <Section
+          name="SavingContentTitle"
+          caption={isBroadcast ? 'RestrictSavingContentInfoChannel' : 'RestrictSavingContentInfoGroup'}
+        >
           <Row disabled={noForwardsBusySignal[0]()}>
             <Row.CheckboxFieldToggle>
               <CheckboxFieldTsx
@@ -408,9 +393,8 @@ const ChatType: Component = () => {
             </Row.CheckboxFieldToggle>
             <Row.Title>{i18n('RestrictSavingContent')}</Row.Title>
           </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
+        </Section>
+      ), tab.middlewareHelper.get());
 
       const onChatUpdate = () => {
         noForwardsSignal[1](!!(chat as Chat.channel).pFlags.noforwards);
@@ -419,7 +403,7 @@ const ChatType: Component = () => {
       addChatUpdateListener(onChatUpdate);
       onChatUpdate();
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(section);
     }
 
     onPrivacyChange(originalValue !== placeholder || getPeerActiveUsernames(chat as Chat.channel).length ? 'public' : 'private');

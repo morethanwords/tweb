@@ -7,15 +7,14 @@ import appDialogsManager, {
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import PopupDeleteDialog from '@components/popups/deleteDialog';
+import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {toastNew} from '@components/toast';
-import PopupMute from '@components/popups/mute';
+import showMutePopup from '@components/popups/mute';
 import {AppManagers} from '@lib/managers';
 import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS} from '@appManagers/constants';
 import showLimitPopup from '@components/popups/limit';
 import createContextMenu from '@helpers/dom/createContextMenu';
-import PopupElement from '@components/popups';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
@@ -604,7 +603,7 @@ export default class DialogsContextMenu {
       return;
     }
 
-    PopupElement.createPopup(PopupMute, this.peerId, this.threadId);
+    showMutePopup(this.peerId, this.threadId);
   };
 
   private onPreviewClick = () => {
@@ -694,8 +693,7 @@ export default class DialogsContextMenu {
   };
 
   private onDeleteClick = () => {
-    PopupElement.createPopup(
-      PopupDeleteDialog,
+    showDeleteDialogPopup(
       this.peerId,
       undefined,
       undefined,

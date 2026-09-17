@@ -52,7 +52,7 @@ export function UnknownUserBubble(props: {
     return (
       <div class={/* @once */ styles.footer}>
         <span class={/* @once */ styles.footerIcon}>{props.icon}</span>
-        <span class={/* @once */ styles.footerText}>{props.text}</span>
+        <span>{props.text}</span>
       </div>
     );
   };

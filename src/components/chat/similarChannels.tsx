@@ -11,10 +11,9 @@ import classNames from '@helpers/string/classNames';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import appImManager from '@lib/appImManager';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupElement from '@components/popups';
 import showPickUserPopup from '@components/popups/pickUser';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
@@ -261,7 +260,7 @@ export default function SimilarChannels(props: {
 
       const anchor = anchorCallback(() => {
         close();
-        PopupPremium.show();
+        showPremiumPopup();
       });
       anchor.classList.add('primary');
 

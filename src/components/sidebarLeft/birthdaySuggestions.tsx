@@ -1,8 +1,7 @@
 import type {ContactBirthdaysState} from '@appManagers/appPromoManager';
-import PopupElement from '@components/popups';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
-import PopupSendGift from '@components/popups/sendGift';
+import showSendGiftPopup from '@components/popups/sendGift';
 import RippleElement from '@components/rippleElement';
 import Row from '@components/rowTsx';
 import birthdayStyles from '@components/sidebarLeft/birthdaySuggestions.module.scss';
@@ -149,7 +148,7 @@ function BirthdayContactsSuggestion(props: {
   const todayPeerIds = createMemo(() => new Set(props.state.today.map(({peerId}) => peerId)));
 
   const openGift = (peerId: PeerId) => {
-    PopupElement.createPopup(PopupSendGift, {peerId, birthday: birthdayPeerIds().has(peerId)});
+    showSendGiftPopup({peerId, birthday: birthdayPeerIds().has(peerId)});
   };
 
   const onClick = () => {

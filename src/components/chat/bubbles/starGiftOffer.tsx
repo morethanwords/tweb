@@ -21,8 +21,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import rootScope from '@lib/rootScope';
 import {transferStarGiftConfirmationPopup} from '@components/popups/transferStarGift';
-import PopupElement from '../../popups';
-import PopupStarGiftInfo from '../../popups/starGiftInfo';
+import showStarGiftInfoPopup from '../../popups/starGiftInfo';
 
 function wrapExpiresIn(duration: number) {
   const formatted = formatDuration(duration, 2);
@@ -49,7 +48,7 @@ export function StarGiftOfferBubble(props: {
     <div
       class={/* @once */ styles.wrap}
       onClick={() => {
-        PopupElement.createPopup(PopupStarGiftInfo, {gift: props.gift})
+        showStarGiftInfoPopup({gift: props.gift})
       }}
     >
       <div class={/* @once */ styles.giftWrap}>

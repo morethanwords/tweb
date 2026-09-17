@@ -1,24 +1,7 @@
 .popup {
   --popup-min-width: 26.25rem;
   --popup-max-width: 26.25rem;
-
-  &Container {
-    padding: 0;
-    border-radius: 2rem;
-    height: 26.25rem;
-  }
-
-  &Header {
-    position: absolute;
-    margin: 0;
-    top: .625rem;
-    inset-inline-start: .625rem;
-  }
-
-  &CloseButton {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
+  --popup-height: 26.25rem;
 
   &Footer {
     padding: 1.625rem 0 0;
@@ -45,38 +28,9 @@
   justify-content: center;
 }
 
-.lottie {
-  width: var(--size);
-  height: var(--size);
-  margin-top: 0.25rem;
-
-  position: relative;
-}
-
-.title {
-  margin-top: 1.375rem;
-  font-size: 24px;
-  line-height: 1;
-  font-weight: 600;
-}
-
-.subtitle {
-  margin-top: 0.75rem;
-  font-size: 15px;
-  line-height: 20px;
-  text-align: center;
-  text-wrap: balance;
-
-  overflow: hidden;
-  max-width: 100%;
-}
-
 .input {
-  margin-top: 2.375rem;
+  margin-top: 2rem;
   width: 100%;
-  --height: 48px;
-  --border-radius: 12px;
-  --padding: 0.8125rem;
   justify-content: center;
 }
 
@@ -88,9 +42,9 @@
 }
 
 .button {
-  border-radius: 16px;
+  border-radius: 1.5rem;
   text-transform: uppercase;
-  height: 48px;
+  height: 3rem;
 
   &Container {
     width: 100%;

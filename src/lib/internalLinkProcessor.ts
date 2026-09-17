@@ -1,9 +1,8 @@
 import type AppMediaViewerBase from '@components/mediaViewer/base';
-import PopupElement from '@components/popups';
-import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
-import PopupJoinChatInvite from '@components/popups/joinChatInvite';
-import PopupPayment from '@components/popups/payment';
-import PopupPeer from '@components/popups/peer';
+import showSharedFolderInvitePopup from '@components/popups/sharedFolderInvite';
+import showJoinChatInvitePopup from '@components/popups/joinChatInvite';
+import {createPaymentPopup} from '@components/popups/payment';
+import showPeerPopup from '@components/popups/peer';
 import {showPickUser3Popup, showSharingPicker2Popup} from '@components/popups/pickUser';
 import showStickersPopup from '@components/popups/stickers';
 import {toastNew, hideToast} from '@components/toast';
@@ -25,18 +24,18 @@ import {AppManagers} from '@lib/managers';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import shake from '@helpers/dom/shake';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import rootScope from '@lib/rootScope';
-import PopupBoost from '@components/popups/boost';
+import showBoostPopup from '@components/popups/boost';
 import showGiftLinkPopup from '@components/popups/giftLink';
-import PopupStars, {showGiftStarsPicker} from '@components/popups/stars';
-import PopupSendGift from '@components/popups/sendGift';
+import showStarsPopup, {showGiftStarsPicker} from '@components/popups/stars';
+import showSendGiftPopup from '@components/popups/sendGift';
 import showSendGiftPicker from '@components/popups/sendGiftPicker';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import {prefetchStars} from '@stores/stars';
 import {getMiddleware} from '@helpers/middleware';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupStarGiftInfo from '@components/popups/starGiftInfo';
+import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
 import noop from '@helpers/noop';
 import appSidebarRight from '@components/sidebarRight';
 import pause from '@helpers/schedulers/pause';
@@ -95,7 +94,7 @@ export class InternalLinkProcessor {
         a.innerText = href;
         a.removeAttribute('onclick');
 
-        const popup = PopupElement.createPopup(PopupPeer, 'popup-masked-url', {
+        showPeerPopup('popup-masked-url', {
           titleLangKey: 'OpenUrlTitle',
           descriptionLangKey: 'OpenUrlAlert2',
           descriptionLangArgs: [a],
@@ -105,10 +104,7 @@ export class InternalLinkProcessor {
               a.click();
             }
           }]
-        })
-
-        popup.show();
-        return popup;
+        });
       }
     });
 
@@ -880,15 +876,15 @@ export class InternalLinkProcessor {
           // destinations that are a screen of their own: tdesktop opens the
           // Premium and Credits sections, and ours live in popups
           case 'premium':
-            return PopupPremium.show();
+            return showPremiumPopup();
           case 'stars':
-            return PopupElement.createPopup(PopupStars);
+            return showStarsPopup();
           case 'stars/gift':
             return showGiftStarsPicker();
           case 'send-gift':
             return showSendGiftPicker();
           case 'send-gift/self':
-            return PopupElement.createPopup(PopupSendGift, {peerId: rootScope.myId});
+            return showSendGiftPopup({peerId: rootScope.myId});
 
           // destinations outside Settings, which the section table cannot address
           case 'saved-messages':
@@ -901,7 +897,7 @@ export class InternalLinkProcessor {
               isArchive: true
             });
           case 'ton':
-            return PopupElement.createPopup(PopupStars, {ton: true});
+            return showStarsPopup({ton: true});
 
           default:
             // Every section the settings search indexes is addressable — see
@@ -994,7 +990,7 @@ export class InternalLinkProcessor {
     // shows when it is used without it (tdesktop: ShowPremiumPreviewBox).
     // Nothing to reach, so nothing is closed to reach it.
     if(!statusBtn) {
-      return PopupPremium.show({feature: 'emoji_status'});
+      return showPremiumPopup({feature: 'emoji_status'});
     }
 
     return appImManager.selectTab(APP_TABS.CHATLIST).then(async() => {
@@ -1129,7 +1125,7 @@ export class InternalLinkProcessor {
         chatInvite._ === 'chatInvitePeek'/*  && chatInvite.expires > tsNow(true) */) {
         // `open` (not `setInnerPeer`) so a forum routes through `op` and opens the topics tab
         // in the left sidebar instead of just dropping into the chat view (same as bug with
-        // PopupJoinChatInvite.openChat).
+        // openChatFromInvite).
         appImManager.open({
           peerId: chatInvite.chat.id.toPeerId(true)
         });
@@ -1142,7 +1138,7 @@ export class InternalLinkProcessor {
           hash: link.invite
         };
 
-        const popup = await PopupPayment.create({
+        const popup = await createPaymentPopup({
           inputInvoice,
           chatInvite,
           noPaymentForm: true
@@ -1157,7 +1153,7 @@ export class InternalLinkProcessor {
         return popup;
       }
 
-      return PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
+      return showJoinChatInvitePopup(link.invite, chatInvite as any);
     }, (err: ApiError) => {
       if(err.type === 'INVITE_HASH_EXPIRED') {
         toastNew({langPackKey: 'InviteExpired'});
@@ -1297,7 +1293,7 @@ export class InternalLinkProcessor {
 
         //   }
         // };
-        return PopupPayment.create({inputInvoice, paymentForm});
+        return createPaymentPopup({inputInvoice, paymentForm});
       }, (err) => {
         if((err as ApiError).type === 'SLUG_INVALID') {
           toastNew({langPackKey: 'PaymentInvoiceLinkInvalid'});
@@ -1441,7 +1437,7 @@ export class InternalLinkProcessor {
       throw err;
     }
 
-    PopupElement.createPopup(PopupSharedFolderInvite, {
+    showSharedFolderInvitePopup({
       chatlistInvite,
       slug: link.slug
     });
@@ -1488,7 +1484,7 @@ export class InternalLinkProcessor {
       peerId = chat.id.toPeerId(true);
     }
 
-    PopupElement.createPopup(PopupBoost, peerId);
+    showBoostPopup(peerId);
   };
 
   public processPremiumFeaturesLink = async(link: InternalLink.InternalLinkPremiumFeatures) => {
@@ -1497,7 +1493,7 @@ export class InternalLinkProcessor {
       return;
     }
 
-    PopupPremium.show();
+    showPremiumPopup();
   };
 
   public processGiftCodeLink = (link: InternalLink.InternalLinkGiftCode) => {
@@ -1527,7 +1523,7 @@ export class InternalLinkProcessor {
         langPackArguments: [
           anchorCallback(() => {
             hideToast();
-            const popup = PopupElement.createPopup(PopupStars, {
+            const popup = showStarsPopup({
               onTopup: () => {
                 popup.hide();
               },
@@ -1539,7 +1535,7 @@ export class InternalLinkProcessor {
       return;
     }
 
-    const popup = PopupElement.createPopup(PopupStars, {
+    const popup = showStarsPopup({
       itemPrice,
       onTopup: () => {
         popup.hide();
@@ -1568,7 +1564,7 @@ export class InternalLinkProcessor {
       return;
     }
 
-    PopupElement.createPopup(PopupStarGiftInfo, {gift});
+    showStarGiftInfoPopup({gift});
   };
 
   public processStarGiftCollectionLink = async(link: InternalLink.InternalLinkStarGiftCollection) => {

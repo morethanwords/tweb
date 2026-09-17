@@ -24,7 +24,9 @@ import {ChannelParticipant, ChannelParticipantsFilter, ChannelsChannelParticipan
 import canSendToUser from '@appManagers/utils/users/canSendToUser';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
-import SettingSection from '@components/settingSection';
+import Section, {appendSectionContent, SectionOptions, SectionParts} from '@components/section';
+import classNames from '@helpers/string/classNames';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import emptyPlaceholder from '@components/emptyPlaceholder';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import {createSignal, Setter, JSX, createRoot, createEffect} from 'solid-js';
@@ -37,12 +39,15 @@ import {hideToast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import SelectorSearch from '@components/selectorSearch';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import formatNumber from '@helpers/number/formatNumber';
 import namedPromises from '@helpers/namedPromises';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@lib/appManagers/constants';
+
+/** A row whose trailing checkbox is painted over it — the lane it takes is reserved in `_selector.scss`. */
+const ROW_WITH_CHECKBOX_CLASS = 'selector-row-with-checkbox';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
 export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
@@ -110,8 +115,8 @@ export default class AppSelectPeers {
 
   private needSwitchList = false;
 
-  private sectionNameLangPackKey: ConstructorParameters<typeof SettingSection>[0]['name'];
-  private sectionCaption: ConstructorParameters<typeof SettingSection>[0]['caption'];
+  private sectionNameLangPackKey: SectionOptions['name'];
+  private sectionCaption: SectionOptions['caption'];
 
   private getSubtitleForElement: (
     peerId: PeerId
@@ -131,7 +136,7 @@ export default class AppSelectPeers {
   private dialogsPlaceholder: DialogsPlaceholder;
 
   private design: 'round' | 'square' = 'round';
-  public section: SettingSection;
+  public section: SectionParts;
 
   public participants: Map<PeerId, ChatParticipant | ChannelParticipant> = new Map();
   public starsAmountByPeer: Map<PeerId, number> = new Map();
@@ -142,7 +147,7 @@ export default class AppSelectPeers {
   private withStories: boolean;
 
   private night: boolean;
-  public searchSection: SettingSection;
+  public searchSection: SectionParts;
 
   private checkboxSide: 'right' | 'left';
   private noPlaceholder: boolean;
@@ -361,25 +366,33 @@ export default class AppSelectPeers {
 
     this.heightContainer = document.createElement('div');
     this.heightContainer.classList.add('selector-height-container');
-    const section = this.section = new SettingSection({
-      name: this.sectionNameLangPackKey,
-      caption: this.sectionCaption
-    });
+    let content!: HTMLElement, title: HTMLElement;
+    const container = wrapSolidComponent(() => (
+      <Section
+        class={classNames(
+          'is-visible',
+          // it can't have full height then
+          !this.sectionCaption && 'selector-list-section-container'
+        )}
+        name={this.sectionNameLangPackKey}
+        caption={this.sectionCaption}
+        contentProps={{ref: (element) => content = element}}
+        nameRef={(element) => title = element}
+      />
+    ), this.middlewareHelper.get());
 
-    section.container.classList.add('is-visible');
-
+    // with a title above it the list gets a content element of its own
     if(this.sectionNameLangPackKey) {
-      section.content = section.generateContentElement();
+      content = appendSectionContent(container);
     }
 
-    // it can't have full height then
     if(!this.sectionCaption) {
-      section.content.classList.add('selector-list-section-content');
-      section.container.classList.add('selector-list-section-container');
+      content.classList.add('selector-list-section-content');
     }
 
-    section.content.append(this.list);
-    this.heightContainer.append(section.container);
+    content.append(this.list);
+    this.section = {container, content, title};
+    this.heightContainer.append(container);
 
     const hadScrollable = !!this.scrollable;
     this.scrollable ||= new Scrollable();
@@ -433,7 +446,7 @@ export default class AppSelectPeers {
               title,
               anchorCallback(() => {
                 hideToast();
-                PopupPremium.show();
+                showPremiumPopup();
               })
             ]
           });
@@ -1176,6 +1189,8 @@ export default class AppSelectPeers {
         }
         checkboxes.push({key, input: checkbox.querySelector('input')});
         if(this.checkboxSide === 'right') {
+          // the checkbox is positioned over the row, so the row itself reserves its lane
+          dom.containerEl.classList.add(ROW_WITH_CHECKBOX_CLASS);
           dom.containerEl.append(checkbox);
         } else {
           dom.containerEl.prepend(checkbox);

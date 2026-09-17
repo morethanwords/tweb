@@ -1,12 +1,12 @@
 import {createEffect, createMemo, createSignal, JSX, on, onMount} from 'solid-js';
-import PopupElement from '.';
-import safeAssign from '@helpers/object/safeAssign';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 
 import styles from '@components/popups/starGiftValue.module.scss';
 import {PaymentsUniqueStarGiftValueInfo, StarGift} from '@layer';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {StickerTsx} from '@components/wrappers/sticker';
+import MediaHeader from '@components/mediaHeader';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import {I18nTsx} from '@helpers/solid/i18n';
 import Table, {TableButton, TableButtonWithTooltip, TableRow} from '@components/table';
@@ -15,40 +15,21 @@ import {StarsStar} from '@components/popups/stars';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import bigInt from 'big-integer';
 import {i18n} from '@lib/langPack';
-import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
-import PopupSendGift from '@components/popups/sendGift';
+import showSendGiftPopup from '@components/popups/sendGift';
 import rootScope from '@lib/rootScope';
 
-export default class PopupStarGiftValue extends PopupElement {
-  private gift: MyStarGift;
-  private value: PaymentsUniqueStarGiftValueInfo;
-  constructor(options: {
-    gift: MyStarGift,
-    value: PaymentsUniqueStarGiftValueInfo
-  }) {
-    super(styles.popup, {
-      closable: true,
-      overlayClosable: true,
-      body: true,
-      footer: false
-    });
+export default function showStarGiftValuePopup(options: {
+  gift: MyStarGift,
+  value: PaymentsUniqueStarGiftValueInfo
+}) {
+  const myGift = options.gift;
+  const [show, setShow] = createSignal(true);
 
-    this.header.remove()
-
-    safeAssign(this, options);
-
-    this.construct()
-  }
-
-  private construct() {
-    this.appendSolidBody(() => this._construct())
-  }
-
-  protected _construct() {
-    const value = this.value;
-    const gift = this.gift.raw as StarGift.starGiftUnique;
+  createPopup(() => {
+    const value = options.value;
+    const gift = myGift.raw as StarGift.starGiftUnique;
 
     const tableContent = createMemo(() => {
       const rows: TableRow[] = [];
@@ -139,49 +120,49 @@ export default class PopupStarGiftValue extends PopupElement {
     });
 
     return (
-      <>
-        <ButtonIconTsx
-          class={/* @once */ styles.close}
-          icon="close"
-          onClick={() => this.hide()}
-        />
-
-        <StickerTsx
-          class={/* @once */ styles.sticker}
-          sticker={this.gift.sticker}
-          width={120}
-          height={120}
-          autoStyle
-          extraOptions={{play: true, loop: false}}
-        />
-
-        <div class={/* @once */ styles.value}>
-          {paymentsWrapCurrencyAmount(value.value, value.currency)}
-        </div>
-
-        <I18nTsx
-          class={/* @once */ styles.about}
-          key={
-            value.pFlags.value_is_average ? 'StarGiftValueAboutAverage' :
-            value.pFlags.last_sale_on_fragment ? 'StarGiftValueAboutLastFragment' :
-            'StarGiftValueAboutLastTelegram'
-          }
-          args={[gift.title]}
-        />
-
-        <div class={/* @once */ styles.table}>
-          <Table
-            content={tableContent()}
-            cellClass="popup-star-gift-info-table-cell"
-            footerClass={gift._ === 'starGiftUnique' ? 'popup-star-gift-info-footer-unique' : undefined}
+      <PopupElement class={styles.popup} closable show={show()} old>
+        <PopupElement.Header floating>
+          <PopupElement.CloseButton />
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <StickerTsx
+            class={/* @once */ styles.sticker}
+            sticker={myGift.sticker}
+            width={120}
+            height={120}
+            autoStyle
+            extraOptions={{play: true, loop: false}}
           />
-        </div>
 
-        <div class={/* @once */ styles.footer}>
-          {value.listed_count && (
-            <Button
-              class="rp-overflow btn-transparent primary"
-              onClick={() => PopupElement.createPopup(PopupSendGift, {
+          <div class={/* @once */ styles.value}>
+            {paymentsWrapCurrencyAmount(value.value, value.currency)}
+          </div>
+
+          <MediaHeader.Subtitle>
+            <I18nTsx
+              key={
+                value.pFlags.value_is_average ? 'StarGiftValueAboutAverage' :
+                value.pFlags.last_sale_on_fragment ? 'StarGiftValueAboutLastFragment' :
+                'StarGiftValueAboutLastTelegram'
+              }
+              args={[gift.title]}
+            />
+          </MediaHeader.Subtitle>
+
+          <div class={/* @once */ styles.table}>
+            <Table
+              content={tableContent()}
+              cellClass="popup-star-gift-info-table-cell"
+              footerClass={gift._ === 'starGiftUnique' ? 'popup-star-gift-info-footer-unique' : undefined}
+            />
+          </div>
+
+        </PopupElement.Body>
+        <PopupElement.Footer class={/* @once */ styles.footer}>
+          {!!value.listed_count && (
+            <PopupElement.FooterButton
+              color="secondary"
+              callback={() => showSendGiftPopup({
                 peerId: rootScope.myId,
                 resaleParams: {
                   giftId: gift.gift_id
@@ -194,7 +175,7 @@ export default class PopupStarGiftValue extends PopupElement {
                   <span>
                     {value.listed_count}
                     <StickerTsx
-                      sticker={this.gift.sticker}
+                      sticker={myGift.sticker}
                       width={24}
                       height={24}
                       autoStyle
@@ -204,12 +185,12 @@ export default class PopupStarGiftValue extends PopupElement {
                   <IconTsx icon="next" />
                 ]}
               />
-            </Button>
+            </PopupElement.FooterButton>
           )}
-          {value.fragment_listed_count && (
-            <Button
-              class="rp-overflow btn-transparent primary"
-              onClick={() => safeWindowOpen(value.fragment_listed_url)}
+          {!!value.fragment_listed_count && (
+            <PopupElement.FooterButton
+              color="secondary"
+              callback={() => safeWindowOpen(value.fragment_listed_url)}
             >
               <I18nTsx
                 key="StarGiftViewResaleFragment"
@@ -217,7 +198,7 @@ export default class PopupStarGiftValue extends PopupElement {
                   <span>
                     {value.fragment_listed_count}
                     <StickerTsx
-                      sticker={this.gift.sticker}
+                      sticker={myGift.sticker}
                       width={24}
                       height={24}
                       autoStyle
@@ -227,10 +208,10 @@ export default class PopupStarGiftValue extends PopupElement {
                   <IconTsx icon="next" />
                 ]}
               />
-            </Button>
+            </PopupElement.FooterButton>
           )}
-        </div>
-      </>
-    )
-  }
+        </PopupElement.Footer>
+      </PopupElement>
+    );
+  });
 }

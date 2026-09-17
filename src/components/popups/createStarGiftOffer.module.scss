@@ -3,30 +3,6 @@
 .popup {
   --popup-min-width: 26.25rem;
   --popup-max-width: 26.25rem;
-
-  &Container {
-    border-radius: 14px;
-    padding: 0;
-    background: var(--background-color);
-    overflow: visible;
-  }
-
-  &Header {
-    margin: 0;
-    padding: 1rem 1rem 0;
-    background: var(--surface-color);
-  }
-
-  &CloseButton {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-
-  &Footer {
-    padding: 0;
-    padding: 1rem;
-    padding-top: 0.75rem;
-  }
 }
 
 .balance {
@@ -38,7 +14,6 @@
 }
 
 .input {
-  margin: 0.5rem;
   margin-top: 0.75rem;
 }
 

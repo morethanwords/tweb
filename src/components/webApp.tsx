@@ -18,8 +18,7 @@ import {TelegramWebViewEventMap, AnyFunction, TelegramWebViewSendEventMap} from 
 import ButtonTsx from '@components/buttonTsx';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
-import PopupElement from '@components/popups';
-import PopupPeer, {PopupPeerOptions} from '@components/popups/peer';
+import showPeerPopup, {PopupPeerOptions} from '@components/popups/peer';
 import {showPickUser3Popup} from '@components/popups/pickUser';
 import selectRequestPeers from '@components/popups/requestPeer';
 import TelegramWebView from '@components/telegramWebView';
@@ -29,12 +28,12 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import classNames from '@helpers/string/classNames';
 import {render} from 'solid-js/web';
 import {attachClassName} from '@helpers/solid/classname';
-import PopupWebAppEmojiStatusAccess from '@components/popups/webAppEmojiStatusAccess';
+import showWebAppEmojiStatusAccessPopup from '@components/popups/webAppEmojiStatusAccess';
 import {toastNew} from '@components/toast';
 import tsNow from '@helpers/tsNow';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import {MyDocument} from '@appManagers/appDocsManager';
-import PopupWebAppLocationAccess from '@components/popups/webAppLocationAccess';
+import showWebAppLocationAccessPopup from '@components/popups/webAppLocationAccess';
 import appSidebarRight from '@components/sidebarRight';
 import {IS_SAFARI} from '@environment/userAgent';
 import {Transition} from '@vendor/solid-transition-group';
@@ -44,7 +43,7 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import {createSvgFromBytes} from '@helpers/bytes/getPathFromBytes';
 import clamp from '@helpers/number/clamp';
-import PopupWebAppPreparedMessage from '@components/popups/webAppPreparedMessage';
+import showWebAppPreparedMessagePopup from '@components/popups/webAppPreparedMessage';
 import appDownloadManager from '@lib/appDownloadManager';
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
@@ -580,10 +579,11 @@ export default class WebApp {
     };
 
     let pressedButtonId: string;
-    const popup = PopupElement.createPopup(
-      PopupPeer,
+    let onPopupClose: () => void;
+    showPeerPopup(
       'popup-confirmation',
       {
+        onClose: () => onPopupClose(),
         title: title ? wrapEmojiText(title) : undefined,
         description: wrapEmojiText(message),
         buttons: buttons.map(({type, text, id}) => {
@@ -604,15 +604,13 @@ export default class WebApp {
     );
 
     const promise = new Promise<void>((resolve) => {
-      popup.addEventListener('close', () => {
+      onPopupClose = () => {
         this.telegramWebView.dispatchWebViewEvent('popup_closed', {
           ...(pressedButtonId !== undefined ? {button_id: pressedButtonId} : {})
         });
         resolve();
-      });
+      };
     });
-
-    popup.show();
 
     return promise;
   };
@@ -749,39 +747,36 @@ export default class WebApp {
     }
 
     const duration = data.duration ?? 0;
-    const popup = PopupElement.createPopup(PopupWebAppEmojiStatusAccess, {
+    showWebAppEmojiStatusAccessPopup({
       botId: webViewOptions.botId.toPeerId(),
       sticker: doc,
-      period: duration
-    });
+      period: duration,
+      onFinish: async(result) => {
+        if(result) {
+          if(!(await managers.rootScope.getPremium())) {
+            showPremiumPopup({feature: 'emoji_status'});
+            telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SERVER_ERROR'});
+            return;
+          }
 
-    popup.addEventListener('finish', async(result) => {
-      if(result) {
-        if(!(await managers.rootScope.getPremium())) {
-          PopupPremium.show({feature: 'emoji_status'});
-          telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SERVER_ERROR'});
-          return;
+          try {
+            await managers.appUsersManager.updateEmojiStatus({
+              _: 'emojiStatus',
+              document_id: data.custom_emoji_id,
+              until: duration ? tsNow(true) + duration : undefined
+            });
+            toastNew({langPackKey: 'SetAsEmojiStatusInfo'});
+            telegramWebView.dispatchWebViewEvent('emoji_status_set', undefined);
+          } catch(err) {
+            console.log(err);
+            toastNew({langPackKey: 'Error.AnError'});
+            telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SERVER_ERROR'});
+          }
+        } else {
+          telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'USER_DECLINED'});
         }
-
-        try {
-          await managers.appUsersManager.updateEmojiStatus({
-            _: 'emojiStatus',
-            document_id: data.custom_emoji_id,
-            until: duration ? tsNow(true) + duration : undefined
-          });
-          toastNew({langPackKey: 'SetAsEmojiStatusInfo'});
-          telegramWebView.dispatchWebViewEvent('emoji_status_set', undefined);
-        } catch(err) {
-          console.log(err);
-          toastNew({langPackKey: 'Error.AnError'});
-          telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SERVER_ERROR'});
-        }
-      } else {
-        telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'USER_DECLINED'});
       }
     });
-
-    popup.show();
   }, 'emoji_status_failed', {error: 'USER_DECLINED'});
 
   protected handleEmojiStatusAccess = this.debouncePopupMethod(async() => {
@@ -793,35 +788,32 @@ export default class WebApp {
     }
 
     const defaultEmojis = await managers.appStickersManager.getLocalStickerSet('inputStickerSetEmojiDefaultStatuses')
-    const popup = PopupElement.createPopup(PopupWebAppEmojiStatusAccess, {
+    showWebAppEmojiStatusAccessPopup({
       botId: webViewOptions.botId.toPeerId(),
-      defaultStatusEmojis: defaultEmojis.documents as MyDocument[]
-    });
+      defaultStatusEmojis: defaultEmojis.documents as MyDocument[],
+      onFinish: async(result) => {
+        if(result) {
+          if(!(await managers.rootScope.getPremium())) {
+            showPremiumPopup({feature: 'emoji_status'});
+            telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'cancelled'});
+            return;
+          }
 
-    popup.addEventListener('finish', async(result) => {
-      if(result) {
-        if(!(await managers.rootScope.getPremium())) {
-          PopupPremium.show({feature: 'emoji_status'});
+          try {
+            await managers.appBotsManager.toggleEmojiStatusPermission(this.webViewOptions.botId, true);
+          } catch(err) {
+            console.error(err);
+            toastNew({langPackKey: 'Error.AnError'});
+            telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'cancelled'});
+            return;
+          }
+
+          telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'allowed'});
+        } else {
           telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'cancelled'});
-          return;
         }
-
-        try {
-          await managers.appBotsManager.toggleEmojiStatusPermission(this.webViewOptions.botId, true);
-        } catch(err) {
-          console.error(err);
-          toastNew({langPackKey: 'Error.AnError'});
-          telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'cancelled'});
-          return
-        }
-
-        telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'allowed'});
-      } else {
-        telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'cancelled'});
       }
     });
-
-    popup.show();
   }, 'emoji_status_access_requested', {status: 'cancelled'});
 
   protected handleCheckLocation = async() => {
@@ -868,19 +860,18 @@ export default class WebApp {
     if(!botPermission) {
       if(this._requestLocationPopup) return;
       this._requestLocationPopup = true;
-      const popup = PopupElement.createPopup(PopupWebAppLocationAccess, {
-        botId: this.webViewOptions.botId.toPeerId()
-      });
-      popup.addEventListener('finish', async(result) => {
-        this._requestLocationPopup = false;
-        await this.managers.appBotsManager.writeBotInternalStorage(this.webViewOptions.botId, 'locationPermission', String(result));
-        if(result) {
-          sendLocation();
-        } else {
-          this.telegramWebView.dispatchWebViewEvent('location_requested', {available: false});
+      showWebAppLocationAccessPopup({
+        botId: this.webViewOptions.botId.toPeerId(),
+        onFinish: async(result) => {
+          this._requestLocationPopup = false;
+          await this.managers.appBotsManager.writeBotInternalStorage(this.webViewOptions.botId, 'locationPermission', String(result));
+          if(result) {
+            sendLocation();
+          } else {
+            this.telegramWebView.dispatchWebViewEvent('location_requested', {available: false});
+          }
         }
       });
-      popup.show();
       return;
     }
 
@@ -1012,7 +1003,7 @@ export default class WebApp {
       return;
     }
 
-    const popup = PopupElement.createPopup(PopupPeer, 'popup-confirmation', {
+    showPeerPopup('popup-confirmation', {
       titleLangKey: 'BotDownloadPromptTitle',
       descriptionLangKey: 'BotDownloadPromptText',
       descriptionLangArgs: [
@@ -1035,7 +1026,7 @@ export default class WebApp {
               fileName: event.file_name
             }).catch((e) => {
               this._fileDownloadPending = false;
-              PopupElement.createPopup(PopupPeer, 'popup-confirmation', {
+              showPeerPopup('popup-confirmation', {
                 titleLangKey: 'BotDownloadPromptTitle',
                 descriptionLangKey: 'BotDownloadPromptManual',
                 buttons: [
@@ -1051,17 +1042,14 @@ export default class WebApp {
           langKey: 'Cancel',
           isCancel: true
         }
-      ]
-    });
-
-    popup.addEventListener('close', () => {
-      if(this._fileDownloadPending) {
-        this._fileDownloadPending = false;
-        telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
+      ],
+      onClose: () => {
+        if(this._fileDownloadPending) {
+          this._fileDownloadPending = false;
+          telegramWebView.dispatchWebViewEvent('file_download_requested', {status: 'cancelled'});
+        }
       }
     });
-
-    popup.show();
   }
 
   protected createWebView() {
@@ -1332,21 +1320,18 @@ export default class WebApp {
           return;
         }
 
-        const popup = PopupElement.createPopup(PopupWebAppPreparedMessage, {
+        showWebAppPreparedMessagePopup({
           message,
-          botId: this.webViewOptions.botId
-        });
-
-        popup.addEventListener('finish', async(error) => {
-          if(error) {
-            this.telegramWebView.dispatchWebViewEvent('prepared_message_failed', {error});
-          } else {
-            this.telegramWebView.dispatchWebViewEvent('prepared_message_sent', undefined);
-            this.forceHide();
+          botId: this.webViewOptions.botId,
+          onFinish: (error) => {
+            if(error) {
+              this.telegramWebView.dispatchWebViewEvent('prepared_message_failed', {error});
+            } else {
+              this.telegramWebView.dispatchWebViewEvent('prepared_message_sent', undefined);
+              this.forceHide();
+            }
           }
         });
-
-        popup.show();
       }, 'prepared_message_failed', {error: 'USER_DECLINED'}),
       web_app_verify_age: async({passed, age}) => {
         if(!passed) return;

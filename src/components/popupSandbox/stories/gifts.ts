@@ -16,37 +16,27 @@ defineStories('Star gifts', [
     id: 'gift/send',
     title: 'Send a gift',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupSendGift}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/sendGift')
-      ]);
-
-      PopupElement.createPopup(PopupSendGift, {peerId: ctx.peer('private')});
+      const {default: showSendGiftPopup} = await import('@components/popups/sendGift');
+      showSendGiftPopup({peerId: ctx.peer('private')});
     }
   },
   {
     id: 'gift/info',
     title: 'Gift info — collectible',
     open: async(ctx: PopupStoryContext) => {
-      const [{default: PopupElement}, {default: PopupStarGiftInfo}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/starGiftInfo')
-      ]);
+      const {default: showStarGiftInfoPopup} = await import('@components/popups/starGiftInfo');
 
-      PopupElement.createPopup(PopupStarGiftInfo, {gift: ctx.uniqueGift()});
+      showStarGiftInfoPopup({gift: ctx.uniqueGift()});
     }
   },
   ...[false, true].map((catalog) => ({
     id: catalog ? 'gift/info-catalog' : 'gift/info-plain',
     title: catalog ? 'Gift info — unsaved catalogue gift' : 'Gift info — not upgraded',
     open: async(ctx: PopupStoryContext) => {
-      const [{default: PopupElement}, {default: PopupStarGiftInfo}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/starGiftInfo')
-      ]);
+      const {default: showStarGiftInfoPopup} = await import('@components/popups/starGiftInfo');
 
       const gift = ctx.gift();
-      PopupElement.createPopup(PopupStarGiftInfo, {
+      showStarGiftInfoPopup({
         gift: catalog ? {...gift, saved: undefined, input: undefined, isIncoming: false, ownerId: undefined} : gift
       });
     }
@@ -55,12 +45,8 @@ defineStories('Star gifts', [
     id: 'gift/wear',
     title: 'Wear a gift',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupStarGiftWear}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/starGiftWear')
-      ]);
-
-      PopupElement.createPopup(PopupStarGiftWear, {gift: ctx.uniqueGift(), peerId: ctx.peer('self')}).show();
+      const {default: showStarGiftWearPopup} = await import('@components/popups/starGiftWear');
+      showStarGiftWearPopup({gift: ctx.uniqueGift(), peerId: ctx.peer('self')});
     }
   },
   {
@@ -68,36 +54,24 @@ defineStories('Star gifts', [
     fixtureOnly: true,
     title: 'Gift value',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupStarGiftValue}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/starGiftValue')
-      ]);
-
-      PopupElement.createPopup(PopupStarGiftValue, {gift: ctx.uniqueGift(), value: starGiftValueInfo}).show();
+      const {default: showStarGiftValuePopup} = await import('@components/popups/starGiftValue');
+      showStarGiftValuePopup({gift: ctx.uniqueGift(), value: starGiftValueInfo});
     }
   },
   {
     id: 'gift/sell',
     title: 'List a gift for sale',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupSellStarGift}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/sellStarGift')
-      ]);
-
-      PopupElement.createPopup(PopupSellStarGift, {gift: ctx.uniqueGift(), allowUnlist: true});
+      const {default: showSellStarGiftPopup} = await import('@components/popups/sellStarGift');
+      showSellStarGiftPopup({gift: ctx.uniqueGift(), allowUnlist: true});
     }
   },
   {
     id: 'gift/buyResale',
     title: 'Buy a resold gift',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupBuyResaleGift}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/buyResaleGift')
-      ]);
-
-      PopupElement.createPopup(PopupBuyResaleGift, {recipientId: ctx.peer('private'), gift: ctx.uniqueGift()}).show();
+      const {default: showBuyResaleGiftPopup} = await import('@components/popups/buyResaleGift');
+      showBuyResaleGiftPopup({recipientId: ctx.peer('private'), gift: ctx.uniqueGift()});
     }
   },
   {
@@ -106,6 +80,16 @@ defineStories('Star gifts', [
     open: async(ctx) => {
       const {default: createStarGiftUpgradePopup} = await import('@components/popups/starGiftUpgrade');
       await createStarGiftUpgradePopup({gift: ctx.gift()});
+    }
+  },
+  {
+    // the same popup as above, but paid for someone else: every line switches to the `...For` /
+    // `...Prepaid` strings, which put the recipient's name where "you" would otherwise be
+    id: 'gift/upgradePrepaid',
+    title: 'Upgrade a gift — paid for someone else',
+    open: async(ctx) => {
+      const {default: createStarGiftUpgradePopup} = await import('@components/popups/starGiftUpgrade');
+      await createStarGiftUpgradePopup({gift: ctx.gift(), descriptionForPeerId: ctx.peer('private')});
     }
   },
   {
@@ -141,12 +125,8 @@ defineStories('Star gifts', [
     id: 'gift/choose',
     title: 'Choose a gift from a profile',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupChooseGift}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/chooseGiftPopup')
-      ]);
-
-      PopupElement.createPopup(PopupChooseGift, {peerId: ctx.peer('self')}).show();
+      const {default: showChooseGiftPopup} = await import('@components/popups/chooseGiftPopup');
+      showChooseGiftPopup({peerId: ctx.peer('self'), onFinish: () => {}});
     }
   }
 ]);

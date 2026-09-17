@@ -9,7 +9,7 @@ import Section from '../section';
 import {Message, SearchPostsFlood} from '../../layer';
 import Button from '../buttonTsx';
 import {i18n} from '../../lib/langPack';
-import PopupPremium from '../popups/premium';
+import showPremiumPopup from '../popups/premium';
 import classNames from '../../helpers/string/classNames';
 import {IconTsx} from '../iconTsx';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -204,7 +204,7 @@ export function GlobalPostsSearch(props: {
       return (
         <Button
           class={classNames('btn-primary btn-color-primary', styles.button)}
-          onClick={() => PopupPremium.show()}
+          onClick={() => showPremiumPopup()}
         >
           {i18n('PostsSearch.SubscribeToPremium')}
         </Button>
@@ -263,8 +263,7 @@ export function GlobalPostsSearch(props: {
         <Match when={results().length}>
           <Section noShadow noDelimiter>
             <div
-              class={styles.results}
-              ref={(el) => {
+                  ref={(el) => {
                 appDialogsManager.setListClickListener({
                   list: el,
                   autonomous: true

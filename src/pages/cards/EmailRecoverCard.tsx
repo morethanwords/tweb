@@ -69,7 +69,6 @@ export default function EmailRecoverCard(props: {spec: Spec}) {
 
   return (
     <AuthCard
-      class={styles.pageEmailRecover}
       header={
         <MediaHeader>
           <MediaHeader.Sticker name="Mailbox" size={stickerSize}/>

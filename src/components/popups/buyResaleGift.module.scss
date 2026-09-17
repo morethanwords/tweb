@@ -21,6 +21,12 @@
     padding: 0.5rem;
     overflow: visible;
   }
+
+  // the heading and the copy read as a paragraph pair, further apart than a centred header
+  .confirmation {
+    gap: 1.125rem;
+    align-self: stretch;
+  }
 }
 
 .onlyTon {
@@ -32,23 +38,7 @@
 }
 
 .graph {
-  margin-top: 1.5rem;
-}
-
-.title {
-  margin-top: 1.5rem;
-  font-size: 20px;
-  line-height: 24px;
-  font-weight: 500;
-  padding-inline: 1rem;
-  align-self: flex-start;
-}
-
-.text {
-  margin-top: 1.125rem;
-  padding-inline: 1rem;
-  align-self: flex-start;
-  line-height: 20px;
+  margin-block: 1.5rem;
 }
 
 .starsBalance {

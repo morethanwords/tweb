@@ -45,7 +45,7 @@ vi.mock('@components/checkboxField', () => ({default: class CheckboxField {}}));
 vi.mock('@components/icon', () => ({default: () => document.createElement('span')}));
 vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
 
-import PopupDeleteMegagroupMessages from '@components/popups/deleteMegagroupMessages';
+import {banParticipantFromCommunity, confirmDeleteMegagroupMessages, getModerateOptionsFor} from '@components/popups/deleteMegagroupMessagesActions';
 import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
 import ListenerSetter from '@helpers/listenerSetter';
 import '@helpers/peerIdPolyfill';
@@ -103,7 +103,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       onConfirm
     };
 
-    const result = await (PopupDeleteMegagroupMessages.prototype as any).onConfirmClick.call(popup);
+    const result = await confirmDeleteMegagroupMessages(popup as any);
 
     expect(result).toBe(true);
     expect(deleteParticipantReactions).toHaveBeenCalledOnce();
@@ -157,7 +157,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       onConfirm
     };
 
-    const result = await (PopupDeleteMegagroupMessages.prototype as any).onConfirmClick.call(popup);
+    const result = await confirmDeleteMegagroupMessages(popup as any);
 
     expect(result).toBe(true);
     expect(deleteParticipantReaction).toHaveBeenCalledOnce();
@@ -206,7 +206,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       onConfirm
     };
 
-    const result = await (PopupDeleteMegagroupMessages.prototype as any).onConfirmClick.call(popup);
+    const result = await confirmDeleteMegagroupMessages(popup as any);
 
     expect(result).toBe(true);
     expect(deleteParticipantReactions).toHaveBeenCalledOnce();
@@ -253,7 +253,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       }
     };
 
-    await (PopupDeleteMegagroupMessages.prototype as any).onConfirmClick.call(popup);
+    await confirmDeleteMegagroupMessages(popup as any);
 
     expect(reportParticipantReaction).toHaveBeenCalledOnce();
     expect(reportParticipantReaction).toHaveBeenCalledWith({
@@ -297,7 +297,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       }
     };
 
-    await (PopupDeleteMegagroupMessages.prototype as any).onConfirmClick.call(popup);
+    await confirmDeleteMegagroupMessages(popup as any);
 
     expect(reportSpamMessages).toHaveBeenCalledOnce();
     expect(reportSpamMessages).toHaveBeenCalledWith(chatPeerId, selectedPeerId, [messages[0].mid]);
@@ -326,8 +326,8 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       }
     };
 
-    const options = await (PopupDeleteMegagroupMessages.prototype as any).getModerateOptions.call(
-      popup,
+    const options = await getModerateOptionsFor(
+      popup as any,
       chatPeerId
     );
 
@@ -355,8 +355,8 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       managers: {}
     };
 
-    const options = await (PopupDeleteMegagroupMessages.prototype as any).getModerateOptions.call(
-      popup,
+    const options = await getModerateOptionsFor(
+      popup as any,
       chatPeerId
     );
 
@@ -394,8 +394,8 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       }
     };
 
-    const options = await (PopupDeleteMegagroupMessages.prototype as any).getModerateOptions.call(
-      popup,
+    const options = await getModerateOptionsFor(
+      popup as any,
       chatPeerId
     );
 
@@ -433,8 +433,8 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       }
     };
 
-    const options = await (PopupDeleteMegagroupMessages.prototype as any).getModerateOptions.call(
-      popup,
+    const options = await getModerateOptionsFor(
+      popup as any,
       chatPeerId
     );
 
@@ -456,8 +456,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       _: 'communityFull',
       linked_peers: [{}, {}, {}]
     });
-    const options = await (PopupDeleteMegagroupMessages.prototype as any)
-    .getModerateOptions.call({
+    const options = await getModerateOptionsFor({
       managers: {
         appProfileManager: {getChatFull},
         appCommunitiesManager: {
@@ -465,7 +464,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
           hasRights
         }
       }
-    }, chatPeerId);
+    } as any, chatPeerId);
 
     expect(options).toMatchObject({
       communityId,
@@ -491,8 +490,7 @@ describe('PopupDeleteMegagroupMessages moderation actions', () => {
       }
     };
 
-    const result = await (PopupDeleteMegagroupMessages.prototype as any)
-    .banFromCommunity.call(popup, communityId, selectedPeerId);
+    const result = await banParticipantFromCommunity(popup.managers as any, communityId, selectedPeerId);
 
     expect(result).toBe(true);
     expect(getParticipantJoinedChats).toHaveBeenCalledWith({

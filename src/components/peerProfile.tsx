@@ -48,8 +48,7 @@ import {StoriesSegments} from '@components/avatarNew';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import wrapEmojiText, {EmojiTextTsx} from '@lib/richTextProcessor/wrapEmojiText';
 import {wrapSolidComponent} from '../helpers/solid/wrapSolidComponent';
-import PopupStarGiftInfo from './popups/starGiftInfo';
-import PopupElement from './popups';
+import showStarGiftInfoPopup from './popups/starGiftInfo';
 import {openSavedMusicTab} from '@components/savedMusicActions';
 import ripple from '@components/ripple';
 import {keepMe} from '@helpers/keepMe';
@@ -103,17 +102,13 @@ function getUsernamesAlso(usernames: string[]) {
 }
 
 function getStatusHiddenShow(peerId: PeerId) {
-  const {i18n, PopupElement, PopupToggleReadDate} = useHotReloadGuard();
+  const {i18n, showToggleReadDatePopup} = useHotReloadGuard();
   return (
     <span
       class="show-when"
       ref={attachClickEventRef((e) => {
         cancelEvent(e);
-        PopupElement.createPopup(
-          PopupToggleReadDate,
-          peerId,
-          'lastSeen'
-        );
+        showToggleReadDatePopup(peerId, 'lastSeen');
       })}
     >
       {i18n('StatusHiddenShow')}
@@ -471,7 +466,7 @@ PeerProfile.PinnedGifts = () => {
       }).then((r) => r.render);
       attachClickEvent(div, (e) => {
         cancelEvent(e)
-        PopupElement.createPopup(PopupStarGiftInfo, {gift})
+        showStarGiftInfoPopup({gift})
       })
       return div;
     });
@@ -765,7 +760,7 @@ PeerProfile.QrButton = () => {
 
 PeerProfile.Birthday = () => {
   const context = useContext(PeerProfileContext);
-  const {I18n, i18n, wrapEmojiText, rootScope, PopupElement, PopupSendGift, showBirthdayPopup, saveMyBirthday, toastNew} = useHotReloadGuard();
+  const {I18n, i18n, wrapEmojiText, rootScope, showSendGiftPopup, showBirthdayPopup, saveMyBirthday, toastNew} = useHotReloadGuard();
   const birthday = createMemo(() => (context.fullPeer as UserFull.userFull)?.birthday);
   const isToday = createMemo(() => {
     const birthday$ = birthday();
@@ -815,7 +810,7 @@ PeerProfile.Birthday = () => {
     }
 
     if(isToday()) {
-      return () => PopupElement.createPopup(PopupSendGift, {
+      return () => showSendGiftPopup({
         peerId: context.peerId,
         birthday: true
       });
@@ -911,7 +906,7 @@ PeerProfile.Location = () => {
 
 PeerProfile.Bio = () => {
   const context = useContext(PeerProfileContext);
-  const {i18n, PopupPremium, HotReloadGuard, I18n, wrapRichText, toast} = useHotReloadGuard();
+  const {i18n, showPremiumPopup, HotReloadGuard, I18n, wrapRichText, toast} = useHotReloadGuard();
   const appConfig = useAppConfig();
   const peerTranslation = usePeerTranslation(context.peerId);
 
@@ -957,7 +952,7 @@ PeerProfile.Bio = () => {
             text: 'TranslateMessage',
             onClick: async() => {
               if(!peerTranslation.canTranslate(true)) {
-                PopupPremium.show({feature: 'translations'});
+                showPremiumPopup({feature: 'translations'});
               } else {
                 const {openTranslatePopup} = await import('@components/popups/translate');
                 openTranslatePopup({

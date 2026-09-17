@@ -24,7 +24,10 @@ const mocks = vi.hoisted(() => ({
   videos: [] as Array<{destroy: ReturnType<typeof vi.fn>}>
 }));
 
-vi.mock('@components/groupCall', () => ({default: class PopupGroupCallMock {}}));
+vi.mock('@components/groupCall', () => ({
+  default: vi.fn(),
+  GROUP_CALL_POPUP_KIND: Symbol('group-call-popup')
+}));
 
 vi.mock('@helpers/appWindow', () => ({
   getAppWindow: () => window,
@@ -89,9 +92,9 @@ vi.mock('@components/peerTitle', () => ({
     public element = document.createElement('span');
   }
 }));
-vi.mock('@components/popups', () => ({
-  default: class PopupElementMock {
-    public static getPopups(): any[] { return []; }
+vi.mock('@components/popups/indexTsx', () => ({
+  default: {
+    getPopups: (): any[] => []
   }
 }));
 vi.mock('@lib/appImManager', () => ({default: {setInnerPeer: vi.fn()}}));

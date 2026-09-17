@@ -40,16 +40,16 @@ defineStories('Premium & Stars', [
     id: 'premium/boarding',
     title: 'Telegram Premium',
     open: async(ctx) => {
-      const {default: PopupPremium} = await import('@components/popups/premium');
-      PopupPremium.show();
+      const {default: showPremiumPopup} = await import('@components/popups/premium');
+      showPremiumPopup();
     }
   },
   {
     id: 'premium/feature',
     title: 'Telegram Premium — one feature',
     open: async(ctx) => {
-      const {default: PopupPremium} = await import('@components/popups/premium');
-      PopupPremium.show({feature: 'stories'});
+      const {default: showPremiumPopup} = await import('@components/popups/premium');
+      showPremiumPopup({feature: 'stories'});
     }
   },
   {
@@ -57,60 +57,42 @@ defineStories('Premium & Stars', [
     fixtureOnly: true,
     title: 'Gift Premium',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupGiftPremium}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/giftPremium')
-      ]);
-
-      PopupElement.createPopup(PopupGiftPremium, ctx.peer('private'), premiumGiftOptions);
+      const {default: showGiftPremiumPopup} = await import('@components/popups/giftPremium');
+      showGiftPremiumPopup(ctx.peer('private'), premiumGiftOptions);
     }
   },
   {
     id: 'stars/topup',
     title: 'Stars — top up',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupStars}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/stars')
-      ]);
+      const {default: showStarsPopup} = await import('@components/popups/stars');
 
-      PopupElement.createPopup(PopupStars, {itemPrice: 500, onTopup: noop});
+      showStarsPopup({itemPrice: 500, onTopup: noop});
     }
   },
   {
     id: 'stars/balance',
     title: 'Stars — balance & history',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupStars}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/stars')
-      ]);
+      const {default: showStarsPopup} = await import('@components/popups/stars');
 
-      PopupElement.createPopup(PopupStars);
+      showStarsPopup();
     }
   },
   {
     id: 'makePaid',
     title: 'Make media paid',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupMakePaid}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/makePaid')
-      ]);
-
-      PopupElement.createPopup(PopupMakePaid, noop);
+      const {default: showMakePaidPopup} = await import('@components/popups/makePaid');
+      showMakePaidPopup(noop);
     }
   },
   {
     id: 'boost/channel',
     title: 'Boost a channel',
     open: async(ctx) => {
-      const [{default: PopupElement}, {default: PopupBoost}] = await Promise.all([
-        import('@components/popups'),
-        import('@components/popups/boost')
-      ]);
-
-      PopupElement.createPopup(PopupBoost, ctx.peer('channel'));
+      const {default: showBoostPopup} = await import('@components/popups/boost');
+      showBoostPopup(ctx.peer('channel'));
     }
   }
 ]);

@@ -13,7 +13,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import appImManager from '@lib/appImManager';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {MyPhoto} from '@appManagers/appPhotosManager';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {getSponsoredMessageButtons} from '@components/chat/contextMenu';
@@ -109,7 +109,7 @@ function SponsoredPlateBody(props: {
         icon="close"
         onClick={(e) => {
           e.stopPropagation();
-          PopupPremium.show({feature: 'no_ads'});
+          showPremiumPopup({feature: 'no_ads'});
         }}
       />
     </Show>

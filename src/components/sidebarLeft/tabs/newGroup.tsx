@@ -7,7 +7,7 @@ import I18n, {i18n} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {handleMissingInvitees} from '@components/addChatUsers';
 import type {AppChatsManager} from '@lib/appManagers/appChatsManager';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
@@ -90,8 +90,6 @@ const NewGroup: Component = () => {
 
   onMount(() => {
     tab.container.classList.add('new-group-container');
-
-    const section = new SettingSection({});
 
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
@@ -195,21 +193,25 @@ const NewGroup: Component = () => {
       });
     }, {listenerSetter: tab.listenerSetter});
 
-    const chatsSection = new SettingSection({
-      name: 'Members',
-      nameArgs: [peerIds.length]
-    });
+    const section = (
+      <Section>
+        {avatarEdit.container}
+        {inputWrapper}
+      </Section>
+    ) as HTMLElement;
 
-    if(!peerIds.length) {
-      chatsSection.container.classList.add('hide');
-    }
-
-    chatsSection.content.append(list);
-
-    section.content.append(avatarEdit.container, inputWrapper);
+    const chatsSection = (
+      <Section
+        class={!peerIds.length ? 'hide' : undefined}
+        name="Members"
+        nameArgs={[peerIds.length]}
+      >
+        {list}
+      </Section>
+    ) as HTMLElement;
 
     tab.content.append(nextBtn);
-    tab.scrollable.append(section.container, chatsSection.container);
+    tab.scrollable.append(section, chatsSection);
 
     if(isGeoChat) {
       tab.title.replaceChildren(i18n('NearbyCreateGroup'));

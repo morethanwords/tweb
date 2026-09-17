@@ -2,16 +2,9 @@
 
 .popup-boost {
   $parent: ".popup";
-  --popup-min-width: 360px;
-  --popup-max-width: 360px;
+  --popup-width: 22.5rem;
 
   #{$parent} {
-    &-header {
-      align-items: unset;
-      min-height: 2.5rem;
-      height: auto;
-    }
-
     &-title {
       display: flex;
       align-items: center;
@@ -20,11 +13,14 @@
       word-break: break-word;
     }
 
-    &-description {
-      margin-bottom: .75rem;
-      text-align: center;
-      flex: 0 0 auto;
-    }
+  }
+
+  // a descendant selector on purpose: the subtitle declares its own margin-top, and at equal
+  // specificity which one wins would depend on CSS-module load order
+  & &-description {
+    margin-block: .625rem .75rem;
+    // the popup body is a flex column and the copy must not be squeezed by the list below it
+    flex: 0 0 auto;
   }
 
   &-entity {
@@ -51,11 +47,8 @@
   }
 
   &-title {
-    font-size: 1.25rem;
-    text-align: center;
-    font-weight: var(--font-weight-bold);
+    // the popup body is a flex column and the title must not be squeezed by the list below it
     flex: 0 0 auto;
-    @include text-overflow(false);
   }
 
   &-avatars {
@@ -85,7 +78,7 @@
     }
 
     &-avatar {
-      border: 2px solid var(--surface-color);
+      border: 2px solid var(--background-color);
       box-sizing: content-box;
 
       &-container {
@@ -121,7 +114,7 @@
           content: " ";
           position: absolute;
           inset: -1px;
-          border: 2px solid var(--surface-color);
+          border: 2px solid var(--background-color);
           border-radius: inherit;
         }
       }

@@ -8,8 +8,7 @@ import noop from '@helpers/noop';
 
 import confirmationPopup from '@components/confirmationPopup';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import PopupStars from '@components/popups/stars';
-import PopupElement from '@components/popups';
+import showStarsPopup from '@components/popups/stars';
 
 import showUndoablePaidTooltip, {paidMessagesLangKeys} from '@components/chat/undoablePaidTooltip';
 import createPendingUndoableMessage from '@components/chat/pendingUndoableMessage';
@@ -91,7 +90,7 @@ export default class PaidMessagesInterceptor {
     if(PaidMessagesInterceptor.starsBalance < totalStarsAmount)
     {
       this.pendingUndoableMessage.abort();
-      PopupElement.createPopup(PopupStars, {spendPurposePeerId: peerId});
+      showStarsPopup({spendPurposePeerId: peerId});
       return PAYMENT_REJECTED;
     }
 
@@ -142,7 +141,7 @@ export default class PaidMessagesInterceptor {
 
     if(PaidMessagesInterceptor.starsBalance < totalStarsAmount)
     {
-      PopupElement.createPopup(PopupStars, {spendPurposePeerId: peerId});
+      showStarsPopup({spendPurposePeerId: peerId});
       return PAYMENT_REJECTED;
     }
 

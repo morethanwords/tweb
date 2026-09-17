@@ -29,7 +29,6 @@
 @use "partials/chatBotCommands";
 @use "partials/voiceRecordingPanel";
 @use "partials/videoRecordingPanel";
-@use "partials/crop";
 @use "partials/sidebar";
 @use "partials/profile";
 @use "partials/slider";
@@ -83,7 +82,6 @@
 @use "partials/audio";
 
 @use "partials/popups/popup";
-@use "partials/popups/editAvatar";
 @use "partials/popups/mediaAttacher";
 @use "partials/popups/createContact";
 @use "partials/popups/peer";

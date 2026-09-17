@@ -157,10 +157,10 @@ export default function showCallLinkPopup(options: CallLinkPopupOptions) {
         <PopupElement.CloseButton />
       </PopupElement.Header>
       <PopupElement.Body class="text-overflow-wrap">
-        <MediaHeader class={styles.mediaHeader}>
+        <MediaHeader marginTop>
           <CallLogo icon="link" />
           <MediaHeader.Title>{i18n('CallLink.Title')}</MediaHeader.Title>
-          <MediaHeader.Subtitle secondary>{i18n('CallLink.About')}</MediaHeader.Subtitle>
+          <MediaHeader.Subtitle color="secondary">{i18n('CallLink.About')}</MediaHeader.Subtitle>
         </MediaHeader>
         {inviteLink.container}
         <Show when={initial}>

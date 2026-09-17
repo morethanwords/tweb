@@ -83,7 +83,7 @@ export default function AddGroupToCommunity() {
           )}
         />
         <MediaHeader.Title>{communityTitle}</MediaHeader.Title>
-        <MediaHeader.Subtitle secondary>{i18n(descriptionKey)}</MediaHeader.Subtitle>
+        <MediaHeader.Subtitle color="secondary">{i18n(descriptionKey)}</MediaHeader.Subtitle>
       </MediaHeader>
 
       <Section>

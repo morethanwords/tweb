@@ -2,3 +2,8 @@ $popup-footer-button-size: 44px;
 $popup-footer-padding: .5rem;
 $popup-footer-abitlarger-button-size: 48px;
 $popup-footer-abitlarger-padding: 1rem;
+
+// The room a scroll leaves itself past its content, so a card sitting at its very end keeps
+// what it paints below itself — `--section-box-shadow` reaches 3px down, with a little over.
+// It is overlap, not space: whatever follows the scroll takes those pixels back.
+$popup-scroll-bleed: 5px;

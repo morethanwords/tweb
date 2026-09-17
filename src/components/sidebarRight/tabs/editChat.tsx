@@ -142,7 +142,6 @@ function EditChatForm(props: {
     CommunityLinkSection,
     I18n,
     PeerTitleTsx,
-    PopupElement,
     apiManagerProxy,
     appDialogsManager,
     appImManager,
@@ -544,9 +543,9 @@ function EditChatForm(props: {
 
     setDeleting(true);
     try {
-      const {default: PopupDeleteDialog} = await import('@components/popups/deleteDialog');
+      const {default: showDeleteDialogPopup} = await import('@components/popups/deleteDialog');
       setDeleting(false);
-      PopupElement.createPopup(PopupDeleteDialog, peerId(), undefined, (promise) => {
+      showDeleteDialogPopup(peerId(), undefined, (promise) => {
         setDeleting(true);
         promise.then(() => {
           tab.close();

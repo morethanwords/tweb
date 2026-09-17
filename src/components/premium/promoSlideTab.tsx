@@ -22,6 +22,7 @@ import showStickersPopup from '@components/popups/stickers';
 import PremiumOptionsForm from '@components/premium/premiumOptionsForm';
 import RowTsx from '@components/rowTsx';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import MediaHeader from '@components/mediaHeader';
 
 type PromoSlideTabOptions = PopupPremiumProps & {
   container: HTMLElement,
@@ -112,19 +113,14 @@ export default class PromoSlideTab {
   }
 
   private async createHeading() {
-    const headingTextContainer = document.createElement('div');
-    headingTextContainer.classList.add('popup-premium-heading-text-container');
-    const headingTextTitle = document.createElement('div');
-    headingTextTitle.classList.add('popup-premium-heading-text-title');
-    const headingTextDescription = document.createElement('div');
-    headingTextDescription.classList.add('popup-premium-heading-text-description');
-
     const wrapTitleOptions: PeerTitleOptions = {onlyFirstName: true};
 
+    // a title that carries a peer's name runs long, so it gets the compact scale
+    let isCompactTitle = false;
     let title: HTMLElement, description: HTMLElement;
     const giftDetails = getGiftDetails(this.options);
     if(giftDetails) {
-      headingTextTitle.classList.add('smaller-text');
+      isCompactTitle = true;
       const {fromPeerId, toPeerId, isOutbound, isUnclaimed, gift} = giftDetails;
       const giftText = i18n('GiftDays', [gift.days]);
       if(isOutbound) {
@@ -184,7 +180,7 @@ export default class PromoSlideTab {
         }
       }
     } else if(this.options.peerId && this.options.emojiStatusId) {
-      headingTextTitle.classList.add('smaller-text');
+      isCompactTitle = true;
       const [peerTitle, doc] = await Promise.all([
         wrapPeerTitle({peerId: this.options.peerId}),
         rootScope.managers.appEmojiManager.getCustomEmojiDocument(this.options.emojiStatusId)
@@ -203,7 +199,7 @@ export default class PromoSlideTab {
       }
       description = i18n('TelegramPremiumPeerSubtitleEmojiStatus');
     } else if(this.options.peerId) {
-      headingTextTitle.classList.add('smaller-text');
+      isCompactTitle = true;
       title = i18n('TelegramPremiumPeerTitle', [
         await wrapPeerTitle({peerId: this.options.peerId})
       ])
@@ -213,10 +209,12 @@ export default class PromoSlideTab {
       description = this.options.isPremiumActive ? i18n('TelegramPremiumSubscribedSubtitle') : i18n('Premium.Boarding.Info');
     }
 
-    headingTextTitle.append(title);
-    headingTextDescription.append(description);
-    headingTextContainer.append(headingTextTitle, headingTextDescription);
-    return headingTextContainer;
+    return wrapSolidComponent(() => (
+      <MediaHeader class="popup-premium-heading-text-container">
+        <MediaHeader.Title size={isCompactTitle ? 20 : 24}>{title}</MediaHeader.Title>
+        <MediaHeader.Subtitle>{description}</MediaHeader.Subtitle>
+      </MediaHeader>
+    ), this.options.middleware);
   }
 
   private createFeaturesContainer() {

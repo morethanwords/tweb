@@ -15,9 +15,9 @@ import CallInstance from '@lib/calls/callInstance';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {AppManagers} from '@lib/managers';
 import SetTransition from '@components/singleTransition';
-import PopupElement from '@components/popups';
-import PopupGroupCall from '@components/groupCall';
-import PopupCall from '@components/call';
+import PopupElement from '@components/popups/indexTsx';
+import showGroupCallPopup, {GROUP_CALL_POPUP_KIND} from '@components/groupCall';
+import showCallPopup from '@components/call';
 import PeerTitle from '@components/peerTitle';
 import GroupCallTitleElement from '@components/groupCall/title';
 import GroupCallDescriptionElement from '@components/groupCall/description';
@@ -194,7 +194,7 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   const onState = () => {
     const inst = instance();
     if(inst instanceof GroupCallInstance && inst.state === GROUP_CALL_STATE.CLOSED) {
-      reopenGroupCallPopupAfterRecovery = !!PopupElement.getPopups(PopupGroupCall).length;
+      reopenGroupCallPopupAfterRecovery = !!PopupElement.getPopups(GROUP_CALL_POPUP_KIND).length;
     }
     updateInstance(inst);
   };
@@ -420,12 +420,9 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     if(inst instanceof RtmpCallInstance) {
       AppMediaViewerRtmp.closeActivePip();
     } else if(inst instanceof GroupCallInstance) {
-      if(PopupElement.getPopups(PopupGroupCall).length) return;
-      PopupElement.createPopup(PopupGroupCall).show();
+      showGroupCallPopup();
     } else if(inst instanceof CallInstance) {
-      const popups = PopupElement.getPopups(PopupCall);
-      if(popups.find((popup) => popup.getCallInstance() === inst)) return;
-      PopupElement.createPopup(PopupCall, inst).show();
+      showCallPopup(inst);
     }
   };
 

@@ -1,9 +1,10 @@
-import {createMemo, createSignal, For, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, For, Show} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {useAppSettings} from '@stores/appSettings';
 import {AppTheme} from '@config/state';
 import {setSandboxTheme} from './environment';
 import {getStories, PopupStory} from './registry';
+import {checkedStoriesCount, clearCheckedStories, isStoryChecked, setStoryChecked} from './checkedStories';
 import styles from './sandbox.module.scss';
 
 export type SandboxProps = {
@@ -61,6 +62,16 @@ export default function PopupSandboxPanel(props: SandboxProps) {
 
   const total = createMemo(() => filtered().reduce((sum, group) => sum + group.stories.length, 0));
 
+  // The sandbox reloads on every edit and reopens the story from the hash, so the active one is
+  // usually somewhere far down a list that came back scrolled to the top. `nearest` leaves it alone
+  // when it is already on screen — clicking an item never scrolls the list under the cursor.
+  let list!: HTMLDivElement;
+  createEffect(() => {
+    const active = props.activeId();
+    if(!active) return;
+    list.querySelector(`[data-story-id="${CSS.escape(active)}"]`)?.scrollIntoView({block: 'nearest'});
+  });
+
   return (
     <div
       class={classNames(styles.Panel, collapsed() && styles.Collapsed)}
@@ -77,7 +88,21 @@ export default function PopupSandboxPanel(props: SandboxProps) {
       </button>
 
       <div class={styles.Header}>
-        <span>Popup sandbox <span class={styles.Count}>{total()}</span></span>
+        <span>
+          Popup sandbox{' '}
+          <span class={styles.Count}>
+            <Show when={checkedStoriesCount()}>{checkedStoriesCount()}/</Show>{total()}
+          </span>
+        </span>
+        <Show when={checkedStoriesCount()}>
+          <button
+            class={styles.Clear}
+            title="Forget which stories are marked as checked"
+            onClick={() => clearCheckedStories()}
+          >
+            reset ✓
+          </button>
+        </Show>
         <Show when={props.onClose}>
           <button class={styles.Close} title="Close and restore the app" onClick={() => props.onClose()}>×</button>
         </Show>
@@ -153,7 +178,7 @@ export default function PopupSandboxPanel(props: SandboxProps) {
         </div>
       </Show>
 
-      <div class={styles.List}>
+      <div class={styles.List} ref={list}>
         <Show when={total()} fallback={<div class={styles.Empty}>Nothing matches “{query()}”.</div>}>
           <For each={filtered()}>
             {(group) => (
@@ -161,20 +186,36 @@ export default function PopupSandboxPanel(props: SandboxProps) {
                 <div class={styles.Group}>{group.name}</div>
                 <For each={group.stories}>
                   {(story) => (
-                    <button
-                      class={classNames(styles.Item, props.activeId() === story.id && styles.Active)}
+                    <div
+                      class={classNames(
+                        styles.Item,
+                        props.activeId() === story.id && styles.Active,
+                        isStoryChecked(story.id) && styles.Checked
+                      )}
                       data-story-id={story.id}
-                      aria-current={props.activeId() === story.id || undefined}
-                      onClick={() => props.onOpen(story)}
                     >
-                      {story.title}
-                      <span class={styles.ItemId}>
-                        {story.id}
-                        <Show when={props.dataSource() === 'live' && story.fixtureOnly}>
-                          {' · fixtures'}
-                        </Show>
-                      </span>
-                    </button>
+                      <input
+                        class={styles.Check}
+                        type="checkbox"
+                        title="I have looked at this one"
+                        aria-label={`Mark “${story.title}” as checked`}
+                        checked={isStoryChecked(story.id)}
+                        onChange={(e) => setStoryChecked(story.id, e.currentTarget.checked)}
+                      />
+                      <button
+                        class={styles.ItemOpen}
+                        aria-current={props.activeId() === story.id || undefined}
+                        onClick={() => props.onOpen(story)}
+                      >
+                        {story.title}
+                        <span class={styles.ItemId}>
+                          {story.id}
+                          <Show when={props.dataSource() === 'live' && story.fixtureOnly}>
+                            {' · fixtures'}
+                          </Show>
+                        </span>
+                      </button>
+                    </div>
                   )}
                 </For>
               </>

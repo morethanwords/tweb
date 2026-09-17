@@ -1,10 +1,10 @@
-import PopupElement, {addCancelButton, PopupButton} from '.';
+import {addCancelButton, PopupButton} from '@components/popups/indexTsx';
 import deferredPromise from '@helpers/cancellablePromise';
 import {InputCheckPasswordSRP} from '@layer';
 import rootScope from '@lib/rootScope';
 import {InputState} from '@components/inputField';
 import PasswordInputField from '@components/passwordInputField';
-import PopupPeer, {PopupPeerOptions} from '@components/popups/peer';
+import showPeerPopup, {PopupPeerOptions} from '@components/popups/peer';
 
 export async function passwordPopup<Result>(options: Omit<PopupPeerOptions, 'inputField'> & {
   button?: Omit<PopupPeerOptions['buttons'][0], 'callback'>;
@@ -50,19 +50,17 @@ export async function passwordPopup<Result>(options: Omit<PopupPeerOptions, 'inp
     }
   }
 
-  const popup = PopupElement.createPopup(PopupPeer, 'popup-confirmation', {
+  showPeerPopup('popup-confirmation', {
     ...options,
     inputField: passwordInputField,
-    buttons: addCancelButton([buttonOptions])
-  })
-
-  popup.addEventListener('closeAfterTimeout', () => {
-    if(!resolved) {
-      deferred.reject();
+    buttons: addCancelButton([buttonOptions]),
+    onCloseAfterTimeout: () => {
+      if(!resolved) {
+        deferred.reject();
+      }
     }
   });
 
-  popup.show()
 
   return deferred;
 }

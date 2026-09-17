@@ -6,15 +6,16 @@ import Button from '@components/button';
 import PeerTitle from '@components/peerTitle';
 import Row from '@components/rowTsx';
 import rootScope from '@lib/rootScope';
-import PopupPeer from '@components/popups/peer';
-import PopupElement, {addCancelButton} from '@components/popups';
+import showPeerPopup from '@components/popups/peer';
+import {addCancelButton} from '@components/popups/indexTsx';
 import {i18n} from '@lib/langPack';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {renderComponent} from '@helpers/solid/renderComponent';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import formatUserPhone from '@components/wrappers/formatUserPhone';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
+import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {InputFieldEmoji} from '@components/inputFieldEmoji';
 import {toastNew} from '@components/toast';
@@ -63,8 +64,6 @@ const EditContact: Component = () => {
       const hasPersonal = !!fullUser?.personal_photo;
       const firstName = user.first_name || '';
 
-      const photoSection = new SettingSection({caption: 'UserInfo.CustomPhotoHelp'});
-
       const btnSetPhoto = Button('btn-primary btn-transparent', {
         icon: 'cameraadd',
         text: hasPersonal ? 'UserInfo.UpdatePhotoFor' : 'UserInfo.SetPhotoFor',
@@ -97,10 +96,9 @@ const EditContact: Component = () => {
         });
       }, {listenerSetter: tab.listenerSetter});
 
-      photoSection.content.append(btnSetPhoto, btnSuggestPhoto);
-
+      let btnResetPhoto: HTMLElement;
       if(hasPersonal) {
-        const btnResetPhoto = Button('btn-primary btn-transparent danger', {
+        btnResetPhoto = Button('btn-primary btn-transparent danger', {
           icon: 'delete',
           text: 'UserInfo.RemovePersonalPhoto'
         });
@@ -116,10 +114,15 @@ const EditContact: Component = () => {
           toastNew({langPackKey: 'UserInfo.PhotoResetToast'});
           refreshPhotoSection();
         }, {listenerSetter: tab.listenerSetter});
-        photoSection.content.append(btnResetPhoto);
       }
 
-      return photoSection.container;
+      return wrapSolidComponent(() => (
+        <Section caption="UserInfo.CustomPhotoHelp">
+          {btnSetPhoto}
+          {btnSuggestPhoto}
+          {btnResetPhoto}
+        </Section>
+      ), tab.middlewareHelper.get());
     }
 
     async function refreshPhotoSection() {
@@ -138,8 +141,8 @@ const EditContact: Component = () => {
     }
 
     {
-      const section = new SettingSection({noDelimiter: true});
       const inputFields: InputField[] = [];
+      let rowsContainer: HTMLElement;
 
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
@@ -227,8 +230,7 @@ const EditContact: Component = () => {
         profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
 
         tab.scrollable.append(div, profileNameDiv, profileSubtitleDiv);
-        const rowsContainer = document.createElement('div');
-        section.content.append(inputWrapper, rowsContainer);
+        rowsContainer = document.createElement('div');
 
         if(!isNew) {
           const enabled = !(await tab.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}));
@@ -284,23 +286,24 @@ const EditContact: Component = () => {
             middleware: tab.middlewareHelper.get()
           });
         }
-      } else {
-        section.content.append(inputWrapper);
       }
 
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section noDelimiter>
+          {inputWrapper}
+          {rowsContainer}
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     if(!isNew) {
       photoSectionContainer = await buildPhotoSection();
       tab.scrollable.append(photoSectionContainer);
 
-      const section = new SettingSection();
-
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteContact'});
 
       attachClickEvent(btnDelete, () => {
-        PopupElement.createPopup(PopupPeer, 'popup-delete-contact', {
+        showPeerPopup('popup-delete-contact', {
           peerId: peerId,
           titleLangKey: 'DeleteContact',
           descriptionLangKey: 'AreYouSureDeleteContact',
@@ -317,35 +320,34 @@ const EditContact: Component = () => {
             },
             isDanger: true
           }])
-        }).show();
+        });
       }, {listenerSetter: tab.listenerSetter});
 
-      section.content.append(btnDelete);
-
-      tab.scrollable.append(section.container);
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section>
+          {btnDelete}
+        </Section>
+      ), tab.middlewareHelper.get()));
     } else if(
       privacy.some((privacyRule) => privacyRule._ === 'privacyValueDisallowAll') &&
       !privacy.some((privacyRule) => privacyRule._ === 'privacyValueAllowUsers' && privacyRule.users.includes(userId))
     ) {
-      const section = new SettingSection({
-        caption: 'NewContact.Exception.ShareMyPhoneNumber.Desc',
-        captionArgs: [await wrapPeerTitle({peerId})]
-      });
+      const peerTitle = await wrapPeerTitle({peerId});
       sharePhoneSignal = createSignal(true);
-      renderComponent({
-        element: section.content,
-        Component: () => (
+
+      tab.scrollable.append(wrapSolidComponent(() => (
+        <Section
+          caption="NewContact.Exception.ShareMyPhoneNumber.Desc"
+          captionArgs={[peerTitle]}
+        >
           <Row>
             <Row.CheckboxField>
               <CheckboxFieldTsx signal={sharePhoneSignal} />
             </Row.CheckboxField>
             <Row.Title>{i18n('NewContact.Exception.ShareMyPhoneNumber')}</Row.Title>
           </Row>
-        ),
-        middleware: tab.middlewareHelper.get()
-      });
-
-      tab.scrollable.append(section.container);
+        </Section>
+      ), tab.middlewareHelper.get()));
     }
 
     attachClickEvent(editPeer.nextBtn, async() => {

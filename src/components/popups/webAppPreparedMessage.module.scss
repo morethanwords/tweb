@@ -1,25 +1,11 @@
 .popup {
-  :global(.popup-container) {
-    width: 26.25rem;
-    border-radius: 14px;
-    padding: 0;
-  }
+  --popup-width: 26.25rem;
+
   :global {
-    .popup-header {
-      margin: 0;
-      padding: 0.5rem;
-    }
-
-    .popup-buttons {
-      padding: 0 0.25rem;
-      margin: 0.5rem;
-    }
-
     .popup-body {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0;
     }
   }
 }

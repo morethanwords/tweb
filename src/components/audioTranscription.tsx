@@ -9,7 +9,7 @@ import noop from '@helpers/noop';
 import {IconTsx} from '@components/iconTsx';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import PopupPremium from '@components/popups/premium';
+import showPremiumPopup from '@components/popups/premium';
 
 
 /**
@@ -181,7 +181,7 @@ export default function createAudioTranscription(options: {
         langPackKey: 'AudioAndVideoTranscription.PremiumAlert',
         langPackArguments: [anchorCallback(() => {
           hideToast();
-          PopupPremium.show({feature: 'voice_to_text'});
+          showPremiumPopup({feature: 'voice_to_text'});
         })]
       });
       return;

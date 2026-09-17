@@ -102,7 +102,7 @@ const SuggestedPostActionContent = defineSolidElement({
       <Show when={suggestedPost()?.price || suggestedPost()?.schedule_date}>
         <div class={styles.Grid}>
           <Show when={suggestedPost().price}>
-            <div class={styles.GridLabel}><I18nTsx key='SuggestedPosts.Price' /></div>
+            <div><I18nTsx key='SuggestedPosts.Price' /></div>
             <div class={styles.GridValue}>
               <I18nTsx
                 key={suggestedPost().price._ === 'starsTonAmount' ? 'SuggestedPosts.TONAmount' : 'Stars'}
@@ -111,7 +111,7 @@ const SuggestedPostActionContent = defineSolidElement({
             </div>
           </Show>
           <Show when={suggestedPost().schedule_date}>
-            <div class={styles.GridLabel}><I18nTsx key='SuggestedPosts.Time' /></div>
+            <div><I18nTsx key='SuggestedPosts.Time' /></div>
             <div class={styles.GridValue}>{formatFullSentTime(suggestedPost().schedule_date)}</div>
           </Show>
         </div>
