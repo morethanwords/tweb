@@ -31,7 +31,7 @@ pnpm install
 pnpm start          # Dev server on :8080
 pnpm build          # Production build → dist/
 pnpm test           # Run tests (Vitest)
-pnpm lint           # oxlint on src/ (config: .oxlintrc.json)
+pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 

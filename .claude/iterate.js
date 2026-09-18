@@ -54,7 +54,7 @@ function showClaudeStream(line) {
   let obj;
   try {
     obj = JSON.parse(line);
-  } catch {
+  } catch{
     return;
   }
 
@@ -110,7 +110,7 @@ function runClaude(prompt, cwd) {
       '--verbose',
       '-p', prompt,
       '--output-format', 'stream-json',
-      '--model', model,
+      '--model', model
     ], {cwd, stdio: ['ignore', 'pipe', 'pipe']});
 
     let buffer = '';

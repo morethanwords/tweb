@@ -4,7 +4,7 @@ const {readFileSync, writeFileSync} = require('fs');
 const willPaste = process.argv[2] === '1';
 const sourceFile = process.argv[2];
 
-let sourceContent = (() => {
+const sourceContent = (() => {
   if(willPaste) {
     return execSync('pbpaste', {encoding: 'utf8'});
   }

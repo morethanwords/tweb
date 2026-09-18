@@ -93,6 +93,13 @@ const serverOptions: ServerOptions = {
     // only this checkout's .claude (and, from the main repo, the worktrees inside it).
     ignored: [
       resolve(rootDir, '.claude') + '/**',
+      // chokidar knows nothing about .gitignore, and the pnpm store both holds
+      // its own content-addressed tree and symlinks back into .claude/worktrees
+      // (projects/<hash> -> ../../../.claude/worktrees/<name>) — which it DOES
+      // follow, so the ignore above is undone: over half the watched dirs sat
+      // in here (642 of 1157 when measured), i.e. a whole foreign worktree's
+      // worth of fs watches on top of the store's own tree.
+      resolve(rootDir, '.pnpm-store') + '/**',
       // nothing imports the generated `*.module.scss` types, but a rewritten one still wakes the
       // watcher — and anything listening for updates (the popup sandbox reloads on them) reacts
       '**/*.module.d.scss.ts'
@@ -175,6 +182,13 @@ export default defineConfig({
       // git worktrees live here with their own copies of every test file —
       // without this, `pnpm test <pattern>` runs each match N+1 times at once
       '**/.claude/**',
+      // ...and the pnpm store links straight back into those worktrees
+      // (.pnpm-store/v11/projects/<hash> -> ../../../.claude/worktrees/<name>),
+      // so the very same files get collected a second time under a path the
+      // `.claude` glob never sees — a foreign branch's tests (and its root
+      // e2e/ Playwright specs, which vitest cannot run at all) then fail this
+      // checkout's `pnpm test`.
+      '**/.pnpm-store/**',
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**',
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',

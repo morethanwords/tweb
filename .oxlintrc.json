@@ -8,6 +8,8 @@
     "es6": true
   },
   "ignorePatterns": [
+    ".claude/worktrees/**",
+    ".pnpm-store/**",
     "src/vendor/**",
     "src/solid/**",
     "src/opus-recorder/**",

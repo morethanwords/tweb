@@ -99,8 +99,8 @@ function decodeHtmlEntities(str) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
+    .replace(/&#39;/g, `'`)
+    .replace(/&apos;/g, `'`);
 }
 
 /** Extract all cards from an HTML blob */
@@ -199,7 +199,7 @@ async function main() {
   console.error(`[telegram-bugs] Initial page: ${allCards.length} cards`);
 
   // Step 3: Find initial offset and paginate
-  let offsetMatch = initHtml.match(/data-offset="([^"]+)"/);
+  const offsetMatch = initHtml.match(/data-offset="([^"]+)"/);
   let offset = offsetMatch?.[1] || null;
 
   while(offset) {

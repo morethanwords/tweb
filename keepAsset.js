@@ -1,9 +1,9 @@
 module.exports = function(asset) {
-  if(asset.includes('.xml') 
+  if(asset.includes('.xml')
     || asset.includes('version')
     || asset.includes('assets/')
     || asset.includes('changelogs/')
-    || asset.includes('.webmanifest') 
+    || asset.includes('.webmanifest')
     || asset.includes('Worker.min.wasm')
     || asset.includes('Worker.min.js')
     || asset.includes('recorder.min.js')

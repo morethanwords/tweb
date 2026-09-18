@@ -3,7 +3,7 @@
     "@babel/preset-typescript",
 
     [
-      "@babel/preset-env", 
+      "@babel/preset-env",
       {
         "modules": false,
         "corejs": 3,
@@ -43,7 +43,7 @@ module.exports = config2; */
 module.exports = {
   presets: [
     ['@babel/preset-env', {targets: {node: 'current'}}],
-    '@babel/preset-typescript',
+    '@babel/preset-typescript'
   ]/* ,
   plugins: ["@babel/plugin-syntax-dynamic-import"] */
 };

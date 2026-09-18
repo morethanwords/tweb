@@ -4,8 +4,8 @@ const https = require('https');
 const http = require('http');
 const fs = require('fs');
 
-const gitstatic = require("./git-serve");
-const express = require("express");
+const gitstatic = require('./git-serve');
+const express = require('express');
 
 const repository = '.git';
 
@@ -23,7 +23,7 @@ app.get(/\//, (req, res) => {
   });
 });
 
-const { networkInterfaces } = require('os');
+const {networkInterfaces} = require('os');
 const nets = networkInterfaces();
 const results = {};
 
@@ -41,7 +41,7 @@ for(const name of Object.keys(nets)) {
 
 const useHttp = false;
 const transport = useHttp ? http : https;
-let options = {};
+const options = {};
 if(!useHttp) {
   options.key = fs.readFileSync(__dirname + '/certs/server-key.pem');
   options.cert = fs.readFileSync(__dirname + '/certs/server-cert.pem');

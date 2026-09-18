@@ -108,7 +108,7 @@ function formatLang() {
     console.log(chunk.toString());
   });
 
-  return new Promise((resolve, reject) => { 
+  return new Promise((resolve, reject) => {
     child.on('close', (code) => {
       if(code != 0) {
         reject(new Error('Failed to format lang'));
