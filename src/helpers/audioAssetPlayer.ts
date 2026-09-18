@@ -76,6 +76,11 @@ export default class AudioAssetPlayer<AssetMap extends Record<string, string>> {
   }
 
   public stop() {
+    // Forget the asset too, otherwise `playIfDifferent` stays deaf to the same
+    // sound after a stop — a call that reconnects twice would play the reconnect
+    // tone only the first time.
+    this.assetName = undefined;
+
     if(!this.audio) {
       return;
     }

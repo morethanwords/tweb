@@ -8,6 +8,9 @@
  * current call's tone) and falls silent the moment it stops pending. And a tab
  * closed with a call up now posts a best-effort discard, so the peer sees the
  * call end instead of a stall until the server times it out.
+ *
+ * An established call that loses its transport plays the looped reconnect tone
+ * the other clients use, instead of restarting the one-shot connect chime.
  */
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -222,6 +225,47 @@ describe('CallsController call waiting', () => {
 
     expect(mocks.sharedAsset.play).toHaveBeenCalledWith({name: 'incoming', loop: true, volume: 1});
     expect(mocks.waitingPlayers).toHaveLength(0);
+  });
+});
+
+describe('CallsController reconnect tone', () => {
+  beforeEach(() => {
+    mocks.waitingPlayers.length = 0;
+    mocks.sharedAsset.play.mockClear();
+    mocks.sharedAsset.playIfDifferent.mockClear();
+    mocks.sharedAsset.stop.mockClear();
+  });
+
+  it('loops the reconnect tone when an established call loses its transport', () => {
+    const {controller} = makeController();
+    const connected = makeConnectedCall(controller);
+
+    connected.overrideConnectionState(CALL_STATE.CONNECTING);
+
+    expect(mocks.sharedAsset.playIfDifferent).toHaveBeenCalledWith({name: 'connecting', loop: true});
+    // Never the connect chime: it is a 1.1s one-shot and loops into a stutter.
+    expect(mocks.sharedAsset.play).not.toHaveBeenCalled();
+  });
+
+  it('reconnects audibly within the first second of the call', () => {
+    const {controller} = makeController();
+    const connected = makeConnectedCall(controller);
+    // `duration` is whole seconds, so it is still 0 right after connecting.
+    connected.duration = 0;
+
+    connected.overrideConnectionState(CALL_STATE.CONNECTING);
+
+    expect(mocks.sharedAsset.playIfDifferent).toHaveBeenCalledWith({name: 'connecting', loop: true});
+  });
+
+  it('stays silent while a call that never connected is connecting', () => {
+    const {controller} = makeController();
+    const call = makeInstance(controller, {isOutgoing: true, id: 'fresh'});
+
+    call.overrideConnectionState(CALL_STATE.CONNECTING);
+
+    expect(mocks.sharedAsset.play).not.toHaveBeenCalled();
+    expect(mocks.sharedAsset.playIfDifferent).not.toHaveBeenCalled();
   });
 });
 

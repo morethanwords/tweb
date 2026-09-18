@@ -476,8 +476,13 @@ export class CallsController extends EventListenerBase<{
         } else if(state === CALL_STATE.EXCHANGING_KEYS) {
           this.audioAsset.playIfDifferent({name: 'connect'});
         } else if(state === CALL_STATE.CONNECTING) {
-          if(call.duration) {
-            this.audioAsset.play({name: 'connect', loop: true});
+          // A call that already connected and lost its transport is reconnecting,
+          // not connecting for the first time: loop the reconnect tone instead of
+          // the one-shot connect chime, which restarts every 1.1s under `loop`.
+          // `hasConnected` rather than `duration` — the latter is whole seconds,
+          // so a drop in the first second left the reconnect silent.
+          if(hasConnected) {
+            this.audioAsset.playIfDifferent({name: 'connecting', loop: true});
           }
         } else {
           this.audioAsset.stop();
