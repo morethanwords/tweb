@@ -36,7 +36,7 @@ import {ChatRights} from '@appManagers/appChatsManager';
 import {toastNew} from '@components/toast';
 import ChatInput, {POSTING_NOT_ALLOWED_MAP} from '@components/chat/input';
 import safeAssign from '@helpers/object/safeAssign';
-import ButtonIcon from '@components/buttonIcon';
+import Tabs from '@components/tabs';
 import StickersTabCategory from '@components/emoticonsDropdown/category';
 import {Middleware} from '@helpers/middleware';
 import {Accessor, createSignal, Setter} from 'solid-js';
@@ -73,9 +73,9 @@ const renderEmojiDropdownElement = (): HTMLDivElement => {
       <div class="emoji-container">
         <div class="tabs-container"></div>
       </div>
-      <div class="emoji-tabs menu-horizontal-div emoticons-menu no-stripe"></div>
     </div>`;
-  const a: [string, string, number][] = [
+  // the first word of `className` names the tab, the rest are extra classes on it
+  const a: [string, Icon, number][] = [
     ['search justify-self-start', 'search', -1],
     ['emoji', 'smile', 0],
     ['stickers', 'stickers_face', 1],
@@ -83,11 +83,14 @@ const renderEmojiDropdownElement = (): HTMLDivElement => {
     ['delete justify-self-end', 'deleteleft', -1]
   ];
   const d = div.firstElementChild as HTMLDivElement;
-  d.lastElementChild.append(...a.map(([className, icon, tabId]) => {
-    const button = ButtonIcon(`${icon} menu-horizontal-div-item emoji-tabs-${className}`, {noRipple: true});
-    button.dataset.tab = '' + tabId;
-    return button;
-  }));
+  d.append(Tabs.Menu({
+    class: 'emoji-tabs emoticons-menu no-stripe',
+    children: a.map(([className, icon, tabId]) => Tabs.MenuIconTab({
+      icon,
+      class: `emoji-tabs-${className}`,
+      tab: tabId
+    }))
+  }) as HTMLElement);
   return d;
 }
 

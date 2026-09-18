@@ -39,6 +39,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import {onCleanup} from 'solid-js';
 import StickersTabCategory, {EmoticonsTabStyles} from '@components/emoticonsDropdown/category';
+import Tabs from '@components/tabs';
 import EmoticonsTabC from '@components/emoticonsDropdown/tab';
 import flatten from '@helpers/array/flatten';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
@@ -489,11 +490,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
 
     if(!this.isStandalone && this.menu) {
       const x = this.menuInnerScroll = new ScrollableX(undefined);
-      x.container.classList.add('menu-horizontal-inner-scroll');
-
-      innerScrollWrapper = document.createElement('div');
-      innerScrollWrapper.classList.add('menu-horizontal-inner');
-      innerScrollWrapper.append(x.container);
+      innerScrollWrapper = Tabs.MenuInner({scroll: x.container}) as HTMLElement;
     }
 
     let preparedMap: ReturnType<typeof prepare>;

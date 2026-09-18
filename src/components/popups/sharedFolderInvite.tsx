@@ -9,6 +9,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '@components/appSelectPeers';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 import showLimitPopup from '@components/popups/limit';
+import Tabs from '@components/tabs';
 
 import rootScope from '@lib/rootScope';
 import {createSignal, onCleanup} from 'solid-js';
@@ -38,12 +39,6 @@ export default async function showSharedFolderInvitePopup(options: Partial<{
   const [show, setShow] = createSignal(false);
   const [confirmDisabled, setConfirmDisabled] = createSignal(false);
 
-  const n = document.createElement('div');
-  n.classList.add('menu-horizontal-scrollable');
-
-  const nav = document.createElement('nav');
-  nav.classList.add('menu-horizontal-div');
-
   const isAlready = chatlistInvite?._ === 'chatlists.chatlistInviteAlready';
   const isJoining = isAlready && !!chatlistInvite.missing_peers.length;
   const filter = givenFilter ?? (isAlready ? await managers.filtersStorage.getFilter(chatlistInvite.filter_id) as DialogFilter.dialogFilterChatlist : undefined);
@@ -55,30 +50,22 @@ export default async function showSharedFolderInvitePopup(options: Partial<{
     leaveSuggestionsPeerIds = peers.map((peer) => getPeerId(peer));
   }
 
-  const makeItem = () => {
-    const item = document.createElement('div');
-    item.classList.add('menu-horizontal-div-item');
-    const i = document.createElement('i');
-    i.classList.add('menu-horizontal-div-item-background');
-    const span = document.createElement('span');
-    span.classList.add('menu-horizontal-div-item-span');
-    item.append(i, span);
-    nav.append(item);
-    return span;
-  };
-
-  makeItem().append(i18n('FilterAllChats'));
-  const activeItem = makeItem();
-  activeItem.parentElement.classList.add('active');
-  activeItem.append(
-    await wrapFolderTitle(filter ? filter.title : (chatlistInvite as ChatlistsChatlistInvite.chatlistsChatlistInvite).title, middleware)
+  const activeTitle = await wrapFolderTitle(
+    filter ? filter.title : (chatlistInvite as ChatlistsChatlistInvite.chatlistsChatlistInvite).title,
+    middleware
   );
-  makeItem().append(i18n('FilterPersonal'));
 
-  const shadow = document.createElement('div');
-  shadow.classList.add('inner-shadow', 'inner-shadow-inset');
-
-  n.append(nav, shadow);
+  // the row never scrolls and takes no clicks here — it only shows where the folder lands
+  const n = (
+    <Tabs.MenuShell>
+      <Tabs.Menu>
+        <Tabs.MenuTab>{i18n('FilterAllChats')}</Tabs.MenuTab>
+        <Tabs.MenuTab class="active">{activeTitle}</Tabs.MenuTab>
+        <Tabs.MenuTab>{i18n('FilterPersonal')}</Tabs.MenuTab>
+      </Tabs.Menu>
+      <div class="inner-shadow inner-shadow-inset" />
+    </Tabs.MenuShell>
+  ) as HTMLElement;
 
   const description = document.createElement('div');
   description.classList.add(CLASS_NAME + '-description', 'subtitle');

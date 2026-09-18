@@ -213,11 +213,13 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
             }}</For>
           </Section>
         )}
-        <Section class="boosts-users-container">
+        <Tabs.MenuShell betweenSections>
           <Tabs.Menu ref={tabs} class="boosts-users-tabs">
             <MenuTab key="BoostingBoostsCount" count={boostsList().count} />
             {showGifts() && <MenuTab key="BoostingGiftsCount" count={giftsBoostsList().count} />}
           </Tabs.Menu>
+        </Tabs.MenuShell>
+        <Section class="boosts-users-container">
           <Tabs.Content ref={content} class="boosts-users-contents" onClick={async(e) => {
             const target = findUpClassName(e.target, 'row');
             const boost = this.targets.get(target);

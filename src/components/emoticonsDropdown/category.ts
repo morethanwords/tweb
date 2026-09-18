@@ -2,9 +2,9 @@ import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import mediaSizes from '@helpers/mediaSizes';
 import {MiddlewareHelper, Middleware, getMiddleware} from '@helpers/middleware';
 import {StickerSet} from '@layer';
-import ButtonIcon from '@components/buttonIcon';
 import {ScrollableX} from '@components/scrollable';
 import {EMOJI_ELEMENT_SIZE} from '@components/emoticonsDropdown/tabs/emoji';
+import Tabs from '@components/tabs';
 
 export type StickersTabCategoryItem = {element: HTMLElement};
 export type StickersTabStyles = {
@@ -88,13 +88,7 @@ export default class StickersTabCategory<Item extends StickersTabCategoryItem, A
 
     let menuTab: HTMLElement, menuTabPadding: HTMLElement;
     if(!options.noMenuTab) {
-      menuTab = ButtonIcon(undefined, {noRipple: true});
-      menuTab.classList.add('menu-horizontal-div-item');
-
-      menuTabPadding = document.createElement('div');
-      menuTabPadding.classList.add('menu-horizontal-div-item-padding');
-
-      menuTab.append(menuTabPadding);
+      menuTab = Tabs.MenuIconTab({paddingRef: (ref) => menuTabPadding = ref});
     }
 
     if(title) container.append(title);

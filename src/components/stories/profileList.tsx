@@ -39,6 +39,7 @@ import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
 import LottieAnimation from '@components/lottieAnimation';
+import Tabs from '@components/tabs';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {handleShareStory} from './share';
@@ -778,13 +779,14 @@ function StoriesSelectionToolbar(props: {
     return <Portal mount={props.mount}>{content}</Portal>;
   }
 
+  // with nowhere to mount into, the toolbar brings the plate the search tabs would have sat on
   return (
-    <div
-      class="search-super-tabs-scrollable menu-horizontal-scrollable sticky is-single"
+    <Tabs.MenuShell
+      class="search-super-tabs-scrollable sticky is-single"
       classList={{'is-selecting': props.selection.selecting(), 'backwards': !props.selection.selecting()}}
     >
       {content}
-    </div>
+    </Tabs.MenuShell>
   );
 }
 

@@ -7,8 +7,8 @@ import {createSearchGroup, SearchGroup, SearchGroupType} from '@components/searc
 import {horizontalMenu} from '@components/horizontalMenu';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {putPreloader} from '@components/putPreloader';
-import ripple from '@components/ripple';
-import Scrollable, {ScrollableX} from '@components/scrollable';
+import Scrollable from '@components/scrollable';
+import {ScrollableContextValue} from '@components/scrollable2';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -403,7 +403,7 @@ export default class AppSearchSuper {
   public nav: HTMLElement;
   public navScrollableContainer: HTMLDivElement;
   public tabsContainer: HTMLElement;
-  public navScrollable: ScrollableX;
+  private disposeNav: () => void;
   private tabsMenu: HTMLElement;
   private prevTabId = -1;
 
@@ -513,38 +513,31 @@ export default class AppSearchSuper {
     this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
     this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
 
-    const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
-    navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
-
-    const navScrollable = this.navScrollable = new ScrollableX(navScrollableContainer);
-    navScrollable.container.classList.add('search-super-nav-scrollable');
-
-    const nav = this.nav = document.createElement('nav');
-    nav.classList.add('search-super-tabs', 'menu-horizontal-div');
-    this.tabsMenu = nav;
-
-    navScrollable.container.append(nav);
-
-    for(const mediaTab of this.mediaTabs) {
-      const menuTab = document.createElement('div');
-      menuTab.classList.add('menu-horizontal-div-item');
-      const span = document.createElement('span');
-      span.classList.add('menu-horizontal-div-item-span');
-      const i = document.createElement('i');
-      i.classList.add('menu-horizontal-div-item-background');
-
-      span.append(mediaTab.menuTabName = i18n(mediaTab.name));
-
-      menuTab.append(i, span);
-
-      ripple(menuTab);
-
-      this.tabsMenu.append(menuTab);
-
-      this.mediaTabsMap.set(mediaTab.type, mediaTab);
-
-      mediaTab.menuTab = menuTab;
-    }
+    let navScrollableContext: ScrollableContextValue;
+    // the tabs are reordered and hidden by hand later on, so they are rendered once and
+    // kept as plain elements — no `For`, nothing reactive to fight with
+    const navScrollableContainer = this.navScrollableContainer = createRoot((dispose) => {
+      this.disposeNav = dispose;
+      return Tabs.MenuScrollable({
+        class: 'search-super-tabs-scrollable sticky',
+        scrollableProps: {
+          class: 'search-super-nav-scrollable',
+          contextRef: (context) => navScrollableContext = context
+        },
+        children: Tabs.Menu({
+          class: 'search-super-tabs',
+          ref: (ref) => this.tabsMenu = this.nav = ref,
+          children: this.mediaTabs.map((mediaTab) => {
+            this.mediaTabsMap.set(mediaTab.type, mediaTab);
+            return Tabs.MenuTab({
+              ripple: true,
+              ref: (ref) => mediaTab.menuTab = ref,
+              children: (mediaTab.menuTabName = i18n(mediaTab.name))
+            });
+          })
+        })
+      });
+    }) as HTMLDivElement;
 
     this.tabsContainer = document.createElement('div');
     this.tabsContainer.classList.add('search-super-tabs-container', 'tabs-container');
@@ -762,7 +755,7 @@ export default class AppSearchSuper {
       }
 
       this.onTransitionEnd();
-    }, undefined, navScrollable, this.listenerSetter);
+    }, undefined, navScrollableContext, this.listenerSetter);
 
     attachClickEvent(this.tabsContainer, (e) => {
       if(this.selection.isSelecting) {
@@ -3212,6 +3205,8 @@ export default class AppSearchSuper {
   public destroy() {
     this.cleanup();
     this.listenerSetter.removeAll();
+    this.disposeNav?.();
+    this.disposeNav = undefined;
     this.scrollable.destroy();
     this.swipeHandler?.removeListeners();
     this.selection?.cleanup();

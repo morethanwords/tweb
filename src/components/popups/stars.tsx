@@ -484,25 +484,26 @@ export function StarsTransactionsList(props: {
     if(!list.error()) void list.load();
   });
   return (
-    <Section class="popup-stars-transactions-section">
-      <Tabs.Simple
-        tab={tab}
-        onChange={(index) => {
-          setTab(index);
-          if(!lists[index].rows().length) void lists[index].load();
-        }}
-        class="popup-stars-transactions"
-        menu={[i18n('StarsTransactionsAll'), i18n('StarsTransactionsIncoming'), i18n('StarsTransactionsOutgoing')]}
-        content={lists.map((list) => (
-          <div>
-            {list.rows()}
-            <Show when={list.error()}><Button class="btn-primary btn-transparent" text="Stars.Transaction.Retry" onClick={() => void list.load()} /></Show>
-            <Show when={list.ended() && !list.rows().length}><div class="popup-stars-empty text-center">{i18n('Stars.Transaction.Empty')}</div></Show>
-            <Show when={!list.ended() && !list.error()}><Button class="btn-primary btn-transparent" text={list.loading() ? 'Loading' : 'ShowMoreOptions'} disabled={list.loading()} onClick={() => void list.load()} /></Show>
-          </div>
-        ))}
-      />
-    </Section>
+    <Tabs.Simple
+      tab={tab}
+      onChange={(index) => {
+        setTab(index);
+        if(!lists[index].rows().length) void lists[index].load();
+      }}
+      class="popup-stars-transactions"
+      menu={[i18n('StarsTransactionsAll'), i18n('StarsTransactionsIncoming'), i18n('StarsTransactionsOutgoing')]}
+      contentWrapper={(content) => (
+        <Section class="popup-stars-transactions-section">{content}</Section>
+      )}
+      content={lists.map((list) => (
+        <div>
+          {list.rows()}
+          <Show when={list.error()}><Button class="btn-primary btn-transparent" text="Stars.Transaction.Retry" onClick={() => void list.load()} /></Show>
+          <Show when={list.ended() && !list.rows().length}><div class="popup-stars-empty text-center">{i18n('Stars.Transaction.Empty')}</div></Show>
+          <Show when={!list.ended() && !list.error()}><Button class="btn-primary btn-transparent" text={list.loading() ? 'Loading' : 'ShowMoreOptions'} disabled={list.loading()} onClick={() => void list.load()} /></Show>
+        </div>
+      ))}
+    />
   );
 }
 

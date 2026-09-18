@@ -20,6 +20,7 @@ import Scrollable, {ScrollableX} from '@components/scrollable';
 import attachStickerViewerListeners from '@components/stickerViewer';
 import VisibilityIntersector from '@components/visibilityIntersector';
 import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '@components/emoticonsDropdown/category';
+import Tabs from '@components/tabs';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -131,8 +132,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     this.menuWrapper = document.createElement('div');
     this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper', 'emoticons-will-move-up');
 
-    this.menu = document.createElement('nav');
-    this.menu.className = 'menu-horizontal-div no-stripe justify-start emoticons-menu';
+    this.menu = Tabs.Menu({class: 'no-stripe justify-start emoticons-menu'}) as HTMLElement;
 
     this.menuWrapper.append(this.menu);
     this.menuScroll = new ScrollableX(this.menuWrapper);
