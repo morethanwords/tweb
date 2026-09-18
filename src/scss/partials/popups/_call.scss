@@ -339,6 +339,12 @@
   }
 
   &-button {
+    // A native <button> does NOT inherit `color` from `.call` — the UA
+    // stylesheet pins it to the `buttontext` system colour, which follows
+    // `color-scheme` and turns black in the day theme. The button sits on the
+    // call's dark gradient in every theme, so spell the colour out (the same
+    // way `.group-call-button` does with `--gc-primary-text-color`).
+    color: #fff;
     background-color: rgba(255, 255, 255, .15);
 
     &-red {

@@ -1246,6 +1246,9 @@ $btn-menu-z-index: 4;
   position: relative;
   border-radius: 50%;
   backdrop-filter: var(--blur-off, blur(25px));
+  // These are native <button>s, so the UA stylesheet paints a 2px outset
+  // ButtonBorder around every circle unless it is cleared here.
+  border: none;
 
   &-container {
     display: flex;
