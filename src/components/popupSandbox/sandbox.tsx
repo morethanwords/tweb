@@ -4,8 +4,24 @@ import {useAppSettings} from '@stores/appSettings';
 import {AppTheme} from '@config/state';
 import {setSandboxTheme} from './environment';
 import {getStories, PopupStory} from './registry';
-import {checkedStoriesCount, clearCheckedStories, isStoryChecked, setStoryChecked} from './checkedStories';
+import {
+  checkedFilter,
+  checkedStoriesCount,
+  clearCheckedStories,
+  isStoryChecked,
+  matchesCheckedFilter,
+  setCheckedFilter,
+  setStoryChecked,
+  StoryCheckedFilter
+} from './checkedStories';
 import styles from './sandbox.module.scss';
+
+/** The three ways to slice the list by what has been looked at. Order is the order they render in. */
+const CHECKED_FILTERS: Array<{id: StoryCheckedFilter, label: string}> = [
+  {id: 'all', label: 'All'},
+  {id: 'unchecked', label: 'Unchecked'},
+  {id: 'checked', label: 'Checked'}
+];
 
 export type SandboxProps = {
   onOpen: (story: PopupStory) => void,
@@ -43,15 +59,26 @@ export default function PopupSandboxPanel(props: SandboxProps) {
     ...appSettings.themes.map((theme) => theme.name)
   ]);
 
-  const filtered = createMemo(() => {
+  const matchingQuery = createMemo(() => {
     const q = query().trim().toLowerCase();
     const stories = getStories();
-    const matching = q ?
+    return q ?
       stories.filter((story) => (story.id + ' ' + story.title + ' ' + story.group).toLowerCase().includes(q)) :
       stories;
+  });
 
+  // Counted within the search, not over the whole registry: while a query is up, what a reviewer
+  // wants to know is how much of THAT is still to look at.
+  const counts = createMemo(() => {
+    const stories = matchingQuery();
+    const checked = stories.filter((story) => isStoryChecked(story.id)).length;
+    return {all: stories.length, checked, unchecked: stories.length - checked};
+  });
+
+  const filtered = createMemo(() => {
     const groups: Array<{name: string, stories: PopupStory[]}> = [];
-    for(const story of matching) {
+    for(const story of matchingQuery()) {
+      if(!matchesCheckedFilter(story.id)) continue;
       let group = groups.find((g) => g.name === story.group);
       if(!group) groups.push(group = {name: story.group, stories: []});
       group.stories.push(story);
@@ -61,6 +88,13 @@ export default function PopupSandboxPanel(props: SandboxProps) {
   });
 
   const total = createMemo(() => filtered().reduce((sum, group) => sum + group.stories.length, 0));
+
+  const emptyMessage = () => {
+    if(query().trim()) return `Nothing matches “${query()}”.`;
+    return checkedFilter() === 'checked' ?
+      'Nothing is marked as checked yet.' :
+      'Everything is checked off.';
+  };
 
   // The sandbox reloads on every edit and reopens the story from the hash, so the active one is
   // usually somewhere far down a list that came back scrolled to the top. `nearest` leaves it alone
@@ -90,9 +124,8 @@ export default function PopupSandboxPanel(props: SandboxProps) {
       <div class={styles.Header}>
         <span>
           Popup sandbox{' '}
-          <span class={styles.Count}>
-            <Show when={checkedStoriesCount()}>{checkedStoriesCount()}/</Show>{total()}
-          </span>
+          {/* How many are listed; the filter row below breaks that down into checked and not. */}
+          <span class={styles.Count}>{total()}</span>
         </span>
         <Show when={checkedStoriesCount()}>
           <button
@@ -126,6 +159,20 @@ export default function PopupSandboxPanel(props: SandboxProps) {
         value={query()}
         onInput={(e) => setQuery(e.currentTarget.value)}
       />
+
+      <div class={styles.Filter} role="group" aria-label="Show">
+        <For each={CHECKED_FILTERS}>
+          {(filter) => (
+            <button
+              class={classNames(styles.FilterButton, checkedFilter() === filter.id && styles.FilterActive)}
+              aria-pressed={checkedFilter() === filter.id}
+              onClick={() => setCheckedFilter(filter.id)}
+            >
+              {filter.label} <span class={styles.FilterCount}>{counts()[filter.id]}</span>
+            </button>
+          )}
+        </For>
+      </div>
 
       <Show when={props.canGoLive}>
         <div class={styles.Source}>
@@ -179,7 +226,7 @@ export default function PopupSandboxPanel(props: SandboxProps) {
       </Show>
 
       <div class={styles.List} ref={list}>
-        <Show when={total()} fallback={<div class={styles.Empty}>Nothing matches “{query()}”.</div>}>
+        <Show when={total()} fallback={<div class={styles.Empty}>{emptyMessage()}</div>}>
           <For each={filtered()}>
             {(group) => (
               <>

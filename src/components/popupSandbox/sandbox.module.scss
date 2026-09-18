@@ -105,6 +105,42 @@
   font-size: .9375rem;
 }
 
+// Three-way slice of the list by what has already been looked at: all / still to check / done.
+.Filter {
+  display: flex;
+  gap: .25rem;
+  margin: 0 1rem .5rem;
+}
+
+.FilterButton {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: .25rem .25rem;
+  border-radius: .375rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  color: var(--secondary-text-color);
+  font-size: .75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--primary-text-color);
+  }
+}
+
+.FilterActive {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.FilterCount {
+  opacity: .7;
+}
+
 .Source {
   display: flex;
   gap: .75rem;

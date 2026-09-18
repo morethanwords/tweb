@@ -12,3 +12,4 @@ import './gifts';
 import './misc';
 import './storySettings';
 import './authCards';
+import './calls';

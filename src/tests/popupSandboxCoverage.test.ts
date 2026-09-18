@@ -127,9 +127,11 @@ describe('popup sandbox live-readiness', () => {
         // fixture-bound too, since live mode drops those answers.
         const usesFixture = names.some((name) => new RegExp(`\\b${name}\\b`).test(story.block));
         // Inline literals count as well — a hand-built payment form is fixture data with no import.
+        // `sandbox-` is how those made-up ids are spelled, whether the literal is the id itself
+        // ('sandbox-gift-code') or carries it in a path ('https://t.me/call/sandbox-call-link').
         const looksSynthetic = usesFixture ||
           /_: '/.test(story.block) ||
-          /localhost|location\.origin|'sandbox-/.test(story.block);
+          /localhost|location\.origin|['/]sandbox-/.test(story.block);
         if(!looksSynthetic) stale.push(story.id);
       }
     }

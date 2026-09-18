@@ -84,6 +84,11 @@ Either way every `rootScope.managers` call is answered from
 - The panel's theme select switches between `system` and every shipped theme
   (`day` / `night` / `light` / `tinted`) and survives a reload — the mock
   managers discard settings writes, so it is kept in `localStorage` instead.
+- Going through 200+ stories takes more than one sitting, so each row has a
+  checkbox for "I have looked at this one" and the list can be sliced by it —
+  **All / Unchecked / Checked**, counted within whatever the search box is
+  showing. Both the marks and the chosen slice live in `localStorage`
+  (`checkedStories.ts`), so the reload an edit triggers does not restart the pass.
 - `window.popupSandbox` (`ready` / `show` / `hide` / `list` / `open` /
   `closePopups` / `calls` / `unhandled`) drives the same registry from a script;
   `calls` and `unhandled` follow the active data source.

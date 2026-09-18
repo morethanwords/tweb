@@ -272,7 +272,8 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
 
             <Section>
               <Row color="danger" clickable={onEnd} role="button" tabIndex={0}>
-                <Row.Icon icon="stop" class="danger" />
+                {/* The icon's own tile is orange, which fights the red this row is asking for. */}
+                <Row.Icon icon="stop" class="danger" noBackground />
                 <Row.Title class="danger">{i18n(endActionLabel)}</Row.Title>
               </Row>
             </Section>
