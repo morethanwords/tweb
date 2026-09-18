@@ -42,7 +42,7 @@ import createAgeVerification from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
 import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
-import {wrapEmailPattern} from '@components/popups/emailSetup';
+import {wrapEmailPattern} from '@components/emailVerification';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
 import showPasskeyPopup from '@components/popups/passkey';
 import {findExistingOrCreateCustomOption} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';

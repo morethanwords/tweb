@@ -2,6 +2,9 @@
   position: relative;
   pointer-events: none;
   display: flex;
+  // A code is always one row: the boxes give up width instead (see `.digit`).
+  // Wrapping is deliberately NOT allowed — a flex line wraps before it shrinks, so
+  // permitting it is what would push an 8-digit code onto a second row.
   gap: 0.625rem;
   container-type: inline-size;
   justify-content: center;
@@ -32,7 +35,15 @@
 }
 
 .digit {
-  width: 3rem;
+  // Sized like the other clients: the box keeps its height and gives up width as the
+  // code gets longer (tdesktop draws it 0.8 of its height, Android shrinks it outright
+  // for the types with more digits). A Fragment code is 8 digits and used to run past
+  // the card at a fixed 3rem.
+  flex: 1 1 3rem;
+  max-width: 3rem;
+  // no floor: the schema allows a code of up to 32, and a squeezed row still reads
+  // better than one that runs out of the card
+  min-width: 0;
   height: 3rem;
   border: 1px solid var(--input-search-border-color);
   border-radius: 0.75rem;
@@ -42,7 +53,6 @@
   transition-property: border-color, opacity;
   transition-duration: 0.1s, 0.3s;
   transition-timing-function: var(--transition-standard-easing);
-  flex-shrink: 0;
   position: relative;
   overflow: hidden;
 
@@ -89,7 +99,7 @@
 
 @container (width <= 320px) {
   .digit {
-    width: 2.5rem;
+    max-width: 2.5rem;
     height: 2.5rem;
   }
 }

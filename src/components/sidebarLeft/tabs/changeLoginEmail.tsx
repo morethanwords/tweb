@@ -1,4 +1,4 @@
-import {EnterCodeStep, EnterEmailStep} from '@components/popups/emailSetup';
+import {EnterCodeStep, EnterEmailStep} from '@components/emailVerification';
 import {SliderSuperTab} from '@components/slider';
 import {render} from 'solid-js/web';
 

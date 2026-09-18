@@ -52,7 +52,14 @@ let readyPromise: Promise<void>;
 let showPromise: Promise<void>;
 let closePanel: () => void;
 
+/** A surface story's teardown — the sandbox closes it wherever it closes popups. */
+let closeSurface: () => void;
+
 export function closeAllPopups() {
+  const surface = closeSurface;
+  closeSurface = undefined;
+  surface?.();
+
   for(const popup of [...(PopupElementTsx.POPUPS || [])]) {
     popup.destroy?.();
   }
@@ -106,7 +113,8 @@ export async function openStory(story: PopupStory) {
     if(location.hash !== hash) history.replaceState(null, '', hash);
   }
 
-  await story.open(ctx);
+  const teardown = await story.open(ctx);
+  if(typeof teardown === 'function') closeSurface = teardown;
 }
 
 /*
@@ -244,7 +252,7 @@ export const popupSandbox = {
   ready: () => startPopupSandbox(),
   show: showPopupSandbox,
   hide: hidePopupSandbox,
-  list: () => getStories().map(({id, title, group}) => ({id, title, group})),
+  list: () => getStories().map(({id, title, group, surface}) => ({id, title, group, surface})),
   open: async(id: string) => {
     const story = getStory(id);
     if(!story) throw new Error(`popupSandbox: unknown story "${id}"`);

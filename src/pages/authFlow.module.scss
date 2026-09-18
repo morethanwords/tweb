@@ -134,24 +134,39 @@ $corner-button-size: 2.5rem;
 
 // ----- Per-card pieces ----------------------------------------------
 
-// Inline error label under code / phone inputs.
+// Inline error label under code / phone inputs. It holds no height of its own —
+// `<AuthCardError>` wraps it in an `AutoHeight` that grows the card when there is
+// something to say (see `AuthCardError.tsx`).
 .errorLabel {
   text-align: center;
-  height: 1lh;
   font-size: 14px;
   color: var(--danger-color);
 }
 
-// "Forgot password" / "Trouble with email" link container.
-.forgotLink {
-  text-align: left;
+// A small secondary line under a card's content: "Forgot password?", the resend
+// countdown, the way back to an earlier step. Every one of them can hold a whole
+// sentence, so they wrap — and a masked email pattern has nothing to break on,
+// which is what used to carry the text past the card's edge.
+@mixin card-link-row {
   font-size: var(--font-size-14);
   line-height: var(--line-height-14);
-  margin-top: -12px;
-  margin-left: 8px;
   color: var(--secondary-text-color);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 
   a { color: var(--primary-color); }
+}
+
+// Tucked under the field it belongs to, halving the 24px `.input-wrapper` puts
+// between its children — so it only belongs on a card that uses that wrapper. A
+// card laying out its own children (the code card) has no gap to pull back into
+// and would land the row on top of what is above it: there the centred
+// `.cardLink` is the one to use.
+.forgotLink {
+  @include card-link-row;
+  text-align: start;
+  margin-top: -12px;
+  margin-inline: .5rem;
 }
 
 // Phone-number row in the AuthCode header — wrapped by <MediaHeader.Title>,
@@ -188,6 +203,33 @@ $corner-button-size: 2.5rem;
 
 .codeInputField {
   margin-top: 1.5rem;
+}
+
+// Holds whichever field the current code type needs — the digit boxes, or the
+// free-text field a secret word / phrase is typed into.
+.codeInputHost {
+  display: grid;
+  justify-items: center;
+}
+
+.wordInputField {
+  width: 100%;
+  margin-top: 1.5rem;
+  text-align: initial;
+}
+
+.wordSubmit {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+// "You can request an SMS in 0:45" → the resend link once it runs out, and the
+// login-email reset row next to it. Centred under the code, unlike `.forgotLink`,
+// which hangs off the field above it.
+.cardLink {
+  @include card-link-row;
+  text-align: center;
+  margin-top: 1rem;
 }
 
 // Numbered help list on the QR card — wrapped by <MediaHeader.Subtitle>.

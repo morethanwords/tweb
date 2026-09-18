@@ -284,6 +284,9 @@ declare global {
     | 'USERNAME_OCCUPIED'
     | 'MESSAGE_EDIT_FORBIDDEN'
     | 'MESSAGE_ID_INVALID'
+    | 'PHONE_CODE_EMPTY'
+    | 'PHONE_CODE_EXPIRED'
+    | 'PHONE_CODE_INVALID'
   ;
 
   type ErrorType = LocalErrorType | ServerErrorType;

@@ -9,7 +9,7 @@ import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import focusWhenConnected from '@helpers/dom/focusWhenConnected';
+import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import htmlToSpan from '@helpers/dom/htmlToSpan';
 import replaceContent from '@helpers/dom/replaceContent';
 import formatDuration from '@helpers/formatDuration';
@@ -208,7 +208,7 @@ export default function PasswordCard(_props: {spec: Spec}) {
 
     getState();
 
-    cancelFocus = focusWhenConnected(passwordInput);
+    cancelFocus = focusWhenSettled(passwordInput);
   });
 
   onCleanup(() => {

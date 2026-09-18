@@ -9,7 +9,7 @@ import TelInputField from '@components/telInputField';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import App from '@config/app';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import focusWhenConnected from '@helpers/dom/focusWhenConnected';
+import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import replaceContent from '@helpers/dom/replaceContent';
 import {HelpCountry, HelpCountryCode} from '@layer';
@@ -22,6 +22,7 @@ import {TrueDcId} from '@types';
 
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
+import {continueLogin} from '@/pages/continueLogin';
 import styles from '@/pages/authFlow.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -124,20 +125,9 @@ export default function SignInCard(_props: {spec: Spec}) {
         _: 'codeSettings',
         pFlags: {}
       }
-    }).then(async(code) => {
-      if(code._ === 'auth.sentCodeSuccess') {
-        const {authorization} = code;
-        if(authorization._ === 'auth.authorization') {
-          await managers.apiManager.setUser(authorization.user);
-          toIm();
-          return;
-        }
-      }
-
-      navigate({
-        name: 'authCode',
-        payload: Object.assign(code as any, {phone_number}) // sentCode + phone_number
-      });
+    }).then((code) => {
+      // the very first send has no previous `phone_code_hash` to sign up with
+      return continueLogin(code, {managers, navigate, toIm, phone_number});
     }).catch((err) => {
       setSubmitting(false);
 
@@ -221,7 +211,7 @@ export default function SignInCard(_props: {spec: Spec}) {
     managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
 
     if(!IS_TOUCH_SUPPORTED) {
-      cancelFocus = focusWhenConnected(telEl, () => !cancelled);
+      cancelFocus = focusWhenSettled(telEl, () => !cancelled);
     }
 
     tryAgain();

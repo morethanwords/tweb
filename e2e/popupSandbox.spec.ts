@@ -13,7 +13,7 @@ import {expect, Page, test} from '@playwright/test';
  * covered by `src/tests/popupSandboxLiveManagers.test.ts` instead.
  */
 
-type Story = {id: string, title: string, group: string};
+type Story = {id: string, title: string, group: string, surface?: string};
 
 declare global {
   interface Window {
@@ -216,9 +216,11 @@ test('every popup story opens and becomes visible', async({page}) => {
     if(opened) {
       failed.push(`${story.id}: threw while opening — ${opened}`);
     } else {
+      // a story that is not a popup (the sign-in cards own the screen) names its own proof
+      const shown = story.surface || '.popup.active';
       try {
         await expect.poll(
-          () => page.evaluate(() => document.querySelectorAll('.popup.active').length),
+          () => page.evaluate((selector) => document.querySelectorAll(selector).length, shown),
           {timeout: SHOWN_TIMEOUT}
         ).toBeGreaterThan(0);
       } catch{

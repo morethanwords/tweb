@@ -2,7 +2,7 @@ import {Accessor, Signal, createContext, createRoot, createSignal, useContext} f
 
 import rootScope from '@lib/rootScope';
 import {AuthState} from '@types';
-import {AuthSentCode} from '@layer';
+import {AccountSentEmailCode, AuthSentCode} from '@layer';
 
 /**
  * Centralised auth-flow router & shared context.
@@ -25,6 +25,8 @@ import {AuthSentCode} from '@layer';
 export type CardName =
   | 'signIn'
   | 'authCode'
+  | 'emailSetup'
+  | 'emailSetupCode'
   | 'password'
   | 'signUp'
   | 'emailRecover'
@@ -34,6 +36,12 @@ export type CardName =
 export type CardPayloadMap = {
   signIn: void;
   authCode: AuthSentCode.authSentCode & {phone_number?: string};
+  emailSetup: {phone_number: string, phone_code_hash: string};
+  emailSetupCode: {
+    phone_number: string,
+    phone_code_hash: string,
+    sentCode: AccountSentEmailCode.accountSentEmailCode
+  };
   password: void;
   signUp: {phone_number: string, phone_code_hash: string};
   emailRecover: {email_pattern: string};

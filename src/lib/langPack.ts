@@ -403,13 +403,17 @@ namespace I18n {
             a = a.firstChild as any;
           }
 
-          if(typeof(a) !== 'string') {
+          // A string whose link carries its own placeholder ("[x](%1$@)", the shape the macOS
+          // packs use) makes the index scan above start past the argument the anchor was passed
+          // in, so there is nothing here to hang the link on. Render the label rather than
+          // throwing: one malformed string used to take down everything around it.
+          if(a && typeof(a) !== 'string') {
             a.textContent = ''; // reset content
           }
         }
 
         const formatted = superFormatter(text, args, indexHolder) as any;
-        if(typeof(a) === 'string') {
+        if(!a || typeof(a) === 'string') {
           out.push(...formatted);
         } else {
           a.append(...formatted);

@@ -1,0 +1,75 @@
+@use "../scss/shared" as *;
+
+// Shared by the email-setup popup, the "change login email" settings tab and the
+// auth-flow cards — every surface that asks for an email and then for the code
+// sent to it. Only the two steps' own layout lives here; the popup / tab / card
+// shell around them keeps its own module.
+//
+// The default is the popup's own look; `.onCard` (the `card` variant) drops the
+// bits of it that would stand out inside the sign-in shell, where the design
+// system's button radius and the cards' own rhythm already rule.
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.input {
+  margin-top: 2rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.footer {
+  margin-top: auto;
+  position: relative;
+  width: 100%;
+  height: 3rem;
+}
+
+.button {
+  border-radius: 1.5rem;
+  text-transform: uppercase;
+  height: 3rem;
+
+  &Container {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.secondaryButton {
+  margin-top: .5rem;
+}
+
+.onCard {
+  .input {
+    margin-top: 1.5rem;
+  }
+
+  // The popup is a fixed-height sheet, so its footer is pushed to the bottom with
+  // `margin-top: auto`; a card is as tall as its content, where `auto` collapses to
+  // nothing and the button ends up flush against the field. State the gap the other
+  // auth cards keep between the two.
+  .footer {
+    margin-top: 1.5rem;
+  }
+
+  .button {
+    border-radius: $button-border-radius;
+  }
+}
+
+.error {
+  color: var(--danger-color);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  text-wrap: balance;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}

@@ -19,10 +19,16 @@ export type PopupStory = {
    */
   managers?: ManagerHandlers | ((ctx: PopupStoryContext) => ManagerHandlers),
   /**
+   * A story that shows something other than a popup — the auth cards own the whole screen —
+   * names a selector that proves it is up. The sweep waits for that instead of `.popup.active`,
+   * and such a story returns from `open()` how to take it down again.
+   */
+  surface?: string,
+  /**
    * `ctx` hands out the peers, messages and gifts the popup needs — fixtures, or the signed-in
    * session's own data when the sandbox runs live. Never reach for a fixture directly here.
    */
-  open: (ctx: PopupStoryContext) => MaybePromise<void>,
+  open: (ctx: PopupStoryContext) => MaybePromise<void | (() => void)>,
   /** No live equivalent exists (a payment form, a gift code): always built from fixtures. */
   fixtureOnly?: boolean
 };

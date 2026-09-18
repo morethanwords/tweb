@@ -75,6 +75,23 @@ function authStateToCardSpec(authState: MountAuthFlowState): CardSpec {
       return {name: 'signQR'};
     case 'authStateAuthCode':
       return {name: 'authCode', payload: authState.sentCode};
+    case 'authStateEmailSetup':
+      return {
+        name: 'emailSetup',
+        payload: {
+          phone_number: authState.phone_number,
+          phone_code_hash: authState.phone_code_hash
+        }
+      };
+    case 'authStateEmailSetupCode':
+      return {
+        name: 'emailSetupCode',
+        payload: {
+          phone_number: authState.phone_number,
+          phone_code_hash: authState.phone_code_hash,
+          sentCode: authState.sentCode
+        }
+      };
     case 'authStatePassword':
       return {name: 'password'};
     case 'authStateSignUp':

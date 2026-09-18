@@ -12,7 +12,7 @@ import safeAssign from '@helpers/object/safeAssign';
 import noop from '@helpers/noop';
 import ctx from '@environment/ctx';
 import SliderSuperTab from '@components/sliderTab';
-import {wrapEmailPattern} from '@components/popups/emailSetup';
+import {wrapEmailPattern} from '@components/emailVerification';
 import {AppPrivacyAndSecurityTab, AppTwoStepVerificationEmailConfirmationTab} from '@components/solidJsTabs/tabs';
 
 export class ForgotPasswordLink {

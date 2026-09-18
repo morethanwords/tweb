@@ -11,3 +11,4 @@ import './transactionSubscriptions';
 import './gifts';
 import './misc';
 import './storySettings';
+import './authCards';
