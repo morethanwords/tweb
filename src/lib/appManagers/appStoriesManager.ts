@@ -260,6 +260,25 @@ export default class AppStoriesManager extends AppManager {
     this.rootScope.dispatchEvent('stories_position', {peerId: cache.peerId, position});
   }
 
+  /**
+   * A snapshot of where every known peer sits in the lists.
+   *
+   * `stories_position` is only broadcast when a position CHANGES, so a tab that attached to an
+   * already-running shared worker — a reload, a second tab — never hears about the positions
+   * computed before it, and would sort its list by the fallback instead. This is how it catches up.
+   */
+  public getListPositions() {
+    const positions: {[peerId: PeerId]: StoriesListPosition} = {};
+    for(const peerId in this.cache) {
+      const position = this.cache[peerId].position;
+      if(position) {
+        positions[peerId as any as PeerId] = position;
+      }
+    }
+
+    return positions;
+  }
+
   public getPeerStoriesCache(peerId: PeerId, create = true): StoriesPeerCache {
     return this.cache[peerId] ??= create ? {
       peerId,
@@ -390,6 +409,12 @@ export default class AppStoriesManager extends AppManager {
       };
 
       this.appMessagesManager.saveMessageMedia(storyItem, 'media', mediaContext);
+      // the track the story was posted with — saved like any other document so the viewer can put
+      // it in the profile playlist or forward it, file_reference refreshes included
+      if(storyItem.music) {
+        storyItem.music = this.appDocsManager.saveDoc(storyItem.music, mediaContext);
+      }
+
       const mediaAreas = storyItem.media_areas;
       mediaAreas?.forEach((mediaArea) => {
         (mediaArea as MediaArea.mediaAreaChannelPost).msg_id =

@@ -103,6 +103,11 @@ import {useAppConfig} from '@stores/appState';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 import {handleShareStory} from './share';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
+import pillStyles from '@components/stories/storyPill.module.scss';
+import StoryWeatherArea, {toggleTemperatureUnit} from '@components/stories/weatherArea';
+import StoryMusicPanel, {STORY_MUSIC_PANEL_CLASS} from '@components/stories/musicPanel';
+import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
+import type {MyDocument} from '@appManagers/appDocsManager';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -615,6 +620,7 @@ const StoryMediaArea = (props: {
   const isReaction = createMemo(() => props.mediaArea._ === 'mediaAreaSuggestedReaction');
   const isPost = createMemo(() => props.mediaArea._ === 'mediaAreaChannelPost');
   const isLink = createMemo(() => props.mediaArea._ === 'mediaAreaUrl');
+  const isWeather = createMemo(() => props.mediaArea._ === 'mediaAreaWeather');
 
   const onLocationClick = async() => {
     const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
@@ -844,6 +850,17 @@ const StoryMediaArea = (props: {
   } else if(isLink()) {
     onTypeClick = onLinkClick;
     props.setReady(true);
+  } else if(isWeather()) {
+    onTypeClick = toggleTemperatureUnit;
+    setChildren(
+      <StoryWeatherArea
+        mediaArea={props.mediaArea as MediaArea.mediaAreaWeather}
+        width={w}
+        height={h}
+        storyHeight={stories.height}
+      />
+    );
+    props.setReady(true);
   } else {
     props.setReady(true);
   }
@@ -861,7 +878,8 @@ const StoryMediaArea = (props: {
         ] : []),
         ...(isReaction() ? [
           styles.ViewerStoryMediaAreaReaction
-        ] : [])
+        ] : []),
+        isWeather() && styles.ViewerStoryMediaAreaWeather
       )}
       style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
       onClick={onClick}
@@ -1028,6 +1046,9 @@ const Stories = (props: {
   const [noSound, setNoSound] = createSignal(false);
   const [sliding, setSliding] = props.transitionSignal;
   const [privacyType, setPrivacyType] = createSignal<StoryPrivacyType>();
+  // The story's own track, shown as a pill under the caption — set from setStoryMeta so it changes
+  // with the rest of the story's chrome, not the moment the index moves.
+  const [music, setMusic] = createSignal<MyDocument>();
   const [mediaAreas, setMediaAreas] = createSignal<JSX.Element>();
   const [stackedAvatars, setStackedAvatars] = createSignal<StackedAvatars>();
   const [tooltipCloseCallback, setTooltipCloseCallback] = createSignal<VoidFunction>();
@@ -1292,7 +1313,12 @@ const Stories = (props: {
     const isPublic = !!(story as StoryItem.storyItem).pFlags.public;
     const peer = apiManagerProxy.getPeer(props.state.peerId);
     const usernames = getPeerActiveUsernames(peer);
+    // only a track that can be named gets a pill — a nameless document would render an empty one.
+    // `unwrap` like the media above: the panel hands this document to a manager, and a Solid store
+    // proxy cannot be structure-cloned across the worker port
+    const musicDoc = unwrap((story as StoryItem.storyItem).music) as MyDocument;
 
+    setMusic(musicDoc && getAudioTitles(musicDoc) ? musicDoc : undefined);
     setPrivacyType(privacyType);
     setDate({timestamp: date, edited});
     setNoSound(noSound);
@@ -1611,7 +1637,7 @@ const Stories = (props: {
 
           if(fwdFromName || mediaAreaChannelPost) {
             const container = document.createElement('div');
-            container.classList.add(styles.ViewerStoryRepostSmall);
+            container.classList.add(pillStyles.Pill);
             container.append(title);
             return container;
           }
@@ -1959,7 +1985,8 @@ const Stories = (props: {
         'scrollable-y',
         'no-scrollbar',
         styles.ViewerStoryCaption,
-        repost() && caption() && styles.hasReply
+        repost() && caption() && styles.hasReply,
+        music() && styles.hasMusic
       )}
       onScroll={onCaptionScroll}
     >
@@ -2716,7 +2743,7 @@ const Stories = (props: {
           {contentItem}
         </div>
         <div class={styles.hideOnSmall}>
-          <div class={classNames(styles.ViewerStoryShadow, caption() && styles.hasCaption)}></div>
+          <div class={classNames(styles.ViewerStoryShadow, (caption() || music()) && styles.hasCaption)}></div>
           <div class={styles.ViewerStorySlides}>
             {slides}
           </div>
@@ -2761,16 +2788,25 @@ const Stories = (props: {
             </div>
           </div>
           {(caption() || repost()) && captionContainer}
-          {mediaAreas() && (
-            <div
-              class={styles.ViewerStoryMediaAreas}
-              style={captionOpacity() && {'opacity': 1 - captionOpacity() * 0.5, 'z-index': 0}}
-            >
-              {mediaAreas()}
-            </div>
-          )}
+          {/* outside the caption's scroller so a long caption can't push it out of sight; the
+            caption reserves the room for it instead. keyed: the panel binds its menu to one
+            element, so a different track has to rebuild it */}
+          <Show keyed when={music()}>
+            {(doc) => <StoryMusicPanel doc={doc} menuOptions={topMenuOptions} />}
+          </Show>
           {reactionsMenu()?.widthContainer}
         </div>
+        {/* Media areas are part of the story, not of the interface drawn over it — holding to
+          pause fades the interface away and has to leave them where they are (iOS keeps them in
+          the content view for the same reason), so they live outside `hideOnSmall`. */}
+        {mediaAreas() && (
+          <div
+            class={styles.ViewerStoryMediaAreas}
+            style={captionOpacity() && {'opacity': 1 - captionOpacity() * 0.5, 'z-index': 0}}
+          >
+            {mediaAreas()}
+          </div>
+        )}
         {!props.isFull() && (
           <div class={styles.ViewerStoryInfo}>
             {avatarInfo.node}
@@ -3068,6 +3104,7 @@ export default function StoriesViewer(props: {
         !findUpClassName(e.target, styles.ViewerStoryMediaArea) &&
         !findUpClassName(e.target, styles.ViewerStoryPrivacy) &&
         !findUpClassName(e.target, styles.ViewerStoryCaptionText) &&
+        !findUpClassName(e.target, STORY_MUSIC_PANEL_CLASS) &&
         !findUpClassName(e.target, styles.ViewerStoryReactions) &&
         !!findUpClassName(e.target, styles.ViewerStory) &&
         !findUpClassName(e.target, styles.small) &&

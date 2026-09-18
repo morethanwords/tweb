@@ -1608,6 +1608,8 @@ const lang = {
   'SavedMusic.Added': 'Audio added to your Profile.',
   'SavedMusic.Removed': 'Audio removed from your Profile.',
   'SavedMusic.RemoveConfirm': 'Do you want to remove this file from your profile?',
+  'StoryAudioAddToSavedMessages': 'Add to Saved Messages',
+  'StoryAudioAddToSavedMessagesToast': 'Saved in **Saved Messages**.',
   'MusicSearch.Profile': 'Profile Music',
   'MusicSearch.Global': 'Global Search',
   'SharedVoiceTab2': 'Voice',

@@ -4,7 +4,8 @@ import {formatDate} from '@helpers/date';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {getRestrictionReason} from '@helpers/restrictions';
 import limitSymbols from '@helpers/string/limitSymbols';
-import {Message, DocumentAttribute, DraftMessage, MessageMedia, Document, Photo} from '@layer';
+import {Message, DraftMessage, MessageMedia, Document, Photo} from '@layer';
+import getAudioAttribute from '@appManagers/utils/docs/getAudioAttribute';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {MyDraftMessage} from '@appManagers/appDraftsManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
@@ -226,8 +227,9 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
 
             options.text = '';
           } else if(document.type === 'audio') {
-            const attribute = document.attributes.find((attribute) => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
-            const f = '🎵' + ' ' + (attribute ? [attribute.title, attribute.performer].filter(Boolean).join(' - ') : document.file_name);
+            const attribute = getAudioAttribute(document);
+            const names = [attribute?.title, attribute?.performer].filter(Boolean);
+            const f = '🎵' + ' ' + (names.length ? names.join(' - ') : document.file_name);
             addPart(undefined, plain ? f : wrapEmojiText(f));
           } else {
             addPart(undefined, plain ? document.file_name : wrapEmojiText(document.file_name));

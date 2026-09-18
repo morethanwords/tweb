@@ -1,0 +1,44 @@
+// The weather widget is a pill of its own inside the media area: the area gives it its height and
+// its centre, the pill's width comes from the temperature it renders.
+.Pill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  direction: ltr;
+  width: max-content;
+  padding-left: calc(var(--weather-size) * .203);
+  padding-right: calc(var(--weather-size) * .2);
+  border-radius: var(--weather-radius);
+  background-color: var(--weather-color);
+  color: var(--weather-text-color);
+  font-size: calc(var(--weather-size) * .69);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  // iOS kerns the temperature by -(height / 38) so the degree sign sits closer to the number
+  letter-spacing: calc(var(--weather-size) * -.0263);
+  user-select: none;
+}
+
+.Emoji {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(var(--weather-size) * .71);
+  height: calc(var(--weather-size) * .71);
+  // the gap iOS leaves between the emoji and the temperature
+  margin-right: calc(var(--weather-size) * .06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--weather-size) * .58);
+
+  :global(.emoji) {
+    width: 1em;
+    height: 1em;
+  }
+}

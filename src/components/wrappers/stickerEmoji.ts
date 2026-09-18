@@ -4,8 +4,7 @@ import {Modify} from '@types';
 
 export default async function wrapStickerEmoji(options: Modify<Parameters<typeof wrapSticker>[0], {
   div: HTMLElement,
-  doc?: never,
-  loop?: never
+  doc?: never
 }>) {
   const {
     emoji,

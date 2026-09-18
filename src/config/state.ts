@@ -58,6 +58,9 @@ export type AutoDownloadPeerTypeSettings = {
 export type StateSettings = {
   messagesTextSize: number,
   distanceUnit: 'kilometers' | 'miles',
+  // Only written once the reader flips a story's weather widget; until then the unit follows the
+  // locale, so there is nothing to store and no settings row to show (same as tdesktop).
+  temperatureUnit?: 'celsius' | 'fahrenheit',
   sendShortcut: 'enter' | 'ctrlEnter',
   animationsEnabled?: boolean, // ! DEPRECATED
   autoDownload: {

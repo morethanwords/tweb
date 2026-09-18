@@ -196,6 +196,15 @@ $color-inactive: rgba(255, 255, 255, .5);
       opacity: .5;
     }
 
+    // Media areas sit outside `hideOnSmall` so that holding to pause leaves them on the story —
+    // but a story shrunk down to a neighbour's preview still drops them with the rest of it.
+    // `!important` because the caption's scroll dims them from an inline style — and for the same
+    // reason this must NOT get an opacity transition, or that scroll-tracking dimming would lag.
+    &Container.small &MediaAreas {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+
     &Container.small &Info {
       opacity: 1;
 
@@ -548,6 +557,18 @@ $color-inactive: rgba(255, 255, 255, .5);
         padding-top: 214px;
       }
 
+      // the music pill is pinned under the caption: end the scroller above it (so no line ever
+      // runs behind the pill) and take the same 2rem off the top, keeping the strip of caption
+      // on show exactly the size it is without a track
+      &.hasMusic {
+        bottom: 2rem;
+        padding-top: 232px;
+      }
+
+      &.hasReply.hasMusic {
+        padding-top: 182px;
+      }
+
       &Text {
         width: 100%;
         height: 100%;
@@ -576,6 +597,13 @@ $color-inactive: rgba(255, 255, 255, .5);
       border-radius: 6px;
       z-index: 1;
       pointer-events: all;
+
+      // the weather pill takes its width from the temperature it renders, so it can be wider than
+      // the area the sender drew — let it out, and drop the rounding it sets for itself
+      &Weather {
+        overflow: visible;
+        border-radius: 0;
+      }
 
       &Reaction {
         display: flex;
@@ -704,23 +732,11 @@ $color-inactive: rgba(255, 255, 255, .5);
       }
     }
 
+    // the small variant is the shared story pill — see storyPill.module.scss
     &Repost {
       margin-bottom: .25rem;
       width: fit-content;
       max-width: 100%;
-
-      &Small {
-        height: 1.5rem;
-        line-height: 1.5rem;
-        border-radius: 1rem;
-        padding: 0 .5rem;
-        background-color: rgba(0, 0, 0, .2);
-        font-size: var(--font-size-14);
-        font-weight: var(--font-weight-bold);
-        cursor: pointer;
-
-        @include text-overflow(true);
-      }
     }
 
     :global {

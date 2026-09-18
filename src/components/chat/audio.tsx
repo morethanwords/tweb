@@ -5,7 +5,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import PeerTitle from '@components/peerTitle';
 import {i18n} from '@lib/langPack';
 import {formatFullSentTime} from '@helpers/date';
-import {DocumentAttribute} from '@layer';
+import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import MediaProgressLine from '@components/mediaProgressLine';
 import VolumeSelector from '@components/volumeSelector';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -239,9 +239,9 @@ export default function createChatAudio(
       titleVal = new PeerTitle({peerId: message.fromId, fromName: getFwdFromName(message.fwd_from)}).element;
       subtitleVal = formatFullSentTime(message.date);
     } else {
-      const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
-      titleVal = wrapEmojiText(audioAttribute?.title ?? doc.file_name);
-      subtitleVal = audioAttribute?.performer ? wrapEmojiText(audioAttribute.performer) : i18n('AudioUnknownArtist');
+      const titles = getAudioTitles(doc);
+      titleVal = wrapEmojiText(titles?.title);
+      subtitleVal = titles?.performer ? wrapEmojiText(titles.performer) : i18n('AudioUnknownArtist');
     }
 
     // Slotted media (e.g. poll description / explanation audio) is played in

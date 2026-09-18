@@ -6,7 +6,8 @@ import {IS_APPLE, IS_SAFARI} from '@environment/userAgent';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {getAppWindow} from '@helpers/appWindow';
 import simulateEvent from '@helpers/dom/dispatchEvent';
-import {Document, DocumentAttribute, Message, PhotoSize} from '@layer';
+import {Document, Message, PhotoSize} from '@layer';
+import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import I18n from '@lib/langPack';
 import SearchListLoader from '@helpers/searchListLoader';
@@ -742,9 +743,9 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     if(!isVoice) {
-      const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
-      title = attribute?.title ?? doc.file_name;
-      artist = attribute?.performer;
+      const titles = getAudioTitles(doc);
+      title = titles?.title;
+      artist = titles?.performer;
     }
 
     if(!artwork.length) {

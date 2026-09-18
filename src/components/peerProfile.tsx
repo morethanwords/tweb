@@ -6,6 +6,7 @@ import getLinkedCommunityId from '@appManagers/utils/communities/getLinkedCommun
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {useChat, usePeer} from '@stores/peers';
 import {BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Photo, StoryItem, Document, MessageMedia, Timezone, User, UserFull, UserStatus} from '@layer';
+import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import {useFullPeer} from '@stores/fullPeers';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -610,8 +611,7 @@ PeerProfile.PinnedMusic = () => {
   };
 
   const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined);
-  const audioAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeAudio'));
-  const filenameAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeFilename'));
+  const titles = createMemo(() => getAudioTitles(music()));
 
   return (
     <div class="profile-music-container">
@@ -622,18 +622,18 @@ PeerProfile.PinnedMusic = () => {
             reactive expression handing Solid a fragment with a sibling beside it — the dash below —
             appends the new value next to the old one instead of replacing it, so the row read as two
             track names run together the moment the top track changed */}
-          <Show when={audioAttr()?.performer}>
+          <Show when={titles()?.performer}>
             {(performer) => (
               <span class="profile-music-performer text-overflow-no-wrap">
                 <EmojiTextTsx text={performer()} />
               </span>
             )}
           </Show>
-          <span class={`profile-music-title text-overflow-no-wrap ${audioAttr()?.performer ? '' : 'only-title'}`}>
-            <Show when={audioAttr()?.performer}>
+          <span class={`profile-music-title text-overflow-no-wrap ${titles()?.performer ? '' : 'only-title'}`}>
+            <Show when={titles()?.performer}>
               &nbsp;-&nbsp;
             </Show>
-            <EmojiTextTsx text={audioAttr()?.title || filenameAttr()?.file_name || ''} />
+            <EmojiTextTsx text={titles()?.title || ''} />
           </span>
           <IconTsx icon="next" />
         </div>

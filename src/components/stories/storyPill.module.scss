@@ -1,0 +1,24 @@
+@use "../../scss/mixins" as *;
+
+// The little rounded label a story lays over its media in the caption gutter. Two things wear it —
+// the repost source and the track the story was posted with — and they stack right on top of each
+// other, so only one of them may decide what it looks like. What goes INSIDE is each one's own
+// business: the repost is a single line of text, the track is an icon and two-tone text.
+.Pill {
+  height: 1.5rem;
+  line-height: 1.5rem;
+  border-radius: 1rem;
+  padding: 0 .5rem;
+  background-color: rgba(0, 0, 0, .2);
+  color: #fff;
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  text-shadow: none;
+
+  @include text-overflow(true);
+
+  @include hover-global() {
+    background-color: rgba(0, 0, 0, .35);
+  }
+}

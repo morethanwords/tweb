@@ -115,6 +115,26 @@ const createPositions = (positions: Map<PeerId, StoriesListPosition> = new Map()
 const {positions: globalPositions, onPosition} = createPositions();
 rootScope.addEventListener('stories_position', onPosition);
 
+/**
+ * `stories_position` only fires when a position CHANGES, so a tab that attached to an
+ * already-running shared worker (a reload, a second tab) never learns the positions computed
+ * before it — every peer would then fall back to the sort key below and land in arrival order,
+ * with "My Story" wherever the server happened to put it. Read the worker's snapshot once, and
+ * never over an event that already came in: that one is newer than the snapshot.
+ */
+let globalPositionsPromise: Promise<void>;
+const loadGlobalPositions = () => globalPositionsPromise ??= rootScope.managers.appStoriesManager.getListPositions()
+.then((positions) => {
+  for(const peerId in positions) {
+    const id = +peerId as PeerId;
+    if(!globalPositions.has(id)) {
+      onPosition({peerId: id, position: positions[id]});
+    }
+  }
+}, () => {
+  globalPositionsPromise = undefined; // a failed read must not leave the list sorted by the fallback forever
+});
+
 export const createStoriesStore = (props: {
   peers?: StoriesContextPeerState[],
   index?: number,
@@ -219,6 +239,16 @@ export const createStoriesStore = (props: {
   const {positions, onPosition} = createPositions(new Map(globalPositions));
   const postponedPositions: Array<BroadcastEvents['stories_position']> = [];
 
+  // This store copied `globalPositions` when it was created, which for the sidebar's list is before
+  // the snapshot above has landed — take whatever it added, still without touching a live event.
+  const syncPositions = () => loadGlobalPositions().then(() => {
+    globalPositions.forEach((position, peerId) => {
+      if(!positions.has(peerId)) {
+        positions.set(peerId, position);
+      }
+    });
+  });
+
   const getPeerInitialIndex = (peer: StoriesContextPeerState): number => {
     const maxReadId = peer.maxReadId || 0;
     const unreadIndex = peer.stories.findIndex((storyItem) => storyItem.id > maxReadId);
@@ -315,11 +345,16 @@ export const createStoriesStore = (props: {
         });
       }
 
-      return rootScope.managers.appStoriesManager.getAllStories(
-        loadState ? true : undefined,
-        loadState,
-        archive
-      ).then((storiesAllStories) => {
+      // the positions come along for the ride: `addPeerStories` sorts by them, so they have to be
+      // in hand before the first peer is placed, not whenever the worker next happens to move one
+      return Promise.all([
+        rootScope.managers.appStoriesManager.getAllStories(
+          loadState ? true : undefined,
+          loadState,
+          archive
+        ),
+        syncPositions()
+      ]).then(([storiesAllStories]) => {
         const previousLoadState = loadState;
         loadState = storiesAllStories.state;
         // * now that the next page is actually fetched, a server that keeps `has_more` on an
@@ -629,6 +664,9 @@ export const createStoriesStore = (props: {
 
       insertInDescendSortedArray(peers, peer, (peer) => {
         const position = positions.get(peer.peerId);
+        // 0 sinks a peer to the bottom of the list. With the positions read up front this only
+        // covers a peer whose story arrived before its position did, and the `stories_position`
+        // that follows puts it back — it must never be how a whole list gets ordered.
         return position?.index ?? 0;
       }, previousPeerIdx);
     }

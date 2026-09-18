@@ -1,0 +1,46 @@
+@use "../../scss/mixins" as *;
+
+// The track a story was posted with — a pill under the caption, below the text and the repost
+// header (iOS' music panel, Android's caption "bottom panel"). Performer before title, the order
+// tweb's own profile playlist row and Android's panel use.
+//
+// The pill's own look comes from the shared `storyPill` class; everything here is about what sits
+// inside it, which is the one thing the repost pill above it does differently.
+.Panel {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  user-select: none;
+}
+
+// pinned to the story's bottom-left, on the same gutter the caption uses
+.Wrapper {
+  position: absolute;
+  bottom: .5rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 2;
+  display: flex;
+}
+
+.Icon {
+  flex: 0 0 auto;
+  margin-right: .375rem;
+  font-size: 1rem;
+}
+
+.Text {
+  @include text-overflow();
+
+  min-width: 0;
+}
+
+// the performer keeps the pill's own weight; only the track name steps back from it
+.Title {
+  font-weight: var(--font-weight-normal);
+}
+
+.Separator {
+  opacity: .28;
+}

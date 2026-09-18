@@ -1,7 +1,9 @@
 import type {MyDocument} from '@appManagers/appDocsManager';
 import ProgressivePreloader from '@components/preloader';
 import appMediaPlaybackController, {MediaItem, MediaListLoaderFactory, MediaSearchContext} from '@components/appMediaPlaybackController';
-import {DocumentAttribute, Message} from '@layer';
+import {Message} from '@layer';
+import getAudioAttribute from '@appManagers/utils/docs/getAudioAttribute';
+import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import mediaSizes from '@helpers/mediaSizes';
 import {IS_SAFARI} from '@environment/userAgent';
 import rootScope from '@lib/rootScope';
@@ -234,7 +236,7 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
     setState('isOut', true);
   }
 
-  let waveform = (doc.attributes.find((attribute) => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio)?.waveform || new Uint8Array([]);
+  let waveform = getAudioAttribute(doc)?.waveform || new Uint8Array([]);
   waveform = decodeWaveform(waveform.slice(0, 63));
 
   const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
@@ -384,10 +386,10 @@ async function wrapAudio(ctx: AudioRowContext): Promise<WrappedAudio> {
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('audio-description');
 
-  const audioAttribute = doc.attributes?.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
+  const titles = getAudioTitles(doc);
 
   // the performer rides in the title next to the track name, so the description is what is left
-  const performer = !isVoice && audioAttribute?.performer;
+  const performer = !isVoice && titles?.performer;
 
   // the duration sits in front of the description, so the description opens with a separator
   if(!isVoice) {
@@ -410,7 +412,7 @@ async function wrapAudio(ctx: AudioRowContext): Promise<WrappedAudio> {
   if(isVoice) {
     middleEllipsisEl.append(await wrapSenderToPeer(message));
   } else {
-    setInnerHTML(middleEllipsisEl, wrapEmojiText(audioAttribute?.title ?? doc.file_name));
+    setInnerHTML(middleEllipsisEl, wrapEmojiText(titles?.title));
   }
 
   const sentTime = options.showSender && wrapSentTime(message);
