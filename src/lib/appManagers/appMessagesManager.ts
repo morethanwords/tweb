@@ -74,6 +74,7 @@ import getDialogKey from '@appManagers/utils/dialogs/getDialogKey';
 import getHistoryStorageKey, {getSearchStorageFilterKey} from '@appManagers/utils/messages/getHistoryStorageKey';
 import {ApiLimitType} from '@appManagers/apiManagerMethods';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
+import getPeerChannelId from '@appManagers/utils/peers/getPeerChannelId';
 import filterUnique from '@helpers/array/filterUnique';
 import getSearchType from '@appManagers/utils/messages/getSearchType';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
@@ -4315,8 +4316,10 @@ export class AppMessagesManager extends AppManager {
     }
 
     const myId = this.appPeersManager.peerId;
-    const fromId = originalMessage.fromId;
     const fromPeerId = originalMessage.peerId;
+    const isBroadcast = this.appPeersManager.isBroadcast(fromPeerId);
+    // * a signed channel post belongs to the channel, not to the user who signed it
+    const fromId = isBroadcast && originalMessage.fromId.isUser() ? fromPeerId : originalMessage.fromId;
     const originalFwdFrom = originalMessage.fwd_from;
     if(
       fromId === myId &&
@@ -4327,9 +4330,14 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    // * saveMessage subtracts the server time offset from a forward header's dates, so the already
+    // * adjusted date copied here has to be compensated for it first — otherwise it is subtracted twice.
+    // * A reply header is not normalized there, so its date is copied as it is.
+    const dateOffset = isReply ? 0 : this.timeManager.getServerTimeOffset();
+
     const fwdHeader: MessageFwdHeader.messageFwdHeader = {
       _: 'messageFwdHeader',
-      date: originalMessage.date,
+      date: originalMessage.date + dateOffset,
       pFlags: {}
     };
 
@@ -4358,7 +4366,7 @@ export class AppMessagesManager extends AppManager {
         fwdHeader.from_id = this.appPeersManager.getOutputPeer(fromId);
       }
 
-      if(this.appPeersManager.isBroadcast(fromPeerId)) {
+      if(isBroadcast) {
         fwdHeader.channel_post = originalMessage.id;
       }
     }
@@ -4378,12 +4386,12 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
-      if(originalMessage.pFlags.out && !this.appPeersManager.isBroadcast(fromPeerId)) {
+      if(originalMessage.pFlags.out && !isBroadcast) {
         fwdHeader.pFlags.saved_out = true;
       }
 
       if(originalFwdFrom) {
-        fwdHeader.saved_date = originalMessage.date;
+        fwdHeader.saved_date = originalMessage.date + dateOffset;
       }
     }
 
@@ -5129,14 +5137,22 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    newMessages.forEach((message) => {
-      this.beforeMessageSending(message, {
-        isScheduled: !!options.scheduleDate || undefined,
-        sequential: true,
-        threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined,
-        confirmedPaymentResult: options.confirmedPaymentResult
+    try {
+      newMessages.forEach((message) => {
+        this.beforeMessageSending(message, {
+          isScheduled: !!options.scheduleDate || undefined,
+          sequential: true,
+          threadId: message.peerId === this.appPeersManager.peerId ? fromPeerId : undefined,
+          confirmedPaymentResult: options.confirmedPaymentResult
+        });
       });
-    });
+    } catch(err) {
+      // * bailing out halfway would strand the already registered messages as pending forever,
+      // * and nothing would ever be sent — drop them all and let the caller see the failure
+      newMessages.forEach((message) => this.cancelPendingMessage(message.random_id));
+      this.log.error('forwardMessages: failed to prepare messages', err, fromPeerId, mids);
+      throw err;
+    }
 
     const sentRequestOptions: PendingAfterMsg = {};
     if(this.pendingAfterMsgs[peerId]) {
@@ -6456,6 +6472,28 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
+  /**
+   * A message id is only meaningful inside its channel's namespace, so every id in the header has to be
+   * generated against the channel it belongs to. `saved_from_peer` is routinely a user (a forward out of a
+   * private chat), and such ids stay as they are — but a `channel_post` that resolves to no channel at all
+   * is a malformed header, and leaving it raw would silently never match a stored mid.
+   */
+  private normalizeForwardHeaderMessageIds(fwdHeader: MessageFwdHeader.messageFwdHeader) {
+    const savedFromChannelId = getPeerChannelId(fwdHeader.saved_from_peer);
+    if(fwdHeader.saved_from_msg_id) {
+      fwdHeader.saved_from_msg_id = this.appMessagesIdsManager.generateMessageId(fwdHeader.saved_from_msg_id, savedFromChannelId);
+    }
+
+    if(fwdHeader.channel_post) {
+      const channelId = getPeerChannelId(fwdHeader.from_id) || savedFromChannelId;
+      if(!channelId) {
+        this.log.error('fwd header has channel_post without a channel peer', fwdHeader);
+      }
+
+      fwdHeader.channel_post = this.appMessagesIdsManager.generateMessageId(fwdHeader.channel_post, channelId);
+    }
+  }
+
   public saveMessage(message: Message, options: Partial<{
     storage: MessagesStorage,
     isScheduled: true,
@@ -6588,14 +6626,13 @@ export class AppMessagesManager extends AppManager {
 
     if(fwdHeader) {
       // if(peerId === myID) {
-      if(fwdHeader.saved_from_msg_id) fwdHeader.saved_from_msg_id = this.appMessagesIdsManager.generateMessageId(fwdHeader.saved_from_msg_id, (fwdHeader.saved_from_peer as Peer.peerChannel).channel_id);
-      if(fwdHeader.channel_post) fwdHeader.channel_post = this.appMessagesIdsManager.generateMessageId(fwdHeader.channel_post, (fwdHeader.from_id as Peer.peerChannel).channel_id);
+      this.normalizeForwardHeaderMessageIds(fwdHeader);
 
       const peer = fwdHeader.saved_from_peer || fwdHeader.from_id;
       const msgId = fwdHeader.saved_from_msg_id || fwdHeader.channel_post;
       if(peer && msgId) {
         const savedFromPeerId = this.appPeersManager.getPeerId(peer);
-        const savedFromMid = this.appMessagesIdsManager.generateMessageId(msgId, (peer as Peer.peerChannel).channel_id);
+        const savedFromMid = this.appMessagesIdsManager.generateMessageId(msgId, getPeerChannelId(peer));
         message.savedFrom = savedFromPeerId + '_' + savedFromMid;
       }
 
@@ -6609,7 +6646,10 @@ export class AppMessagesManager extends AppManager {
       message.fwdFromId = this.appPeersManager.getPeerId(fwdHeader.from_id);
 
       if(!overwriting) {
-        fwdHeader.date -= this.timeManager.getServerTimeOffset();
+        const offset = this.timeManager.getServerTimeOffset();
+        fwdHeader.date -= offset;
+        // * it is rendered instead of `date` when present, so it has to live in the same clock
+        if(fwdHeader.saved_date) fwdHeader.saved_date -= offset;
       }
     }
 
