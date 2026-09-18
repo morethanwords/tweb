@@ -3,7 +3,6 @@ import PromoSlideTab, {getGiftDetails} from '@components/premium/promoSlideTab';
 import TransitionSlider from '@components/transition';
 import FeatureSlideTab from '@components/premium/featureSlideTab';
 import I18n, {FormatterArguments} from '@lib/langPack';
-import Button from '@components/button';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import {HelpPremiumPromo, MessageAction, PaymentsCheckedGiftCode, PremiumSubscriptionOption} from '@layer';
 import {PREMIUM_FEATURES, PremiumPromoFeature} from '@components/premium/featuresConfig';
@@ -13,7 +12,6 @@ import {AppManagers} from '@lib/managers';
 import appImManager, {ChatSetPeerOptions} from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import ListenerSetter from '@helpers/listenerSetter';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {applyGiftCode} from '@components/popups/giftLink';
 
 export type PopupPremiumProps = {
@@ -33,7 +31,7 @@ export type PopupPremiumProps = {
   listenerSetter: ListenerSetter
 };
 
-import {createSignal, onCleanup, onMount} from 'solid-js';
+import {createSignal, onCleanup, onMount, Show} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
 import {i18n} from '@lib/langPack';
 
@@ -51,6 +49,7 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
   const [show, setShow] = createSignal(false);
+  const [hasActionButton, setHasActionButton] = createSignal(false);
   const deferredCloseCallbacks: (() => void)[] = [];
 
   let props: PopupPremiumProps;
@@ -59,7 +58,6 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
   let featureSlideTab: FeatureSlideTab;
   let transition: ReturnType<typeof TransitionSlider>;
   let tabsContainer: HTMLElement;
-  let actionButtonContainer: HTMLDivElement;
   let actionButton: HTMLButtonElement;
   let actionButtonText: I18n.IntlElement;
   let selectedFeature: PremiumPromoFeature;
@@ -67,7 +65,7 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
   let option: PremiumSubscriptionOption;
   let wrapCurrency: (amount: Long) => string;
 
-  let headerEl!: HTMLDivElement, bodyEl!: HTMLDivElement, containerEl!: HTMLDivElement;
+  let headerEl!: HTMLDivElement, bodyEl!: HTMLDivElement;
 
   const prepareArguments = async(obj: {
     _titleLangArgs?: (managers: AppManagers) => MaybePromise<FormatterArguments>,
@@ -152,9 +150,6 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
 
     giftDetails = getGiftDetails(props);
 
-    tabsContainer = document.createElement('div');
-    tabsContainer.classList.add('tabs-container', 'premium-tabs');
-
     option = props.premiumPromo.period_options[0];
     const shortestOption = props.premiumPromo.period_options.slice().sort((a, b) => a.months - b.months)[0];
     wrapCurrency = (amount) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true, true);
@@ -173,11 +168,6 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
       tab.classList.add('tabs-tab', 'premium-tab');
     });
     tabsContainer.append(...tabs);
-
-    containerEl.append(...[tabsContainer, actionButtonContainer].filter(Boolean));
-    if(!actionButtonContainer) {
-      containerEl.classList.add('no-button');
-    }
 
     options.feature && await selectFeature(options.feature);
     transition(options.feature ? 1 : 0);
@@ -216,32 +206,23 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
     }
 
     actionButtonText = new I18n.IntlElement({key: 'OK'});
-    actionButtonContainer = document.createElement('div');
-    actionButtonContainer.classList.add('action-button-container');
-    actionButton = Button(`btn-primary popup-gift-premium-confirm action-button shimmer`);
-    actionButton.append(actionButtonText.element);
+    setHasActionButton(true);
+  }
 
-    let callback: () => void;
+  // every branch closes the popup through `setShow` itself, so the button is told not to
+  const onActionClick = () => {
     if(props.type === 'gift') {
-      callback = () => {
-        const gift = props.gift as PaymentsCheckedGiftCode;
-        applyGiftCode(gift.slug, actionButton, () => setShow(false));
-      };
+      // `applyGiftCode` disables the button for as long as it is in flight
+      const gift = props.gift as PaymentsCheckedGiftCode;
+      applyGiftCode(gift.slug, actionButton, () => setShow(false));
+    } else if(props.isPremiumActive) {
+      setShow(false);
     } else {
-      callback = () => {
-        if(props.isPremiumActive) {
-          setShow(false);
-          return;
-        }
-
-        buyPremium();
-      };
+      buyPremium();
     }
 
-    attachClickEvent(actionButton, callback, {listenerSetter: listenerSetter, once: true});
-
-    actionButtonContainer.append(actionButton);
-  }
+    return false;
+  };
 
   async function createPromoSlideTab() {
     promoSlideTab = new PromoSlideTab({
@@ -264,7 +245,6 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
   function createFeatureSlideTab() {
     featureSlideTab = new FeatureSlideTab({
       header: headerEl.cloneNode(true) as HTMLElement,
-      actionButtonContainer: actionButtonContainer,
       ...props
     });
     featureSlideTab.transition = transition;
@@ -307,7 +287,13 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
     setShow(false);
   };
 
+  // the popup stays clickable while its hide animation runs, and every further click would
+  // queue another `openUrl` — the click listener this replaced was a `once` one
+  let buying = false;
   function buyPremium() {
+    if(buying) return;
+    buying = true;
+
     close(() => {
       appImManager.openUrl(option.bot_url);
     });
@@ -330,7 +316,6 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
         class="popup-premium"
         closable
         show={show()}
-        containerProps={{ref: (element) => containerEl = element}}
         onCloseAfterTimeout={() => deferredCloseCallbacks.splice(0).forEach((callback) => callback())}
       >
         <PopupElement.Header ref={(element) => headerEl = element}>
@@ -338,6 +323,19 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
           <PopupElement.Title title="Premium.Boarding.Title" />
         </PopupElement.Header>
         <PopupElement.Body ref={(element) => bodyEl = element} />
+        {/* the header and the body above are moved into the promo tab, which lives in here */}
+        <div class="tabs-container premium-tabs" ref={(element) => tabsContainer = element} />
+        <Show when={hasActionButton()}>
+          <PopupElement.Footer>
+            <PopupElement.FooterButton
+              class="popup-gift-premium-confirm action-button shimmer"
+              ref={(element) => actionButton = element as HTMLButtonElement}
+              callback={onActionClick}
+            >
+              {actionButtonText.element}
+            </PopupElement.FooterButton>
+          </PopupElement.Footer>
+        </Show>
       </PopupElement>
     );
   });

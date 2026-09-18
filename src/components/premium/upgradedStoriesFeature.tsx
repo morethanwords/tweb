@@ -25,7 +25,7 @@ export default class UpgradedStoriesFeature {
         <For each={options.features}>{(feature) => (
           <div class="story-feature">
             <RowTsx style={{'--custom-icon-color': feature.iconColor}}>
-              <RowTsx.Icon icon={feature.icon} class="row-icon-custom-color" />
+              <RowTsx.Icon icon={feature.icon} class="row-icon-custom-color" noBackground />
               <RowTsx.Title>{i18n(feature.titleLangKey, feature.titleLangArgs)}</RowTsx.Title>
               <RowTsx.Subtitle>{i18n(feature.subtitleLangKey, feature.subtitleLangArgs)}</RowTsx.Subtitle>
             </RowTsx>

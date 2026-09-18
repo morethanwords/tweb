@@ -69,20 +69,24 @@
     margin: .5rem 0 -.5rem;
   }
 
+  // The tabs paint themselves on the surface color, so the strip under them has to as well —
+  // the popup's own background is a shade darker. Redefining what the footer reads covers both
+  // of the shaded footer's states, so it stays opaque whatever the scroll is doing.
+  .popup-footer {
+    --popup-background-color: var(--surface-color);
+    background-color: var(--popup-background-color);
+  }
+
   .action-button {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 3rem;
+    // the label can carry a trailing icon, which the block footer button would not center
+    &.popup-footer-button.btn-primary {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
     @include respond-to(handhelds) {
       font-size: .875rem;
-    }
-
-    &-container {
-      padding: 1rem;
-      background-color: var(--surface-color);
-      flex: 0 0 auto;
     }
 
     &-icon {

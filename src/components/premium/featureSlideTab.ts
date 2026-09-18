@@ -5,8 +5,7 @@ import TransitionSlider from '@components/transition';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 
 type FeatureSlideTabOptions = PopupPremiumProps & {
-  header: HTMLElement,
-  actionButtonContainer: HTMLElement
+  header: HTMLElement
 };
 
 export default class FeatureSlideTab {
