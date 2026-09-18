@@ -510,7 +510,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           <StatisticsOverviewItems items={overviewItems} />
         </Section>}
         <For each={graphs}>{renderGraph}</For>
-        {recentPosts.length && <Section ref={postsContainer} name="RecentPosts">
+        {!!recentPosts.length && <Section ref={postsContainer} name="RecentPosts">
           {recentPosts.map(({container}) => container)}
         </Section>}
         <For each={[topPosters, topAdmins, topInviters]}>{(topPeers, idx) => {
@@ -522,7 +522,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
           const chatlist = appDialogsManager.createChatList();
           chatlist.append(...topPeers.splice(0, 10).map(({container}) => container));
-          const [moreButton, setMoreButton] = createSignal<JSX.Element>(topPeers.length && MoreButton({
+          const [moreButton, setMoreButton] = createSignal<JSX.Element>(!!topPeers.length && MoreButton({
             count: topPeers.length,
             callback: () => {
               setMoreButton(undefined);
@@ -536,7 +536,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
             </Section>
           );
         }}</For>
-        {publicForwards().count && <Section name="PublicSharesCount" nameArgs={[publicForwards().count]}>
+        {!!publicForwards().count && <Section name="PublicSharesCount" nameArgs={[publicForwards().count]}>
           <div
             ref={(el) => {
               appDialogsManager.setListClickListener({
