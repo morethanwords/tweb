@@ -286,6 +286,41 @@ export default class AppAccountManager extends AppManager {
     });
   }
 
+  /**
+   * A `tgWebAuthToken` handed to us in the URL by a Telegram website. The
+   * account it belongs to lives on its own DC, so the base moves there before
+   * we ask — the same way a migrated login would.
+   */
+  public async importWebTokenAuthorization(token: string, dcId: DcId) {
+    this.apiManager.setBaseDcId(dcId);
+
+    const authorization = await this.apiManager.invokeApi('auth.importWebTokenAuthorization', {
+      api_id: App.id,
+      api_hash: App.hash,
+      web_auth_token: token
+    }, {dcId, ignoreErrors: true});
+
+    if(authorization._ === 'auth.authorization') {
+      await this.apiManager.setUser(authorization.user);
+    }
+
+    return authorization;
+  }
+
+  /**
+   * A token we are not going to import stays a usable login on the server, and
+   * the URL it arrived in outlives the tab (history, a shared link) — so drop
+   * it. Fire-and-forget: nobody waits on the answer, and a token the server
+   * already forgot is not worth reporting either.
+   */
+  public cancelWebTokenAuthorization(token: string, dcId: DcId) {
+    this.apiManager.invokeApi('auth.cancelWebTokenAuthorization', {
+      web_auth_token: token
+    }, {dcId, ignoreErrors: true}).catch((err) => {
+      this.log.error('web token cancellation error:', err);
+    });
+  }
+
   public sendVerifyEmailCode(purpose: EmailVerifyPurpose, email: string) {
     return this.apiManager.invokeApi('account.sendVerifyEmailCode', {purpose, email});
   }

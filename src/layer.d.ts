@@ -16615,7 +16615,7 @@ export namespace InputPasskeyResponse {
 /**
  * @link https://core.telegram.org/type/InputPasskeyCredential
  */
-export type InputPasskeyCredential = InputPasskeyCredential.inputPasskeyCredentialPublicKey | InputPasskeyCredential.inputPasskeyCredentialFirebasePNV;
+export type InputPasskeyCredential = InputPasskeyCredential.inputPasskeyCredentialPublicKey;
 
 export namespace InputPasskeyCredential {
   export type inputPasskeyCredentialPublicKey = {
@@ -16623,11 +16623,6 @@ export namespace InputPasskeyCredential {
     id: string,
     raw_id: string,
     response: InputPasskeyResponse
-  };
-
-  export type inputPasskeyCredentialFirebasePNV = {
-    _: 'inputPasskeyCredentialFirebasePNV',
-    pnv_token: string
   };
 }
 
@@ -18738,7 +18733,6 @@ export interface ConstructorDeclMap {
   'messages.emojiGameUnavailable': MessagesEmojiGameInfo.messagesEmojiGameUnavailable,
   'messages.emojiGameDiceInfo': MessagesEmojiGameInfo.messagesEmojiGameDiceInfo,
   'updateEmojiGameInfo': Update.updateEmojiGameInfo,
-  'inputPasskeyCredentialFirebasePNV': InputPasskeyCredential.inputPasskeyCredentialFirebasePNV,
   'starGiftAttributeRarity': StarGiftAttributeRarity.starGiftAttributeRarity,
   'starGiftAttributeRarityUncommon': StarGiftAttributeRarity.starGiftAttributeRarityUncommon,
   'starGiftAttributeRarityRare': StarGiftAttributeRarity.starGiftAttributeRarityRare,
@@ -23697,6 +23691,10 @@ export type MessagesRequestChatJoinWebView = {
   platform: string
 };
 
+export type AuthCancelWebTokenAuthorization = {
+  web_auth_token: string
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -24505,4 +24503,5 @@ export interface MethodDeclMap {
   'messages.translateRichMessage': {req: MessagesTranslateRichMessage, res: MessagesTranslatedRichMessage},
   'messages.composeRichMessageWithAI': {req: MessagesComposeRichMessageWithAI, res: MessagesComposedRichMessageWithAI},
   'messages.requestChatJoinWebView': {req: MessagesRequestChatJoinWebView, res: WebViewResult},
+  'auth.cancelWebTokenAuthorization': {req: AuthCancelWebTokenAuthorization, res: boolean},
 }

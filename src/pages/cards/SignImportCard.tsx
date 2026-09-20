@@ -1,7 +1,6 @@
 import {onMount} from 'solid-js';
 
 import {putPreloader} from '@components/putPreloader';
-import App from '@config/app';
 import {STATE_INIT} from '@config/state';
 
 import AuthCard from '@/pages/AuthCard';
@@ -16,7 +15,8 @@ type Spec = Extract<CardSpec, {name: 'signImport'}>;
  * Card variant of the legacy `pageSignImport`. Shows a preloader while we try
  * `auth.importWebTokenAuthorization`; on success goes to IM, on
  * `SESSION_PASSWORD_NEEDED` jumps to the password card, on any other failure
- * falls back to the configured default auth state (signIn or signQR).
+ * falls back to the configured default auth state (signIn or signQR) and drops
+ * the token server-side.
  */
 export default function SignImportCard(props: {spec: Spec}) {
   const {managers, navigate, toIm} = useAuthFlow();
@@ -38,15 +38,9 @@ export default function SignImportCard(props: {spec: Spec}) {
     let nextNav: (() => void | Promise<void>) | undefined;
 
     try {
-      managers.apiManager.setBaseDcId(dcId);
-      const authorization = await managers.apiManager.invokeApi('auth.importWebTokenAuthorization', {
-        api_id: App.id,
-        api_hash: App.hash,
-        web_auth_token: token
-      }, {dcId, ignoreErrors: true});
+      const authorization = await managers.appAccountManager.importWebTokenAuthorization(token, dcId);
 
       if(authorization._ === 'auth.authorization') {
-        await managers.apiManager.setUser(authorization.user);
         nextNav = () => toIm();
       }
     } catch(err) {
@@ -57,6 +51,7 @@ export default function SignImportCard(props: {spec: Spec}) {
         }
         default: {
           console.error('authorization import error:', err);
+          managers.appAccountManager.cancelWebTokenAuthorization(token, dcId);
           const defaultState = STATE_INIT.authState._;
           if(defaultState === 'authStateSignIn') nextNav = () => navigate({name: 'signIn'});
           else if(defaultState === 'authStateSignQr') nextNav = () => navigate({name: 'signQR'});

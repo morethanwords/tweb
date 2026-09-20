@@ -299,4 +299,4 @@ out += `}${NEW_LINE}${NEW_LINE}`;
 const path = process.argv[2];
 const writePathTo = (path || __dirname + '/out/') + 'layer.d.ts';
 console.log('Writing layer to:', writePathTo);
-require('fs').writeFileSync(writePathTo, out);
+require('fs').writeFileSync(writePathTo, out.trimEnd() + NEW_LINE);

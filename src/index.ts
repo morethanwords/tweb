@@ -574,12 +574,13 @@ if(import.meta.env.DEV) {
   const hash = location.hash;
   const splitted = hash.split('?');
   const params = parseUriParamsLine(splitted[1] ?? splitted[0].slice(1));
+  const webAuthTokenIsTest = params.tgWebAuthTest !== undefined && !!+params.tgWebAuthTest;
   if(params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
     const data: AuthState.signImport['data'] = {
       token: params.tgWebAuthToken,
       dcId: +params.tgWebAuthDcId,
       userId: params.tgWebAuthUserId.toUserId(),
-      isTest: params.tgWebAuthTest !== undefined && !!+params.tgWebAuthTest,
+      isTest: webAuthTokenIsTest,
       tgAddr: params.tgaddr
     };
 
@@ -596,6 +597,13 @@ if(import.meta.env.DEV) {
     }
 
     rootScope.managers.appStateManager.pushToState('authState', authState = {_: 'authStateSignImport', data});
+  }
+
+  // Already signed in, so the import above never ran and the token is left
+  // hanging — a token for the other environment is unreachable from here, the
+  // rest is ours to drop.
+  if(params.tgWebAuthToken && authState._ === 'authStateSignedIn' && webAuthTokenIsTest === Modes.test) {
+    rootScope.managers.appAccountManager.cancelWebTokenAuthorization(params.tgWebAuthToken, +params.tgWebAuthDcId);
   }
 
   if(params.tgWebAuthToken) {
