@@ -16,6 +16,7 @@ export default function blobSafeMimeType(mimeType: string) {
     'image/bmp',
     'image/avif',
     'image/jxl',
+    'image/heic',
     'video/mp4',
     'video/webm',
     'video/quicktime',

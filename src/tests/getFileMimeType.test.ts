@@ -1,3 +1,4 @@
+import {MIME_TYPE_EXTENSION_MAP} from '@environment/mimeTypeMap';
 import getFileMimeType, {normalizeFileMimeType} from '@helpers/files/getFileMimeType';
 
 describe('getFileMimeType', () => {
@@ -42,5 +43,23 @@ describe('getFileMimeType', () => {
   test('keeps the original File when its MIME is already specific', () => {
     const file = new File([], 'clipboard-video.mp4', {type: 'video/mp4'});
     expect(normalizeFileMimeType(file)).toBe(file);
+  });
+
+  // * a screenshot or photo pasted in Safari arrives as HEIC, under either brand
+  test.each([
+    ['Screenshot.heic', 'image/heic'],
+    ['Screenshot.heic', 'image/heif'],
+    ['Screenshot.heic', ''],
+    ['Screenshot.HEIC', 'application/octet-stream'],
+    ['Screenshot.heif', ''],
+    ['Screenshot', 'image/heif']
+  ])('resolves a pasted %s (%s) to image/heic', (name, type) => {
+    expect(getFileMimeType(new File([], name, {type}))).toBe('image/heic');
+  });
+});
+
+describe('MIME_TYPE_EXTENSION_MAP', () => {
+  test('names a HEIC file .heic rather than .heif', () => {
+    expect(MIME_TYPE_EXTENSION_MAP['image/heic']).toBe('heic');
   });
 });

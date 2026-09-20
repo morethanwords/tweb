@@ -144,11 +144,11 @@ declare global {
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
     'application/x-tgsticker' | 'video/webm' | 'image/svg+xml' | 'image/png' | 'application/json' |
     'application/x-tgwallpattern' | 'audio/wav' | 'image/avif' | 'image/jxl' | 'image/bmp' |
-    'application/x-mpegurl' | 'application/x-tgstoryboard' | 'application/x-tgstoryboardmap';
+    'image/heic' | 'application/x-mpegurl' | 'application/x-tgstoryboard' | 'application/x-tgstoryboardmap';
 
   type MTFileExtension = 'mov' | 'gif' | 'pdf' | 'jpg' | 'jpeg' | 'wav' |
     'tgv' | 'tgs' | 'svg' | 'mp4' | 'webm' | 'webp' | 'mp3' | 'ogg' | 'json' |
-    'png' | 'avif' | 'jxl' | 'bmp';
+    'png' | 'avif' | 'jxl' | 'bmp' | 'heic' | 'heif';
 
   type ApiFileManagerError = 'DOWNLOAD_CANCELED' | 'UPLOAD_CANCELED' | 'FILE_TOO_BIG' | 'REFERENCE_IS_NOT_REFRESHED';
   type StorageError = 'STORAGE_OFFLINE' | 'NO_ENTRY_FOUND' | 'IDB_CREATE_TIMEOUT';

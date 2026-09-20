@@ -17,11 +17,16 @@ export const EXTENSION_MIME_TYPE_MAP: {[ext in MTFileExtension]: MTMimeType} = {
   svg: 'image/svg+xml',
   avif: 'image/avif',
   jxl: 'image/jxl',
-  bmp: 'image/bmp'
+  bmp: 'image/bmp',
+  // * heic last so that the reverse map prefers it over the heif spelling
+  heif: 'image/heic',
+  heic: 'image/heic'
 };
 
 export const MIME_TYPE_ALIASES: Record<string, MTMimeType> = {
-  'video/x-quicktime': 'video/quicktime'
+  'video/x-quicktime': 'video/quicktime',
+  // * same container and decoder, only a different brand in the header
+  'image/heif': 'image/heic'
 };
 
 export const MIME_TYPE_EXTENSION_MAP: {[mimeType in MTMimeType]?: MTFileExtension} = {};

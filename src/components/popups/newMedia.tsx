@@ -127,6 +127,11 @@ const MAX_WIDTH = 400 - 16;
 // (passed into the media editor), so the policy lives in one place.
 const PHOTO_HEAVY_BYTES = 2 * 1024 * 1024;
 const PHOTO_COMPRESSED_QUALITY = 0.9;
+// The source size above only predicts the ENCODED size for the formats it names; a
+// lossy source (HEIC, WEBP, AVIF) is small on disk yet re-encodes to ~12MB at full
+// quality when it is detailed. So the encoded result is checked too, and only a
+// result over this budget is compressed — anything that already fits is left alone.
+const PHOTO_MAX_BYTES = 6 * 1024 * 1024;
 
 export function getCurrentNewMediaPopup() {
   return currentPopup;
@@ -1086,10 +1091,6 @@ export default function showNewMediaPopup(
     context.hide();
   }
 
-  function modifyMimeTypeForTelegram(mimeType: MTMimeType): MTMimeType {
-    return SERVER_IMAGE_MIME_TYPES.has(mimeType) ? 'image/jpeg' : mimeType;
-  }
-
   async function scaleImageForTelegram(
     image: HTMLImageElement,
     mimeType: MTMimeType,
@@ -1110,7 +1111,7 @@ export default function showNewMediaPopup(
       mimeType !== 'image/gif' &&
       (needsResize || isHeavyLossless || (convertIncompatible && !SERVER_IMAGE_MIME_TYPES.has(mimeType)))
     ) {
-      const {blob} = await scaleMediaElement({
+      const encode = (quality?: number) => scaleMediaElement({
         media: image,
         // Cap each side at PHOTO_SIDE_LIMIT, but never upscale a smaller image
         // (aspectFitted would otherwise blow a small PNG up to 2560px).
@@ -1119,11 +1120,21 @@ export default function showNewMediaPopup(
           Math.min(image.naturalHeight, PHOTO_SIDE_LIMIT)
         ),
         mediaSize: makeMediaSize(image.naturalWidth, image.naturalHeight),
-        mimeType: modifyMimeTypeForTelegram(mimeType) as any,
-        // Only drop quality when compressing a heavy image; a plain >2560 resize or
-        // a format conversion keeps the default (near-lossless) quality.
-        quality: isHeavyLossless ? PHOTO_COMPRESSED_QUALITY : undefined
+        // Whatever came in, what leaves is JPEG: it is the only encoding every
+        // re-encode reason wants (a resized photo, a flattened heavy PNG, a
+        // format the server has no use for) and the only one every browser can
+        // produce — canvas encoding to e.g. image/heic yields nothing at all.
+        mimeType: 'image/jpeg',
+        quality
       });
+
+      // Only drop quality when compressing a heavy image; a plain >2560 resize or
+      // a format conversion keeps the default (near-lossless) quality.
+      const initialQuality = isHeavyLossless ? PHOTO_COMPRESSED_QUALITY : undefined;
+      let {blob} = await encode(initialQuality);
+      if(initialQuality === undefined && blob.size > PHOTO_MAX_BYTES) {
+        ({blob} = await encode(PHOTO_COMPRESSED_QUALITY));
+      }
 
       scaledBlob = blob;
       objectURLs.release(url);
