@@ -9,6 +9,11 @@ import {defineConfig, devices} from '@playwright/test';
 // itself plays .tgs animations), so a plain HTTP Vite preview is enough - no auth/seed needed.
 const PORT = 8099;
 
+// A spec that needs a signed-in client cannot use that server: it points at an
+// authorized preview instead (`bash scripts/start-preview.sh`), and then there is
+// nothing for us to start.
+const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -16,12 +21,12 @@ export default defineConfig({
   timeout: 60_000,
   reporter: [['list']],
   use: {
-    baseURL: `http://localhost:${PORT}/`,
+    baseURL: externalBaseURL || `http://localhost:${PORT}/`,
     headless: true,
     viewport: {width: 800, height: 600}
   },
   projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}],
-  webServer: {
+  webServer: externalBaseURL ? undefined : {
     command: `pnpm exec vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
     env: {TWEB_PREVIEW: '1'},

@@ -35,6 +35,7 @@ import AppMediaViewer from '@components/mediaViewer';
 import lockTouchScroll from '@helpers/dom/lockTouchScroll';
 import copy from '@helpers/object/copy';
 import safeAssign from '@helpers/object/safeAssign';
+import ScrollableRefiller from '@helpers/scrollableRefiller';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
@@ -419,6 +420,7 @@ export default class AppSearchSuper {
   private nextRates: Partial<{[type in SearchSuperMediaType]: number}> = {};
   private loadPromises: Partial<{[type in SearchSuperMediaType]: Promise<any>}> = {};
   private loaded: Partial<{[type in SearchSuperMediaType]: boolean}> = {};
+  private refiller: ScrollableRefiller<SearchSuperMediaType>;
   private loadedChats = false;
   private firstLoad = true;
 
@@ -503,6 +505,11 @@ export default class AppSearchSuper {
   > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'onMediaCountersChange' | 'openSavedDialogsInner' | 'slider' | 'useMainProfileTab'>>) {
     safeAssign(this, options);
     this.mediaTabsDefaultOrder = [...this.mediaTabs];
+
+    this.refiller = new ScrollableRefiller({
+      scrollable: this.scrollable,
+      getProgress: (type) => this.getMediaTabProgress(type)
+    });
 
     this.slider ??= appSidebarRight;
 
@@ -1040,6 +1047,10 @@ export default class AppSearchSuper {
     this.searchContext.inputFilter = {_: inputFilter};
     this.historyStorage[inputFilter] = [];
     this.usedFromHistory[inputFilter] = -1;
+    // * the counters the refiller watches just went back to the start, and it
+    // * only re-arms on a HIGHER number — without this the media tab would never
+    // * refill again for the rest of this peer
+    this.refiller.reset('media');
     this.loaded.media = false;
     this.nextRates.media = 0;
     delete this.counters.media;
@@ -1106,6 +1117,7 @@ export default class AppSearchSuper {
 
     mediaTab.inputFilter = state.inputFilter;
     mediaTab.scroll = state.scroll;
+    this.refiller.reset('media'); // same swap the other way round — the counters it watches are a different filter's now
     this.tabs[state.inputFilter] = itemsTab;
     this.searchContext.inputFilter = {_: state.inputFilter};
     this.loaded.media = state.loaded;
@@ -2531,9 +2543,7 @@ export default class AppSearchSuper {
 
         this.loadPromises[type] = null;
 
-        setTimeout(() => {
-          this.scrollable.checkForTriggers();
-        }, 0);
+        this.refiller.schedule(type, middleware);
       });
     }
 
@@ -2585,9 +2595,7 @@ export default class AppSearchSuper {
         this.usedFromHistory[inputFilter] = used;
         // if(messages.length) {
         return this.performSearchResult({messages, mediaTab}).finally(() => {
-          setTimeout(() => {
-            this.scrollable.checkForTriggers();
-          }, 0);
+          this.refiller.schedule(type, middleware);
         });
         // }
       }
@@ -2657,9 +2665,7 @@ export default class AppSearchSuper {
                 promise.then(() => {
                   if(!middleware()) return;
                   // this.log('preloaded more');
-                  setTimeout(() => {
-                    this.scrollable.checkForTriggers();
-                  }, 0);
+                  this.refiller.schedule(type, middleware);
                 });
               }
             }
@@ -2677,6 +2683,29 @@ export default class AppSearchSuper {
     });
 
     return promise;
+  }
+
+  /**
+   * How far a tab has got, for `ScrollableRefiller`: fetched messages plus the
+   * ones already rendered out of them. Both only ever grow within a peer (and
+   * `cleanup` resets the refiller along with them), which is what makes the
+   * refill chain terminate.
+   *
+   * This is the exact state behind `canLoadMediaTab`'s second clause: the
+   * `justLoad` preload grows `historyStorage` WITHOUT rendering, and the only
+   * thing that renders the remainder into a list too short to scroll is the
+   * chain. A tab with no `inputFilter` — saved dialogs, stories, gifts, apps,
+   * posts — has no such state and no cache to drain, so it reports a flat 0 and
+   * gets the one check after a load that asks "is the viewport full yet"; its
+   * list owns whatever paging comes after that.
+   */
+  private getMediaTabProgress(type: SearchSuperMediaType) {
+    const inputFilter = this.mediaTabsMap.get(type)?.inputFilter;
+    if(!inputFilter) {
+      return 0;
+    }
+
+    return Math.max(0, this.usedFromHistory[inputFilter] ?? 0) + (this.historyStorage[inputFilter]?.length ?? 0);
   }
 
   private canLoadMediaTab(mediaTab: SearchSuperMediaTab) {
@@ -3067,6 +3096,7 @@ export default class AppSearchSuper {
     }
     this.loadPromises = {};
     this.loaded = {};
+    this.refiller.reset();
     this.loadedChats = false;
     this.nextRates = {};
     this.firstLoad = true;
