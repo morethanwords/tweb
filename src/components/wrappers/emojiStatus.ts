@@ -9,6 +9,12 @@ import wrapSticker from '@components/wrappers/sticker';
 
 const RENDER_SPARKLES = false; // performance issues
 
+// * a load our own middleware cancelled is not a failure - it is the same "nothing to render
+// * anymore" that the middleware guards below return on. Anything else still surfaces.
+const ignoreCancelled = (err: ApiError) => {
+  if(err?.type !== 'MIDDLEWARE') throw err;
+};
+
 export default async function wrapEmojiStatus({
   wrapOptions,
   emojiStatus,
@@ -31,7 +37,7 @@ export default async function wrapEmojiStatus({
       container.classList.add('emoji-status-text-color');
     }
 
-    await wrapSticker({
+    const {render} = await wrapSticker({
       doc,
       div: container,
       width: size.width,
@@ -46,8 +52,15 @@ export default async function wrapEmojiStatus({
       // group: 'none'
     });
 
+    // * wrapSticker starts the load itself and only offers it through `render`. With no
+    // * lazyLoadQueue to own it - a queue ignores a cancelled load for us - nothing else here
+    // * holds that promise, so a middleware dying mid-load would leave it unhandled.
+    render?.catch(ignoreCancelled);
+
     if(!middleware()) return;
-    await Promise.all(loadPromises);
+    // * an already downloaded static custom emoji puts that same load into loadPromises, so
+    // * the cancellation reaches this await too, and out through a `wrap` nobody catches
+    await Promise.all(loadPromises).catch(ignoreCancelled);
   };
 
   if(emojiStatus._ === 'emojiStatusCollectible' && RENDER_SPARKLES) {
