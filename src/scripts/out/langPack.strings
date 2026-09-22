@@ -4680,6 +4680,7 @@
 "EditThisVideo" = "Edit this video";
 "ReplacePhoto" = "Replace photo";
 "ReplaceVideo" = "Replace video";
+"ReplaceFile" = "Replace file";
 "ArchiveSettings" = "Archive Settings";
 "ArchiveSettings.UnmutedChats.Title" = "Unmuted Chats";
 "ArchiveSettings.UnmutedChats.Action" = "Always keep archived";

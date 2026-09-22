@@ -10,7 +10,7 @@ import {toastNew} from '@components/toast';
 import SendContextMenu from '@components/chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '@helpers/createPoster';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import {i18n, LangPackKey} from '@lib/langPack';
 import calcImageInBox from '@helpers/calcImageInBox';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -132,6 +132,22 @@ const PHOTO_COMPRESSED_QUALITY = 0.9;
 // quality when it is detailed. So the encoded result is checked too, and only a
 // result over this budget is compressed — anything that already fits is left alone.
 const PHOTO_MAX_BYTES = 6 * 1024 * 1024;
+
+type MediaTitleKind = 'gif' | 'photo' | 'video' | 'file';
+
+const SEND_TITLE_KEYS: {[kind in MediaTitleKind]: LangPackKey} = {
+  gif: 'PreviewSender.SendGif',
+  photo: 'PreviewSender.SendPhoto',
+  video: 'PreviewSender.SendVideo',
+  file: 'PreviewSender.SendFile'
+};
+
+const REPLACE_TITLE_KEYS: {[kind in MediaTitleKind]: LangPackKey} = {
+  gif: 'ReplaceGIF',
+  photo: 'ReplacePhoto',
+  video: 'ReplaceVideo',
+  file: 'ReplaceFile'
+};
 
 export function getCurrentNewMediaPopup() {
   return currentPopup;
@@ -2043,44 +2059,55 @@ export default function showNewMediaPopup(
     starsState.set({starsAmount});
   }
 
-  function setTitle() {
-    let key: LangPackKey;
-    const args: FormatterArguments = [];
+  /** What the attachment is, and how many of it — the two things a title has to say. */
+  function getTitleSubject(): [MediaTitleKind, number] {
     if(gifDocument) {
-      key = 'PreviewSender.SendGif';
-      args.push(1);
-    } else if(willAttach.type === 'document') {
-      key = 'PreviewSender.SendFile';
-      args.push(files.length);
-    } else {
-      let foundPhotos = 0, foundVideos = 0, foundFiles = 0;
-      files.forEach((file) => {
-        const mimeType = getFileMimeType(file);
-        if(mimeType === 'image/gif') ++foundVideos; // gifs are sent converted to videos
-        else if(mimeType.startsWith('image/')) ++foundPhotos;
-        else if(mimeType.startsWith('video/')) ++foundVideos;
-        else ++foundFiles;
-      });
-
-      if([foundPhotos, foundVideos, foundFiles].filter((n) => n > 0).length > 1) {
-        key = 'PreviewSender.SendFile';
-        args.push(files.length);
-      } else if(foundPhotos) {
-        key = 'PreviewSender.SendPhoto';
-        args.push(foundPhotos);
-      } else if(foundVideos) {
-        key = 'PreviewSender.SendVideo';
-        args.push(foundVideos);
-      } else {
-        key = 'PreviewSender.SendFile';
-        args.push(foundFiles);
-      }
+      return ['gif', 1];
     }
 
-    setTitleContent(i18n(key, args));
+    if(willAttach.type === 'document') {
+      return ['file', files.length];
+    }
+
+    let foundPhotos = 0, foundVideos = 0, foundFiles = 0;
+    files.forEach((file) => {
+      const mimeType = getFileMimeType(file);
+      if(mimeType === 'image/gif') ++foundVideos; // gifs are sent converted to videos
+      else if(mimeType.startsWith('image/')) ++foundPhotos;
+      else if(mimeType.startsWith('video/')) ++foundVideos;
+      else ++foundFiles;
+    });
+
+    if([foundPhotos, foundVideos, foundFiles].filter((n) => n > 0).length > 1) {
+      return ['file', files.length];
+    }
+
+    if(foundPhotos) return ['photo', foundPhotos];
+    if(foundVideos) return ['video', foundVideos];
+    return ['file', foundFiles];
+  }
+
+  function setTitle() {
+    const [kind, count] = getTitleSubject();
+
+    if(isEditing()) {
+      // nothing is being sent here — the one attachment takes the place of the
+      // message's current media, so the title names that instead of a count
+      setTitleContent(i18n(REPLACE_TITLE_KEYS[kind]));
+      return;
+    }
+
+    setTitleContent(i18n(SEND_TITLE_KEYS[kind], [count]));
   }
 
   function attachFiles() {
+    // addFiles() already trims later additions; the files the popup OPENED with
+    // bypass it, and a drop of several while editing would otherwise render a
+    // grid whose title counts one and whose send edits the message once per file
+    if(!canHaveMultipleFiles() && files.length > 1) {
+      files.splice(1);
+    }
+
     const oldSendFileDetails = willAttach.sendFileDetails.splice(0, willAttach.sendFileDetails.length);
 
     const getPendingEditResult = (file: File) => {

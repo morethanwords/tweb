@@ -11,7 +11,7 @@ import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdow
 import showForwardPopup from '@components/popups/forward';
 import showNewMediaPopup, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, TextWithEntities, GlobalPrivacySettings} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, TextWithEntities, GlobalPrivacySettings} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ChatInputPlate from '@components/chat/controlPlate';
 import showSendGiftPopup from '@components/popups/sendGift';
@@ -31,7 +31,6 @@ import {
   AttachedMediaType,
   canUploadAsWhenEditing,
   generateTail,
-  getMediaTypeForMessage,
   shouldUseReplaceMediaIcon,
   slowModeTimer
 } from '@components/chat/utils';
@@ -153,18 +152,10 @@ import showFrozenPopup from '@components/popups/frozen';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {setPeerColorToElement} from '@components/peerColors';
 import getMainGroupedMessage from '@lib/appManagers/utils/messages/getMainGroupedMessage';
-import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
-import {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
-import {NumberPair} from '@components/mediaEditor/types';
-import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import AttachMenuButton from './attachMenuButton';
+import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
+import {canEditMessageMediaWithEditor, getEditMediaLangKey, getOpenMediaPayload, getSourceSize} from './editMessageMedia';
 import pause from '@helpers/schedulers/pause';
-import onMediaLoad from '@helpers/onMediaLoad';
-import createVideo from '@helpers/dom/createVideo';
-import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
-import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentDownloadOptions';
-import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
-import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
@@ -1122,12 +1113,10 @@ export default class ChatInput {
     }, {
       icon: 'brush',
       get text() {
-        return inputThis.editMessage?.media?._ === 'messageMediaPhoto' ?
-          'EditThisPhoto' :
-          'EditThisVideo';
+        return getEditMediaLangKey(inputThis.editMessage);
       },
       onClick: () => this.editMediaWithEditor(),
-      verify: () => this.editMessage && getMediaTypeForMessage(this.editMessage) === 'media' && canEditMediaWithEditor(this.editMessage?.media)
+      verify: () => canEditMessageMediaWithEditor(this.editMessage)
     }, {
       icon: 'gift',
       text: 'GiftPremium',
@@ -4689,7 +4678,35 @@ export default class ChatInput {
 
       this.restoreInputLock = restoreInputLock;
     };
-    f();
+    return f();
+  }
+
+  /**
+   * One-click "edit this photo/video" from outside the composer (bubble context
+   * menu, media viewer): enter editing for the message and go straight to the
+   * media editor, whose result lands in the send popup as a replacement.
+   *
+   * Backing out of the editor backs out of editing too, so a menu click that
+   * ends in nothing leaves the composer as it was.
+   */
+  public async initMessageMediaEditing(mid: number) {
+    if(!this.chat.getMessage(mid)) { // e.g. a message this chat's storage does not hold
+      return;
+    }
+
+    await this.initMessageEditing(mid);
+
+    if(this.editMsgId !== mid) { // raced with another helper
+      return;
+    }
+
+    await this.editMediaWithEditor({
+      onAbort: () => {
+        if(this.editMsgId === mid) {
+          this.onHelperCancel(undefined, true);
+        }
+      }
+    });
   }
 
   public initSuggestPostChange(mid: number) {
@@ -5299,15 +5316,25 @@ export default class ChatInput {
     return mediaElement;
   }
 
-  private async editMediaWithEditor(): Promise<void> {
-    if(!this.editMessage) return;
+  /**
+   * `onAbort` fires whenever the flow ends without producing an edited file —
+   * the media could not be prepared, or the user closed the editor.
+   */
+  public async editMediaWithEditor({onAbort}: {onAbort?: () => void} = {}): Promise<void> {
+    if(!this.editMessage) {
+      onAbort?.();
+      return;
+    }
 
     const media = this.editMessage.media;
 
     const mediaElement = await this.tryGetEditMediaElementFromChat();
 
     const payload = getOpenMediaPayload(media);
-    if(!payload) return;
+    if(!payload) {
+      onAbort?.();
+      return;
+    }
 
     const middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get();
@@ -5324,7 +5351,7 @@ export default class ChatInput {
     };
     try {
       watched = await this.watchDownloadProgress({
-        getDownloadPromise: () => (downloadPromise = payload.downloadMediaBlob()),
+        getDownloadPromise: () => (downloadPromise = appDownloadManager.downloadMedia(payload.downloadOptions)),
         getResult: async() => {
           const mediaBlob = await downloadPromise;
           const mediaUrl = objectURLs.create(mediaBlob);
@@ -5340,12 +5367,14 @@ export default class ChatInput {
       });
     } catch(error) {
       objectURLs.dispose();
+      onAbort?.();
       throw error;
     }
 
     const {result, waitBeforeCleanup} = watched;
     if(!result || !middleware()) {
       objectURLs.dispose();
+      onAbort?.();
       return;
     }
 
@@ -5353,6 +5382,7 @@ export default class ChatInput {
 
     if(!mediaElement && !createdMediaElement) {
       objectURLs.dispose();
+      onAbort?.();
       return;
     }
 
@@ -5361,11 +5391,13 @@ export default class ChatInput {
       mediaEditor = await import('@components/mediaEditor');
     } catch(error) {
       objectURLs.dispose();
+      onAbort?.();
       throw error;
     }
 
     if(!middleware()) {
       objectURLs.dispose();
+      onAbort?.();
       return;
     }
 
@@ -5378,6 +5410,7 @@ export default class ChatInput {
       middlewareHelper.destroy();
     });
 
+    let finished = false;
     openEditor({
       managers: this.managers,
       mediaSrc: mediaUrl,
@@ -5386,8 +5419,12 @@ export default class ChatInput {
       rect: usedMediaElement.getBoundingClientRect(),
       animatedCanvasSize: getSourceSize(usedMediaElement),
       source: usedMediaElement,
-      onClose: () => objectURLs.dispose(),
+      onClose: () => {
+        objectURLs.dispose();
+        if(!finished) onAbort?.();
+      },
       onEditFinish: async(result) => {
+        finished = true;
         showNewMediaPopup(this.chat, [
           {
             file: new File([mediaBlob], payload.fileName, {type: mediaBlob.type}),
@@ -5458,96 +5495,5 @@ export default class ChatInput {
 
   private isEditingMediaFromAlbum() {
     return !!this.editMessage?.grouped_id;
-  }
-}
-
-function getOpenMediaPayload(media: MessageMedia | null | undefined) {
-  if(!media) return;
-  if(media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') return getOpenMediaPhotoPayload(media.photo);
-  if(media._ === 'messageMediaDocument' && media.document?._ === 'document') return getOpenMediaVideoPayload(media.document);
-}
-
-function canEditMediaWithEditor(media: MessageMedia) {
-  return !!getOpenMediaPayload(media);
-}
-
-type OpenMediaPayload = {
-  fileName: string;
-  mediaType: MediaEditorProps['mediaType']
-  createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
-  downloadMediaBlob: () => DownloadBlob;
-};
-
-function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
-  const photoSizes = photo.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
-  photoSizes.sort((a, b) => b.size - a.size);
-  const fullPhotoSize = photoSizes?.[0];
-
-  if(!fullPhotoSize?.w || !fullPhotoSize?.h) return;
-
-  return {
-    fileName: tryGetFileName(() => getFileNameByLocation(getPhotoDownloadOptions(photo, fullPhotoSize).location)),
-    mediaType: 'image',
-    createCanvasSource: createImageSource,
-    downloadMediaBlob: () =>
-      appDownloadManager.downloadMedia({
-        media: photo,
-        thumb: fullPhotoSize
-      })
-  };
-}
-
-function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
-  if(!document.size || document.size > MAX_EDITABLE_VIDEO_SIZE) return;
-
-  return {
-    fileName: tryGetFileName(() => document.file_name || getFileNameByLocation(getDocumentDownloadOptions(document).location)),
-    mediaType: 'video',
-    createCanvasSource: createVideoSource,
-    downloadMediaBlob: () =>
-      appDownloadManager.downloadMedia({
-        media: document,
-        thumb: undefined
-      })
-  };
-}
-
-async function createImageSource(url: string) {
-  const img = new Image();
-  await renderImageFromUrlPromise(img, url);
-  return img;
-}
-
-async function createVideoSource(url: string, middleware: Middleware) {
-  const video = createVideo({middleware});
-
-  video.playsInline = true;
-  video.src = url;
-  video.controls = false;
-  video.muted = true;
-  video.preload = 'auto';
-
-  const deferred = deferredPromise<void>();
-  video.requestVideoFrameCallback(() => {
-    deferred.resolve();
-  });
-
-  await onMediaLoad(video);
-
-  await deferred;
-
-  return video;
-}
-
-function getSourceSize(source: HTMLVideoElement | HTMLImageElement): NumberPair {
-  return source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
-}
-
-function tryGetFileName(fn: () => string) {
-  const defaultFileName = 'edited-media';
-  try {
-    return fn() || defaultFileName;
-  } catch{
-    return 'edited-media';
   }
 }

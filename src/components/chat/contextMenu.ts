@@ -52,6 +52,7 @@ import {ChatInputReplyTo} from '@components/chat/input';
 import {makeFullMid, TEST_BUBBLES_DELETION} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
+import {canEditMessageMediaWithEditor, getEditMediaLangKey} from './editMessageMedia';
 import {formatFullSentTime} from '@helpers/date';
 import showToggleReadDatePopup from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';
@@ -1039,6 +1040,13 @@ export default class ChatContextMenu {
       verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) &&
         !!this.chat.input.messageInput ||
         (this.message._ === 'message' && this.message.pFlags?.out && this.message.suggested_post && !this.message.suggested_post.pFlags?.accepted && !this.message.suggested_post.pFlags?.rejected)
+    }, {
+      icon: 'brush',
+      text: getEditMediaLangKey(this.message as Message.message),
+      onClick: this.onEditMediaClick,
+      verify: async() => canEditMessageMediaWithEditor(this.message as Message.message) &&
+        !!this.chat.input.messageInput &&
+        await this.managers.appMessagesManager.canEditMessage(this.message, 'text')
     }, {
       icon: 'plusround',
       text: 'ChecklistAddTasks',
@@ -2031,6 +2039,11 @@ export default class ChatContextMenu {
     }
 
     this.chat.input.initMessageEditing(this.isTargetAGroupedItem ? this.mid : message.mid);
+  };
+
+  private onEditMediaClick = () => {
+    // the clicked album item, not the caption holder — its media is what was aimed at
+    this.chat.input.initMessageMediaEditing(this.message.mid);
   };
 
   private onEditFactCheckClick = async() => {

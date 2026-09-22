@@ -5331,6 +5331,7 @@ const lang = {
   'EditThisVideo': 'Edit this video',
   'ReplacePhoto': 'Replace photo',
   'ReplaceVideo': 'Replace video',
+  'ReplaceFile': 'Replace file',
 
   'ArchiveSettings': 'Archive Settings',
   'ArchiveSettings.UnmutedChats.Title': 'Unmuted Chats',

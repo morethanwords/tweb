@@ -29,7 +29,7 @@ import {ChatType} from '@components/chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import TranslatableMessage from '@components/translatableMessage';
 import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
@@ -37,6 +37,7 @@ import onQuoteClick from '@helpers/dom/onQuoteClick';
 import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
 import {setButtonLoader} from '@components/putPreloader';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
+import {canEditMessageMediaWithEditor, getEditMediaLangKey} from '@components/chat/editMessageMedia';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -74,13 +75,15 @@ export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
   }
 };
 
-export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward' | 'copy', AppMediaViewerTargetType> {
+export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward' | 'copy' | 'edit', AppMediaViewerTargetType> {
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
   protected btnMenuForward: ButtonMenuItemOptionsVerifiable;
   protected btnMenuCopy: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuEdit: ButtonMenuItemOptionsVerifiable;
   private deleteAsChatPhoto = false;
+  private btnMenuEditText = new I18n.IntlElement({key: 'EditThisPhoto'});
   private videoAvatarCleanup?: () => void;
 
   get searchContext() {
@@ -102,7 +105,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
         return {element: null as HTMLElement, mid, peerId};
       }
-    }), ['delete', 'forward', 'copy'], sponsored ? 60 : 0);
+    }), ['edit', 'delete', 'forward', 'copy'], sponsored ? 60 : 0);
 
     this.buttons.copy.classList.add('media-viewer-copy-button');
     this.buttons.copy.setAttribute('aria-label', i18n('MediaViewer.Context.Copy').textContent);
@@ -150,8 +153,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     attachClickEvent(this.buttons.delete, this.onDeleteClick);
     attachClickEvent(this.buttons.copy, this.onCopyMediaClick);
+    attachClickEvent(this.buttons.edit, this.onEditClick);
 
-    const buttons: ButtonMenuItemOptionsVerifiable[] = [this.btnMenuForward = {
+    const buttons: ButtonMenuItemOptionsVerifiable[] = [this.btnMenuEdit = {
+      icon: 'brush',
+      textElement: this.btnMenuEditText.element,
+      onClick: this.onEditClick,
+      verify: () => false
+    }, this.btnMenuForward = {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick
@@ -263,6 +272,24 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         this.close();
       }
     );
+  };
+
+  onEditClick = async() => {
+    const {peerId, mid} = this.target;
+    const chat = appImManager.chat;
+    if(chat?.peerId !== peerId) {
+      return;
+    }
+
+    // the editor is a fullscreen overlay of its own — get out of the way first,
+    // which also puts the bubble back on screen for its open animation
+    try {
+      await this.close();
+    } catch{
+      return; // another close is already animating
+    }
+
+    chat.input.initMessageMediaEditing(mid);
   };
 
   onForwardClick = () => {
@@ -419,9 +446,17 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     cantForward: boolean,
     cantCopy: boolean,
     cantDownload: boolean,
-    cantDelete: boolean
+    cantDelete: boolean,
+    cantEdit: boolean,
+    editLangKey?: LangPackKey
   }) {
+    if(options.editLangKey) {
+      this.btnMenuEditText.compareAndUpdate({key: options.editLangKey});
+      this.buttons.edit.setAttribute('aria-label', I18n.format(options.editLangKey, true));
+    }
+
     const actions: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
+      [[this.buttons.edit, this.btnMenuEdit], options.cantEdit],
       [[this.buttons.forward, this.btnMenuForward], options.cantForward],
       [[this.buttons.copy, this.btnMenuCopy], options.cantCopy],
       [[this.buttons.download, this.btnMenuDownload], options.cantDownload],
@@ -475,17 +510,26 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       (action._ === 'messageActionChannelEditPhoto' || action._ === 'messageActionChatEditPhoto') &&
       message.peerId.isAnyChat();
 
+    // "edit" reopens the media in the editor and replaces the message with the result,
+    // so it needs the composer of the very chat this message lives in (see onEditClick)
+    const canOpenEditor = !this.local &&
+      !isSponsored &&
+      canEditMessageMediaWithEditor(message as Message.message) &&
+      appImManager.chat?.peerId === message.peerId &&
+      !!appImManager.chat.input?.messageInput;
+
     // Start with a conservative state, but do not put worker-proxy permission checks
     // in front of the first animation frame. The controls reconcile as soon as all
-    // three independent checks settle.
+    // the independent checks settle.
     this.deleteAsChatPhoto = false;
-    this.setMessageActionVisibility({cantForward: true, cantCopy: true, cantDownload: true, cantDelete: true});
+    this.setMessageActionVisibility({cantForward: true, cantCopy: true, cantDownload: true, cantDelete: true, cantEdit: true});
     const permissionsPromise = Promise.all([
       this.managers.appPeersManager.noForwards(message.peerId),
       isServiceMessage || noAuthor ? Promise.resolve(false) : this.managers.appMessagesManager.canForward(message),
       isChatPhotoEdit ?
         this.managers.appChatsManager.hasRights(message.peerId.toChatId(), 'change_info') :
-        this.managers.appMessagesManager.canDeleteMessage(message)
+        this.managers.appMessagesManager.canDeleteMessage(message),
+      canOpenEditor ? this.managers.appMessagesManager.canEditMessage(message, 'text') : Promise.resolve(false)
     ]);
 
     this.removeTimestamps();
@@ -510,14 +554,21 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.target.message = message;
     this.target.index = index;
 
-    void permissionsPromise.then(([noForwards, canForward, canDelete]) => {
+    void permissionsPromise.then(([noForwards, canForward, canDelete, canEdit]) => {
       if(this.target?.message !== message) return;
       const cantForward = !canForward;
       const cantDownload = (isServiceMessage ? noForwards : cantForward && !isSponsored) || !canSaveMessageMedia(message, noForwards);
       const cantCopy = cantDownload || !canCopyMediaToClipboard(media);
       const cantDelete = !canDelete;
       this.deleteAsChatPhoto = isChatPhotoEdit && !cantDelete;
-      this.setMessageActionVisibility({cantForward, cantCopy, cantDownload, cantDelete});
+      this.setMessageActionVisibility({
+        cantForward,
+        cantCopy,
+        cantDownload,
+        cantDelete,
+        cantEdit: !canEdit,
+        editLangKey: getEditMediaLangKey(message as Message.message)
+      });
     }).catch((error) => {
       this.log.warn('failed to resolve media viewer actions', error);
     });
