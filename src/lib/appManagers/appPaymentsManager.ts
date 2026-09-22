@@ -2,6 +2,7 @@ import {
   HelpPremiumPromo,
   InputInvoice,
   InputPaymentCredentials,
+  InputPeer,
   InputStorePaymentPurpose,
   PaymentRequestedInfo,
   PaymentsPaymentForm,
@@ -253,6 +254,22 @@ export default class AppPaymentsManager extends AppManager {
     return starsStatus;
   };
 
+  /**
+   * The stars ledger is always read as its owner, and our own `User` is not in the cache until
+   * the server has sent it — on a cold session it is not there at all. Name ourselves with
+   * `inputPeerSelf`, which needs no `access_hash`, instead of going through the user cache
+   * (tdesktop does the same: `_peer->isSelf() ? MTP_inputPeerSelf() : _peer->input()`).
+   */
+  private getStarsOwnerInputPeer(peerId?: PeerId): InputPeer {
+    // * resolved in the body, not as a parameter default - the bundler has been caught binding
+    // * a default to an unrelated symbol (see scripts/check-bundle-mangling.mjs)
+    if(peerId === undefined || peerId === this.rootScope.myId) {
+      return {_: 'inputPeerSelf'};
+    }
+
+    return this.appPeersManager.getInputPeerById(peerId);
+  }
+
   public getCachedStarsStatus() {
     if(this.starsStatus instanceof Promise) return;
     return this.starsStatus;
@@ -266,7 +283,7 @@ export default class AppPaymentsManager extends AppManager {
     return this.starsStatus ??= this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsStatus',
       params: {
-        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId)
+        peer: this.getStarsOwnerInputPeer()
       },
       processResult: (starsStatus) => {
         return this.starsStatus = this.saveStarsStatus(starsStatus);
@@ -282,7 +299,7 @@ export default class AppPaymentsManager extends AppManager {
     return this.starsStatusTon ??= this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsStatus',
       params: {
-        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        peer: this.getStarsOwnerInputPeer(),
         ton: true
       },
       processResult: (starsStatus) => {
@@ -295,7 +312,7 @@ export default class AppPaymentsManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsStatus',
       params: {
-        peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.getStarsOwnerInputPeer(peerId),
         ton
       },
       processResult: (starsStatus) => this.saveStarsStatus(starsStatus, peerId)
@@ -306,7 +323,7 @@ export default class AppPaymentsManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsTransactions',
       params: {
-        peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.getStarsOwnerInputPeer(peerId),
         offset,
         inbound,
         outbound: inbound === false,
@@ -321,8 +338,7 @@ export default class AppPaymentsManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsSubscriptions',
       params: {
-        // peer: this.appPeersManager.getInputPeerById(peerId),
-        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        peer: this.getStarsOwnerInputPeer(),
         offset,
         missing_balance: missingBalance
       },
@@ -335,7 +351,7 @@ export default class AppPaymentsManager extends AppManager {
       method: 'payments.changeStarsSubscription',
       params: {
         subscription_id: subscriptionId,
-        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId),
+        peer: this.getStarsOwnerInputPeer(),
         canceled
       }
     });
@@ -346,7 +362,7 @@ export default class AppPaymentsManager extends AppManager {
       method: 'payments.fulfillStarsSubscription',
       params: {
         subscription_id: subscriptionId,
-        peer: this.appPeersManager.getInputPeerById(this.rootScope.myId)
+        peer: this.getStarsOwnerInputPeer()
       }
     });
   }
@@ -366,7 +382,7 @@ export default class AppPaymentsManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getStarsTransactionsByID',
       params: {
-        peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.getStarsOwnerInputPeer(peerId),
         ton,
         id: [{_: 'inputStarsTransaction', pFlags: {refund: refund || undefined}, id: transactionId}]
       },

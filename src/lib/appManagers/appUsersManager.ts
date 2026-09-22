@@ -934,7 +934,8 @@ export class AppUsersManager extends AppManager {
 
   public getUserInput(id: UserId): InputUser {
     const user = this.getUser(id);
-    if(!id || (user.pFlags && user.pFlags.self)) {
+    // * our own User is not in the cache until the server has sent it, so go by the id too
+    if(!id || user?.pFlags?.self || (!user && id === this.userId)) {
       return {_: 'inputUserSelf'};
     }
 
@@ -951,6 +952,12 @@ export class AppUsersManager extends AppManager {
     // if(user.pFlags?.self) {
     //   return {_: 'inputPeerSelf'};
     // }
+
+    // * ...our own User, however, is not in the cache until the server has sent it, and naming
+    // * ourselves beats an inputPeerUser with an undefined access_hash
+    if(!user && id === this.userId) {
+      return {_: 'inputPeerSelf'};
+    }
 
     return {
       _: 'inputPeerUser',

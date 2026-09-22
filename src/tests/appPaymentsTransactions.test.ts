@@ -1,6 +1,8 @@
 import {describe, expect, it, vi} from 'vitest';
 import AppPaymentsManager from '@appManagers/appPaymentsManager';
 import {AppMessagesIdsManager} from '@appManagers/appMessagesIdsManager';
+import {AppPeersManager} from '@appManagers/appPeersManager';
+import {AppUsersManager} from '@appManagers/appUsersManager';
 import {MessageMedia, PaymentsStarsStatus, StarsTransaction, StarsTransactionPeer} from '@layer';
 import '@helpers/peerIdPolyfill';
 
@@ -157,5 +159,101 @@ describe('Stars and Gram transaction normalization', () => {
         offset: 'next', inbound: false, outbound: true, ton: true, limit: 30
       }
     }));
+  });
+});
+
+/**
+ * A cold session knows its own id but has not been sent its own `User` yet, so the user cache is
+ * empty. Every read of our own stars ledger used to build its peer out of that cache and threw
+ * `Cannot read properties of undefined (reading 'access_hash')` in the worker — opening Settings
+ * reads the balance, so it crashed there first.
+ */
+function coldSessionHarness() {
+  const status: PaymentsStarsStatus = {
+    _: 'payments.starsStatus',
+    balance: {_: 'starsAmount', amount: '1', nanos: 0},
+    chats: [],
+    users: []
+  };
+  const rootScope = {myId: SELF};
+  const appUsersManager = new AppUsersManager();
+  Object.assign(appUsersManager, {rootScope, users: {}, saveApiUsers: vi.fn()});
+  const appPeersManager = new AppPeersManager();
+  Object.assign(appPeersManager, {rootScope, appUsersManager, appChatsManager: {saveApiChats: vi.fn()}});
+  const invokeApiSingleProcess = vi.fn(({processResult}) => Promise.resolve(processResult?.(status) ?? status));
+  const manager = new AppPaymentsManager();
+  Object.assign(manager, {
+    rootScope,
+    apiManager: {invokeApiSingleProcess},
+    appPeersManager,
+    appMessagesIdsManager: new AppMessagesIdsManager()
+  });
+  const sentPeers = () => invokeApiSingleProcess.mock.calls.map(([options]) => options.params.peer);
+  return {manager, appUsersManager, appPeersManager, status, invokeApiSingleProcess, sentPeers};
+}
+
+describe('Stars ledger reads on a session that has not been sent its own user yet', () => {
+  it('loads the star and TON balances instead of throwing on the empty user cache', async() => {
+    const h = coldSessionHarness();
+
+    expect(await h.manager.getStarsStatus(true)).toBe(h.status);
+    expect(await h.manager.getStarsStatusTon(true)).toBe(h.status);
+
+    expect(h.sentPeers()).toEqual([{_: 'inputPeerSelf'}, {_: 'inputPeerSelf'}]);
+    expect(h.invokeApiSingleProcess.mock.calls[1][0].params.ton).toBe(true);
+  });
+
+  it('names us with inputPeerSelf for every read of our own ledger', async() => {
+    const h = coldSessionHarness();
+
+    await h.manager.getPeerStarsStatus(SELF);
+    await h.manager.getStarsTransactions();
+    await h.manager.getStarsTransactionsByID('transaction');
+    await h.manager.getStarsSubscriptions();
+    await h.manager.changeStarsSubscription('subscription', true);
+    await h.manager.fulfillStarsSubscription('subscription');
+
+    expect(h.sentPeers()).toEqual(Array(6).fill({_: 'inputPeerSelf'}));
+  });
+
+  it('still addresses another peer\'s ledger explicitly', async() => {
+    const h = coldSessionHarness();
+    h.appUsersManager.saveApiUsers = vi.fn();
+    Object.assign(h.appPeersManager, {
+      appChatsManager: {
+        saveApiChats: vi.fn(),
+        getInputPeer: (chatId: ChatId) => ({_: 'inputPeerChannel', channel_id: chatId, access_hash: 'hash'}),
+        isChannel: () => true
+      },
+      isCommunity: () => false
+    });
+
+    await h.manager.getPeerStarsStatus(CHANNEL);
+    expect(h.sentPeers()).toEqual([{_: 'inputPeerChannel', channel_id: CHANNEL.toChatId(), access_hash: 'hash'}]);
+  });
+
+  it('names us with inputPeerSelf and inputUserSelf while our own user is missing', () => {
+    const h = coldSessionHarness();
+    const selfUserId = SELF.toUserId();
+
+    expect(h.appPeersManager.getInputPeerById(SELF)).toEqual({_: 'inputPeerSelf'});
+    expect(h.appUsersManager.getUserInput(selfUserId)).toEqual({_: 'inputUserSelf'});
+
+    // * once the server has sent it, the explicit peer comes back - some methods reject inputPeerSelf
+    Object.assign(h.appUsersManager.getUsers(), {
+      [selfUserId]: {_: 'user', id: selfUserId, access_hash: 'hash', pFlags: {self: true}}
+    });
+    expect(h.appPeersManager.getInputPeerById(SELF)).toEqual({
+      _: 'inputPeerUser',
+      user_id: selfUserId,
+      access_hash: 'hash'
+    });
+  });
+
+  it('does not invent an access_hash for a user it has never seen', () => {
+    const h = coldSessionHarness();
+    // * a missing non-self user is a real bug at the call site, so it must not turn into a
+    // * silently malformed inputPeerUser
+    expect(() => h.appPeersManager.getInputPeerById(BUYER)).toThrow();
   });
 });
