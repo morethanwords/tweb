@@ -15,7 +15,7 @@ import {
 } from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import styles from '@components/instantView.module.scss';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapRichText, {makeQuoteCollapsable} from '@lib/richTextProcessor/wrapRichText';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
 import GenericTable, {GenericTableCell, GenericTableRow} from '@components/genericTable';
@@ -23,6 +23,7 @@ import {SolidJSHotReloadGuardContextValue, useHotReloadGuard} from '@lib/solidjs
 import {formatDate, formatFullSentTime} from '@helpers/date';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import onQuoteClick from '@helpers/dom/onQuoteClick';
 import Scrollable, {ScrollableContext} from '@components/scrollable2';
 import fastSmoothScroll, {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import Animated from '@helpers/solid/animations';
@@ -997,14 +998,14 @@ function Block(props: {
       return (
         <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
           {/* reuse the app-standard quote styling (left accent bar + tinted bg + quote glyph) */}
-          <blockquote class={classNames('quote-like', 'quote-like-border', 'quote-like-icon', styles.Blockquote)}>
+          <CollapsableBlockquote collapsed={block.pFlags.collapsed}>
             <RichTextRenderer text={block.text} />
             <Show when={!isRichTextEmpty(block.caption)}>
               <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
                 <RichTextRenderer text={block.caption} />
               </div>
             </Show>
-          </blockquote>
+          </CollapsableBlockquote>
         </div>
       );
     case 'pageBlockBlockquoteBlocks':
@@ -1078,6 +1079,41 @@ function Block(props: {
           />
           <CaptionC caption={block.caption} />
         </>
+      );
+    }
+    // layer 229: a plain file attached to the page. Rendered with the same document row the audio
+    // block uses — it already covers download, progress and the file/audio distinction.
+    case 'pageBlockDocument': {
+      const context = useContext(InstantViewContext);
+      const {DocumentTsx} = useHotReloadGuard();
+      const doc = createMemo(() => findPageDocument(context, block.document_id));
+      const message = createMemo<Message.message>(() => ({
+        _: 'message',
+        id: (Number(block.document_id) || 0) as number, // Fake ID
+        peer_id: {_: 'peerUser', user_id: 0},
+        date: 0,
+        message: '',
+        media: {
+          _: 'messageMediaDocument',
+          document: doc(),
+          pFlags: {}
+        },
+        pFlags: {},
+        mid: (Number(block.document_id) || 0) as number, // Fake MID
+        peerId: NULL_PEER_ID
+      }));
+
+      return (
+        <Show when={doc()}>
+          <DocumentTsx
+            class={classNames(styles.Padding, styles.Audio)}
+            message={message()}
+            withTime={false}
+            clickable
+            autoDownloadSize={10 * 1024 * 1024} // 10MB auto-download limit
+          />
+          <CaptionC caption={block.caption} />
+        </Show>
       );
     }
     case 'pageBlockAudio': {
@@ -1219,7 +1255,7 @@ function Block(props: {
               <RichTextRenderer text={block.title} />
             </div>
           </Show>
-          <div class={styles.Table}>
+          <div class={classNames(styles.Table, block.pFlags.compact && styles.TableCompact)}>
             <GenericTable
               rows={rows()}
               bordered={block.pFlags.bordered}
@@ -1602,6 +1638,45 @@ function getInstantViewRichTextOptions(context: InstantViewContextValue) {
     disabledEntities: getInstantViewDisabledEntities(options),
     customEmojiRenderer: context.customEmojiRenderer
   };
+}
+
+/**
+ * layer 229 lets a page blockquote ask to start collapsed. It reuses the app-wide collapsable
+ * quote (same classes, same resize observer), so the click that expands it is the one the host
+ * already handles — the chat's for a rich message, this one's for a standalone page.
+ */
+function CollapsableBlockquote(props: {collapsed?: boolean, children: JSX.Element}) {
+  let ref: HTMLQuoteElement;
+  // read once: a block never switches between collapsed and open, and the class below has to
+  // carry `quote-like-collapsable` itself — Solid applies the class binding after the ref, so a
+  // class the ref added would be wiped
+  const collapsed = !!props.collapsed;
+
+  const onClick = (e: MouseEvent) => {
+    if(!collapsed) return;
+    onQuoteClick(e, ref);
+  };
+
+  return (
+    <blockquote
+      ref={(_ref) => {
+        ref = _ref;
+        if(collapsed) {
+          onCleanup(makeQuoteCollapsable(_ref));
+        }
+      }}
+      class={classNames(
+        'quote-like',
+        'quote-like-border',
+        'quote-like-icon',
+        collapsed && 'quote-like-collapsable',
+        styles.Blockquote
+      )}
+      onClick={onClick}
+    >
+      {props.children}
+    </blockquote>
+  );
 }
 
 function RichTextRenderer(props: {text: RichText}) {

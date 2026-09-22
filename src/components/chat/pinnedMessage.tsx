@@ -23,7 +23,7 @@ import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {getKeyboardButtonHandler} from '@components/wrappers/keyboardButton';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {FontFullBold} from '@config/font';
-import {KeyboardButton, Message} from '@layer';
+import {KeyboardInlineButton, Message} from '@layer';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {createSignal, JSX} from 'solid-js';
 import classNames from '@helpers/string/classNames';
@@ -656,7 +656,7 @@ export default function createChatPinnedMessage(
     setIsMany(count > 1);
   }
 
-  function getSingleInlineButton(message?: Message.message): KeyboardButton | undefined {
+  function getSingleInlineButton(message?: Message.message): KeyboardInlineButton | undefined {
     const replyMarkup = message?.reply_markup;
     if(replyMarkup?._ !== 'replyInlineMarkup') return;
     const rows = replyMarkup.rows;

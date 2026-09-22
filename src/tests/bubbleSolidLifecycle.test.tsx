@@ -699,7 +699,7 @@ test('preserves an unsupported source shell and retries it after a cancelled rep
   const fullMid = '10_100';
   const finalMessage = {
     ...message(),
-    reply_markup: {_: 'replyInlineMarkup', rows: []}
+    reply_markup: {_: 'replyInlineMarkup', pFlags: {}, rows: []}
   } as Message.message;
   const bubble = document.createElement('div');
   bubble.dataset.peerId = '' + peerId;

@@ -96,7 +96,14 @@ export default class ReplyKeyboard extends DropdownHover {
       return;
     }
 
-    if(replyMarkup._ === 'replyKeyboardForceReply' &&
+    // layer 229 moved the force-reply bit onto the keyboard markups themselves, so a
+    // `replyKeyboardMarkup` / `replyInlineMarkup` carrying `force_reply` asks for a reply
+    // exactly like the standalone `replyKeyboardForceReply` does.
+    const forcesReply = replyMarkup._ === 'replyKeyboardForceReply' ||
+      ((replyMarkup._ === 'replyKeyboardMarkup' || replyMarkup._ === 'replyInlineMarkup') &&
+        !!replyMarkup.pFlags.force_reply);
+
+    if(forcesReply &&
       !replyMarkup.pFlags.hidden &&
       !replyMarkup.pFlags.used) {
       replyMarkup.pFlags.used = true;
@@ -155,7 +162,10 @@ export default class ReplyKeyboard extends DropdownHover {
 
     const hide = this.ephemeralMode ||
       replyMarkup._ === 'replyKeyboardHide' ||
-      !(replyMarkup as ReplyMarkup.replyInlineMarkup).rows?.length;
+      // a force-reply inline markup is tracked as the last keyboard, but it is drawn in
+      // its own bubble — there is no panel to open for it
+      replyMarkup._ === 'replyInlineMarkup' ||
+      !(replyMarkup as ReplyMarkup.replyKeyboardMarkup).rows?.length;
     this.btnHover.classList.toggle('hide', hide);
 
     if(hide) {

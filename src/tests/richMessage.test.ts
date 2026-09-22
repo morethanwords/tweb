@@ -1,4 +1,5 @@
 import {PageBlock, RichMessage, RichText} from '@layer';
+import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import {flattenRichMessageContent, flattenRichMessageSummary, richMessageToPage} from '@lib/richMessage';
 
 const text = (value: string): RichText => ({_: 'textPlain', text: value});
@@ -103,7 +104,7 @@ describe('flattenRichMessageSummary', () => {
 
   test('flattens quotes, details, tables and math', () => {
     const summary = flattenRichMessageSummary(richMessage([
-      {_: 'pageBlockBlockquote', text: text('quote'), caption: text('author')},
+      {_: 'pageBlockBlockquote', pFlags: {}, text: text('quote'), caption: text('author')},
       {
         _: 'pageBlockDetails',
         pFlags: {},
@@ -354,5 +355,20 @@ describe('flattenRichMessageSummary', () => {
       offset: 3,
       length: 4
     });
+  });
+});
+
+describe('layer 229 rich text', () => {
+  test('shows the label of a page button until pages can draw real buttons', () => {
+    const button: RichText = {
+      _: 'textButton',
+      text: {_: 'textConcat', texts: [text('Open '), {_: 'textBold', text: text('now')}]},
+      type: {_: 'inlineButtonTypeUrl', url: 'https://example.com/'}
+    } as RichText;
+
+    const wrapped = wrapTelegramRichText(button);
+    expect(wrapped.text).toBe('Open now');
+    // the inner formatting survives; only the button chrome is dropped
+    expect(wrapped.entities.some((entity) => entity._ === 'messageEntityBold')).toBe(true);
   });
 });

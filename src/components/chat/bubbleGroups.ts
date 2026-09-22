@@ -21,6 +21,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import type {BubbleElementAddons} from '@components/chat/types';
 import {AdminLog} from '@appManagers/appChatsManager';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import compareBubbleTimelineMessages from '@components/chat/compareBubbleTimelineMessages';
 import filterReplyMarkupRows from '@components/chat/bubbleParts/filterReplyMarkupRows';
 import updateChatThreadSeparators from '@components/chat/bubbleParts/updateChatThreadSeparators';
@@ -582,6 +583,10 @@ export default class BubbleGroups {
     if(isMessageForVerificationBot(item1.message)) return false;
 
     if(isEphemeralMessage(item1.message) !== isEphemeralMessage(item2.message)) return false;
+
+    // a message an ephemeral one stands in for shows content of its own — desktop keeps it
+    // out of its neighbours' group for the same reason (`sameAnchored`)
+    if(isAnchoredEphemeralMessage(item1.message) !== isAnchoredEphemeralMessage(item2.message)) return false;
 
     if(
       item1.message?._ === 'message' && item1.message?.suggested_post ||

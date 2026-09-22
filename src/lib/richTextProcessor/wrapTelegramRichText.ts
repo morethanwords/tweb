@@ -259,6 +259,10 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
       // Normal rendering resolves a diff to its updated text. A dedicated diff
       // viewer can render old_text separately when that UI is implemented.
       return processRichText(richText.text, options);
+    case 'textButton':
+      // layer 229's inline page button. Until pages render real buttons, show its label as
+      // ordinary text — the same fallback desktop takes when it cannot build the button.
+      return processRichText(richText.text, options);
     default:
       return {
         _: 'textWithEntities',

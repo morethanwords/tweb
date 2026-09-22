@@ -202,7 +202,7 @@ const STATE_STEPS = {
         writer.reset();
       } else if(writer.state.build < 562) { // * drop filtersArr
         writer.push('filtersArr', copy(STATE_INIT.filtersArr));
-      } else if(writer.state.build < 646) {
+      } else if(writer.state.build < 677) {
         writer.resetStorages.set('dialogs', []);
         writer.push('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
         writer.push('pinnedOrders', copy(STATE_INIT.pinnedOrders));

@@ -1,4 +1,4 @@
-import {KeyboardButton, RequestPeerType, Chat as MTChat} from '@layer';
+import {ButtonType, RequestPeerType, Chat as MTChat} from '@layer';
 import {ChatRights} from '@appManagers/appChatsManager';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
@@ -10,7 +10,7 @@ import {showPickUser2Popup} from '@components/popups/pickUser';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 
-// Shows the peer picker described by a `keyboardButtonRequestPeer`, applies the
+// Shows the peer picker described by a `buttonTypeRequestPeer`, applies the
 // button's peer-type constraints and (for chats/channels) a confirmation step.
 // Resolves with the chosen peer ids; rejects if the user cancels the picker or
 // declines the confirmation. The `requestPeerTypeCreateBot` variant is handled
@@ -19,7 +19,7 @@ export default async function selectRequestPeers({
   button,
   requestingPeerId
 }: {
-  button: KeyboardButton.keyboardButtonRequestPeer,
+  button: ButtonType.buttonTypeRequestPeer,
   requestingPeerId: PeerId
 }): Promise<PeerId[]> {
   const peerType = button.peer_type;

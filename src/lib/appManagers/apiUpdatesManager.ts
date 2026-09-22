@@ -817,7 +817,8 @@ class ApiUpdatesManager {
       update._ === 'updateChannelUserTyping'
     ) && (
       update.action._ === 'sendMessageTextDraftAction' ||
-      update.action._ === 'sendMessageRichMessageDraftAction'
+      update.action._ === 'sendMessageRichMessageDraftAction' ||
+      update.action._ === 'sendMessageStopDraftAction'
     );
   }
 

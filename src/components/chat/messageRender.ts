@@ -1,4 +1,5 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
+import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import {formatDate, formatFullSentTimeRaw, formatTime} from '@helpers/date';
 import {getFullDate} from '@helpers/date/getFullDate';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
@@ -57,6 +58,15 @@ const makeEdited = () => {
   edited.classList.add('time-edited', 'time-part');
   _i18n(edited, 'EditedMessage');
   return edited;
+};
+
+// layer 229: an ordinary message an ephemeral one is standing in for says "updated" where an
+// edited one would say "edited" (tdesktop's `Data::Flag::Updated`).
+const makeUpdated = () => {
+  const updated = document.createElement('i');
+  updated.classList.add('time-edited', 'time-part');
+  _i18n(updated, 'Ephemeral.Updated');
+  return updated;
 };
 
 // * when the `message_primary_edited_date` app config flag is on, the edited badge is
@@ -305,7 +315,9 @@ export namespace MessageRender {
         args.push(span);
       }
 
-      if(!editedPrimary && message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
+      if(isAnchoredEphemeralMessage(message)) {
+        args.unshift(editedSpan = makeUpdated());
+      } else if(!editedPrimary && message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
       }
 
@@ -363,7 +375,9 @@ export namespace MessageRender {
 
     let clonedArgs = args;
     if(editedSpan) {
-      clonedArgs[clonedArgs.indexOf(editedSpan)] = makeEdited();
+      clonedArgs[clonedArgs.indexOf(editedSpan)] = isAnchoredEphemeralMessage(message) ?
+        makeUpdated() :
+        makeEdited();
     }
     // if(sponsoredSpan) {
     //   clonedArgs[clonedArgs.indexOf(sponsoredSpan)] = makeSponsored();

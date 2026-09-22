@@ -995,6 +995,40 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [getNameDivHTML(action.bot_id.toPeerId(), plain)];
         break;
       }
+      // layer 229: someone joined this group through a community it belongs to. Rendered like
+      // tdesktop's `lng_action_user_joined_via_community` — the joiner plus a link to the
+      // community, falling back to the community-less wording when the chat is not known yet.
+      case 'messageActionChatJoinedViaCommunity': {
+        const communityId = action.community_id &&
+          action.community_id !== '0' &&
+          action.community_id !== 0 ?
+          action.community_id.toChatId() :
+          undefined;
+        const community = communityId ?
+          apiManagerProxy.getChat(communityId) :
+          undefined;
+        const communityTitle = getCommunityServiceTitle(community);
+
+        args = [getNameDivHTML(message.fromId, plain)];
+
+        if(communityTitle) {
+          langPackKey = 'Chat.Service.JoinedViaCommunity';
+
+          if(plain) {
+            args.push(communityTitle);
+          } else if(noLinks) {
+            const bold = document.createElement('b');
+            bold.textContent = communityTitle;
+            args.push(bold);
+          } else {
+            args.push(getNameDivHTML(communityId.toPeerId(true), plain));
+          }
+        } else {
+          langPackKey = 'Chat.Service.JoinedViaCommunity.Unknown';
+        }
+
+        break;
+      }
       case 'messageActionChangeCommunity': {
         const communityId = action.community_id &&
           action.community_id !== '0' &&

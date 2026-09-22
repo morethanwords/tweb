@@ -47,6 +47,7 @@ function makeHarness(options: {isBotforum?: boolean, isForum?: boolean} = {}) {
     nextTempMessageId = +(nextTempMessageId + 0.0001).toFixed(4);
     return result;
   });
+  const setTyping = vi.fn(() => Promise.resolve(true));
 
   Object.assign(manager, {
     rootScope: {dispatchEvent},
@@ -96,7 +97,8 @@ function makeHarness(options: {isBotforum?: boolean, isForum?: boolean} = {}) {
     },
     deleteMessageFromStorage(messagesStorage: MessagesStorage, mid: number) {
       return messagesStorage.delete(mid);
-    }
+    },
+    setTyping
   });
 
   return {
@@ -107,16 +109,26 @@ function makeHarness(options: {isBotforum?: boolean, isForum?: boolean} = {}) {
     threadHistory,
     generateTempMessageId,
     deleteContext,
-    deleteCacheContext
+    deleteCacheContext,
+    setTyping
   };
 }
 
-function textAction(value: string, randomId = '100'): SendMessageAction.sendMessageTextDraftAction {
+function textAction(
+  value: string,
+  randomId = '100',
+  pFlags: SendMessageAction.sendMessageTextDraftAction['pFlags'] = {}
+): SendMessageAction.sendMessageTextDraftAction {
   return {
     _: 'sendMessageTextDraftAction',
+    pFlags,
     random_id: randomId,
     text: {_: 'textWithEntities', text: value, entities: []}
   };
+}
+
+function stopAction(randomId = '100'): SendMessageAction.sendMessageStopDraftAction {
+  return {_: 'sendMessageStopDraftAction', random_id: randomId};
 }
 
 function richAction(value: string, randomId = '100'): SendMessageAction.sendMessageRichMessageDraftAction {
@@ -127,7 +139,7 @@ function richAction(value: string, randomId = '100'): SendMessageAction.sendMess
     photos: [],
     documents: []
   };
-  return {_: 'sendMessageRichMessageDraftAction', random_id: randomId, rich_message: richMessage};
+  return {_: 'sendMessageRichMessageDraftAction', pFlags: {}, random_id: randomId, rich_message: richMessage};
 }
 
 function userTyping(action: SendMessageAction, threadId = 7): Update.updateUserTyping {
@@ -169,6 +181,81 @@ describe('AppMessagesManager streamed drafts', () => {
     expect(dispatchEvent.mock.calls.map(([event]) => event)).toEqual(['streamed_message_update']);
     expect(dispatchEvent.mock.calls.some(([event]) => event === 'message_edit')).toBe(false);
     expect(dispatchEvent.mock.calls.some(([event]) => event === 'message_sent')).toBe(false);
+  });
+
+  test('offers Stop only while the bot allows it, and drops the stream once stopped', () => {
+    const {manager, dispatchEvent, storage, setTyping} = makeHarness();
+
+    // an ordinary stream is not stoppable
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('plain')));
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(false);
+    expect(dispatchEvent.mock.calls.some(([event]) => event === 'streamed_message_stoppable')).toBe(false);
+    expect(manager.stopStreamedMessageDraft(peerId, 7)).toBe(false);
+    expect(setTyping).not.toHaveBeenCalled();
+
+    dispatchEvent.mockClear();
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('stoppable', '100', {can_stop: true})));
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(true);
+    expect(dispatchEvent.mock.calls.filter(([event]) => event === 'streamed_message_stoppable')).toEqual([
+      ['streamed_message_stoppable', {peerId, threadId: 7, stoppable: true}]
+    ]);
+
+    dispatchEvent.mockClear();
+    expect(manager.stopStreamedMessageDraft(peerId, 7)).toBe(true);
+    expect(setTyping).toHaveBeenCalledWith(peerId, stopAction('100'), true, 7);
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(false);
+    // no keep_on_stop: what was streamed goes away with the stream
+    expect(storage.size).toBe(0);
+    const events = dispatchEvent.mock.calls.map(([event]) => event);
+    expect(events).toContain('streamed_message_remove');
+    expect(dispatchEvent.mock.calls.filter(([event]) => event === 'streamed_message_stoppable')).toEqual([
+      ['streamed_message_stoppable', {peerId, threadId: 7, stoppable: false}]
+    ]);
+
+    // a revision that was already in flight must not bring the stream back
+    dispatchEvent.mockClear();
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('stoppable and then some', '100', {can_stop: true})));
+    expect(storage.size).toBe(0);
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(false);
+    expect(dispatchEvent).not.toHaveBeenCalled();
+  });
+
+  test('announces a stoppable stream again after the drafts were cleared', () => {
+    const {manager, dispatchEvent} = makeHarness();
+
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('a', '400', {can_stop: true})));
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(true);
+
+    manager.clearStreamedMessageDrafts(true);
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(false);
+
+    dispatchEvent.mockClear();
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('b', '401', {can_stop: true})));
+    expect(dispatchEvent.mock.calls.filter(([event]) => event === 'streamed_message_stoppable')).toEqual([
+      ['streamed_message_stoppable', {peerId, threadId: 7, stoppable: true}]
+    ]);
+  });
+
+  test('keeps what was streamed when the bot asks to, and applies the bot own stop', () => {
+    const {manager, dispatchEvent, storage} = makeHarness();
+
+    manager.handleStreamedMessageTypingUpdate(userTyping(textAction('kept', '300', {
+      can_stop: true,
+      keep_on_stop: true
+    })));
+    const tempId = dispatchEvent.mock.calls.find(([event]) => event === 'streamed_message_update')[1].draft.tempId;
+    expect(storage.get(tempId)).toBeDefined();
+
+    dispatchEvent.mockClear();
+    // the bot reports the stop itself, exactly as it arrives over updateUserTyping
+    manager.handleStreamedMessageTypingUpdate(userTyping(stopAction('300')));
+
+    expect(storage.get(tempId)).toBeDefined();
+    expect(manager.isStreamedMessageDraftStoppable(peerId, 7)).toBe(false);
+    expect(dispatchEvent.mock.calls.some(([event]) => event === 'streamed_message_remove')).toBe(false);
+    expect(dispatchEvent.mock.calls.filter(([event]) => event === 'streamed_message_stoppable')).toEqual([
+      ['streamed_message_stoppable', {peerId, threadId: 7, stoppable: false}]
+    ]);
   });
 
   test('accepts rich drafts and all typing update locations with scoped supersede', () => {

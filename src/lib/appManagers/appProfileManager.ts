@@ -1421,7 +1421,10 @@ export class AppProfileManager extends AppManager {
 
     if(
       action._ === 'sendMessageTextDraftAction' ||
-      action._ === 'sendMessageRichMessageDraftAction'
+      action._ === 'sendMessageRichMessageDraftAction' ||
+      // layer 229: the bot's acknowledgement that a stream is over. It carries the stream's
+      // random id, so it belongs to the draft bookkeeping and never to the typing list.
+      action._ === 'sendMessageStopDraftAction'
     ) {
       this.appMessagesManager.handleStreamedMessageTypingUpdate(update);
       return;

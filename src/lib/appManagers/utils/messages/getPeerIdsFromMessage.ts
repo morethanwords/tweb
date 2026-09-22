@@ -57,7 +57,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     const chatIds: ChatId[] = [
       (action as MessageAction.messageActionChatMigrateTo).channel_id,
       (action as MessageAction.messageActionChannelMigrateFrom).chat_id,
-      (action as MessageAction.messageActionChangeCommunity).community_id
+      (action as MessageAction.messageActionChangeCommunity | MessageAction.messageActionChatJoinedViaCommunity).community_id
     ];
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
 

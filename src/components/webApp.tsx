@@ -1167,15 +1167,16 @@ export default class WebApp {
         let sent = false;
         try {
           const button = await this.managers.appAttachMenuBotsManager.getRequestedWebViewButton(botId, req_id);
-          if(button?._ !== 'keyboardButtonRequestPeer' || button.peer_type._ === 'requestPeerTypeCreateBot') {
+          const buttonType = button?.type;
+          if(buttonType?._ !== 'buttonTypeRequestPeer' || buttonType.peer_type._ === 'requestPeerTypeCreateBot') {
             throw new Error('REQUEST_CHAT_UNSUPPORTED');
           }
 
           const requestingPeerId = botId.toPeerId(false);
-          const requestedPeerIds = await selectRequestPeers({button, requestingPeerId});
+          const requestedPeerIds = await selectRequestPeers({button: buttonType, requestingPeerId});
           await this.managers.appMessagesManager.sendBotRequestedPeer(
             requestingPeerId,
-            button.button_id,
+            buttonType.button_id,
             requestedPeerIds,
             {webappReqId: req_id}
           );

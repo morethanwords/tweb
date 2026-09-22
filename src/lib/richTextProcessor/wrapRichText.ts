@@ -114,7 +114,7 @@ function onQuoteResize(entry: ResizeObserverEntry) {
   target.classList.toggle('is-truncated', !isExpanded);
 }
 
-function makeQuoteCollapsable(element: HTMLElement) {
+export function makeQuoteCollapsable(element: HTMLElement) {
   element.classList.add('quote-like-collapsable');
 
   const collapseIcon = document.createElement('span');

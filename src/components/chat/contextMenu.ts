@@ -101,6 +101,7 @@ import {canViewPollStatistics as canViewPollStatisticsForMessage} from './bubble
 import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -968,6 +969,7 @@ export default class ChatContextMenu {
       onClick: this.onQuoteClick,
       verify: async() => /* await this.chat.canSend() && */
         !isEphemeralMessage(this.message) &&
+        !isAnchoredEphemeralMessage(this.message) &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
         !!(this.message as Message.message).message &&
@@ -985,6 +987,7 @@ export default class ChatContextMenu {
       onClick: this.onReplyClick,
       verify: async() => !this.isLegacy &&
         !(isEphemeralMessage(this.message) && this.message.pFlags.out) &&
+        !isAnchoredEphemeralMessage(this.message) &&
         // await this.chat.canSend() &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
@@ -1181,6 +1184,7 @@ export default class ChatContextMenu {
       text: 'MessageContext.CopyMessageLink1',
       onClick: this.onCopyLinkClick,
       verify: async() => !isEphemeralMessage(this.message) &&
+        !isAnchoredEphemeralMessage(this.message) &&
         !this.isLegacy &&
         await this.managers.appPeersManager.isChannel(this.peerId) &&
         !this.chat.isMonoforum &&
@@ -1190,6 +1194,7 @@ export default class ChatContextMenu {
       text: 'Message.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => !isEphemeralMessage(this.message) &&
+        !isAnchoredEphemeralMessage(this.message) &&
         !this.isLegacy &&
         !this.chat.isMonoforum &&
         !this.message.pFlags.is_outgoing &&
@@ -1203,6 +1208,7 @@ export default class ChatContextMenu {
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
       verify: async() => !isEphemeralMessage(this.message) &&
+        !isAnchoredEphemeralMessage(this.message) &&
         (this.message as Message.message).pFlags.pinned &&
         await this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
         !useIsFrozen()
@@ -1267,8 +1273,8 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
-      verify: () => !isEphemeralMessage(this.message) &&
-        !this.noForwards &&
+      verify: () => !isAnchoredEphemeralMessage(this.message) &&
+        (isEphemeralMessage(this.message) || !this.noForwards) &&
         this.chat.type !== ChatType.Scheduled &&
         (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) &&
         this.message._ !== 'messageService'
@@ -1312,7 +1318,7 @@ export default class ChatContextMenu {
         this.message._ === 'message' &&
         !this.message.pFlags.is_outgoing &&
         (
-          isEphemeralMessage(this.message) ?
+          isEphemeralMessage(this.message) || isAnchoredEphemeralMessage(this.message) ?
             !this.chat.selection.isSelecting :
             this.managers.appPeersManager.isChannel(this.messagePeerId)
         ),
@@ -1369,7 +1375,25 @@ export default class ChatContextMenu {
         return content;
       },
       onClick: this.onDeleteClick,
-      verify: async() => this.managers.appMessagesManager.canDeleteMessage(this.message)
+      verify: async() => !isAnchoredEphemeralMessage(this.message) &&
+        this.managers.appMessagesManager.canDeleteMessage(this.message)
+    }, {
+      // an anchored ephemeral message is not deleted — dismissing it gives the reader back the
+      // message the bot was standing in front of
+      icon: 'rotate_left',
+      className: 'danger',
+      text: 'Ephemeral.Revert',
+      onClick: () => {
+        const {peerId, mid} = this.message;
+        this.managers.appMessagesManager.deleteEphemeralMessage(peerId, mid);
+      },
+      verify: () => isAnchoredEphemeralMessage(this.message)
+    }, {
+      regularText: i18n('Ephemeral.Revert.About'),
+      className: 'ephemeral-context-about',
+      secondary: true,
+      onClick: noop,
+      verify: () => isAnchoredEphemeralMessage(this.message)
     }, {
       regularText: i18n('Ephemeral.About'),
       className: 'ephemeral-context-about',

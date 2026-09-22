@@ -101,6 +101,7 @@ export type BroadcastEvents = {
   'streamed_message_update': {draft: StreamedMessageDraft, message: Message.message, initial: boolean},
   'streamed_message_remove': {draft: StreamedMessageDraft, reason: StreamedMessageDraftRemovalReason},
   'streamed_message_finalize': {draft: StreamedMessageDraft, tempId: number, finalMessage: MyMessage},
+  'streamed_message_stoppable': {peerId: PeerId, threadId: number, stoppable: boolean},
   'message_sent': {storageKey: MessagesStorageKey, tempId: number, tempMessage: any, mid: number, message: MyMessage},
   'message_error': {storageKey: MessagesStorageKey, peerId: PeerId, tempId: number, error: ApiError},
   'message_transcribed': {peerId: PeerId, mid: number, text: string, pending?: boolean},

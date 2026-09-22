@@ -40,6 +40,7 @@ import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import resolveEphemeralCommand, {
   EphemeralCommandCandidate
 } from '@appManagers/utils/bots/resolveEphemeralCommand';
@@ -99,7 +100,7 @@ import namedPromises from '@helpers/namedPromises';
 import callbackifyAll from '@helpers/callbackifyAll';
 import {createBotforumTopicFromAction} from './utils/dialogs/createBotforumTopicFromAction';
 import {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
-import StreamedMessageDrafts, {StreamedMessageDraft, StreamedMessageDraftContent, StreamedMessageDraftRemovalReason, getStreamedMessageContentMatchText} from '@appManagers/utils/messages/streamedMessageDrafts';
+import StreamedMessageDrafts, {StreamedMessageDraft, StreamedMessageDraftContent, StreamedMessageDraftRemovalReason, StreamedMessageDraftScope, StreamedMessageStopScope, getStreamedMessageContentMatchText} from '@appManagers/utils/messages/streamedMessageDrafts';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -167,7 +168,7 @@ export type HistoryStorage = {
   triedToReadMaxId?: number,
 
   maxOutId?: number,
-  replyMarkup?: Exclude<ReplyMarkup, ReplyMarkup.replyInlineMarkup>,
+  replyMarkup?: ReplyMarkup,
 
   readonly type: 'history' | 'replies' | 'search',
   key: HistoryStorageKey,
@@ -208,6 +209,19 @@ export type MyEphemeralMessage = Message.message & {
   ephemeral_receiver_id: UserId,
   ephemeral_order?: number
 };
+/** Everything an ephemeral message rewrites on the message that shows it. */
+type EphemeralMessageContent = Pick<Message.message,
+  'message' | 'entities' | 'media' | 'reply_markup' | 'rich_message' | 'edit_date'
+> & {invert_media?: true};
+
+type AnchoredEphemeral = {
+  ephemeralId: number,
+  /** the mid of the ordinary message being stood in for */
+  mid: number,
+  receiverId: UserId,
+  backup: EphemeralMessageContent
+};
+
 export type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
   | 'inputMessagesFilterPhotos'
   | 'inputMessagesFilterPhotoVideo'
@@ -309,7 +323,9 @@ export type MessageForwardParams = MessageSendingParams & {
 } & Partial<{
   withMyScore: true,
   dropAuthor: boolean,
-  dropCaptions: boolean
+  dropCaptions: boolean,
+  /** layer 229: `mids` are ephemeral messages, forwarded by their ephemeral ids. INNER USE ONLY */
+  fromEphemeral: boolean
 }>;
 
 export type RequestHistoryOptions = {
@@ -693,6 +709,7 @@ export class AppMessagesManager extends AppManager {
   public repayRequestHandler: RepayRequestHandler;
 
   private streamedMessageDrafts = new StreamedMessageDrafts();
+  private streamedMessageStoppableScopes = new Set<string>();
   private streamedMessageDraftTtl = STREAMED_MESSAGE_DRAFT_TTL;
   private streamedMessageDraftTimeout: number;
 
@@ -703,6 +720,7 @@ export class AppMessagesManager extends AppManager {
   }> = new Map();
 
   private ephemeralMidsByPeerId: Map<PeerId, Map<number, number>>;
+  private anchoredEphemerals: Map<PeerId, Map<number, AnchoredEphemeral>>;
   private ephemeralOrderByPeerId: Map<PeerId, Map<number, number>>;
   private ephemeralOrder: number;
   private pendingEphemeralMessages: Map<string, {
@@ -964,6 +982,7 @@ export class AppMessagesManager extends AppManager {
     this.pendingNewBotforumTopics = {};
     this.pendingEditingMessages = new Map();
     this.ephemeralMidsByPeerId = new Map();
+    this.anchoredEphemerals = new Map();
     this.ephemeralOrderByPeerId = new Map();
     this.ephemeralOrder = 0;
     this.pendingEphemeralMessages = new Map();
@@ -1012,6 +1031,10 @@ export class AppMessagesManager extends AppManager {
 
   public isEphemeralMessage(message: any): message is MyEphemeralMessage {
     return isEphemeralMessage(message);
+  }
+
+  public isAnchoredEphemeralMessage(message: any) {
+    return isAnchoredEphemeralMessage(message);
   }
 
   public dispatchMessageEditEvent(message: MyMessage, storageKey = message.storageKey) {
@@ -1302,7 +1325,9 @@ export class AppMessagesManager extends AppManager {
 
   public deleteEphemeralMessage(peerId: PeerId, mid: number) {
     const message = this.getMessageByPeer(peerId, mid);
-    if(!this.isEphemeralMessage(message)) {
+    // an anchored one is an ordinary message wearing ephemeral content — deleting it gives the
+    // original back rather than removing a bubble (desktop's `EphemeralMessages::deleteMessage`)
+    if(!this.isEphemeralMessage(message) && !isAnchoredEphemeralMessage(message)) {
       return Promise.resolve();
     }
 
@@ -1322,7 +1347,10 @@ export class AppMessagesManager extends AppManager {
 
   public reportEphemeralMessage(peerId: PeerId, mid: number, option: Uint8Array, message = '') {
     const ephemeralMessage = this.getMessageByPeer(peerId, mid);
-    if(!this.isEphemeralMessage(ephemeralMessage) || ephemeralMessage.pFlags.out) {
+    if(
+      (!this.isEphemeralMessage(ephemeralMessage) && !isAnchoredEphemeralMessage(ephemeralMessage)) ||
+      ephemeralMessage.pFlags.out
+    ) {
       return Promise.reject({type: 'MESSAGE_ID_INVALID'} as ApiError);
     }
 
@@ -1336,7 +1364,9 @@ export class AppMessagesManager extends AppManager {
 
   public getEphemeralCallbackAnswer(peerId: PeerId, mid: number, data?: Uint8Array) {
     const message = this.getMessageByPeer(peerId, mid);
-    if(!this.isEphemeralMessage(message)) {
+    // an anchored one carries the bot's keyboard too, and its buttons answer by ephemeral id
+    // (desktop's `lookupId` covers both kinds the same way)
+    if(!this.isEphemeralMessage(message) && !isAnchoredEphemeralMessage(message)) {
       const answer: MessagesBotCallbackAnswer = {
         _: 'messages.botCallbackAnswer',
         pFlags: {},
@@ -1369,7 +1399,17 @@ export class AppMessagesManager extends AppManager {
   }
 
   private getEphemeralPeerId(message: EphemeralMessage) {
-    return this.appPeersManager.getPeerId(message.peer_id);
+    // layer 229 made `peer_id` optional, and it only identifies the chat when it is not a user:
+    // in a private bot chat the chat is the bot itself, which is `receiver_id` on the way out
+    // and `from_id` on the way in (desktop's `PeerIdFromEphemeral`).
+    const peerId = message.peer_id ? this.appPeersManager.getPeerId(message.peer_id) : undefined;
+    if(peerId && !peerId.isUser()) {
+      return peerId;
+    }
+
+    return message.pFlags.out ?
+      (+message.receiver_id as UserId).toPeerId() :
+      this.appPeersManager.getPeerId(message.from_id);
   }
 
   private hasUnresolvedEphemeralReply(message: EphemeralMessage) {
@@ -1559,15 +1599,19 @@ export class AppMessagesManager extends AppManager {
       _: 'message',
       pFlags: {
         ...(message.pFlags.out ? {out: true} : {}),
+        // layer 229 added these two to `ephemeralMessage`
+        ...(message.pFlags.invert_media ? {invert_media: true} : {}),
+        ...(message.pFlags.noforwards ? {noforwards: true} : {}),
         ephemeral: true
       },
       id: localMid,
       from_id: message.from_id,
-      peer_id: message.peer_id,
+      peer_id: message.peer_id || this.appPeersManager.getOutputPeer(peerId),
       date: message.date,
       message: message.message,
       entities: message.entities,
       media: message.media,
+      rich_message: message.rich_message,
       reply_markup: message.reply_markup,
       reply_to: replyTo,
       ephemeral_id: message.id,
@@ -1575,6 +1619,234 @@ export class AppMessagesManager extends AppManager {
     };
 
     return localMessage;
+  }
+
+  private getAnchoredEphemeralMid(peerId: PeerId, message: EphemeralMessage) {
+    const anchorMsgId = message.anchor_msg_id;
+    if(!anchorMsgId) {
+      return;
+    }
+
+    const channelId = getPeerChannelId(message.peer_id) || (
+      this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined
+    );
+
+    return this.appMessagesIdsManager.generateMessageId(anchorMsgId, channelId);
+  }
+
+  private getAnchoredEphemeral(peerId: PeerId, ephemeralId: number) {
+    return this.anchoredEphemerals?.get(peerId)?.get(ephemeralId);
+  }
+
+  private hasAnchoredEphemeralAtMid(peerId: PeerId, mid: number) {
+    const anchored = this.anchoredEphemerals?.get(peerId);
+    if(!anchored) {
+      return false;
+    }
+
+    for(const entry of anchored.values()) {
+      if(entry.mid === mid) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /** Snapshot of what a stored message shows, so an anchored stand-in can be undone. */
+  private captureMessageContent(message: Message.message): EphemeralMessageContent {
+    return {
+      message: message.message,
+      entities: message.entities,
+      media: message.media,
+      reply_markup: message.reply_markup,
+      rich_message: message.rich_message,
+      edit_date: message.edit_date,
+      invert_media: message.pFlags.invert_media
+    };
+  }
+
+  private getEphemeralMessageContent(message: EphemeralMessage): EphemeralMessageContent {
+    return {
+      message: message.message,
+      entities: message.entities,
+      media: message.media,
+      reply_markup: message.reply_markup,
+      rich_message: message.rich_message,
+      // desktop hides the edited mark while an ephemeral message stands in
+      edit_date: undefined,
+      invert_media: message.pFlags.invert_media
+    };
+  }
+
+  /**
+   * Swaps what a stored message shows and publishes the edit. `decorate` is the only thing the
+   * callers differ in: an anchored message also gains (or loses) its stand-in marks.
+   */
+  private replaceMessageContentInPlace(
+    oldMessage: Message.message,
+    content: EphemeralMessageContent,
+    decorate?: (newMessage: Message.message) => void
+  ) {
+    const storage = this.getHistoryMessagesStorage(oldMessage.peerId);
+    const newMessage: Message.message = {
+      ...oldMessage,
+      pFlags: {...oldMessage.pFlags},
+      message: content.message,
+      entities: content.entities,
+      media: content.media,
+      reply_markup: content.reply_markup,
+      rich_message: content.rich_message,
+      edit_date: content.edit_date
+    };
+
+    if(content.invert_media) newMessage.pFlags.invert_media = true;
+    else delete newMessage.pFlags.invert_media;
+
+    decorate?.(newMessage);
+
+    delete newMessage.totalEntities;
+    const richMessageChanged = this.releaseEditedMessageRichMedia(oldMessage, newMessage);
+    this.saveMessage(newMessage, {storage});
+    delete newMessage.pFlags.unread;
+    this.setMessageToStorage(storage, newMessage);
+    this.handleEditedMessage(oldMessage, newMessage, storage, richMessageChanged);
+    this.dispatchMessageEditEvent(newMessage, storage.key);
+    return newMessage;
+  }
+
+  private markAnchoredEphemeral(newMessage: Message.message, anchored: AnchoredEphemeral | undefined) {
+    if(anchored) {
+      newMessage.pFlags.ephemeral_anchored = true;
+      newMessage.ephemeral_id = anchored.ephemeralId;
+      newMessage.ephemeral_receiver_id = anchored.receiverId;
+    } else {
+      delete newMessage.pFlags.ephemeral_anchored;
+      delete newMessage.ephemeral_id;
+      delete newMessage.ephemeral_receiver_id;
+    }
+  }
+
+  /**
+   * Layer 229's anchored ephemeral messages. Instead of adding a bubble of its own, such a message
+   * stands in for an ordinary message the reader already has: its text, media and keyboard replace
+   * that message's until the bot takes it back, and the original is restored from a backup. Only
+   * this reader sees the substitution, so the message must not be forwarded, quoted or linked while
+   * it lasts — `isAnchoredEphemeralMessage` marks it for those gates.
+   *
+   * Returns the anchor message once the content is standing in for it, or undefined when the
+   * anchor cannot take it.
+   */
+  private applyAnchoredEphemeralMessage(peerId: PeerId, message: EphemeralMessage) {
+    const mid = this.getAnchoredEphemeralMid(peerId, message);
+    if(mid === undefined) {
+      return;
+    }
+
+    const target = this.getMessageByPeer(peerId, mid);
+    // Same refusals as desktop's `applyAnchored`: only a plain, already delivered, single message
+    // can be stood in for — never a service message, an album part, another ephemeral one, or one
+    // that only exists locally (a pending send, a streamed draft; those carry a fractional mid).
+    if(
+      target?._ !== 'message' ||
+      !Number.isInteger(target.mid) ||
+      !getServerMessageId(target.mid) ||
+      target.grouped_id ||
+      target.pFlags.is_outgoing ||
+      target.pFlags.currentlyTyping ||
+      this.isEphemeralMessage(target) ||
+      this.hasAnchoredEphemeralAtMid(peerId, mid)
+    ) {
+      return;
+    }
+
+    const anchored: AnchoredEphemeral = {
+      ephemeralId: message.id,
+      mid,
+      receiverId: +message.receiver_id as UserId,
+      backup: this.captureMessageContent(target)
+    };
+
+    this.anchoredEphemerals ??= new Map();
+    let byId = this.anchoredEphemerals.get(peerId);
+    if(!byId) {
+      this.anchoredEphemerals.set(peerId, byId = new Map());
+    }
+    byId.set(message.id, anchored);
+
+    return this.replaceMessageContentInPlace(
+      target,
+      this.getEphemeralMessageContent(message),
+      (newMessage) => this.markAnchoredEphemeral(newMessage, anchored)
+    );
+  }
+
+  private editAnchoredEphemeralMessage(peerId: PeerId, anchored: AnchoredEphemeral, message: EphemeralMessage) {
+    const target = this.getMessageByPeer(peerId, anchored.mid);
+    if(target?._ !== 'message') {
+      return;
+    }
+
+    return this.replaceMessageContentInPlace(
+      target,
+      this.getEphemeralMessageContent(message),
+      (newMessage) => this.markAnchoredEphemeral(newMessage, anchored)
+    );
+  }
+
+  /** Puts the original message back. */
+  private revertAnchoredEphemeral(peerId: PeerId, ephemeralId: number) {
+    const byId = this.anchoredEphemerals?.get(peerId);
+    const anchored = byId?.get(ephemeralId);
+    if(!anchored) {
+      return false;
+    }
+
+    byId.delete(ephemeralId);
+    if(!byId.size) {
+      this.anchoredEphemerals?.delete(peerId);
+    }
+
+    const target = this.getMessageByPeer(peerId, anchored.mid);
+    if(target?._ === 'message') {
+      this.replaceMessageContentInPlace(
+        target,
+        anchored.backup,
+        (newMessage) => this.markAnchoredEphemeral(newMessage, undefined)
+      );
+    }
+
+    return true;
+  }
+
+  /**
+   * Everything in this chat is being thrown away, so there is nothing to restore the originals
+   * onto — drop the registrations without reverting (desktop's `EphemeralMessages::clear`).
+   */
+  private forgetAnchoredEphemeralsForPeer(peerId: PeerId) {
+    this.anchoredEphemerals?.delete(peerId);
+  }
+
+  /**
+   * The real message changed (an edit, a resend) or went away — whatever the bot was showing over
+   * it is stale, so the registration is dropped without writing the old backup back over it.
+   */
+  private forgetAnchoredEphemeralsAtMids(peerId: PeerId, mids: Iterable<number>) {
+    const byId = this.anchoredEphemerals?.get(peerId);
+    if(!byId) {
+      return;
+    }
+
+    const midSet = mids instanceof Set ? mids : new Set(mids);
+    for(const [ephemeralId, anchored] of byId) {
+      if(midSet.has(anchored.mid)) {
+        byId.delete(ephemeralId);
+      }
+    }
+
+    if(!byId.size) {
+      this.anchoredEphemerals?.delete(peerId);
+    }
   }
 
   private insertEphemeralMessage(message: EphemeralMessage, forceMissingReply = false) {
@@ -1586,6 +1858,19 @@ export class AppMessagesManager extends AppManager {
     const existing = this.getEphemeralMessage(peerId, message.id);
     if(existing) {
       return existing;
+    }
+
+    const anchoredExisting = this.getAnchoredEphemeral(peerId, message.id);
+    if(anchoredExisting) {
+      return this.getMessageByPeer(peerId, anchoredExisting.mid) as Message.message;
+    }
+
+    // An ephemeral message that names an anchor stands in for that message rather than adding one.
+    // When the anchor cannot take it (gone, an album, already stood in for), desktop falls back to
+    // rendering it as an ordinary ephemeral message — so do we.
+    const anchoredMessage = this.applyAnchoredEphemeralMessage(peerId, message);
+    if(anchoredMessage) {
+      return anchoredMessage;
     }
 
     const storage = this.getHistoryMessagesStorage(peerId);
@@ -1622,22 +1907,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   private editEphemeralMessage(message: EphemeralMessage, oldMessage: Message.message) {
-    const storage = this.getHistoryMessagesStorage(oldMessage.peerId);
-    const newMessage: Message.message = {
-      ...oldMessage,
-      pFlags: {...oldMessage.pFlags},
-      message: message.message,
-      entities: message.entities,
-      media: message.media,
-      reply_markup: message.reply_markup
-    };
-    delete newMessage.totalEntities;
-    const richMessageChanged = this.releaseEditedMessageRichMedia(oldMessage, newMessage);
-    this.saveMessage(newMessage, {storage});
-    delete newMessage.pFlags.unread;
-    this.setMessageToStorage(storage, newMessage);
-    this.handleEditedMessage(oldMessage, newMessage, storage, richMessageChanged);
-    this.dispatchMessageEditEvent(newMessage, storage.key);
+    this.replaceMessageContentInPlace(oldMessage, this.getEphemeralMessageContent(message));
   }
 
   private removeEphemeralMessages(peerId: PeerId, ephemeralIds: number[]) {
@@ -1647,6 +1917,11 @@ export class AppMessagesManager extends AppManager {
 
     for(const ephemeralId of ephemeralIds) {
       this.pendingEphemeralMessages.delete(this.getEphemeralPendingKey(peerId, ephemeralId));
+
+      // an anchored one is not a bubble of its own — it hands the original message back
+      if(this.revertAnchoredEphemeral(peerId, ephemeralId)) {
+        continue;
+      }
 
       const mid = midsById?.get(ephemeralId);
       midsById?.delete(ephemeralId);
@@ -1701,7 +1976,8 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateNewEphemeralMessage = (update: Update.updateNewEphemeralMessage) => {
     const {message} = update;
-    if(this.getEphemeralMessage(this.getEphemeralPeerId(message), message.id)) {
+    const peerId = this.getEphemeralPeerId(message);
+    if(this.getEphemeralMessage(peerId, message.id) || this.getAnchoredEphemeral(peerId, message.id)) {
       return;
     }
 
@@ -1717,6 +1993,12 @@ export class AppMessagesManager extends AppManager {
   private onUpdateEditEphemeralMessage = (update: Update.updateEditEphemeralMessage) => {
     const {message} = update;
     const peerId = this.getEphemeralPeerId(message);
+    const anchored = this.getAnchoredEphemeral(peerId, message.id);
+    if(anchored) {
+      this.editAnchoredEphemeralMessage(peerId, anchored, message);
+      return;
+    }
+
     const existing = this.getEphemeralMessage(peerId, message.id);
     if(existing) {
       this.editEphemeralMessage(message, existing);
@@ -2240,6 +2522,9 @@ export class AppMessagesManager extends AppManager {
         message: text,
         entities: this.getInputEntities(entities),
         media: this.getInputMediaWebPage(options),
+        // the link preview keeps the side of the text the user put it on, as it does for an
+        // ordinary send (desktop sets the same flag from `webPage.invert`)
+        invert_media: options.invertMedia || undefined,
         query_id: options.queryId,
         reply_markup: options.replyMarkup,
         reply_to: ephemeralReplyTo || options.replyTo
@@ -5161,9 +5446,17 @@ export class AppMessagesManager extends AppManager {
 
     const paidStars = options.confirmedPaymentResult ? options.confirmedPaymentResult?.starsAmount * mids.length : undefined;
 
+    // Resolved now, not inside `send()`: a paid forward is queued and only sent once the user
+    // confirms, by which time an ephemeral message may already be gone from the storage.
+    const forwardIds = mids.map((mid) => (options.fromEphemeral ?
+      (this.getMessageByPeer(fromPeerId, mid) as MyEphemeralMessage).ephemeral_id :
+      getServerMessageId(mid)
+    ));
+
     const send = () => this.apiManager.invokeApiAfter('messages.forwardMessages', {
       from_peer: this.appPeersManager.getInputPeerById(fromPeerId),
-      id: mids.map((mid) => getServerMessageId(mid)),
+      from_ephemeral: options.fromEphemeral || undefined,
+      id: forwardIds,
       random_id: newMessages.map((message) => message.random_id),
       to_peer: this.appPeersManager.getInputPeerById(peerId),
       with_my_score: options.withMyScore,
@@ -5245,13 +5538,26 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async forwardMessages(options: MessageForwardParams) {
-    options = {
-      ...options,
-      mids: options.mids.filter((mid) => (
-        !this.isEphemeralMessageId(mid) &&
-        !this.isEphemeralMessage(this.getMessageByPeer(options.fromPeerId, mid))
-      ))
-    };
+    const ephemeralMids: number[] = [];
+    const regularMids: number[] = [];
+    for(const mid of options.mids) {
+      const message = this.getMessageByPeer(options.fromPeerId, mid);
+      // an anchored ephemeral message shows content that is not its own — forwarding it would
+      // pass on the bot's stand-in as if the sender had written it
+      if(isAnchoredEphemeralMessage(message)) {
+        continue;
+      }
+
+      // layer 229 forwards an ephemeral message by its ephemeral id with `from_ephemeral` set.
+      // The two id spaces cannot share one request, so they are sent apart.
+      if(this.isEphemeralMessage(message)) {
+        ephemeralMids.push(mid);
+      } else if(!this.isEphemeralMessageId(mid)) {
+        regularMids.push(mid);
+      }
+    }
+
+    options = {...options, mids: [...regularMids, ...ephemeralMids]};
     if(!options.mids.length) {
       return;
     }
@@ -5268,17 +5574,32 @@ export class AppMessagesManager extends AppManager {
 
     await this.checkSendOptions(options);
 
-    const {peerId, fromPeerId, mids} = options;
-    const channelId = this.appPeersManager.isChannel(fromPeerId) ? fromPeerId.toChatId() : undefined;
-    const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(mids, channelId);
-    const promises = splitted.map(([_channelId, {mids}]) => {
-      return this.forwardMessagesInner({
+    const {peerId, fromPeerId} = options;
+    const promises: Promise<any>[] = [];
+
+    if(ephemeralMids.length) {
+      promises.push(this.forwardMessagesInner({
         ...options,
         peerId,
-        fromPeerId: _channelId ? channelId.toPeerId(true) : this.getMessageByPeer(fromPeerId, mids[0]).peerId,
-        mids
-      });
-    });
+        fromPeerId,
+        mids: ephemeralMids,
+        fromEphemeral: true
+      }));
+    }
+
+    if(regularMids.length) {
+      const channelId = this.appPeersManager.isChannel(fromPeerId) ? fromPeerId.toChatId() : undefined;
+      const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(regularMids, channelId);
+      promises.push(...splitted.map(([_channelId, {mids}]) => {
+        return this.forwardMessagesInner({
+          ...options,
+          peerId,
+          fromPeerId: _channelId ? channelId.toPeerId(true) : this.getMessageByPeer(fromPeerId, mids[0]).peerId,
+          mids,
+          fromEphemeral: false
+        });
+      }));
+    }
 
     return Promise.all(promises).then(noop);
   }
@@ -6138,6 +6459,7 @@ export class AppMessagesManager extends AppManager {
         this.apiUpdatesManager.processUpdateMessage(updates);
 
         // ephemeral messages live on the client alone, so no update can mention them
+        this.forgetAnchoredEphemeralsForPeer(peerId);
         const ephemeralIds = [...(this.ephemeralMidsByPeerId.get(peerId)?.keys() || [])];
         if(ephemeralIds.length) {
           this.removeEphemeralMessages(peerId, ephemeralIds);
@@ -6196,6 +6518,7 @@ export class AppMessagesManager extends AppManager {
     this.clearStreamedMessageDraftsForPeer(peerId);
     this.rootScope.dispatchEvent('peer_history_flush', {peerId});
 
+    this.forgetAnchoredEphemeralsForPeer(peerId);
     const ephemeralIds = [...(this.ephemeralMidsByPeerId.get(peerId)?.keys() || [])];
     if(ephemeralIds.length) {
       this.removeEphemeralMessages(peerId, ephemeralIds);
@@ -7288,10 +7611,12 @@ export class AppMessagesManager extends AppManager {
 
   // * an empty `mids` array reports the peer itself
   public reportMessages(peerId: PeerId, mids: number[], option: Uint8Array, message?: string) {
-    const ephemeralMids = mids.filter((mid) => (
-      this.isEphemeralMessageId(mid) ||
-      this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
-    ));
+    const ephemeralMids = mids.filter((mid) => {
+      const message = this.getMessageByPeer(peerId, mid);
+      return this.isEphemeralMessageId(mid) ||
+        this.isEphemeralMessage(message) ||
+        isAnchoredEphemeralMessage(message);
+    });
     if(ephemeralMids.length) {
       if(mids.length !== 1) {
         return Promise.reject(makeError('UNKNOWN'));
@@ -7609,7 +7934,8 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async canEditMessage(message: Message.message | Message.messageService, kind: 'text' | 'poll' = 'text') {
-    if(this.isEphemeralMessage(message)) {
+    // an anchored one shows the bot's content, not its own — editing it would send that back
+    if(this.isEphemeralMessage(message) || isAnchoredEphemeralMessage(message)) {
       return false;
     }
 
@@ -7673,7 +7999,10 @@ export class AppMessagesManager extends AppManager {
       return false;
     }
 
-    if(messageReplyMarkup?._ === 'replyInlineMarkup') {
+    // layer 229 lets an inline markup force a reply. Such a markup takes part in the
+    // last-keyboard bookkeeping (so the input can reply to it), every other inline one
+    // lives entirely inside its own bubble.
+    if(messageReplyMarkup?._ === 'replyInlineMarkup' && !messageReplyMarkup.pFlags.force_reply) {
       return false;
     }
 
@@ -7683,7 +8012,7 @@ export class AppMessagesManager extends AppManager {
         return false;
       }
 
-      if(messageReplyMarkup.pFlags.selective) {
+      if((messageReplyMarkup as ReplyMarkup.replyKeyboardMarkup).pFlags.selective) {
         return false;
       }
 
@@ -8263,9 +8592,11 @@ export class AppMessagesManager extends AppManager {
   public deleteMessages(peerId: PeerId, mids: number[], revoke?: boolean) {
     const ephemeralMids: number[] = [];
     mids = mids.filter((mid) => {
+      const message = this.getMessageByPeer(peerId, mid);
       if(
         this.isEphemeralMessageId(mid) ||
-        this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+        this.isEphemeralMessage(message) ||
+        isAnchoredEphemeralMessage(message)
       ) {
         ephemeralMids.push(mid);
         return false;
@@ -9890,6 +10221,11 @@ export class AppMessagesManager extends AppManager {
     }
 
     // console.trace(dT(), 'edit message', message)
+
+    // the real message changed under an ephemeral stand-in: the backup no longer describes it,
+    // so drop the anchor and let the edit through (desktop reverts in `applyEdition` for the
+    // same reason)
+    this.forgetAnchoredEphemeralsAtMids(peerId, [mid]);
 
     const oldMessage: Message = this.getMessageFromStorage(storage, mid);
     const richMessageChanged = this.releaseEditedMessageRichMedia(oldMessage, message);
@@ -13062,6 +13398,10 @@ export class AppMessagesManager extends AppManager {
 
     const shouldClearContexts = storage.type === 'history';
 
+    if(storage.type === 'history') {
+      this.forgetAnchoredEphemeralsAtMids(peerId, messages);
+    }
+
     for(const mid of messages) {
       if(markAsDeleted) {
         const deletedPeerId = peerId.isAnyChat() && isLegacyMessageId(mid) ? GLOBAL_HISTORY_PEER_ID : peerId;
@@ -13278,8 +13618,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   public canForward(message: Message.message | Message.messageService) {
+    // layer 229 made ephemeral messages forwardable — by their ephemeral id, with
+    // `from_ephemeral`. The chat's and the message's own no-forwards still apply, exactly as
+    // they do in desktop's `allowsForward`. An anchored one is never forwardable: what it shows
+    // belongs to the message it stands in front of.
     return message?._ === 'message' &&
-      !this.isEphemeralMessage(message) &&
+      !isAnchoredEphemeralMessage(message) &&
       !(message as Message.message).pFlags.noforwards &&
       !(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds &&
       !this.appPeersManager.noForwards(message.peerId);
@@ -13873,6 +14217,12 @@ export class AppMessagesManager extends AppManager {
       return false;
     }
 
+    // layer 229: the bot tells us the stream is over (because we asked, or on its own).
+    if(action._ === 'sendMessageStopDraftAction') {
+      this.applyStreamedMessageDraftStop({...scope, randomId: '' + action.random_id});
+      return true;
+    }
+
     if(
       action._ !== 'sendMessageTextDraftAction' &&
       action._ !== 'sendMessageRichMessageDraftAction'
@@ -13906,6 +14256,11 @@ export class AppMessagesManager extends AppManager {
       return true;
     }
 
+    // A revision that was already in flight when the reader pressed Stop must not revive the stream.
+    if(this.streamedMessageDrafts.isStopped({...scope, randomId}, now)) {
+      return true;
+    }
+
     const {draft, previous, removed, changed} = this.streamedMessageDrafts.upsert({
       ...scope,
       randomId,
@@ -13913,15 +14268,74 @@ export class AppMessagesManager extends AppManager {
       date: tsNow(true) + this.timeManager.getServerTimeOffset(),
       now,
       ttl: this.streamedMessageDraftTtl,
-      content
+      content,
+      canStop: !!action.pFlags.can_stop,
+      keepOnStop: !!action.pFlags.keep_on_stop
     });
 
     this.removeStreamedMessageDrafts(removed, 'superseded');
     if(changed) {
       this.saveAndDispatchStreamedMessageDraft(draft, !previous);
     }
+    this.notifyStreamedMessageStoppable(draft);
     this.scheduleStreamedMessageDraftExpiration();
     return true;
+  }
+
+  /**
+   * Asks the bot streaming into this chat/topic to stop, the way the Stop button in the composer
+   * does in the other clients: one `sendMessageStopDraftAction` carrying the stream's random id,
+   * applied locally straight away so the button does not linger.
+   */
+  public stopStreamedMessageDraft(peerId: PeerId, threadId?: number) {
+    const draft = this.streamedMessageDrafts.findStoppable({peerId, threadId: threadId || 0});
+    if(!draft) {
+      return false;
+    }
+
+    // `force`: setTyping dedupes by action type, and a second stop must still reach the bot.
+    this.setTyping(peerId, {
+      _: 'sendMessageStopDraftAction',
+      random_id: draft.randomId
+    }, true, draft.threadId || undefined).catch(noop);
+
+    this.applyStreamedMessageDraftStop(draft);
+    return true;
+  }
+
+  public isStreamedMessageDraftStoppable(peerId: PeerId, threadId?: number) {
+    return !!this.streamedMessageDrafts.findStoppable({peerId, threadId: threadId || 0});
+  }
+
+  private applyStreamedMessageDraftStop(
+    options: StreamedMessageDraftScope & {randomId: string}
+  ) {
+    const result = this.streamedMessageDrafts.applyStop(
+      options,
+      Date.now() + this.streamedMessageDraftTtl
+    );
+
+    if(result?.removed) {
+      this.removeStreamedMessageDrafts([result.draft], 'cancelled');
+    }
+
+    this.notifyStreamedMessageStoppable(options);
+    this.scheduleStreamedMessageDraftExpiration();
+  }
+
+  private notifyStreamedMessageStoppable(scope: StreamedMessageStopScope) {
+    const peerId = scope.peerId;
+    const threadId = scope.threadId || 0;
+    const key = `${peerId}_${threadId}`;
+    const stoppable = !!this.streamedMessageDrafts.findStoppable({peerId, threadId});
+    if(stoppable === this.streamedMessageStoppableScopes.has(key)) {
+      return;
+    }
+
+    if(stoppable) this.streamedMessageStoppableScopes.add(key);
+    else this.streamedMessageStoppableScopes.delete(key);
+
+    this.rootScope?.dispatchEvent('streamed_message_stoppable', {peerId, threadId, stoppable});
   }
 
   private getStreamedMessageDraftScope(
@@ -14050,6 +14464,8 @@ export class AppMessagesManager extends AppManager {
       if(dispatch && this.rootScope) {
         this.rootScope.dispatchEvent('streamed_message_remove', {draft, reason});
       }
+
+      this.notifyStreamedMessageStoppable(draft);
     }
   }
 
@@ -14141,6 +14557,7 @@ export class AppMessagesManager extends AppManager {
     }
     this.scheduleStreamedMessageDraftExpiration();
 
+    this.notifyStreamedMessageStoppable(draft);
     this.rootScope.dispatchEvent('streamed_message_finalize', {
       draft,
       tempId: draft.tempId,
@@ -14181,6 +14598,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   private clearStreamedMessageDrafts(init?: boolean) {
+    // the per-scope memo is derived state; every removal path below refreshes it, but a reset
+    // should not depend on that
+    this.streamedMessageStoppableScopes.clear();
     if(this.streamedMessageDraftTimeout !== undefined) {
       clearTimeout(this.streamedMessageDraftTimeout);
       this.streamedMessageDraftTimeout = undefined;

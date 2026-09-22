@@ -249,6 +249,7 @@ import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 import {richMessageToPage} from '@lib/richMessage';
 import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import {
   CommunityChangedServiceBubble
@@ -7755,6 +7756,9 @@ export default class ChatBubbles {
 
     const isMessage = message._ === 'message';
     const isEphemeral = isEphemeralMessage(message);
+    // layer 229: an ordinary message an ephemeral one is currently standing in for. What it shows
+    // is not really its content, so it must not be forwarded, quoted, linked to or selected.
+    const isAnchoredEphemeral = isAnchoredEphemeralMessage(message);
     const messageLinkPolicyState = this.messageLinkPolicyState || this.createCurrentMessageLinkPolicyState();
     const hideLinks = this.createMessageLinkPolicyAccessor(message, messageLinkPolicyState);
     const hasReactions = !isEphemeral && (
@@ -7797,6 +7801,9 @@ export default class ChatBubbles {
     bubble.classList.add('bubble');
     if(isEphemeral) {
       bubble.classList.add('is-ephemeral');
+    }
+    if(isAnchoredEphemeral) {
+      bubble.classList.add('is-ephemeral-anchored', 'avoid-selection');
     }
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
@@ -7907,6 +7914,9 @@ export default class ChatBubbles {
       bubble.className = 'bubble service';
       if(isEphemeral) {
         bubble.classList.add('is-ephemeral');
+      }
+      if(isAnchoredEphemeral) {
+        bubble.classList.add('is-ephemeral-anchored', 'avoid-selection');
       }
 
       bubbleContainer.replaceChildren();
@@ -11127,7 +11137,13 @@ export default class ChatBubbles {
   }
 
   public canForward(message: Message.message | Message.messageService) {
-    if(message?._ !== 'message' || message.pFlags.noforwards || isEphemeralMessage(message)) {
+    // layer 229 made ephemeral messages forwardable (`messages.forwardMessages.from_ephemeral`).
+    // An anchored one still is not: what it shows belongs to a message it only stands in front of.
+    if(
+      message?._ !== 'message' ||
+      message.pFlags.noforwards ||
+      isAnchoredEphemeralMessage(message)
+    ) {
       return false;
     }
 

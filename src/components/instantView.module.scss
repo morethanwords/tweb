@@ -436,6 +436,14 @@
   // margin: 0 var(--margin-horizontal);
   // padding: 0 var(--padding-horizontal);
 
+  // pageBlockTable.compact (layer 229) — the same table with tighter cells
+  &Compact {
+    td,
+    th {
+      padding: 0.25em 0.4em;
+    }
+  }
+
   &Wrapper {
     margin: 0.75em 0;
   }

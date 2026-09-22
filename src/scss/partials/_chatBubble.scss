@@ -3730,6 +3730,12 @@
       transform: rotate(-45deg);
     }
 
+    // inlineButtonTypeDisabled (layer 229) — shown, but inert
+    &.is-disabled {
+      opacity: .5;
+      pointer-events: none;
+    }
+
     &-bg {
       color: #fff !important;
 

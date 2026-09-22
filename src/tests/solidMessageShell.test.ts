@@ -57,7 +57,7 @@ describe('Solid message legacy-shell compatibility', () => {
     const source = message();
     const withMedia = message({media: {_: 'messageMediaEmpty'}});
     const withMarkup = message({
-      reply_markup: {_: 'replyInlineMarkup', rows: []}
+      reply_markup: {_: 'replyInlineMarkup', pFlags: {}, rows: []}
     });
 
     expect(getSolidMessageBodyStructure(withMedia)).not.toEqual(getSolidMessageBodyStructure(source));

@@ -2,7 +2,7 @@ import {children, createContext, createEffect, createMemo, createSignal, For, JS
 import {render} from 'solid-js/web';
 import wrapKeyboardButton from '@components/wrappers/keyboardButton';
 import type Chat from '@components/chat/chat';
-import {KeyboardButtonRow, Message} from '@layer';
+import {KeyboardInlineButtonRow, Message} from '@layer';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
 import RippleElement from '@components/rippleElement';
@@ -110,7 +110,7 @@ ReplyMarkupLayout.Button = (props: {
 };
 
 ReplyMarkupLayout.Inline = (props: {
-  rows: KeyboardButtonRow[],
+  rows: KeyboardInlineButtonRow[],
   chat?: Chat,
   message?: Message.message,
   wrapOptions?: WrapSomethingOptions
@@ -142,7 +142,7 @@ ReplyMarkupLayout.Inline = (props: {
 export default ReplyMarkupLayout;
 
 export function createInlineReplyMarkup(options: {
-  rows: KeyboardButtonRow[],
+  rows: KeyboardInlineButtonRow[],
   chat?: Chat,
   message?: Message.message,
   wrapOptions?: WrapSomethingOptions

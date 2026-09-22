@@ -253,12 +253,12 @@ function makeBlockquote(quoteLines: string[], refs: Refs): PageBlock {
 
   // Empty quote (e.g. it held only an attribution) still renders as a flat, text-less blockquote.
   if(innerBlocks.length === 0) {
-    return {_: 'pageBlockBlockquote', text: {_: 'textEmpty'}, caption};
+    return {_: 'pageBlockBlockquote', pFlags: {}, text: {_: 'textEmpty'}, caption};
   }
 
   // A single plain paragraph keeps the lighter inline blockquote (back-compat with flat quotes).
   if(innerBlocks.length === 1 && innerBlocks[0]._ === 'pageBlockParagraph') {
-    return {_: 'pageBlockBlockquote', text: innerBlocks[0].text, caption};
+    return {_: 'pageBlockBlockquote', pFlags: {}, text: innerBlocks[0].text, caption};
   }
 
   return {_: 'pageBlockBlockquoteBlocks', blocks: innerBlocks, caption};
@@ -531,6 +531,7 @@ export default function parseMarkdownToPage(raw: string, url = ''): Page.page {
       for(const def of definitions) {
         blocks.push({
           _: 'pageBlockBlockquote',
+          pFlags: {},
           text: inlineToRichText(def, refs),
           caption: {_: 'textEmpty'}
         });

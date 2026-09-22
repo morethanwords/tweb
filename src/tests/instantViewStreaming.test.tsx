@@ -30,7 +30,14 @@ beforeAll(async() => {
     disconnect() {}
   }
 
+  class ResizeObserverMock {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
   vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);
+  vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   vi.stubGlobal('CSS', {supports: () => false, escape: (value: string) => value});
   vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/webp;base64,');
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
@@ -76,6 +83,9 @@ beforeAll(async() => {
   }));
   vi.doMock('@lib/solidjs/hotReloadGuard', () => ({
     useHotReloadGuard: () => ({
+      DocumentTsx: (props: {message?: {media?: {document?: {id?: string | number}}}}) => (
+        <div data-document-id={'' + (props.message?.media?.document?.id ?? '')} />
+      ),
       PhotoTsx: (props: {
         photo?: {id?: number},
         ref?: (element: HTMLDivElement) => void,
@@ -368,6 +378,85 @@ describe('InstantViewBlocks streaming updates', () => {
     expect(tailItem.textContent).toBe('tail-b');
     dispose();
     container.remove();
+  });
+
+  test('renders the layer 229 page blocks', async() => {
+    const makeBlocksPage = (blocks: PageBlock[], documents: Page.page['documents'] = []): Page.page => ({
+      _: 'page',
+      pFlags: {},
+      url: '',
+      blocks,
+      photos: [],
+      documents,
+      views: 0
+    });
+
+    const renderPage = (page: Page.page) => {
+      const container = document.createElement('div');
+      const dispose = render(() => (
+        <InstantViewBlocks
+          webPageId={1}
+          page={() => page}
+          sourceRevision={() => 1}
+          openNewPage={() => {}}
+          collapse={() => {}}
+        />
+      ), container);
+      return {container, dispose};
+    };
+
+    const table = (compact?: true): PageBlock => ({
+      _: 'pageBlockTable',
+      pFlags: compact ? {compact} : {},
+      title: text('Table'),
+      rows: [{_: 'pageTableRow', cells: [{_: 'pageTableCell', pFlags: {}, text: text('cell')}]}]
+    });
+
+    // a compact table is the same table with an extra class on its wrapper
+    const plain = renderPage(makeBlocksPage([table()]));
+    const compact = renderPage(makeBlocksPage([table(true)]));
+    await Promise.resolve();
+    // <div .Table><div .wrapper><table>
+    const plainWrapper = plain.container.querySelector('table').parentElement.parentElement;
+    const compactWrapper = compact.container.querySelector('table').parentElement.parentElement;
+    const plainClasses = plainWrapper.className.split(' ');
+    const compactClasses = compactWrapper.className.split(' ');
+    expect(compactClasses.length).toBe(plainClasses.length + 1);
+    expect(plainClasses.every((name) => compactClasses.includes(name))).toBe(true);
+    plain.dispose();
+    compact.dispose();
+
+    // a collapsed blockquote opts into the app-wide collapsable quote
+    const openQuote = renderPage(makeBlocksPage([
+      {_: 'pageBlockBlockquote', pFlags: {}, text: text('quote'), caption: {_: 'textEmpty'}}
+    ]));
+    const collapsedQuote = renderPage(makeBlocksPage([
+      {_: 'pageBlockBlockquote', pFlags: {collapsed: true}, text: text('quote'), caption: {_: 'textEmpty'}}
+    ]));
+    await Promise.resolve();
+    expect(openQuote.container.querySelector('blockquote').classList.contains('quote-like-collapsable')).toBe(false);
+    expect(openQuote.container.querySelector('.quote-like-collapse')).toBeNull();
+    const collapsedEl = collapsedQuote.container.querySelector('blockquote');
+    expect(collapsedEl.classList.contains('quote-like-collapsable')).toBe(true);
+    expect(collapsedEl.querySelector('.quote-like-collapse')).not.toBeNull();
+    expect(collapsedEl.textContent).toContain('quote');
+    openQuote.dispose();
+    collapsedQuote.dispose();
+
+    // a file block resolves its document out of the page
+    const withDocument = renderPage(makeBlocksPage(
+      [{_: 'pageBlockDocument', document_id: 77, caption}],
+      [{_: 'document', id: 77} as any]
+    ));
+    const missingDocument = renderPage(makeBlocksPage(
+      [{_: 'pageBlockDocument', document_id: 78, caption}]
+    ));
+    await Promise.resolve();
+    expect(withDocument.container.querySelector('[data-document-id]').getAttribute('data-document-id')).toBe('77');
+    // nothing is drawn for a document the page does not carry
+    expect(missingDocument.container.querySelector('[data-document-id]')).toBeNull();
+    withDocument.dispose();
+    missingDocument.dispose();
   });
 
   test('preserves table row and cell owners while cell text streams', async() => {

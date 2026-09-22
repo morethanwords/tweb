@@ -9,6 +9,7 @@ const adminRightToI18n: Record<keyof ChatAdminRights.chatAdminRights['pFlags'], 
   manage_call: () => 'Channel.EditAdmin.ManageCalls',
   manage_direct_messages: () => 'Channel.EditAdmin.ManageDirectMessages',
   manage_linked_peers: () => 'AdminRights.Other',
+  manage_welcome_messages: () => 'AdminRights.ManageWelcomeMessages',
 
   change_info: ({isBroadcast}) =>
     isBroadcast ? 'EditAdminChangeChannelInfo' : 'EditAdminChangeGroupInfo',

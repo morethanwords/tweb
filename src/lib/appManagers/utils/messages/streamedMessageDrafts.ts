@@ -18,10 +18,17 @@ export type StreamedMessageDraft = Readonly<{
   date: number,
   updatedAt: number,
   expiresAt: number,
-  content: StreamedMessageDraftContent
+  content: StreamedMessageDraftContent,
+  /** layer 229: the bot lets the reader stop this stream */
+  canStop: boolean,
+  /** layer 229: what has been streamed so far survives the stop */
+  keepOnStop: boolean
 }>;
 
 export type StreamedMessageDraftScope = Pick<StreamedMessageDraft, 'peerId' | 'threadId' | 'authorId'>;
+
+/** Stopping is offered per chat/topic, not per author — whatever is streaming there is stopped. */
+export type StreamedMessageStopScope = Pick<StreamedMessageDraft, 'peerId' | 'threadId'>;
 
 export type StreamedMessageDraftRemovalReason = 'superseded' | 'cancelled' | 'expired' | 'clear';
 
@@ -36,7 +43,9 @@ type UpsertOptions = StreamedMessageDraftScope & {
   date: number,
   now: number,
   ttl: number,
-  content: StreamedMessageDraftContent
+  content: StreamedMessageDraftContent,
+  canStop?: boolean,
+  keepOnStop?: boolean
 };
 
 export function getStreamedMessageDraftKey({
@@ -57,6 +66,7 @@ export function getStreamedMessageContentMatchText(content: StreamedMessageDraft
 export default class StreamedMessageDrafts {
   private drafts = new Map<string, StreamedMessageDraft>();
   private finalized = new Map<string, number>();
+  private stopped = new Map<string, number>();
 
   public upsert(options: UpsertOptions) {
     const key = getStreamedMessageDraftKey(options);
@@ -74,7 +84,9 @@ export default class StreamedMessageDrafts {
       date: previous?.date ?? options.date,
       updatedAt: options.now,
       expiresAt: options.now + options.ttl,
-      content: copy(options.content)
+      content: copy(options.content),
+      canStop: !!options.canStop,
+      keepOnStop: !!options.keepOnStop
     };
 
     this.drafts.set(key, draft);
@@ -127,6 +139,11 @@ export default class StreamedMessageDrafts {
         this.finalized.delete(key);
       }
     }
+    for(const key of this.stopped.keys()) {
+      if(key.startsWith(keyPrefix)) {
+        this.stopped.delete(key);
+      }
+    }
 
     return removed;
   }
@@ -144,6 +161,11 @@ export default class StreamedMessageDrafts {
         this.finalized.delete(key);
       }
     }
+    for(const [key, expiresAt] of this.stopped) {
+      if(expiresAt <= now) {
+        this.stopped.delete(key);
+      }
+    }
 
     return removed;
   }
@@ -152,6 +174,7 @@ export default class StreamedMessageDrafts {
     const removed = [...this.drafts.values()];
     this.drafts.clear();
     this.finalized.clear();
+    this.stopped.clear();
     return removed;
   }
 
@@ -163,6 +186,11 @@ export default class StreamedMessageDrafts {
       }
     }
     for(const expiresAt of this.finalized.values()) {
+      if(result === undefined || expiresAt < result) {
+        result = expiresAt;
+      }
+    }
+    for(const expiresAt of this.stopped.values()) {
       if(result === undefined || expiresAt < result) {
         result = expiresAt;
       }
@@ -188,6 +216,69 @@ export default class StreamedMessageDrafts {
 
   public markFinalized(draft: StreamedMessageDraft, expiresAt: number) {
     this.finalized.set(draft.key, expiresAt);
+  }
+
+  /**
+   * A stream the reader already stopped must not be revived by an update that was in flight —
+   * desktop keeps the same guard in `_stoppedRandomIds`.
+   */
+  public isStopped(
+    options: Pick<StreamedMessageDraft, 'peerId' | 'threadId' | 'authorId' | 'randomId'>,
+    now: number
+  ) {
+    const key = getStreamedMessageDraftKey(options);
+    const expiresAt = this.stopped.get(key);
+    if(expiresAt === undefined) return false;
+    if(expiresAt <= now) {
+      this.stopped.delete(key);
+      return false;
+    }
+
+    return true;
+  }
+
+  /** The most recently updated stoppable draft of a chat/topic, the one a Stop press targets. */
+  public findStoppable(scope: StreamedMessageStopScope) {
+    let result: StreamedMessageDraft;
+    for(const draft of this.drafts.values()) {
+      if(!draft.canStop || draft.peerId !== scope.peerId || (draft.threadId || 0) !== (scope.threadId || 0)) {
+        continue;
+      }
+
+      if(!result || draft.updatedAt > result.updatedAt) {
+        result = draft;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Applies the stop the bot acknowledged (or the one we just asked for). A draft that does not
+   * keep what it streamed is dropped; one that does stays, only no longer stoppable.
+   */
+  public applyStop(
+    options: Pick<StreamedMessageDraft, 'peerId' | 'threadId' | 'authorId' | 'randomId'>,
+    expiresAt: number
+  ) {
+    const key = getStreamedMessageDraftKey(options);
+    this.stopped.set(key, expiresAt);
+
+    const draft = this.drafts.get(key);
+    if(!draft) return;
+
+    if(!draft.keepOnStop) {
+      this.drafts.delete(key);
+      return {draft, removed: true};
+    }
+
+    if(!draft.canStop) {
+      return {draft, removed: false};
+    }
+
+    const updated: StreamedMessageDraft = {...draft, canStop: false};
+    this.drafts.set(key, updated);
+    return {draft: updated, removed: false};
   }
 
   public adopt(candidate: StreamedMessageFinalCandidate) {

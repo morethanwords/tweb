@@ -41,6 +41,16 @@
   margin-block: 1.5rem;
 }
 
+// the popup body is a centering flex column, so a full-width control has to ask for it
+.messageInput {
+  align-self: stretch;
+  margin-block: 1rem 0.5rem;
+}
+
+.hideNameRow {
+  align-self: stretch;
+}
+
 .starsBalance {
   left: 50%;
   top: -1rem;

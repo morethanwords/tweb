@@ -182,6 +182,7 @@
 		&.record-video .btn-send-icon-record-video,
 		&.edit .btn-send-icon-edit,
 		&.schedule .btn-send-icon-schedule,
+    &.stop .btn-send-icon-stop,
     &.forward .btn-send-icon-forward {
 			visibility: visible !important;
       animation: grow-icon .4s forwards ease-in-out !important;

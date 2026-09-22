@@ -222,11 +222,14 @@ export class AppInlineBotsManager extends AppManager {
     this.appDraftsManager.setDraft(peerId, threadId, message);
   }
 
-  public callbackButtonClick(peerId: PeerId, mid: number, button?: any, game?: boolean) {
+  public callbackButtonClick(peerId: PeerId, mid: number, data?: Uint8Array, game?: boolean) {
     const message = this.appMessagesManager.getMessageByPeer(peerId, mid);
+    // An anchored ephemeral message keeps the anchor's real mid, but the keyboard it shows is the
+    // bot's — its buttons have to answer by ephemeral id, exactly like a standalone one.
     if(
       this.appMessagesManager.isEphemeralMessageId(mid) ||
-      this.appMessagesManager.isEphemeralMessage(message)
+      this.appMessagesManager.isEphemeralMessage(message) ||
+      this.appMessagesManager.isAnchoredEphemeralMessage(message)
     ) {
       if(game) {
         return Promise.resolve(undefined);
@@ -236,13 +239,13 @@ export class AppInlineBotsManager extends AppManager {
         return Promise.resolve(undefined);
       }
 
-      return this.appMessagesManager.getEphemeralCallbackAnswer(peerId, mid, button?.data);
+      return this.appMessagesManager.getEphemeralCallbackAnswer(peerId, mid, data);
     }
 
     return this.apiManager.invokeApi('messages.getBotCallbackAnswer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid),
-      data: button?.data,
+      data,
       game
     }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true});
   }

@@ -194,7 +194,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 
-type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward';
+type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward' | 'stop';
 export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 const CLASS_NAME = 'chat-input';
@@ -236,6 +236,9 @@ export default class ChatInput {
   public btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
+  /** layer 229: a bot is streaming text into this chat/topic and lets us stop it */
+  private streamStoppable = false;
+  private sendBtnIcon: ChatSendBtnIcon;
 
   private replyKeyboard: ReplyKeyboard;
 
@@ -1363,7 +1366,8 @@ export default class ChatInput {
       ['check', 'edit'],
       ['microphone_filled', 'record'],
       ['recordround_filled', 'record-video'],
-      ['forward_filled', 'forward']
+      ['forward_filled', 'forward'],
+      ['stop', 'stop']
     ];
     this.btnSend.append(...icons.map(([name, type]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type)));
 
@@ -1399,6 +1403,8 @@ export default class ChatInput {
       onOpen: () => {
         const good = !this.ephemeralComposer &&
           this.chat.type !== ChatType.Scheduled &&
+          // the button is a Stop right now, and stopping has no send options
+          this.sendBtnIcon !== 'stop' &&
           (this.recording || !this.isInputEmpty() || !!(this.forwarding && Object.keys(this.forwarding).length)) &&
           !this.editMsgId;
         if(good) {
@@ -1460,6 +1466,10 @@ export default class ChatInput {
         return false;
       }
     }, {passive: false, capture: true}); */
+
+    this.listenerSetter.add(rootScope)('streamed_message_stoppable', ({peerId, threadId, stoppable}) => {
+      this.setStreamStoppable(stoppable, peerId, threadId);
+    });
 
     this.listenerSetter.add(rootScope)('settings_updated', () => {
       if(this.stickersHelper || this.emojiHelper) {
@@ -2695,6 +2705,7 @@ export default class ChatInput {
       });
 
       this.peerChanging = false;
+      this.refreshStreamStoppable();
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -3949,6 +3960,11 @@ export default class ChatInput {
       return;
     }
 
+    if(this.sendBtnIcon === 'stop') {
+      this.stopStreamedDraft();
+      return;
+    }
+
     const isInputEmpty = this.isInputEmpty();
     const hasAnyRecorder = this.recordingController.hasAnyRecorder();
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
@@ -4196,6 +4212,49 @@ export default class ChatInput {
     return isInputEmpty(this.messageInput);
   }
 
+  private stopStreamedDraft() {
+    const {peerId, threadId} = this.chat;
+    this.managers.appMessagesManager.stopStreamedMessageDraft(peerId, threadId);
+    this.setStreamStoppable(false, peerId, threadId);
+  }
+
+  private setStreamStoppable(stoppable: boolean, peerId: PeerId, threadId: number) {
+    if(this.chat.peerId !== peerId || (this.chat.threadId || 0) !== (threadId || 0)) {
+      return;
+    }
+
+    if(this.streamStoppable === stoppable) {
+      return;
+    }
+
+    this.streamStoppable = stoppable;
+    this.updateSendBtn();
+  }
+
+  /**
+   * A stream can already be running when the chat opens, and the manager only announces changes —
+   * so ask once per peer change. Deliberately not awaited: nothing on the chat-open path may wait
+   * on a manager round-trip.
+   */
+  private refreshStreamStoppable() {
+    const {peerId, threadId} = this.chat;
+    if(this.streamStoppable) {
+      // the previous chat's stream must not leave a Stop button behind
+      this.streamStoppable = false;
+      this.updateSendBtn();
+    }
+
+    if(!peerId) {
+      return;
+    }
+
+    this.managers.appMessagesManager.isStreamedMessageDraftStoppable(peerId, threadId).then((stoppable) => {
+      if(stoppable) {
+        this.setStreamStoppable(true, peerId, threadId);
+      }
+    });
+  }
+
   public updateSendBtn() {
     let icon: ChatSendBtnIcon;
 
@@ -4203,10 +4262,14 @@ export default class ChatInput {
 
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';
+    // Stopping a bot's text stream takes the button over whatever is typed, exactly like in the
+    // other clients — saving an edit and finishing a recording still win over it.
+    else if(this.streamStoppable && !this.recording) icon = 'stop';
     else if(!this.recordingController?.hasVoiceRecorder() || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
     else icon = this.recordingController.getActiveRecordingMediaType() === 'video' ? 'record-video' : 'record';
 
-    ['send', 'record', 'record-video', 'edit', 'schedule', 'forward'].forEach((i) => {
+    this.sendBtnIcon = icon;
+    ['send', 'record', 'record-video', 'edit', 'schedule', 'forward', 'stop'].forEach((i) => {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
