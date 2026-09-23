@@ -46,12 +46,9 @@ export class NetworkerFactory extends AppManager {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(options: Omit<
-    ConstructorParameters<typeof MTPNetworker>[0],
-    'networkerFactory' | 'timeManager' | 'getBaseDcId' | 'updatesProcessor' | 'getInitConnectionParams'
-  >) {
-    const networker = new MTPNetworker({
-      ...options,
+  // * what every networker is made with
+  private getCommonOptions() {
+    return {
       timeManager: this.timeManager,
       getInitConnectionParams: () => ({
         id: App.id,
@@ -63,7 +60,17 @@ export class NetworkerFactory extends AppManager {
         langCode: this.language
       }),
       getBaseDcId: () => this.apiManager.getBaseDcId(),
-      createLogger: this.createLogger.bind(this),
+      createLogger: this.createLogger.bind(this)
+    };
+  }
+
+  public getNetworker(options: Omit<
+    ConstructorParameters<typeof MTPNetworker>[0],
+    'networkerFactory' | 'timeManager' | 'getBaseDcId' | 'updatesProcessor' | 'getInitConnectionParams'
+  >) {
+    const networker = new MTPNetworker({
+      ...options,
+      ...this.getCommonOptions(),
       isForcedStopped: () => this.akStopped,
       updatesProcessor: (obj) => this.updatesProcessor?.(obj),
       onConnectionStatus: (status) => {
@@ -77,6 +84,23 @@ export class NetworkerFactory extends AppManager {
     });
     this.networkers.push(networker);
     return networker;
+  }
+
+  /**
+   * A networker for a single job over a connection of its own — binding a
+   * temporary key. It stays out of the pool: no connection status, no
+   * updates, no salt to keep.
+   */
+  public getHelperNetworker(options: Pick<
+    ConstructorParameters<typeof MTPNetworker>[0],
+    'dcId' | 'permAuthKey' | 'authKey' | 'serverSalt'
+  >) {
+    return new MTPNetworker({
+      ...options,
+      ...this.getCommonOptions(),
+      isFileDownload: false,
+      isFileUpload: false
+    });
   }
 
   public startAll() {

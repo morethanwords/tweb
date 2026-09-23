@@ -376,7 +376,7 @@ class ApiUpdatesManager {
         updatesState.date = nextState.date;
       } else {
         updatesState.pts = differenceResult.pts;
-        updatesState.date = tsNow(true) + this.timeManager.getServerTimeOffset();
+        updatesState.date = this.timeManager.getServerTime();
         delete updatesState.seq;
 
         this.channelStates = {};

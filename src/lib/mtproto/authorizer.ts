@@ -23,14 +23,14 @@ import bytesXor from '@helpers/bytes/bytesXor';
 import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
 import Modes from '@config/modes';
-import tsNow from '@helpers/tsNow';
 import {randomBytes} from '@helpers/random';
 import {MTAuthKey} from '@lib/mtproto/authKey';
 import safeAssign from '@helpers/object/safeAssign';
+import getTransportError from '@lib/mtproto/transports/getTransportError';
 
 type AuthOptions = {
   dcId: number,
-  nonce: Uint8Array,
+  nonce?: Uint8Array,
   temp: boolean,
   media: boolean,
 
@@ -103,12 +103,9 @@ type req_DH_params = {
   encrypted_data: Uint8Array;
 };
 
-// const TEMP_EXPIRATION_TIME = 30;
-const TEMP_EXPIRATION_TIME = 86400;
-
 export class Authorizer {
   private cached: {
-    [dcId: `${DcId}_${boolean}`]: Promise<AuthOptions>
+    [dcId: DcId]: Promise<AuthOptions>
   };
 
   private transportType: TransportType;
@@ -161,13 +158,13 @@ export class Authorizer {
       }
 
       try {
-        const deserializer = new TLDeserialization<MTLong>(result, {mtproto: true});
-
-        if(result.length === 4) {
-          const errorCode = deserializer.fetchInt();
+        const errorCode = getTransportError(result);
+        if(errorCode !== undefined) {
           this.log.error('mtpSendPlainRequest: wrong response, error code:', errorCode);
           throw errorCode;
         }
+
+        const deserializer = new TLDeserialization<MTLong>(result, {mtproto: true});
 
         const auth_key_id = deserializer.fetchLong('auth_key_id');
         if(auth_key_id !== '0') this.log.error('auth_key_id !== 0', auth_key_id);
@@ -196,6 +193,7 @@ export class Authorizer {
   }
 
   private async sendReqPQ(auth: AuthOptions) {
+    auth.nonce = randomBytes(16);
     const request = new TLSerialization({mtproto: true});
 
     request.storeMethod('req_pq_multi', {nonce: auth.nonce});
@@ -293,8 +291,7 @@ export class Authorizer {
     const maxBytesLength = 144 + (auth.temp ? 4 : 0);
     if(auth.temp) {
       (p_q_inner_data_dc as any)._ = 'p_q_inner_data_temp_dc';
-      (p_q_inner_data_dc as any).expires_in = auth.expiresIn = TEMP_EXPIRATION_TIME;
-      auth.expiresAt = tsNow(true) + auth.expiresIn;
+      (p_q_inner_data_dc as any).expires_in = auth.expiresIn;
     }
 
     const pQInnerDataSerialization = new TLSerialization({mtproto: true});
@@ -446,6 +443,11 @@ export class Authorizer {
     }
 
     this.timeManager.applyServerTime(auth.serverTime, auth.localTime);
+
+    if(auth.temp) {
+      // * the server counts the lifetime from its own clock
+      auth.expiresAt = auth.serverTime + auth.expiresIn;
+    }
   }
 
   private verifyDhParams(g: number, dhPrime: Uint8Array, gA: Uint8Array) {
@@ -616,30 +618,19 @@ export class Authorizer {
     });
   };
 
-  private async __auth(dcId: DcId, temp: boolean) {
-    if(Modes.noPfs && temp) {
-      return;
-    }
-
-    const auth: AuthOptions = {
-      dcId,
-      nonce: randomBytes(16),
-      temp,
-      transport: this.dcConfigurator.chooseServer(dcId, 'client', this.transportType, !temp),
-      media: false
-    };
-
-    return this.sendReqPQ(auth);
-  }
-
-  private async _auth(dcId: DcId, temp: boolean) {
+  private async _auth(dcId: DcId) {
     await this.getTransportType();
 
     let error: ApiError;
     let retries = 0;
     while(++retries <= 3) {
       try {
-        return await this.__auth(dcId, temp);
+        return await this.sendReqPQ({
+          dcId,
+          temp: false,
+          transport: this.dcConfigurator.chooseServer(dcId, 'client', this.transportType),
+          media: false
+        });
       } catch(err) {
         error = err as ApiError;
       }
@@ -648,11 +639,29 @@ export class Authorizer {
     throw error;
   }
 
-  public auth(dcId: DcId, temp: boolean) {
-    const key = `${dcId}_${temp}` as const;
-    return this.cached[key] ??= this._auth(dcId, temp).catch((err) => {
-      delete this.cached[key];
+  /**
+   * The permanent key of a DC, made once and kept.
+   */
+  public auth(dcId: DcId) {
+    return this.cached[dcId] ??= this._auth(dcId).catch((err) => {
+      delete this.cached[dcId];
       throw err;
+    });
+  }
+
+  /**
+   * One attempt at a temporary key over `transport`. The caller owns the
+   * connection: binding the key goes over the same one.
+   *
+   * @param media for the media cluster of the DC, which has keys of its own
+   */
+  public authTemp(dcId: DcId, media: boolean, transport: MTTransport, expiresIn: number) {
+    return this.sendReqPQ({
+      dcId,
+      temp: true,
+      transport,
+      media,
+      expiresIn
     });
   }
 }

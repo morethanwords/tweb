@@ -1,5 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
+import {TimeManager} from '@lib/mtproto/timeManager';
 import SlicedArray from '@helpers/slicedArray';
 import {AppMessagesManager, HistoryStorage, MessagesStorage} from '@appManagers/appMessagesManager';
 import {AppMessagesIdsManager} from '@appManagers/appMessagesIdsManager';
@@ -127,9 +128,7 @@ function makeManager() {
       processUpdateMessage: vi.fn()
     },
     log,
-    timeManager: {
-      getServerTimeOffset: () => 0
-    },
+    timeManager: new TimeManager(),
     rootScope: {
       myId: SELF_ID,
       dispatchEvent

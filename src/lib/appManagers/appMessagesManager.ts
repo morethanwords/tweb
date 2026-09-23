@@ -1851,7 +1851,7 @@ export class AppMessagesManager extends AppManager {
 
   private insertEphemeralMessage(message: EphemeralMessage, forceMissingReply = false) {
     const peerId = this.getEphemeralPeerId(message);
-    if(message.date < tsNow(true) + this.timeManager.getServerTimeOffset() - EPHEMERAL_MESSAGE_KEEP_DURATION) {
+    if(message.date < this.timeManager.getServerTime() - EPHEMERAL_MESSAGE_KEEP_DURATION) {
       return;
     }
 
@@ -4367,7 +4367,7 @@ export class AppMessagesManager extends AppManager {
       peer_id: this.appPeersManager.getOutputPeer(peerId),
       post_author: postAuthor,
       pFlags: this.generateFlags(peerId),
-      date: options.scheduleDate || (tsNow(true) + this.timeManager.getServerTimeOffset()),
+      date: options.scheduleDate || this.timeManager.getServerTime(),
       message: '',
       grouped_id: options.groupId,
       random_id: randomLong(),
@@ -4430,7 +4430,7 @@ export class AppMessagesManager extends AppManager {
       random_id: randomLong(),
       from_id: this.appPeersManager.getOutputPeer(this.rootScope.myId),
       peer_id: this.appPeersManager.getOutputPeer(peerId),
-      date: tsNow(true) + this.timeManager.getServerTimeOffset(),
+      date: this.timeManager.getServerTime(),
       pending: true,
       action: {
         _: 'messageActionTopicCreate',
@@ -14265,7 +14265,7 @@ export class AppMessagesManager extends AppManager {
       ...scope,
       randomId,
       createTempId: () => this.generateStreamedMessageTempId(scope.peerId),
-      date: tsNow(true) + this.timeManager.getServerTimeOffset(),
+      date: this.timeManager.getServerTime(),
       now,
       ttl: this.streamedMessageDraftTtl,
       content,

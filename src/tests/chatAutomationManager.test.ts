@@ -1,5 +1,6 @@
 import AppBusinessManager from '@appManagers/appBusinessManager';
 import '@helpers/peerIdPolyfill';
+import {TimeManager} from '@lib/mtproto/timeManager';
 import {AccountConnectedBots, ConnectedBot, Updates} from '@layer';
 
 function makeConnectedBot(botId: UserId, device: string): ConnectedBot.connectedBot {
@@ -86,9 +87,7 @@ async function makeReviewManager(options: {
       },
       dispatchEvent: vi.fn()
     },
-    timeManager: {
-      getServerTimeOffset: () => 0
-    },
+    timeManager: new TimeManager(),
     refreshConnectedBot: vi.fn()
   });
 

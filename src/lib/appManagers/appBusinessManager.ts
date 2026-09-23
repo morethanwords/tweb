@@ -615,7 +615,7 @@ export default class AppBusinessManager extends AppManager {
   private filterExpiredBotConnectionReviews(reviews: BotConnectionReview[]) {
     return filterExpiredBotConnectionReviews(
       reviews,
-      (Date.now() / 1000 | 0) + this.timeManager.getServerTimeOffset(),
+      this.timeManager.getServerTime(),
       this.authorizationAutoconfirmPeriod
     );
   }
@@ -647,7 +647,7 @@ export default class AppBusinessManager extends AppManager {
     const datedReviews = this.botConnectionReviews.filter((review) => review.date);
     if(!datedReviews.length) return;
 
-    const now = (Date.now() / 1000 | 0) + this.timeManager.getServerTimeOffset();
+    const now = this.timeManager.getServerTime();
     const expiresAt = Math.min(...datedReviews.map((review) => {
       return review.date + this.authorizationAutoconfirmPeriod;
     }));

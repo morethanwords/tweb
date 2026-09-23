@@ -4,6 +4,7 @@ import {AppMessagesManager, HistoryStorage, MessagesStorage} from '@appManagers/
 import {AppProfileManager} from '@appManagers/appProfileManager';
 import {GENERAL_TOPIC_ID} from '@appManagers/constants';
 import '@helpers/peerIdPolyfill';
+import {TimeManager} from '@lib/mtproto/timeManager';
 
 const peerId = 10 as PeerId;
 const authorId = 10 as PeerId;
@@ -73,7 +74,7 @@ function makeHarness(options: {isBotforum?: boolean, isForum?: boolean} = {}) {
       generateMessageId: (id: number, channelId?: number) => channelId ? 1_000_000 + id : id
     },
     appChatsManager: {isForum: () => !!options.isForum},
-    timeManager: {getServerTimeOffset: () => 0},
+    timeManager: new TimeManager(),
     referencesStorage: {deleteContext},
     thumbsStorage: {deleteCacheContext},
     messagesStorageByPeerId: {[peerId]: storage},
@@ -769,7 +770,7 @@ function makeDifferenceUpdateManager(result: any) {
       })
     },
     rootScope: {dispatchEvent: vi.fn()},
-    timeManager: {getServerTimeOffset: () => 0},
+    timeManager: new TimeManager(),
     dispatchEvent: vi.fn((event: string) => {
       if(event === 'updateNewMessage' || event === 'updateNewChannelMessage') {
         order.push('adopt-final');

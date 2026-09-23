@@ -7,6 +7,7 @@
 
 import {nextRandomUint} from '@helpers/random';
 import ulongFromInts from '@helpers/long/ulongFromInts';
+import tsNow from '@helpers/tsNow';
 
 /*
 let lol: any = {};
@@ -50,6 +51,13 @@ export class TimeManager {
 
   public getServerTimeOffset() {
     return this.timeOffset;
+  }
+
+  /**
+   * Now by the server's clock, in seconds
+   */
+  public getServerTime() {
+    return tsNow(true) + this.timeOffset;
   }
 
   public generateId(): string {

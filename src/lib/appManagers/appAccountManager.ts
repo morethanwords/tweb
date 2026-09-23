@@ -1,6 +1,6 @@
 import App from '@config/app';
 import ctx from '@environment/ctx';
-import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
+import longFromBytes from '@helpers/long/longFromBytes';
 import tsNow from '@helpers/tsNow';
 import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential, Update} from '@layer';
 import {DcId, TrueDcId} from '@types';
@@ -275,7 +275,7 @@ export default class AppAccountManager extends AppManager {
       credential,
       ...(fromDcId ? {
         from_dc_id: fromDcId,
-        from_auth_key_id: bigIntFromBytes(fromAuthKey.id.reverse()).toString()
+        from_auth_key_id: longFromBytes(fromAuthKey.id)
       } : {})
     }, {ignoreErrors: true}).then((authorization) => {
       if(authorization._ === 'auth.authorization') {

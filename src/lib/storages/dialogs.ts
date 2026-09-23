@@ -695,7 +695,7 @@ export default class DialogsStorage extends AppManager {
   65536
   */
   public generateDialogIndex(date?: number, isPinned?: boolean) {
-    date ??= tsNow(true) + this.timeManager.getServerTimeOffset();
+    date ??= this.timeManager.getServerTime();
     return (date * 0x10000) + (isPinned ? 0 : (++this.dialogsNum & 0xFFFF));
   }
 

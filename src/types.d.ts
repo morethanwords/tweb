@@ -27,9 +27,7 @@ export type InvokeApiOptions = Partial<{
   timeout: number,
   waitTime: number,
   stopTime: number,
-  rawError: any,
-  noInitConnection: boolean,
-  msg_id: MTLong
+  rawError: any
 }>;
 
 export type WorkerTaskTemplate = {

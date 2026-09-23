@@ -35,7 +35,7 @@ pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 
-Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker).
+Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default).
 
 ### Preview
 

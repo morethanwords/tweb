@@ -303,7 +303,7 @@ export class AppDraftsManager extends AppManager {
     }
 
     const saveLocalDraft = draftObj || localDraft;
-    saveLocalDraft.date = tsNow(true) + this.timeManager.getServerTimeOffset();
+    saveLocalDraft.date = this.timeManager.getServerTime();
 
     this.saveDraft({
       peerId,
