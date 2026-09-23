@@ -143,7 +143,7 @@ $card-padding: 1rem;
   display: flex;
   flex-direction: column;
   padding: $card-padding;
-  border-radius: 1.25rem;
+  border-radius: var(--main-column-border-radius);
   background-color: var(--surface-color);
 }
 
@@ -191,6 +191,7 @@ $card-padding: 1rem;
   &.buttonSelected {
     box-shadow: inset 0 0 0 1.66px var(--primary-color);
     color: var(--primary-color);
+    --ripple-color: var(--light-primary-color);
   }
 }
 

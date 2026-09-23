@@ -3,7 +3,7 @@ import {Dynamic, Portal, render} from 'solid-js/web';
 
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
-import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
+import {useMediaSizes} from '@helpers/mediaSizes';
 import classNames from '@helpers/string/classNames';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {i18n} from '@lib/langPack';
@@ -54,7 +54,22 @@ const ANIMATION_GROUP = 'CHAT-TIPS';
 /** Show the deck anyway if the card that is up never reports in (a failed fetch, say). */
 const REVEAL_TIMEOUT = 2000;
 
+/**
+ * A single-column layout — a handheld, or the width at which the chat list turns into a drawer
+ * over the chat — has no empty column to fill: the chat list itself is the empty state there, and
+ * the chat column only ever shows up with a chat in it. So the deck isn't drawn at all, not just
+ * hidden: nothing mounts, nothing is fetched, until the window is wide enough for two columns.
+ */
 function ChatTips() {
+  const mediaSizes = useMediaSizes();
+  return (
+    <Show when={!mediaSizes.isLessThanFloatingLeftSidebar}>
+      <ChatTipsDeck />
+    </Show>
+  );
+}
+
+function ChatTipsDeck() {
   // Through the guard, not `useCurrentPeerId`: that hook imports `appImManager` statically, and a
   // hot update hands the re-evaluated module a second, uninitialised copy of the singleton whose
   // `chat` is undefined — the render then throws and the deck disappears.
@@ -62,7 +77,6 @@ function ChatTips() {
   const [peerId, setPeerId] = createSignal(appImManager.chat.peerId);
   subscribeOn(appImManager)('peer_changed', (chat) => setPeerId(chat.peerId));
 
-  const mediaSizes = useMediaSizes();
   const [appSettings, setAppSettings] = useAppSettings();
 
   // The selected tip and the collapsed state are persisted, so reopening the empty column — or the
@@ -82,9 +96,7 @@ function ChatTips() {
   const offsetOf = (i: number) =>
     (i - index() + TIPS.length) % TIPS.length === 1 ? `${SLIDE}px` : `${-SLIDE}px`;
 
-  // On a handheld the column slides away instead of standing empty, so the cards would only ever
-  // be seen mid-transition — the chat list is the empty state there.
-  const shown = () => !peerId() && mediaSizes.activeScreen !== ScreenSize.mobile;
+  const shown = () => !peerId();
 
   // The deck stays folded until the card that is up has its content, then springs in with the same
   // animation the collapse toggle plays — so the column never shows a card assembling itself.

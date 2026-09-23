@@ -1,4 +1,4 @@
-import {createContext, For, JSX, Show, useContext} from 'solid-js';
+import {createContext, Index, JSX, Show, useContext} from 'solid-js';
 
 import classNames from '@helpers/string/classNames';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
@@ -67,16 +67,19 @@ export default function TipCard(props: {
     <div class={styles.card}>
       <div class={styles.cardTitle}>{props.title}</div>
       <div class={styles.buttons}>
-        <For each={props.buttons}>{(button) => (
+        {/* `Index`, not `For`: the cards rebuild the whole array whenever the selection moves, and
+            `For` would key those fresh objects by reference and recreate every button — killing
+            the ripple of the one just clicked. By position the element stays and only updates. */}
+        <Index each={props.buttons}>{(button) => (
           <RippleElement
             component="div"
-            class={classNames(styles.button, button.selected && styles.buttonSelected)}
-            onClick={button.onClick}
+            class={classNames(styles.button, button().selected && styles.buttonSelected)}
+            onClick={(e: MouseEvent) => button().onClick(e)}
           >
-            <IconTsx icon={button.icon} class={styles.buttonIcon} />
-            <span class={styles.buttonText}>{button.text}</span>
+            <IconTsx icon={button().icon} class={styles.buttonIcon} />
+            <span class={styles.buttonText}>{button().text}</span>
           </RippleElement>
-        )}</For>
+        )}</Index>
       </div>
       <div class={styles.content}>
         <Show when={props.contentTitle}>
