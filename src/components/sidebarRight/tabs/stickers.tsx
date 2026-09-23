@@ -165,7 +165,9 @@ const Stickers: Component = () => {
 
     attachClickEvent(setsDiv, (e) => {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');
-      if(sticker) {
+      // With no chat to send to — the tab opened from the empty column's Stickers tip — a sticker
+      // falls through to its own set below, which opens the pack.
+      if(sticker && appImManager.chat.peerId) {
         const docId = sticker.dataset.docId;
         appImManager.chat.input.sendMessageWithDocument({document: docId, target: sticker});
         return;
@@ -203,7 +205,14 @@ const Stickers: Component = () => {
       }
     }, {listenerSetter: tab.listenerSetter});
 
-    appSidebarRight.toggleSidebar(true).then(() => {
+    // The tab is opened from the emoticons panel into the right sidebar, and from the empty
+    // column's Stickers tip into the left one — where there is no sidebar to reveal, and where
+    // revealing the right one would just show an empty column.
+    const revealed = tab.slider === appSidebarRight ?
+      appSidebarRight.toggleSidebar(true) :
+      Promise.resolve();
+
+    revealed.then(() => {
       renderFeatured();
     });
   });

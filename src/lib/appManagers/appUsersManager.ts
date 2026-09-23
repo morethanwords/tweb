@@ -32,6 +32,17 @@ export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline' | 'bots_app' | 'bots_guestchat';
 export type MyTopPeer = {id: PeerId, rating: number};
 
+// The recent-peer lists kept in state: the state key holding the list, and the peers-storage key
+// its entries are held under. They are restored, pushed to and pruned the same way.
+const RECENT_SEARCH_LIST = {stateKey: 'recentSearch', storageKey: 'recentSearch'} as const;
+const RECENTLY_CLOSED_LIST = {stateKey: 'recentlyClosedChats', storageKey: 'recentlyClosed'} as const;
+const RECENT_PEER_LISTS = [RECENT_SEARCH_LIST, RECENTLY_CLOSED_LIST];
+
+type RecentPeerList = typeof RECENT_PEER_LISTS[number];
+
+/** How many peers each of those lists keeps — their surfaces only show the first handful. */
+const RECENT_PEERS_LIMIT = 20;
+
 const SEARCH_OPTIONS: ProcessSearchTextOptions = {
   clearBadChars: true,
   ignoreCase: true,
@@ -70,7 +81,7 @@ export class AppUsersManager extends AppManager {
     this.rootScope.addEventListener('state_synchronized', this.updateUsersStatuses);
 
     this.rootScope.addEventListener('peer_deleted', (peerId) => {
-      this.removeRecentSearch(peerId);
+      RECENT_PEER_LISTS.forEach((list) => this.removeRecentPeer(peerId, list));
     });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -188,10 +199,12 @@ export class AppUsersManager extends AppManager {
       //   }
       // }
 
-      const recentSearch = state.recentSearch || [];
-      for(let i = 0, length = recentSearch.length; i < length; ++i) {
-        this.peersStorage.requestPeer(recentSearch[i], 'recentSearch');
-      }
+      RECENT_PEER_LISTS.forEach(({stateKey, storageKey}) => {
+        const list = state[stateKey] || [];
+        for(let i = 0, length = list.length; i < length; ++i) {
+          this.peersStorage.requestPeer(list[i], storageKey);
+        }
+      });
 
       this.peersStorage.addEventListener('peerNeeded', (peerId) => {
         if(!this.appPeersManager.isUser(peerId)) {
@@ -265,32 +278,52 @@ export class AppUsersManager extends AppManager {
     }
   }
 
-  public pushRecentSearch(peerId: PeerId) {
+  /** Moves a peer to the front of one of the recent lists, trimming (and releasing) the overflow. */
+  private pushRecentPeer(peerId: PeerId, {stateKey, storageKey}: RecentPeerList) {
     return this.appStateManager.getState().then((state) => {
-      const recentSearch = state.recentSearch || [];
-      if(recentSearch[0] !== peerId) {
-        indexOfAndSplice(recentSearch, peerId);
-        recentSearch.unshift(peerId);
-        if(recentSearch.length > 20) {
-          recentSearch.length = 20;
-        }
+      const list = state[stateKey] || [];
+      if(list[0] === peerId) {
+        return;
+      }
 
-        this.appStateManager.pushToState('recentSearch', recentSearch);
-        for(const peerId of recentSearch) {
-          this.peersStorage.requestPeer(peerId, 'recentSearch');
-        }
+      indexOfAndSplice(list, peerId);
+      list.unshift(peerId);
+      list.splice(RECENT_PEERS_LIMIT).forEach((dropped) => {
+        this.peersStorage.releasePeer(dropped, storageKey);
+      });
+
+      this.appStateManager.pushToState(stateKey, list);
+      for(const kept of list) {
+        this.peersStorage.requestPeer(kept, storageKey);
       }
     });
   }
 
-  public removeRecentSearch(peerId: PeerId) {
+  /** Drops a peer from one of the recent lists. */
+  private removeRecentPeer(peerId: PeerId, {stateKey, storageKey}: RecentPeerList) {
     return this.appStateManager.getState().then((state) => {
-      const recentSearch = state.recentSearch;
-      if(!recentSearch || indexOfAndSplice(recentSearch, peerId) === undefined) return;
+      const list = state[stateKey];
+      if(!list || indexOfAndSplice(list, peerId) === undefined) return;
 
-      this.peersStorage.releasePeer(peerId, 'recentSearch');
-      this.appStateManager.pushToState('recentSearch', recentSearch);
+      this.peersStorage.releasePeer(peerId, storageKey);
+      this.appStateManager.pushToState(stateKey, list);
     });
+  }
+
+  public pushRecentSearch(peerId: PeerId) {
+    return this.pushRecentPeer(peerId, RECENT_SEARCH_LIST);
+  }
+
+  public removeRecentSearch(peerId: PeerId) {
+    return this.removeRecentPeer(peerId, RECENT_SEARCH_LIST);
+  }
+
+  /**
+   * Remembers a chat the user left behind — closed outright, or switched away from. Feeds the
+   * "Recently closed" chip of the tip cards shown while no chat is open.
+   */
+  public pushRecentlyClosedChat(peerId: PeerId) {
+    return this.pushRecentPeer(peerId, RECENTLY_CLOSED_LIST);
   }
 
   public clearRecentSearch() {

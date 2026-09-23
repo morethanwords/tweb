@@ -65,6 +65,8 @@ export type ChatThemesPickerProps = {
   recenterOnBaseChange?: boolean;
   class?: string;
   ref?: Ref<HTMLDivElement>;
+  /** Fires once the tiles are built and in the DOM. */
+  onReady?: () => void;
 };
 
 /**
@@ -150,6 +152,14 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
   const buildThemes = async() => {
     const themes = themesPromise();
     if(!themes) return;
+
+    // The tiles' emoticons come out of the animated-emoji set, which the stickers manager only
+    // fetches a second after start-up. Wrapping one before then throws "no sticker" and leaves the
+    // slot permanently blank — there is no retry — so wait for the set first. It is cached, so this
+    // is free on every build after the first. Hit by the empty-column tip cards, which mount as
+    // soon as the IM page does.
+    await rootScope.managers.appStickersManager.getAnimatedEmojiStickerSet();
+    if(!middleware()) return;
 
     const defaultThemes = themes.filter((theme) => theme.pFlags.default);
     defaultThemes.unshift(DEFAULT_THEME);
@@ -245,6 +255,8 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     requestAnimationFrame(() => {
       scrollable.container.style.opacity = '1';
     });
+
+    props.onReady?.();
   };
 
   createEffect(on(themesPromise, (themes) => {

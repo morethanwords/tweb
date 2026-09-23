@@ -364,6 +364,10 @@ export class AppImManager extends EventListenerBase<{
 
     this.columnEl.append(this.chatsContainer);
 
+    // Tip cards for the empty column. Imported lazily so this module (which the SolidJS hot-reload
+    // guard provider imports) isn't part of an import cycle with the components the cards use.
+    import('@components/chatTips').then(({renderChatTips}) => renderChatTips(this.chatsContainer));
+
     this.createNewChat();
     this.chatsSelectTab(this.chat);
 
@@ -806,6 +810,17 @@ export class AppImManager extends EventListenerBase<{
       }
 
       uiNotificationsManager.buildNotificationQueue(options);
+    });
+
+    // Remember the chat we're leaving behind (closed outright, or switched away from) so the
+    // tip cards shown on the empty column can offer it back under "Recently closed".
+    let lastOpenedPeerId: PeerId = NULL_PEER_ID;
+    this.addEventListener('peer_changed', ({peerId}) => {
+      if(lastOpenedPeerId && lastOpenedPeerId !== peerId) {
+        this.managers.appUsersManager.pushRecentlyClosedChat(lastOpenedPeerId);
+      }
+
+      lastOpenedPeerId = peerId;
     });
 
     this.addEventListener('peer_changed', async({peerId}) => {
