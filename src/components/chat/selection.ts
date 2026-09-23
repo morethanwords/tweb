@@ -34,6 +34,7 @@ import {AppManagers} from '@lib/managers';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import appImManager from '@lib/appImManager';
 import {Message} from '@layer';
+import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import flatten from '@helpers/array/flatten';
 import IS_STANDALONE from '@environment/standalone';
 import {toastNew} from '@components/toast';
@@ -82,6 +83,13 @@ export class AppSelection extends EventListenerBase<{
 
   protected doNotAnimate: boolean;
   protected managers: AppManagers;
+  /**
+   * How far the pointer has to travel before a press turns into a drag that selects what it runs
+   * across. Without it the shake of an ordinary click counts as a drag, and the row it was meant to
+   * toggle is done the other way round instead. Off by default - the elements of a chat and of the
+   * search are selected one at a time, so their press has nothing else to be.
+   */
+  protected dragThreshold = 0;
 
   protected onTouchLongPress: (e: Event) => void;
 
@@ -181,7 +189,8 @@ export class AppSelection extends EventListenerBase<{
     const activeWindow = getAppWindow();
     const activeDocument = activeWindow.document;
 
-    const seen = new Map<PeerId, Map<number, HTMLElement>>();
+    const {clientX: startX, clientY: startY} = e;
+    const seen = new Map<string, HTMLElement>();
     let selecting: boolean;
     // * the first element the drag has actually processed — everything belonging to its selection
     // * unit is not a second element
@@ -201,20 +210,14 @@ export class AppSelection extends EventListenerBase<{
     let firstTarget = element;
 
     const processElement = (element: HTMLElement, checkBetween = true) => {
-      const mid = +element.dataset.mid;
-      if(!mid || !element.dataset.peerId) return;
-      const peerId = element.dataset.peerId.toPeerId();
+      const key = this.getKeyFromElement(element);
+      if(key === undefined) return;
 
       if(!isInDOM(firstTarget)) {
         firstTarget = element;
       }
 
-      let seenElements = seen.get(peerId);
-      if(!seenElements) {
-        seen.set(peerId, seenElements = new Map());
-      }
-
-      if(seenElements.has(mid)) {
+      if(seen.has(key)) {
         return;
       }
 
@@ -222,17 +225,17 @@ export class AppSelection extends EventListenerBase<{
         return;
       }
 
-      const isSelected = this.isMidSelected(peerId, mid);
+      const isSelected = this.isElementShouldBeSelected(element);
       if(selecting === undefined) {
         // bubblesContainer.classList.add('no-select');
         selecting = !isSelected;
       }
 
-      seenElements.set(mid, element);
+      seen.set(key, element);
       dragAnchor ??= element;
 
       if((selecting && !isSelected) || (!selecting && isSelected)) {
-        const seenLength = accumulateMapSet(seen);
+        const seenLength = seen.size;
         if(this.toggleByElement && checkBetween) {
           if(seenLength < 2) {
             if(findUpAsChild(element, firstTarget)) {
@@ -249,12 +252,10 @@ export class AppSelection extends EventListenerBase<{
           }
         }
 
-        if(!this.selectedMids.size) {
+        if(!this.length()) {
           if(seenLength === 2 && this.toggleByElement) {
-            for(const elements of seen.values()) {
-              for(const element of elements.values()) {
-                this.toggleByElement(element, selecting);
-              }
+            for(const element of seen.values()) {
+              this.toggleByElement(element, selecting);
             }
           }
         } else if(this.toggleByElement) {
@@ -264,8 +265,16 @@ export class AppSelection extends EventListenerBase<{
     };
 
     // const foundTargets: Map<HTMLElement, true> = new Map();
-    let canceledSelection = false;
+    let canceledSelection = false, travelled = !this.dragThreshold;
     const onMouseMove = (e: MouseEvent) => {
+      if(!travelled) {
+        if(Math.hypot(e.clientX - startX, e.clientY - startY) < this.dragThreshold) {
+          return;
+        }
+
+        travelled = true;
+      }
+
       if(!canceledSelection) {
         cancelSelection();
         canceledSelection = true;
@@ -302,7 +311,11 @@ export class AppSelection extends EventListenerBase<{
       document.body.classList.remove('no-select');
 
       if(seen.size) {
-        attachClickEvent(activeWindow, cancelEvent, {capture: true, once: true, passive: false});
+        // * the click that ends a drag has to be swallowed, or whoever listens for it acts on the
+        // * element the press started on - and toggles back what the drag has just done. It lands on
+        // * the common ancestor of the press and the release rather than on either element, so
+        // * `ignoreMove` is what lets this one through the moved-since-mousedown guard
+        attachClickEvent(activeWindow, cancelEvent, {capture: true, once: true, passive: false, ignoreMove: true});
       }
 
       this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
@@ -323,6 +336,29 @@ export class AppSelection extends EventListenerBase<{
    */
   protected isSameSelectionUnit(anchor: HTMLElement, element: HTMLElement) {
     return false;
+  }
+
+  /**
+   * What an element the drag runs over is held under, so it is passed over on the way back. One per
+   * message here; a selection of something else (a chat list) answers in its own terms.
+   */
+  protected getKeyFromElement(element: HTMLElement): string {
+    const mid = +element.dataset.mid;
+    if(!mid || !element.dataset.peerId) {
+      return undefined;
+    }
+
+    return makeFullMid(element.dataset.peerId.toPeerId(), mid);
+  }
+
+  /** What the element's checkbox is named after */
+  protected getCheckboxName(element: HTMLElement) {
+    return element.dataset.mid;
+  }
+
+  /** Drops everything the selection holds, out of wherever it is held */
+  protected clearSelection() {
+    this.selectedMids.clear();
   }
 
   protected getElementsBetween(first: HTMLElement, last: HTMLElement) {
@@ -371,7 +407,7 @@ export class AppSelection extends EventListenerBase<{
       }
 
       const checkboxField = new CheckboxField({
-        name: element.dataset.mid,
+        name: this.getCheckboxName(element),
         round: true
       });
 
@@ -386,12 +422,7 @@ export class AppSelection extends EventListenerBase<{
       this.appendCheckbox(element, checkboxField);
     } else if(hasCheckbox) {
       this.getCheckboxInputFromElement(element).parentElement.remove();
-      SetTransition({
-        element,
-        className: 'is-selected',
-        forwards: false,
-        duration: 200
-      });
+      this.toggleElementSelected(element, false);
     }
 
     return true;
@@ -447,7 +478,7 @@ export class AppSelection extends EventListenerBase<{
 
   public toggleSelection(toggleCheckboxes = true, forceSelection = false) {
     const wasSelecting = this.isSelecting;
-    const size = this.selectedMids.size;
+    const size = this.length();
     this.isSelecting = !!size || forceSelection;
 
     if(wasSelecting === this.isSelecting) return false;
@@ -500,7 +531,7 @@ export class AppSelection extends EventListenerBase<{
   public cancelSelection = (doNotAnimate?: boolean) => {
     if(doNotAnimate) this.doNotAnimate = true;
     this.onCancelSelection?.();
-    this.selectedMids.clear();
+    this.clearSelection();
     this.toggleSelection();
     cancelSelection();
     if(doNotAnimate) this.doNotAnimate = undefined;
@@ -508,7 +539,7 @@ export class AppSelection extends EventListenerBase<{
 
   public cleanup() {
     this.doNotAnimate = true;
-    this.selectedMids.clear();
+    this.clearSelection();
     this.toggleSelection(false);
     this.doNotAnimate = undefined;
   }
@@ -520,6 +551,16 @@ export class AppSelection extends EventListenerBase<{
 
     this.toggleSelection();
     this.updateContainer();
+    this.toggleElementSelected(element, isSelected);
+  }
+
+  /**
+   * Marks an element as one of the selected ones, and fades that mark in and out. `SetTransition`
+   * says so with `animating`/`forwards`/`backwards` ON THE ELEMENT ITSELF, so a list whose elements
+   * already speak those classes - a chat row does, for its muted state and its badges - marks them
+   * some other way instead of letting this replay what it finds.
+   */
+  protected toggleElementSelected(element: HTMLElement, isSelected: boolean) {
     SetTransition({
       element,
       className: 'is-selected',

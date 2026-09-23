@@ -12,8 +12,8 @@ import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {toastNew} from '@components/toast';
 import showMutePopup from '@components/popups/mute';
 import {AppManagers} from '@lib/managers';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS} from '@appManagers/constants';
-import showLimitPopup from '@components/popups/limit';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS} from '@appManagers/constants';
+import showPinLimitReached from '@components/showPinLimitReached';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -110,6 +110,13 @@ export default class DialogsContextMenu {
 
         if(li.dataset.isAllChats) {
           throw 'All chats dialog';
+        }
+
+        // * Android shows no context menu while rows are being selected: the press belongs to the
+        // * selection, and on touch it is also what starts a reorder of the pinned block
+        const selection = appDialogsManager.getSelectionForRow(li);
+        if(selection?.isSelecting && selection.canSelect(li)) {
+          throw 'Selecting dialogs';
         }
 
         this.dialog = this.isCommunityDialog ?
@@ -222,6 +229,13 @@ export default class DialogsContextMenu {
         appImManager.toggleViewAsMessages(this.peerId, true);
       },
       verify: () => this.peerId === rootScope.myId && appSettings.savedAsForum && !this.threadId
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Select',
+      onClick: () => {
+        appDialogsManager.getSelectionForRow(this.li)?.toggleByElement(this.li);
+      },
+      verify: () => !!appDialogsManager.getSelectionForRow(this.li)?.canSelect(this.li)
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',
@@ -556,12 +570,8 @@ export default class DialogsContextMenu {
         this.communityId,
         !this.communityDialog?.pFlags.pinned
       ).catch((err: ApiError) => {
-        if(
-          err.type === 'PINNED_DIALOGS_TOO_MUCH' ||
-          err.type === 'PINNED_TOO_MUCH'
-        ) {
-          showLimitPopup('pin');
-        }
+        // a Community is pinned among the chats of the main list
+        showPinLimitReached(err, {filterId: FOLDER_ID_ALL});
       });
       return;
     }
@@ -571,20 +581,8 @@ export default class DialogsContextMenu {
       peerId,
       filterId,
       topicOrSavedId: threadId
-    }).catch(async(err: ApiError) => {
-      if(err.type === 'PINNED_DIALOGS_TOO_MUCH' || err.type === 'PINNED_TOO_MUCH') {
-        if(isSaved) {
-          showLimitPopup('savedPin');
-        } else if(threadId) {
-          this.managers.apiManager.getLimit('topicPin').then((limit) => {
-            toastNew({langPackKey: 'LimitReachedPinnedTopics', langPackArguments: [limit]});
-          });
-        } else if(!REAL_FOLDERS.has(filterId)) {
-          toastNew({langPackKey: 'PinFolderLimitReached'});
-        } else {
-          showLimitPopup('pin');
-        }
-      }
+    }).catch((err: ApiError) => {
+      showPinLimitReached(err, {filterId, isSaved, isTopic: !!threadId});
     });
   };
 

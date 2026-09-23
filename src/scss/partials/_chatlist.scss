@@ -105,6 +105,81 @@ ul.chatlist {
       --background: var(--light-filled-secondary-text-color);
     }
 
+    // * the multi-chat selection lays its checkbox over the avatar (DialogsSelection) - the same
+    // * round one the search lays over a thumb, so a selected row is marked by the checkbox alone
+    @include selection-checkbox();
+
+    .dialog-select-checkbox {
+      // * right where a narrow list (open forum tab, collapsed sidebar) puts the unread badge over
+      // * the avatar - `.avatar-badge` below is 1.625rem with its far corner at 4.0625rem, so its
+      // * centre is 3.25rem in and down, and the checkbox (1.5rem) is laid around the same centre
+      inset-inline-start: 2.5rem;
+      top: 2.5rem;
+      // the row under it is the click target; the checkbox only shows what the selection holds
+      pointer-events: none;
+    }
+
+    // * The checkbox is put on the row when the mode starts and taken off when it ends, so its
+    // * appearance is an animation rather than a transition - there is no earlier state to move
+    // * from. It plays off the mark the LIST wears while the mode is turning on or off, so a row
+    // * that merely scrolls into view meanwhile comes up with the checkbox already there.
+    // * `DialogsSelectionBase` holds the app's own animations back while this runs.
+    .is-selection-animating & .dialog-select-checkbox {
+      @include animation-level(2) {
+        animation: fade-in-opacity var(--transition-standard-in) forwards;
+      }
+    }
+
+    // * the row keeps the checkbox until it has faded out (`DialogsSelectionBase` takes it off at
+    // * the end), so the mode leaves the way it came
+    .is-selection-animating &.is-leaving-selection .dialog-select-checkbox {
+      @include animation-level(2) {
+        animation: fade-in-backwards-opacity var(--transition-standard-in) forwards;
+      }
+    }
+
+    // the online dot sits exactly where the checkbox goes, and only while there is one
+    // (`HAS_CHECKBOX_CLASS_NAME`, put on the row by the selection)
+    &.has-select-checkbox .dialog-avatar.is-online:after {
+      display: none;
+    }
+
+    // * while the list can be reordered (see REORDERABLE_LIST_CLASS_NAME) its pinned rows say so:
+    // * the grip takes the place of the time and the badges, as it does on the Android cell that
+    // * can be dragged. `.row-sortable-icon` is the same grip every other sortable row wears.
+    // * The two are faded rather than taken out, so the title keeps the width it had.
+    .is-reorderable &.is-pinned {
+      .row-sortable-icon {
+        opacity: 1;
+      }
+
+      .dialog-title-details,
+      .dialog-subtitle-badge {
+        opacity: 0;
+      }
+    }
+
+    // * this one is deliberately no narrower than the row: `.dialog-subtitle-badge` carries its own
+    // * transition while it animates (`dialog-badge-transition`), and that rule wins only while
+    // * this one weighs the same - qualifying this with `.is-pinned` would outweigh it and take
+    // * the badge's own appearance away
+    .row-sortable-icon,
+    .dialog-title-details,
+    .dialog-subtitle-badge {
+      @include animation-level(2) {
+        transition: opacity var(--transition-standard-in);
+      }
+    }
+
+    // * the pinned block is reordered by dragging one of its rows (attachPinnedDialogsReorder):
+    // * the dragged row is lifted above the rest, the ones making way for it slide
+    &.is-dragging {
+      --background: var(--surface-color);
+      z-index: 2;
+    }
+
+    @include sortable-item-transition();
+
     &.is-muted {
       body:not(.animation-level-0) & {
         &.animating {

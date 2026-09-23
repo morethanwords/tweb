@@ -7,6 +7,7 @@ import {AppManager} from '@appManagers/manager';
 import findAndSplice from '@helpers/array/findAndSplice';
 import assumeType from '@helpers/assumeType';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '@appManagers/constants';
+import noop from '@helpers/noop';
 import makeError from '@helpers/makeError';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {isDialog} from '@appManagers/utils/dialogs/isDialog';
@@ -305,27 +306,85 @@ export default class FiltersStorage extends AppManager {
     }
   }
 
-  public async toggleDialogPin(peerId: PeerId, filterId: number) {
+  public toggleDialogPin(peerId: PeerId, filterId: number) {
+    const pinned = !this.filters[filterId]?.pinnedPeerIds.includes(peerId);
+    return this.toggleDialogsPin(filterId, [peerId], pinned);
+  }
+
+  /**
+   * A chat folder carries its pins itself, so changing them is an edit of the folder. Both halves
+   * are rewritten (`pinned_peers`, and the `pinnedPeerIds` the dialog indexes are generated from)
+   * and the local `filter_update` goes out before the request, so the list re-sorts without waiting
+   * for the round trip - and goes back where it was if the folder does not take the edit.
+   */
+  private setFilterPinnedPeers(filter: MyDialogFilter, peerIds: PeerId[]) {
+    const previous = filter.pinnedPeerIds.slice();
+    const inputPeers = new Map(filter.pinnedPeerIds.map((peerId, idx) => [peerId, filter.pinned_peers[idx]]));
+
+    const apply = (peerIds: PeerId[]) => {
+      // * in place: `pinnedPeerIds` is a non numerable property of the stored filter
+      filter.pinnedPeerIds.splice(0, filter.pinnedPeerIds.length, ...peerIds);
+      filter.pinned_peers.splice(
+        0,
+        filter.pinned_peers.length,
+        ...peerIds.map((peerId) => inputPeers.get(peerId) ?? this.appPeersManager.getInputPeerById(peerId))
+      );
+
+      this.rootScope.dispatchEvent('filter_update', filter);
+    };
+
+    apply(peerIds);
+
+    return this.updateDialogFilter(filter).then(noop, (err) => {
+      apply(previous);
+      throw err;
+    });
+  }
+
+  /**
+   * Reorders one chat folder's pins.
+   *
+   * `order` is the folder's pins in visual order, topmost first, and has to be exactly the set the
+   * folder holds - a reorder computed against a different set is not about this folder any more
+   * (tdesktop drops the save in that case too).
+   */
+  public reorderPinnedDialogs(filterId: number, order: PeerId[]) {
     const filter = this.filters[filterId];
-
-    const index = filter.pinnedPeerIds.indexOf(peerId);
-    const wasPinned = index !== -1;
-
-    if(wasPinned) {
-      filter.pinned_peers.splice(index, 1);
-      filter.pinnedPeerIds.splice(index, 1);
+    if(!filter) {
+      return Promise.reject(makeError('PINNED_DIALOGS_CHANGED'));
     }
 
-    if(!wasPinned) {
-      if(filter.pinned_peers.length >= (await this.apiManager.getLimit('folderPin'))) {
-        return Promise.reject(makeError('PINNED_DIALOGS_TOO_MUCH'));
-      }
-
-      filter.pinned_peers.unshift(this.appPeersManager.getInputPeerById(peerId));
-      filter.pinnedPeerIds.unshift(peerId);
+    const pinned = new Set(filter.pinnedPeerIds);
+    const reordered = order.filter((peerId) => pinned.has(peerId));
+    if(reordered.length !== pinned.size) {
+      return Promise.reject(makeError('PINNED_DIALOGS_CHANGED'));
     }
 
-    return this.updateDialogFilter(filter);
+    return this.setFilterPinnedPeers(filter, reordered);
+  }
+
+  /**
+   * Pins or unpins chats of a folder in one edit, rather than one round trip - and one full rewrite
+   * of the folder - per chat. `toggleDialogPin` is this with a single chat.
+   *
+   * `peerIds` in visual order, topmost first - new pins go above the ones the folder already has,
+   * in the order they were selected in.
+   */
+  public async toggleDialogsPin(filterId: number, peerIds: PeerId[], pinned: boolean) {
+    const filter = this.filters[filterId];
+    if(!filter) {
+      throw makeError('PINNED_DIALOGS_CHANGED');
+    }
+
+    const changing = new Set(peerIds);
+    const rest = filter.pinnedPeerIds.filter((peerId) => !changing.has(peerId));
+    const pinnedPeerIds = pinned ? [...peerIds, ...rest] : rest;
+    // the limit is about the pins the folder would end up with, so the change is whole or not at all
+    if(pinned && pinnedPeerIds.length > await this.apiManager.getLimit('folderPin')) {
+      throw makeError('PINNED_DIALOGS_TOO_MUCH');
+    }
+
+    return this.setFilterPinnedPeers(filter, pinnedPeerIds);
   }
 
   public createDialogFilter(filter: MyDialogFilter, prepend?: boolean) {

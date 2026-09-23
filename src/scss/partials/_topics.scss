@@ -241,7 +241,65 @@
   }
 }
 
+// * where the selection's checkbox sits, and the lane the row opens for it: a topic row has no
+// * avatar to lay it over (the chat list does), so it is laid out at the start of the row and the
+// * row's own contents move past it - the way the peer picker lays out its left checkboxes
+$checkbox-inset: .75rem;
+$checkbox-lane: $checkbox-inset + 1.5rem + .625rem;
+
 .topic-dialogs-override .chatlist-chat {
   min-height: 4rem;
-  padding-inline-start: .75rem;
+  padding-inline-start: $checkbox-inset;
+
+  // * the lane opens at once, with no transition on the padding: laying the row out again on every
+  // * frame is what a padding animation costs, and a topic row carries custom emoji - their
+  // * renderer measures what it draws, so the whole list crawls. The contents catch up with a
+  // * transform instead, which is composited and costs no layout. (It also leaves the row's own
+  // * `transition` alone - that one belongs to the reorder, which slides the rows by transform.)
+  &.has-select-checkbox-start {
+    padding-inline-start: $checkbox-lane;
+
+    // on the way out the lane closes at once in the same way
+    &.is-leaving-selection {
+      padding-inline-start: $checkbox-inset;
+    }
+  }
+
+  .dialog-select-checkbox {
+    inset-inline-start: $checkbox-inset;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+// * The contents catch up with the lane off the mark the LIST wears while the mode is turning on or
+// * off (`DialogsSelectionBase`), and not off the row's own state - a row that merely scrolls into
+// * view while the mode is already on has nothing to catch up with, its lane is simply there.
+.is-selection-animating .chatlist-chat.has-select-checkbox-start {
+  // * two animations rather than one with the shift in a variable: a row leaving the mode before it
+  // * is done coming into it has to start over from where it is, and only a new name restarts one
+  --checkbox-lane-animation: slide-from-checkbox-lane;
+
+  &.is-leaving-selection {
+    --checkbox-lane-animation: slide-to-checkbox-lane;
+  }
+
+  @include animation-level(2) {
+    .dialog-title,
+    .dialog-subtitle {
+      animation: var(--checkbox-lane-animation) var(--transition-standard-in);
+    }
+  }
+}
+
+// what the row's contents come from when the lane opens under them, and go back to when it closes
+@each $name, $shift in (
+  slide-from-checkbox-lane: $checkbox-inset - $checkbox-lane,
+  slide-to-checkbox-lane: $checkbox-lane - $checkbox-inset
+) {
+  @keyframes #{$name} {
+    from {
+      transform: translateX(calc(#{$shift} * var(--reflect)));
+    }
+  }
 }

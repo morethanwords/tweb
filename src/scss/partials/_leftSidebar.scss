@@ -47,6 +47,30 @@
     pointer-events: none;
   }
 
+  // * while chats are being selected the sidebar wears a header of its own (DialogsSelection):
+  // * a `sidebar-header` like any other, laid over the usual one and faded in, so nothing in that
+  // * one has to know about the selection
+  .chatlist-selection-header {
+    position: absolute;
+    top: 0;
+    inset-inline: 0;
+    z-index: 4;
+    background-color: var(--surface-color);
+    opacity: 0;
+    pointer-events: none;
+
+    @include animation-level(2) {
+      transition: opacity .2s ease-in-out;
+    }
+
+    // * `forwards` is what `SetTransition` flips at once in either direction - the class of the
+    // * state itself is only taken off once the fade it started has run out
+    &.is-visible.forwards {
+      opacity: 1;
+      pointer-events: all;
+    }
+  }
+
   .main-search-sidebar-header {
     transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
     opacity: 1;
@@ -304,7 +328,9 @@
     position: absolute;
     top: 0;
     inset-inline: 0;
-    z-index: 2;
+    // above anything the list itself lifts (a row being dragged, the checkbox of a selected one):
+    // the list scrolls under this panel, so nothing in it belongs on top
+    z-index: 3;
     // Children (pending suggestion, gradient, folder tabs) flow naturally — adding a panel above
     // the tabs just stacks instead of overlapping.
   }

@@ -1,5 +1,6 @@
 import {batch, onCleanup} from 'solid-js';
 import namedPromises from '@helpers/namedPromises';
+import reorderIndexes from '@helpers/array/reorderIndexes';
 import pickKeys from '@helpers/object/pickKeys';
 import safeAssign from '@helpers/object/safeAssign';
 import {default as appDialogsManager, DialogElement} from '@lib/appDialogsManager';
@@ -333,6 +334,30 @@ export default class SortedDialogList {
 
   public getSortedItems() {
     return this.virtualList.sortedItems();
+  }
+
+  /**
+   * Reorders rows the list already holds by handing them each other's indexes, without asking the
+   * managers for fresh ones - so a reorder the user just performed by hand is on screen in the same
+   * task, before any round trip. The managers regenerate the very same order right after (see
+   * `appMessagesManager.reorderPinnedDialogs`), so this is the optimistic half of one reorder, not
+   * a second source of truth.
+   *
+   * @param keys the keys to reorder, in the order they have to end up in
+   * @returns whether every key was in the list, i.e. whether the new order was applied
+   */
+  public reorderItems(keys: any[]) {
+    // the list puts the greatest index first, so the indexes come back top to bottom
+    const indexes = reorderIndexes(this.getSortedItems(), keys, true);
+    if(!indexes) {
+      return false;
+    }
+
+    batch(() => {
+      keys.forEach((key, idx) => this.virtualList.updateItem(key, indexes[idx]));
+    });
+
+    return true;
   }
 
   public async update(key: any, canFinish: () => boolean = () => true) {

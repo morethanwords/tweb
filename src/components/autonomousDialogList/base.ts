@@ -2,6 +2,8 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import DialogsPlaceholder from '@helpers/dialogsPlaceholder';
 import replaceContent from '@helpers/dom/replaceContent';
 import ListenerSetter from '@helpers/listenerSetter';
+import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import attachPinnedDialogsReorder from '@components/dialogsPinnedReorder';
 import throttle from '@helpers/schedulers/throttle';
 import {SequentialCursorFetcher, SequentialCursorFetcherResult} from '@helpers/sequentialCursorFetcher';
 import windowSize from '@helpers/windowSize';
@@ -75,6 +77,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
   protected managers: AppManagers;
   protected appDialogsManager: AppDialogsManager;
   protected listenerSetter: ListenerSetter;
+  protected middlewareHelper: MiddlewareHelper;
   protected loadDialogsPromise: Promise<{cached: boolean, renderPromise: AutonomousDialogList['loadDialogsRenderPromise']}>;
   protected loadDialogsRenderPromise: Promise<void>;
   protected placeholder: DialogsPlaceholder;
@@ -108,6 +111,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     this.log = logger('CL');
     this.managers = rootScope.managers;
     this.listenerSetter = new ListenerSetter();
+    this.middlewareHelper = getMiddleware();
     this.appDialogsManager = appDialogsManager;
   }
 
@@ -402,10 +406,29 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     return this.onChatsScroll();
   }
 
+  /**
+   * Lets the pinned block of this list be reordered by dragging one of its rows, like every other
+   * client - the list answers for what the reorder needs to know (`attachPinnedDialogsReorder`).
+   * `canReorder` is for a list that can be reordered only while a mode is on.
+   */
+  public attachPinnedReorder(canReorder?: () => boolean) {
+    return attachPinnedDialogsReorder({
+      list: this.sortedList.list,
+      scrollable: this.scrollable,
+      middleware: this.middlewareHelper.get(),
+      sortedList: this.sortedList,
+      managers: this.managers,
+      getFilterId: () => this.getFilterId(),
+      getDialogKey: (element) => this.getDialogKeyFromElement(element),
+      canReorder
+    });
+  }
+
   public destroy() {
     this.clear();
     this.scrollable.destroy();
     this.listenerSetter.removeAll();
+    this.middlewareHelper.destroy();
     this.sortedList?.destroy();
   }
 }

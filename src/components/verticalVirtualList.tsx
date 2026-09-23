@@ -32,6 +32,11 @@ const VerticalVirtualList: Component<{
 
   const [scrollAmount, setScrollAmount] = createSignal(0);
   const hostSize = useElementSize(() => props.scrollableHost);
+  // * a host of no height is not laid out at all - its tab is hidden (`display: none`, settings
+  // * opened over the chat list) - rather than one that shows nothing. The window of rows is kept as
+  // * it was: shrinking it to nothing would drop every row, only to build them all anew - avatars and
+  // * custom emoji along with them - the moment the tab is back
+  const hostHeight = createMemo<number>((prev) => hostSize.height || prev, 0);
 
   onMount(() => {
     const listenerSetter = new ListenerSetter();
@@ -54,7 +59,7 @@ const VerticalVirtualList: Component<{
 
   const shouldAnimate = useShouldAnimate({
     list: () => props.list,
-    hostHeight: () => hostSize.height,
+    hostHeight,
     itemHeight: () => props.itemHeight,
     scrollAmount,
     onScrollShift
@@ -63,7 +68,7 @@ const VerticalVirtualList: Component<{
   const canAnimate = createMemo(() => shouldAnimate() && props.animate);
 
   const isVisible = createSelector(
-    () => [scrollAmount(), hostSize.height, props.itemHeight, props.thresholdPadding] as const,
+    () => [scrollAmount(), hostHeight(), props.itemHeight, props.thresholdPadding] as const,
     (
       idx: number,
       [scrollAmount, hostHeight, itemHeight, padding]
@@ -89,7 +94,7 @@ const VerticalVirtualList: Component<{
 
   const computedItemsHeight = () => totalCount() * props.itemHeight + Number(!!totalCount()) * (props.extraPaddingBottom || 0);
 
-  const height = createMemo(() => props.forceHostHeight ? hostSize.height : computedItemsHeight());
+  const height = createMemo(() => props.forceHostHeight ? hostHeight() : computedItemsHeight());
 
   return (
     <ul

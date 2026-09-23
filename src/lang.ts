@@ -2275,6 +2275,11 @@ const lang = {
     'other_value': 'Delete topics'
   },
   'DeleteSelectedTopic': 'Are you sure you want delete %s?',
+  'DeleteSelectedTopics': 'Are you sure you want delete these topics?',
+  'TopicsSelected': {
+    'one_value': '%d topic selected',
+    'other_value': '%d topics selected'
+  },
   'NewTopic': 'New Topic',
   'CreateTopicTitle': 'Choose a topic name and icon',
   'CreateGeneralTopicTitle': 'Choose topic name',
@@ -4149,6 +4154,8 @@ const lang = {
   'ChatList.Context.LeaveGroup': 'Leave Group',
   'ChatList.Context.LeaveMonoforum': 'Leave Conversation',
   'ChatList.Context.Preview': 'Preview',
+  'AreYouSureDeleteFewChats': 'Are you sure you want to delete selected chats?',
+  'DeleteMessagesForBothSidesWherePossible': 'Delete for both sides where possible',
   'ChatList.Service.Call.incoming': 'Incoming Call (%@)',
   'ChatList.Service.Call.outgoing': 'Outgoing Call (%@)',
   'ChatList.Service.VideoCall.incoming': 'Incoming Video Call (%@)',

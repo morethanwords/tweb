@@ -2239,6 +2239,9 @@ export default class AppSearchSuper {
       openInner: this.openSavedDialogsInner
     });
 
+    // the pinned sublists of Saved Messages reorder like the pinned chats of a folder
+    xd.attachPinnedReorder();
+
     const getCount = async() => {
       const result = await this.managers.dialogsStorage.getDialogs({filterId: rootScope.myId});
       return result.count;

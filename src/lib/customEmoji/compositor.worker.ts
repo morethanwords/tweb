@@ -217,8 +217,26 @@ compositorMessagePort.addMultipleEventsListeners({
   }),
 
   resizeRenderer: ({rendererId, width, height}) => withRenderer(rendererId, (renderer) => {
-    renderer.canvas.width = width; // resizing clears the canvas
-    renderer.canvas.height = height;
+    const {canvas, context} = renderer;
+    const {width: oldWidth, height: oldHeight} = canvas;
+
+    // * resizing clears the canvas, and the flush that draws it again is a frame away - the emoji
+    // * would blink out in between. What is on it is carried over into the new box instead, so the
+    // * flush replaces a picture rather than filling a hole. It is the picture of another size for
+    // * that one frame, which is what a resized <img> does, and nobody sees it as missing.
+    let carried: OffscreenCanvas;
+    if(oldWidth && oldHeight && width && height) {
+      carried = new OffscreenCanvas(oldWidth, oldHeight);
+      carried.getContext('2d').drawImage(canvas, 0, 0);
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+
+    if(carried) {
+      context.drawImage(carried, 0, 0, width, height);
+    }
+
     renderer.dirty = true;
     scheduleFlush();
   }),

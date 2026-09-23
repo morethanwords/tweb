@@ -355,6 +355,10 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     this.bindScrollable();
     this.setupCommunityProjection();
 
+    // a press on a chat row opens the chat, so the pinned block is dragged only in the mode where it
+    // does not - the one the rows are selected in (Android reorders its pins there too)
+    this.attachPinnedReorder(() => this.appDialogsManager.selection.isSelecting);
+
     // list.classList.add('hide');
     // scrollable.container.style.backgroundColor = '#' + (Math.random() * (16 ** 6 - 1) | 0).toString(16);
 

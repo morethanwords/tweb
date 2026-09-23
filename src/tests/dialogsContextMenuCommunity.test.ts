@@ -28,7 +28,9 @@ vi.mock('@lib/appDialogsManager', () => ({
   default: {
     filterId: 0,
     openDialogInNewTab: vi.fn(),
-    toggleForumTabByPeerId: vi.fn()
+    toggleForumTabByPeerId: vi.fn(),
+    // the rows of these tests are standalone elements, so they are in no list and no selection
+    getSelectionForRow: (): undefined => undefined
   },
   findDialogListElement: (target: HTMLElement) => target
 }));

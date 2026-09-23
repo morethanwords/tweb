@@ -366,11 +366,7 @@ $row-border-radius: $border-radius-medium;
       }
     }
 
-    .is-reordering & {
-      @include animation-level(2) {
-        transition: transform var(--transition-standard-in);
-      }
-    }
+    @include sortable-item-transition();
   }
 
   .row-radio-field .radio-field-main, 

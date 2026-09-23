@@ -6,6 +6,9 @@ import type {AnyDialog} from '@lib/storages/dialogs';
 import type {CustomEmojiRendererElement} from '@customEmoji/renderer';
 import PopupElementTsx from '@components/popups/indexTsx';
 import DialogsContextMenu from '@components/dialogsContextMenu';
+import DialogsSelection from '@components/dialogsSelection';
+import {PINNED_DIALOG_CLASS_NAME} from '@components/dialogsPinnedReorder';
+import type {DialogsSelectionBase} from '@components/dialogsSelectionBase';
 import DotRenderer from '@components/dotRenderer';
 import {horizontalMenuObjArgs} from '@components/horizontalMenu';
 import Scrollable from '@components/scrollable';
@@ -21,6 +24,7 @@ import {MyDraftMessage} from '@appManagers/appDraftsManager';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import PeerTitle, {changeTitleEmojiColor} from '@components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '@lib/langPack';
+import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import wrapPhoto from '@components/wrappers/photo';
@@ -70,7 +74,7 @@ import filterAsync from '@helpers/array/filterAsync';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import getDialogMentionBadgeState from '@helpers/dialogMentionBadgeState';
-import {attachRowController, RowMediaSizeType, type RowTsxController} from '@components/rowTsxController'
+import {attachRowController, createRowSortableIcon, RowMediaSizeType, type RowTsxController} from '@components/rowTsxController'
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import formatNumber from '@helpers/number/formatNumber';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
@@ -143,6 +147,8 @@ export type DialogDom = {
   statusSpan: HTMLSpanElement,
   lastTimeSpan: HTMLSpanElement,
   pinnedBadge?: HTMLElement,
+  /** the grip a pinned row is dragged by while its list can be reordered */
+  sortableIcon?: HTMLElement,
   unreadBadge?: HTMLElement,
   unreadAvatarBadge?: HTMLElement,
   callIcon?: ReturnType<typeof groupCallActiveIcon>,
@@ -532,6 +538,13 @@ export class DialogElement {
     this.dom.subtitleEl.append(badge);
   }
 
+  /** The grip a pinned row is dragged by, shown only while its list can be reordered */
+  public createSortableIcon() {
+    if(this.dom.sortableIcon) return;
+    const icon = this.dom.sortableIcon = createRowSortableIcon();
+    this.dom.listEl.append(icon);
+  }
+
   public createUnreadBadge() {
     if(this.dom.unreadBadge) return;
     const badge = this.dom.unreadBadge = document.createElement('div');
@@ -584,7 +597,15 @@ export class DialogElement {
       reactionsBadge: !!this.dom.reactionsBadge,
       pollVotesBadge: !!this.dom.pollVotesBadge
     };
-    if(options.pinned) this.createPinnedBadge();
+    // * the pinned rows of a list form the block that can be reordered within itself, and
+    // * `Sortable` reads that block off the DOM - see attachPinnedDialogsReorder
+    this.dom.listEl.classList.toggle(PINNED_DIALOG_CLASS_NAME, !!options.pinned);
+
+    if(options.pinned) {
+      this.createPinnedBadge();
+      this.createSortableIcon();
+    }
+
     if(options.unread) this.createUnreadBadge();
     if(options.unreadAvatar) this.createUnreadAvatarBadge();
     if(options.mentions) this.createMentionsBadge();
@@ -733,8 +754,32 @@ const TEST_TOP_NOTIFICATION = true ? undefined : (): ChatlistsChatlistUpdates =>
 });
 
 
+/**
+ * Which selection governs which chat list. The main list and the archive share one (the chats of
+ * whichever folder is on screen); an open forum tab has its own, for its topics - so a row is asked
+ * about through the list it is in rather than through one selection everybody knows.
+ */
+const SELECTION_BY_LIST: WeakMap<HTMLElement, DialogsSelectionBase> = new WeakMap();
+
 export class AppDialogsManager {
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
+
+  /** Selecting several chats at once and acting on all of them, from the list that is on screen */
+  public selection = new DialogsSelection({
+    managers: rootScope.managers,
+    // * the bar stands in for the header of whichever sidebar tab the list on screen lives in -
+    // * the main one, the archive - so it is taken from that list rather than looked up by name
+    getHeader: () => {
+      const tab = findUpClassName(this.xd?.sortedList?.list, 'sidebar-slider-item') ||
+        appSidebarLeft.sidebarEl.querySelector('.item-main');
+      return tab?.querySelector('.sidebar-header');
+    },
+    getFilterId: () => this.filterId,
+    getSortedList: () => this.xd?.sortedList,
+    getDialogKey: (element) => this.xd?.getDialogKeyFromElement(element),
+    // the archive is a tab of its own beside the main one, so the drag is listened for over both
+    listContainer: this.chatsContainer?.closest<HTMLElement>('.sidebar-slider')
+  });
 
   private log = logger('DIALOGS', LogTypes.Log | LogTypes.Error | LogTypes.Warn | LogTypes.Debug);
 
@@ -1073,7 +1118,19 @@ export class AppDialogsManager {
     return this.xd.sortedList.list;
   }
 
+  /** The selection a row belongs to, or nothing when its list has none (a picker, a panel) */
+  public getSelectionForRow(row: HTMLElement) {
+    const list = row?.parentElement;
+    return list ? SELECTION_BY_LIST.get(list) : undefined;
+  }
+
   public setFilterId(filterId: number) {
+    // * the selection belongs to the list it was made in, and every action it offers is about that
+    // * list (pinning, archiving), so it does not survive a move to another one
+    if(filterId !== this.filterId) {
+      this.selection.cancelSelection();
+    }
+
     this.filterId = filterId;
   }
 
@@ -2000,15 +2057,20 @@ export class AppDialogsManager {
     withContext = false,
     withArchiveContext = false,
     autonomous = false,
-    openInner = false
+    openInner = false,
+    selection = this.selection
   }: {
     list: HTMLElement,
     onFound?: (target: HTMLElement) => void | boolean,
     withContext?: boolean,
     withArchiveContext?: boolean,
     autonomous?: boolean,
-    openInner?: boolean
+    openInner?: boolean,
+    /** what selecting a row of THIS list means - a forum tab selects its topics, not chats */
+    selection?: DialogsSelectionBase
   }) {
+    SELECTION_BY_LIST.set(list, selection);
+
     let lastActiveListElement: HTMLElement;
 
     const setPeerFunc = (openInner ? appImManager.setInnerPeer : appImManager.setPeer).bind(appImManager);
@@ -2042,15 +2104,13 @@ export class AppDialogsManager {
     };
 
     list.dataset.autonomous = '' + +autonomous;
-    list.addEventListener('mousedown', (e) => {
-      if(
-        e.button !== 0 ||
-        setWillOpenStory(e) ||
-        isDialogListAction(e.target)
-      ) {
-        return;
-      }
 
+    // * While chats are being selected a press on a row can also be the start of a reorder of the
+    // * pinned block (attachPinnedDialogsReorder), and a drag must not toggle the row it moves - so
+    // * in that mode, and only there, the press is acted upon when it ends. The click that ends a
+    // * real drag is swallowed by `Sortable`, which is what keeps the selection as it was.
+    let pendingPress: () => void;
+    const onPress = (e: MouseEvent) => {
       this.log('dialogs click list');
       const target = e.target as HTMLElement;
 
@@ -2079,6 +2139,11 @@ export class AppDialogsManager {
         threadId: threadId,
         highlight: searchQuery ? {type: 'search', query: searchQuery} : undefined
       });
+
+      if(selection.isSelecting && selection.canSelect(elem)) {
+        selection.toggleByElement(elem);
+        return;
+      }
 
       const isSponsored = elem.dataset.sponsored === 'true';
       if(isSponsored) {
@@ -2198,6 +2263,28 @@ export class AppDialogsManager {
       }
 
       openChat();
+    };
+
+    list.addEventListener('mousedown', (e) => {
+      pendingPress = undefined;
+      if(
+        e.button !== 0 ||
+        setWillOpenStory(e) ||
+        isDialogListAction(e.target)
+      ) {
+        return;
+      }
+
+      // * `AppSelection` listens for the press itself - it is what turns a drag from here into a
+      // * selection of the rows it crosses - so this only holds the row's own toggle back until the
+      // * press ends, or the drag would toggle the row it started on
+      const selectable = selection.isSelecting && findDialogListElement(e.target);
+      if(selectable && selection.canSelect(selectable)) {
+        pendingPress = () => onPress(e);
+        return;
+      }
+
+      onPress(e);
     }, {capture: true});
 
     // cancel link click
@@ -2210,6 +2297,10 @@ export class AppDialogsManager {
       if(e.button === 0) {
         cancelEvent(e);
       }
+
+      const press = pendingPress;
+      pendingPress = undefined;
+      press?.();
 
       if(!willOpenStory || isOpeningStoriesDisabled()) return;
 
@@ -2668,6 +2759,13 @@ export class AppDialogsManager {
     if(hasUnreadBadge) {
       // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
       unreadBadgeText = isMention ? '@' : '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
+    }
+
+    // * a row the virtual list has just (re)built has to come back in the state the selection has
+    // * it in - the class does not survive a row that was discarded and made anew
+    const selection = this.getSelectionForRow(dom.listEl);
+    if(selection?.isSelecting) {
+      selection.applyToElement(dom.listEl);
     }
 
     dialogElement.setBadgeState({

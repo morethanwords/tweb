@@ -402,6 +402,16 @@ export default class DialogsStorage extends AppManager {
     this.getPinnedOrders(folderId).length = 0;
   }
 
+  /**
+   * The pins of one list in visual order, topmost first, whichever kind of list it is - a real
+   * folder, a chat folder, a forum or the Saved Messages sublists. A chat folder carries its own
+   * pins; the real folders' local filters share the very array kept here.
+   */
+  public getPinnedOrderForFilter(filterId: number) {
+    const filter = this.filtersStorage.getFilter(filterId);
+    return ((filter ? filter.pinnedPeerIds : this.getPinnedOrders(filterId)) || []).slice();
+  }
+
   public getPinnedOrders(folderId: number) {
     let orders = this.pinnedOrders[folderId];
     if(!orders && this.isVirtualFilter(folderId)) {
@@ -2399,6 +2409,9 @@ export default class DialogsStorage extends AppManager {
         this.appMessagesManager.scheduleHandleNewDialogs(dialog.peerId, dialog);
       }
     }
+
+    // the Community rows of the main list take their places from its pins
+    this.appCommunitiesManager.handlePinnedDialogsOrder(folderId as REAL_FOLDER_ID);
   }
 
   // only 0 and 1 folders
@@ -2496,7 +2509,6 @@ export default class DialogsStorage extends AppManager {
         return [];
       });
       this.handleDialogsPinned(folderId, order);
-      this.appCommunitiesManager.handlePinnedDialogsOrder(folderId as REAL_FOLDER_ID);
     } else {
       type S = Modify<MessagesSavedDialogs.messagesSavedDialogs, {dialogs: Array<SavedDialog>}>;
       let promise: Promise<{
@@ -2582,7 +2594,6 @@ export default class DialogsStorage extends AppManager {
         this.applyDialogs(result);
 
         this.handleDialogsPinned(folderId, order);
-        this.appCommunitiesManager.handlePinnedDialogsOrder(folderId as REAL_FOLDER_ID);
       });
     }
   };

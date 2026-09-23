@@ -7,6 +7,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import getViewportSlice from '@helpers/dom/getViewportSlice';
 import replaceContent from '@helpers/dom/replaceContent';
 import framesCache from '@helpers/framesCache';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import {MediaSize} from '@helpers/mediaSize';
 import mediaSizes from '@helpers/mediaSizes';
 import liteMode from '@helpers/liteMode';
@@ -64,6 +65,12 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
   public forceRenderAfterSize: boolean;
 
+  // * the size a heavy animation asked for while it was running, whether it is already being waited
+  // * out, and whether the canvas is being held at the size its pixels are for - see `onResizeEntry`
+  private pendingRect: {width: number, height: number};
+  private awaitsHeavyAnimation: boolean;
+  private pinnedCanvasSize: boolean;
+
   public middlewareHelper: MiddlewareHelper;
 
   public auto: boolean;
@@ -110,8 +117,95 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 
   private onResizeEntry = (entry: ResizeObserverEntry) => {
-    this.setDimensionsFromRect(entry.contentRect);
+    // * A box of no size is not one to draw at no size: it is not laid out at all - the tab it is in
+    // * is hidden (`display: none`, settings opened over the chat list), or it is out of the
+    // * document. Taking that size would wipe the canvas, and the box comes back at the very size
+    // * it left with, so the canvas is left alone and the emoji are there the moment it is shown.
+    if(!hasSize(entry.contentRect)) {
+      return;
+    }
+
+    // * Taking a new size wipes the canvas, and while a heavy animation runs the emoji are paused -
+    // * nothing would draw it again until the animation is over, so the emoji would blink out for
+    // * its whole length, wherever an animation resizes what they are drawn in. So the pixels are
+    // * kept, the size is remembered, and it is taken once the animation ends - by then it has
+    // * settled, which also makes it one resize instead of one per frame. A renderer that has
+    // * nothing drawn yet has nothing to lose and is sized right away.
+    const heavyAnimation = getHeavyAnimationPromise();
+    const hasSomethingDrawn = this.isDimensionsSet && (this.offscreen || !this.isCanvasClean);
+    if(heavyAnimation.isFulfilled || !hasSomethingDrawn) {
+      this.setDimensionsFromRect(entry.contentRect);
+      return;
+    }
+
+    // * What is on the canvas was drawn for the size it had, so the box it is stretched over has to
+    // * be held at that size too - otherwise the picture is squashed for the length of the
+    // * animation instead of disappearing for it. When the renderer watches something else, the
+    // * canvas is laid out by its own style, which this is not updating either - so it holds itself.
+    if(this.observeResizeElement === undefined) {
+      this.pinCanvasSize();
+    } else {
+      this.pendingRect = entry.contentRect;
+    }
+
+    if(this.awaitsHeavyAnimation) {
+      return;
+    }
+
+    this.awaitsHeavyAnimation = true;
+    heavyAnimation.then(() => {
+      this.awaitsHeavyAnimation = undefined;
+      const rect = this.pendingRect;
+      this.pendingRect = undefined;
+      if(this.destroyed) {
+        return;
+      }
+
+      // the new size comes up empty, so it is drawn again at once instead of on the next tick
+      this.forceRenderAfterSize = true;
+      if(rect) {
+        this.setDimensionsFromRect(rect);
+      } else {
+        // * letting the box go puts the canvas back under the layout. Its new size is taken in the
+        // * same frame rather than left to the resize that follows, or the picture would be
+        // * stretched over the new box for exactly one frame. `offsetWidth` is the laid out size,
+        // * which is what the observer reports as well - unlike a rect, no transform is in it
+        this.unpinCanvasSize();
+        const {canvas} = this;
+        const size = {width: canvas.offsetWidth, height: canvas.offsetHeight};
+        if(hasSize(size)) {
+          this.setDimensionsFromRect(size);
+        }
+      }
+    });
   };
+
+  /** Holds the canvas at the size the picture on it was drawn for, so nothing stretches it */
+  private pinCanvasSize() {
+    const rect = this.lastRect;
+    if(this.pinnedCanvasSize || !rect) {
+      return;
+    }
+
+    this.pinnedCanvasSize = true;
+    this.setCanvasCssSize(rect.width, rect.height);
+  }
+
+  /** Lays the canvas out at this size whatever its own style says */
+  private setCanvasCssSize(width: number, height: number) {
+    this.canvas.style.setProperty('width', width + 'px', 'important');
+    this.canvas.style.setProperty('height', height + 'px', 'important');
+  }
+
+  private unpinCanvasSize() {
+    if(!this.pinnedCanvasSize) {
+      return;
+    }
+
+    this.pinnedCanvasSize = undefined;
+    this.canvas.style.removeProperty('width');
+    this.canvas.style.removeProperty('height');
+  }
 
   public connectedCallback() {
     // * Custom element reactions are read off the prototype once, when customElements.define runs, so
@@ -206,7 +300,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       const {visible} = getViewportSlice({
         overflowElement,
         overflowRect,
-        elements: placeholders.filter(el => !(el instanceof CustomEmojiElement) || !el.syncedPlayer?.pausedElements?.has(el)),
+        elements: placeholders.filter((el) => !isHeldStill(el)),
         extraSize: this.size.height * 2.5 // let's add some margin
       });
 
@@ -327,6 +421,38 @@ export class CustomEmojiRendererElement extends HTMLElement {
       this.lastSentSuspended = suspended;
       this.sendCompositor('suspendRenderer', {suspended});
     }
+  }
+
+  /**
+   * Whether the renderer is laid out right now - not in a tab hidden with `display: none`, not out
+   * of the document. One that is not has nowhere to measure its emoji at, so it is left as it is.
+   */
+  public hasLayout() {
+    return !!this.canvas.getClientRects().length;
+  }
+
+  /**
+   * Whether every emoji it draws is held still - in the sense `getOffsets` leaves an element out
+   * for, so a static emoji (no synced player) is never among them. Such a renderer has nothing new
+   * to draw, and none of its emoji has gone anywhere either.
+   */
+  public isEveryElementHeldStill() {
+    if(this.isSelectable) { // * `getOffsets` measures the placeholders then, which are never held
+      return false;
+    }
+
+    let any = false;
+    for(const elements of this.playersSynced.keys()) {
+      for(const element of elements) {
+        if(!isHeldStill(element)) {
+          return false;
+        }
+
+        any = true;
+      }
+    }
+
+    return any;
   }
 
   public clearCanvas() {
@@ -581,8 +707,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.isCanvasClean = true;
 
     if(this.observeResizeElement || this.observeResizeElement === false) {
-      this.canvas.style.setProperty('width', width + 'px', 'important');
-      this.canvas.style.setProperty('height', height + 'px', 'important');
+      this.setCanvasCssSize(width, height);
     }
 
     if(this.forceRenderAfterSize || (this.isSelectable && forceRenderAfter)) {
@@ -1197,6 +1322,14 @@ export type CustomEmojiRendererElementOptions = Partial<{
 
 const CUSTOM_EMOJI_INSTANT_PLAY = true; // do not wait for animationIntersector
 
+/** Whether an element is kept out of what is drawn anew: paused, while its synced player plays on */
+const isHeldStill = (element: HTMLElement) => {
+  return element instanceof CustomEmojiElement && !!element.syncedPlayer?.pausedElements?.has(element);
+};
+
+/** Whether a box is laid out at all: one hidden with `display: none` measures as no size */
+const hasSize = (size: {width: number, height: number}) => !!(size.width && size.height);
+
 const isAnyElementVisible = (elements: CustomEmojiElements) => {
   for(const element of elements) {
     if(animationIntersector.isVisible(element)) return true;
@@ -1298,6 +1431,17 @@ export const renderEmojis = (renderers: CustomEmojiRenderer[] = liveEmojiRendere
     const paused = [...renderer.playersSynced.values()].reduce((acc, v) => acc + +!!v.paused, 0);
     if(renderer.playersSynced.size === paused) {
       continue; // all paused: no offsets sent, no arrivals, pixels frozen - matches today
+    }
+
+    // * Frozen as well: a renderer whose every emoji is held still, and one that is not laid out
+    // * (its tab is hidden, settings opened over the chat list). The first, coming back into view,
+    // * is still held until the animation that brings it back is over, while IntersectionObserver
+    // * still says it is out of view; the second measures every emoji as a box of no size at the
+    // * corner - either way the emoji would be taken for gone, taken off the canvas and faded in
+    // * anew once they are drawn again, instead of being there all along. The flags are asked
+    // * first: they cost nothing, while the layout is a read of it
+    if(renderer.isEveryElementHeldStill() || !renderer.hasLayout()) {
+      continue;
     }
 
     const offsets = renderer.getOffsets(); // the layout reads stay UI-side

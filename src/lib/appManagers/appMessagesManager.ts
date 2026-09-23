@@ -72,6 +72,8 @@ import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArra
 import {LOCAL_ENTITIES} from '@lib/richTextProcessor';
 import {isDialog, isSavedDialog, isForumTopic, isMonoforumDialog} from '@appManagers/utils/dialogs/isDialog';
 import getDialogKey from '@appManagers/utils/dialogs/getDialogKey';
+import getSelectionActions, {DialogSelectionState, DialogsSelectionActions} from '@appManagers/utils/dialogs/dialogsSelectionActions';
+import getTopicsActions, {TopicSelectionState, TopicsSelectionActions} from '@appManagers/utils/dialogs/topicsSelectionActions';
 import getHistoryStorageKey, {getSearchStorageFilterKey} from '@appManagers/utils/messages/getHistoryStorageKey';
 import {ApiLimitType} from '@appManagers/apiManagerMethods';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
@@ -5055,7 +5057,6 @@ export class AppMessagesManager extends AppManager {
           shouldResetPinnedOrder && folderId === FOLDER_ID_ALL ? (order) => {
             log('seeding pinned order', folderId, order);
             this.dialogsStorage.handleDialogsPinned(folderId, order);
-            this.appCommunitiesManager.handlePinnedDialogsOrder(folderId);
           } : undefined
         );
       }
@@ -7738,6 +7739,22 @@ export class AppMessagesManager extends AppManager {
     return this.filtersStorage.getFilter(filterId);
   }
 
+  /** Which limit a real folder's pins are held to */
+  private getFolderPinLimitType(folderId: number): ApiLimitType {
+    return folderId === FOLDER_ID_ARCHIVE ? 'folderPin' : 'pin';
+  }
+
+  /**
+   * Refuses a pin that would take a list past its limit. The pins counted are the ones the user can
+   * see there (`getVisiblePinnedCount`), and `adding` is how many the pin would add.
+   */
+  private async assertPinnedLimit(filterId: number, limitType: ApiLimitType, adding: number, errorType: ErrorType) {
+    const max = await this.apiManager.getLimit(limitType);
+    if(this.dialogsStorage.getVisiblePinnedCount(filterId) + adding > max) {
+      throw makeError(errorType);
+    }
+  }
+
   public async toggleDialogPin(options: {
     peerId: PeerId,
     filterId?: number,
@@ -7766,13 +7783,10 @@ export class AppMessagesManager extends AppManager {
       } else if(isTopic) {
         limitType = 'topicPin';
       } else {
-        limitType = filterId === FOLDER_ID_ARCHIVE ? 'folderPin' : 'pin';
+        limitType = this.getFolderPinLimitType(filterId);
       }
 
-      const max = await this.apiManager.getLimit(limitType);
-      if(this.dialogsStorage.getVisiblePinnedCount(filterId) >= max) {
-        throw makeError(!_isDialog ? 'PINNED_TOO_MUCH' : 'PINNED_DIALOGS_TOO_MUCH');
-      }
+      await this.assertPinnedLimit(filterId, limitType, 1, !_isDialog ? 'PINNED_TOO_MUCH' : 'PINNED_DIALOGS_TOO_MUCH');
     }
 
     if(isTopic) {
@@ -7830,6 +7844,54 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
+  /**
+   * Saves a new order of one list's pinned dialogs, the way the other clients do: the whole
+   * order goes out at once with `force`, and it is applied locally first - the server echoes
+   * the very same thing back as `updatePinnedDialogs`.
+   *
+   * `filterId` is the list the pins belong to, in the same space as everywhere else in
+   * `dialogsStorage` (a real folder, a chat folder, a forum's peer id, or our own peer id for
+   * the Saved Messages sublists), and `order` is its pinned keys in visual order, topmost
+   * first: peer ids for a folder, topic ids for a forum, saved-peer ids for Saved Messages.
+   */
+  public reorderPinnedDialogs({filterId, order}: {
+    filterId: number,
+    order: (PeerId | number)[]
+  }) {
+    const filterType = this.dialogsStorage.getFilterType(filterId);
+    if(filterType !== FilterType.Forum && filterType !== FilterType.Saved && !REAL_FOLDERS.has(filterId)) {
+      return this.filtersStorage.reorderPinnedDialogs(filterId, order as PeerId[]);
+    }
+
+    this.dialogsStorage.handleDialogsPinned(filterId, order);
+    switch(filterType) {
+      case FilterType.Forum: {
+        return this.apiManager.invokeApi('messages.reorderPinnedForumTopics', {
+          force: true,
+          peer: this.appPeersManager.getInputPeerById(filterId),
+          order: order.map((topicId) => getServerMessageId(topicId as number))
+        }).then((updates) => {
+          this.apiUpdatesManager.processUpdateMessage(updates);
+        });
+      }
+
+      case FilterType.Saved: {
+        return this.apiManager.invokeApi('messages.reorderPinnedSavedDialogs', {
+          force: true,
+          order: order.map((savedPeerId) => this.appPeersManager.getInputDialogPeerById(savedPeerId as PeerId))
+        }).then(noop);
+      }
+
+      default: {
+        return this.apiManager.invokeApi('messages.reorderPinnedDialogs', {
+          force: true,
+          folder_id: filterId,
+          order: order.map((peerId) => this.appPeersManager.getInputDialogPeerById(peerId as PeerId))
+        }).then(noop);
+      }
+    }
+  }
+
   public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
     const dialog = monoforumThreadId ?
       this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
@@ -7845,8 +7907,7 @@ export class AppMessagesManager extends AppManager {
     ) {
       const folder = this.dialogsStorage.getFolder(peerId);
       for(const topicId of folder.unreadPeerIds) {
-        const forumTopic = this.dialogsStorage.getForumTopic(peerId, topicId);
-        this.readHistory({peerId, maxId: forumTopic.top_message, threadId: topicId, force: true});
+        this.readForumTopic(peerId, topicId);
       }
       return;
     }
@@ -7884,6 +7945,161 @@ export class AppMessagesManager extends AppManager {
         pFlags
       });
     });
+  }
+
+  /**
+   * What the multi-chat action bar can offer for these chats (`getDialogsSelectionActions` decides
+   * that, off the state gathered here).
+   *
+   * `filterId` is the list the selection was made in - a chat is pinned within a list, not in
+   * itself. A chat that is gone from under the selection leaves nothing that could be offered for
+   * all of them, so nothing is.
+   */
+  public getDialogsSelectionActions(peerIds: PeerId[], filterId: number): DialogsSelectionActions {
+    const states: DialogSelectionState[] = [];
+    for(const peerId of peerIds) {
+      const dialog = this.getDialogOnly(peerId);
+      if(!dialog) {
+        return {};
+      }
+
+      states.push({
+        pinned: this.dialogsStorage.isDialogPinned(peerId, filterId),
+        unread: this.isDialogUnread(dialog),
+        forum: this.appPeersManager.isForum(peerId),
+        muted: this.appNotificationsManager.isPeerLocalMuted({peerId, respectType: true}),
+        archived: dialog.folder_id === FOLDER_ID_ARCHIVE,
+        self: peerId === this.appPeersManager.peerId
+      });
+    }
+
+    return getSelectionActions(states);
+  }
+
+  /**
+   * Pins or unpins several dialogs at once, skipping the ones already in the wanted state - what a
+   * multi-chat "Pin" does elsewhere. The limit is checked once, against the pins the list would
+   * end up with, so the action either happens whole or not at all.
+   *
+   * `peerIds` in visual order, topmost first: a pin goes to the top of the list, so they are put
+   * there as one block (a chat folder) or bottom up (a real folder) to keep the order the user was
+   * looking at.
+   */
+  public async setDialogsPinned({peerIds, pinned, filterId}: {
+    peerIds: PeerId[],
+    pinned: boolean,
+    filterId: number
+  }) {
+    const toChange = peerIds.filter((peerId) => this.dialogsStorage.isDialogPinned(peerId, filterId) !== pinned);
+    if(!toChange.length) {
+      return;
+    }
+
+    // * a chat folder carries its pins itself, so the whole change is one edit of the folder (which
+    // * checks its own limit) - going through `toggleDialogPin` would be a round trip, and a full
+    // * rewrite of the folder, per chat
+    if(!REAL_FOLDERS.has(filterId)) {
+      return this.filtersStorage.toggleDialogsPin(filterId, toChange, pinned);
+    }
+
+    if(pinned) {
+      await this.assertPinnedLimit(filterId, this.getFolderPinLimitType(filterId), toChange.length, 'PINNED_DIALOGS_TOO_MUCH');
+    }
+
+    // a real folder takes one chat at a time, and every pin goes to the top - so bottom up
+    for(const peerId of pinned ? toChange.slice().reverse() : toChange) {
+      await this.setDialogPin({peerId, pinned, folderId: filterId as REAL_FOLDER_ID});
+    }
+  }
+
+  /**
+   * Which of these chats a bulk delete could also delete for the other side. Only a private chat
+   * can be, and only with someone who is still there to read it - the same question Android asks
+   * for its own "Delete for both sides where possible" checkbox.
+   */
+  public getDialogsRevokable(peerIds: PeerId[]) {
+    return peerIds.filter((peerId) => {
+      return peerId.isUser() &&
+        this.canRevokeMessages(peerId) &&
+        !this.appUsersManager.isDeleted(peerId.toUserId());
+    });
+  }
+
+  /**
+   * Mutes or unmutes several dialogs at once, for the multi-select action bars: chats, or the
+   * topics of a forum (`threadId`)
+   */
+  public toggleDialogsMute({dialogs, mute}: {dialogs: {peerId: PeerId, threadId?: number}[], mute: boolean}) {
+    return Promise.all(dialogs.map(({peerId, threadId}) => this.togglePeerMute({peerId, mute, threadId}))).then(noop);
+  }
+
+  /**
+   * Marks several dialogs read or unread at once, for the multi-chat action bar. One dialog that
+   * cannot take it (it went away under the selection) does not hold back the rest.
+   */
+  public markDialogsUnread({peerIds, read}: {peerIds: PeerId[], read?: boolean}) {
+    return Promise.all(peerIds.map((peerId) => this.markDialogUnread({peerId, read}).catch(noop))).then(noop);
+  }
+
+  /**
+   * What the multi-topic action bar can offer for these topics of one forum
+   * (`getTopicsSelectionActions` decides that, off the state gathered here). A topic that is gone
+   * from under the selection leaves nothing that could be offered for all of them, so nothing is.
+   */
+  public getTopicsSelectionActions(peerId: PeerId, topicIds: number[]): TopicsSelectionActions {
+    const states: TopicSelectionState[] = [];
+    for(const topicId of topicIds) {
+      const topic = this.dialogsStorage.getForumTopic(peerId, topicId);
+      if(!topic) {
+        return {};
+      }
+
+      const canManage = this.dialogsStorage.canManageTopic(topic);
+      states.push({
+        unread: !!topic.unread_count,
+        muted: this.appNotificationsManager.isPeerLocalMuted({peerId, threadId: topicId, respectType: true}),
+        pinned: !!topic.pFlags.pinned,
+        closed: !!topic.pFlags.closed,
+        hidden: !!topic.pFlags.hidden,
+        general: topicId === GENERAL_TOPIC_ID,
+        canManage,
+        // the General topic is a part of the forum itself - it is hidden rather than deleted
+        canDelete: canManage && topicId !== GENERAL_TOPIC_ID
+      });
+    }
+
+    return getTopicsActions(states);
+  }
+
+  /** Reads a topic of a forum up to the message it ends with */
+  private readForumTopic(peerId: PeerId, topicId: number) {
+    const topic = this.dialogsStorage.getForumTopic(peerId, topicId);
+    return this.readHistory({peerId, maxId: topic.top_message, threadId: topicId, force: true});
+  }
+
+  /** Reads several topics of one forum at once; one that has nothing unread is left alone */
+  public readTopics({peerId, topicIds}: {peerId: PeerId, topicIds: number[]}) {
+    return Promise.all(topicIds.map((topicId) => {
+      if(!this.dialogsStorage.getForumTopic(peerId, topicId)?.unread_count) {
+        return;
+      }
+
+      return this.readForumTopic(peerId, topicId).catch(noop);
+    })).then(noop);
+  }
+
+  /** Closes or reopens several topics of one forum at once */
+  public toggleTopicsClosed({peerId, topicIds, closed}: {peerId: PeerId, topicIds: number[], closed: boolean}) {
+    return Promise.all(topicIds.map((topicId) => {
+      return this.editForumTopic({peerId, topicId, closed}).catch(noop);
+    })).then(noop);
+  }
+
+  /** Deletes several topics of one forum at once, with everything that was written in them */
+  public deleteTopics({peerId, topicIds}: {peerId: PeerId, topicIds: number[]}) {
+    return Promise.all(topicIds.map((topicId) => {
+      return this.flushHistory({peerId, threadOrSavedId: topicId, justClear: false}).catch(noop);
+    })).then(noop);
   }
 
   public migrateChecks(migrateFrom: PeerId, migrateTo: PeerId) {

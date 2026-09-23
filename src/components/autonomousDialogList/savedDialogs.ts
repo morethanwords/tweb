@@ -56,7 +56,9 @@ export class AutonomousSavedDialogList extends AutonomousDialogListBase<SavedDia
   }
 
   public getDialogKeyFromElement(element: HTMLElement) {
-    return +element.dataset.peerId;
+    // * a sublist is rendered as a row of our own peer with the saved peer as its thread, so the
+    // * key (the saved peer id, as `getDialogKey` gives it) is the thread - the peer id is ours
+    return +element.dataset.threadId;
   }
 
   public getDialogFromElement(element: HTMLElement) {

@@ -57,6 +57,11 @@ export type RowTsxOptions<T extends SliderSuperTabEventableConstructable = any> 
   checkboxKeys: [LangPackKey, LangPackKey]
 }>;
 
+/** The grip a sortable row is dragged by */
+export function createRowSortableIcon() {
+  return Icon('menu', 'row-sortable-icon');
+}
+
 export type RowTsxController = {
   container: HTMLElement,
   readonly titleRow: HTMLElement,
@@ -264,7 +269,7 @@ const mountRowController = <T extends SliderSuperTabEventableConstructable = any
     },
     makeSortable: () => {
       container.classList.add('row-sortable');
-      container.append(Icon('menu', 'row-sortable-icon'));
+      container.append(createRowSortableIcon());
     },
     toggleSorting: (enabled?: boolean) => {
       container.classList.toggle('cant-sort', !enabled);

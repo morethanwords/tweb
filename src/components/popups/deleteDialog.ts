@@ -4,6 +4,16 @@ import rootScope from '@lib/rootScope';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import showPeerPopup, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from '@components/popups/peer';
 
+/**
+ * Leaves a group or a channel, and with `flush` clears what is left of it here as well: a basic
+ * group stays in the list with its history once we have left it, a channel goes with the leave
+ */
+export function leaveChat(peerId: PeerId, flush?: boolean) {
+  const {managers} = rootScope;
+  const promise = managers.appChatsManager.leave(peerId.toChatId());
+  return flush ? promise.then(() => managers.appMessagesManager.flushHistory({peerId})) : promise;
+}
+
 export default async function showDeleteDialogPopup(
   peerId: PeerId,
   // actionType: 'leave' | 'delete',
@@ -34,15 +44,7 @@ export default async function showDeleteDialogPopup(
   }; */
 
   const callbackLeave = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
-    let promise = managers.appChatsManager.leave(peerId.toChatId());
-
-    if(flush) {
-      promise = promise.then(() => {
-        return managers.appMessagesManager.flushHistory({peerId});
-      }) as any;
-    }
-
-    onSelect?.(promise);
+    onSelect?.(leaveChat(peerId, flush));
   };
 
   const callbackDelete = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => {
