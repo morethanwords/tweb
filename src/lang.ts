@@ -4548,6 +4548,8 @@ const lang = {
   'Stickers.Recent': 'Recent',
   // "Stickers.Favorite": "Favorite",
   'StickerSet.DontExist': 'Sorry, this sticker set doesn\'t seem to exist.',
+  'StickerSet.Archive': 'Archive Stickers',
+  'StickerSet.Archived': 'Sticker set has been archived.',
   'Text.Context.Copy.Username': 'Copy Username',
   'Text.Context.Copy.Hashtag': 'Copy Hashtag',
   'Time.TomorrowAt': 'tomorrow at %@',

@@ -13,6 +13,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import attachStickerViewerListeners from '@components/stickerViewer';
 import wrapSticker from '@components/wrappers/sticker';
 import {getStickerSetInputById, getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import isStickerSetAdded from '@lib/appManagers/utils/stickers/isStickerSetAdded';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
@@ -44,9 +45,10 @@ const Stickers: Component = () => {
 
     const button = document.createElement('button');
     button.classList.add('btn-primary', 'btn-color-primary', 'sticker-set-button');
-    button.append(i18n(set.installed_date ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
+    const added = isStickerSetAdded(set);
+    button.append(i18n(added ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
 
-    if(set.installed_date) {
+    if(added) {
       button.classList.add('gray');
     }
 
@@ -191,8 +193,9 @@ const Stickers: Component = () => {
           tab.managers.appStickersManager.toggleStickerSet(full.set).then((changed) => {
             if(changed) {
               button.textContent = '';
-              button.append(i18n(full.set.installed_date ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
-              button.classList.toggle('gray', !!full.set.installed_date);
+              const added = isStickerSetAdded(full.set);
+              button.append(i18n(added ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
+              button.classList.toggle('gray', added);
             }
           }).finally(() => {
             button.removeAttribute('disabled');

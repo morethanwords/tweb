@@ -5,7 +5,7 @@
  */
 
 import noop from '@helpers/noop';
-import {defineStories} from '../registry';
+import {defineStories, PopupStory} from '../registry';
 
 import {
   EMBEDDED_PAGE_URL,
@@ -92,33 +92,36 @@ defineStories('Composer & bots', [
       showNewMediaPopup(ctx.chat(), [file], 'media');
     }
   },
-  {
-    id: 'stickers',
+  // the ⋮ menu offers Archive for an added set; an archived one is offered to be added back
+  ...(['new', 'added', 'archived'] as const).map((state): Omit<PopupStory, 'group'> => ({
+    id: state === 'new' ? 'stickers' : `stickers/${state}`,
     fixtureOnly: true,
-    title: 'Sticker set preview',
+    title: {new: 'Sticker set preview', added: 'Added sticker set', archived: 'Archived sticker set'}[state],
     managers: {
       appStickersManager: {
         getStickerSet: () => ({
           set: {
             _: 'stickerSet',
-            pFlags: {},
+            pFlags: state === 'archived' ? {archived: true} : {},
             id: '8001',
             access_hash: '8001',
             title: 'Sandbox Stickers',
             short_name: 'sandbox_stickers',
             count: 1,
-            hash: 0
+            hash: 0,
+            // an archived set keeps its installed_date
+            installed_date: state === 'new' ? undefined : 1700000000
           },
           documents: [stickerDocument],
           packs: []
         })
       }
     },
-    open: async(ctx) => {
+    open: async() => {
       const {default: showStickersPopup} = await import('@components/popups/stickers');
       showStickersPopup({_: 'inputStickerSetShortName', short_name: 'sandbox_stickers'});
     }
-  },
+  })),
   {
     id: 'translate',
     title: 'Translate a message',
