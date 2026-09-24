@@ -777,6 +777,7 @@ export class AppDialogsManager {
     getFilterId: () => this.filterId,
     getSortedList: () => this.xd?.sortedList,
     getDialogKey: (element) => this.xd?.getDialogKeyFromElement(element),
+    isListNarrow: () => this.isChatListNarrow(),
     // the archive is a tab of its own beside the main one, so the drag is listened for over both
     listContainer: this.chatsContainer?.closest<HTMLElement>('.sidebar-slider')
   });
@@ -1116,6 +1117,22 @@ export class AppDialogsManager {
 
   public get chatList() {
     return this.xd.sortedList.list;
+  }
+
+  /**
+   * Whether the chat list is down to its avatars - a forum tab is open over it, or the sidebar is
+   * collapsed. The rows then carry their unread count on the avatar, and cannot be selected: they
+   * could not be told apart, nor open the lane a selected row makes for its checkbox.
+   */
+  public isChatListNarrow() {
+    return !!this.forumTab || appSidebarLeft.isCollapsed();
+  }
+
+  /** Ends a selection of chats that the list has narrowed under (see `isChatListNarrow`) */
+  public onChatListNarrowChange() {
+    if(this.selection.isSelecting && this.isChatListNarrow()) {
+      this.selection.cancelSelection();
+    }
   }
 
   /** The selection a row belongs to, or nothing when its list has none (a picker, a panel) */
@@ -1822,6 +1839,7 @@ export class AppDialogsManager {
     if(hideTab === this.forumTab) {
       this.forumTab = newTab;
       this.onSomeDrawerToggle?.();
+      this.onChatListNarrowChange();
     }
 
     if(newTab) {
@@ -2754,7 +2772,7 @@ export class AppDialogsManager {
       !isTopic &&
       !isMonoforumThread &&
       !isAllChats &&
-      (!!this.forumTab || appSidebarLeft.isCollapsed()) &&
+      this.isChatListNarrow() &&
       isDialogUnread;
     // * `unreadCount` counts the unread topics for a forum, so the mention state
     // * must be derived from it too — not from `dialog.unread_count`
@@ -2770,13 +2788,6 @@ export class AppDialogsManager {
     if(hasUnreadBadge) {
       // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
       unreadBadgeText = isMention ? '@' : '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
-    }
-
-    // * a row the virtual list has just (re)built has to come back in the state the selection has
-    // * it in - the class does not survive a row that was discarded and made anew
-    const selection = this.getSelectionForRow(dom.listEl);
-    if(selection?.isSelecting) {
-      selection.applyToElement(dom.listEl);
     }
 
     dialogElement.setBadgeState({

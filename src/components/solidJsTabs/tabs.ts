@@ -206,8 +206,16 @@ export const AppStickersAndEmojiTab =
   });
 
 
+export type AppContactsTabOptions = {
+  /** the control the tab points at once it is open - `tg://contacts/sort` names the sort button */
+  highlight?: 'sort'
+};
+
+// the tab is mostly opened with nothing to point at
+type AppContactsTabPayload = AppContactsTabOptions | void;
+
 export const AppContactsTab =
-  scaffoldSolidJSTab({
+  scaffoldSolidJSTab<AppContactsTabPayload>({
     title: 'Contacts',
     getComponentModule: () => import('../sidebarLeft/tabs/contacts')
   });

@@ -418,6 +418,8 @@
 "Alert.BotAppDoesntExist" = "Sorry, this application doesn't exist.";
 "ChatsSelected_one" = "%d chat selected";
 "ChatsSelected_other" = "%d chats selected";
+"ContactsSelected_one" = "%d contact selected";
+"ContactsSelected_other" = "%d contacts selected";
 "SelectAll" = "select all";
 "SelectAll2" = "Select All";
 "SearchPlaceholder" = "Search...";
@@ -1480,6 +1482,10 @@
 "AreYouSureDeleteAndExit" = "Are you sure you want to delete and leave the group?";
 "AreYouSureDeleteAndExitChannel" = "Do you want to delete and leave the channel?";
 "DeleteContact" = "Delete contact";
+"DeleteContactsTitle_one" = "Delete %d contact";
+"DeleteContactsTitle_other" = "Delete %d contacts";
+"DeleteContactsSubtitle" = "Are you sure you want to delete these contacts?";
+"AccDescrContactSorting" = "Change sorting";
 "GroupType" = "Group Type";
 "ChannelType" = "Channel Type";
 "TypePrivate" = "Private";

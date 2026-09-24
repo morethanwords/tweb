@@ -18,6 +18,24 @@
   transition: background-color var(--chatlist-badge-transition-in), transform var(--chatlist-badge-transition-in);
 }
 
+// * where the selection's checkbox sits at the start of a row, and how far the row's contents move
+// * past it: the checkbox, then the same gap the peer picker leaves after its own. A row can move
+// * them further (`--select-lane-shift`), and the slide into the lane follows whatever it is.
+$select-checkbox-inset: .75rem;
+$select-lane-shift: var(--select-lane-shift, #{1.5rem + .625rem});
+
+// what the row's contents come from when the lane opens under them, and go back to when it closes
+@each $name, $direction in (
+  slide-from-checkbox-lane: -1,
+  slide-to-checkbox-lane: 1
+) {
+  @keyframes #{$name} {
+    from {
+      transform: translateX(calc(#{$select-lane-shift} * #{$direction} * var(--reflect)));
+    }
+  }
+}
+
 @mixin dialog-badge-transition-animating-backwards() {
   transition: background-color var(--chatlist-badge-transition-out), transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
 }
@@ -105,18 +123,39 @@ ul.chatlist {
       --background: var(--light-filled-secondary-text-color);
     }
 
-    // * the multi-chat selection lays its checkbox over the avatar (DialogsSelection) - the same
-    // * round one the search lays over a thumb, so a selected row is marked by the checkbox alone
+    // * a row being selected (`DialogsSelectionBase`) wears its checkbox at its start, in a lane it
+    // * opens for it - the way the peer picker lays out its checkboxes. It is the same round one the
+    // * search lays over a thumb, so a selected row is marked by the checkbox alone
     @include selection-checkbox();
 
+    // * the main list's avatar is the larger one, and stands a little further off the checkbox
+    &.chatlist-chat-bigger {
+      --select-lane-shift: #{1.5rem + .625rem + .25rem};
+    }
+
     .dialog-select-checkbox {
-      // * right where a narrow list (open forum tab, collapsed sidebar) puts the unread badge over
-      // * the avatar - `.avatar-badge` below is 1.625rem with its far corner at 4.0625rem, so its
-      // * centre is 3.25rem in and down, and the checkbox (1.5rem) is laid around the same centre
-      inset-inline-start: 2.5rem;
-      top: 2.5rem;
+      inset-inline-start: $select-checkbox-inset;
+      top: 50%;
+      transform: translateY(-50%);
       // the row under it is the click target; the checkbox only shows what the selection holds
       pointer-events: none;
+    }
+
+    // * the lane opens at once, with no transition on the margins: laying the row out again on every
+    // * frame is what that would cost, and a row carries custom emoji - their renderer measures what
+    // * it draws, so the whole list crawls. The contents catch up with a transform instead (below),
+    // * which is composited and costs no layout. It also leaves the row's own `transition` alone -
+    // * that one belongs to the reorder, which slides the rows by transform.
+    &.has-select-checkbox:not(.is-leaving-selection) {
+      .dialog-title,
+      .dialog-subtitle {
+        margin-inline-start: $select-lane-shift;
+      }
+
+      // `.row-media` pins its margins, as the picker's own `.row-selection-media` has it too
+      .dialog-avatar {
+        margin-inline-start: $select-lane-shift !important;
+      }
     }
 
     // * The checkbox is put on the row when the mode starts and taken off when it ends, so its
@@ -138,10 +177,24 @@ ul.chatlist {
       }
     }
 
-    // the online dot sits exactly where the checkbox goes, and only while there is one
-    // (`HAS_CHECKBOX_CLASS_NAME`, put on the row by the selection)
-    &.has-select-checkbox .dialog-avatar.is-online:after {
-      display: none;
+    // * The contents catch up with the lane off the same mark: a row that merely scrolls into view
+    // * while the mode is already on has nothing to catch up with, its lane is simply there. Two
+    // * animations rather than one with the shift in a variable: a row leaving the mode before it is
+    // * done coming into it has to start over from where it is, and only a new name restarts one
+    .is-selection-animating &.has-select-checkbox {
+      --checkbox-lane-animation: slide-from-checkbox-lane;
+
+      &.is-leaving-selection {
+        --checkbox-lane-animation: slide-to-checkbox-lane;
+      }
+
+      @include animation-level(2) {
+        .dialog-avatar,
+        .dialog-title,
+        .dialog-subtitle {
+          animation: var(--checkbox-lane-animation) var(--transition-standard-in);
+        }
+      }
     }
 
     // * while the list can be reordered (see REORDERABLE_LIST_CLASS_NAME) its pinned rows say so:

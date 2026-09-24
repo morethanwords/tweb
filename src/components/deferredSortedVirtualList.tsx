@@ -13,14 +13,16 @@ import {
 } from 'solid-js';
 
 import LoadingDialogSkeleton, {LoadingDialogSkeletonSize} from '@components/loadingDialogSkeleton';
-import VerticalVirtualList, {VerticalVirtualListItemProps} from '@components/verticalVirtualList';
-
-import styles from '@components/deferredSortedVirtualList.module.scss';
+import VerticalVirtualList, {VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
 
 
 type CreateDeferredSortedVirtualListArgs<T> = {
   scrollable: HTMLElement,
   getItemElement: (item: T, id: any) => HTMLElement,
+  // * The row is in the list now - the one moment its place in the DOM can be relied upon: an item
+  // * is built before it is ever mounted (the list loads ahead of the scroll), and a row that is
+  // * remounted may have missed whatever the list went through while it was out
+  onItemMount?: (item: T, element: HTMLElement) => void,
   onItemUnmount?: (item: T) => void,
   // * Unlike onItemUnmount (the row merely left the rendered window and is kept for re-mounting),
   // * this fires when the list drops the item for good - removed, trimmed by checkShrink, cleared or
@@ -70,6 +72,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const {
     scrollable,
     getItemElement,
+    onItemMount,
     onItemUnmount,
     onItemDiscard,
     onListShrinked,
@@ -233,13 +236,19 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const InnerItem = (props: {id: any, value: T, top: number, animating: boolean}) => {
     const element = createMemo(() => {
       const element = getItemElement(props.value, props.id);
-      element?.classList.add(styles.Item);
+      element?.classList.add(VIRTUAL_LIST_ITEM_CLASS_NAME);
 
       onCleanup(() => {
         onItemUnmount?.(props.value);
       });
 
       return element;
+    });
+
+    // * effects run once the rendered nodes are in the document, so the row is inside the list here
+    createEffect(() => {
+      const _element = element();
+      if(_element) untrack(() => onItemMount?.(props.value, _element));
     });
 
     createRenderEffect(() => {
@@ -387,7 +396,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
           when={canShow()}
           fallback={
             <LoadingDialogSkeleton
-              class={styles.Item}
+              class={VIRTUAL_LIST_ITEM_CLASS_NAME}
               style={{top: props.top + 'px'}}
               seed={props.idx}
               size={itemSize}

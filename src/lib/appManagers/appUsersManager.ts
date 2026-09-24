@@ -20,6 +20,8 @@ import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import canSendToUser from '@appManagers/utils/users/canSendToUser';
+import getUserStatusForSort from '@appManagers/utils/users/getUserStatusForSort';
+import {getUserSortName} from '@appManagers/utils/users/sortContacts';
 import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import deepEqual from '@helpers/object/deepEqual';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
@@ -690,9 +692,7 @@ export class AppUsersManager extends AppManager {
       oldUser.sortName === undefined ||
       oldUser.first_name !== user.first_name ||
       oldUser.last_name !== user.last_name) {
-      const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-
-      user.sortName = user.pFlags.deleted ? '' : cleanSearchText(fullName, false);
+      user.sortName = user.pFlags.deleted ? '' : cleanSearchText(getUserSortName(user), false);
     } else {
       user.sortName = oldUser.sortName;
     }
@@ -817,32 +817,7 @@ export class AppUsersManager extends AppManager {
       status = user?.status;
     }
 
-    if(status) {
-      const expires = status._ === 'userStatusOnline' ? status.expires : (status._ === 'userStatusOffline' ? status.was_online : 0);
-      if(expires) {
-        return expires;
-      }
-
-      /* const timeNow = tsNow(true);
-      switch(status._) {
-        case 'userStatusRecently':
-          return timeNow - 86400 * 3;
-        case 'userStatusLastWeek':
-          return timeNow - 86400 * 7;
-        case 'userStatusLastMonth':
-          return timeNow - 86400 * 30;
-      } */
-      switch(status._) {
-        case 'userStatusRecently':
-          return 3;
-        case 'userStatusLastWeek':
-          return 2;
-        case 'userStatusLastMonth':
-          return 1;
-      }
-    }
-
-    return 0;
+    return getUserStatusForSort(status);
   }
 
   public getUser(id: User | UserId) {

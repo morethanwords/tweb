@@ -3,6 +3,10 @@ import {createSignal, onCleanup, onMount, Component, createSelector, createMemo,
 import createAnimatedValue from '@helpers/solid/createAnimatedValue';
 import ListenerSetter from '@helpers/listenerSetter';
 import useElementSize from '@hooks/useElementSize';
+import styles from '@components/verticalVirtualList.module.scss';
+
+/** What every item the list places wears - it lies over the list at the place the list gives it */
+export const VIRTUAL_LIST_ITEM_CLASS_NAME = styles.item;
 
 
 export type VerticalVirtualListItemProps<T = any> = {
@@ -21,6 +25,12 @@ const VerticalVirtualList: Component<{
   scrollableHost: HTMLElement;
 
   itemHeight: number;
+  /**
+   * Where the items start, for a list whose items are not all `itemHeight` tall - a section header
+   * between the rows, say (`createItemsLayout` lays one out). Without it every item is `itemHeight`,
+   * and the items are laid out by their index alone.
+   */
+  layout?: ItemsLayout;
   thresholdPadding: number;
 
   animate: boolean;
@@ -51,6 +61,10 @@ const VerticalVirtualList: Component<{
   });
 
 
+  // * where every item starts, and where the last one ends: for a list of equal items it is their
+  // * index times the height, as it always was
+  const getLayout = (): ItemsLayout => props.layout || createUniformLayout(props.itemHeight);
+
   const onScrollShift = (amount: number) => {
     untrack(() => {
       props.scrollableHost.scrollTop -= amount;
@@ -60,7 +74,7 @@ const VerticalVirtualList: Component<{
   const shouldAnimate = useShouldAnimate({
     list: () => props.list,
     hostHeight,
-    itemHeight: () => props.itemHeight,
+    getLayout,
     scrollAmount,
     onScrollShift
   });
@@ -68,19 +82,19 @@ const VerticalVirtualList: Component<{
   const canAnimate = createMemo(() => shouldAnimate() && props.animate);
 
   const isVisible = createSelector(
-    () => [scrollAmount(), hostHeight(), props.itemHeight, props.thresholdPadding] as const,
+    () => [scrollAmount(), hostHeight(), getLayout(), props.thresholdPadding] as const,
     (
       idx: number,
-      [scrollAmount, hostHeight, itemHeight, padding]
+      [scrollAmount, hostHeight, layout, padding]
     ) => (
-      idx * itemHeight >= scrollAmount - padding &&
-      (idx + 1) * itemHeight <= scrollAmount + hostHeight + padding
+      layout.top(idx) >= scrollAmount - padding &&
+      layout.top(idx + 1) <= scrollAmount + hostHeight + padding
     )
   );
 
 
   const Item: Component<{idx: number, item: any}> = (itemProps) => {
-    const animatedTop = createAnimatedValue(() => itemProps.idx * props.itemHeight, 120, undefined, canAnimate);
+    const animatedTop = createAnimatedValue(() => getLayout().top(itemProps.idx), 120, undefined, canAnimate);
 
     return (
       <props.ListItem
@@ -92,7 +106,7 @@ const VerticalVirtualList: Component<{
     );
   };
 
-  const computedItemsHeight = () => totalCount() * props.itemHeight + Number(!!totalCount()) * (props.extraPaddingBottom || 0);
+  const computedItemsHeight = () => getLayout().top(totalCount()) + Number(!!totalCount()) * (props.extraPaddingBottom || 0);
 
   const height = createMemo(() => props.forceHostHeight ? hostHeight() : computedItemsHeight());
 
@@ -129,10 +143,34 @@ const VerticalVirtualList: Component<{
   );
 };
 
+/** Where the items of a list start: `top(idx)` for any index up to the length, which is where the list ends */
+export type ItemsLayout = {
+  top: (idx: number) => number
+};
+
+function createUniformLayout(itemHeight: number): ItemsLayout {
+  return {
+    top: (idx) => idx * itemHeight
+  };
+}
+
+/** Lays out a list whose items differ in height, for `VerticalVirtualList`'s `layout` */
+export function createItemsLayout(list: any[], getItemHeight: (item: any) => number): ItemsLayout {
+  const tops = new Array<number>(list.length + 1);
+  tops[0] = 0;
+  for(let i = 0; i < list.length; ++i) {
+    tops[i + 1] = tops[i] + getItemHeight(list[i]);
+  }
+
+  return {
+    top: (idx) => tops[Math.min(idx, list.length)]
+  };
+}
+
 type UseShouldAnimateArgs = {
   list: Accessor<any[]>;
   scrollAmount: Accessor<number>;
-  itemHeight: Accessor<number>;
+  getLayout: Accessor<ItemsLayout>;
   hostHeight: Accessor<number>;
 
   onScrollShift: (amount: number) => void;
@@ -144,23 +182,22 @@ type UseShouldAnimateArgs = {
  * For example when a new chat appears on top, and we have some scroll, prevent all the chats from viewport
  * moving at the same time
  */
-function useShouldAnimate({list, scrollAmount, hostHeight, itemHeight, onScrollShift}: UseShouldAnimateArgs) {
+function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, onScrollShift}: UseShouldAnimateArgs) {
   const [shouldAnimate, setShouldAnimate] = createSignal(true);
 
-  const isActuallyVisible = createSelector(
-    () => [scrollAmount(), hostHeight(), itemHeight()] as const,
-    (
-      idx: number,
-      [scrollAmount, hostHeight, itemHeight]
-    ) => (
-      (idx + 1) * itemHeight >= scrollAmount &&
-      idx * itemHeight <= scrollAmount + hostHeight
-    )
-  );
+  const isActuallyVisible = (layout: ItemsLayout, idx: number) => {
+    const top = scrollAmount();
+    return layout.top(idx + 1) >= top &&
+      layout.top(idx) <= top + hostHeight();
+  };
 
+  // * the layout the previous list was laid out with - an item that has not moved in the list can
+  // * still have moved on screen, when an item of another height went in above it
+  let prevLayout: ItemsLayout;
   createComputed(on(list, (current, prev = []) => {
-    const visiblePrev = prev.filter((_, i) => isActuallyVisible(i));
-    const visibleNow = current.filter((_, i) => isActuallyVisible(i));
+    const layout = getLayout();
+    const visiblePrev = prevLayout ? prev.filter((_, i) => isActuallyVisible(prevLayout, i)) : [];
+    const visibleNow = current.filter((_, i) => isActuallyVisible(layout, i));
 
     const visiblePrevAndNow = Array.from(new Set([...visibleNow, ...visiblePrev]));
 
@@ -176,7 +213,7 @@ function useShouldAnimate({list, scrollAmount, hostHeight, itemHeight, onScrollS
         break;
       }
 
-      const diff = prevIdx - currentIdx;
+      const diff = prevLayout.top(prevIdx) - layout.top(currentIdx);
 
       if(typeof prevDiff === 'undefined') {
         prevDiff = diff;
@@ -194,10 +231,12 @@ function useShouldAnimate({list, scrollAmount, hostHeight, itemHeight, onScrollS
       prevDiff = 0;
     }
 
+    prevLayout = layout;
+
     setShouldAnimate(!allChangedTheSameAmount);
 
     if(allChangedTheSameAmount) {
-      onScrollShift(prevDiff * itemHeight());
+      onScrollShift(prevDiff);
     }
 
     return current;

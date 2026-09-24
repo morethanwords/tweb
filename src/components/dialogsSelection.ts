@@ -15,6 +15,11 @@ import {i18n, LangPackKey} from '@lib/langPack';
 
 type DialogsSelectionAction = keyof DialogsSelectionActions;
 
+type DialogsSelectionOptions = DialogsSelectionBaseOptions & {
+  /** whether the list is down to its avatars, where its rows are not selected (see `isChatListNarrow`) */
+  isListNarrow: () => boolean
+};
+
 /** What the bar's menu offers, in the order the other clients put these actions */
 const MENU_ITEMS: DialogsSelectionMenuItem<DialogsSelectionAction>[] = [
   MENU_ITEM_READ,
@@ -35,8 +40,10 @@ const MENU_ITEMS: DialogsSelectionMenuItem<DialogsSelectionAction>[] = [
  */
 export default class DialogsSelection extends DialogsSelectionBase<DialogsSelectionAction> {
   protected countLangKey: LangPackKey = 'ChatsSelected';
+  // assigned from the options by the base, like everything it is given
+  private isListNarrow: () => boolean;
 
-  constructor(options: DialogsSelectionBaseOptions) {
+  constructor(options: DialogsSelectionOptions) {
     super(options);
 
     // a press on a chat row opens the chat, so the pinned block is dragged in this mode only
@@ -50,10 +57,12 @@ export default class DialogsSelection extends DialogsSelectionBase<DialogsSelect
   /**
    * Whether a row can take part in the selection. It has to be a chat of its own, in the chat list
    * that is on screen - so a topic, a monoforum thread, a Community's own row, the "All chats" row,
-   * a sponsored row, a found message and every row of a picker or a panel are all out.
+   * a sponsored row, a found message and every row of a picker or a panel are all out. Nor is any
+   * row of a list that is down to its avatars.
    */
   public canSelect(element: HTMLElement) {
     return this.isRowOfList(element) &&
+      !this.isListNarrow() &&
       !!element.dataset.peerId &&
       !element.dataset.threadId &&
       !element.dataset.monoforumParentPeerId &&

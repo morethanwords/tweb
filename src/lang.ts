@@ -452,6 +452,10 @@ const lang = {
     'one_value': '%d chat selected',
     'other_value': '%d chats selected'
   },
+  'ContactsSelected': {
+    'one_value': '%d contact selected',
+    'other_value': '%d contacts selected'
+  },
   'SelectAll': 'select all',
   'SelectAll2': 'Select All',
   'SearchPlaceholder': 'Search...',
@@ -1667,6 +1671,12 @@ const lang = {
   'AreYouSureDeleteAndExit': 'Are you sure you want to delete and leave the group?',
   'AreYouSureDeleteAndExitChannel': 'Do you want to delete and leave the channel?',
   'DeleteContact': 'Delete contact',
+  'DeleteContactsTitle': {
+    'one_value': 'Delete %d contact',
+    'other_value': 'Delete %d contacts'
+  },
+  'DeleteContactsSubtitle': 'Are you sure you want to delete these contacts?',
+  'AccDescrContactSorting': 'Change sorting',
   'GroupType': 'Group Type',
   'ChannelType': 'Channel Type',
   'TypePrivate': 'Private',

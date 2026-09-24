@@ -266,6 +266,7 @@ import {
   hasMessageTextSpoilers
 } from '@components/chat/bubbleParts/solidMessageShell';
 import useReducedMotion from '@stores/reducedMotion';
+import wheelDeltaToPixels from '@helpers/dom/wheelDeltaToPixels';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -2125,7 +2126,7 @@ export default class ChatBubbles {
       }
 
       // normalize line/page delta modes (horizontal tilt-wheel mice) to pixels
-      const deltaX = e.deltaX * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? container.clientWidth : 1);
+      const deltaX = wheelDeltaToPixels(e.deltaX, e.deltaMode, container.clientWidth);
 
       if(axis === undefined) {
         // Only a horizontal-dominant swipe in the reply direction (deltaX > 0, i.e. dragging the

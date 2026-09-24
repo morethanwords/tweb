@@ -1,6 +1,6 @@
-import {Accessor, createSignal, Setter} from 'solid-js';
-import type SortedDialogList from '@components/sortedDialogList';
+import {Accessor, createSignal, JSX, Setter} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import DialogsSelectionHeader from '@components/dialogsSelectionHeader';
 import type CheckboxField from '@components/checkboxField';
@@ -16,7 +16,7 @@ import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import ListenerSetter from '@helpers/listenerSetter';
 import safeAssign from '@helpers/object/safeAssign';
 import liteMode from '@helpers/liteMode';
-import {LangPackKey} from '@lib/langPack';
+import {I18n, LangPackKey} from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
 
 /** The row of a chat list - what these selections select, and what a drag over one runs across */
@@ -26,9 +26,9 @@ export const DIALOG_ROW_CLASS_NAME = 'chatlist-chat';
 const CHECKBOX_CLASS_NAME = 'dialog-select-checkbox';
 
 /**
- * Carried by a row that wears the checkbox, which is what says where the checkbox goes - reading
- * that off the checkbox itself would cost every row a `:has()`. A chat row lays it over the avatar
- * (`has-select-checkbox`), a row with no avatar gives it a lane of its own (see `ForumTopicsSelection`).
+ * Carried by a row that wears the checkbox: the row opens a lane at its start for it and moves its
+ * own contents past it, the way the peer picker lays out its checkboxes - reading that off the
+ * checkbox itself would cost every row a `:has()`
  */
 const HAS_CHECKBOX_CLASS_NAME = 'has-select-checkbox';
 
@@ -51,7 +51,7 @@ const PLATE_FADE_TIME = 200;
 
 /**
  * How long the rows take to come into the mode and out of it - the checkboxes appearing, the lane
- * a row with no avatar opens for one. It is `--transition-standard-in-time`, which is what their
+ * every row opens for one. It is `--transition-standard-in-time`, which is what their
  * styles animate with, and it is the window the app's own animations stand aside for.
  */
 const ROWS_ANIMATION_TIME = 300;
@@ -97,6 +97,15 @@ export const MENU_ITEMS_MUTE: DialogsSelectionMenuItem<'mute'>[] = [
 ];
 export const MENU_ITEM_DELETE: DialogsSelectionMenuItem<'delete'> = {action: 'delete', direction: true, icon: 'delete', text: 'Delete', danger: true};
 
+/**
+ * What the selection needs of the list it is made in: the element the rows are in, and what the
+ * rows are held under in the order the list shows them. `SortedDialogList` is one.
+ */
+export type DialogsSelectionList = {
+  list: HTMLElement,
+  getSortedItems: () => {id: any}[]
+};
+
 /** What a selection can be done with: an absent key is an action that is not offered at all */
 export type DialogsSelectionActionsOf<Action extends string> = Partial<Record<Action, boolean>>;
 
@@ -104,9 +113,12 @@ export type DialogsSelectionBaseOptions = {
   managers: AppManagers,
   /** the header of the sidebar tab the list lives in - the bar stands in for it */
   getHeader: () => HTMLElement,
-  /** the list the selection is made in, in `dialogsStorage`'s own filter id space */
-  getFilterId: () => number,
-  getSortedList: () => SortedDialogList,
+  /**
+   * the list the selection is made in, in `dialogsStorage`'s own filter id space - for a list that
+   * is one of its filters (the chats, the topics of a forum)
+   */
+  getFilterId?: () => number,
+  getSortedList: () => DialogsSelectionList,
   /**
    * what a row is held under - the list's own `getDialogKeyFromElement`, so what is selected is
    * held under the very keys the list sorts its rows by
@@ -130,14 +142,14 @@ export type DialogsSelectionBaseOptions = {
 export abstract class DialogsSelectionBase<Action extends string = string> extends AppSelection {
   protected getHeader: () => HTMLElement;
   protected getFilterId: () => number;
-  protected getSortedList: () => SortedDialogList;
+  protected getSortedList: () => DialogsSelectionList;
   private getDialogKey: (element: HTMLElement) => number;
 
   /** what is selected, by the key its row is held under (a peer id, a topic id) */
   protected selectedKeys: Set<number> = new Set();
   protected actions: DialogsSelectionActionsOf<Action> = {};
 
-  /** the string the bar counts with, which reads "N chats selected" or "N topics selected" */
+  /** the string the bar counts with, which reads "N chats selected", "N topics selected" and so on */
   protected abstract countLangKey: LangPackKey;
 
   /**
@@ -146,9 +158,6 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
    * reorderable throughout leaves this alone, or the mode would take its grip away on the way out.
    */
   protected reorderInSelection = false;
-
-  /** What the rows say about the checkbox they wear - where it goes is theirs to answer */
-  protected hasCheckboxClassName = HAS_CHECKBOX_CLASS_NAME;
 
   /** Whether the bar titles itself the way a header with rows does: smaller, for a narrow tab */
   protected compactPlate = false;
@@ -218,7 +227,7 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
    */
   protected abstract perform(action: Action, direction: boolean): MaybePromise<boolean | void>;
 
-  /** An item of the bar's menu picked: the action is done, and with that the selection is over */
+  /** An action picked from the bar: it is done, and with that the selection is over */
   private async performFromMenu(action: Action) {
     const direction = this.actions[action];
     if(direction === undefined) {
@@ -300,8 +309,12 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
     super.appendCheckbox(element, checkboxField);
   }
 
-  /** Puts a row that was just (re)built back into the state the selection has it in */
-  public applyToElement(element: HTMLElement) {
+  /**
+   * Puts a row into the state the selection has it in
+   * @param animate whether a row that leaves the mode plays its way out of it - not so for one that
+   * is only now coming into view, which simply has to be as the list is
+   */
+  public applyToElement(element: HTMLElement, animate = true) {
     const leaving = this.leavingRows.get(element);
     if(leaving !== undefined) {
       clearTimeout(leaving);
@@ -311,15 +324,15 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
 
     if(this.isSelecting && this.canSelect(element)) {
       this.toggleElementCheckbox(element, true);
-      element.classList.add(this.hasCheckboxClassName);
+      element.classList.add(HAS_CHECKBOX_CLASS_NAME);
       return;
     }
 
     // * the row leaves the mode the way it came into it: the checkbox fades where it stands and
     // * what moved aside for it moves back, and only then does the row lose them both. Nothing to
     // * animate for a row that was never in the mode, or when the mode is being dropped outright
-    if(!this.animatesRows() || !element.classList.contains(this.hasCheckboxClassName)) {
-      element.classList.remove(this.hasCheckboxClassName);
+    if(!animate || !this.animatesRows() || !element.classList.contains(HAS_CHECKBOX_CLASS_NAME)) {
+      element.classList.remove(HAS_CHECKBOX_CLASS_NAME);
       this.toggleElementCheckbox(element, false);
       return;
     }
@@ -327,7 +340,7 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
     element.classList.add(LEAVING_CLASS_NAME);
     this.leavingRows.set(element, window.setTimeout(() => {
       this.leavingRows.delete(element);
-      element.classList.remove(this.hasCheckboxClassName, LEAVING_CLASS_NAME);
+      element.classList.remove(HAS_CHECKBOX_CLASS_NAME, LEAVING_CLASS_NAME);
       this.toggleElementCheckbox(element, false);
     }, ROWS_ANIMATION_TIME));
   }
@@ -422,9 +435,9 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
   }
 
   /**
-   * The bar itself: a `sidebar-header` faded over the list's own one, with the count and the menu
-   * of what the selection can take. Five buttons do not fit a sidebar this narrow, so the actions
-   * live in the menu rather than beside each other.
+   * The bar itself: a `sidebar-header` faded over the list's own one, with the count and what the
+   * selection can take. Five buttons do not fit a sidebar this narrow, so several actions live in a
+   * menu rather than beside each other; a single one is a button of its own, as on Android's bar.
    */
   private createPlate() {
     if(this.plate) {
@@ -433,14 +446,15 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
 
     this.plateListenerSetter = new ListenerSetter();
 
-    const menu = ButtonMenuToggle({
+    const items = this.getMenuItems();
+    const menu = items.length === 1 ? undefined : ButtonMenuToggle({
       buttonOptions: {noRipple: true},
       listenerSetter: this.plateListenerSetter,
       direction: 'bottom-left',
       // * what the rows can take is asked for right before the menu is built, so every item
       // * answers `verify` off a fresh answer
       onOpenBefore: () => this.updateActions(),
-      buttons: this.getMenuItems().map(({action, direction, icon, text, danger}) => ({
+      buttons: items.map(({action, direction, icon, text, danger}) => ({
         icon,
         text,
         danger,
@@ -448,7 +462,7 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
         verify: () => this.actions[action] === direction
       }))
     });
-    menu.classList.add('sidebar-header-right');
+    menu?.classList.add('sidebar-header-right');
 
     const mounted = mountSolidComponent((middleware) => {
       const [count, setCount] = createSignal(this.length());
@@ -465,7 +479,7 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
           return count();
         },
         onCancel: () => this.cancelSelection(),
-        menu
+        actions: menu || this.renderActionButton(items[0])
       });
     }, this.middlewareHelper.get());
 
@@ -476,6 +490,20 @@ export abstract class DialogsSelectionBase<Action extends string = string> exten
     // the bar is built and shown in one go, so the browser is made to look at it transparent first -
     // without that it is born with the class already on and the fade has nothing to start from
     void this.plate.offsetWidth; // reflow
+  }
+
+  /** The one action of a bar that has no more: it asks what the rows can take when it is pressed */
+  private renderActionButton({action, icon, text}: DialogsSelectionMenuItem<Action>): JSX.Element {
+    return ButtonIconTsx({
+      class: 'sidebar-header-right',
+      icon,
+      noRipple: true,
+      'aria-label': I18n.format(text, true),
+      onClick: async() => {
+        await this.updateActions();
+        this.performFromMenu(action);
+      }
+    });
   }
 
   /** The bar follows the selection: the count is all it shows until the menu is opened */

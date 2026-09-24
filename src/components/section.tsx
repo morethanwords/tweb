@@ -53,6 +53,23 @@ const SectionContent: ParentComponent<JSX.HTMLAttributes<HTMLDivElement>> = (pro
     </div>
   );
 };
+/**
+ * The title of a section - and, on its own, of a stretch of a list that is divided by them (the
+ * letters of the contacts sorted by name)
+ */
+export const SectionName: ParentComponent<{
+  ref?: Ref<HTMLDivElement>,
+  class?: string,
+  /** what goes at the far end of the title */
+  right?: JSX.Element
+}> = (props) => {
+  return (
+    <div ref={props.ref} class={classNames('sidebar-left-h2', className + '-name', props.class)}>
+      {props.children}
+      {props.right && <div class={className + '-name-right'}>{props.right}</div>}
+    </div>
+  );
+};
 const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 'captionRef'>) => {
   return (
     <SectionContent ref={props.captionRef} class={className + '-caption'}>
@@ -83,10 +100,9 @@ const Section: ParentComponent<SectionProps> = (props) => {
           {props.fakeGradientDelimiter && generateDelimiter()}
           <SectionContent {...props.contentProps}>
             {props.name && (
-              <div ref={props.nameRef} class={classNames('sidebar-left-h2', className + '-name')}>
+              <SectionName ref={props.nameRef} right={props.nameRight}>
                 {typeof(props.name) === 'string' ? i18n(props.name as LangPackKey, props.nameArgs) : props.name}
-                {props.nameRight && <div class={className + '-name-right'}>{props.nameRight}</div>}
-              </div>
+              </SectionName>
             )}
             {props.children}
           </SectionContent>

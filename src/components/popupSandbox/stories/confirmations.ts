@@ -75,6 +75,22 @@ defineStories('Confirmations', [
     }
   },
   {
+    id: 'deleteContacts/one',
+    title: 'Delete a contact',
+    open: async(ctx) => {
+      const {default: confirmDeleteContacts} = await import('@components/popups/deleteContacts');
+      confirmDeleteContacts([ctx.peer('private')]).catch(noop);
+    }
+  },
+  {
+    id: 'deleteContacts/several',
+    title: 'Delete several contacts',
+    open: async(ctx) => {
+      const {default: confirmDeleteContacts} = await import('@components/popups/deleteContacts');
+      confirmDeleteContacts([ctx.peer('private'), ctx.peer('bot')]).catch(noop);
+    }
+  },
+  {
     id: 'deleteDialog/private',
     title: 'Delete chat — private',
     managers: {

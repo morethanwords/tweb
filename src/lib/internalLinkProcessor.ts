@@ -935,9 +935,10 @@ export class InternalLinkProcessor {
           case 'search':
           case '':
             return appSidebarLeft.createTab(AppContactsTab).open();
+          case 'sort':
+            return appSidebarLeft.createTab(AppContactsTab).open({highlight: 'sort'});
           // case 'invite':
           // case 'manage':
-          // case 'sort':
           default:
             return showUnsupportedLinkToast();
         }

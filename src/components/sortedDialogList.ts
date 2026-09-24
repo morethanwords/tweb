@@ -112,6 +112,14 @@ export default class SortedDialogList {
           item.value.destroy();
         }
       },
+      // * a row comes into the list in the state the selection has it in: one built while rows are
+      // * being selected (loaded as the list is scrolled) never had a checkbox, and one remounted
+      // * may still carry the one it had when it went out of view, from a mode that has since ended
+      onItemMount: (item, element) => {
+        if(item.type === 'dialog') {
+          this.appDialogsManager.getSelectionForRow(element)?.applyToElement(element, false);
+        }
+      },
       onItemUnmount: (item) => {
         if(item.type === 'dialog') {
           this.unmountedDialogElements.set(item.value, true);

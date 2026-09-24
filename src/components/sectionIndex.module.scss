@@ -1,0 +1,28 @@
+// * tdesktop's strip: a 22px column of bold 11px letters along the list's far side, lit in the
+// * accent colour for the sections on screen (`peer_list_section_index.style`), kept off the edge
+.index {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  inset-inline-end: .75rem;
+  width: 22px;
+  z-index: 2;
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+
+.letter {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  color: var(--secondary-text-color);
+  pointer-events: none;
+}
+
+.active {
+  color: var(--primary-color);
+}

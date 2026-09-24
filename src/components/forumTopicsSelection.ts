@@ -49,9 +49,6 @@ export default class ForumTopicsSelection extends DialogsSelectionBase<TopicsSel
   constructor(options: DialogsSelectionBaseOptions) {
     super(options);
 
-    // a topic row has no avatar to lay a checkbox over, so it makes room for one at its start
-    this.hasCheckboxClassName = 'has-select-checkbox-start';
-
     // the forum tab titles itself smaller than the chat list does, and the bar stands in for it
     this.compactPlate = true;
   }

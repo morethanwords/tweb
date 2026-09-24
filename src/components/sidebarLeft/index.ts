@@ -504,6 +504,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.chatListContainer.parentElement.classList.toggle('fade', this.isCollapsed());
     this.chatListContainer.parentElement.classList.toggle('zoom-fade', !this.isCollapsed());
     appDialogsManager.xd.toggleAvatarUnreadBadges(this.isCollapsed(), undefined);
+    appDialogsManager.onChatListNarrowChange();
 
     const [hasFoldersSidebar] = useHasFoldersSidebar();
 

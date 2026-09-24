@@ -6,8 +6,8 @@ import Button from '@components/button';
 import PeerTitle from '@components/peerTitle';
 import Row from '@components/rowTsx';
 import rootScope from '@lib/rootScope';
-import showPeerPopup from '@components/popups/peer';
-import {addCancelButton} from '@components/popups/indexTsx';
+import confirmDeleteContacts from '@components/popups/deleteContacts';
+import noop from '@helpers/noop';
 import {i18n} from '@lib/langPack';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
@@ -303,24 +303,15 @@ const EditContact: Component = () => {
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteContact'});
 
       attachClickEvent(btnDelete, () => {
-        showPeerPopup('popup-delete-contact', {
-          peerId: peerId,
-          titleLangKey: 'DeleteContact',
-          descriptionLangKey: 'AreYouSureDeleteContact',
-          buttons: addCancelButton([{
-            langKey: 'Delete',
-            callback: () => {
-              const toggle = toggleDisability([btnDelete], true);
+        confirmDeleteContacts([peerId]).then(() => {
+          const toggle = toggleDisability([btnDelete], true);
 
-              tab.managers.appUsersManager.deleteContacts([userId]).then(() => {
-                tab.close();
-              }, () => {
-                toggle();
-              });
-            },
-            isDanger: true
-          }])
-        });
+          tab.managers.appUsersManager.deleteContacts([userId]).then(() => {
+            tab.close();
+          }, () => {
+            toggle();
+          });
+        }, noop);
       }, {listenerSetter: tab.listenerSetter});
 
       tab.scrollable.append(wrapSolidComponent(() => (

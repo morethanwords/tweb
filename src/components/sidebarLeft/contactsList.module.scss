@@ -1,0 +1,24 @@
+// * every item of the virtual list is placed by the transform the list gives it, so a move is
+// * composited rather than laid out
+.item,
+.section {
+  top: 0;
+}
+
+// * while the list is put in order again the rows glide past each other (`ContactsList`), and are
+// * not see-through while they do
+.reordering .item {
+  --background: var(--surface-color);
+}
+
+// a row carried further than to the next place rides over the rows it passes
+.lifted {
+  z-index: 1;
+}
+
+// * a section's letter above its first contact is a section name (`SectionName`), held to the
+// * height the list lays it out at (`SECTION_HEIGHT`) - its own line and paddings come to that
+.section {
+  height: 2.5rem;
+  pointer-events: none;
+}

@@ -35,6 +35,16 @@ type HighlightOptions = {
 };
 
 /**
+ * Flashes a control that is already in hand - a row, a menu item, a header's icon
+ * button - the way tdesktop flashes the control a link points at.
+ */
+export function flashControl(control: HTMLElement, middleware: Middleware) {
+  control.classList.add(HIGHLIGHT_CLASS);
+  const fade = setTimeout(() => control.classList.remove(HIGHLIGHT_CLASS), HIGHLIGHT_DURATION);
+  middleware.onClean(() => clearTimeout(fade));
+}
+
+/**
  * Flashes the control rendering `key`, wherever it is: a row of a settings tab,
  * or an item of a menu that was opened for the occasion.
  */
@@ -89,9 +99,7 @@ export function highlightControl(key: LangPackKey, options: HighlightOptions) {
     }
 
     if(row) {
-      row.classList.add(HIGHLIGHT_CLASS);
-      const fade = setTimeout(() => row.classList.remove(HIGHLIGHT_CLASS), HIGHLIGHT_DURATION);
-      middleware.onClean(() => clearTimeout(fade));
+      flashControl(row, middleware);
       return;
     }
 
