@@ -10,6 +10,7 @@ import {
   getCodeLength,
   getResendLangKey,
   getResendPendingLangKey,
+  getResendTimeout,
   isEmailCode,
   sentCodeToCardSpec,
   withPhoneNumber
@@ -146,5 +147,17 @@ describe('resend labels', () => {
   it('counts down in the wording of that method', () => {
     expect(getResendPendingLangKey({_: 'auth.codeTypeCall'})).toBe('Login.Code.CallAvailableIn');
     expect(getResendPendingLangKey({_: 'auth.codeTypeSms'})).toBe('Login.Code.SmsAvailableIn');
+  });
+
+  const app: AuthSentCodeType = {_: 'auth.sentCodeTypeApp', length: 5};
+
+  it('waits out the server timeout, and not at all when there is none', () => {
+    expect(getResendTimeout(sentCode(app, {next_type: {_: 'auth.codeTypeSms'}, timeout: 30}))).toBe(30);
+    expect(getResendTimeout(sentCode(app, {next_type: {_: 'auth.codeTypeCall'}}))).toBe(0);
+  });
+
+  it('offers Fragment straight away, whatever the timeout', () => {
+    expect(getResendTimeout(sentCode(app, {next_type: {_: 'auth.codeTypeFragmentSms'}, timeout: 120}))).toBe(0);
+    expect(getResendTimeout(sentCode(app, {next_type: {_: 'auth.codeTypeFragmentSms'}}))).toBe(0);
   });
 });

@@ -101,7 +101,10 @@ export function wrapEmailPattern(pattern: string) {
     i = endIdx;
   }
 
-  return wrapRichText(pattern, {entities, noTextFormat: true});
+  const wrapper = document.createElement('span');
+  wrapper.classList.add(styles.emailPattern);
+  wrapper.append(wrapRichText(pattern, {entities, noTextFormat: true}));
+  return wrapper;
 }
 
 let emailVerificationErrorIdSeed = 0;

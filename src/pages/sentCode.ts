@@ -13,7 +13,15 @@ import type {CardSpec} from '@/pages/authFlow';
  * card.
  */
 
-export type SentCode = AuthSentCode.authSentCode & {phone_number?: string};
+export type SentCode = AuthSentCode.authSentCode & {
+  phone_number?: string,
+  /**
+   * When `auth.resendCode` becomes available, in `tsNow(true)` seconds. Fixed the
+   * first time the code is shown and stored with it, so a reload carries on with
+   * the countdown instead of starting it over.
+   */
+  resend_deadline?: number
+};
 
 /** How the code is typed in: digit boxes, or a free-text field for a word/phrase. */
 export type CodeInputKind = 'digits' | 'text';
@@ -118,4 +126,15 @@ export function getResendPendingLangKey(nextType: AuthSentCode.authSentCode['nex
     nextType?._ === 'auth.codeTypeFlashCall' ?
     'Login.Code.CallAvailableIn' :
     'Login.Code.SmsAvailableIn';
+}
+
+/**
+ * Seconds until the next method is offered: the server's `timeout`, and none at
+ * all when it names none, the way iOS does it. A code via Fragment is there to
+ * be picked up the moment it is asked for, so it is offered straight away even
+ * with a timeout, the way Android does it.
+ */
+export function getResendTimeout(sentCode: SentCode): number {
+  if(sentCode.next_type?._ === 'auth.codeTypeFragmentSms') return 0;
+  return sentCode.timeout || 0;
 }

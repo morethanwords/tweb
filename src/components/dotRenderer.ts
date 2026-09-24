@@ -743,10 +743,14 @@ export default class DotRenderer implements AnimationItemWrapper {
   private static inlineSpoilerUpdates = new Map<HTMLElement, () => void>();
   private static onInlineAppearanceUpdate = () => this.inlineSpoilerUpdates.forEach((update) => update());
 
-  private static watchInlineSpoiler(element: HTMLElement, update: () => void) {
+  private static watchInlineSpoiler(element: HTMLElement, canvas: HTMLCanvasElement, update: () => void) {
     const wasEmpty = !this.inlineSpoilerUpdates.size;
     this.inlineSpoilerUpdates.set(element, update);
-    const unobserve = observeResize(element, update);
+    // * the spoiler is an inline box, and a ResizeObserver never reports one once it is laid out.
+    // * The canvas inside it is a block box that gets a size the moment it is rendered, so that
+    // * is what measures text inserted later than the frame it was wrapped in (an auth card
+    // * waits out the previous card's exit first) - otherwise it stays blank for good
+    const unobserve = observeResize(canvas, update);
     if(wasEmpty) {
       rootScope.addEventListener('theme_changed', this.onInlineAppearanceUpdate);
       rootScope.addEventListener('chat_background_set', this.onInlineAppearanceUpdate);
@@ -828,7 +832,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       const state = this.getBluffTextSpoilerState(element, canvas, target.dpr);
       if(state) target.overlay.update(state);
     };
-    const unwatch = this.watchInlineSpoiler(element, update);
+    const unwatch = this.watchInlineSpoiler(element, canvas, update);
 
     callbackify(target.readyResult, () => {
       if(destroyed) return;
@@ -885,7 +889,7 @@ export default class DotRenderer implements AnimationItemWrapper {
         element.classList.remove('is-visible');
       }
     });
-    const unwatch = this.watchInlineSpoiler(element, update);
+    const unwatch = this.watchInlineSpoiler(element, canvas, update);
 
     callbackify(target.readyResult, () => !destroyed && update());
 

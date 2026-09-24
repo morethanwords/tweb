@@ -61,6 +61,14 @@
   }
 }
 
+// The masked run is a spoiler made of inline-block letters, and every one of them
+// is a place the line may break. An address is one word: it moves to the next line
+// whole, and only one too long for the line at all breaks inside itself.
+.emailPattern {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .error {
   color: var(--danger-color);
   font-size: 14px;
