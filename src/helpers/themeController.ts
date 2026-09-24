@@ -5,7 +5,6 @@ import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@co
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
 import {SETTINGS_INIT} from '@config/state';
@@ -420,35 +419,43 @@ export class ThemeController {
     }
 
     const {x, y} = coordinates;
-    // Get the distance to the furthest corner
-    const endRadius = Math.hypot(
-      Math.max(x, windowSize.width - x),
-      Math.max(y, windowSize.height - y)
-    );
+    const pseudoElement = `::view-transition-${reverse ? 'old' : 'new'}(root)`;
 
     let clipAnimation: Animation;
     transition.ready.then(() => {
       _log('view transition ready');
 
-      // Chromium's view-transition snapshots use backing-store pixels for clip-path geometry.
-      // iOS WebKit keeps the pseudo-element in CSS pixels, so applying DPR there shifts both the
-      // reveal origin and its final radius by 2-3x.
-      const scale = IS_APPLE_MOBILE ? 1 : window.devicePixelRatio || 1;
-      const clipX = x * scale;
-      const clipY = y * scale;
+      // The clip is given in percentages of the snapshot's own box, never in px. Older Chromium
+      // (seen on 152) ran this composited clip-path animation in backing-store pixels, so px
+      // landed at 1/DPR of the click; Chrome 154 resolves px in CSS pixels, as WebKit always did.
+      // A percentage resolves against the box in whatever space it is laid out in, so the origin
+      // and radius follow the click in every engine without sniffing versions or scaling by DPR.
+      const box = getComputedStyle(document.documentElement, pseudoElement);
+      const width = parseFloat(box.width);
+      const height = parseFloat(box.height);
+      const measured = width > 0 && height > 0;
+      // Get the distance to the furthest corner
+      const endRadius = Math.hypot(
+        Math.max(x, (measured ? width : windowSize.width) - x),
+        Math.max(y, (measured ? height : windowSize.height) - y)
+      );
+      // A circle's percentage radius resolves against the box diagonal divided by √2.
+      const circle = measured ?
+        (radius: number) => `circle(${radius / Math.hypot(width, height) * Math.SQRT2 * 100}% at ${x / width * 100}% ${y / height * 100}%)` :
+        (radius: number) => `circle(${radius}px at ${x}px ${y}px)`;
       const {easing, duration, keyframes} = getTransition(
         'standard',
         !reverse,
         [
-          {clipPath: `circle(0 at ${clipX}px ${clipY}px)`},
-          {clipPath: `circle(${endRadius * scale}px at ${clipX}px ${clipY}px)`}
+          {clipPath: circle(0)},
+          {clipPath: circle(endRadius)}
         ]
       );
 
       clipAnimation = document.documentElement.animate(keyframes, {
         duration: duration * 2,
         easing,
-        pseudoElement: `::view-transition-${reverse ? 'old' : 'new'}(root)`,
+        pseudoElement,
         fill: 'forwards' // * without this rule animation will flick at the end
       });
     }).catch(noop); // `ready` rejects when the transition is skipped (safety timeout / overlap / hidden tab)
