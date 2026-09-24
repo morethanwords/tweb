@@ -3,8 +3,9 @@ import {horizontalMenu} from '@components/horizontalMenu';
 import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
 import ListenerSetter from '@helpers/listenerSetter';
+import attachTabList from '@helpers/dom/tabList';
 import classNames from '@helpers/string/classNames';
-import {Accessor, JSX, For, onCleanup, createContext, Ref, untrack} from 'solid-js';
+import {Accessor, JSX, For, onCleanup, onMount, createContext, Ref, untrack} from 'solid-js';
 
 const TabsContext = createContext<{
 }>();
@@ -29,22 +30,34 @@ Tabs.Menu = (props: {
   /** a row the panel fills in later (the emoticons categories) starts out empty */
   children?: JSX.Element
 }) => {
-  return (
+  let menu!: HTMLDivElement;
+
+  const element = (
     <div
-      ref={props.ref}
+      ref={(el) => {
+        menu = el;
+        (props.ref as (el: HTMLDivElement) => void)?.(el);
+      }}
       class={classNames('menu-horizontal-div', props.class)}
       id={props.id}
       onClick={props.onClick}
+      role="tablist"
     >
       {props.children}
     </div>
   );
+  // Legacy callers also invoke Tabs.Menu directly, outside a Solid owner. In
+  // that case onMount runs immediately, so create the referenced node first.
+  onMount(() => onCleanup(attachTabList(menu)));
+  return element;
 };
 
 Tabs.MenuTab = (props: {
   ref?: Ref<HTMLDivElement>,
   class?: string,
   ripple?: boolean,
+  id?: string,
+  controls?: string,
   children: JSX.Element
 }) => {
   return (
@@ -55,8 +68,12 @@ Tabs.MenuTab = (props: {
         (props.ref as (el: HTMLDivElement) => void)?.(el);
       }}
       class={classNames('menu-horizontal-div-item', props.class)}
+      role="tab"
+      tabindex={-1}
+      id={props.id}
+      aria-controls={props.controls}
     >
-      <i class="menu-horizontal-div-item-background" />
+      <i class="menu-horizontal-div-item-background" aria-hidden="true" />
       <div class="menu-horizontal-div-item-span">
         {props.children}
       </div>
@@ -102,6 +119,8 @@ Tabs.MenuIconTab = (props: {
   class?: string,
   /** `data-tab`, for a row whose tabs are not addressed by their position */
   tab?: number,
+  /** the accessible name — these tabs are icon-only, so nothing else supplies one */
+  label?: string,
   /** asking for it adds the square a set's preview is rendered into */
   paddingRef?: (el: HTMLElement) => void
 }) => {
@@ -109,6 +128,10 @@ Tabs.MenuIconTab = (props: {
   const button = ButtonIcon(props.icon, {noRipple: true});
   // filtered, because classList.add throws on the empty token a stray double space leaves
   button.classList.add('menu-horizontal-div-item', ...(props.class?.split(' ').filter(Boolean) || []));
+
+  if(props.label) {
+    button.setAttribute('aria-label', props.label);
+  }
 
   if(props.tab !== undefined) {
     button.dataset.tab = '' + props.tab;
@@ -196,10 +219,17 @@ Tabs.Content = (props: {
 Tabs.ContentTab = (props: {
   class: string,
   hide: boolean,
+  id?: string,
+  labelledBy?: string,
   children: JSX.Element
 }) => {
   return (
-    <div class={classNames(props.class, props.hide && 'hide')}>
+    <div
+      class={classNames(props.class, props.hide && 'hide')}
+      role="tabpanel"
+      id={props.id}
+      aria-labelledby={props.labelledBy}
+    >
       {props.children}
     </div>
   );
@@ -220,14 +250,21 @@ Tabs.Simple = (props: {
 }) => {
   const className = untrack(() => props.class);
   const wrapContent = untrack(() => props.contentWrapper);
+  const idBase = `tabs-${className}-${(Math.random() * 0x7fffffff | 0).toString(36)}`;
+  const tabId = (index: number) => `${idBase}-tab-${index}`;
+  const panelId = (index: number) => `${idBase}-panel-${index}`;
 
   let tabs: HTMLDivElement, content: HTMLDivElement;
 
   const menuElement = (
     <Tabs.Menu ref={tabs} class={`${className}-tabs`}>
-      <For each={props.menu}>{(item) => {
+      <For each={props.menu}>{(item, index) => {
         return (
-          <Tabs.MenuTab class={`${className}-tab`}>{item}</Tabs.MenuTab>
+          <Tabs.MenuTab
+            class={`${className}-tab`}
+            id={tabId(index())}
+            controls={panelId(index())}
+          >{item}</Tabs.MenuTab>
         );
       }}</For>
     </Tabs.Menu>
@@ -237,7 +274,12 @@ Tabs.Simple = (props: {
     <Tabs.Content ref={content} class={classNames(`${className}-contents`)}>
       <For each={props.content}>{(item, index) => {
         return (
-          <Tabs.ContentTab class={`${className}-content`} hide={index() !== props.tab()}>{item}</Tabs.ContentTab>
+          <Tabs.ContentTab
+            class={`${className}-content`}
+            hide={index() !== props.tab()}
+            id={panelId(index())}
+            labelledBy={tabId(index())}
+          >{item}</Tabs.ContentTab>
         );
       }}</For>
     </Tabs.Content>

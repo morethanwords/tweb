@@ -3,11 +3,13 @@ import {createMemo, JSX} from 'solid-js';
 import clamp from '@helpers/number/clamp';
 import {hexaToHsla} from '@helpers/color';
 import nMap from '@helpers/number/nMap';
+import I18n, {LangPackKey} from '@lib/langPack';
 
 export default function RangeInput(props: {
   ref?: (el: HTMLDivElement) => void;
   style?: JSX.CSSProperties;
   label: JSX.Element;
+  ariaLabel?: LangPackKey;
   value: number;
   min: number;
   max: number;
@@ -48,6 +50,7 @@ export default function RangeInput(props: {
       <div class="media-editor__range-input-wrapper">
         <input
           type="range"
+          aria-label={props.ariaLabel ? I18n.format(props.ariaLabel, true) : undefined}
           min={props.min}
           max={props.max}
           step="1"

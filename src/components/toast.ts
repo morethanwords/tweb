@@ -5,6 +5,9 @@ import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 
 const toastsContainer = document.createElement('div');
 toastsContainer.classList.add('toasts-container');
+// Live region so screen readers announce toast text as it appears.
+toastsContainer.setAttribute('role', 'status');
+toastsContainer.setAttribute('aria-live', 'polite');
 
 const toastEl = document.createElement('div');
 toastEl.classList.add('toast');

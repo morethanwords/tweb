@@ -1,11 +1,12 @@
 import {Accessor, createEffect, createSignal, onCleanup, For, on} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import fastSmoothScroll, {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {EmojiGroup} from '@layer';
 import {AppEmojiManager} from '@appManagers/appEmojiManager';
-import {LangPackKey} from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import InputSearch from '@components/inputSearch';
 import Scrollable from '@components/scrollable2';
@@ -49,9 +50,14 @@ function addSearchCategories(props: {
         class="emoticons-search-input-category"
         classList={{active: selected() === group}}
         title={group.title}
+        role="button"
+        tabindex={0}
+        aria-label={group.title}
+        aria-pressed={selected() === group}
         onClick={[onEmojiGroupClick, group]}
+        onKeyDown={buttonKeyDown}
       >
-        <div ref={stickerContainer} class="emoticons-search-input-category-sticker"></div>
+        <div ref={stickerContainer} class="emoticons-search-input-category-sticker" aria-hidden={true}></div>
       </div>
     );
 
@@ -99,6 +105,7 @@ function addSearchCategories(props: {
   inputSearch.currentPlaceholder.classList.remove('will-animate');
 
   const arrowButton = inputSearch.createButtonIcon('arrow_prev', 'will-animate', 'emoticons-search-input-arrow');
+  arrowButton.setAttribute('aria-label', I18n.format('StarsRating.Back', true));
   inputSearch.searchIcon.classList.add('will-animate');
   inputSearch.searchIcon.after(arrowButton);
 

@@ -12,7 +12,7 @@ import {AvatarNewTsx} from '@components/avatarNew';
 import {ChatBackground as ChatBackgroundLayer} from '@components/chat/bubbles/chatBackground';
 import Section from '@components/section';
 import {IconTsx} from '@components/iconTsx';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import themeController from '@helpers/themeController';
 import {paintQrCode, buildTelegramUserQrUrl} from '@helpers/qrCode/paintQrCode';
@@ -902,6 +902,8 @@ function BodySlot(props: {shared: QrPopupShared}) {
         <PopupElement.Title class={styles.title}>{i18n('QRCode.Title')}</PopupElement.Title>
         <Button.Icon
           icon={nightMode() ? 'darkmode_filled' : 'darkmode'}
+          aria-label={I18n.format('DarkMode', true)}
+          aria-pressed={nightMode()}
           onClick={() => setNightMode(!nightMode())}
         />
       </PopupElement.Header>

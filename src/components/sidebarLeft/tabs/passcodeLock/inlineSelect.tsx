@@ -2,6 +2,7 @@ import {Component, createEffect, createMemo, createSelector, createSignal, For, 
 import {Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {keepMe} from '@helpers/keepMe';
 import ListenerSetter from '@helpers/listenerSetter';
 import ripple from '@components/ripple';
@@ -50,6 +51,10 @@ const InlineSelect: Component<{
       // done();
       return;
     }
+
+    // Move focus to the currently-selected option so keyboard users can immediately
+    // arrow/activate within the listbox and Escape closes it.
+    (selectOptionEl as HTMLElement).focus({preventScroll: true});
 
     const valueRect = valueEl.getBoundingClientRect();
     const selectRect = selectEl.getBoundingClientRect();
@@ -145,10 +150,16 @@ const InlineSelect: Component<{
                 e.stopPropagation();
                 props.onClose?.();
               }}
+              onKeyDown={(e) => {
+                if(e.key === 'Escape') {
+                  e.stopPropagation();
+                  props.onClose?.();
+                }
+              }}
               onMouseMove={onMouseMove}
             >
               <div class={styles.SelectClip}>
-                <div class={styles.Select} ref={setSelectEl}>
+                <div class={styles.Select} ref={setSelectEl} role="listbox">
                   <For each={props.options}>
                     {(option) => (
                       <div
@@ -157,7 +168,11 @@ const InlineSelect: Component<{
                         classList={{
                           [styles.selected]: isSelected(option.value)
                         }}
+                        role="option"
+                        tabindex="0"
+                        aria-selected={isSelected(option.value)}
                         onClick={[props.onChange, option.value]}
+                        onKeyDown={buttonKeyDown}
                       >
                         <span>{option.label()}</span>
                       </div>

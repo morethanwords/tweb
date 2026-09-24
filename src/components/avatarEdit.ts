@@ -4,6 +4,7 @@ import {animateImageToTarget} from '@helpers/animateImageToTarget';
 import type {CancellablePromise} from '@helpers/cancellablePromise';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import Button from '@components/button';
 import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import {revokeObjectURL} from '@helpers/objectUrl';
 import type {InputFile, Photo} from '@layer';
@@ -237,8 +238,7 @@ export default class AvatarEdit {
   private icon: HTMLSpanElement;
 
   constructor(onChange: (payload: AvatarEditPayload) => void, options?: Options) {
-    this.container = document.createElement('div');
-    this.container.classList.add('avatar-edit');
+    this.container = Button('avatar-edit', {noRipple: true, ariaLabel: 'AccDescr.EditAvatar'});
 
     this.canvas = document.createElement('canvas');
     this.canvas.classList.add('avatar-edit-canvas');

@@ -3,7 +3,8 @@ import {MyStarGift} from '@appManagers/appGiftsManager';
 import {StarsStar} from '@components/popups/stars';
 import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import rootScope from '@lib/rootScope';
@@ -24,7 +25,7 @@ import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import transferStarGift from '@components/popups/transferStarGift';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
-import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {StaticCheckbox} from '@components/staticCheckbox';
 import tsNow from '@helpers/tsNow';
 import {openStarGiftWear} from '@components/popups/starGiftWear';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
@@ -177,6 +178,7 @@ function StarGiftGridItem(props: {
     }
   })
 
+  const ariaLabel = () => props.item.raw.title || I18n.format('StarGiftTitle', true);
   const isPinned = () => props.item.saved?.pFlags.pinned_to_top;
   const isPremium = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.pFlags.require_premium && props.item.raw.availability_remains > 0;
   const isLocked = () => props.view === 'list' && props.item.raw._ === 'starGift' && props.item.raw.locked_until_date > tsNow(true);
@@ -196,12 +198,18 @@ function StarGiftGridItem(props: {
       style={{
         '--overlay-color': rgbaToHexa(changeBrightness(getRgbColorFromTelegramColor(props.item.collectibleAttributes?.backdrop?.edge_color ?? 0), 0.9))
       }}
+      role={props.hasSelection ? 'checkbox' : 'button'}
+      aria-checked={props.hasSelection ? !!props.selected : undefined}
+      tabindex={0}
+      aria-label={ariaLabel()}
       onClick={props.onClick}
+      onKeyDown={buttonKeyDown}
       ref={containerRef}
     >
       {props.hasSelection && (
-        <CheckboxFieldTsx
+        <StaticCheckbox
           round
+          aria-hidden="true"
           class={/* @once */ styles.checkbox}
           checked={props.selected}
         />

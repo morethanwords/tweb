@@ -72,6 +72,8 @@ export default function AdjustmentsTab() {
           <div>
             <StepInput
               label={i18n('Quality')}
+              ariaLabel="Quality"
+              ariaValueText={(value) => value + 'p'}
               steps={steps()}
               value={Math.min(maxVideoQuality(), mediaState.videoQuality)}
               onChange={(value) => void(mediaState.videoQuality = value)}
@@ -111,6 +113,7 @@ export default function AdjustmentsTab() {
                   value={value()}
                   onChange={() => {}}
                   label={item.label()}
+                  ariaLabel={item.labelKey}
                   min={item.to100 ? 0 : -50}
                   max={item.to100 ? 100 : 50}
                 />
@@ -147,6 +150,7 @@ export default function AdjustmentsTab() {
                 removeIsAdjusting();
               }}
               label={item.label()}
+              ariaLabel={item.labelKey}
               onChangeFinish={(prevValue, currentValue) => {
                 setShowGhost(false);
                 editorState.isAdjusting = false;

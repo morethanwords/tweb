@@ -5,6 +5,7 @@ import {AvatarNewTsx} from '@components/avatarNew';
 import {IconTsx} from '@components/iconTsx';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import MediaHeader from '@components/mediaHeader';
+import I18n from '@lib/langPack';
 
 import css from '@components/popups/webAppLocationAccess.module.scss';
 
@@ -23,6 +24,7 @@ export default function showWebAppLocationAccessPopup(options: {
   createPopup(() => (
     <PopupElement
       class={css.popup}
+      containerProps={{'aria-label': I18n.format('AccDescr.LocationAccess', true)}}
       closable
       onClose={() => !finished && options.onFinish(false)}
     >

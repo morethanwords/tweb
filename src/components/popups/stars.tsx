@@ -949,6 +949,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
           });
         }
         const img = document.createElement('img');
+        img.alt = '';
         img.classList.add('popup-stars-image');
         await renderImageFromUrlPromise(img, `assets/img/${maybe2x(options.giftPeerId ? 'stars_pay' : 'stars')}.png`);
         return img;

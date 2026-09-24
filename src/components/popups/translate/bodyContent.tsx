@@ -90,6 +90,7 @@ export function TranslatePopupBodyContent(props: {
   return (
     <div class={styles.bodyContent}>
       <Scrollable
+        tabIndex={0}
         ref={setScrollableEl}
         class={styles.scrollable}
         relative

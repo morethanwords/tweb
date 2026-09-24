@@ -2,6 +2,9 @@ import {createEffect, onCleanup} from 'solid-js';
 import {animate} from '@helpers/animation';
 import clamp from '@helpers/number/clamp';
 import {SetVideoTimeFlags, useMediaEditorContext} from '@components/mediaEditor/context';
+import {bindActiveWindowListener} from '@helpers/appWindow';
+import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
+import isTargetAnInput from '@helpers/dom/isTargetAnInput';
 
 
 type Args = {
@@ -47,18 +50,17 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
     const listener = (event: KeyboardEvent) => {
       const el = (event.target as HTMLElement);
 
-      if(event.code === 'Space' && !el.isContentEditable) {
+      if(event.code === 'Space' && !event.repeat && !shouldPreserveKeyboardFocus(event) && !isTargetAnInput(el)) {
         event.preventDefault(); // stop page from scrolling, idk if needed
         editorState.isPlaying = !editorState.isPlaying;
       }
     };
 
-    // The video's own document so Space-to-play/pause works in a Document PiP window too.
-    video.ownerDocument.addEventListener('keydown', listener);
+    const detach = bindActiveWindowListener((win) => win.document, 'keydown', listener);
 
     onCleanup(() => {
       editorState.isPlaying = false;
-      video.ownerDocument.removeEventListener('keydown', listener);
+      detach();
     });
   });
 

@@ -11,6 +11,7 @@ import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {MiddlewareHelper} from '@helpers/middleware';
 import {_tgico} from '@helpers/tgico';
 import Icon from '@components/icon';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 
 const TAG_NAME = 'replies-element';
 
@@ -39,6 +40,7 @@ export default class RepliesElement extends HTMLElement {
   }
 
   public init() {
+    ensureButtonSemantics(this);
     this.render();
     this.dataset.postKey = this.message.peerId + '_' + this.message.mid;
     this.classList.add('replies', 'replies-' + this.type);
@@ -46,6 +48,9 @@ export default class RepliesElement extends HTMLElement {
 
   public render() {
     const replies = this.message.replies;
+    this.setAttribute('aria-label', replies ?
+      I18n.format(replies.replies ? 'Comments' : 'LeaveAComment', true, [replies.replies]) :
+      I18n.format('ViewInChat', true));
 
     if(this.type === 'footer') {
       let leftPart: HTMLElement;

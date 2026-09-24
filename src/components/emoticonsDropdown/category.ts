@@ -4,6 +4,8 @@ import {MiddlewareHelper, Middleware, getMiddleware} from '@helpers/middleware';
 import {StickerSet} from '@layer';
 import {ScrollableX} from '@components/scrollable';
 import {EMOJI_ELEMENT_SIZE} from '@components/emoticonsDropdown/tabs/emoji';
+import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
+import I18n from '@lib/langPack';
 import Tabs from '@components/tabs';
 
 export type StickersTabCategoryItem = {element: HTMLElement};
@@ -88,7 +90,10 @@ export default class StickersTabCategory<Item extends StickersTabCategoryItem, A
 
     let menuTab: HTMLElement, menuTabPadding: HTMLElement;
     if(!options.noMenuTab) {
-      menuTab = Tabs.MenuIconTab({paddingRef: (ref) => menuTabPadding = ref});
+      menuTab = Tabs.MenuIconTab({
+        label: title?.textContent,
+        paddingRef: (ref) => menuTabPadding = ref
+      });
     }
 
     if(title) container.append(title);
@@ -109,6 +114,11 @@ export default class StickersTabCategory<Item extends StickersTabCategoryItem, A
     this.gapX = options.styles.gapX ?? 0;
     this.gapY = options.styles.gapY ?? 0;
     this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
+    this.middlewareHelper.onDestroy(attachPickerGrid(
+      items,
+      '.super-emoji, .super-sticker',
+      (item, index) => item.dataset.emoji || I18n.format('AccDescr.StickerNumber', true, [String(index + 1)])
+    ));
   }
 
   public setCategoryItemsHeight(itemsLength = this.items.length) {

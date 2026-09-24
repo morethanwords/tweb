@@ -1,6 +1,7 @@
 import {Middleware} from '@helpers/middleware';
 import safeAssign from '@helpers/object/safeAssign';
 import RangeSelector from '@components/rangeSelector';
+import {LangPackKey} from '@lib/langPack';
 
 type RangeStep<T extends any = any> = [HTMLElement | string, T];
 export default class RangeStepsSelector<T extends any = any> {
@@ -17,6 +18,7 @@ export default class RangeStepsSelector<T extends any = any> {
 
   constructor(options: {
     middleware: RangeStepsSelector<T>['middleware'],
+    ariaLabel?: LangPackKey,
     generateStep: RangeStepsSelector<T>['generateStep'],
     generateSteps?: RangeStepsSelector<T>['generateSteps'],
     onValue?: RangeStepsSelector<T>['onValue'],
@@ -33,7 +35,7 @@ export default class RangeStepsSelector<T extends any = any> {
       this.range.removeListeners();
     });
 
-    const range = this.range = new RangeSelector({step: 1});
+    const range = this.range = new RangeSelector({step: 1, ariaLabel: options.ariaLabel});
     range.setListeners();
     range.setHandlers({
       onScrub: this.onIndex
@@ -82,6 +84,9 @@ export default class RangeStepsSelector<T extends any = any> {
   }
 
   protected onIndex = (index: number) => {
+    if(!this.steps[index]) return;
+    const label = this.steps[index][0];
+    this.range.setValueText(typeof(label) === 'string' ? label : label.textContent);
     this.onValue?.(this.steps[index][1]);
     this.optionsElements.forEach(({container}, idx) => {
       container.classList.toggle('active', index >= idx);

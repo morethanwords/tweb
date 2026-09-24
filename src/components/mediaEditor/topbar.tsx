@@ -1,7 +1,7 @@
 import {batch, onCleanup, onMount} from 'solid-js';
 
 import {addShortcutListener} from '@helpers/shortcutListener';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import ripple from '@components/ripple';
 
@@ -11,7 +11,7 @@ import {processHistoryItem} from '@components/mediaEditor/utils';
 export default function Topbar(props: {onClose: () => void; onFinish: () => void}) {
   const {canFinish, mediaState, editorState} = useMediaEditorContext();
 
-  let doneButton: HTMLDivElement;
+  let doneButton: HTMLButtonElement;
 
 
   function processHistory(history: HistoryItem[], otherHistory: HistoryItem[]) {
@@ -56,24 +56,27 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
 
   return (
     <div class="media-editor__topbar">
-      <ButtonIconTsx icon="cross" onClick={props.onClose} />
+      <ButtonIconTsx icon="cross" onClick={props.onClose} aria-label={I18n.format('Close', true)} />
       <div class="media-editor__topbar-title">{i18n('Edit')}</div>
       <div class="media-editor__topbar-history-controls">
-        <ButtonIconTsx disabled={!mediaState.history.length} onClick={onUndo} icon="undo" />
-        <ButtonIconTsx disabled={!mediaState.redoHistory.length} onClick={onRedo} icon="redo" />
+        <ButtonIconTsx disabled={!mediaState.history.length} onClick={onUndo} icon="undo" aria-label={I18n.format('Undo', true)} />
+        <ButtonIconTsx disabled={!mediaState.redoHistory.length} onClick={onRedo} icon="redo" aria-label={I18n.format('KeyboardShortcuts.Action.Redo', true)} />
       </div>
-      <div
+      <button
+        type="button"
         ref={doneButton}
         class="media-editor__topbar-done"
         classList={{
           'media-editor__topbar-done--disabled': !canFinish()
         }}
+        disabled={!canFinish()}
+        aria-label={I18n.format('Done', true)}
         onClick={() => {
           if(canFinish()) props.onFinish();
         }}
       >
         {i18n('Done')}
-      </div>
+      </button>
     </div>
   );
 }

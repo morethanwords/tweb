@@ -1,7 +1,7 @@
 import attachGrabListeners, {GrabEvent} from '@helpers/dom/attachGrabListeners';
 import clamp from '@helpers/number/clamp';
 import safeAssign from '@helpers/object/safeAssign';
-import I18n from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 
 export default class RangeSelector {
   public container: HTMLDivElement;
@@ -33,6 +33,7 @@ export default class RangeSelector {
   constructor(
     options: {
       step: RangeSelector['step'],
+      ariaLabel?: LangPackKey,
       min?: RangeSelector['min'],
       max?: RangeSelector['max'],
       withTransition?: RangeSelector['withTransition'],
@@ -61,6 +62,7 @@ export default class RangeSelector {
     const seek = this.seek = document.createElement('input');
     seek.classList.add('progress-line__seek');
     seek.type = 'range';
+    if(options.ariaLabel) seek.setAttribute('aria-label', I18n.format(options.ariaLabel, true));
     seek.step = '' + this.step;
     this.setMinMax(this.min, this.max);
     seek.value = '' + value;
@@ -89,6 +91,11 @@ export default class RangeSelector {
 
   public setHandlers(events: RangeSelector['events']) {
     this.events = events;
+  }
+
+  public setValueText(value?: string) {
+    if(value === undefined) this.seek.removeAttribute('aria-valuetext');
+    else this.seek.setAttribute('aria-valuetext', value);
   }
 
   protected onMouseMove = (event: GrabEvent) => {

@@ -1,4 +1,5 @@
 import {JSX, Ref, Show} from 'solid-js';
+import {Dynamic} from 'solid-js/web';
 
 import LottieAnimation from '@components/lottieAnimation';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
@@ -156,6 +157,8 @@ MediaHeader.Sticker = function MediaHeaderSticker(props: MediaHeaderStickerProps
 
 export type MediaHeaderTitleProps = {
   class?: string,
+  /** Semantic element for surfaces where this is the page or dialog heading. */
+  tag?: 'div' | 'h1' | 'h2',
   /** Font size in px: 24 is the hero scale (default), 20 the compact one narrow popups use. */
   size?: 20 | 24,
   children?: JSX.Element
@@ -163,7 +166,9 @@ export type MediaHeaderTitleProps = {
 
 MediaHeader.Title = function MediaHeaderTitle(props: MediaHeaderTitleProps): JSX.Element {
   return (
-    <div
+    <Dynamic
+      component={props.tag || 'div'}
+      data-popup-title
       class={classNames(
         styles.title,
         props.size === 20 && styles.title20,
@@ -171,7 +176,7 @@ MediaHeader.Title = function MediaHeaderTitle(props: MediaHeaderTitleProps): JSX
       )}
     >
       {props.children}
-    </div>
+    </Dynamic>
   );
 };
 

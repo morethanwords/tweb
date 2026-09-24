@@ -95,6 +95,8 @@ export default function SignInCard(_props: {spec: Spec}) {
   });
 
   const telEl = telInputField.input;
+  telEl.setAttribute('role', 'textbox');
+  telEl.setAttribute('aria-multiline', 'false');
   telEl.addEventListener('keypress', (e) => {
     if(hasValidInput() && !submitting() && e.key === 'Enter') {
       return onSubmit();
@@ -237,7 +239,7 @@ export default function SignInCard(_props: {spec: Spec}) {
               </svg>
             }
           />
-          <MediaHeader.Title>{i18n('Login.Title')}</MediaHeader.Title>
+          <MediaHeader.Title tag="h1">{i18n('Login.Title')}</MediaHeader.Title>
           <MediaHeader.Subtitle class="secondary">{i18n('Login.StartText')}</MediaHeader.Subtitle>
         </MediaHeader>
       }

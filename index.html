@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>{{title}}</title>
     <meta name="description" content="{{description}}">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,shrink-to-fit=no,viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no,viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-title" content="{{title}}">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -83,10 +83,12 @@
         </linearGradient>
       </defs>
     </svg>
+    <!-- hidden until the chat UI exists; appImManager fills in the localized name and reveals it -->
+    <a class="sr-only sr-only-focusable" href="#column-center" id="skip-to-content" hidden></a>
     <div class="sidebar-left-overlay"></div>
     <div class="whole page-chats" style="display: none;" id="page-chats">
       <div id="main-columns" class="tabs-container" data-animation="navigation">
-        <div class="tabs-tab chatlist-container sidebar sidebar-left main-column sidebar-left-common" id="column-left">
+        <div class="tabs-tab chatlist-container sidebar sidebar-left main-column sidebar-left-common" id="column-left" role="navigation">
           <div class="sidebar-slider tabs-container">
             <div class="tabs-tab sidebar-slider-item item-main active">
               <div class="sidebar-header main-search-sidebar-header can-have-forum">
@@ -104,8 +106,8 @@
             </div>
           </div>
         </div>
-        <div class="tabs-tab main-column" id="column-center"></div>
-        <div class="tabs-tab sidebar sidebar-right main-column" id="column-right">
+        <div class="tabs-tab main-column" id="column-center" role="main" tabindex="-1"></div>
+        <div class="tabs-tab sidebar sidebar-right main-column" id="column-right" role="complementary">
           <div class="sidebar-content sidebar-slider tabs-container"></div>
         </div>
       </div>

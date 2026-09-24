@@ -1,0 +1,85 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// Accessibility baseline — focus visibility, screen-reader utilities and
+// reduced-motion handling. Loaded last in style.scss so these rules win the
+// cascade over component-level `outline: none` declarations.
+
+:root {
+  --focus-ring-color: var(--primary-color);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: -2px;
+}
+
+:root.high-contrast {
+  --input-label-color: var(--secondary-text-color);
+  --input-placeholder-color: var(--secondary-text-color);
+  --input-message-placeholder-color: var(--secondary-text-color);
+}
+
+// Respect the browser's focus indicator heuristic. Text editors also match
+// :focus-visible after pointer focus because they expect keyboard input.
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+// WCAG 2.4.7 Focus Visible. The `:root` prefix raises specificity to (0,2,0)
+// so this overrides single-class and attribute `outline: none` rules without
+// needing !important. An inset offset keeps the ring inside clipped/scrollable
+// containers so it is never cut off.
+:root :focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+// Text fields show focus with the native caret and their own border/label
+// styling. A second global outline would duplicate or cover those cues.
+// https://www.w3.org/WAI/WCAG22/Understanding/focus-visible#examples
+:root .input-field-input:focus-visible,
+:root .input-message-input:focus-visible {
+  outline: none;
+}
+
+// Screen-reader-only content: exposed to the accessibility tree, visually
+// hidden. Used for skip links, live regions and supplementary labels.
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.high-contrast .anchor-url,
+.high-contrast .i18n a {
+  text-decoration: underline;
+}
+
+// Skip link (WCAG 2.4.1 Bypass Blocks): hidden until it receives keyboard
+// focus, then revealed pinned to the top-start corner.
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-visible {
+  position: fixed !important;
+  top: 0.5rem;
+  inset-inline-start: 0.5rem;
+  z-index: 100000;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0.5rem 1rem;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal;
+  background-color: var(--surface-color);
+  color: var(--primary-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  font-weight: var(--font-weight-bold);
+}

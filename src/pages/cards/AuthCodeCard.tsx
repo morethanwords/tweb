@@ -21,7 +21,7 @@ import {fastRaf} from '@helpers/schedulers';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import tsNow from '@helpers/tsNow';
 import {AuthSentCodeType, AuthSignIn} from '@layer';
-import {LangPackKey, i18n} from '@lib/langPack';
+import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
@@ -108,11 +108,14 @@ export default function AuthCodeCard(props: {spec: Spec}) {
 
   /* ---------- header pieces (mutated imperatively in applySentCode) ---------- */
 
-  const phoneEl = document.createElement('h4');
+  const phoneEl = document.createElement('span');
   phoneEl.classList.add(styles.phone);
 
   const editButton = document.createElement('span');
   editButton.classList.add(styles.phoneEdit);
+  editButton.setAttribute('role', 'button');
+  editButton.setAttribute('aria-label', I18n.format('Edit', true));
+  editButton.tabIndex = 0;
   editButton.append(Icon('edit'));
   attachClickEvent(editButton, () => navigate({name: 'signIn'}));
 
@@ -579,11 +582,11 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       header={
         <MediaHeader>
           <MediaHeader.Sticker element={stickerHost} size={stickerSize}/>
-          <MediaHeader.Title>
-            <div class={styles.phoneWrapper}>
+          <MediaHeader.Title tag="h1">
+            <span class={styles.phoneWrapper}>
               {phoneEl}
               {editButton}
-            </div>
+            </span>
           </MediaHeader.Title>
           <MediaHeader.Subtitle class="secondary">{sentTypeContent()}</MediaHeader.Subtitle>
         </MediaHeader>
@@ -591,7 +594,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       inputWrapper={false}
     >
       {inputHost}
-      <AuthCardError content={errorContent()} />
+      <AuthCardError content={errorContent()} describes={activeInput()} />
       <Show when={inputKind() === 'text'}>
         <Button
           class={classNames('btn-primary btn-color-primary', styles.wordSubmit)}

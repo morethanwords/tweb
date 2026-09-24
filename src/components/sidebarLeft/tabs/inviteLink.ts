@@ -60,11 +60,11 @@ export class InviteLink {
       rightButton = ButtonMenuToggle({
         buttons,
         direction: 'bottom-left',
-        buttonOptions: {noRipple: true},
+        buttonOptions: {noRipple: true, ariaLabel: 'MultiAccount.More'},
         listenerSetter
       });
     } else if(!noRightButton) {
-      rightButton = ButtonIcon('copy', {noRipple: true});
+      rightButton = ButtonIcon('copy', {noRipple: true, ariaLabel: 'CopyLink'});
       attachClickEvent(rightButton, () => this.copyLink(), {listenerSetter});
     }
 

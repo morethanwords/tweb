@@ -1,9 +1,10 @@
-import {Component, JSX, onCleanup, onMount} from 'solid-js';
+import {Component, createEffect, createSignal, createUniqueId, JSX, onCleanup} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {Portal} from 'solid-js/web';
 
 import pause from '@helpers/schedulers/pause';
-import {getAppWindow} from '@helpers/appWindow';
+import {bindActiveWindowListener, getOverlayRoot} from '@helpers/appWindow';
+import createFocusTrap from '@helpers/dom/focusTrap';
 import {i18n} from '@lib/langPack';
 
 import ripple from '@components/ripple'; ripple; // keep
@@ -20,19 +21,31 @@ const SimplePopup: Component<{
   onClose?: () => void;
   onConfirm: () => void;
 }> = (props) => {
-  onMount(() => {
+  const [container, setContainer] = createSignal<HTMLDivElement>();
+  const titleId = createUniqueId();
+  const descriptionId = createUniqueId();
+  const root = getOverlayRoot();
+  createEffect(() => {
+    const element = container();
+    if(!props.visible || !element) return;
+    const trap = createFocusTrap(element);
+    trap.activate(undefined, element.querySelector('[autofocus]'));
     const listener = (e: KeyboardEvent) => {
-      if(e.key === 'Escape') props.onClose?.();
+      if(e.key === 'Escape' && !e.defaultPrevented) {
+        e.preventDefault();
+        props.onClose?.();
+      }
     }
-    getAppWindow().document.addEventListener('keydown', listener);
+    const detach = bindActiveWindowListener((win) => win.document, 'keydown', listener);
 
     onCleanup(() => {
-      getAppWindow().document.removeEventListener('keydown', listener);
+      detach();
+      trap.deactivate();
     });
   });
 
   return (
-    <Portal>
+    <Portal mount={root}>
       <Transition
         onEnter={async(el, done) => {
           await pause(0);
@@ -54,14 +67,14 @@ const SimplePopup: Component<{
             }
           }}
         >
-          <div class='popup-container'>
+          <div ref={setContainer} class='popup-container' role='dialog' aria-modal='true' aria-labelledby={titleId} aria-describedby={descriptionId} tabindex={-1}>
             <div class='popup-header'>
-              <div class='popup-title'>
+              <div class='popup-title' id={titleId}>
                 {props.title}
               </div>
             </div>
 
-            <div class='popup-description'>
+            <div class='popup-description' id={descriptionId}>
               {props.description}
             </div>
 

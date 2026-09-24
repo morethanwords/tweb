@@ -44,7 +44,8 @@
     transition: .2s all;
   }
 
-  label {
+  label,
+  &-error-label {
     position: absolute;
     color: $placeholder-color;
     top: 0;
@@ -61,6 +62,10 @@
     @include animation-level(2) {
       transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     }
+  }
+
+  &-error-label {
+    color: var(--danger-color);
   }
 
   &-border {
@@ -146,7 +151,8 @@
     &.error {
       border-color: var(--danger-color);
 
-      & ~ label {
+      & ~ label,
+      & ~ .input-field-error-label {
         color: var(--danger-color) !important;
       }
 
@@ -177,7 +183,10 @@
       border-color: var(--primary-color);
     }
 
-    &:focus ~ label, &.force-focus ~ label {
+    &:focus ~ label,
+    &:focus ~ .input-field-error-label,
+    &.force-focus ~ label,
+    &.force-focus ~ .input-field-error-label {
       color: var(--primary-color);
       font-weight: var(--font-weight-bold);
     }
@@ -193,10 +202,15 @@
     } */
 
     &:focus ~ label,
+    &:focus ~ .input-field-error-label,
     &:valid ~ label,
+    &:valid ~ .input-field-error-label,
     &:not(.is-empty) ~ label,
+    &:not(.is-empty) ~ .input-field-error-label,
     &:disabled ~ label,
-    &.force-focus ~ label {
+    &:disabled ~ .input-field-error-label,
+    &.force-focus ~ label,
+    &.force-focus ~ .input-field-error-label {
       transform: translate(calc(-.1875rem + (1rem - var(--padding-horizontal))), calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;
       opacity: 1;
@@ -205,6 +219,10 @@
     &:not(:focus).is-empty ~ .input-field-placeholder ~ label {
       opacity: 0;
     }
+  }
+
+  &.has-error-label > label {
+    opacity: 0;
   }
 
   &-input-fake {

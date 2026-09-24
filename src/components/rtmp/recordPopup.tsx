@@ -117,7 +117,8 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
           </Show>
           <Show when={recordVideo()}>
             <div class={cnPopup('-preview-wrap')}>
-              <div class={cnPopup('-preview-images')}>
+              <div class={cnPopup('-preview-images')} role="group" aria-label={i18n('Rtmp.RecordPopup.RecordVideoHint').textContent}>
+                <button type="button" aria-pressed={videoHorizontal()} onClick={() => setVideoHorizontal(true)}>
                 <img
                   src={imgVideoHorizontal}
                   alt={i18n('Rtmp.RecordPopup.Horizontal').innerText}
@@ -126,8 +127,9 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
                     [cnPopup('-preview-img_videoH')]: true,
                     [cnPopup('-preview-img_active')]: videoHorizontal()
                   }}
-                  onClick={() => setVideoHorizontal(true)}
                 />
+                </button>
+                <button type="button" aria-pressed={!videoHorizontal()} onClick={() => setVideoHorizontal(false)}>
                 <img
                   src={imgVideoVertical}
                   alt={i18n('Rtmp.RecordPopup.Vertical').innerText}
@@ -136,8 +138,8 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
                     [cnPopup('-preview-img_videoV')]: true,
                     [cnPopup('-preview-img_active')]: !videoHorizontal()
                   }}
-                  onClick={() => setVideoHorizontal(false)}
                 />
+                </button>
               </div>
               <div class={cnPopup('-preview-title')}>
                 {i18n('Rtmp.RecordPopup.RecordVideoHint')}

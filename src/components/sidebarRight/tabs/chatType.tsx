@@ -196,7 +196,7 @@ const ChatType: Component = () => {
     );
     publicContainer.append(publicSection, usernamesSection);
 
-    const applyBtn = ButtonCorner({icon: 'check', className: 'is-visible'});
+    const applyBtn = ButtonCorner({icon: 'check', className: 'is-visible', ariaLabel: 'Save'});
     tab.content.append(applyBtn);
 
     const getUsername = () => privacySignal[0]() === 'public' ? linkInputField.getValue() : '';

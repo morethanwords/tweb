@@ -8,6 +8,7 @@ import {i18n, LangPackKey} from '@lib/langPack';
 import ButtonIcon from '@components/buttonIcon';
 import Scrollable from '@components/scrollable';
 import SidebarSlider from '@components/slider';
+import updateScrollRegionFocusable from '@helpers/dom/scrollRegion';
 
 export interface SliderSuperTabConstructable<T extends SliderSuperTab = any> {
   new(slider: SidebarSlider, destroyable: boolean): T;
@@ -78,6 +79,8 @@ export default class SliderSuperTab {
     this.content.classList.add('sidebar-content');
 
     this.scrollable = new Scrollable(this.content, undefined, undefined, true);
+    // Whether this panel's scroller is a tab stop depends on what it ends up
+    // holding, so it is decided in open() once the content exists.
     this.scrollable.attachBorderListeners(this.container);
 
     this.container.append(this.header, this.content);
@@ -104,6 +107,8 @@ export default class SliderSuperTab {
         console.error('open tab error', err);
       }
     }
+
+    updateScrollRegionFocusable(this.scrollable.container, this.title.textContent);
 
     this.slider.selectTab(this);
   }

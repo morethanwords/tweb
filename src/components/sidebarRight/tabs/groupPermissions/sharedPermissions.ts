@@ -361,7 +361,7 @@ export const createSolidTabState = <StateStore extends object>({tab, save, alway
   const initialState: StateStore = {} as any;
 
   const [store, set] = createStore<StateStore>({} as StateStore);
-  const [saveIcon, setSaveIcon] = createSignal<HTMLElement>(ButtonIcon('check primary appear-zoom'));
+  const [saveIcon, setSaveIcon] = createSignal<HTMLElement>(ButtonIcon('check primary appear-zoom', {ariaLabel: 'Save'}));
   const [saving, setSaving] = createSignal(false);
   const [valid, setValid] = createSignal(true);
 

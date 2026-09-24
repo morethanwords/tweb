@@ -33,6 +33,13 @@ export default class ControlsHover extends EventListenerBase<{
     safeAssign(this, options);
 
     const {listenerSetter, element} = this;
+    listenerSetter.add(element.ownerDocument)('focusin', () => {
+      if(this.hasKeyboardFocus()) this.showControls(false);
+    });
+    listenerSetter.add(element.ownerDocument)('focusout', () => {
+      if(element.classList.contains('show-controls')) this.hideControls(true);
+    });
+    listenerSetter.addCleanup(() => clearTimeout(this.hideControlsTimeout));
 
     if(IS_TOUCH_SUPPORTED) {
       listenerSetter.add(element)('click', (e) => {
@@ -87,6 +94,7 @@ export default class ControlsHover extends EventListenerBase<{
 
     clearTimeout(this.hideControlsTimeout);
     this.hideControlsTimeout = 0;
+    if(this.controlsLocked !== false && this.hasKeyboardFocus()) return;
 
     const isShown = this.element.classList.contains('show-controls');
     if(this.controlsLocked !== false) {
@@ -100,6 +108,13 @@ export default class ControlsHover extends EventListenerBase<{
     this.dispatchEvent('toggleControls', false);
     this.element.classList.remove('show-controls');
   };
+
+  private hasKeyboardFocus() {
+    const active = this.element.ownerDocument.activeElement as HTMLElement;
+    if(!active?.matches(':focus-visible')) return false;
+    const controls = Array.isArray(this.showOnLeaveToClassName) ? this.showOnLeaveToClassName : [this.showOnLeaveToClassName];
+    return this.element.contains(active) || controls.some((className) => className && !!findUpClassName(active, className));
+  }
 
   public showControls = (setHideTimeout = true) => {
     if(!(this.canShowControls?.() ?? true)) return;

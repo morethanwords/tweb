@@ -2,7 +2,7 @@ import {createComputed, createEffect, createMemo, createSelector, createSignal, 
 import {IS_MOBILE} from '@environment/userAgent';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
 import {Dialog} from '@layer';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {MyDialogFilter} from '@lib/storages/filters';
 import appNavigationController from '@components/appNavigationController';
@@ -33,6 +33,8 @@ const AddToFolderDropdownMenu = defineSolidElement({
   component: (props: PassedProps<Props>, _, controls: {closeTooltip: () => void}) => {
     //
     props.element.classList.add('btn-menu', styles.Container);
+    // a11y: announce the picker as a menu (rows are menuitemcheckbox; see hooks).
+    props.element.setAttribute('role', 'menu');
 
     let infoIcon: HTMLElement, label: HTMLDivElement, thumb: HTMLDivElement;
 
@@ -132,6 +134,7 @@ const AddToFolderDropdownMenu = defineSolidElement({
           <Show when={!IS_MOBILE}>
             <input
               class={styles.Input}
+              aria-label={I18n.format('AddToFolderSearch', true)}
               value={search()}
               onInput={e => void setSearch(e.target.value)}
               onBlur={(e) => {
@@ -156,7 +159,12 @@ const AddToFolderDropdownMenu = defineSolidElement({
                   el.classList.add(styles.LabelText);
                   return el;
                 })()}
-                <IconTsx ref={infoIcon} icon='info' />
+                <IconTsx
+                  ref={infoIcon}
+                  icon='info'
+                  aria-hidden={false}
+                  aria-label={I18n.format('AddToFolderTip', true)}
+                />
               </div>
             </Show>
 

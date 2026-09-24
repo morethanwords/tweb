@@ -18,7 +18,7 @@
   }
 
   &-discount {
-    background-color: var(--primary-color);
+    background-color: var(--primary-button-color, var(--primary-color));
     border-radius: 6px;
     color: #fff;
     margin-inline-end: .375rem;

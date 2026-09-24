@@ -34,6 +34,15 @@
   }
 }
 
+// This field already shows focus: the input is an invisible overlay across the
+// whole row, and the digit box the caret sits in lights up (`.digit.active`).
+// The global ring would add a second outline around all six boxes at once, so
+// it is turned off here — the `.wrap` prefix outweighs the rule in
+// scss/partials/_accessibility.scss, which is loaded last on purpose.
+.wrap .input:focus-visible {
+  outline: none;
+}
+
 .digit {
   // Sized like the other clients: the box keeps its height and gives up width as the
   // code gets longer (tdesktop draws it 0.8 of its height, Android shrinks it outright

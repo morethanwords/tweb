@@ -61,6 +61,7 @@ export default class SuperStickerRenderer {
       element = document.createElement('div');
       element.classList.add('grid-item', 'super-sticker');
       element.dataset.docId = '' + doc.id;
+      element.dataset.emoji = doc.stickerEmojiRaw || '';
 
       if(doc.animated) {
         this.observeAnimated(element);

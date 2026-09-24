@@ -61,7 +61,7 @@ const BlockedUsers = () => {
     captionEl.parentElement.prepend(captionEl);
     tab.scrollable.container.classList.add('chatlist-container');
 
-    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible'});
+    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible', ariaLabel: 'Add'});
     tab.content.append(btnAdd);
 
     attachClickEvent(btnAdd, (e) => {

@@ -1,3 +1,4 @@
+import {handleMenuKeyDown} from '@helpers/dom/menuKeyboard';
 import flatten from '@helpers/array/flatten';
 import contextMenuController from '@helpers/contextMenuController';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -110,6 +111,15 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
     (className ? ' ' + className : '') +
     (options.danger ? ' danger' : '');
 
+  // a11y: each clickable item is a menuitem; tabindex makes it focusable while
+  // the menu is open so the focus trap (Tab/Shift+Tab) and arrow-key navigation
+  // can reach it. The menu element itself is visibility:hidden until `.active`,
+  // so these are not tab-reachable until the menu is actually open.
+  if(onClick || options.inner) {
+    el.setAttribute('role', 'menuitem');
+    el.tabIndex = 0;
+  }
+
   if(IS_MOBILE) {
     ripple(el);
   }
@@ -214,12 +224,16 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(checkboxField) {
     textElement.id ||= `btn-menu-item-label-${++nextButtonMenuLabelId}`;
     checkboxField.input.setAttribute('aria-labelledby', textElement.id);
+    checkboxField.input.setAttribute('role', checkboxField.input.type === 'radio' ? 'menuitemradio' : 'menuitemcheckbox');
+    el.setAttribute('role', 'none');
+    el.removeAttribute('tabindex');
     el.append(checkboxField.label);
     el.classList.add('has-checkbox')
   }
 
   if(options.separator === true || options.separatorDown) {
     options.separator = document.createElement('hr');
+    (options.separator as HTMLElement).setAttribute('role', 'separator');
   }
 
   if(options.secondary) {
@@ -257,6 +271,7 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
 }) {
   const el: HTMLElement = document.createElement('div');
   el.classList.add('btn-menu');
+  el.setAttribute('role', 'menu');
 
   if(radioGroups) {
     buttons.forEach((b) => {
@@ -282,11 +297,13 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
       const elements = buttons.filter((button) => button.radioGroup === group.name);
 
       const hr = document.createElement('hr');
+      hr.setAttribute('role', 'separator');
       elements[0].element.replaceWith(hr);
 
       const container = RadioForm(elements.map((e, idx) => {
         const input = e.checkboxField.input;
         input.type = 'radio';
+        input.setAttribute('role', 'menuitemradio');
         input.name = group.name;
         input.value = '' + +(idx === group.checked);
         input.checked = idx === group.checked;
@@ -301,59 +318,9 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
     });
   }
 
-  // ButtonMenu is used for a mix of actions, native checkbox/radio controls,
-  // and static rows. Keep the ordinary tab model instead of claiming the
-  // composite ARIA menu pattern, which would also require roving focus and
-  // arrow-key navigation. Native form controls own their focus; only plain
-  // action rows need button semantics and delegated keyboard activation.
-  buttons.forEach(({element, onClick, checkboxField}) => {
-    if(!onClick || checkboxField || !element.classList.contains('btn-menu-item')) return;
-
-    element.setAttribute('role', 'button');
-    element.tabIndex = 0;
-  });
 
   const add = listenerSetter ? listenerSetter.add(el) : el.addEventListener.bind(el);
-  add('keydown', (e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    const item = target.closest<HTMLElement>('.btn-menu-item');
-    const button = item && buttons.find(({element}) => element === item);
-
-    const radioInput = button?.checkboxField?.input;
-    const radioStep = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 :
-      (e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0);
-    if(
-      target === radioInput &&
-      radioInput.type === 'radio' &&
-      radioStep &&
-      button.radioGroup &&
-      button.onClick
-    ) {
-      const group = buttons.filter((candidate) =>
-        candidate.radioGroup === button.radioGroup &&
-        candidate.checkboxField?.input.type === 'radio' &&
-        candidate.checkboxField.input.name === radioInput.name &&
-        candidate.onClick
-      );
-      const index = group.indexOf(button);
-      const next = group[(index + radioStep + group.length) % group.length];
-      if(next && next !== button) {
-        cancelEvent(e);
-        next.checkboxField.input.focus();
-        simulateClickEvent(next.element);
-      }
-      return;
-    }
-
-    if(e.key !== 'Enter' && e.key !== ' ') return;
-
-    const isActionRow = target === item && !!button?.onClick && !button.checkboxField;
-    const isNativeChoice = target === button?.checkboxField?.input && !!button.onClick;
-    if(!isActionRow && !isNativeChoice) return;
-
-    cancelEvent(e);
-    simulateClickEvent(item);
-  });
+  add('keydown', handleMenuKeyDown);
 
   return el;
 }

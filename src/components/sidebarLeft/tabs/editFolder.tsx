@@ -271,7 +271,7 @@ const EditFolder: Component = () => {
   tempId = 0;
   showMoreClicked = {};
 
-  const confirmBtn = ButtonIcon('check btn-confirm hide blue');
+  const confirmBtn = ButtonIcon('check btn-confirm hide blue', {ariaLabel: 'Save'});
   let deleting = false;
   const deleteFolderButton: ButtonMenuItemOptions = {
     icon: 'delete',
@@ -292,6 +292,7 @@ const EditFolder: Component = () => {
   const menuBtn = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
     direction: 'bottom-left',
+    buttonOptions: {ariaLabel: 'MultiAccount.More'},
     buttons: [deleteFolderButton]
   });
   menuBtn.classList.add('hide');

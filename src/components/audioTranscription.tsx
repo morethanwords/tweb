@@ -1,7 +1,7 @@
-import {children, createEffect, createMemo, JSX, onCleanup, Show} from 'solid-js';
+import {children, createEffect, createMemo, createUniqueId, JSX, onCleanup, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Message} from '@layer';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import ListenerSetter from '@helpers/listenerSetter';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -52,10 +52,12 @@ export function reduceTranscribed(
   };
 }
 
-function TranscribedText(props: {state: TranscriptionState}) {
+function TranscribedText(props: {id: string, state: TranscriptionState}) {
   return (
     <div
       class="audio-transcribed-text"
+      id={props.id}
+      aria-busy={props.state.pending}
       classList={{
         'is-error': props.state.error,
         'hide': !props.state.expanded
@@ -67,7 +69,7 @@ function TranscribedText(props: {state: TranscriptionState}) {
       <Show when={props.state.pending}>
         {/* three real dots rather than an animated `content`, which only pseudo-elements can do —
           each fades in on its own beat, and they hold the width even while hidden */}
-        <span class="audio-transcribing-dots">
+        <span class="audio-transcribing-dots" aria-hidden="true">
           {[1, 2, 3].map((i) => (
             <span class={`audio-transcribing-dots-dot audio-transcribing-dots-dot-${i}`}>.</span>
           ))}
@@ -79,7 +81,7 @@ function TranscribedText(props: {state: TranscriptionState}) {
 
 function TranscribeLoader(props: {active: boolean}) {
   return (
-    <div class="loader" classList={{active: props.active}}>
+    <div class="loader" aria-hidden="true" classList={{active: props.active}}>
       <svg class="audio-transcribe-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24">
         <rect
           class="audio-transcribe-outline-rect"
@@ -109,7 +111,10 @@ function TranscribeButton(props: {
   // mounted beside the row the first time there is anything to show. `children` is what turns the
   // component into a node to mount: a component on its own hands back a lazily-evaluated value.
   const hasText = createMemo(() => props.state.status === 'transcribed');
-  const text = children(() => hasText() ? <TranscribedText state={props.state} /> : undefined);
+  const textId = createUniqueId();
+  // This is readable content, not a live status: streamed updates must not
+  // repeatedly announce the entire transcript (including cached results).
+  const text = children(() => hasText() ? <TranscribedText id={textId} state={props.state} /> : undefined);
 
   let mounted: HTMLElement;
   createEffect(() => {
@@ -128,10 +133,19 @@ function TranscribeButton(props: {
   onCleanup(() => mounted?.remove());
 
   return (
-    <div class="audio-to-text-button" onClick={props.onClick}>
+    <button
+      type="button"
+      class="audio-to-text-button"
+      aria-label={I18n.format(hasText() ? 'AccDescr.ToggleTranscription' : 'AccDescr.TranscribeAudio', true)}
+      aria-expanded={hasText() ? props.state.expanded : undefined}
+      aria-controls={hasText() ? textId : undefined}
+      aria-busy={props.state.status === 'loading' || props.state.pending}
+      disabled={props.state.status === 'loading'}
+      onClick={props.onClick}
+    >
       <IconTsx icon={hasText() && props.state.expanded ? 'up' : 'transcribe'} />
       <TranscribeLoader active={props.state.status === 'loading' || props.state.pending} />
-    </div>
+    </button>
   );
 }
 

@@ -15,6 +15,7 @@ type IconWithClass = {
 export function OverlayedIcon(icons: (Icon | IconWithClass)[], className?: string) {
   const span = document.createElement('span');
   span.classList.add('overlayed-icon', ...(className ? [className] : []));
+  span.setAttribute('aria-hidden', 'true');
 
   const getIcon = (icon: Icon | IconWithClass) => icon instanceof Object ? icon.icon : icon;
   const getClasses = (icon: Icon | IconWithClass) => icon instanceof Object ? [icon.className] : [];
@@ -33,5 +34,8 @@ export default function Icon(icon: Icon, ...classes: string[]) {
 
   span.classList.add(TGICO_CLASS/* ...tgico(icon) */, ...classes);
   span.textContent = getIconContent(icon);
+  // The glyph is a private-use-area character — meaningless to assistive tech.
+  // The accessible name must come from the parent control's label instead.
+  span.setAttribute('aria-hidden', 'true');
   return span;
 }

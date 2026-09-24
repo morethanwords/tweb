@@ -29,7 +29,7 @@ const EmptySearchPlaceholder = defineSolidElement({
           name="UtyanSearch"
         />
 
-        <div class={styles.NoResults}>
+        <div class={styles.NoResults} role="status">
           <div class={styles.NoResultsTitle}>{i18n('NoResultsTitle')}</div>
           <div class={styles.NoResultsSubtitle}>{i18n('NoResultsSubtitle')}</div>
         </div>

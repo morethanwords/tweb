@@ -187,7 +187,7 @@ export default async function showGiftLinkPopup(
     const wrapper = (
       <div class="popup-gift-link-wrapper">
         <MediaHeader marginTop marginBottom>
-          <MediaHeader.Sticker size={120} element={<img ref={img} />} />
+          <MediaHeader.Sticker size={120} element={<img alt="" ref={img} />} />
           <MediaHeader.Title size={20}>{i18n(titleLangKey)}</MediaHeader.Title>
           <MediaHeader.Subtitle>
             {

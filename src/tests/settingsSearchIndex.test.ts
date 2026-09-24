@@ -94,7 +94,7 @@ describe('settings search index', () => {
 
   it('covers the settings a user would look for', () => {
     const byKey = new Set(generated.entries.map((entry) => entry.titleLangKey));
-    for(const key of ['ChatBackground', 'BlockedUsers', 'TwoStepVerification', 'AutoDeleteMessages', 'TextSize']) {
+    for(const key of ['ChatBackground', 'BlockedUsers', 'TwoStepVerification', 'AutoDeleteMessages', 'TextSize', 'GeneralSettings.IncreaseContrast']) {
       expect(byKey.has(key as any), `missing ${key}`).toBe(true);
     }
   });

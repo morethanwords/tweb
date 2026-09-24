@@ -3,6 +3,7 @@ import appImManager from '@lib/appImManager';
 import TelegramWebView from '@components/telegramWebView';
 import getWebViewTgLink from '@helpers/getWebViewTgLink';
 import {createSignal, onCleanup, onMount} from 'solid-js';
+import I18n from '@lib/langPack';
 
 export function createVerificationIframe(options: ConstructorParameters<typeof TelegramWebView>[0]) {
   const result = new TelegramWebView({
@@ -11,6 +12,7 @@ export function createVerificationIframe(options: ConstructorParameters<typeof T
   });
   const {iframe} = result;
   iframe.allow = 'payment';
+  iframe.title = I18n.format('Checkout.WebConfirmation.Title', true);
   iframe.classList.add('payment-verification');
   return result;
 }

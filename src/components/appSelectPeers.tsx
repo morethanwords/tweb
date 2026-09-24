@@ -1,3 +1,4 @@
+import labelControl from '@helpers/dom/labelControl';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {AppPeersManager, IsPeerType} from '@appManagers/appPeersManager';
@@ -397,6 +398,7 @@ export default class AppSelectPeers {
     const hadScrollable = !!this.scrollable;
     this.scrollable ||= new Scrollable();
     this.scrollable.container.classList.add('selector-scrollable');
+    this.scrollable.container.tabIndex = 0;
 
     this.container.append(this.scrollable.container);
 
@@ -1183,7 +1185,7 @@ export default class AppSelectPeers {
 
       if(this.multiSelect !== 'disabled') {
         const selected = this.selected.has(key);
-        const checkbox = this.checkbox(selected);
+        const checkbox = this.checkbox(selected, undefined, dom.titleSpan);
         if(this.design === 'square') {
           checkbox.classList.add(ROW_SELECTION_CHECKBOX_CLASS);
         }
@@ -1260,7 +1262,8 @@ export default class AppSelectPeers {
 
   public checkbox(
     selected?: boolean,
-    color: ConstructorParameters<typeof CheckboxField>[0]['color'] = 'secondary'
+    color: ConstructorParameters<typeof CheckboxField>[0]['color'] = 'secondary',
+    label?: HTMLElement | string
   ) {
     const checkboxField = new CheckboxField({
       round: this.design === 'round',
@@ -1269,6 +1272,8 @@ export default class AppSelectPeers {
     if(selected) {
       checkboxField.input.checked = selected;
     }
+    if(typeof(label) === 'string') checkboxField.input.setAttribute('aria-label', label);
+    else labelControl(checkboxField.input, label);
 
     return checkboxField.label;
   }

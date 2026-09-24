@@ -8,6 +8,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import liteMode from '@helpers/liteMode';
 import {ScrollableContextValue} from '@components/scrollable2';
+import attachTabList from '@helpers/dom/tabList';
 
 type OnChangeArgs = {
   element: HTMLElement;
@@ -170,6 +171,9 @@ export function horizontalMenu(
   if(!tabs) {
     return _selectTab;
   }
+
+  const detachTabList = attachTabList(tabs, content);
+  listenerSetter?.addCleanup(detachTabList);
 
   const _selectTarget = (target: HTMLElement, id: number, animate = true) => {
     return selectTarget({

@@ -137,7 +137,7 @@ export default class ChatTopbar {
     // own hide() via `chat.onPreviewClose`, and the folder back-unread badge is irrelevant
     // here (there's no folder navigation behind a floating preview).
     const backIcon = this.chat.isPreview ? 'close' : 'left';
-    this.btnBack = ButtonIcon(`${backIcon} sidebar-close-button`, {noRipple: true});
+    this.btnBack = ButtonIcon(`${backIcon} sidebar-close-button`, {noRipple: true, ariaLabel: 'Close'});
     if(!this.chat.isPreview) {
       this.btnBackBadge = createBadge('span', 20, 'primary');
       this.btnBackBadge.classList.add('back-unread-badge');
@@ -185,6 +185,7 @@ export default class ChatTopbar {
 
     if(this.menuButtons.length) {
       this.btnMore = ButtonMenuToggle({
+        buttonOptions: {ariaLabel: 'MultiAccount.More'},
         listenerSetter: this.listenerSetter,
         direction: 'bottom-left',
         buttons: this.menuButtons,
@@ -863,12 +864,12 @@ export default class ChatTopbar {
       verify: this.verifyIfCanDeleteChat
     }];
 
-    this.btnSearch = ButtonIcon('search');
+    this.btnSearch = ButtonIcon('search', {ariaLabel: 'Search'});
     this.attachClickEvent(this.btnSearch, (e) => {
       this.chat.initSearch();
     }, true);
 
-    this.btnLogFilters = ButtonIcon('filter');
+    this.btnLogFilters = ButtonIcon('filter', {ariaLabel: 'AdminRecentActionsFilters.ByType'});
     this.attachClickEvent(this.btnLogFilters, () => {
       this.onFilterActionsClick();
     });
@@ -997,9 +998,10 @@ export default class ChatTopbar {
     // produced a throwaway plate (rendered, listened, then destroyed on the
     // first peer change) whose `isStatic` was decided before the chat had a type.
 
-    this.btnCall = ButtonIcon('phone');
-    this.btnGroupCall = ButtonIcon('videochat');
+    this.btnCall = ButtonIcon('phone', {ariaLabel: 'Call'});
+    this.btnGroupCall = ButtonIcon('videochat', {ariaLabel: 'PeerInfo.Action.VoiceChat'});
     this.btnGroupCallMenu = ButtonMenuToggle({
+      buttonOptions: {ariaLabel: 'PeerInfo.Action.VoiceChat'},
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
       buttons: [{

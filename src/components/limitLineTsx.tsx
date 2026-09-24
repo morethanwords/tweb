@@ -8,12 +8,14 @@ import classNames from '@helpers/string/classNames'
 import clamp from '@helpers/number/clamp'
 import styles from '@components/limitLineTsx.module.scss';
 import RangeSelector from '@components/rangeSelector'
-import I18n from '@lib/langPack'
+import I18n, {LangPackKey} from '@lib/langPack'
 import {lerp} from '@helpers/lerp'
 
 
 export function LimitLineTsx(props: {
   class?: string
+  ariaLabel?: LangPackKey
+  ariaValueText?: string
   progress: number
   reverse?: boolean
   animateProgress?: boolean
@@ -123,6 +125,7 @@ export function LimitLineTsx(props: {
   if(isSlider) {
     range = new RangeSelector({
       step: 0.0001,
+      ariaLabel: props.ariaLabel,
       min: 0,
       max: 1,
       useProperty: true,
@@ -133,6 +136,7 @@ export function LimitLineTsx(props: {
       onScrub: props.onScrub
     });
     range.container.classList.add(styles.line, styles.slider);
+    createEffect(() => range.setValueText(props.ariaValueText));
     line = range.container;
 
     if(props.filledProgressElement) {

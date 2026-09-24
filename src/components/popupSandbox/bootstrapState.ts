@@ -33,7 +33,7 @@ export const mockManagers = createMockManagers();
  * a `key` the handler merges into the mirror instead of replacing it — which is what keeps a live
  * session's cached peers and messages intact.
  */
-function seedMirror(name: string, key: string, value: any) {
+export function seedMirror(name: string, key: string, value: any) {
   (apiManagerProxy as any).onMirrorTask({
     name,
     key,

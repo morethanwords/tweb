@@ -13,6 +13,7 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import calcImageInBox from '@helpers/calcImageInBox';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import getGifDuration from '@helpers/getGifDuration';
@@ -43,6 +44,7 @@ import {getPreviewBytesFromURL} from '@helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Button from '@components/buttonTsx';
+import ButtonElement from '@components/button';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import InputFieldMessage from '@components/inputFieldMessage';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
@@ -76,8 +78,10 @@ import {animateValue} from '@helpers/animateValue';
 import {lerp} from '@helpers/lerp';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import ButtonMenu from '@components/buttonMenu';
+import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import {positionMenuTrigger} from '@helpers/positionMenu';
 import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 import Section from '@components/section';
 import classNames from '@helpers/string/classNames';
@@ -871,6 +875,7 @@ export default function showNewMediaPopup(
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if(shouldPreserveKeyboardFocus(e)) return;
     const target = e.target as HTMLElement;
     const {input} = messageInputField;
     if(target !== input) {
@@ -1228,6 +1233,8 @@ export default function showNewMediaPopup(
     const file = params.file as File;
 
     const img = new Image();
+
+    img.alt = '';
     itemDiv.append(img);
     const url = params.objectURL = params.objectURLs.create(file);
     await renderImageFromUrlPromise(img, url);
@@ -1359,6 +1366,8 @@ export default function showNewMediaPopup(
         if(saveObjectURL) params.objectURL = url;
 
         const img = new Image();
+
+        img.alt = '';
         await renderImageFromUrlPromise(img, url);
 
         img.className = 'popup-item-media-extend-full';
@@ -1450,6 +1459,7 @@ export default function showNewMediaPopup(
       addVideoTime();
     } else {
       const img = new Image();
+      img.alt = '';
       itemDiv.append(img);
 
       const url = params.objectURL = params.objectURLs.create(file);
@@ -1483,10 +1493,10 @@ export default function showNewMediaPopup(
       }
     }
     {
-      const showActions = async() => {
+      const createActions = async(forMenu = false) => {
         if(activeActionsMenuItemDiv === itemDiv || !canShowActions || context.destroyed) return;
         const bcr = itemDiv.getBoundingClientRect();
-        if(!canShowActionsForBcr(bcr)) return;
+        if(!forMenu && !canShowActionsForBcr(bcr)) return;
 
         hideActiveActionsMenu();
 
@@ -1498,19 +1508,20 @@ export default function showNewMediaPopup(
         const itemCls = 'popup-item-media-action';
 
         const canEditVideo = await supportsVideoEncoding() && file.size <= MAX_EDITABLE_VIDEO_SIZE;
+        if(activeActionsMenu !== actions || context.destroyed) return;
 
-        let equalizeIcon: HTMLSpanElement;
+        let equalizeIcon: HTMLButtonElement;
         if(!willAttach.stars && getFileMimeType(file) !== 'image/gif' && (!isVideo || canEditVideo)) {
           import('../mediaEditor'); // prefetch
 
-          equalizeIcon = Icon('equalizer', itemCls);
+          equalizeIcon = ButtonElement(itemCls, {icon: 'equalizer', ariaLabel: 'Edit', noRipple: true});
           equalizeIcon.addEventListener('click', async() => {
             hideActiveActionsMenu();
             MarkupTooltip.getInstance().hide();
 
-            btnConfirm.disabled = true;
             const source = itemDiv.querySelector('video') || itemDiv.querySelector('img');
             if(!source) return;
+            btnConfirm.disabled = true;
 
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
@@ -1545,29 +1556,28 @@ export default function showNewMediaPopup(
           });
         }
 
-        let spoilerToggle: HTMLSpanElement;
+        let spoilerToggle: HTMLButtonElement;
         if(!willAttach.stars) {
-          spoilerToggle = document.createElement('span');
-          spoilerToggle.classList.add(itemCls, 'spoiler-toggle');
+          spoilerToggle = ButtonElement(`${itemCls} spoiler-toggle`, {ariaLabel: 'EnablePhotoSpoiler', noRipple: true});
+          spoilerToggle.setAttribute('aria-pressed', String(!!params.mediaSpoiler));
           if(params.mediaSpoiler) spoilerToggle.dataset.toggled = 'true';
           spoilerToggle.append(Icon('mediaspoiler', 'spoiler-on'), Icon('mediaspoileroff', 'spoiler-off'));
           spoilerToggle.addEventListener('click', () => {
             if(spoilerToggle.dataset.disabled) return; // Prevent double clicks
             spoilerToggle.dataset.toggled = spoilerToggle.dataset.toggled === 'true' ? 'false' : 'true'
+            spoilerToggle.setAttribute('aria-pressed', spoilerToggle.dataset.toggled);
             !params.mediaSpoiler ? applyMediaSpoiler(params) : removeMediaSpoiler(params);
           });
         }
 
-        const deleteIcon = Icon('delete', itemCls);
+        const deleteIcon = ButtonElement(itemCls, {icon: 'delete', ariaLabel: 'Delete', noRipple: true});
         deleteIcon.addEventListener('click', () => removeFile(params));
 
         const resultPromise = params?.editResult?.getResult();
-        let cancelBtn: HTMLDivElement;
+        let cancelBtn: HTMLButtonElement;
         if(resultPromise instanceof Promise) {
           actions.classList.add('popup-item-media-action-menu-cancel');
-          cancelBtn = document.createElement('div');
-          cancelBtn.append(i18n('Cancel'));
-          cancelBtn.classList.add('popup-item-media-action-menu-cancel-btn');
+          cancelBtn = ButtonElement('popup-item-media-action-menu-cancel-btn', {text: 'Cancel', noRipple: true});
           cancelBtn.addEventListener('click', () => {
             params?.editResult.cancel?.();
           });
@@ -1583,6 +1593,7 @@ export default function showNewMediaPopup(
         actions.style.opacity = '1';
 
         const listener = (e: MouseEvent) => {
+          if(actions.inert) return;
           if(
             (e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') ||
             e.target === itemDiv ||
@@ -1590,14 +1601,55 @@ export default function showNewMediaPopup(
           ) return;
           hideActiveActionsMenu();
         }
-        actionsMenuListenerSetter.add(document)('pointermove', listener);
-        actionsMenuListenerSetter.add(document)('keydown', () => {
+        actionsMenuListenerSetter.add(itemDiv.ownerDocument)('pointermove', listener);
+        actionsMenuListenerSetter.add(itemDiv.ownerDocument)('keydown', () => {
+          if(actions.inert) return;
           hideActiveActionsMenu();
         }, {capture: true});
         if(IS_MOBILE) {
-          actionsMenuListenerSetter.add(document)('pointerdown', listener);
+          actionsMenuListenerSetter.add(itemDiv.ownerDocument)('pointerdown', listener);
         }
       }
+
+      let actionsPromise: Promise<void>;
+      const showActions = (forMenu?: boolean | PointerEvent) => {
+        return actionsPromise ??= createActions(forMenu === true).finally(() => actionsPromise = undefined);
+      };
+
+      // The hover toolbar is also available through the shared menu, so keyboard
+      // users get the same actions and focus handling as every other popup menu.
+      const moreButton = ButtonElement('btn-icon popup-item-media-more', {icon: 'more', ariaLabel: 'AccDescr.MediaActions', noRipple: true});
+      moreButton.disabled = !canShowActions;
+      const menuButtons: (ButtonMenuItemOptionsVerifiable & {checked?: boolean})[] = [];
+      createContextMenu({
+        listenTo: moreButton,
+        listenForClick: true,
+        middleware: params.middlewareHelper.get(),
+        buttons: [],
+        position: (_, menu) => positionMenuTrigger(moreButton, menu, 'top-right'),
+        filterButtons: async() => {
+          await showActions(true);
+          const actions = activeActionsMenu;
+          if(!actions || activeActionsMenuItemDiv !== itemDiv) return [];
+          actions.inert = true;
+          actions.style.opacity = '0';
+          menuButtons.splice(0, menuButtons.length, ...(Array.from(actions.children) as HTMLButtonElement[]).map((element) => ({
+            regularText: element.getAttribute('aria-label') || element.textContent,
+            checked: element.hasAttribute('aria-pressed') ? element.getAttribute('aria-pressed') === 'true' : undefined,
+            onClick: () => element.click()
+          })));
+          return menuButtons;
+        },
+        onOpenAfter: () => {
+          menuButtons.forEach(({element, checked}) => {
+            if(checked === undefined) return;
+            element.setAttribute('role', 'menuitemcheckbox');
+            element.setAttribute('aria-checked', String(checked));
+          });
+        },
+        onClose: () => { hideActiveActionsMenu(); }
+      });
+      itemDiv.append(moreButton);
 
       itemDiv.addEventListener('pointermove', showActions);
       itemDiv.addEventListener('pointerup', showActions);
@@ -1673,6 +1725,7 @@ export default function showNewMediaPopup(
     let img: HTMLImageElement;
     if(isPhoto && params.objectURL) {
       img = new Image();
+      img.alt = '';
       await renderImageFromUrlPromise(img, params.objectURL);
       const scaled = await scaleImageForTelegram(img, file.type as MTMimeType, file.size, params.objectURLs);
       if(scaled) {
@@ -1962,6 +2015,10 @@ export default function showNewMediaPopup(
   function afterRender() {
     setTimeout(() => {
       canShowActions = true;
+      willAttach.sendFileDetails.forEach(({itemDiv}) => {
+        const button = itemDiv.querySelector<HTMLButtonElement>('.popup-item-media-more');
+        if(button) button.disabled = false;
+      });
     }, 200);
 
     willAttach.sendFileDetails.forEach((params) => {

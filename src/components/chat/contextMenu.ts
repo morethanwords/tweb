@@ -262,6 +262,12 @@ export default class ChatContextMenu {
       attachContextMenuListener({
         element,
         callback: (e) => {
+          // A hardware keyboard on a touch-capable device uses the same
+          // synthetic contextmenu path as desktop, without a touchend to wait for.
+          if(e.type === 'contextmenu' && !e.isTrusted) {
+            if(!this.chat.selection.isSelecting) this.onContextMenu(e);
+            return;
+          }
           if(
             !this.chat.selection.isSelecting &&
             (e.target as HTMLElement).closest('reaction-element')
@@ -604,7 +610,7 @@ export default class ChatContextMenu {
         setTimeout(() => {
           destroy();
         }, 300);
-      });
+      }, (e.target as HTMLElement).closest<HTMLElement>('[tabindex], button, a[href]') || bubble);
 
       reactionsCallbacks?.onAfterInit();
     };

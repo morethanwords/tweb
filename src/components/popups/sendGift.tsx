@@ -5,7 +5,7 @@ import {MyPremiumGiftOption, MyStarGift} from '@appManagers/appGiftsManager';
 import {STARS_CURRENCY} from '@appManagers/constants';
 import {AvatarNewTsx} from '@components/avatarNew';
 import MediaHeader from '@components/mediaHeader';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Setter, Show} from 'solid-js';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import showStarsPopup, {StarsBalance, StarsStar} from '@components/popups/stars';
@@ -64,6 +64,7 @@ import createStarGiftUpgradePopup from '@components/popups/starGiftUpgrade';
 import {createProfileGiftsStore, StarGiftsProfileActions, StarGiftsProfileStore} from '@components/stargifts/profileStore';
 import transferStarGift from '@components/popups/transferStarGift';
 import {unwrap} from 'solid-js/store';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 
 import styles from '@components/popups/sendGift.module.scss';
 import Animated from '@helpers/solid/animations';
@@ -131,7 +132,7 @@ function GiftOptionsPage(props: {
         <For each={props.premiumOptions}>
           {(option) => {
             return (
-              <div class={styles.premiumOption} onClick={() => props.onGiftChosen(option)}>
+              <div class={styles.premiumOption} role="button" tabindex={0} onClick={() => props.onGiftChosen(option)} onKeyDown={buttonKeyDown}>
                 <LottieAnimation
                   lottieLoader={lottieLoader}
                   class={styles.premiumOptionSticker}
@@ -266,7 +267,7 @@ function GiftOptionsPage(props: {
     >
       <div class={styles.mainContainer}>
         <div class={styles.mainHeader}>
-          <ButtonIconTsx icon="close" onClick={props.onClose} />
+          <ButtonIconTsx icon="close" aria-label={I18n.format('Close', true)} onClick={props.onClose} />
           <div class="popup-title">
             {i18n('StarGiftSendGift')}
           </div>
@@ -276,6 +277,7 @@ function GiftOptionsPage(props: {
           <img
             class={styles.recipientBackground}
             src={`assets/img/${maybe2x('stars_pay')}.png`}
+            alt=""
           />
           <AvatarNewTsx peerId={props.peerId} size={100} />
         </div>
@@ -361,6 +363,7 @@ function ResaleOptionsPage(props: {
 }) {
   const [total, setTotal] = createSignal<Long | null>(null);
   const [sort, setSort] = createSignal<'price' | 'date' | 'num'>('price');
+  const [sortPopupVisible, setSortPopupVisible] = createSignal(false);
   const [items, setItems] = createSignal<MyStarGift[]>([]);
   const [loading, setLoading] = createSignal(true);
 
@@ -519,6 +522,7 @@ function ResaleOptionsPage(props: {
         <div class={styles.resaleHeaderInner}>
           <ButtonIconTsx
             icon={props.isFirst ? 'close' : 'back'}
+            aria-label={I18n.format('Close', true)}
             onClick={props.isFirst ? props.onClose : props.onBack}
           />
           <div class={`popup-title ${styles.resaleTitle}`}>
@@ -534,13 +538,19 @@ function ResaleOptionsPage(props: {
           <Scrollable axis="x">
             <div
               class={`${styles.resaleFilterChip} ${styles.resaleFilterChipSort} btn-menu-toggle`}
+              role="button"
+              tabindex={0}
+              aria-haspopup="menu"
+              aria-expanded={sortPopupVisible()}
               ref={(el) => {
                 ButtonMenuToggle({
                   container: el,
                   appendTo: getOverlayRoot(),
                   onOpen: (e, menu) => {
+                    setSortPopupVisible(true);
                     positionMenuTrigger(el, menu, 'bottom-right', {top: 8})
                   },
+                  onClose: () => setSortPopupVisible(false),
                   direction: 'bottom-right',
                   buttons: [
                     {
@@ -600,7 +610,14 @@ function ResaleOptionsPage(props: {
               onToggleMenu={setModelPopupVisible}
               direction="bottom-right"
             >
-              <div class={styles.resaleFilterChip}>
+              <div
+                class={styles.resaleFilterChip}
+                role="button"
+                tabindex={0}
+                aria-haspopup="menu"
+                aria-expanded={modelPopupVisible()}
+                onKeyDown={buttonKeyDown}
+              >
                 <I18nTsx
                   key={hasChosenModelOptions() ? 'StarGiftNModels' : 'StarGiftModel'}
                   args={[String(chosenModelOptions().length)]}
@@ -643,7 +660,14 @@ function ResaleOptionsPage(props: {
               onToggleMenu={setBackdropPopupVisible}
               direction="bottom-left"
             >
-              <div class={styles.resaleFilterChip}>
+              <div
+                class={styles.resaleFilterChip}
+                role="button"
+                tabindex={0}
+                aria-haspopup="menu"
+                aria-expanded={backdropPopupVisible()}
+                onKeyDown={buttonKeyDown}
+              >
                 <I18nTsx
                   key={hasChosenBackdropOptions() ? 'StarGiftNBackdrops' : 'StarGiftBackdrop'}
                   args={[String(chosenBackdropOptions().length)]}
@@ -687,7 +711,14 @@ function ResaleOptionsPage(props: {
               onToggleMenu={setPatternPopupVisible}
               direction="bottom-left"
             >
-              <div class={styles.resaleFilterChip}>
+              <div
+                class={styles.resaleFilterChip}
+                role="button"
+                tabindex={0}
+                aria-haspopup="menu"
+                aria-expanded={patternPopupVisible()}
+                onKeyDown={buttonKeyDown}
+              >
                 <I18nTsx
                   key={hasChosenPatternOptions() ? 'StarGiftNPatterns' : 'StarGiftPattern'}
                   args={[String(chosenPatternOptions().length)]}
@@ -879,6 +910,7 @@ function ChosenGiftPage(props: {
       <div class={styles.secondPageHeader}>
         <ButtonIconTsx
           icon="back"
+          aria-label={I18n.format('StarsRating.Back', true)}
           onClick={props.onBack}
         />
         <div class="popup-title">
@@ -923,6 +955,7 @@ function ChosenGiftPage(props: {
               class={styles.formInput}
               placeholder='StarGiftMessagePlaceholder'
               instanceRef={(input) => {
+                input.input.setAttribute('aria-label', I18n.format('StarGiftMessagePlaceholder', true))
                 input.input.addEventListener('input', () => {
                   const value = getRichValueWithCaret(input.input, true)
                   setTextWithEntities(value.value ? {

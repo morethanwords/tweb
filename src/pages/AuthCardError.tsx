@@ -1,8 +1,10 @@
-import {JSX, Show} from 'solid-js';
+import {createEffect, JSX, Show} from 'solid-js';
 
 import {AutoHeight} from '@components/autoHeight';
 
 import styles from '@/pages/authFlow.module.scss';
+
+let seed = 0;
 
 /**
  * The error line under a code field ("Invalid code", "Code expired").
@@ -13,13 +15,38 @@ import styles from '@/pages/authFlow.module.scss';
  * to say, and `AutoHeight` animates the card growing by it rather than letting it
  * jump.
  */
-export default function AuthCardError(props: {content: JSX.Element}) {
+export default function AuthCardError(props: {
+  content: JSX.Element,
+  /**
+   * The field this line is about. While there is an error the field is marked
+   * invalid and pointed at this line, so a screen reader reads the reason when
+   * the user returns to the field — not only at the moment it appears.
+   */
+  describes?: HTMLElement
+}) {
+  const id = 'auth-card-error-' + (++seed);
+
+  createEffect(() => {
+    const input = props.describes;
+    if(!input) {
+      return;
+    }
+
+    if(props.content) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', id);
+    } else {
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-describedby');
+    }
+  });
+
   return (
     <AutoHeight overflowHidden>
       <Show when={props.content}>
         {/* the element is inserted the moment there is an error, which is what makes
             assistive tech read it out */}
-        <div role="alert" class={styles.errorLabel}>{props.content}</div>
+        <div id={id} role="alert" class={styles.errorLabel}>{props.content}</div>
       </Show>
     </AutoHeight>
   );

@@ -17,6 +17,8 @@ export interface RangeSelectorProps {
   onMouseDown?: (event: GrabEvent) => void;
   onMouseUp?: (event: GrabEvent) => void;
   onScrub?: (value: number) => void;
+  /** The slider is an unlabelled <input type=range>; hand it out so callers can name it. */
+  inputRef?: (el: HTMLInputElement) => void;
   children?: JSX.Element;
 }
 
@@ -156,7 +158,10 @@ export default function RangeSelector(props: RangeSelectorProps) {
     >
       <div ref={filledRef!} class="progress-line__filled" />
       <input
-        ref={seekRef!}
+        ref={(el) => {
+          seekRef = el;
+          props.inputRef?.(el);
+        }}
         class="progress-line__seek"
         type="range"
         step={step}

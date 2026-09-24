@@ -27,7 +27,7 @@ export const TopbarLive = (props: {
 
   return (
     <>
-      <Button.Icon icon="livestream" class="danger disable-hover" />
+      <Button.Icon icon="livestream" class="danger disable-hover" tabIndex={-1} aria-hidden="true" />
       <div class={cnTopbarLive('-content')}>
         <div class={classNames(cnTopbarLive('-title'), 'primary', 'text-bold')}>
           {i18n('Rtmp.Topbar.Title')}

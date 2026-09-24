@@ -170,6 +170,7 @@ import resolveEphemeralCommand, {
 } from '@appManagers/utils/bots/resolveEphemeralCommand';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
+let botCommandsListId = 0;
 
 if(import.meta.hot) {
   import.meta.hot.accept('./inputState', (newModule) => {
@@ -619,12 +620,15 @@ export default class ChatInput {
     }
 
     const button = ButtonIcon(...args);
-    button.tabIndex = -1;
     return button;
   }
 
   private constructGoDownButton() {
-    this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-corner-button chat-secondary-button bubbles-go-down hide'});
+    this.goDownBtn = ButtonCorner({
+      icon: 'arrow_down',
+      className: 'bubbles-corner-button chat-secondary-button bubbles-go-down hide',
+      ariaLabel: 'Chat.GoToLatestMessage'
+    });
     this.inputContainer.append(this.goDownBtn);
 
     attachClickEvent(this.goDownBtn, (e) => {
@@ -641,7 +645,9 @@ export default class ChatInput {
     this.replyElements.content.classList.add('reply-wrapper-content');
 
     this.replyElements.iconBtn = this.createButtonIcon('');
-    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
+    this.replyElements.iconBtn.tabIndex = -1;
+    this.replyElements.iconBtn.setAttribute('aria-hidden', 'true');
+    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true, ariaLabel: 'Cancel'});
 
     this.replyElements.content.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
     this.replyElements.container.append(this.replyElements.content);
@@ -836,7 +842,13 @@ export default class ChatInput {
     const isReaction = kind === 'reaction';
     const isPollVote = kind === 'pollVote';
     const icon: Icon = isPollVote ? 'poll' : (isReaction ? 'reactions' : 'mention');
-    const btn = ButtonCorner({icon, className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
+    const btn = ButtonCorner({
+      icon,
+      className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction',
+      ariaLabel: isPollVote ?
+        'Chat.GoToNextPollVote' :
+        (isReaction ? 'Chat.GoToNextReaction' : 'Chat.GoToNextMention')
+    });
     const badge = createBadge('span', 24, 'primary');
     btn.append(badge);
     this.inputContainer.append(btn);
@@ -896,7 +908,7 @@ export default class ChatInput {
   }
 
   private constructScheduledButton() {
-    this.btnScheduled = this.createButtonIcon('schedule btn-scheduled float hide', {noRipple: true});
+    this.btnScheduled = this.createButtonIcon('schedule btn-scheduled float hide', {noRipple: true, ariaLabel: 'ScheduledMessages'});
 
     attachClickEvent(this.btnScheduled, (e) => {
       this.appImManager.openScheduled(this.chat.peerId);
@@ -922,7 +934,7 @@ export default class ChatInput {
   }
 
   private constructReplyMarkup() {
-    this.btnToggleReplyMarkup = this.createButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
+    this.btnToggleReplyMarkup = this.createButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true, ariaLabel: 'General.Keyboard'});
     this.replyKeyboard = new ReplyKeyboard({
       appendTo: this.rowsWrapper,
       listenerSetter: this.listenerSetter,
@@ -937,8 +949,13 @@ export default class ChatInput {
 
   private constructBotCommands() {
     this.botCommands = new ChatBotCommands(this.rowsWrapper, this, this.managers);
+    this.botCommands.container.id = `chat-bot-commands-${++botCommandsListId}`;
+    this.botCommands.container.setAttribute('aria-hidden', 'true');
     this.botCommandsToggle = document.createElement('div');
     this.botCommandsToggle.classList.add('new-message-bot-commands');
+    this.botCommandsToggle.setAttribute('role', 'button');
+    this.botCommandsToggle.setAttribute('aria-label', I18n.format('Chat.BotCommands', true));
+    this.botCommandsToggle.tabIndex = -1;
     this.botCommandsToggle.append(Icon('webview', 'new-message-bot-commands-view-icon'));
 
     const scaler = document.createElement('div');
@@ -1001,10 +1018,18 @@ export default class ChatInput {
 
     this.botCommands.addEventListener('visible', () => {
       icon.classList.add('state-back');
+      this.botCommands.container.removeAttribute('aria-hidden');
+      if(!this.botMenuButton) {
+        this.botCommandsToggle.setAttribute('aria-expanded', 'true');
+      }
     });
 
     this.botCommands.addEventListener('hiding', () => {
       icon.classList.remove('state-back');
+      this.botCommands.container.setAttribute('aria-hidden', 'true');
+      if(!this.botMenuButton) {
+        this.botCommandsToggle.setAttribute('aria-expanded', 'false');
+      }
     });
   }
 
@@ -1034,9 +1059,12 @@ export default class ChatInput {
       this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
     }
 
-    if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
+    if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true, ariaLabel: 'Emoji'});
 
-    this.btnSendGift = this.createButtonIcon('gift toggle-send-gift float hide', {noRipple: true});
+    this.btnSendGift = this.createButtonIcon('gift toggle-send-gift float hide', {
+      noRipple: true,
+      ariaLabel: 'Chat.Menu.SendGift'
+    });
     attachClickEvent(this.btnSendGift, () => {
       showSendGiftPopup({peerId: this.chat.peerId});
     }, {listenerSetter: this.listenerSetter});
@@ -1312,12 +1340,12 @@ export default class ChatInput {
     });
     this.attachMenu.classList.add('attach-file');
 
-    this.btnSuggestPost = ButtonIcon('suggested hide');
+    this.btnSuggestPost = ButtonIcon('suggested hide', {ariaLabel: 'SuggestedPosts.SuggestAPost'});
     attachClickEvent(this.btnSuggestPost, wrapAsyncClickHandler(async() => {
       await this.openSuggestPostPopup();
     }));
 
-    this.btnAutoDeletePeriod = ButtonIcon('auto_delete_circle_clock hide');
+    this.btnAutoDeletePeriod = ButtonIcon('auto_delete_circle_clock hide', {ariaLabel: 'AutoDeleteMessages'});
     attachClickEvent(this.btnAutoDeletePeriod, wrapAsyncClickHandler(async() => {
       await this.chat.openAutoDeleteMessagesCustomTimePopup();
     }));
@@ -1353,7 +1381,7 @@ export default class ChatInput {
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
 
-    this.btnCancelRecord = this.createButtonIcon('bin_filled btn-circle btn-record-cancel chat-input-secondary-button chat-secondary-button');
+    this.btnCancelRecord = this.createButtonIcon('bin_filled btn-circle btn-record-cancel chat-input-secondary-button chat-secondary-button', {ariaLabel: 'Delete'});
 
     this.btnSendContainer = document.createElement('div');
     this.btnSendContainer.classList.add('btn-send-container');
@@ -1594,7 +1622,7 @@ export default class ChatInput {
 
     // Channel "can't write" plate side buttons: write-in-direct (shown only
     // when the channel has a linked direct-messages chat) and gift.
-    this.directControlBtn = this.createButtonIcon('comments hide');
+    this.directControlBtn = this.createButtonIcon('comments hide', {ariaLabel: 'OpenChat'});
     attachClickEvent(this.directControlBtn, () => {
       const channel = this.chat.peer as MTChat.channel;
       const monoforumId = channel?.linked_monoforum_id;
@@ -1603,7 +1631,7 @@ export default class ChatInput {
       }
     }, {listenerSetter: this.listenerSetter});
 
-    this.giftControlBtn = this.createButtonIcon('gift hide');
+    this.giftControlBtn = this.createButtonIcon('gift hide', {ariaLabel: 'Chat.Menu.SendGift'});
     attachClickEvent(this.giftControlBtn, () => {
       showSendGiftPopup({peerId: this.chat.peerId});
     }, {listenerSetter: this.listenerSetter});
@@ -2789,7 +2817,26 @@ export default class ChatInput {
     const menuButton = botInfo?.menu_button;
     this.hasBotCommands = !!botInfo?.commands?.length;
     this.botMenuButton = menuButton?._ === 'botMenuButton' ? menuButton : undefined;
+    if(this.botMenuButton && this.botCommandsIcon.classList.contains('state-back')) {
+      this.botCommands.toggle(true);
+    }
     replaceContent(this.botCommandsView, this.botMenuButton ? wrapEmojiText(this.botMenuButton.text) : '');
+    this.botCommandsToggle.setAttribute(
+      'aria-label',
+      this.botMenuButton?.text || I18n.format('Chat.BotCommands', true)
+    );
+    if(this.botMenuButton) {
+      this.botCommandsToggle.removeAttribute('aria-haspopup');
+      this.botCommandsToggle.removeAttribute('aria-controls');
+      this.botCommandsToggle.removeAttribute('aria-expanded');
+    } else {
+      this.botCommandsToggle.setAttribute('aria-haspopup', 'listbox');
+      this.botCommandsToggle.setAttribute('aria-controls', this.botCommands.container.id);
+      this.botCommandsToggle.setAttribute(
+        'aria-expanded',
+        '' + this.botCommandsIcon.classList.contains('state-back')
+      );
+    }
     this.botCommandsIcon.classList.toggle('hide', !!this.botMenuButton);
     this.botCommandsView.classList.toggle('hide', !this.botMenuButton);
     this.botCommandsToggle.classList.toggle('is-view', !!this.botMenuButton);
@@ -2803,6 +2850,8 @@ export default class ChatInput {
 
     const isInputEmpty = this.isInputEmpty();
     const show = isNeeded && (isInputEmpty || !!botMenuButton);
+    botCommandsToggle.tabIndex = show ? 0 : -1;
+    botCommandsToggle.setAttribute('aria-hidden', '' + !show);
     if(!isNeeded) {
       if(!botCommandsToggle.parentElement) {
         return;
@@ -3014,7 +3063,7 @@ export default class ChatInput {
       this.notifyChatInputHeight();
     };
 
-    this.messageInputField.input.tabIndex = -1;
+    this.messageInputField.input.tabIndex = 0;
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
     this.messageInput = this.messageInputField.input;
@@ -3812,6 +3861,8 @@ export default class ChatInput {
 
         if(!this.btnPreloader) {
           this.btnPreloader = this.createButtonIcon('none btn-preloader float show disable-hover', {noRipple: true});
+          this.btnPreloader.tabIndex = -1;
+          this.btnPreloader.setAttribute('aria-hidden', 'true');
           putPreloader(this.btnPreloader, true);
           this.inputMessageContainer.parentElement.insertBefore(this.btnPreloader, this.inputMessageContainer.nextSibling);
         } else {
@@ -4272,6 +4323,18 @@ export default class ChatInput {
     ['send', 'record', 'record-video', 'edit', 'schedule', 'forward', 'stop'].forEach((i) => {
       this.btnSend.classList.toggle(i, icon === i);
     });
+
+    const sendBtnLabelKey: {[key in ChatSendBtnIcon]: LangPackKey} = {
+      'send': 'Send',
+      'record': 'UserRestrictionsSendVoices',
+      'record-video': 'UserRestrictionsSendRound',
+      'edit': 'Edit',
+      'schedule': 'Chat.Send.ScheduledMessage',
+      'forward': 'Forward',
+      // the button stops a draft the server is still streaming in
+      'stop': 'ChatAutomation.Stop'
+    };
+    this.btnSend.setAttribute('aria-label', I18n.format(sendBtnLabelKey[icon], true));
 
     this.inputState.set({
       hasSendButton: icon === 'send',
@@ -5236,7 +5299,11 @@ export default class ChatInput {
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');
 
-    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' reply-icon', {noRipple: true}));
+    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' reply-icon', {
+      noRipple: true
+    }));
+    this.replyElements.iconBtn.tabIndex = -1;
+    this.replyElements.iconBtn.setAttribute('aria-hidden', 'true');
     const {container} = wrapReply({
       title,
       subtitle,

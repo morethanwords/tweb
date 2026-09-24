@@ -140,6 +140,7 @@ export const Original = (props: {
       >
         <div ref={originalContentRef}>
           <Scrollable
+            tabIndex={isActuallyCollapsed() ? -1 : 0}
             ref={originalScrollableRef}
             class={styles.richTextScrollable}
             relative

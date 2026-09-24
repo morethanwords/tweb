@@ -30,6 +30,7 @@ export default class VolumeSelector extends RangeSelector {
     onVolumeChange?: VolumeSelector['onVolumeChange']
   }) {
     super({
+      ariaLabel: 'AccDescr.Volume',
       step: 0.01,
       min: 0,
       max: options.maxVolume ?? 1,

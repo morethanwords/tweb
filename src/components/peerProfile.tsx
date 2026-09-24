@@ -745,14 +745,18 @@ PeerProfile.Username = () => {
 
 PeerProfile.QrButton = () => {
   const context = useContext(PeerProfileContext);
-  const {showMyQrCodePopup, rootScope} = useHotReloadGuard();
+  const {I18n, showMyQrCodePopup, rootScope} = useHotReloadGuard();
   return (
     <Show when={context.peerId !== rootScope.myId}>
       <Row.RightContent>
-        <Button.Icon icon="qr" onClick={(e) => {
-          cancelEvent(e);
-          showMyQrCodePopup(context.peerId);
-        }} />
+        <Button.Icon
+          icon="qr"
+          aria-label={I18n.format('QRCode.Show', true)}
+          onClick={(e) => {
+            cancelEvent(e);
+            showMyQrCodePopup(context.peerId);
+          }}
+        />
       </Row.RightContent>
     </Show>
   );

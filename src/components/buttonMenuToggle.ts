@@ -1,6 +1,6 @@
 import contextMenuController from '@helpers/contextMenuController';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {AttachClickOptions, CLICK_EVENT_NAME, hasMouseMovedSinceDown} from '@helpers/dom/clickEvent';
+import {AttachClickOptions, attachClickEvent, hasMouseMovedSinceDown} from '@helpers/dom/clickEvent';
 import ListenerSetter from '@helpers/listenerSetter';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
@@ -11,6 +11,9 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {MenuPositionPadding, positionMenuTrigger} from '@helpers/positionMenu';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {getFullScreenElement} from '@helpers/dom/fullScreen';
+import I18n from '@lib/langPack';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -24,9 +27,13 @@ export function ButtonMenuToggleHandler({
   options?: AttachClickOptions,
   onClose?: () => void
 }) {
-  const add = options?.listenerSetter ? options.listenerSetter.add(el) : el.addEventListener.bind(el);
+  // a11y: announce this trigger opens a menu and reflect its open/closed state.
+  ensureButtonSemantics(el);
 
-  add(CLICK_EVENT_NAME, (e: Event) => {
+  el.setAttribute('aria-haspopup', 'menu');
+  el.setAttribute('aria-expanded', 'false');
+
+  return attachClickEvent(el, (e) => {
     if(!el.classList.contains('btn-menu-toggle') || hasMouseMovedSinceDown(e)) return false;
 
     cancelEvent(e);
@@ -45,12 +52,17 @@ export function ButtonMenuToggleHandler({
           return;
         }
 
-        contextMenuController.openBtnMenu(openedMenu, onClose, el);
+        el.setAttribute('aria-expanded', 'true');
+        const activatedWithKeyboard = e.type === 'click' && (e as MouseEvent).detail === 0;
+        contextMenuController.openBtnMenu(openedMenu, () => {
+          el.setAttribute('aria-expanded', 'false');
+          onClose?.();
+        }, el, activatedWithKeyboard || !IS_TOUCH_SUPPORTED);
       };
 
       callbackify(result, open);
     }
-  });
+  }, options);
 }
 
 export function filterButtonMenuItems(buttons: ButtonMenuItemOptionsVerifiable[]) {
@@ -108,11 +120,16 @@ export default function ButtonMenuToggle({
   icon?: (string & {}) | Icon,
   positionPadding?: MenuPositionPadding
 }) {
-  if(buttonOptions) {
-    buttonOptions.asDiv = true;
+  const resolvedButtonOptions = buttonOptions ? {...buttonOptions} : {};
+  if(!container && !resolvedButtonOptions.ariaLabel) {
+    resolvedButtonOptions.ariaLabel = 'MultiAccount.More';
   }
 
-  const button = container ?? ButtonIcon(noIcon ? undefined : icon, buttonOptions);
+  const button = container ?? ButtonIcon(noIcon ? undefined : icon, resolvedButtonOptions);
+  if(container && buttonOptions?.ariaLabel) {
+    button.setAttribute('aria-label', I18n.format(buttonOptions.ariaLabel, true));
+  }
+
   const autoPosition = !appendTo;
   button.classList.add('btn-menu-toggle');
 

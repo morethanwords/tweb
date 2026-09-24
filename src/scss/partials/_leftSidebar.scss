@@ -506,6 +506,7 @@
       } */
       &:not(.is-hidden) {
         transform: translateZ(0);
+        visibility: visible;
       }
     }
 
@@ -1092,6 +1093,24 @@
         .grid-item-media {
           transform: scale(.91);
           overflow: hidden; // clip the canvas to the rounded corner
+        }
+      }
+
+      // The tile is a `role="button"` and does take the global focus ring, but
+      // its media child is positioned and paints over an outline, so nothing of
+      // it is ever seen. This overlay already sits above that child to draw the
+      // selection border — reuse it, so the corner radii and the stacking are
+      // the ones the grid already has, and add a line just inside it. The line
+      // is what separates "focused" from "selected", and it reads against any
+      // wallpaper because it is drawn in the surface colour rather than in
+      // another tint of the border's own.
+      &:focus-visible {
+        outline: none;
+
+        &:after {
+          opacity: 1;
+          border-color: var(--focus-ring-color);
+          box-shadow: inset 0 0 0 var(--focus-ring-width) var(--surface-color);
         }
       }
 

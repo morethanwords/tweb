@@ -1,9 +1,10 @@
 import {batch, Component, createEffect, createMemo, createSignal} from 'solid-js';
 
 import clamp from '@helpers/number/clamp';
+import toHHMMSS from '@helpers/string/toHHMMSS';
 import swipe, {SwipeDirectiveArgs} from '@helpers/useSwipe'; swipe; // keep
 import useElementSize from '@hooks/useElementSize';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 
 import {IconTsx} from '@components/iconTsx';
 import ripple from '@components/ripple'; ripple; // keep
@@ -19,6 +20,60 @@ import styles from '@components/mediaEditor/canvas/videoControls.module.scss';
 const HANDLE_WIDTH_PX = 9;
 const MOVE_ACTIVATION_THRESHOLD_PX = 2;
 const VIDEO_AVATAR_MAX_DURATION_SEC = 10;
+
+function getNormalizedKeyboardStep(duration: number) {
+  return duration > 0 ? Math.min(1, 1 / duration) : 0.01;
+}
+
+function getSliderPercent(value: number) {
+  return Math.round(value * 1000) / 10;
+}
+
+function getVideoTimeText(value: number, duration: number) {
+  if(!duration) return `${Math.round(value * 100)}%`;
+
+  const tenths = Math.round(value * duration * 10);
+  const formatted = toHHMMSS(Math.floor(tenths / 10));
+  return tenths % 10 ? `${formatted}.${tenths % 10}` : formatted;
+}
+
+function handleNormalizedSliderKeyDown(event: KeyboardEvent, options: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  let value: number;
+
+  switch(event.key) {
+    case 'ArrowLeft':
+    case 'ArrowDown':
+      value = options.value - options.step;
+      break;
+    case 'ArrowRight':
+    case 'ArrowUp':
+      value = options.value + options.step;
+      break;
+    case 'PageDown':
+      value = options.value - options.step * 10;
+      break;
+    case 'PageUp':
+      value = options.value + options.step * 10;
+      break;
+    case 'Home':
+      value = options.min;
+      break;
+    case 'End':
+      value = options.max;
+      break;
+    default:
+      return;
+  }
+
+  event.preventDefault();
+  options.onChange(clamp(value, options.min, options.max));
+}
 
 const VideoControls: Component<{}> = () => {
   const {editorState, mediaState, actions, isVideoAvatarMode} = useMediaEditorContext();
@@ -56,6 +111,10 @@ const VideoControls: Component<{}> = () => {
     return Math.min(1, 0.5 / duration);
   });
 
+  const videoDuration = () => editorState.renderingPayload?.media?.video?.duration || 0;
+  const keyboardStep = () => getNormalizedKeyboardStep(videoDuration());
+  const cropEnd = () => mediaState.videoCropStart + mediaState.videoCropLength;
+
   // In video-avatar mode the trimmed clip cannot exceed 10 seconds.
   const maxLengthCap = createMemo(() => {
     if(!isVideoAvatarMode) return 1;
@@ -85,6 +144,7 @@ const VideoControls: Component<{}> = () => {
   });
 
   let
+    controlsContainer: HTMLDivElement,
     canvas: HTMLCanvasElement,
     initialStart: number,
     initialLength: number,
@@ -94,6 +154,10 @@ const VideoControls: Component<{}> = () => {
   useVideoControlsCanvas({
     getCanvas: () => canvas,
     size: cropperSize
+  });
+
+  createEffect(() => {
+    controlsContainer.inert = editorState.currentTab !== 'adjustments';
   });
 
   const leftHandleSwipeArgs: SwipeDirectiveArgs = {
@@ -209,6 +273,30 @@ const VideoControls: Component<{}> = () => {
     actions.setVideoTime(clamp(getPositionInCropper(e, cropper()), mediaState.videoCropStart, mediaState.videoCropStart + mediaState.videoCropLength));
   };
 
+  const setVideoPositionFromKeyboard = (value: number) => {
+    editorState.isPlaying = false;
+    actions.setVideoTime(value);
+  };
+
+  const setCropStartFromKeyboard = (value: number) => {
+    const end = cropEnd();
+
+    batch(() => {
+      editorState.isPlaying = false;
+      mediaState.videoCropStart = value;
+      mediaState.videoCropLength = end - value;
+      actions.setVideoTime(value);
+    });
+  };
+
+  const setCropEndFromKeyboard = (value: number) => {
+    batch(() => {
+      editorState.isPlaying = false;
+      mediaState.videoCropLength = value - mediaState.videoCropStart;
+      actions.setVideoTime(value);
+    });
+  };
+
   const showMutedTooltip = (el: HTMLElement) => showTooltip({
     element: el,
     mountOn: el.parentElement.parentElement.parentElement,
@@ -222,6 +310,7 @@ const VideoControls: Component<{}> = () => {
 
   return (
     <div
+      ref={controlsContainer}
       class={styles.Container}
       classList={{
         [styles.hidden]: editorState.currentTab !== 'adjustments',
@@ -232,6 +321,7 @@ const VideoControls: Component<{}> = () => {
         '--length': mediaState.videoCropLength,
         '--current-time': mediaState.currentVideoTime
       }}
+      aria-hidden={editorState.currentTab !== 'adjustments'}
     >
       <div class={styles.InnerContainer}>
         {!isVideoAvatarMode && (
@@ -246,15 +336,15 @@ const VideoControls: Component<{}> = () => {
               closeTooltip?.();
               if(mediaState.videoMuted) closeTooltip = showMutedTooltip(e.currentTarget).close;
             }}
-            tabIndex={-1}
+            aria-label={mediaState.videoMuted ? I18n.format('VoipUnmute', true) : I18n.format('Call.Mute', true)}
           >
-            <IconTsx icon={mediaState.videoMuted ? 'volume_off_filled' : 'volume_up_filled'} />
+            <IconTsx icon={mediaState.videoMuted ? 'volume_off_filled' : 'volume_up_filled'} aria-hidden={true} />
           </button>
         )}
 
         <div class={styles.Frames}>
           <div ref={setCropper} class={styles.Cropper}>
-            <canvas ref={canvas} width={cropperSize.width} height={cropperSize.height} />
+            <canvas ref={canvas} width={cropperSize.width} height={cropperSize.height} aria-hidden={true} />
 
             <div class={`${styles.CropperBg} ${styles.CropperBgLeft}`} />
             <div class={`${styles.CropperBg} ${styles.CropperBgRight}`} />
@@ -266,10 +356,61 @@ const VideoControls: Component<{}> = () => {
               }}
               use:swipe={middleSwipeArgs}
               onClick={onMiddlePartClick}
+              onKeyDown={(event) => handleNormalizedSliderKeyDown(event, {
+                value: mediaState.currentVideoTime,
+                min: mediaState.videoCropStart,
+                max: cropEnd(),
+                step: keyboardStep(),
+                onChange: setVideoPositionFromKeyboard
+              })}
+              role="slider"
+              tabIndex={0}
+              aria-label={I18n.format('MediaEditor.VideoPosition', true)}
+              aria-orientation="horizontal"
+              aria-valuemin={getSliderPercent(mediaState.videoCropStart)}
+              aria-valuemax={getSliderPercent(cropEnd())}
+              aria-valuenow={getSliderPercent(mediaState.currentVideoTime)}
+              aria-valuetext={getVideoTimeText(mediaState.currentVideoTime, videoDuration())}
             />
 
-            <div class={`${styles.CropperHandle} ${styles.CropperHandleLeft}`} use:swipe={leftHandleSwipeArgs} />
-            <div class={`${styles.CropperHandle} ${styles.CropperHandleRight}`} use:swipe={rightHandleSwipeArgs} />
+            <div
+              class={`${styles.CropperHandle} ${styles.CropperHandleLeft}`}
+              use:swipe={leftHandleSwipeArgs}
+              onKeyDown={(event) => handleNormalizedSliderKeyDown(event, {
+                value: mediaState.videoCropStart,
+                min: Math.max(0, cropEnd() - maxLengthCap()),
+                max: cropEnd() - minLength(),
+                step: keyboardStep(),
+                onChange: setCropStartFromKeyboard
+              })}
+              role="slider"
+              tabIndex={0}
+              aria-label={I18n.format('MediaEditor.VideoCropStart', true)}
+              aria-orientation="horizontal"
+              aria-valuemin={getSliderPercent(Math.max(0, cropEnd() - maxLengthCap()))}
+              aria-valuemax={getSliderPercent(cropEnd() - minLength())}
+              aria-valuenow={getSliderPercent(mediaState.videoCropStart)}
+              aria-valuetext={getVideoTimeText(mediaState.videoCropStart, videoDuration())}
+            />
+            <div
+              class={`${styles.CropperHandle} ${styles.CropperHandleRight}`}
+              use:swipe={rightHandleSwipeArgs}
+              onKeyDown={(event) => handleNormalizedSliderKeyDown(event, {
+                value: cropEnd(),
+                min: mediaState.videoCropStart + minLength(),
+                max: Math.min(1, mediaState.videoCropStart + maxLengthCap()),
+                step: keyboardStep(),
+                onChange: setCropEndFromKeyboard
+              })}
+              role="slider"
+              tabIndex={0}
+              aria-label={I18n.format('MediaEditor.VideoCropEnd', true)}
+              aria-orientation="horizontal"
+              aria-valuemin={getSliderPercent(mediaState.videoCropStart + minLength())}
+              aria-valuemax={getSliderPercent(Math.min(1, mediaState.videoCropStart + maxLengthCap()))}
+              aria-valuenow={getSliderPercent(cropEnd())}
+              aria-valuetext={getVideoTimeText(cropEnd(), videoDuration())}
+            />
           </div>
 
           <TimeStick swipe={cursorSwipeArgs} />
@@ -290,9 +431,9 @@ const VideoControls: Component<{}> = () => {
           onClick={() => {
             editorState.isPlaying = !editorState.isPlaying;
           }}
-          tabIndex={-1}
+          aria-label={I18n.format(editorState.isPlaying ? 'Pause' : 'Play', true)}
         >
-          <span class={styles.PlayButtonInner}> {/* <span> prevents duplicating the svg on hot reload */}
+          <span class={styles.PlayButtonInner} aria-hidden={true}> {/* <span> prevents duplicating the svg on hot reload */}
             <PausePlay paused={!editorState.isPlaying} />
           </span>
         </button>
@@ -307,6 +448,9 @@ const ThumbnailTrack: Component<{
   hidden: boolean;
 }> = (props) => {
   const {actions, editorState, mediaState, isVideoAvatarMode} = useMediaEditorContext();
+  const videoDuration = () => editorState.renderingPayload?.media?.video?.duration || 0;
+  const coverMin = () => isVideoAvatarMode ? mediaState.videoCropStart : 0;
+  const coverMax = () => isVideoAvatarMode ? mediaState.videoCropStart + mediaState.videoCropLength : 1;
 
   const [ghostThumbnailPosition, setGhostThumbnailPosition] = createSignal<number>();
 
@@ -384,6 +528,24 @@ const ThumbnailTrack: Component<{
         onPointerOut={onPointerOut}
         onTouchEnd={onPointerOut}
         onClick={onClick}
+        onKeyDown={(event) => handleNormalizedSliderKeyDown(event, {
+          value: mediaState.videoThumbnailPosition,
+          min: coverMin(),
+          max: coverMax(),
+          step: getNormalizedKeyboardStep(videoDuration()),
+          onChange: (value) => {
+            mediaState.videoThumbnailPosition = value;
+          }
+        })}
+        role="slider"
+        tabIndex={props.isDraggingSomething ? -1 : 0}
+        aria-disabled={props.isDraggingSomething}
+        aria-label={I18n.format('MediaEditor.VideoCoverFrame', true)}
+        aria-orientation="horizontal"
+        aria-valuemin={getSliderPercent(coverMin())}
+        aria-valuemax={getSliderPercent(coverMax())}
+        aria-valuenow={getSliderPercent(mediaState.videoThumbnailPosition)}
+        aria-valuetext={getVideoTimeText(mediaState.videoThumbnailPosition, videoDuration())}
       />
     </>
   )
@@ -420,7 +582,16 @@ const ThumbnailMark: Component<{
 
 const TimeStick = (props: {swipe: SwipeDirectiveArgs}) => {
   return (
-    <svg class={styles.TimeStick} use:swipe={props.swipe} width="6" height="60" viewBox="0 0 6 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      class={styles.TimeStick}
+      use:swipe={props.swipe}
+      width="6"
+      height="60"
+      viewBox="0 0 6 60"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden={true}
+    >
       <path d="M4 0.75C4.69036 0.75 5.25 1.30964 5.25 2V3.29297C5.24998 3.812 5.04377 4.30975 4.67676 4.67676C4.40352 4.95 4.25002 5.32061 4.25 5.70703V54.293C4.25002 54.6794 4.40352 55.05 4.67676 55.3232C5.04377 55.6903 5.24998 56.188 5.25 56.707V58C5.25 58.6904 4.69036 59.25 4 59.25H2C1.30964 59.25 0.75 58.6904 0.75 58V56.707C0.75002 56.188 0.956231 55.6903 1.32324 55.3232C1.59648 55.05 1.74998 54.6794 1.75 54.293V5.70703C1.74998 5.32061 1.59648 4.95 1.32324 4.67676C0.956231 4.30975 0.75002 3.812 0.75 3.29297V2C0.75 1.30964 1.30964 0.75 2 0.75H4Z" fill="white" stroke="#212121" stroke-width="0.5"/>
     </svg>
   )

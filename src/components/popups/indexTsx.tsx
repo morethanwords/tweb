@@ -3,16 +3,15 @@ import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
-import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
 import overlayCounter from '@helpers/overlayCounter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import blurActiveElement from '@helpers/dom/blurActiveElement';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
-import {getOverlayRoot} from '@helpers/appWindow';
+import {bindActiveWindowListener, getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import Button from '@components/buttonTsx';
@@ -23,6 +22,9 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
 import noop from '@helpers/noop';
+import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
+import isKeyboardControl from '@helpers/dom/isKeyboardControl';
+import updateScrollRegionFocusable from '@helpers/dom/scrollRegion';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -126,6 +128,8 @@ export const useSnitchedPopupContext = () => {
   }
 };
 
+let popupTitleIdSeed = 0;
+
 const PopupElement = (props: {
   class?: string,
   containerClass?: string,
@@ -158,6 +162,9 @@ const PopupElement = (props: {
   const confirmShortcutIsSendShortcut = props.confirmShortcutIsSendShortcut || false;
   const isConfirmationNeededOnClose = props.isConfirmationNeededOnClose;
 
+  let focusTrap: FocusTrap;
+  let previouslyFocusedEl: HTMLElement;
+
   const register = (kind: PopupKind, element: JSX.Element) => {
     setStore(kind, element);
     onCleanup(() => setStore(kind, undefined));
@@ -173,9 +180,12 @@ const PopupElement = (props: {
   const show = () => {
     if(shown() || destroyed()) return;
 
+    const realmDocument = capturedRoot.ownerDocument || document;
+    previouslyFocusedEl = realmDocument.activeElement as HTMLElement;
     setShown(true);
     const navItem: NavigationItem = {
       type: 'popup',
+      noBlurOnPop: true,
       onPop: () => {
         if(isConfirmationNeededOnClose) {
           const result = isConfirmationNeededOnClose();
@@ -192,7 +202,7 @@ const PopupElement = (props: {
     setNavigationItem(navItem);
     appNavigationController.pushItem(navItem);
 
-    blurActiveElement();
+    if(!withoutOverlay) previouslyFocusedEl?.blur?.();
 
     if(!withoutOverlay) {
       overlayCounter.isOverlayActive = true;
@@ -207,11 +217,37 @@ const PopupElement = (props: {
       const element = popupElement();
       if(!element || !element.classList.contains('active')) return;
 
+      const container = element.querySelector<HTMLElement>('.popup-container');
+      if(container) {
+        const titleEl = container.querySelector<HTMLElement>('.popup-title, [data-popup-title], h1, h2');
+        if(titleEl && !container.hasAttribute('aria-label') && !container.hasAttribute('aria-labelledby')) {
+          if(!titleEl.id) titleEl.id = 'popup-title-tsx-' + (++popupTitleIdSeed);
+          container.setAttribute('aria-labelledby', titleEl.id);
+        }
+
+        if(!withoutOverlay) {
+          focusTrap = createFocusTrap(
+            container,
+            () => PopupElement.POPUPS[PopupElement.POPUPS.length - 1] === value
+          );
+          focusTrap.activate(previouslyFocusedEl);
+        }
+      }
+
       const handleKeydown = (e: KeyboardEvent) => {
         const btnConfirm = value.btnConfirmOnEnter;
-        if(!btnConfirm ||
+        if(e.defaultPrevented || e.isComposing || e.repeat || !btnConfirm ||
            (btnConfirm as HTMLButtonElement).disabled ||
            PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== value) {
+          return;
+        }
+
+        const target = e.target as HTMLElement;
+        // Native buttons and composite controls own Enter themselves. The popup
+        // shortcut is for submitting from an input, never for overriding Cancel,
+        // a link, a combobox selection or a menu action.
+        if(isKeyboardControl(target) || target.closest('[role="combobox"][aria-expanded="true"]') ||
+          !confirmShortcutIsSendShortcut && (target.tagName === 'TEXTAREA' || target.isContentEditable)) {
           return;
         }
 
@@ -221,8 +257,7 @@ const PopupElement = (props: {
         }
       };
 
-      document.body.addEventListener('keydown', handleKeydown);
-      middlewareHelper.get().onClean(() => document.body.removeEventListener('keydown', handleKeydown));
+      middlewareHelper.get().onClean(bindActiveWindowListener((win) => win.document.body, 'keydown', handleKeydown));
     }, 0);
   };
 
@@ -241,6 +276,7 @@ const PopupElement = (props: {
   const destroy = () => {
     if(destroyed()) return;
 
+    focusTrap?.deactivate();
     props.onClose?.()
 
     setHiding(true);
@@ -411,6 +447,9 @@ const PopupElement = (props: {
               setContainerElement(element);
               (containerRef as (element: HTMLDivElement) => void)?.(element);
             }}
+            role="dialog"
+            aria-modal={withoutOverlay ? undefined : 'true'}
+            tabindex={-1}
             class={classNames(
               'popup-container z-depth-1',
               props.containerClass,
@@ -505,6 +544,7 @@ PopupElement.CloseButton = (props: {
     <button
       class={classNames('btn-icon popup-close', props.class)}
       onClick={handleClick}
+      aria-label={I18n.format('Close', true)}
     >
       <Show when={props.onBackClick} fallback={<IconTsx icon="close" />}>
         <div class={classNames('animated-close-icon', props.canGoBack && 'state-back')} />
@@ -544,13 +584,40 @@ PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
     return top && bottom ? 'both' : top ? 'top' : bottom ? 'bottom' : undefined;
   };
 
+  // Whether this scroll belongs in the tab order depends on what it ends up
+  // holding: a panel of rows already scrolls as Tab walks them, and a stop on
+  // the wrapper only draws an outline round the whole popup. A scroll of plain
+  // text has to be reachable, and is named when it is. Decided once the content
+  // is there, and again whenever it changes.
+  let scrollElement: HTMLElement;
+  const decideFocusability = () => {
+    if(props.tabIndex !== undefined) return; // a caller that asked for one keeps it
+    updateScrollRegionFocusable(
+      scrollElement,
+      context.store.title instanceof HTMLElement ? context.store.title.textContent : undefined
+    );
+  };
+
+  onMount(() => {
+    if(!scrollElement) return;
+    decideFocusability();
+    const observer = new MutationObserver(decideFocusability);
+    observer.observe(scrollElement, {childList: true, subtree: true});
+    onCleanup(() => observer.disconnect());
+  });
+
   return (
     <Scrollable
       {...props}
+      tabIndex={props.tabIndex}
       // after the spread: a caller passing its own contextRef must not unregister the popup's
       contextRef={(ref) => {
         context.setScrollableRef(ref);
         props.contextRef?.(ref);
+      }}
+      ref={(element: HTMLElement) => {
+        scrollElement = element;
+        (props.ref as ((el: HTMLElement) => void) | undefined)?.(element);
       }}
       // the footer reads `scrolled-end` to know whether anything is behind it
       trackEnds={props.trackEnds || context.hasFloatingHeader || context.hasFlowFooter}

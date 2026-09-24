@@ -147,6 +147,10 @@
       border-radius: 1.25rem;
       background-color: rgba(84, 190, 97, var(--background-intensity));
       color: #3ba748;
+
+      .high-contrast & {
+        color: var(--green-color);
+      }
       font-weight: var(--font-weight-bold);
       font-size: var(--font-size-16);
       line-height: 2.5rem;

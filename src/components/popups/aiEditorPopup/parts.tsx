@@ -210,6 +210,7 @@ export const Result = (props: {
             <Match when={textToRender()} keyed>
               {(text) => (
                 <Scrollable
+                  tabIndex={0}
                   ref={scrollableRef}
                   contextRef={(value) => void (scrollableContextRef = value)}
                   relative

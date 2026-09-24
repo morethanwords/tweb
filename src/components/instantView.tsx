@@ -438,7 +438,7 @@ export function InstantView(props: {
           props.onReady?.();
         }}
       >
-        <Scrollable ref={scrollableRef}>
+        <Scrollable ref={scrollableRef} tabIndex={0}>
           <InstantViewContent
             value={value}
             paddings={2}

@@ -351,6 +351,28 @@ export function darkenToMaxLuminance(hex: string, maxL: number): string {
   return '#' + c(r) + c(g) + c(b);
 }
 
+/** Adjust only colours that fail text contrast, retaining the original hue. */
+export function ensureTextContrast(hex: string, background: ColorRgb, ratio = 4.9): string {
+  const rgb = hexToRgb(hex);
+  const foregroundLuminance = relativeLuminance(rgb);
+  const backgroundLuminance = relativeLuminance(background);
+  if((Math.max(foregroundLuminance, backgroundLuminance) + .05) /
+    (Math.min(foregroundLuminance, backgroundLuminance) + .05) >= ratio) return hex;
+  if(backgroundLuminance > .179) {
+    return darkenToMaxLuminance(hex, (backgroundLuminance + .05) / ratio - .05);
+  }
+
+  const target = ratio * (backgroundLuminance + .05) - .05;
+  let low = 0, high = 1;
+  for(let i = 0; i < 20; ++i) {
+    const amount = (low + high) / 2;
+    const mixed = rgb.map((value) => value + (255 - value) * amount) as ColorRgb;
+    if(relativeLuminance(mixed) < target) low = amount;
+    else high = amount;
+  }
+  return rgbaToHexa(rgb.map((value) => Math.ceil(value + (255 - value) * high)) as ColorRgb);
+}
+
 export function getTextColor(luminance: number): ColorRgb {
   return luminance > 0.5 ? [0, 0, 0] : [255, 255, 255];
 }

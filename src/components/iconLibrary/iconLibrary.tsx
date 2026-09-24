@@ -51,10 +51,20 @@ const IconLibrary: Component<{}> = () => {
 
 const IconItem: Component<{
   icon: Icon;
-  onMouseEnter: JSX.EventHandlerUnion<HTMLSpanElement, MouseEvent>;
-  onClick: JSX.EventHandlerUnion<HTMLSpanElement, MouseEvent>;
+  onMouseEnter: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
+  onClick: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
 }> = (props) => {
-  return <IconTsx class={/* @once */ styles.Icon} icon={/* @once */ props.icon} onMouseEnter={/* @once */ props.onMouseEnter} onClick={/* @once */ props.onClick} />;
+  return (
+    <button
+      type="button"
+      class={/* @once */ styles.Icon}
+      aria-label={/* @once */ props.icon}
+      onMouseEnter={/* @once */ props.onMouseEnter}
+      onClick={/* @once */ props.onClick}
+    >
+      <IconTsx icon={/* @once */ props.icon} />
+    </button>
+  );
 };
 
 export default IconLibrary;

@@ -236,6 +236,14 @@
     margin-bottom: -$popup-scroll-bleed;
   }
 
+  // A floating footer is painted over the end of the scroll. The browser does
+  // not know that: tabbing to a row down there scrolls it only just inside the
+  // box, which parks it behind the footer with its focus ring out of sight.
+  // This tells the scroll where its usable edge actually is.
+  &-container:has(> #{&}-footer-floating) .scrollable-y {
+    scroll-padding-bottom: var(--popup-footer-height);
+  }
+
   // The flow footer draws the line the scroll used to: it lands on the junction itself rather
   // than inside the bleed, and it is there only while content actually runs behind that edge.
   #{&}-footer-shaded {

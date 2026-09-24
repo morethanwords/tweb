@@ -1,4 +1,5 @@
 import lastItem from '@helpers/array/lastItem';
+import {linkKeyDown} from '@helpers/solid/buttonKeyDown';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -46,6 +47,20 @@ const ArchiveDialog = defineSolidElement({
   name: archiveDialogTagName,
   component: (props: PassedProps<ArchiveDialogProps>, _, controls: Controls) => {
     props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
+
+    // Every other row in this list is a link and opens on Enter by itself. This
+    // one is a custom element with no href, so its semantics have to be spelled
+    // out — and what it is is a LINK: it goes to the archive exactly the way its
+    // neighbours go to a chat. Calling it a button would be the easier wiring
+    // and the wrong word, and it would cost the row its Space key, which in a
+    // list belongs to the scroll. The click this raises carries `detail === 0`,
+    // which is what the list's own handler reads as a keyboard activation — the
+    // archive still opens down the one path every row uses.
+    props.element.setAttribute('role', 'link');
+    props.element.tabIndex = 0;
+    const onKeyDown = (e: KeyboardEvent) => linkKeyDown(e, props.element);
+    props.element.addEventListener('keydown', onKeyDown);
+    onCleanup(() => props.element.removeEventListener('keydown', onKeyDown));
 
     const [openStoriesTarget, setOpenStoriesTarget] = createSignal<HTMLElement>();
 

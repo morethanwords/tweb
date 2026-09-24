@@ -9,7 +9,7 @@ export type IconTsxProps = {
 export const IconTsx = (inProps: IconTsxProps) => {
   const [props, rest] = splitProps(inProps, ['icon', 'class']);
   return (
-    <span class={classNames('tgico', props.class)} {...rest}>
+    <span aria-hidden="true" class={classNames('tgico', props.class)} {...rest}>
       {getIconContent(props.icon)}
     </span>
   );

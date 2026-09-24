@@ -9,6 +9,7 @@ import Scrollable from '@components/scrollable2';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import {handleTabKeyDown} from '@helpers/dom/tabList';
 import filterAsync from '../helpers/array/filterAsync';
 
 interface ChipTabsContextValue {
@@ -26,11 +27,15 @@ export function ChipTab(props: {
 }) {
   const ctx = useContext(ChipTabsContext);
   onCleanup(() => fastRaf(ctx.updateCurrent));
+  const selected = () => ctx.value === props.value;
   return (
     <div
-      class={classNames(styles.chip, ctx.value === props.value && styles.active, props.class)}
+      class={classNames(styles.chip, selected() && styles.active, props.class)}
       onClick={(event: MouseEvent) => ctx.onClick(event, props.value)}
       data-value={props.value}
+      role="tab"
+      aria-selected={selected()}
+      tabindex={selected() ? 0 : -1}
     >
       {props.children}
     </div>
@@ -152,9 +157,11 @@ export function ChipTabs(props: {
           props.center && styles.center
         )}
         ref={props.ref}
+        role="tablist"
+        onKeyDown={handleTabKeyDown}
       >
-        <Scrollable axis="x" ref={scrollable}>
-          <div class={styles.chosen} ref={chosenRef} />
+        <Scrollable axis="x" ref={scrollable} tabIndex={null}>
+          <div class={styles.chosen} ref={chosenRef} aria-hidden="true" />
           {props.children}
         </Scrollable>
       </div>

@@ -1,4 +1,7 @@
 .rtmp-data-row {
+  width: 100%;
+  color: inherit;
+  text-align: inherit;
   display: flex;
   flex-direction: row;
   gap: 16px;
@@ -6,6 +9,11 @@
   border-radius: 10px;
   overflow: hidden;
   transition: background 0.2s ease-in-out;
+}
+
+.rtmp-data-row-copy {
+  display: flex;
+  align-items: center;
 }
 
 .rtmp-data-row:hover {

@@ -21,7 +21,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {oneDayInSeconds, oneHourInSeconds, oneWeekInSeconds} from '@lib/constants';
-import {LangPackKey, i18n} from '@lib/langPack';
+import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {FilterBooleanKeys} from '@types';
 import {Accessor, createEffect, createSignal, on, onCleanup, Show} from 'solid-js';
@@ -83,6 +83,7 @@ export const PollSettingsSectionContent = (props: {
   });
 
   explanationInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
+  explanationInput.input.setAttribute('aria-label', I18n.format('NewPoll.Explanation.Placeholder', true));
 
   const formatTimeInSpan = (timestamp: number) => {
     // Without the span, solid will throw an error when the state is updated

@@ -55,6 +55,7 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
 
   const codeInputField = new CodeInputFieldCompat({
     length: length,
+    label: 'AccDescr.EmailCode',
     onChange: (code) => {
       codeInputField.error = false;
       errorLabel.classList.add('hidden');

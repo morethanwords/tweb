@@ -112,10 +112,14 @@ export default function showStarsRatingPopup(props: {
                         pendingStars.toString()
                       ]}
                     />
-                    <a class={styles.previewButton} onClick={() => setIsFuture(true)}>
+                    <button
+                      type="button"
+                      class={styles.previewButton}
+                      onClick={() => setIsFuture(true)}
+                    >
                       <I18nTsx key="StarsRating.Preview" />
                       <IconTsx icon="next" />
-                    </a>
+                    </button>
                   </div>
                 </Show>
                 <Show when={isFuture()}>
@@ -127,10 +131,14 @@ export default function showStarsRatingPopup(props: {
                         pendingStars.toString()
                       ]}
                     />
-                    <a class={styles.previewButton} onClick={() => setIsFuture(false)}>
+                    <button
+                      type="button"
+                      class={styles.previewButton}
+                      onClick={() => setIsFuture(false)}
+                    >
                       <I18nTsx key="StarsRating.Back" />
                       <IconTsx icon="next" />
-                    </a>
+                    </button>
                   </div>
                 </Show>
               </Transition>

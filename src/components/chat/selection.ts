@@ -15,7 +15,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import showSendNowPopup from '@components/popups/sendNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
-import {i18n, _i18n} from '@lib/langPack';
+import I18n, {i18n, _i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -59,6 +59,7 @@ export class AppSelection extends EventListenerBase<{
 }> {
   public selectedMids: Map<PeerId, Set<number>> = new Map();
   public isSelecting = false;
+  private selectionRoles = new WeakMap<HTMLElement, {role: string, tabIndex: string}>();
 
   public selectedText: string;
 
@@ -410,6 +411,12 @@ export class AppSelection extends EventListenerBase<{
         name: this.getCheckboxName(element),
         round: true
       });
+      checkboxField.input.setAttribute('aria-label', element.getAttribute('aria-label') || element.textContent || I18n.format('Message.Context.Select', true));
+      if(element.getAttribute('role') === 'button') {
+        this.selectionRoles.set(element, {role: 'button', tabIndex: element.getAttribute('tabindex')});
+        element.setAttribute('role', 'group');
+        element.removeAttribute('tabindex');
+      }
 
       // * if it is a render of new message
       if(this.isSelecting) { // ! avoid breaking animation on start
@@ -422,6 +429,12 @@ export class AppSelection extends EventListenerBase<{
       this.appendCheckbox(element, checkboxField);
     } else if(hasCheckbox) {
       this.getCheckboxInputFromElement(element).parentElement.remove();
+      const previous = this.selectionRoles.get(element);
+      if(previous) {
+        element.setAttribute('role', previous.role);
+        if(previous.tabIndex !== null) element.setAttribute('tabindex', previous.tabIndex);
+        this.selectionRoles.delete(element);
+      }
       this.toggleElementSelected(element, false);
     }
 
@@ -758,7 +771,7 @@ export class SearchSelection extends AppSelection {
 
         this.containerListenerSetter = new ListenerSetter();
 
-        const btnCancel = ButtonIcon(`close ${BASE_CLASS}-cancel`, {noRipple: true});
+        const btnCancel = ButtonIcon(`close ${BASE_CLASS}-cancel`, {noRipple: true, ariaLabel: 'Cancel'});
         attachClickEvent(btnCancel, () => this.cancelSelection(), {listenerSetter: this.containerListenerSetter, once: true});
 
         this.selectionCountEl = document.createElement('div');
@@ -766,7 +779,7 @@ export class SearchSelection extends AppSelection {
 
         const attachClickOptions: AttachClickOptions = {listenerSetter: this.containerListenerSetter};
 
-        this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`);
+        this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`, {ariaLabel: 'Message.Context.Goto'});
         attachClickEvent(this.selectionGotoBtn, () => {
           const peerId = [...this.selectedMids.keys()][0];
           const mid = [...this.selectedMids.get(peerId)][0];
@@ -779,7 +792,7 @@ export class SearchSelection extends AppSelection {
           });
         }, attachClickOptions);
 
-        this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`);
+        this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`, {ariaLabel: 'Forward'});
         attachClickEvent(this.selectionForwardBtn, () => {
           const obj: {[fromPeerId: PeerId]: number[]} = {};
           for(const [fromPeerId, mids] of this.selectedMids) {
@@ -792,7 +805,7 @@ export class SearchSelection extends AppSelection {
         }, attachClickOptions);
 
         if(this.isPrivate) {
-          this.selectionDeleteBtn = ButtonIcon(`delete danger ${BASE_CLASS}-delete`);
+          this.selectionDeleteBtn = ButtonIcon(`delete danger ${BASE_CLASS}-delete`, {ariaLabel: 'Delete'});
           attachClickEvent(this.selectionDeleteBtn, () => {
             const peerId = this.searchSuper.searchContext.peerId;
             showDeleteMessagesPopup(
@@ -1173,7 +1186,7 @@ export default class ChatSelection extends AppSelection {
       if(this.isReportSelection) {
         // * report-selection mode (tdesktop's choose-for-report): cancel on the left,
         // * a "Report N Messages" action in the centre, nothing on the right
-        const cancelBtn = ButtonIcon('close selection-container-close');
+        const cancelBtn = ButtonIcon('close selection-container-close', {ariaLabel: 'Cancel'});
         attachClickEvent(cancelBtn, () => this.cancelSelection(), attachClickOptions);
 
         this.selectionReportBtn = Button('btn-primary btn-transparent text-bold chat-input-plate-button selection-container-report');
@@ -1203,7 +1216,7 @@ export default class ChatSelection extends AppSelection {
         attachClickEvent(countButton, () => this.cancelSelection(), attachClickOptions);
 
         // Left slot — delete.
-        this.selectionDeleteBtn = ButtonIcon('delete danger selection-container-delete');
+        this.selectionDeleteBtn = ButtonIcon('delete danger selection-container-delete', {ariaLabel: 'Delete'});
         attachClickEvent(this.selectionDeleteBtn, () => {
           showDeleteMessagesPopup(
             this.chat.peerId,
@@ -1218,14 +1231,14 @@ export default class ChatSelection extends AppSelection {
         // Right slot — forward (or "send now" for scheduled messages).
         let rightButton: HTMLElement;
         if(this.chat.type === ChatType.Scheduled) {
-          rightButton = this.selectionSendNowBtn = ButtonIcon('send2 selection-container-send');
+          rightButton = this.selectionSendNowBtn = ButtonIcon('send2 selection-container-send', {ariaLabel: 'MessageScheduleSend'});
           attachClickEvent(this.selectionSendNowBtn, () => {
             showSendNowPopup(this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
               this.cancelSelection();
             });
           }, attachClickOptions);
         } else {
-          rightButton = this.selectionForwardBtn = ButtonIcon('forward selection-container-forward');
+          rightButton = this.selectionForwardBtn = ButtonIcon('forward selection-container-forward', {ariaLabel: 'Forward'});
           attachClickEvent(this.selectionForwardBtn, () => {
             const obj: {[fromPeerId: PeerId]: number[]} = {};
             for(const [fromPeerId, mids] of this.selectedMids) {

@@ -5,6 +5,7 @@ import styles from '@components/sidebarLeft/pendingSuggestion.module.scss';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
 import classNames from '@helpers/string/classNames';
+import I18n from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {useIsSidebarCollapsed} from '@stores/foldersSidebar';
 import {JSX, Show} from 'solid-js';
@@ -20,6 +21,7 @@ export const PendingSuggestion = (props: Parameters<typeof Row>[0] & {closable?:
         <Button.Icon
           icon="close"
           class={styles.close}
+          aria-label={I18n.format('Close', true)}
           onClick={(e) => {
             cancelEvent(e);
             props.closable();

@@ -1,5 +1,6 @@
 import {createEffect, createSignal, JSX} from 'solid-js';
 import RangeSelector from '@components/rangeSelectorTsx';
+import labelControl from '@helpers/dom/labelControl';
 
 export default function RangeSettingSelector(props: {
   textLeft: JSX.Element,
@@ -13,6 +14,10 @@ export default function RangeSettingSelector(props: {
 }) {
   const [value, setValue] = createSignal(props.value);
 
+  // The name above the track is the slider's only visible label; tie them
+  // together so it is not an anonymous "slider" to assistive technology.
+  let nameRef!: HTMLDivElement;
+
   createEffect(() => {
     setValue(props.value);
   });
@@ -20,10 +25,11 @@ export default function RangeSettingSelector(props: {
   return (
     <div class="range-setting-selector">
       <div class="range-setting-selector-details">
-        <div class="range-setting-selector-name">{props.textLeft}</div>
+        <div class="range-setting-selector-name" ref={nameRef}>{props.textLeft}</div>
         <div class="range-setting-selector-value">{props.textRight(value())}</div>
       </div>
       <RangeSelector
+        inputRef={(el) => labelControl(el, nameRef)}
         step={props.step}
         min={props.minValue}
         max={props.maxValue}

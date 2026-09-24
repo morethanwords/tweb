@@ -1,11 +1,17 @@
 import {Signal} from 'solid-js';
 import {ProgressCircleSVG} from '@components/progressCircleSVG';
+import I18n from '@lib/langPack';
 
 export default function RenderProgressCircle(props: {creationProgress: Signal<number>}) {
   const [progress] = props.creationProgress;
 
   return (
     <div
+      role="progressbar"
+      aria-label={I18n.format('Loading', true)}
+      aria-valuenow={Math.round(progress() * 100)}
+      aria-valuemin={0}
+      aria-valuemax={100}
       style={{
         display: 'flex',
         position: 'absolute',

@@ -88,6 +88,7 @@ export const AiEditorPopupBodyContent = () => {
       />
       <Space amount='0.5rem' />
       <Scrollable
+        tabIndex={0}
         ref={setScrollableEl}
         class={styles.scrollable}
         relative

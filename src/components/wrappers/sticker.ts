@@ -167,10 +167,12 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     if(videoRes.thumb) {
       if(videoRes.thumb.images.thumb) {
         videoRes.thumb.images.thumb.classList.add('media-sticker', 'thumbnail');
+        videoRes.thumb.images.thumb.setAttribute('alt', '');
       }
 
       if(videoRes.thumb.images.full) {
         videoRes.thumb.images.full.classList.add('media-sticker');
+        videoRes.thumb.images.full.setAttribute('alt', '');
       }
     }
 
@@ -549,6 +551,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         }
 
         media.classList.add('media-sticker');
+        media.setAttribute('alt', '');
         return media;
       });
 

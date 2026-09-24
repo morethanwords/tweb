@@ -1,3 +1,4 @@
+import labelControl from '@helpers/dom/labelControl';
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import type {AnimationItemGroup} from '@components/animationIntersector';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
@@ -494,11 +495,14 @@ function processCustomEmojisInInput(input: HTMLElement) {
   renderer.forceRender();
 }
 
+let inputFieldErrorIdSeed = 0;
+
 export default class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
   public label: HTMLLabelElement;
   public placeholder: HTMLElement;
+  public errorLabel: HTMLElement;
 
   public originalValue: string;
 
@@ -535,6 +539,8 @@ export default class InputField {
 
       input = this.container.firstElementChild as HTMLElement;
       input.contentEditable = '' + !!canBeEdited;
+      input.setAttribute('role', 'textbox');
+      input.setAttribute('aria-multiline', 'true');
       // * browser & extension translators rewrite the text nodes right inside the contenteditable,
       // * so the value read back from the DOM is the translated one — with broken entities and custom emojis
       input.translate = false;
@@ -672,6 +678,12 @@ export default class InputField {
       this.setLabel();
       this.container.append(this.label);
     }
+
+    // Give the control an accessible name by associating it with the floating
+    // label (or, failing that, the placeholder). `aria-labelledby` works for
+    // both the plain <input> and the contenteditable rich-text div.
+    const namingElement = this.label || this.placeholder;
+    labelControl(input, namingElement);
 
     if(maxLength) {
       const labelEl = this.container.lastElementChild as HTMLLabelElement;
@@ -823,8 +835,45 @@ export default class InputField {
     this.setDraftValue(value, silent);
   }
 
+  private removeErrorLabel() {
+    if(!this.errorLabel) return;
+
+    const describedBy = (this.input.getAttribute('aria-describedby') || '')
+    .split(/\s+/)
+    .filter((id) => id && id !== this.errorLabel.id);
+
+    if(describedBy.length) {
+      this.input.setAttribute('aria-describedby', describedBy.join(' '));
+    } else {
+      this.input.removeAttribute('aria-describedby');
+    }
+
+    this.errorLabel.remove();
+    this.errorLabel = undefined;
+    this.container.classList.remove('has-error-label');
+  }
+
   public setState(state: InputState, label?: LangPackKey, labelOptions?: any[]) {
-    if(label) {
+    const isError = !!(state & InputState.Error);
+
+    if(label && isError) {
+      if(!this.errorLabel) {
+        this.errorLabel = this.container.ownerDocument.createElement('span');
+        this.errorLabel.id = 'input-field-error-' + (++inputFieldErrorIdSeed);
+        this.errorLabel.classList.add('input-field-error-label');
+        this.errorLabel.setAttribute('role', 'alert');
+        this.container.append(this.errorLabel);
+      }
+
+      this.errorLabel.replaceChildren(i18n(label, labelOptions ?? this.options.labelOptions));
+      this.container.classList.add('has-error-label');
+
+      const describedBy = new Set(
+        (this.input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)
+      );
+      describedBy.add(this.errorLabel.id);
+      this.input.setAttribute('aria-describedby', [...describedBy].join(' '));
+    } else if(label) {
       this.label.textContent = '';
       this.label.append(i18n(label, labelOptions ?? this.options.labelOptions));
       this.label.style.visibility = 'visible';
@@ -832,7 +881,16 @@ export default class InputField {
       this.setLabel();
     }
 
-    this.input.classList.toggle('error', !!(state & InputState.Error));
+    if((!isError || !label) && this.errorLabel) {
+      this.removeErrorLabel();
+    }
+
+    if(isError) {
+      this.input.setAttribute('aria-invalid', 'true');
+    } else {
+      this.input.removeAttribute('aria-invalid');
+    }
+    this.input.classList.toggle('error', isError);
     this.input.classList.toggle('valid', !!(state & InputState.Valid));
   }
 

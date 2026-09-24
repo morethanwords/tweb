@@ -1,5 +1,5 @@
 import {onMount, Accessor, JSX, createEffect, untrack} from 'solid-js';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import ripple from '@components/ripple';
 import {IconTsx} from '@components/iconTsx';
 import Space from '@components/space';
@@ -64,20 +64,26 @@ export default function TextTab() {
   const toggleButton = (
     icon: Icon,
     value: string,
+    label: LangPackKey,
     currentValue: Accessor<string>,
     setValue: (value: string) => void
   ) => (
-    <div
+    <button
+      type="button"
       class="media-editor__toggle-button"
       classList={{'media-editor__toggle-button--active': value === currentValue()}}
+      aria-pressed={value === currentValue()}
+      aria-label={I18n.format(label, true)}
       onClick={() => setValue(value)}
     >
-      <IconTsx icon={icon} />
-    </div>
+      <IconTsx icon={icon} aria-hidden={true} />
+    </button>
   );
 
+  let toggleGroupRow: HTMLDivElement;
+
   onMount(() => {
-    document.querySelectorAll('.media-editor__toggle-button').forEach((element) => {
+    toggleGroupRow.querySelectorAll('.media-editor__toggle-button').forEach((element) => {
       ripple(element as HTMLElement);
     });
   });
@@ -104,22 +110,31 @@ export default function TextTab() {
         colorKey={(editorState.selectedResizableLayer ?? '') + ''}
       />
 
-      <div class="media-editor__toggle-group-row">
-        <div class="media-editor__toggle-group">
-          {toggleButton('align_left', 'left', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
-          {toggleButton('align_center', 'center', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
-          {toggleButton('align_right', 'right', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
+      <div ref={toggleGroupRow} class="media-editor__toggle-group-row">
+        <div
+          class="media-editor__toggle-group"
+          role="group"
+          aria-label={I18n.format('MediaEditor.TextAlignment', true)}
+        >
+          {toggleButton('align_left', 'left', 'MediaEditor.AlignLeft', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
+          {toggleButton('align_center', 'center', 'MediaEditor.AlignCenter', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
+          {toggleButton('align_right', 'right', 'MediaEditor.AlignRight', () => editorState.currentTextLayerInfo.alignment, setSavedAlignment)}
         </div>
 
-        <div class="media-editor__toggle-group">
-          {toggleButton('fontframe_filled', 'normal', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
-          {toggleButton('fontframe', 'outline', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
-          {toggleButton('fontframe_bg_filled', 'background', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+        <div
+          class="media-editor__toggle-group"
+          role="group"
+          aria-label={I18n.format('MediaEditor.TextStyle', true)}
+        >
+          {toggleButton('fontframe_filled', 'normal', 'MediaEditor.TextStyle.Normal', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+          {toggleButton('fontframe', 'outline', 'MediaEditor.TextStyle.Outline', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
+          {toggleButton('fontframe_bg_filled', 'background', 'MediaEditor.TextStyle.Background', () => editorState.currentTextLayerInfo.style, setSavedStyle)}
         </div>
       </div>
 
       <RangeInput
         label={i18n('MediaEditor.Size')}
+        ariaLabel="MediaEditor.Size"
         min={textSizeMin}
         max={textSizeMax}
         value={editorState.currentTextLayerInfo.size}

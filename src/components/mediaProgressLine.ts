@@ -56,6 +56,7 @@ export default class MediaProgressLine extends RangeSelector {
     appendToTimeElement?: HTMLElement
   } = {}) {
     super({
+      ariaLabel: 'AccDescr.PlaybackPosition',
       step: 1000 / 60 / 1000,
       min: 0,
       max: 1,

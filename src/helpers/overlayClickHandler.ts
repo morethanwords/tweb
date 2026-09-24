@@ -13,6 +13,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
   protected element: HTMLElement;
   protected overlay: HTMLElement;
   protected listenerOptions: AddEventListenerOptions;
+  protected onEscape?: NavigationItem['onEscape'];
   // The realm (document/window) the currently-open menu lives in. Defaults to the main realm and is
   // re-derived from the opened element's `ownerDocument` in `open()` — so a menu opened while the
   // client is popped out attaches its close listeners to the Document PiP window, not the tab.
@@ -74,6 +75,8 @@ export default class OverlayClickHandler extends EventListenerBase<{
     if(!IS_MOBILE_SAFARI && this.navigationType) {
       appNavigationController.pushItem({
         type: this.navigationType,
+        onEscape: this.onEscape,
+        noBlurOnPop: true,
         onPop: (canAnimate) => {
           this.close();
         }

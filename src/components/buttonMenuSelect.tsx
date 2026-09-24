@@ -2,6 +2,7 @@ import {resolveFirst} from '@solid-primitives/refs'
 import {getOverlayRoot} from '@helpers/appWindow'
 import {ComponentProps, createEffect, createMemo, createRoot, createSignal, For, JSX, on, onCleanup, onMount, Show, splitProps} from 'solid-js'
 import {attachClickEvent} from '@helpers/dom/clickEvent'
+import buttonKeyDown from '@helpers/solid/buttonKeyDown'
 import {IconTsx} from '@components/iconTsx'
 import contextMenuController from '@helpers/contextMenuController'
 import {ButtonMenuDirection} from '@components/buttonMenuToggle'
@@ -178,51 +179,59 @@ function ButtonMenuSelectInner<T>(props: {
         style={{height: `${10 + Math.min(1 + filteredOptions().length, 7.5) * 32}px`}}
       >
         <Scrollable axis="y" ref={scrollable}>
-          <Show when={!props.single}>
-            <div
-              class="btn-menu-item"
-              tabIndex="0"
-              onClick={() => props.onValueChange(props.options)}
-            >
-              <IconTsx icon="checkround" class="btn-menu-item-icon" />
-              <I18nTsx class="btn-menu-item-text" key='SelectAll2' />
-            </div>
-          </Show>
-          <For each={filteredOptions()}>
-            {filteredOption => (
+          <div role="listbox" aria-multiselectable={!props.single}>
+            <Show when={!props.single}>
               <div
                 class="btn-menu-item"
+                role="option"
+                aria-selected={props.value.length === props.options.length}
                 tabIndex="0"
-                onClick={() => {
-                  const optionKey = props.optionKey(filteredOption.option)
-                  const wasChosen = chosenKeys().has(optionKey)
-
-                  if(props.deselectAllOnFirstSelect && props.value.length === props.options.length) {
-                    props.onValueChange([filteredOption.option])
-                    return
-                  }
-
-                  if(wasChosen) {
-                    props.onValueChange(props.value.filter(it => props.optionKey(it) !== optionKey))
-                  } else if(props.single) {
-                    props.onValueChange([filteredOption.option])
-                  } else {
-                    props.onValueChange([...props.value, filteredOption.option])
-                  }
-                }}
+                onClick={() => props.onValueChange(props.options)}
+                onKeyDown={buttonKeyDown}
               >
-                {props.renderOption({
-                  option: filteredOption.option,
-                  get chosen() {
-                    return chosenKeys().has(props.optionKey(filteredOption.option))
-                  },
-                  stickerRenderer,
-                  highlight: filteredOption.highlight,
-                  optionText: props.optionSearchText?.(filteredOption.option)
-                })}
+                <IconTsx icon="checkround" class="btn-menu-item-icon" />
+                <I18nTsx class="btn-menu-item-text" key='SelectAll2' />
               </div>
-            )}
-          </For>
+            </Show>
+            <For each={filteredOptions()}>
+              {filteredOption => (
+                <div
+                  class="btn-menu-item"
+                  role="option"
+                  aria-selected={chosenKeys().has(props.optionKey(filteredOption.option))}
+                  tabIndex="0"
+                  onClick={() => {
+                    const optionKey = props.optionKey(filteredOption.option)
+                    const wasChosen = chosenKeys().has(optionKey)
+
+                    if(props.deselectAllOnFirstSelect && props.value.length === props.options.length) {
+                      props.onValueChange([filteredOption.option])
+                      return
+                    }
+
+                    if(wasChosen) {
+                      props.onValueChange(props.value.filter(it => props.optionKey(it) !== optionKey))
+                    } else if(props.single) {
+                      props.onValueChange([filteredOption.option])
+                    } else {
+                      props.onValueChange([...props.value, filteredOption.option])
+                    }
+                  }}
+                  onKeyDown={buttonKeyDown}
+                >
+                  {props.renderOption({
+                    option: filteredOption.option,
+                    get chosen() {
+                      return chosenKeys().has(props.optionKey(filteredOption.option))
+                    },
+                    stickerRenderer,
+                    highlight: filteredOption.highlight,
+                    optionText: props.optionSearchText?.(filteredOption.option)
+                  })}
+                </div>
+              )}
+            </For>
+          </div>
         </Scrollable>
       </div>
     </div>

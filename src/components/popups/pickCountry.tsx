@@ -35,7 +35,7 @@ export default function showPickCountryPopup(options: ShowPickCountryPopupOption
       iso2s.forEach((iso2) => {
         const country = lastFiltered.get(iso2 as any as string);
         const emoji = getCountryEmoji(country.iso2);
-        const checkbox = popup.selector.checkbox(popup.selector.selected.has(iso2));
+        const checkbox = popup.selector.checkbox(popup.selector.selected.has(iso2), undefined, getCountryName(country.iso2));
         const row = wrapSolidComponent(() => (
           <RowTsx
             ref={(element) => {

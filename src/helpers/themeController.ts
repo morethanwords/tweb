@@ -7,7 +7,7 @@ import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import rootScope from '@lib/rootScope';
-import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
+import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
 import {SETTINGS_INIT} from '@config/state';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import customProperties from '@helpers/dom/customProperties';
@@ -226,6 +226,10 @@ export class ThemeController {
     // here whenever `settings.theme` changes (radio in General Settings, switchTheme calls).
     const themeKey = joinDeepPath('settings', 'theme');
     rootScope.addEventListener('settings_updated', ({key, value}) => {
+      if(key === joinDeepPath('settings', 'increaseContrast')) {
+        this.setTheme();
+        return;
+      }
       if(key !== themeKey) return;
       const [, setAppSettings] = useAppSettings();
       if(value === 'night' || value === 'tinted') {
@@ -326,6 +330,7 @@ export class ThemeController {
     colorScheme?.setAttribute('content', isNight ? 'dark' : 'light');
 
     document.documentElement.classList.toggle('night', isNight);
+    document.documentElement.classList.toggle('high-contrast', !!useAppSettings()[0].increaseContrast);
     this.setThemeColor();
     const theme = this.getTheme();
     this.applyTheme(theme);
@@ -407,6 +412,9 @@ export class ThemeController {
     transition.finished.catch(noop).then(() => clearTimeout(safetyTimeout));
 
     if(!coordinates) {
+      // Overlapping switches can skip even the default fade. Its `ready`
+      // promise still rejects although there is no custom reveal to await it.
+      transition.ready.catch(noop);
       _log('view transition is not needed');
       return;
     }
@@ -556,11 +564,34 @@ export class ThemeController {
     saveToCache?: boolean
   }) {
     const appColor = appColorMap[name];
-    const rgb = hexToRgb(hex);
-    const hsla = rgbaToHsla(...rgb);
-
     const resolvedName: AppTheme['name'] = themeName ?? (isNight ? 'night' : 'day');
     mixColor ??= hexToRgb(colorMap[resolvedName]['surface-color']);
+    const {increaseContrast} = useAppSettings()[0];
+    if(increaseContrast) {
+      if(name === 'message-out-background-color' && isNight) hex = ensureTextContrast(hex, [255, 255, 255]);
+      if(name === 'message-out-primary-color') {
+        const messageSurface = isNight ? hexToRgb(ensureTextContrast(rgbaToHexa(mixColor), [255, 255, 255])) : mixColor;
+        hex = ensureTextContrast(hex, messageSurface);
+      }
+      if(name === 'primary-color' || name === 'secondary-text-color' || name === 'danger-color' || name === 'link-color' || name === 'green-color') {
+        const background = hexToRgb(colorMap[resolvedName]['background-color']);
+        const surfaceLuminance = relativeLuminance(mixColor);
+        const backgroundLuminance = relativeLuminance(background);
+        const limitingSurface = isNight ?
+          (surfaceLuminance > backgroundLuminance ? mixColor : background) :
+          (surfaceLuminance < backgroundLuminance ? mixColor : background);
+        // Text also appears on the lightly lifted cards and hover surfaces.
+        hex = ensureTextContrast(hex, isNight ? mixColors([255, 255, 255], limitingSurface, .05) : limitingSurface);
+      }
+    }
+    if(name === 'primary-color' || name === 'secondary-text-color' || name === 'danger-color') {
+      // Accent text sits on the surface; white button text sits on the accent.
+      // A separate fill keeps both readable, including on dark/custom themes.
+      const buttonColorName = name.replace('-text', '').replace('-color', '-button-color');
+      element.style.setProperty('--' + buttonColorName, increaseContrast ? ensureTextContrast(hex, [255, 255, 255]) : hex);
+    }
+    const rgb = hexToRgb(hex);
+    const hsla = rgbaToHsla(...rgb);
     const lightenedRgb = mixColors(rgb, mixColor, lightenAlpha);
 
     const darkenedHsla: typeof hsla = {

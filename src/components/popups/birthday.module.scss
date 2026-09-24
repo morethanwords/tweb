@@ -20,6 +20,11 @@
   color: var(--secondary-text-color);
 
   &Link {
+    color: inherit;
+
+    :global(.high-contrast) & {
+      color: var(--link-color);
+    }
     display: inline-flex;
     align-items: center;
     cursor: pointer;

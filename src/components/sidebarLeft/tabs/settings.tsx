@@ -94,10 +94,11 @@ const Settings = () => {
 
   // ── Header: search and the overflow menu, the way tdesktop keeps it — editing
   //    the profile and the QR code are rare enough to live in the menu.
-  const searchBtn = ButtonIcon('search');
+  const searchBtn = ButtonIcon('search', {ariaLabel: 'Search'});
   const btnMenu = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
     direction: 'bottom-left',
+    buttonOptions: {ariaLabel: 'MultiAccount.More'},
     buttons: [{
       icon: 'edit',
       text: 'EditAccount.Title',

@@ -1,5 +1,6 @@
 import contextMenuController from '@helpers/contextMenuController';
 import {getOverlayRoot} from '@helpers/appWindow';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {FloatingMenuDirection, positionFloatingMenu} from '@helpers/positionMenu';
 import {doubleRaf} from '@helpers/schedulers';
 
@@ -30,7 +31,9 @@ export default function attachFloatingButtonMenu({
   let hovered = false;
   let requestId = 0;
 
-  const listener = (): void => void (async() => {
+  const listener = (event?: Event): void => void (async() => {
+    const activatedWithKeyboard = event?.type === 'keydown' ||
+      (event?.type === 'click' && (event as MouseEvent).detail === 0);
     hovered = true;
     if(opened || !canOpen()) return;
     const currentRequestId = ++requestId;
@@ -46,8 +49,9 @@ export default function attachFloatingButtonMenu({
       !menu ||
       opened ||
       currentRequestId !== requestId ||
-      !hovered ||
-      !canOpen()
+      (!hovered && !activatedWithKeyboard) ||
+      !canOpen() ||
+      !contextMenuController.isOpened()
     ) {
       return;
     }
@@ -64,7 +68,13 @@ export default function attachFloatingButtonMenu({
     positionFloatingMenu(triggerBcr, menu, direction, offset);
 
     await doubleRaf();
-    contextMenuController.addAdditionalMenu(menu, element, level, onClose);
+    if(currentRequestId !== requestId || !contextMenuController.isOpened()) {
+      opened = false;
+      menu.remove();
+      return;
+    }
+
+    contextMenuController.addAdditionalMenu(menu, element, level, onClose, activatedWithKeyboard);
   })();
 
   const onMouseLeave = () => {
@@ -73,12 +83,29 @@ export default function attachFloatingButtonMenu({
   };
 
   element.addEventListener(triggerEvent, listener);
+  const detachActivation = triggerEvent === 'mouseenter' ?
+    attachClickEvent(element, listener) :
+    undefined;
   if(triggerEvent === 'mouseenter') {
     element.addEventListener('mouseleave', onMouseLeave);
+    element.addEventListener('keydown', onKeyDown);
   }
 
   return () => {
+    ++requestId;
     element.removeEventListener(triggerEvent, listener);
     element.removeEventListener('mouseleave', onMouseLeave);
+    element.removeEventListener('keydown', onKeyDown);
+    detachActivation?.();
   };
+
+  function onKeyDown(e: KeyboardEvent) {
+    if(e.key !== 'ArrowRight' && e.key !== 'Enter' && e.key !== ' ') {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    listener(e);
+  }
 }

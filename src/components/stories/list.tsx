@@ -23,6 +23,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import ListenerSetter from '@helpers/listenerSetter';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 
 const TEST_COUNT = 0;
 const ITEM_MARGIN = 0;
@@ -186,6 +187,15 @@ function _StoriesList(props: {
 
     const isMyStory = peer.peerId === rootScope.myId;
 
+    const [ariaLabel, setAriaLabel] = createSignal(I18n.format('OpenStory', true));
+    if(isMyStory) {
+      setAriaLabel(`${I18n.format('OpenStory', true)}, ${I18n.format('MyStory', true)}`);
+    } else {
+      wrapPeerTitle({peerId: peer.peerId, onlyFirstName: true}).then((el) => {
+        setAriaLabel(`${I18n.format('OpenStory', true)}, ${el.textContent}`);
+      });
+    }
+
     const ret = (
       <div
         ref={(el) => (items.set(peer, el), itemsTarget.set(el, peer))}
@@ -197,6 +207,10 @@ function _StoriesList(props: {
             return movement && !movement.isOut && !movement.isLastIn;
           })()
         }}
+        role="button"
+        tabindex={0}
+        aria-label={ariaLabel()}
+        onKeyDown={buttonKeyDown}
         onClick={onClick}
         style={{
           ...calculateMovement()?.cssProperties,

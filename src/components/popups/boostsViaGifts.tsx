@@ -121,6 +121,7 @@ export default async function showBoostsViaGiftsPopup(
     let range: RangeStepsSelector<number>;
     if(!isPrepaid()) {
       range = new RangeStepsSelector({
+        ariaLabel: 'BoostsViaGifts.Quantity',
         generateStep: (value) => ['' + value, value],
         onValue: (value) => {
           if(stars()) {
@@ -605,7 +606,7 @@ export default async function showBoostsViaGiftsPopup(
     const ret = (
       <>
         <MediaHeader marginTop marginBottom>
-          <div class="popup-boosts-star-container"><img class="popup-boosts-star" ref={img} /></div>
+          <div class="popup-boosts-star-container"><img alt="" class="popup-boosts-star" ref={img} /></div>
           <MediaHeader.Title size={20}>{i18n('BoostsViaGifts.Title')}</MediaHeader.Title>
           <MediaHeader.Subtitle>{i18n(isPrepaid() && prepaidGiveaway._ === 'prepaidGiveaway' ? 'BoostingGetMoreBoosts' : 'BoostingGetMoreBoosts2')}</MediaHeader.Subtitle>
         </MediaHeader>

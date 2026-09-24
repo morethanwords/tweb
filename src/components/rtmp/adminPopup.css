@@ -27,7 +27,7 @@
   justify-content: center;
   overflow: hidden;
   border-radius: 10px;
-  background: var(--primary-color);
+  background: var(--primary-button-color, var(--primary-color));
   color: #fff;
   text-align: center;
   font-size: 16px;
@@ -38,5 +38,5 @@
 }
 
 .rtmp-popup-button_danger {
-  background: var(--danger-color);
+  background: var(--danger-button-color, var(--danger-color));
 }

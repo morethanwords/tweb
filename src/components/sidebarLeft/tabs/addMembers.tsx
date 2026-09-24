@@ -33,7 +33,7 @@ const AddMembersTab = () => {
 
   tab.container.classList.add('add-members-container');
 
-  const nextBtn = ButtonCorner({icon: 'arrow_next'});
+  const nextBtn = ButtonCorner({icon: 'arrow_next', ariaLabel: 'Next'});
   tab.content.append(nextBtn);
   tab.scrollable.container.remove();
 

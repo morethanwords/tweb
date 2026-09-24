@@ -252,6 +252,7 @@ function buildContent(
     if(useOverlayRender) patternCanvas.classList.add(styles.DarkPatternInvert);
   } else if(url) {
     image = document.createElement('img');
+    image.alt = '';
     image.classList.add(styles.CanvasCommon);
   }
 
@@ -558,6 +559,7 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
  */
 const appChatBackground = (() => {
   const element = document.createElement('div');
+  element.setAttribute('aria-hidden', 'true');
 
   // Solid signal driving the embedded `<ChatBackground>` props.
   const [props, setProps] = createSignal<ChatBackgroundProps>({});

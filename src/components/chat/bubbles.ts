@@ -1,3 +1,5 @@
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import makeMediaPreviewsAccessible from '@helpers/dom/mediaPreviewAccessibility';
 import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPeerOptions} from '@lib/appImManager';
 import type {HistoryResult, MyEphemeralMessage, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
@@ -1588,6 +1590,11 @@ export default class ChatBubbles {
       }
     });
     attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
+    this.listenerSetter.add(this.scrollable.container)('keydown', (e: KeyboardEvent) => {
+      const target = (e.target as HTMLElement).closest<HTMLElement>('[role="button"]');
+      if(!target || !this.scrollable.container.contains(target)) return;
+      buttonKeyDown(e, target);
+    });
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
@@ -3121,8 +3128,7 @@ export default class ChatBubbles {
       return;
     }
 
-    hoverReaction = this.hoverReaction = document.createElement('div');
-    hoverReaction.classList.add('bubble-hover-reaction');
+    hoverReaction = this.hoverReaction = Button('bubble-hover-reaction', {noRipple: true, ariaLabel: 'DoubleTapSetting'});
     const middlewareHelper = hoverReaction.middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get(() => this.hoverReaction === hoverReaction);
 
@@ -3156,6 +3162,8 @@ export default class ChatBubbles {
       if(!middleware()) {
         return;
       }
+      hoverReaction.setAttribute('aria-label', availableReaction?.title || doc?.stickerEmojiRaw || I18n.format('DoubleTapSetting', true));
+      stickerWrapper.setAttribute('aria-hidden', 'true');
 
       wrapSticker({
         div: stickerWrapper,
@@ -4740,6 +4748,13 @@ export default class ChatBubbles {
 
     this.scrollable = new Scrollable(null, 'IM', /* 10300 */300);
     this.scrollable.container.classList.add('bubbles-scrollable');
+    // The history is one of the scrolls that has to be in the tab order — it is
+    // where the arrows scroll the conversation rather than reaching the composer
+    // (see `shouldPreserveKeyboardFocus`). A stop with no role and no name
+    // announces nothing when it is reached, so it carries both.
+    this.scrollable.container.tabIndex = 0;
+    this.scrollable.container.setAttribute('role', 'region');
+    this.scrollable.container.setAttribute('aria-label', I18n.format('AccDescr.MessageHistory', true));
     this.setLoaded('top', false, false);
     this.setLoaded('bottom', false, false);
 
@@ -7214,6 +7229,10 @@ export default class ChatBubbles {
 
       // const groupedId = (message as Message.message).grouped_id;
       newBubble = document.createElement('div');
+      if(isMessage(message)) {
+        newBubble.tabIndex = 0;
+        newBubble.setAttribute('role', 'article');
+      }
       newBubble.middlewareHelper = middlewareHelper;
       newBubble.dataset.mid = '' + (isMessage(message) ? message.mid : message.id);
       newBubble.dataset.peerId = '' + (isMessage(message) ? message.peerId : this.chat.peerId);
@@ -7290,7 +7309,13 @@ export default class ChatBubbles {
         originalPromise = processResult(originalPromise, bubble);
       }
 
-      const promise = originalPromise.then((r) => ((r && realMiddleware() ? {...r, updatePosition, canAnimateLadder} : undefined) as typeof result));
+      const promise = originalPromise.then((r) => {
+        if(!r || !realMiddleware()) return;
+        // Both renderers use the delegated media click path. Expose only the
+        // innermost preview, leaving embedded players and their own controls alone.
+        makeMediaPreviewsAccessible(bubble);
+        return {...r, updatePosition, canAnimateLadder} as typeof result;
+      });
 
       this.renderMessagesQueue(promise.then((result) => {
         if(!result) discardUncommittedBubble();
@@ -8430,6 +8455,8 @@ export default class ChatBubbles {
 
           const avatarContainer = document.createElement('div');
           avatarContainer.classList.add('bubble-story-mention-avatar-container');
+          // The adjacent StoryMentionView button exposes this same action.
+          avatarContainer.setAttribute('aria-hidden', 'true');
 
           const avatar = avatarNew({
             middleware,
@@ -8965,6 +8992,9 @@ export default class ChatBubbles {
       if(!message.fwd_from?.saved_from_msg_id && this.chat.type !== ChatType.Pinned) {
         const forward = document.createElement('div');
         forward.classList.add('bubble-beside-button', 'with-hover', 'forward');
+        forward.setAttribute('role', 'button');
+        forward.setAttribute('aria-label', I18n.format('Forward', true));
+        forward.tabIndex = 0;
         forward.append(Icon('forward_filled'));
         bubbleContainer.append(forward);
         bubble.classList.add('with-beside-button');
@@ -9001,6 +9031,9 @@ export default class ChatBubbles {
       container.classList.add('summarize-container');
       const btn = document.createElement('div');
       btn.classList.add('bubble-beside-button', 'summarize');
+      btn.setAttribute('role', 'button');
+      btn.setAttribute('aria-label', I18n.format('Summary.Title', true));
+      btn.tabIndex = 0;
       if(hasBesideButton) btn.classList.add('bubble-beside-button--not-last');
       else container.classList.add('is-last-button');
       const size = 38;
@@ -9999,6 +10032,8 @@ export default class ChatBubbles {
           const contactDiv = document.createElement('div');
           contactDiv.classList.add('contact');
           contactDiv.dataset.peerId = '' + contact.user_id;
+          contactDiv.setAttribute('role', 'button');
+          contactDiv.tabIndex = 0;
 
           noAttachmentDivNeeded = true;
 
@@ -10010,6 +10045,7 @@ export default class ChatBubbles {
             contact.first_name,
             contact.last_name
           ].filter(Boolean).join(' ');
+          contactDiv.setAttribute('aria-label', I18n.format(contact.user_id ? 'AccDescr.OpenContact' : 'AccDescr.CopyContactPhone', true, [fullName || contact.phone_number]));
           contactNameDiv.append(
             fullName.trim() ? wrapEmojiText(fullName) : i18n('AttachContact')
           );
@@ -10578,10 +10614,10 @@ export default class ChatBubbles {
       let hideButton: HTMLElement;
       if(canReport) {
         buttons.classList.add('bubble-sponsored-buttons');
-        hideButton = ButtonIcon('close bubble-sponsored-buttons-button', {noRipple: true});
+        hideButton = ButtonIcon('close bubble-sponsored-buttons-button', {noRipple: true, ariaLabel: 'HideAd'});
         const hr = document.createElement('div');
         hr.classList.add('bubble-sponsored-buttons-delimiter');
-        const menu = ButtonIcon('more bubble-sponsored-buttons-button', {noRipple: true});
+        const menu = ButtonIcon('more bubble-sponsored-buttons-button', {noRipple: true, ariaLabel: 'MultiAccount.More'});
         buttons.append(hideButton, hr, menu);
 
         attachClickEvent(menu, (e) => {
@@ -10589,6 +10625,9 @@ export default class ChatBubbles {
         });
       } else {
         hideButton = buttons;
+        hideButton.setAttribute('role', 'button');
+        hideButton.setAttribute('aria-label', I18n.format('HideAd', true));
+        hideButton.tabIndex = 0;
         hideButton.append(Icon('close'));
         buttons.classList.add('bubble-sponsored-hide');
       }
@@ -10934,6 +10973,9 @@ export default class ChatBubbles {
     if(savedFrom && (this.chat.type === ChatType.Pinned || fwdFrom.saved_from_msg_id) && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
       goto.classList.add('bubble-beside-button', 'with-hover', 'goto-original');
+      goto.setAttribute('role', 'button');
+      goto.setAttribute('aria-label', I18n.format('Message.Context.Goto', true));
+      goto.tabIndex = 0;
       goto.append(Icon('arrow_next'));
       bubbleContainer.append(goto);
       bubble.dataset.savedFrom = savedFrom;

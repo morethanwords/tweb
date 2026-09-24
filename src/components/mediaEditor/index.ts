@@ -1,6 +1,7 @@
 import {MediaEditorProps, openMediaEditor} from '@components/mediaEditor/mediaEditor';
 import {NumberPair} from '@components/mediaEditor/types';
 import {snapToViewport} from '@components/mediaEditor/utils';
+import {getOverlayRoot} from '@helpers/appWindow';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 
 
@@ -123,7 +124,8 @@ function spawnImageCanvas({
   rect,
   animatedCanvasSize: size
 }: SpawnImageCanvasArgs) {
-  const imageCanvas = document.createElement('canvas');
+  const overlayRoot = getOverlayRoot();
+  const imageCanvas = overlayRoot.ownerDocument.createElement('canvas');
   [imageCanvas.width, imageCanvas.height] = size;
 
   const ctx = imageCanvas.getContext('2d');
@@ -141,7 +143,7 @@ function spawnImageCanvas({
   imageCanvas.style.objectFit = 'cover';
   imageCanvas.style.zIndex = '1000';
 
-  document.body.append(imageCanvas);
+  overlayRoot.append(imageCanvas);
 
   return {
     centerLeft,

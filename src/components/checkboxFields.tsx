@@ -1,3 +1,5 @@
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
@@ -35,6 +37,8 @@ export type CheckboxFieldsField = {
   name?: string,
   row?: CheckboxFieldsRow
 };
+
+let nextAccordionId = 0;
 
 export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFieldsField> {
   public fields: Array<K>;
@@ -79,6 +83,11 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       updateAccordionHeight();
       setExpanded(expanded);
       accordion.classList.toggle('is-expanded', expanded);
+      // Collapsed means `height: 0` with the overflow clipped, which hides the
+      // nested rows from sight but leaves their checkboxes in the tab order and
+      // in the accessibility tree — Tab would stop on a control drawn nowhere.
+      accordion.toggleAttribute('inert', !expanded);
+      rightContent?.setAttribute('aria-expanded', '' + expanded);
       this.onExpand?.(info as K);
     };
 
@@ -179,7 +188,21 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
           )}
           {this.round && info.nested && (
             <RowTsx.RightContent
-              ref={(element) => rightContent = element}
+              ref={(element) => {
+                rightContent = element;
+                // The row itself is a label around a checkbox that is disabled
+                // whenever the nested fields drive it, so the only way to open
+                // the group is this chevron — and as a bare div it answered to
+                // the pointer alone. The click it raises is the same one the
+                // pointer makes, so the row's own handler still does the work.
+                ensureButtonSemantics(element);
+                element.setAttribute('aria-expanded', 'false');
+                if(title) {
+                  title.id ||= `accordion-title-${++nextAccordionId}`;
+                  element.setAttribute('aria-labelledby', title.id);
+                }
+                element.addEventListener('keydown', (e) => buttonKeyDown(e, element));
+              }}
               class="accordion-right-button"
             >
               {nestedRightButtonIcon && (
@@ -234,6 +257,12 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
     if(info.nested) {
       const container = accordion = document.createElement('div');
       container.classList.add('accordion');
+      // starts collapsed — see setAccordionExpanded
+      container.toggleAttribute('inert', true);
+      if(rightContent) {
+        container.id ||= `accordion-panel-${++nextAccordionId}`;
+        rightContent.setAttribute('aria-controls', container.id);
+      }
       const _info = info;
       info.nested.forEach((info) => {
         info.nestedTo ??= _info;

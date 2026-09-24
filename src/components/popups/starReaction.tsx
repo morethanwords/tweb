@@ -220,6 +220,8 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
         <PopupElement.Scrollable>
           <PopupElement.Body>
             <LimitLineTsx
+              ariaLabel="StarsReactionTitle"
+              ariaValueText={String(starsCount())}
               class="popup-stars-slider"
               filledProgressElement={sparkles as HTMLElement}
               progress={starsSliderValue()}

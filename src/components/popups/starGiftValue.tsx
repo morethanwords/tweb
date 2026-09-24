@@ -120,7 +120,7 @@ export default function showStarGiftValuePopup(options: {
     });
 
     return (
-      <PopupElement class={styles.popup} closable show={show()} old>
+      <PopupElement class={styles.popup} closable show={show()} old containerProps={{'aria-label': i18n('StarGiftValue').textContent}}>
         <PopupElement.Header floating>
           <PopupElement.CloseButton />
         </PopupElement.Header>

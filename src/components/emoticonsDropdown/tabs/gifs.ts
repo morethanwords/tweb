@@ -1,3 +1,5 @@
+import I18n from '@lib/langPack';
+import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import type AppGifsManager from '@appManagers/appGifsManager';
 import GifsMasonry from '@components/gifsMasonry';
 import {putPreloader} from '@components/putPreloader';
@@ -144,6 +146,7 @@ export default class GifsTab extends EmoticonsTabC<any, GifsSearchResults> {
   private createMasonry(middleware: Middleware) {
     const gifsContainer = document.createElement('div');
     gifsContainer.classList.add('gifs-masonry');
+    middleware.onDestroy(attachPickerGrid(gifsContainer, '.gif', (_, index) => I18n.format('AccDescr.GifNumber', true, [String(index + 1)])));
     const detachClickEvent = attachClickEvent(gifsContainer, this.emoticonsDropdown.onMediaClick);
     const masonry = new GifsMasonry(gifsContainer, this.animationGroup, this.scrollable);
 

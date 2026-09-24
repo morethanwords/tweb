@@ -7,6 +7,7 @@ import RotationWheel from '@components/mediaEditor/canvas/rotationWheel';
 import useFinalTransform from '@components/mediaEditor/canvas/useFinalTransform';
 import VideoControls from '@components/mediaEditor/canvas/videoControls';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {observeResize} from '@components/resizeObserver';
 import {onCleanup, onMount, Show} from 'solid-js';
 
 
@@ -22,9 +23,9 @@ export default function MainCanvas() {
       editorState.canvasSize = [bcr.width, bcr.height];
     };
     listener();
-    window.addEventListener('resize', listener);
+    const unobserve = observeResize(container, listener);
     onCleanup(() => {
-      window.removeEventListener('resize', listener);
+      unobserve();
     });
   });
 

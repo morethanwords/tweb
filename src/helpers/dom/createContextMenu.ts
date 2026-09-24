@@ -9,6 +9,7 @@ import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener'
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {logger} from '@lib/logger';
 import {getOverlayRoot} from '@helpers/appWindow';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 
 const log = logger('createContextMenu');
 
@@ -59,6 +60,11 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   cancelOnOpenFalse?: boolean
 }) {
   attachListenerSetter ??= new ListenerSetter();
+  if(listenForClick && !findElement) {
+    ensureButtonSemantics(listenTo);
+    listenTo.setAttribute('aria-haspopup', 'menu');
+    listenTo.setAttribute('aria-expanded', 'false');
+  }
   const instances = new Set<ContextMenuInstance>();
   let element: HTMLElement;
   let destroyed = false;
@@ -117,6 +123,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
       }
 
       target.classList.add('menu-open');
+      if(listenForClick && !findElement) target.setAttribute('aria-expanded', 'true');
 
       _element = initResult.element;
       element = _element;
@@ -130,6 +137,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
 
       contextMenuController.openBtnMenu(_element, () => {
         target.classList.remove('menu-open');
+        if(listenForClick && !findElement) target.setAttribute('aria-expanded', 'false');
         onClose?.();
         cleanup();
 

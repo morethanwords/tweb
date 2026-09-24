@@ -11,6 +11,7 @@ import themeController from '@helpers/themeController';
 import {changeAccount} from '@lib/accounts/changeAccount';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {getValidatedAccount} from '@lib/accounts/getValidatedAccount';
+import I18n from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import sessionStorage from '@lib/sessionStorage';
 
@@ -64,7 +65,7 @@ const SignImportCard = lazy(() => import('@/pages/cards/SignImportCard'));
 export default function AuthCardsHost(): JSX.Element {
   const showBackButton = getCurrentAccount() !== 1;
 
-  let hostEl!: HTMLDivElement;
+  let hostEl!: HTMLElement;
   let scrollableEl!: HTMLDivElement;
 
   /* ---------- context ---------- */
@@ -155,11 +156,11 @@ export default function AuthCardsHost(): JSX.Element {
 
   return (
     <AuthFlowContext.Provider value={ctx}>
-      <div ref={hostEl} style={{opacity: 0}} class={classNames('whole', styles.host)} id="auth-pages">
+      <main ref={hostEl} style={{opacity: 0}} class={classNames('whole', styles.host)} id="auth-pages">
         {showBackButton && (
-          <Button.Icon icon="back" class={styles.closeButton} onClick={back} />
+          <Button.Icon icon="back" class={styles.closeButton} onClick={back} aria-label={I18n.format('StarsRating.Back', true)} />
         )}
-        <Button.Icon icon="darkmode_filled" class={styles.themeButton} onClick={toggleTheme} />
+        <Button.Icon icon="darkmode_filled" class={styles.themeButton} onClick={toggleTheme} aria-label={I18n.format('DarkMode', true)} />
         <Scrollable
           ref={scrollableEl}
           class={classNames(
@@ -173,7 +174,7 @@ export default function AuthCardsHost(): JSX.Element {
           </div>
           <div class={styles.placeholder} />
         </Scrollable>
-      </div>
+      </main>
     </AuthFlowContext.Provider>
   );
 }

@@ -66,6 +66,8 @@ export default function createStickerAppearance({container, thumbKey, middleware
   const upgradeToImage = (image: HTMLImageElement, onApplied?: VoidFunction) => {
     if(!canBuildImage()) return onApplied?.();
 
+    image.alt = '';
+
     // gate the swap on decode so a not-yet-decoded img can't paint blank over the
     // silhouette for a frame (instant when cached; on failure keep what we have)
     (image.decode ? image.decode() : Promise.resolve()).then(() => {

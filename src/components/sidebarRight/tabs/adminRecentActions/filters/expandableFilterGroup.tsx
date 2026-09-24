@@ -4,7 +4,7 @@ import ripple from '@components/ripple';
 import styles from '@components/sidebarRight/tabs/adminRecentActions/filters/expandableFilterGroup.module.scss';
 import {keepMe} from '@helpers/keepMe';
 import {HeightTransition} from '@helpers/solid/heightTransition';
-import {Accessor, createMemo, createSignal, For, JSX, Show} from 'solid-js';
+import {Accessor, createMemo, createSignal, createUniqueId, For, JSX, Show} from 'solid-js';
 
 keepMe(ripple);
 
@@ -24,46 +24,60 @@ type ExpandableFilterGroupProps = {
 
 export const ExpandableFilterGroup = (props: ExpandableFilterGroupProps) => {
   const [isExpanded, setIsExpanded] = createSignal(false);
+  const mainLabelId = createUniqueId();
 
   const isMainChecked = createMemo(() => props.items.every(item => item.checked()));
-
-  const onMainCheckboxClick = (e: MouseEvent) => {
-    e.stopPropagation();
-    props.onMainCheckboxClick();
-  };
 
   return (
     <>
       <div class={`${styles.Row} hover-effect rp`} use:ripple onClick={() => setIsExpanded(!isExpanded())}>
-        <div class={styles.RowCheckboxWrapper} onClick={onMainCheckboxClick}>
-          <CheckboxFieldTsx class={styles.RowCheckbox} checked={isMainChecked()} />
-          <div class={styles.RowCheckboxClickArea} />
+        <div
+          class={styles.RowCheckboxWrapper}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <CheckboxFieldTsx
+            class={styles.RowCheckbox}
+            checked={isMainChecked()}
+            onChange={props.onMainCheckboxClick}
+            ref={(field) => field.input.setAttribute('aria-labelledby', mainLabelId)}
+          />
         </div>
         <div class={styles.RowSeparator} />
-        <div class={styles.RowLabel}>
-          {props.mainLabel}
-          <div class={styles.Count}>
+        <button type="button" class={styles.RowLabel} aria-expanded={isExpanded()}>
+          <span id={mainLabelId}>{props.mainLabel}</span>
+          <span class={styles.Count}>
             {props.checkedCount}/{props.items.length}
             <IconTsx class={styles.CountArrow} classList={{[styles.toggled]: isExpanded()}} icon='arrowhead' />
-          </div>
-        </div>
+          </span>
+        </button>
       </div>
 
       <HeightTransition>
         <Show when={isExpanded()}>
           <div class={styles.ExpandedItems}>
             <For each={props.items}>
-              {item => (
-                <div class={`${styles.Row} hover-effect rp`} use:ripple onClick={item.onClick}>
+              {item => {
+                const inputId = createUniqueId();
+                return (
+                <div
+                  class={`${styles.Row} hover-effect rp`}
+                  use:ripple
+                >
                   <div class={styles.RowOffset} />
                   <div class={styles.RowCheckboxWrapper}>
-                    <CheckboxFieldTsx class={styles.RowCheckbox} checked={item.checked()} />
+                    <CheckboxFieldTsx
+                      class={styles.RowCheckbox}
+                      checked={item.checked()}
+                      onChange={item.onClick}
+                      ref={(field) => field.input.id = inputId}
+                    />
                   </div>
-                  <div class={styles.RowLabel}>
+                  <label for={inputId} class={styles.RowLabel}>
                     {item.label}
-                  </div>
+                  </label>
                 </div>
-              )}
+                );
+              }}
             </For>
           </div>
         </Show>

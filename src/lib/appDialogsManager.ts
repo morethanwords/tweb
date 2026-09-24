@@ -2264,7 +2264,6 @@ export class AppDialogsManager {
 
       openChat();
     };
-
     list.addEventListener('mousedown', (e) => {
       pendingPress = undefined;
       if(
@@ -2292,6 +2291,15 @@ export class AppDialogsManager {
     list.addEventListener('click', (e) => {
       if(isDialogListAction(e.target)) {
         return;
+      }
+
+      // Native links activate with a click alone from a keyboard or assistive
+      // technology. Pointer activation already ran on mousedown — and so did the
+      // guard that lives in that listener rather than in `onPress`, so the story
+      // check has to be repeated here. `e.button` is 0 for a keyboard click and
+      // `isDialogListAction` is already ruled out above.
+      if(e.detail === 0 && !setWillOpenStory(e)) {
+        onPress(e);
       }
 
       if(e.button === 0) {
@@ -2328,6 +2336,9 @@ export class AppDialogsManager {
     ignoreClick?: boolean
   } = {}) {
     const list = document.createElement('ul');
+    // Legacy layout host: its direct children are native links, not li elements.
+    // Keep those links exposed without announcing an invalid list structure.
+    list.setAttribute('role', 'presentation');
     list.classList.add('chatlist'/* ,
       'chatlist-avatar-' + (options.avatarSize || 54) *//* , 'chatlist-' + (options.size || 72) */);
 

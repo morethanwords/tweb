@@ -1,3 +1,4 @@
+import I18n, {LangPackKey} from '@lib/langPack';
 import type LazyLoadQueueIntersector from '@components/lazyLoadQueueIntersector';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import appImManager from '@lib/appImManager';
@@ -75,20 +76,21 @@ const renderEmojiDropdownElement = (): HTMLDivElement => {
       </div>
     </div>`;
   // the first word of `className` names the tab, the rest are extra classes on it
-  const a: [string, Icon, number][] = [
-    ['search justify-self-start', 'search', -1],
-    ['emoji', 'smile', 0],
-    ['stickers', 'stickers_face', 1],
-    ['gifs', 'gifs', 2],
-    ['delete justify-self-end', 'deleteleft', -1]
+  const a: [string, Icon, number, LangPackKey][] = [
+    ['search justify-self-start', 'search', -1, 'Search'],
+    ['emoji', 'smile', 0, 'Emoji'],
+    ['stickers', 'stickers_face', 1, 'AccDescr.Stickers'],
+    ['gifs', 'gifs', 2, 'AccDescr.Gifs'],
+    ['delete justify-self-end', 'deleteleft', -1, 'AccDescr.DeleteLastCharacter']
   ];
   const d = div.firstElementChild as HTMLDivElement;
   d.append(Tabs.Menu({
     class: 'emoji-tabs emoticons-menu no-stripe',
-    children: a.map(([className, icon, tabId]) => Tabs.MenuIconTab({
+    children: a.map(([className, icon, tabId, ariaLabel]) => Tabs.MenuIconTab({
       icon,
       class: `emoji-tabs-${className}`,
-      tab: tabId
+      tab: tabId,
+      label: I18n.format(ariaLabel, true)
     }))
   }) as HTMLElement);
   return d;

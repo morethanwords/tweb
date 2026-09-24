@@ -1,7 +1,7 @@
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
 import showTooltip from '@components/tooltip';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
 
@@ -48,6 +48,7 @@ const LockButton = () => {
   <button
     ref={button}
     class="btn-icon sidebar-lock-button"
+    aria-label={I18n.format('PasscodeLock.TapToLock', true)}
     onClick={() => {
       PasscodeLockScreenController.lock(iconWrapper, () => {
         apiManagerProxy.lock();

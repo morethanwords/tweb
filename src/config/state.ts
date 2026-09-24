@@ -96,6 +96,7 @@ export type StateSettings = {
   background?: Background, // ! DEPRECATED
   themes: AppTheme[],
   theme: AppTheme['name'],
+  increaseContrast: boolean,
   // Last explicitly-picked theme variant on each side. The burger-menu Dark-Mode toggle uses
   // these so toggling away and back returns to the same variant (e.g. tinted ↔ classic ↔ tinted)
   // instead of always flipping to the legacy night/classic pair. Updated in themeController on
@@ -497,6 +498,7 @@ export const SETTINGS_INIT: StateSettings = {
     makeDefaultAppTheme('light')
   ],
   theme: 'system',
+  increaseContrast: false,
   lastThemeNames: {
     dark: 'night',
     light: 'day'

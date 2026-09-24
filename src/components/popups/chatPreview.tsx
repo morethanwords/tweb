@@ -11,7 +11,7 @@ import mediaSizes from '@helpers/mediaSizes';
 import {bindActiveWindowListener, getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import {useFullPeer} from '@stores/fullPeers';
@@ -352,7 +352,7 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
       withoutOverlay={!mediaSizes.isMobile}
       show={show()}
       kind={CHAT_PREVIEW_POPUP_KIND}
-      containerProps={{ref: (el: HTMLDivElement) => containerEl = el}}
+      containerProps={{ref: (el: HTMLDivElement) => containerEl = el, 'aria-label': I18n.format('AccDescr.ChatPreview', true)}}
       onClose={() => chatRef?.beforeDestroy()}
     >
       <Inner />

@@ -255,6 +255,7 @@ export default class PromoSlideTab {
       return premiumImageContainer;
     } else {
       const premiumImage = document.createElement('img');
+      premiumImage.alt = '';
       premiumImage.src = `${maybe2x('assets/img/premium-star')}.png`;
       premiumImage.classList.add('popup-premium-header-image');
       premiumImageContainer.append(premiumImage);

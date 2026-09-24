@@ -41,6 +41,14 @@
 }
 
 .Icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  border: none;
+  background: none;
+
   color: var(--secondary-text-color);
   font-size: calc(var(--size) * 0.75);
   line-height: 1em;

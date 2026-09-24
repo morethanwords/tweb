@@ -123,6 +123,7 @@ export default function BrushTab() {
       <Space amount="16px" />
       <RangeInput
         label={i18n('MediaEditor.Size')}
+        ariaLabel="MediaEditor.Size"
         min={brushSizeMin}
         max={brushSizeMax}
         value={savedSize()}

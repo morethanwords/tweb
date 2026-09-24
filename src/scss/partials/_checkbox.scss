@@ -322,6 +322,29 @@
   }
 }
 
+// The native input lies at opacity: 0 on top of the control that is actually
+// drawn, so the global focus ring is painted on something invisible. Move it
+// onto the visible part — the same thing .radio-field-main does above.
+.checkbox-field-input:focus-visible ~ .checkbox-box,
+.checkbox-field-input:focus-visible ~ .checkbox-toggle {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 3px;
+}
+
+// Inside a row the target is the row, not the control: a clickable row focuses
+// its own container and is ringed as a whole, and a row carrying a toggle has
+// to look the same. The input is a descendant, so the ring is projected up onto
+// the row and taken back off the control.
+.row:has(.checkbox-field-input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.row .checkbox-field-input:focus-visible ~ .checkbox-box,
+.row .checkbox-field-input:focus-visible ~ .checkbox-toggle {
+  outline: none;
+}
+
 .checkbox-field-restriction {
   .checkbox-box {
     &-border {

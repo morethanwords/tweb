@@ -2,7 +2,7 @@ import {createMemo, createSignal, Index, JSX, Match, onMount, Show, Switch, untr
 import PopupElement, {createPopup, PopupContext} from './indexTsx';
 import {Peer, PaymentsUniqueStarGiftValueInfo, StarGift, StarGiftAttribute, StarGiftAttributeRarity} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {StarsStar} from '@components/popups/stars';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Button from '@components/buttonTsx';
@@ -24,6 +24,7 @@ import {ButtonMenuToggleTsx} from '@components/buttonMenuToggleTsx';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {showSharingPicker2Popup} from '@components/popups/pickUser';
 import {I18nTsx} from '@helpers/solid/i18n';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import tsNow from '@helpers/tsNow';
 import {useAppState} from '@stores/appState';
 import transferStarGift from '@components/popups/transferStarGift';
@@ -91,7 +92,13 @@ export function AttributeValue(props: {name: string, rarity: StarGiftAttributeRa
   return (
     <div class="popup-star-gift-info-attribute-value">
       {props.onClick ? (
-        <span class="popup-star-gift-info-attribute-clickable" onClick={props.onClick}>
+        <span
+          class="popup-star-gift-info-attribute-clickable"
+          role="button"
+          tabindex={0}
+          onClick={props.onClick}
+          onKeyDown={buttonKeyDown}
+        >
           {props.name}
         </span>
       ) : props.name}
@@ -914,6 +921,7 @@ export default function showStarGiftInfoPopup(options: {
             {saved?.drop_original_details_stars && (
               <ButtonIconTsx
                 icon="delete"
+                aria-label={I18n.format('Delete', true)}
                 onClick={async() => {
                   const popup = await createPaymentPopup({
                     inputInvoice: {
@@ -1064,11 +1072,13 @@ export default function showStarGiftInfoPopup(options: {
           <ButtonIconTsx
             class="popup-star-gift-info-close"
             icon="close"
+            aria-label={I18n.format('Close', true)}
             onClick={() => context.hide()}
           />
           <ButtonMenuToggleTsx
             class="popup-star-gift-info-menu-toggle"
             icon="more"
+            buttonOptions={{ariaLabel: 'MultiAccount.More'}}
             direction="bottom-left"
             buttons={[
               {

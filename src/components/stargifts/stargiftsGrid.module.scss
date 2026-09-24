@@ -70,6 +70,15 @@
     font-weight: 500;
     transition: background-color var(--transition-standard-in);
 
+    :global(.high-contrast) & {
+      color: #975006;
+    }
+
+    :global(.high-contrast.night) &,
+    :global(.high-contrast .night) & {
+      color: #ffc66b;
+    }
+
     &:hover {
       background: #FFBB2D50;
     }

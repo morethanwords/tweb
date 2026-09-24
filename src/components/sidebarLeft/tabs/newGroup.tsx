@@ -107,7 +107,7 @@ const NewGroup: Component = () => {
       nextBtn.classList.toggle('is-visible', !!valueCheck);
     });
 
-    nextBtn = ButtonCorner({icon: 'arrow_next'});
+    nextBtn = ButtonCorner({icon: 'arrow_next', ariaLabel: 'Next'});
 
     attachClickEvent(nextBtn, () => {
       const groupTitle = groupNameInputField.value;

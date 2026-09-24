@@ -4,8 +4,8 @@ import ripple from '@components/ripple';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {attachHotClassName} from '@helpers/solid/classname';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
-import {createEffect, createSignal, onCleanup, Show} from 'solid-js';
-import {Transition} from 'solid-transition-group';
+import {createEffect, onCleanup, Show} from 'solid-js';
+import I18n from '@lib/langPack';
 import styles from './attachMenuButton.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -24,7 +24,10 @@ const AttachMenuButton = defineSolidElement({
     attachHotClassName(props.element, styles.Container, 'btn-menu-toggle', 'btn-icon');
     ripple(props.element, () => true);
 
-    const [loadingContainer, setLoadingContainer] = createSignal<HTMLDivElement>();
+    createEffect(() => {
+      const label = props.isLoading ? 'Cancel' : props.isReplacingMedia ? 'Edit' : 'Chat.Input.Attach';
+      props.element.setAttribute('aria-label', I18n.format(label, true));
+    });
 
     createEffect(() => {
       if(!props.isLoading) return;
@@ -33,16 +36,21 @@ const AttachMenuButton = defineSolidElement({
       onCleanup(() => props.element.classList.remove(styles.disabled));
     });
 
-    // Workaround around a workaround
     createEffect(() => {
-      if(!loadingContainer()) return;
+      if(!props.isLoading) return;
+      const hasPopup = props.element.getAttribute('aria-haspopup');
+      props.element.removeAttribute('aria-haspopup');
 
-      const clean = attachClickEvent(loadingContainer(), (e) => {
-        e.stopPropagation();
+      const clean = attachClickEvent(props.element, (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         props.onCancel?.();
-      });
+      }, {capture: true});
 
-      onCleanup(clean);
+      onCleanup(() => {
+        clean();
+        if(hasPopup) props.element.setAttribute('aria-haspopup', hasPopup);
+      });
     });
 
     return (
@@ -58,7 +66,7 @@ const AttachMenuButton = defineSolidElement({
           />
         </Show>
         <Show when={props.isLoading}>
-          <span ref={setLoadingContainer} class={styles.LoadingContainer}>
+          <span class={styles.LoadingContainer}>
             <IconTsx
               class={`${styles.Icon} ${styles.close} button-icon`}
               icon='close'

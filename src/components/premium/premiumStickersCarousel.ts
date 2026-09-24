@@ -6,6 +6,8 @@ import wrapStickerAnimation from '@components/wrappers/stickerAnimation';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import {STICKER_EFFECT_MULTIPLIER} from '@components/wrappers/sticker';
 import {Document} from '@layer';
+import Button from '@components/button';
+import I18n from '@lib/langPack';
 
 export default class PremiumStickersCarousel {
   private superStickerRenderer: SuperStickerRenderer;
@@ -33,6 +35,12 @@ export default class PremiumStickersCarousel {
     this.container.children[topSiblingIndex].classList.add('visible');
     this.container.children[this.activeStickerIndex].classList.add('active');
     this.container.children[bottomSiblingIndex].classList.add('visible');
+    (Array.from(this.container.children) as HTMLButtonElement[]).forEach((element, index) => {
+      const visible = index === topSiblingIndex || index === bottomSiblingIndex || index === this.activeStickerIndex;
+      element.disabled = !visible;
+      element.setAttribute('aria-hidden', String(!visible));
+      element.setAttribute('aria-pressed', String(index === this.activeStickerIndex));
+    });
   }
 
   private runStickerAnimation() {
@@ -51,7 +59,7 @@ export default class PremiumStickersCarousel {
           this.ignoreUnmount = undefined;
           return;
         }
-        if(!this.destroyed) {
+        if(!this.destroyed && !this.container.contains(this.container.ownerDocument.activeElement)) {
           this.previousSticker();
         }
       }
@@ -127,8 +135,8 @@ export default class PremiumStickersCarousel {
     this.container.classList.add('premium-stickers-carousel');
     this.activeStickerIndex = Math.round(this.stickers.length / 2);
     stickers.forEach((sticker, index) => {
-      const carouselItem = document.createElement('div');
-      carouselItem.classList.add('premium-stickers-carousel-item');
+      const carouselItem = Button('premium-stickers-carousel-item', {noRipple: true});
+      carouselItem.setAttribute('aria-label', I18n.format('AccDescr.StickerNumber', true, [String(index + 1)]));
       const element = this.superStickerRenderer.renderSticker(sticker);
       carouselItem.append(element);
       carouselItem.addEventListener('click', (e) => {

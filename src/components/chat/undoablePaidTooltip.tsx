@@ -83,12 +83,14 @@ export default function showUndoablePaidTooltip(props: {
       title: title.element,
       textElement: subtitle.element,
       rightElement: (
-        <span
+        <button
+          type="button"
           class="tooltip-undo"
+          aria-label={I18n.format('Undo', true)}
           onClick={() => void props.onUndo()}
         >
           {i18n('Undo')}
-          <span class="tooltip-undo-timer">
+          <span class="tooltip-undo-timer" aria-hidden="true">
             <svg class="tooltip-undo-timer-svg" width={size + 'px'} height={size + 'px'}>
               <circle
                 cx={size / 2}
@@ -103,7 +105,7 @@ export default function showUndoablePaidTooltip(props: {
               {countdown.container}
             </span>
           </span>
-        </span>
+        </button>
       ),
       icon: 'star'
     });

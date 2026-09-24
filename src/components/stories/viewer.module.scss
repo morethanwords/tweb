@@ -181,6 +181,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       &.small .hideOnSmall,
       &.small :global(.stories-input) {
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
       }
     }
@@ -1020,4 +1021,10 @@ $color-inactive: rgba(255, 255, 255, .5);
   //   align-items: center;
   //   // justify-content: center;
   // }
+}
+.ViewerStoryHeaderLeft,
+.ViewerStoryFooterLeft,
+.ViewerStoryFooterReaction {
+  color: inherit;
+  text-align: inherit;
 }

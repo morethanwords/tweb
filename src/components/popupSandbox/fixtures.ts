@@ -631,3 +631,5 @@ export const starsGiveawayOptions: StarsGiveawayOption[] = [500, 1000].map((star
     per_user_stars: stars / users
   }))
 }));
+
+export const EMBEDDED_PAGE_URL = 'data:text/html,' + encodeURIComponent('<!doctype html><html lang="en"><head><title>Sandbox embedded page</title></head><body><main><h1>Sandbox embedded page</h1><p>Local fixture. No Telegram traffic.</p></main></body></html>');

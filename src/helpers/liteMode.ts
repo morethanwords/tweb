@@ -8,12 +8,27 @@ export type LiteModeKey = 'all' | 'gif' | 'video' |
   'chat' | 'chat_background' | 'chat_spoilers' | 'animations' | 'blur';
 
 export class LiteMode {
+  // OS-level "reduce motion" preference (WCAG 2.3.3).
+  private prefersReducedMotion = typeof matchMedia !== 'undefined' &&
+    matchMedia('(prefers-reduced-motion: reduce)');
+
   public isEnabled() {
     const [appSettings] = useAppSettings();
     return !!appSettings.liteMode?.all;
   }
 
+  public isReducedMotion() {
+    return !!(this.prefersReducedMotion && this.prefersReducedMotion.matches);
+  }
+
   public isAvailable(key: LiteModeKey) {
+    // The OS reduce-motion preference disables UI animations app-wide. This
+    // also flips the body `animation-level-0` class through appImManager's
+    // setSettings, so every `@include animation-level()` SCSS block turns off.
+    if(key === 'animations' && this.isReducedMotion()) {
+      return false;
+    }
+
     const [appSettings] = useAppSettings();
     return !!(appSettings.liteMode && !appSettings.liteMode.all && !appSettings.liteMode[key]);
   }

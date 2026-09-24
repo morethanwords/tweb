@@ -713,7 +713,11 @@ export const createStoriesStore = (props: {
     setState({ready: true});
   };
 
-  const deletePeer = (peerId: PeerId, peerIndex = getPeerIndex(peerId)) => {
+  // The default is resolved in the body, not in the parameter list: the production
+  // minifier has been caught misbinding a parameter referenced from another
+  // parameter's default (see scripts/check-bundle-mangling.mjs, which fails on it).
+  const deletePeer = (peerId: PeerId, peerIndexArg?: number) => {
+    const peerIndex = peerIndexArg ?? getPeerIndex(peerId);
     if(peerIndex === -1) {
       return;
     }

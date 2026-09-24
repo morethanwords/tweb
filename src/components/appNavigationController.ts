@@ -14,7 +14,7 @@ export type NavigationItem = {
     'toast' | 'dropdown' | 'forum' | 'stories' | 'stories-focus' | 'topbar-search' |
     'settings-popup' | 'settings-search' | 'monoforum' | 'inline-message-input',
   onPop: (canAnimate: boolean) => boolean | void,
-  onEscape?: () => boolean,
+  onEscape?: (event: KeyboardEvent) => boolean,
   noHistory?: boolean,
   noBlurOnPop?: boolean,
   removed?: boolean,
@@ -216,7 +216,7 @@ export class AppNavigationController {
   private onKeyDown = (e: KeyboardEvent) => {
     const item = this.navigations[this.navigations.length - 1];
     if(!item) return;
-    if(e.key === 'Escape' && this.canCloseOnEscape() && (item.onEscape ? item.onEscape() : true)) {
+    if(e.key === 'Escape' && !e.defaultPrevented && this.canCloseOnEscape() && (item.onEscape ? item.onEscape(e) : true)) {
       cancelEvent(e);
       this.back(item.type);
     }

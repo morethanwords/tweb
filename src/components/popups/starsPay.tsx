@@ -204,6 +204,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     const [image, {title: transactionTitle, media: avatar}, link] = await Promise.all([
       (async() => {
         const img = document.createElement('img');
+        img.alt = '';
         img.classList.add('popup-stars-image');
         await renderImageFromUrlPromise(img, `assets/img/${maybe2x(boost ? 'stars' : 'stars_pay')}.png`);
         return img;

@@ -80,7 +80,7 @@ const Contacts: Component = () => {
   onMount(() => {
     tab.container.id = 'contacts-container';
 
-    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible'});
+    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible', ariaLabel: 'AddContact'});
     tab.content.append(btnAdd);
 
     attachClickEvent(btnAdd, () => {

@@ -5,7 +5,7 @@ import styles from '@components/emailVerification.module.scss';
 import MediaHeader from '@components/mediaHeader';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {InputFieldTsx} from '@components/inputFieldTsx';
-import {LangPackKey} from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 import ButtonTsx from '@components/buttonTsx';
 import classNames from '@helpers/string/classNames';
 import mediaSizes from '@helpers/mediaSizes';
@@ -104,6 +104,8 @@ export function wrapEmailPattern(pattern: string) {
   return wrapRichText(pattern, {entities, noTextFormat: true});
 }
 
+let emailVerificationErrorIdSeed = 0;
+
 export function EnterEmailStep(props: {
   isInitialSetup?: boolean
   class?: string
@@ -118,6 +120,8 @@ export function EnterEmailStep(props: {
   const [error, setError] = createSignal<LangPackKey | undefined>(undefined);
   const [email, setEmail] = createSignal<string>('');
   const [loading, setLoading] = createSignal(false);
+
+  const errorDescriptionId = 'email-verification-error-' + (++emailVerificationErrorIdSeed);
 
   let inputRef!: InputField;
 
@@ -162,6 +166,7 @@ export function EnterEmailStep(props: {
   }
 
   onMount(() => {
+    inputRef.input.setAttribute('aria-label', I18n.format('EmailSetup.InputCaption', true));
     onCleanup(focusWhenSettled(inputRef.input));
 
     subscribeOn(inputRef.input)('keydown', (e) => {
@@ -191,6 +196,7 @@ export function EnterEmailStep(props: {
         disabled={loading()}
         value={email()}
         errorLabel={error() ? null : undefined}
+        errorDescriptionId={error() ? errorDescriptionId : undefined}
         onRawInput={(val) => {
           setEmail(val);
           setError(undefined);
@@ -203,7 +209,7 @@ export function EnterEmailStep(props: {
           <Show
             when={!error()}
             fallback={(
-              <div class={styles.error}>
+              <div id={errorDescriptionId} class={styles.error} role="alert">
                 <I18nTsx key={error()} />
               </div>
             )}
@@ -307,6 +313,7 @@ export function EnterCodeStep(props: {
       </MediaHeader>
 
       <CodeInputField
+        label="AccDescr.EmailCode"
         ref={inputRef}
         valueSignal={codeSignal}
         class={styles.input}
@@ -322,7 +329,7 @@ export function EnterCodeStep(props: {
           <Show
             when={!error()}
             fallback={(
-              <div class={styles.error}>
+              <div class={styles.error} role="alert">
                 <I18nTsx key={error()} />
               </div>
             )}

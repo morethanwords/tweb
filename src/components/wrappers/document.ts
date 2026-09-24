@@ -16,7 +16,8 @@ import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
 import getDownloadMediaDetails from '@appManagers/utils/download/getDownloadMediaDetails';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
-import {joinElementsWith} from '@lib/langPack';
+import I18n, {joinElementsWith} from '@lib/langPack';
+import Button from '@components/button';
 import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
@@ -159,7 +160,9 @@ export default async function wrapDocument({
 
   // return docDiv;
 
-  const icoDiv = document.createElement('div');
+  const canActivate = !(!uploadingFileName && message.pFlags.is_outgoing && !message.mid);
+  const icoDiv = canActivate ? Button('', {noRipple: true}) : document.createElement('div');
+  if(canActivate) icoDiv.setAttribute('aria-label', I18n.format('AccDescr.OpenDocument', true, [doc.file_name || 'Unknown.file']));
   icoDiv.classList.add('document-ico');
   let icoTextEl: HTMLElement;
 
@@ -177,8 +180,11 @@ export default async function wrapDocument({
     const imgs: (HTMLImageElement | HTMLCanvasElement | HTMLVideoElement)[] = [];
     // ! WARNING, use thumbs for check when thumb will be generated for media
     if(message.pFlags.is_outgoing && ['photo', 'video'].includes(doc.type) && cacheContext.url) {
-      icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
-      imgs.push(icoDiv.firstElementChild as HTMLImageElement);
+      const image = document.createElement('img');
+      image.src = cacheContext.url;
+      image.alt = '';
+      icoDiv.append(image);
+      imgs.push(image);
     } else {
       const perf = performance.now();
       const wrapped = await wrapPhoto({
@@ -265,7 +271,7 @@ export default async function wrapDocument({
 
   docDiv.prepend(icoDiv);
 
-  if(!uploadingFileName && message.pFlags.is_outgoing && !message.mid) {
+  if(!canActivate) {
     return docDiv;
   }
 

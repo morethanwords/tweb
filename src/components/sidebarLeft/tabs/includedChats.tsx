@@ -142,7 +142,7 @@ const IncludedChats: Component = () => {
   onMount(() => {
     tab.content.remove();
     tab.container.classList.add('included-chatlist-container');
-    confirmBtn = ButtonIcon('check btn-confirm blue', {noRipple: true});
+    confirmBtn = ButtonIcon('check btn-confirm blue', {noRipple: true, ariaLabel: 'Save'});
     confirmBtn.style.display = 'none';
 
     tab.header.append(confirmBtn);

@@ -1,7 +1,8 @@
-import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {createEffect, createMemo, createSignal, createUniqueId, on, onCleanup, onMount} from 'solid-js';
 
 import {doubleRaf} from '@helpers/schedulers';
 import {hexToRgb} from '@helpers/color';
+import I18n from '@lib/langPack';
 import _ColorPicker from '@components/colorPicker';
 import ripple from '@components/ripple';
 
@@ -36,6 +37,7 @@ export default function ColorPicker(props: {
 
   const [collapsed, setCollapsed] = createSignal(colorPickerSwatches.includes(props.value));
   const [collapsing, setCollapsing] = createSignal(false);
+  const swatchGroup = createUniqueId();
 
   const [containerSize, setContainerSize] = createSignal(normalContainerSize);
 
@@ -44,19 +46,38 @@ export default function ColorPicker(props: {
 
   let sizeContainer: HTMLDivElement;
 
-  const swatch = (hexColor: string, i: number) => (
-    <div
-      class="media-editor__color-picker-swatch"
-      classList={{'media-editor__color-picker-swatch--active': props.value === hexColor && collapsed()}}
-      style={{
-        '--color-rgb': hexToRgb(hexColor).join(' '),
-        '--i': i
-      }}
-      onClick={() => props.onChange(hexColor)}
-    >
-      <div class="media-editor__color-picker-swatch-color" />
-    </div>
-  );
+  const anySwatchActive = createMemo(() => collapsed() && colorPickerSwatches.includes(props.value));
+
+  const swatch = (hexColor: string, i: number) => {
+    const isActive = () => props.value === hexColor && collapsed();
+    // Roving tabindex: the checked swatch is tabbable; when none is checked,
+    // the first swatch is the group's tab stop.
+    const isTabbable = () => isActive() || (!anySwatchActive() && i === 0);
+    return (
+      <label
+        class="media-editor__color-picker-swatch"
+        classList={{'media-editor__color-picker-swatch--active': isActive()}}
+        style={{
+          '--color-rgb': hexToRgb(hexColor).join(' '),
+          '--i': i
+        }}
+        aria-hidden={!collapsed()}
+      >
+        <input
+          class="media-editor__color-picker-swatch-input"
+          type="radio"
+          name={swatchGroup}
+          value={hexColor}
+          checked={isActive()}
+          disabled={!collapsed()}
+          aria-label={hexColor}
+          tabindex={isTabbable() ? 0 : -1}
+          onChange={(event) => event.currentTarget.checked && props.onChange(hexColor)}
+        />
+        <div class="media-editor__color-picker-swatch-color" />
+      </label>
+    );
+  };
 
   const onCollapseToggle = async() => {
     setCollapsed((prev) => !prev);
@@ -76,20 +97,28 @@ export default function ColorPicker(props: {
           classList={{'media-editor__color-picker--collapsed': collapsed()}}
           style={{'--picker-height': pickerHeight + 'px'}}
         >
-          <div class="media-editor__color-picker-swatches">
+          <div
+            class="media-editor__color-picker-swatches"
+            role="group"
+            aria-label={I18n.format('SetColor', true)}
+          >
             {colorPickerSwatches.map(swatch)}
-            <div
+            <button
+              type="button"
               class="media-editor__color-picker-swatch media-editor__color-picker-swatch--gradient"
               classList={{'media-editor__color-picker-swatch--active': !collapsed()}}
+              aria-label={I18n.format('MediaEditor.CustomColor', true)}
+              aria-expanded={!collapsed()}
+              aria-pressed={!collapsed()}
               onClick={onCollapseToggle}
             >
               <div class="media-editor__color-picker-swatch-color" />
-            </div>
+            </button>
 
-            <div class="media-editor__color-picker-slider">{parts.slider}</div>
+            <div class="media-editor__color-picker-slider" inert={collapsed()} aria-hidden={collapsed()}>{parts.slider}</div>
           </div>
 
-          <div class="media-editor__color-picker-layout-wrapper">
+          <div class="media-editor__color-picker-layout-wrapper" inert={collapsed()} aria-hidden={collapsed()}>
             <div class="media-editor__color-picker-layout">
               <div class="media-editor__color-picker-box">{parts.pickerBox}</div>
               <div class="media-editor__color-picker-inputs">

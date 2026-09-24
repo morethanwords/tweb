@@ -51,6 +51,7 @@ $btn-menu-z-index: 4;
 .btn-corner {
   --offset: 1.25rem;
   --translateY: calc(54px + var(--offset));
+  visibility: hidden;
   position: absolute !important;
   bottom: var(--offset);
   inset-inline-end: var(--offset);
@@ -78,6 +79,7 @@ $btn-menu-z-index: 4;
 
   &.is-visible {
     --translateY: 0;
+    visibility: visible;
   }
 
   body.animation-level-0 & {
@@ -1227,7 +1229,7 @@ $btn-menu-z-index: 4;
 }
 
 .btn-color-primary {
-  background: var(--primary-color);
+  background: var(--primary-button-color, var(--primary-color));
   color: #fff;
 
   /* .c-ripple__circle {

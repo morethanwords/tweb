@@ -36,7 +36,7 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
   });
 
   const children = (
-    <div ref={container} class="media-editor__sticker-layer-content" />
+    <div ref={container} class="media-editor__sticker-layer-content" aria-hidden={true} />
   ); // Needs to be rendered here for hot reload to work properly
 
   return (

@@ -33,6 +33,7 @@
 }
 
 .Icon {
+  color: inherit;
   display: flex;
   font-size: 22px;
 }
@@ -57,6 +58,9 @@
   border-radius: 6px;
 
   &Text {
+    color: inherit;
+    font-weight: inherit;
+    text-align: inherit;
     position: relative;
     display: inline-flex;
 
@@ -97,9 +101,7 @@
 .Date {
   font-size: 13px;
   line-height: 1;
-  /* color: var(--secondary-text-color); */
-  opacity: 0.4;
-  font-weight: 200;
+  color: var(--secondary-text-color);
 }
 
 .ExpandableContent {

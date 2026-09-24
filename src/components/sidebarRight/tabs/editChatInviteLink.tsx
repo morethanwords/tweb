@@ -65,7 +65,7 @@ const EditChatInviteLink: Component = () => {
   };
 
   const build = async() => {
-    const confirmBtn = ButtonCorner({className: 'is-visible', icon: 'check'});
+    const confirmBtn = ButtonCorner({className: 'is-visible', icon: 'check', ariaLabel: 'Save'});
     tab.content.append(confirmBtn);
 
     attachClickEvent(confirmBtn, async() => {

@@ -218,6 +218,7 @@
     @include respond-to(no-floating-left-sidebar) {
       html:has(#column-left.is-collapsed) & {
         display: flex;
+        visibility: visible;
       }
     }
   }
@@ -269,4 +270,3 @@
     }
   }
 }
-

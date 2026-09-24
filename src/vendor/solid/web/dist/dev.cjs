@@ -731,13 +731,14 @@ function Portal(props) {
     if (hydrating) solidJs.getOwner().user = hydrating = false;
     content || (content = solidJs.runWithOwner(owner, () => solidJs.createMemo(() => props.children)));
     const el = mount();
-    if (el instanceof HTMLHeadElement) {
+    const portalDocument = el.ownerDocument || document;
+    if (el.nodeName === "HEAD") {
       const [clean, setClean] = solidJs.createSignal(false);
       const cleanup = () => setClean(true);
       solidJs.createRoot(dispose => insert(el, () => !clean() ? content() : dispose(), null));
       solidJs.onCleanup(cleanup);
     } else {
-      const container = createElement(props.isSVG ? "g" : "div", props.isSVG),
+      const container = props.isSVG ? portalDocument.createElementNS(SVG_NAMESPACE, "g") : portalDocument.createElement("div"),
         renderRoot = useShadow && container.attachShadow ? container.attachShadow({
           mode: "open"
         }) : container;
@@ -750,7 +751,7 @@ function Portal(props) {
       insert(renderRoot, content);
       el.appendChild(container);
       props.ref && props.ref(container);
-      solidJs.onCleanup(() => el.removeChild(container));
+      solidJs.onCleanup(() => container.remove());
     }
   }, undefined, {
     render: !hydrating

@@ -107,6 +107,7 @@ export const Result = (props: {
             <Match when={translation.state === 'ready' && translation()} keyed>
               {(text) => (
                 <Scrollable
+                  tabIndex={0}
                   ref={scrollableRef}
                   contextRef={(value) => void (scrollableContextRef = value)}
                   relative

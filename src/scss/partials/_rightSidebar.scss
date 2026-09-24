@@ -126,6 +126,7 @@
   &.can-add-members {
     .btn-corner:not(.is-hidden) {
       transform: translateZ(0);
+      visibility: visible;
     }
   }
 }

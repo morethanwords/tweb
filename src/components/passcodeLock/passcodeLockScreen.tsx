@@ -3,12 +3,13 @@ import {createMutable} from 'solid-js/store';
 import {animateValue} from '@helpers/animateValue';
 import {getAppWindow} from '@helpers/appWindow';
 import focusInput from '@helpers/dom/focusInput';
+import createFocusTrap from '@helpers/dom/focusTrap';
 import {keepMe} from '@helpers/keepMe';
 import pause from '@helpers/schedulers/pause';
 import throttle from '@helpers/schedulers/throttle';
 import AccountController from '@lib/accounts/accountController';
 import commonStateStorage from '@lib/commonStateStorage';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {usePasscodeActions} from '@lib/passcode/actions';
 import {MAX_PASSCODE_LENGTH} from '@lib/passcode/constants';
 import {useLockScreenHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -64,6 +65,10 @@ const PasscodeLockScreen: Component<{
 
   onMount(() => {
     attempts = 0;
+    const doc = container.ownerDocument;
+    const trap = createFocusTrap(container);
+    trap.activate();
+    onCleanup(() => trap.deactivate());
 
     const lockIcon = props.fromLockIcon;
     if(lockIcon) (async() => {
@@ -86,13 +91,13 @@ const PasscodeLockScreen: Component<{
     })();
 
     const listener = (e: KeyboardEvent) => {
-      const doc = getAppWindow().document; // active window (the PiP doc when popped out)
-      if(doc.activeElement && doc.activeElement.tagName === 'INPUT') return;
+      if(e.defaultPrevented || store.isLogoutPopupOpen ||
+        e.target !== doc.body && e.target !== container) return;
       focusInput(passwordInputField.input, e);
     };
-    getAppWindow().document.addEventListener('keydown', listener);
+    doc.addEventListener('keydown', listener);
     onCleanup(() => {
-      getAppWindow().document.removeEventListener('keydown', listener);
+      doc.removeEventListener('keydown', listener);
     });
   });
 
@@ -202,16 +207,12 @@ const PasscodeLockScreen: Component<{
           {input}
           <Space amount="1rem" />
           <button
-            type='button'
-            onMouseDown={() => {
-              onSubmit();
-            }}
+            type='submit'
             class={`btn-primary btn-color-primary btn-large ${styles.SubmitButton}`}
             disabled={!store.passcode}
           >
             {i18n('PasscodeLock.Proceed')}
           </button>
-          <button hidden style={{visibility: 'hidden', height: '0', width: '0'}} type='submit' />
         </form>
         <Space amount="1.625rem" />
         <div class={styles.Description}>
@@ -223,6 +224,7 @@ const PasscodeLockScreen: Component<{
               [
                 <button
                   class={styles.LogoutButton}
+                  aria-label={I18n.format('LogOut', true)}
                   onClick={() => {
                     store.isLogoutPopupOpen = true;
                   }}

@@ -32,6 +32,7 @@ export default function EmailRecoverCard(props: {spec: Spec}) {
 
   const codeInputField = new CodeInputFieldCompat({
     length: 6,
+    label: 'AccDescr.EmailCode',
     onChange: () => {
       codeInputField.error = false;
       setErrorContent(undefined);
@@ -70,7 +71,7 @@ export default function EmailRecoverCard(props: {spec: Spec}) {
       header={
         <MediaHeader>
           <MediaHeader.Sticker name="Mailbox" size={stickerSize}/>
-          <MediaHeader.Title>{i18n('Login.ResetPassword.Title')}</MediaHeader.Title>
+          <MediaHeader.Title tag="h1">{i18n('Login.ResetPassword.Title')}</MediaHeader.Title>
           <MediaHeader.Subtitle>
             {i18n('Login.ResetPassword.Subtitle', [wrapEmailPattern(props.spec.payload.email_pattern)])}
           </MediaHeader.Subtitle>
@@ -78,7 +79,7 @@ export default function EmailRecoverCard(props: {spec: Spec}) {
       }
     >
       {codeInputField.container}
-      <AuthCardError content={errorContent()} />
+      <AuthCardError content={errorContent()} describes={codeInputField.input} />
       <Button
         class="btn-primary btn-secondary btn-primary-transparent primary"
         onClick={() => navigate({name: 'password'})}

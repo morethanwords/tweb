@@ -1,3 +1,4 @@
+import I18n from '@lib/langPack';
 // Self-contained recording UI overlay shown in the chat input while the user
 // is recording (or has paused) a voice message. The whole subtree lives inside
 // one absolutely-positioned container so the chat input can fade or slide it
@@ -61,7 +62,7 @@ export default class VoiceRecordingPanel {
     this.element = document.createElement('div');
     this.element.classList.add('voice-recording-panel');
 
-    this.btnCancel = Button('btn-icon voice-recording-cancel danger');
+    this.btnCancel = Button('btn-icon voice-recording-cancel danger', {ariaLabel: 'Delete'});
     this.btnCancel.append(Icon('delete', 'voice-recording-cancel-icon'));
 
     this.leadEl = document.createElement('div');
@@ -70,7 +71,7 @@ export default class VoiceRecordingPanel {
     this.dotEl = document.createElement('div');
     this.dotEl.classList.add('voice-recording-dot');
 
-    this.btnPlayToggle = Button('btn-icon voice-recording-play');
+    this.btnPlayToggle = Button('btn-icon voice-recording-play', {ariaLabel: 'Play'});
     this.playPlayIcon = Icon('play_filled', 'voice-recording-play-icon', 'voice-recording-play-icon--play');
     this.playPauseIcon = Icon('pause_filled', 'voice-recording-play-icon', 'voice-recording-play-icon--pause');
     this.btnPlayToggle.append(this.playPlayIcon, this.playPauseIcon);
@@ -83,7 +84,7 @@ export default class VoiceRecordingPanel {
     this.timerEl.classList.add('voice-recording-timer');
     this.timerEl.textContent = '0:00,0';
 
-    this.btnPauseToggle = Button('btn-icon voice-recording-pause-toggle');
+    this.btnPauseToggle = Button('btn-icon voice-recording-pause-toggle', {ariaLabel: 'Pause'});
     this.pauseIconRecord = Icon('pause_filled', 'voice-recording-pause-icon', 'voice-recording-pause-icon--pause');
     this.pauseIconMic = Icon('microphone', 'voice-recording-pause-icon', 'voice-recording-pause-icon--mic');
     this.btnPauseToggle.append(this.pauseIconRecord, this.pauseIconMic);
@@ -123,6 +124,7 @@ export default class VoiceRecordingPanel {
 
   public setMode(mode: VoiceRecordingMode) {
     this.mode = mode;
+    this.btnPauseToggle.setAttribute('aria-label', I18n.format(mode === 'recording' ? 'Pause' : 'AccDescr.ResumeRecording', true));
     this.element.classList.toggle('voice-recording-panel--paused', mode === 'paused');
     this.element.classList.toggle('voice-recording-panel--recording', mode === 'recording');
     if(mode === 'recording') {
@@ -137,6 +139,7 @@ export default class VoiceRecordingPanel {
 
   public setPlaying(isPlaying: boolean) {
     this.isPlaying = isPlaying;
+    this.btnPlayToggle.setAttribute('aria-label', I18n.format(isPlaying ? 'Pause' : 'Play', true));
     this.element.classList.toggle('voice-recording-panel--playing', isPlaying);
   }
 

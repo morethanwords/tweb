@@ -8,6 +8,7 @@ import {MessageEntity} from '@layer';
 import {getMessageEntityForEmojiWithDocId} from '@lib/richTextProcessor/getMessageEntityFromDocIdOrEmoji';
 import rootScope from '@lib/rootScope';
 import {createRoot, onCleanup} from 'solid-js';
+import I18n from '@lib/langPack';
 
 
 type CreateEmojiDropdownButtonArgs = {
@@ -58,6 +59,7 @@ export const useEmojiDropdown = ({
   canUsePremiumEmojiAlways,
   ...rest
 }: UseEmojiDropdownArgs) => {
+  if(!element.hasAttribute('aria-label')) element.setAttribute('aria-label', I18n.format('Emoji', true));
   const emojiTab = new EmojiTab({
     managers: rootScope.managers,
     additionalStickerViewerClass: styles.StickerViewer,

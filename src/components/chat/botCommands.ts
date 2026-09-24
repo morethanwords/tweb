@@ -21,7 +21,7 @@ export default class ChatBotCommands extends AutocompletePeerHelper {
         chatInput.sendMessage(true);
         this.toggle(true);
       });
-    });
+    }, 'Chat.BotCommands');
   }
 
   public setUserId(userId: UserId, middleware: Middleware) {

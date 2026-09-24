@@ -1,4 +1,4 @@
-$placeholder-color: #9e9e9e;
+$placeholder-color: var(--input-label-color, #9e9e9e);
 $border-radius: 12px;
 $border-radius-medium: 16px;
 $border-radius-big: 24px;

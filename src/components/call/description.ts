@@ -13,6 +13,7 @@ export default class CallDescriptionElement {
   constructor(private appendTo: HTMLElement) {
     this.container = document.createElement('div');
     this.container.classList.add('call-description');
+    this.container.setAttribute('role', 'status');
   }
 
   public detach() {
@@ -33,6 +34,8 @@ export default class CallDescriptionElement {
     }
 
     this.state = connectionState;
+    // The elapsed timer remains readable without speaking every second.
+    this.container.setAttribute('aria-live', connectionState === CALL_STATE.CONNECTED ? 'off' : 'polite');
 
     let element: HTMLElement;
     if(connectionState === CALL_STATE.CONNECTED) {

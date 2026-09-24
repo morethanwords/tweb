@@ -18,7 +18,7 @@ export const Skeleton = (props: SkeletonProps) => {
     <Show when={loading()} fallback={children() && (
       <div class="skeleton-child">{children()}</div>
     )}>
-      <Skeleton.Div textLine secondary={props.secondary} class={props.class} />
+      <Skeleton.Div textLine secondary={props.secondary} class={props.class} aria-hidden="true" />
     </Show>
   );
 

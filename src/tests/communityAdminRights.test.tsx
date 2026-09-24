@@ -114,7 +114,8 @@ vi.mock('@lib/apiManagerProxy', () => ({
 
 vi.mock('@lib/langPack', () => ({
   default: {
-    getIsRTL: () => false
+    getIsRTL: () => false,
+    format: (key: string) => key
   },
   i18n: (key: string) => document.createTextNode(key),
   i18n_: (options: {element: HTMLElement, key: string}) => {

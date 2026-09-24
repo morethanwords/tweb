@@ -25,7 +25,7 @@ const PrivateSearch: Component = () => {
   const inputSearch = new InputSearch({placeholder: 'Search'});
   tab.title.replaceWith(inputSearch.container);
 
-  const btnPickDate = ButtonIcon('calendar sidebar-header-right');
+  const btnPickDate = ButtonIcon('calendar sidebar-header-right', {ariaLabel: 'JumpToDate'});
   tab.header.append(btnPickDate);
 
   const c = document.createElement('div');

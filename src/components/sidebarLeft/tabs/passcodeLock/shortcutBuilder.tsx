@@ -54,6 +54,7 @@ const ShortcutBuilder: Component<{
               [styles.KeyButtonFirst]: idx === 0,
               [styles.KeyButtonLast]: idx === array.length - 1
             }}
+            aria-pressed={isSelected(key)}
             onClick={[onKeyClick, key]}
           >
             {getKeyContent(key)}

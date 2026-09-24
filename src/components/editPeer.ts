@@ -38,7 +38,7 @@ export default class EditPeer {
     this.peerId ||= NULL_PEER_ID;
 
     if(!this.nextBtn) {
-      this.nextBtn = ButtonCorner({icon: 'check'});
+      this.nextBtn = ButtonCorner({icon: 'check', ariaLabel: 'Save'});
     } else if(!this.nextBtn.classList.contains('btn-corner')) {
       this.handleChange = () => {
         this.nextBtn.toggleAttribute('disabled', !this.isChanged() || this.disabled);

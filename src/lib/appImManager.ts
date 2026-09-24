@@ -1,3 +1,5 @@
+import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
+import isTargetAnInput from '@helpers/dom/isTargetAnInput';
 import type {GroupCallId, MyGroupCall} from '@appManagers/appGroupCallsManager';
 import type {ApiLimitType} from '@appManagers/apiManagerMethods';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
@@ -52,6 +54,7 @@ import {Modify, SendMessageEmojiInteractionData} from '@types';
 import htmlToSpan from '@helpers/dom/htmlToSpan';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
+import {attachSkipToContent, setLandmarkLabels} from '@helpers/dom/appLandmarks';
 import showCallPopup from '@components/call';
 import copy from '@helpers/object/copy';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
@@ -343,6 +346,11 @@ export class AppImManager extends EventListenerBase<{
 
     this.selectTab(APP_TABS.CHATLIST);
 
+    const skipLink = document.getElementById('skip-to-content');
+    if(skipLink) attachSkipToContent(skipLink, this.columnEl);
+    this.setStaticLandmarkLabels();
+    rootScope.addEventListener('language_change', this.setStaticLandmarkLabels);
+
     idleController.addEventListener('change', (idle) => {
       this.offline = idle;
       this.updateStatus();
@@ -454,6 +462,7 @@ export class AppImManager extends EventListenerBase<{
       }
 
       this.appendEmojiAnimationContainer(to);
+      this.updateColumnAccessibility();
     });
 
     mediaSizes.addEventListener('resize', () => {
@@ -1692,25 +1701,25 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private attachKeydownListener() {
-    const IGNORE_KEYS = new Set(['Meta', 'Control']);
     const onKeyDown = async(e: KeyboardEvent) => {
       const key = e.key;
       const isSelectionCollapsed = document.getSelection().isCollapsed;
       if(
+        shouldPreserveKeyboardFocus(e) ||
         overlayCounter.isOverlayActive ||
-        IGNORE_KEYS.has(key) ||
         !e.isTrusted // * ignore synthetic events
       ) return;
 
       const target = e.target as HTMLElement;
 
-      const isTargetAnInput = (target.tagName === 'INPUT' && !['checkbox', 'radio'].includes((target as HTMLInputElement).type)) || target.isContentEditable;
+      const targetIsInput = isTargetAnInput(target);
 
       // if(target.tagName === 'INPUT') return;
 
       // this.log('onkeydown', e, document.activeElement);
 
       const chat = this.chat;
+      if(targetIsInput && target !== chat?.input?.messageInput) return;
 
       // Hand keyboard focus to the bubbles scroll container so the browser scrolls it natively.
       // (overflow:auto + outline:none → focus is invisible.)
@@ -1725,11 +1734,11 @@ export class AppImManager extends EventListenerBase<{
 
       if((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed) {
         return;
-      } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && !isTargetAnInput) {
+      } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && !targetIsInput) {
         return;
       } else if(
         (key === 'PageUp' || key === 'PageDown') &&
-        !isTargetAnInput &&
+        !targetIsInput &&
         !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey
       ) {
         handoffScroll();
@@ -1825,7 +1834,7 @@ export class AppImManager extends EventListenerBase<{
       if(
         chat?.input?.messageInput &&
         target !== chat.input.messageInput &&
-        !isTargetAnInput &&
+        !targetIsInput &&
         !IS_TOUCH_SUPPORTED &&
         (!mediaSizes.isMobile || this.tabId === APP_TABS.CHAT) &&
         !chat.selection.isSelecting &&
@@ -1931,7 +1940,15 @@ export class AppImManager extends EventListenerBase<{
 
     switch(splitted[0]) {
       default: {
-        params.p = splitted[0].slice(1);
+        const p = splitted[0].slice(1);
+        // Only a username or a peer id is a route. Any other bare fragment (an
+        // in-page anchor such as the skip link's #column-center) would otherwise
+        // fall through to '#/im' and open a NaN peer.
+        if(p[0] !== '@' && !p.isPeerId()) {
+          return;
+        }
+
+        params.p = p;
       }
 
       case '#/im': {
@@ -3152,6 +3169,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     this.tabId = id;
+    this.updateColumnAccessibility();
     blurActiveElement();
     if(mediaSizes.isMobile && prevTabId === APP_TABS.PROFILE && id < APP_TABS.PROFILE) {
       appSidebarRight.hide();
@@ -3176,6 +3194,17 @@ export class AppImManager extends EventListenerBase<{
     // document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id === 2);
 
     return animationPromise;
+  }
+
+  private setStaticLandmarkLabels = () => {
+    setLandmarkLabels(appSidebarLeft.sidebarEl, document.getElementById('column-right'));
+  };
+
+  private updateColumnAccessibility() {
+    // On mobile these columns slide outside the viewport but stay mounted.
+    // Match their keyboard/AT visibility to the selected screen, including PiP.
+    appSidebarLeft.sidebarEl.inert = mediaSizes.isMobile && this.tabId !== APP_TABS.CHATLIST;
+    this.columnEl.inert = mediaSizes.isMobile && this.tabId !== APP_TABS.CHAT;
   }
 
   public updateStatus() {

@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   close: vi.fn()
@@ -53,11 +53,28 @@ function pressKey(element: HTMLElement, key: string) {
 }
 
 describe('ButtonMenu keyboard accessibility', () => {
+  afterEach(() => document.body.replaceChildren());
   beforeEach(() => {
     mocks.close.mockClear();
   });
 
-  it('uses ordinary button semantics and activates action rows with Enter and Space', () => {
+  it('can enter the items when an opening transition leaves focus on the menu itself', () => {
+    const menu = ButtonMenuSync({buttons: [
+      {regularText: 'First', onClick: vi.fn()},
+      {regularText: 'Last', onClick: vi.fn()}
+    ]});
+    menu.tabIndex = -1;
+    menu.classList.add('active');
+    document.body.append(menu);
+    menu.focus();
+    pressKey(menu, 'ArrowDown');
+    expect(document.activeElement).toBe(menu.firstElementChild);
+    menu.focus();
+    pressKey(menu, 'ArrowUp');
+    expect(document.activeElement).toBe(menu.lastElementChild);
+  });
+
+  it('uses menu semantics and activates action rows with Enter and Space', () => {
     const listenerSetter = new ListenerSetter();
     const onClick = vi.fn();
     const menu = ButtonMenuSync({
@@ -67,10 +84,10 @@ describe('ButtonMenu keyboard accessibility', () => {
     menu.classList.add('active');
     const [heading, item] = menu.querySelectorAll<HTMLElement>('.btn-menu-item');
 
-    expect(menu.getAttribute('role')).toBeNull();
+    expect(menu.getAttribute('role')).toBe('menu');
     expect(heading.getAttribute('role')).toBeNull();
     expect(heading.tabIndex).toBe(-1);
-    expect(item.getAttribute('role')).toBe('button');
+    expect(item.getAttribute('role')).toBe('menuitem');
     expect(item.tabIndex).toBe(0);
 
     expect(pressKey(item, 'Enter').defaultPrevented).toBe(true);
@@ -92,7 +109,7 @@ describe('ButtonMenu keyboard accessibility', () => {
     menu.classList.add('active');
     const item = menu.querySelector<HTMLElement>('.btn-menu-item');
 
-    expect(item.getAttribute('role')).toBeNull();
+    expect(item.getAttribute('role')).toBe('none');
     expect(item.tabIndex).toBe(-1);
     expect(checkboxField.input.tabIndex).toBe(0);
     expect(checkboxField.input.getAttribute('aria-labelledby'))
@@ -127,8 +144,8 @@ describe('ButtonMenu keyboard accessibility', () => {
     expect(inputs[0].checked).toBe(true);
     expect(inputs[1].checked).toBe(false);
 
-    expect(items[0].getAttribute('role')).toBeNull();
-    expect(items[1].getAttribute('role')).toBeNull();
+    expect(items[0].getAttribute('role')).toBe('none');
+    expect(items[1].getAttribute('role')).toBe('none');
     expect(items[0].tabIndex).toBe(-1);
     expect(items[1].tabIndex).toBe(-1);
     expect(inputs[0].tabIndex).toBe(0);

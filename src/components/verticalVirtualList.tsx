@@ -96,10 +96,23 @@ const VerticalVirtualList: Component<{
 
   const height = createMemo(() => props.forceHostHeight ? hostHeight() : computedItemsHeight());
 
+  // `role="presentation"` is the same call `createChatList` already makes, for
+  // the same reason: items go into this <ul> directly, so it has no <li> to own
+  // and claiming to be a list would announce a structure that is not there. The
+  // items are links and keep their own semantics — presentation only drops what
+  // this element says about itself.
+  //
+  // Real list semantics would be worse than none here rather than better: the
+  // list is windowed, so it would announce the size of the window instead of the
+  // number of chats — "12 items" to someone who has two hundred is a confident
+  // wrong answer. Giving that orientation back means `aria-setsize` /
+  // `aria-posinset` carrying the real totals, and those need the items to be
+  // listitems: a deliberate change, not an attribute.
   return (
     <ul
       ref={props.ref}
       class={props.class}
+      role="presentation"
       style={{
         height: height() + 'px',
         overflow: props.forceHostHeight ? 'hidden' : undefined

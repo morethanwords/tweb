@@ -45,6 +45,7 @@ export default function Scrollable(props: {
   thumbRef?: (el: HTMLDivElement) => void,
   contextRef?: (ctx: ScrollableContextValue) => void,
   class?: string,
+  tabIndex?: number,
   classList?: JSX.HTMLAttributes<HTMLDivElement>['classList'],
   style?: JSX.CSSProperties,
   axis?: 'x' | 'y',
@@ -341,6 +342,7 @@ export default function Scrollable(props: {
   let ref: HTMLDivElement, thumbRef: HTMLDivElement;
   return (
     <div
+      tabIndex={props.tabIndex}
       ref={(_ref) => {
         ref = _ref;
         (props.ref as any)?.(_ref);

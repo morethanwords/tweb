@@ -3,7 +3,7 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import shake from '@helpers/dom/shake';
 import {Middleware} from '@helpers/middleware';
-import {LangPackKey} from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 import currencyStarIcon from '@components/currencyStarIcon';
 import InputField from '@components/inputField';
 import Section from '@components/section';
@@ -28,6 +28,11 @@ export function InputStarsField(options: {
   });
 
   inputField.container.classList.add('popup-make-paid-input');
+
+  const ariaLabelKey = options.label || options.placeholder;
+  if(ariaLabelKey) {
+    inputField.input.setAttribute('aria-label', I18n.format(ariaLabelKey, true));
+  }
 
   const star = currencyStarIcon() as HTMLElement;
   star.classList.add('popup-make-paid-star');

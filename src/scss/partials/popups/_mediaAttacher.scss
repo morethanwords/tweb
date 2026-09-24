@@ -279,6 +279,10 @@
 }
 
 .popup-item-media-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
   position: relative;
   cursor: pointer;
   pointer-events: initial !important;
@@ -296,6 +300,15 @@
   &:hover {
     color: #ffffff;
   }
+}
+
+.popup-item-media-more {
+  position: absolute;
+  top: .25rem;
+  inset-inline-end: .25rem;
+  z-index: 3;
+  color: #fff;
+  background-color: rgba(0, 0, 0, .5);
 }
 
 .spoiler-toggle {

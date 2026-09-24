@@ -3,7 +3,7 @@ import {batch, createEffect, createResource, createSignal, For, onCleanup, onMou
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Document, EmojiGroup, StickerSet} from '@layer';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -67,7 +67,7 @@ export default function StickersTab() {
   }
 
   function StickerSetThumb(props: {set: StickerSet.stickerSet}) {
-    let renderContainer: HTMLDivElement;
+    let renderContainer: HTMLButtonElement;
 
 
     onMount(() => {
@@ -90,19 +90,22 @@ export default function StickersTab() {
     const isActive = () => String(props.set.id) === activeSet();
 
     return (
-      <div
+      <button
+        type="button"
         ref={renderContainer}
         class="media-editor__stickers-set-thumb"
         classList={{
           'media-editor__stickers-set-thumb--active': isActive()
         }}
+        aria-label={props.set.title}
+        aria-pressed={isActive()}
         onClick={() => onStickerSetThumbClick(String(props.set.id))}
       />
     );
   }
 
   function Sticker(props: {doc: Document.document}) {
-    let container: HTMLDivElement;
+    let container: HTMLButtonElement;
 
     onMount(() => {
       stickerRenderer.renderSticker(props.doc, container);
@@ -136,7 +139,17 @@ export default function StickersTab() {
       });
     }
 
-    return <div ref={container} class="media-editor__stickers-grid-item" onClick={onClick} />;
+    const label = () => props.doc.stickerEmojiRaw || I18n.format('AttachSticker', true);
+
+    return (
+      <button
+        type="button"
+        ref={container}
+        class="media-editor__stickers-grid-item"
+        aria-label={label()}
+        onClick={onClick}
+      />
+    );
   }
 
   function StickerSetLabel(props: {set: StickerSet.stickerSet}) {
@@ -176,7 +189,7 @@ export default function StickersTab() {
     let thumbsListScrollable: HTMLDivElement;
 
     onMount(() => {
-      document.querySelector('.media-editor__tabs')?.append(thumbsListScrollable);
+      thumbsListScrollable.ownerDocument.querySelector('.media-editor__tabs')?.append(thumbsListScrollable);
       new ScrollableX(thumbsListScrollable);
     });
     onCleanup(() => {
@@ -192,17 +205,24 @@ export default function StickersTab() {
       }}
       ref={thumbsListScrollable}
     >
-      <div class="media-editor__stickers-thumb-list">
+      <div
+        class="media-editor__stickers-thumb-list"
+        role="group"
+        aria-label={I18n.format('MediaEditor.StickerSets', true)}
+      >
         <Show when={recentStickers()?.length}>
-          <div
+          <button
+            type="button"
             class="media-editor__stickers-recent-button"
             classList={{
               'media-editor__stickers-recent-button--active': activeSet() === 'recent'
             }}
+            aria-label={I18n.format('MediaEditor.RecentlyUsed', true)}
+            aria-pressed={activeSet() === 'recent'}
             onClick={() => onStickerSetThumbClick('recent')}
           >
-            <IconTsx icon="recent" />
-          </div>
+            <IconTsx icon="recent" aria-hidden={true} />
+          </button>
         </Show>
         <For each={stickerSets()?.sets}>{(set) => <StickerSetThumb set={set} />}</For>
       </div>

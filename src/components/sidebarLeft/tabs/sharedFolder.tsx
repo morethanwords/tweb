@@ -126,7 +126,7 @@ const SharedFolder: Component = () => {
     caption.append(descriptionI18n.element);
     stickerContainer = document.createElement('div');
     stickerContainer.classList.add('sticker-container');
-    confirmBtn = ButtonIcon('check btn-confirm hide blue');
+    confirmBtn = ButtonIcon('check btn-confirm hide blue', {ariaLabel: 'Save'});
 
     tab.header.append(confirmBtn);
 

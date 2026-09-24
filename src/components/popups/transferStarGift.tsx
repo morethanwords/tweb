@@ -19,7 +19,7 @@ import {createMemo, createSignal} from 'solid-js';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 
 import styles from '@components/popups/transferStarGift.module.scss'
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {StarGiftTransferPreview} from '@components/stargifts/transferPreview';
 import {I18nTsx} from '@helpers/solid/i18n';
 import MediaHeader from '@components/mediaHeader';
@@ -158,6 +158,7 @@ export function transferStarGiftConfirmationPopup(options: {
       <PopupElement
         class={styles.popup}
         containerClass={styles.popupContainer}
+        containerProps={{'aria-label': I18n.format('StarGiftTransfer', true)}}
         show={show()}
         onClose={() => {
           if(!submitted) {

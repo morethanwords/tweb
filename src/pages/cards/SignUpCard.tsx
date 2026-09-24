@@ -145,7 +145,7 @@ export default function SignUpCard(props: {spec: Spec}) {
       header={
         <MediaHeader>
           <MediaHeader.Sticker element={avatarEdit.container} size={120}/>
-          <MediaHeader.Title>{titleContent()}</MediaHeader.Title>
+          <MediaHeader.Title tag="h1">{titleContent()}</MediaHeader.Title>
           <MediaHeader.Subtitle>{i18n('Login.Register.Subtitle')}</MediaHeader.Subtitle>
         </MediaHeader>
       }

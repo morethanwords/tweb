@@ -2,6 +2,7 @@ import type ListenerSetter from '@helpers/listenerSetter';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 
 let lastMouseDownElement: HTMLElement;
 const onGlobalMouseDown = (e: MouseEvent) => {
@@ -27,6 +28,13 @@ bindMouseDownTracker(getAppWindow());
 onAppWindowChange((win) => bindMouseDownTracker(win));
 
 export function hasMouseMovedSinceDown(e: Event) {
+  // Native controls activated from the keyboard dispatch a trusted click
+  // without a preceding mousedown. `detail === 0` distinguishes that path
+  // (and assistive-technology activation) from a pointer click.
+  if(e.type === 'click' && (e as MouseEvent).detail === 0) {
+    return false;
+  }
+
   if(e.isTrusted && e.type === 'click' && e.target !== lastMouseDownElement) {
     return true;
   }
@@ -37,6 +45,7 @@ export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSett
 export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options: AttachClickOptions = {}) {
   const add = options.listenerSetter ? options.listenerSetter.add(elem) : elem.addEventListener.bind(elem);
   const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
+  const listenerOptions = options.once ? {...options, once: false} : options;
 
   options.touchMouseDown = true;
   /* if(options.touchMouseDown && CLICK_EVENT_NAME === 'touchend') {
@@ -72,21 +81,57 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
     // (elem as any).cancelMouseDown = true;
   }
 
-  if(CLICK_EVENT_NAME === 'click' && !options.ignoreMove) {
-    const cb = callback;
-    callback = (e) => {
-      if(hasMouseMovedSinceDown(e)) {
-        return;
-      }
+  const element = elem as HTMLElement;
+  const isHtmlElement = typeof(element.getAttribute) === 'function' && typeof(element.click) === 'function';
+  const isNativeInteractive = isHtmlElement &&
+    element.matches('button, input, select, textarea, a[href]');
+  let detached = false;
 
-      cb(e);
-    };
-  }
+  const detach = () => {
+    if(detached) return;
+    detached = true;
+    remove(CLICK_EVENT_NAME, onPrimaryActivate, listenerOptions);
+    if(onKeyboardClick) remove('click', onKeyboardClick, listenerOptions);
+    if(onKeyDown) remove('keydown', onKeyDown, listenerOptions);
+  };
 
-  add(CLICK_EVENT_NAME, callback, options);
+  const invokeCallback = (e: MouseEvent) => {
+    try {
+      callback(e);
+    } finally {
+      if(options.once) detach();
+    }
+  };
 
-  // @ts-ignore
-  return () => remove(CLICK_EVENT_NAME, callback, options);
+  const onPrimaryActivate = (e: MouseEvent) => {
+    if(CLICK_EVENT_NAME === 'click' && !options.ignoreMove && hasMouseMovedSinceDown(e)) {
+      if(options.once) detach();
+      return;
+    }
+
+    invokeCallback(e);
+  };
+
+  // Touch-capable devices listen to mousedown for pointer activation, but a
+  // hardware keyboard and assistive technologies activate native controls with
+  // a synthetic click (detail === 0). Handle that click without duplicating the
+  // pointer click that follows an already-handled mousedown.
+  const onKeyboardClick = CLICK_EVENT_NAME !== 'click' && isHtmlElement ? (e: MouseEvent) => {
+    if(e.detail === 0) invokeCallback(e);
+  } : undefined;
+
+  // Non-native role=button elements do not receive the browser's implicit
+  // keyboard click. Generate one so both Solid onClick and this helper use the
+  // same semantic activation path on desktop, touch and hybrid devices.
+  const onKeyDown = isHtmlElement && !isNativeInteractive ? (e: KeyboardEvent) => {
+    if(element.getAttribute('role') === 'button') buttonKeyDown(e);
+  } : undefined;
+
+  add(CLICK_EVENT_NAME, onPrimaryActivate, listenerOptions);
+  if(onKeyboardClick) add('click', onKeyboardClick, listenerOptions);
+  if(onKeyDown) add('keydown', onKeyDown, listenerOptions);
+
+  return detach;
 }
 
 // export function detachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options?: AddEventListenerOptions) {

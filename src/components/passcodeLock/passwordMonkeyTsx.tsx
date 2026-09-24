@@ -44,7 +44,7 @@ const PasswordMonkeyTsx: Component<{
 
       {/* Prevent the monkey blinking when reloading the page */}
       <Show when={!monkeyLoaded()}>
-        <img class={styles.MonkeyImage} src="assets/img/password-monkey-closed.png" />
+        <img class={styles.MonkeyImage} src="assets/img/password-monkey-closed.png" alt="" aria-hidden="true" />
       </Show>
     </div>
   );

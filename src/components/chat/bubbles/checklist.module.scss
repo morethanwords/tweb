@@ -97,6 +97,17 @@
   }
 }
 
+.checkboxChecked {
+  :global(.checkbox-box-background) {
+    transform: scale(1);
+  }
+
+  :global(.checkbox-box-check use) {
+    stroke-dasharray: 24.19, 24.19;
+    visibility: visible;
+  }
+}
+
 .itemIcon {
   color: var(--primary-color);
   font-size: var(--font-size-16);

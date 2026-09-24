@@ -399,7 +399,7 @@ const SharedMedia: Component = () => {
   tab.container.classList.add('shared-media-container');
 
   // * header
-  const newCloseBtn = Button('btn-icon sidebar-close-button', {noRipple: true});
+  const newCloseBtn = Button('btn-icon sidebar-close-button', {noRipple: true, ariaLabel: 'Close'});
   tab.closeBtn.replaceWith(newCloseBtn);
   tab.closeBtn = newCloseBtn;
 
@@ -443,7 +443,7 @@ const SharedMedia: Component = () => {
 
   const titleI18n = new I18n.IntlElement();
   const transitionFirstItem = makeTransitionItem(titleI18n.element, true, tab.title);
-  const editBtn = ButtonIcon('edit');
+  const editBtn = ButtonIcon('edit', {ariaLabel: 'Edit'});
 
   let lastMediaTabType: SearchSuperMediaTab['type'];
   const mediaFilters = {
@@ -537,7 +537,8 @@ const SharedMedia: Component = () => {
   const btnMenu = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
     direction: 'bottom-left',
-    buttons: btnMenuButtons
+    buttons: btnMenuButtons,
+    buttonOptions: {ariaLabel: 'MultiAccount.More'}
   });
   updateButtonMenuVisibility = createButtonMenuVisibility(
     btnMenu,
@@ -899,7 +900,7 @@ const SharedMedia: Component = () => {
     tab.scrollable.append(tab.searchSuper.container);
   }
 
-  const btnAddMembers = ButtonCorner({icon: 'addmember_filled'});
+  const btnAddMembers = ButtonCorner({icon: 'addmember_filled', ariaLabel: 'GroupAddMembers'});
   tab.content.append(btnAddMembers);
 
   attachClickEvent(btnAddMembers, () => {

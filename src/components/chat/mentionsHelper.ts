@@ -19,7 +19,8 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       (target) => {
         const peerId = (target as HTMLElement).dataset.peerId.toPeerId();
         chatInput.mentionUser(peerId, true);
-      }
+      },
+      'Mention'
     );
   }
 

@@ -68,6 +68,7 @@ export function appendEmoji(_emoji: AppEmoji, unify = false) {
     const customEmojiElement = CustomEmojiElement.create(_emoji.docId);
     const spanEmoji = document.createElement('span');
     spanEmoji.classList.add('super-emoji', 'super-emoji-custom');
+    spanEmoji.dataset.emoji = _emoji.emoji || '';
     spanEmoji.append(customEmojiElement);
     return spanEmoji;
   }
@@ -78,6 +79,7 @@ export function appendEmoji(_emoji: AppEmoji, unify = false) {
   let {emoji} = _emoji;
   const spanEmoji = document.createElement('span');
   spanEmoji.classList.add('super-emoji', 'super-emoji-regular');
+  spanEmoji.dataset.emoji = emoji;
 
   let el: DocumentFragment;
   if(unify && !IS_EMOJI_SUPPORTED) {

@@ -5,6 +5,7 @@ import LanguageChangeButton from '@components/languageChangeButton';
 import PasskeyLoginButton from '@components/passkeyLoginButton';
 import {putPreloader} from '@components/putPreloader';
 import MediaHeader from '@components/mediaHeader';
+import mediaHeaderStyles from '@components/mediaHeader.module.scss';
 import bytesCmp from '@helpers/bytes/bytesCmp';
 import bytesToBase64 from '@helpers/bytes/bytesToBase64';
 import fixBase64String from '@helpers/fixBase64String';
@@ -224,7 +225,12 @@ export default function SignQRCard(_props: {spec: Spec}) {
       header={
         <MediaHeader>
           <MediaHeader.Sticker ref={stickerHost} class={styles.qrContainer} size={QR_SIZE}/>
-          <MediaHeader.Title>{i18n('Login.QR.Title')}</MediaHeader.Title>
+          <h1
+            class={`${mediaHeaderStyles.title} text-center text-overflow-wrap`}
+            style={{'margin-top': 0}}
+          >
+            {i18n('Login.QR.Title')}
+          </h1>
           <MediaHeader.Subtitle class="secondary">{i18n('Login.QR.Subtitle')}</MediaHeader.Subtitle>
         </MediaHeader>
       }

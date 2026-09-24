@@ -36,7 +36,7 @@ const NewChannel = () => {
   onMount(() => {
     tab.container.classList.add('new-channel-container');
 
-    nextBtn = ButtonCorner({icon: 'arrow_next'});
+    nextBtn = ButtonCorner({icon: 'arrow_next', ariaLabel: 'Next'});
     tab.content.append(nextBtn);
 
     attachClickEvent(nextBtn, () => {

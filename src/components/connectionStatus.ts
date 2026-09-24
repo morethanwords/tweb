@@ -32,6 +32,8 @@ export default class ConnectionStatusComponent {
 
   private managers: AppManagers;
   private inputSearch: InputSearch;
+  private announcement: HTMLElement;
+  private announcedKey: LangPackKey;
   private rAF: number;
 
   public construct(
@@ -41,6 +43,10 @@ export default class ConnectionStatusComponent {
   ) {
     this.managers = managers;
     this.inputSearch = inputSearch;
+    this.announcement = document.createElement('span');
+    this.announcement.className = 'sr-only';
+    this.announcement.setAttribute('role', 'status');
+    chatsContainer.append(this.announcement);
     this.log = logger('CS', undefined, undefined);
     this.inputSearch.setPlaceholder('Search');
 
@@ -119,6 +125,13 @@ export default class ConnectionStatusComponent {
 
   private wrapSetStatusText = (...args: Parameters<InputSearch['setPlaceholder']>) => {
     return () => {
+      const key = args[0] === 'Search' ? undefined :
+        args[0] === 'ConnectionStatus.ReconnectIn' || args[0] === 'ConnectionStatus.ReconnectInPlain' ?
+          'ConnectionStatus.Reconnecting' : args[0];
+      if(key !== this.announcedKey) {
+        this.announcedKey = key;
+        this.announcement.replaceChildren(...(key ? [i18n(key)] : []));
+      }
       return this.inputSearch.setPlaceholder(...args);
     };
   };

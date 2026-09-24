@@ -148,6 +148,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
         loadThumbPromise = gotThumb.loadPromise;
         const thumbImage = gotThumb.image; // local scope
         thumbImage.classList.add('media-photo');
+        thumbImage.setAttribute('alt', '');
         container.append(thumbImage);
       } else {
         const res = await wrapPhoto({
@@ -172,6 +173,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
         });
         const thumbImage = res.images.full;
         thumbImage.classList.add('media-photo', 'thumbnail');
+        thumbImage.setAttribute('alt', '');
         // container.append(thumbImage);
       }
 
@@ -198,6 +200,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
       ret.loadPromises.thumb = ret.loadPromises.full = loadThumbPromise;
       thumbImage = ret.images.thumb = gotThumb.image;
       thumbImage.classList.add('media-photo');
+      thumbImage.setAttribute('alt', '');
       aspecter.append(thumbImage);
     }
   }
@@ -219,6 +222,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   } else {
     media = ret.images.full = new Image();
     media.classList.add('media-photo');
+    media.setAttribute('alt', '');
   }
 
   // console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);

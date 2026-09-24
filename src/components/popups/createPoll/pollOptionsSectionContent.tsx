@@ -15,6 +15,7 @@ import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {createSortableList} from '@helpers/solid/createSortableList';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import classNames from '@helpers/string/classNames';
@@ -219,7 +220,15 @@ const PollOptionFullField = (props: {
               </Row>
             </Show>
             <Show when={store.allowMultipleAnswers}>
-              <div class={styles.checkButtonWrapper} onClick={() => setStore('pollOptions', props.index, 'checked', (v) => !v)}>
+              <div
+                class={styles.checkButtonWrapper}
+                role='checkbox'
+                tabindex={canBeReordered() ? 0 : -1}
+                aria-checked={!!props.mappedItem.option.checked}
+                aria-label={I18n.format('NewPoll.SetCorrectAnswer', true)}
+                onClick={() => setStore('pollOptions', props.index, 'checked', (v) => !v)}
+                onKeyDown={buttonKeyDown}
+              >
                 <StaticCheckbox checked={props.mappedItem.option.checked} />
               </div>
             </Show>

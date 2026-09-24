@@ -175,6 +175,7 @@ export default function createChatPinnedMessage(
   // ────────────────────────────────────────────────────────────────────────
 
   const menu = ButtonMenuToggle({
+    buttonOptions: {ariaLabel: 'MultiAccount.More'},
     direction: 'bottom-right',
     buttons: [{
       icon: 'pinlist',
@@ -203,7 +204,7 @@ export default function createChatPinnedMessage(
   });
   menu.classList.add('pinned-message-menu');
 
-  const btnUnpin = ButtonIcon('close pinned-message-unpin');
+  const btnUnpin = ButtonIcon('close pinned-message-unpin', {ariaLabel: 'UnpinMessage'});
   attachClickEvent(btnUnpin, async(e) => {
     cancelEvent(e);
     const canPin = await managers.appPeersManager.canPinMessage(chat.peerId);

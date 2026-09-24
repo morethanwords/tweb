@@ -101,12 +101,23 @@ export function moveAppToWindow(pipWindow: Window, onReturn: () => void = moveAp
 /** Move the client back into the main tab and tear down the pip plumbing. */
 export function moveAppBack(): void {
   if(!state) return;
-  const {moved, placeholderScreen, disposePlaceholder, disposeStyles, cleanup} = state;
+  const {pipWindow, moved, placeholderScreen, disposePlaceholder, disposeStyles, cleanup} = state;
+  const movedNodes = new Set(moved.map(({node}) => node));
+  // Transient roots created while the app lives in Document PiP (popups,
+  // menus, media editor, tooltips) were not part of the initial snapshot.
+  // Preserve them as well instead of abandoning live UI in the closing realm.
+  let transientNodes: Element[] = [];
+  try {
+    transientNodes = Array.from(pipWindow.document.body.children)
+    .filter((node) => !movedNodes.has(node));
+  } catch{}
+
   cleanup();
   disposePlaceholder();
   placeholderScreen.remove();
   setAppWindow(window); // rebind metrics to the tab before the move so it reflows for the real viewport
   moved.forEach(({node, placeholder}) => placeholder.replaceWith(node));
+  transientNodes.forEach((node) => document.body.append(node));
 
   // Same as on the way out — the wallpaper canvas didn't survive moving back; rebuild it in the tab.
   appChatBackground.reRender();

@@ -391,6 +391,56 @@ import {Message, Chat, User, InputPeer} from '@layer';
   continuing work.** A compacted context or summary does not replace the
   canonical instructions in this file.
 
+## Accessibility (a11y) is part of every UI feature
+
+**Every new or changed interface must include accessibility in its design,
+implementation, and review.** Apply the requirements below to the affected flow
+before calling the feature complete.
+
+- **Start with native semantics.** Use buttons for actions, links for navigation,
+  and native form controls where possible. Preserve label/control associations;
+  never nest interactive controls. Expose names, values, errors, and states
+  (disabled, expanded, selected, checked, loading) through native attributes or
+  appropriate ARIA. Reuse visible labels and localized strings from `lang.ts`;
+  give icon-only controls meaningful names and hide decorative icons from AT.
+- **Preserve established presentation and behavior.** Reuse native caret and
+  existing field-focus styling instead of adding a second outline. Avoid blanket
+  restyling, tab stops on layout wrappers, and live regions around long content.
+  Opt into focusable reading/scrolling regions deliberately; keep contrast
+  enhancements behind the user's setting. Check that keyboard guards preserve
+  existing editor shortcuts as well as protecting other focused controls.
+- **Reuse the shared interaction layer.** Search for existing button, row, input,
+  menu, tab, navigation, and focus helpers before adding behavior. Extend those
+  helpers when needed. Do not copy Enter/Space handlers into individual controls
+  or implement separate business logic for keyboard activation. Native buttons
+  already handle keyboard activation; custom widgets should share their
+  navigation logic. Global shortcuts must respect focused controls and editors.
+- **Make every action usable with a keyboard.** Keep a logical focus order and
+  visible focus indicators. Follow the relevant widget's arrow/Home/End behavior
+  through shared helpers; avoid positive `tabindex`. Inactive or hidden panels
+  must not leave controls in the tab order or accessibility tree; use the
+  existing visibility/`inert` mechanism, not `aria-hidden` alone.
+- **Handle focus across the full lifecycle.** Dialogs need appropriate initial
+  focus, modal containment, and restoration on close. Menus and dismissible
+  overlays need consistent Escape behavior, including nested overlays and an
+  opener that has been removed. Reuse the existing overlay/focus lifecycle.
+  For UI that can move into Document PiP, use the owning/active document for
+  creation, listeners, focus, and cleanup; support moving back to the main tab.
+- **Preserve visual accessibility.** Check text, controls, and focus contrast in
+  the shipped themes, support zoom and narrow layouts, avoid color-only cues,
+  and respect reduced-motion preferences.
+- **Verify the affected flow in the browser preview.** Exercise opening,
+  changing, submitting/cancelling, and closing with Tab/Shift+Tab, Enter/Space,
+  arrows, and Escape as applicable; check focus restoration and pointer/touch
+  behavior too. Run the relevant existing accessibility checks and add focused
+  regression coverage for shared or complex interaction changes. Include
+  responsive/PiP states when the feature supports them.
+- **Report what was actually verified.** Distinguish automated checks (including
+  Axe), fixture tests, authenticated UI checks, and screen-reader testing.
+  Check screen-reader names, roles, states, and announcements for affected
+  custom interactions when available, and explicitly record untested cases.
+  Passing Axe or source review alone does not establish full accessibility.
+
 ## What NOT to Do
 
 (Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
@@ -416,6 +466,37 @@ pnpm test src/tests/foo    # specific test file
 ```
 
 Vitest config: `threads: false`, `globals: true`, jsdom environment, setup in `src/tests/setup.ts`.
+
+Browser suites (Playwright):
+
+```bash
+pnpm test:popups   # every sandbox story opens and becomes visible
+pnpm test:a11y     # Axe matrix, keyboard interop, contrast, media editor, stories
+pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens
+pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE_URL)
+pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
+```
+
+`test:a11y` runs against a plain unauthenticated server, so everything past the
+login screen is outside it — the chat list, a conversation, the profile sidebar,
+settings. `test:a11y:app` is that half, and it needs an authorized preview for
+the same reason `test:focus:app` does.
+
+`test:focus` answers a question the others cannot: not whether a control has a
+name and a role, but whether a person pressing Tab can *see* where they are. It
+photographs each control holding focus and again a moment after focus is
+dropped, and a pair of frames that do not differ is a control with no visible
+indicator. Reading computed styles instead does not work — a ring can live on a
+pseudo-element or a sibling, and an outline on an `opacity: 0` overlay is
+painted and invisible. Findings come with cropped before/after screenshots, so
+judge them by eye rather than trusting the heuristic. The signed-in half needs
+an authorized preview:
+
+```bash
+bash scripts/start-preview.sh --port 9105
+PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm test:focus:app
+PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm test:a11y:app
+```
 
 ## Agents & shared tooling
 

@@ -1,6 +1,6 @@
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import ListenerSetter from '@helpers/listenerSetter';
-import {LangPackKey, i18n} from '@lib/langPack';
+import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import ButtonIcon from '@components/buttonIcon';
 import ConnectionStatusComponent from '@components/connectionStatus';
 import Icon from '@components/icon';
@@ -88,6 +88,7 @@ export default class InputSearch {
 
     const searchIcon = this.searchIcon = this.createIcon('search', 'input-search-icon');
     const clearBtn = this.clearBtn = this.createButtonIcon('close', 'input-search-clear');
+    clearBtn.setAttribute('aria-label', I18n.format('Clear', true));
 
     this.listenerSetter.add(input)('input', this.onInput);
     this.listenerSetter.add(input)('keydown', this.onKeyDown);
@@ -195,6 +196,10 @@ export default class InputSearch {
       !this.noPlaceholderAnimation && 'will-animate'
     ].filter(Boolean));
     this.container.append(this.currentPlaceholder);
+
+    // The visible placeholder is a custom element, not the native attribute,
+    // so the input has no accessible name without this.
+    this.input.setAttribute('aria-label', I18n.format(langPackKey, true, args));
   };
 
   onInput = () => {

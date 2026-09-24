@@ -565,6 +565,7 @@ export const AvatarNew = (props: {
     const image = document.createElement('img');
     const element = image;
     element.className = classNames('avatar-photo', animate && 'fade-in');
+    element.alt = ''; // decorative — the peer name is the accessible name
 
     let renderThumbPromise: Promise<any>;
     let callback: () => void;
@@ -589,6 +590,7 @@ export const AvatarNew = (props: {
       } else if(photo.stripped_thumb) {
         thumbElement = thumbImage = document.createElement('img');
         thumbImage.className = 'avatar-photo avatar-photo-thumbnail';
+        thumbImage.alt = '';
         const url = getPreviewURLFromBytes(photo.stripped_thumb);
         renderThumbPromise = renderImageFromUrlPromise(
           thumbImage,
@@ -1047,6 +1049,25 @@ export const AvatarNew = (props: {
     };
   };
 
+  // Accessible name for the avatar — the peer's display name, mirroring the
+  // string that getPeerInitials() abbreviates. Lets screen readers announce
+  // photo avatars, which otherwise expose nothing.
+  const accessibleName = createMemo(() => {
+    if(props.peerTitle !== undefined) {
+      return props.peerTitle;
+    }
+
+    const peer = props.peer ?? (props.peerId !== undefined ? apiManagerProxy.getPeer(props.peerId) : undefined);
+    if(!peer) {
+      return '';
+    }
+
+    return (peer as Chat.chat).title ?? [
+      (peer as User.user).first_name,
+      (peer as User.user).last_name
+    ].filter(Boolean).join(' ');
+  });
+
   const inner = (
     <>
       {icon() && Icon(icon(), 'avatar-icon', 'avatar-icon-' + icon())}
@@ -1105,6 +1126,8 @@ export const AvatarNew = (props: {
       data-thread-id={props.threadId}
       data-story-id={props.storyId}
       style={style()}
+      role={accessibleName() ? 'img' : undefined}
+      aria-label={accessibleName() || undefined}
       {...(props.props || {})}
     >
       {wtf}

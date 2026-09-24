@@ -9,7 +9,7 @@ import safeAssign from '@helpers/object/safeAssign';
 import {Chat} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {AckedResult} from '@lib/superMessagePort';
 import rootScope from '@lib/rootScope';
@@ -64,9 +64,12 @@ export default class ChatSendAs {
   private construct() {
     this.container = document.createElement('div');
     this.container.classList.add('new-message-send-as-container');
+    this.container.setAttribute('role', 'button');
+    (this.menuContainer ?? this.container).setAttribute('aria-label', I18n.format(this.forPaidReaction ? 'SendReactionAsTitle' : 'SendMessageAsTitle', true));
 
     this.closeBtn = document.createElement('div');
     this.closeBtn.classList.add('new-message-send-as-close', 'new-message-send-as-avatar');
+    this.closeBtn.setAttribute('aria-hidden', 'true');
     this.closeBtn.append(Icon('close'));
 
     const sendAsButtons: ButtonMenuItemOptions[] = [{

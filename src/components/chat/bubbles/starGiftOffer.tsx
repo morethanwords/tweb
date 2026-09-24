@@ -4,7 +4,8 @@ import {Message, MessageAction, StarGift} from '@layer';
 
 
 import {MyStarGift} from '@appManagers/appGiftsManager';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import tsNow from '@helpers/tsNow';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import formatDuration, {DurationType} from '@helpers/formatDuration';
@@ -47,9 +48,13 @@ export function StarGiftOfferBubble(props: {
   return (
     <div
       class={/* @once */ styles.wrap}
+      role="button"
+      tabindex={0}
+      aria-label={I18n.format('ActionGiftPremiumView', true)}
       onClick={() => {
         showStarGiftInfoPopup({gift: props.gift})
       }}
+      onKeyDown={buttonKeyDown}
     >
       <div class={/* @once */ styles.giftWrap}>
         <StarGiftBackdrop

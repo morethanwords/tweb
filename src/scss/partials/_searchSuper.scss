@@ -44,6 +44,7 @@
 
       .search-super-nav-scrollable {
         opacity: 0 !important;
+        visibility: hidden;
       }
 
       .search-super-selection-container {
@@ -347,6 +348,7 @@
   &-tabs-scrollable {
     .search-super-nav-scrollable {
       opacity: 1;
+      visibility: visible;
       height: var(--scrollable-size);
       max-height: var(--scrollable-size);
     }
@@ -360,17 +362,20 @@
     
     .search-super-selection-container {
       pointer-events: none;
+      visibility: hidden;
     }
 
     &.is-selecting {
       &.forwards {
         .search-super-nav-scrollable {
           opacity: 0;
+          visibility: hidden;
         }
 
         .search-super-selection-container {
           opacity: 1;
           pointer-events: all;
+          visibility: visible;
         }
       }
     }

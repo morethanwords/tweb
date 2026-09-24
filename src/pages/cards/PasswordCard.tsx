@@ -226,7 +226,7 @@ export default function PasswordCard(_props: {spec: Spec}) {
       header={
         <MediaHeader>
           <MediaHeader.Sticker element={monkeyContainer} size={monkeySize}/>
-          <MediaHeader.Title>{i18n('Login.Password.Title')}</MediaHeader.Title>
+          <MediaHeader.Title tag="h1">{i18n('Login.Password.Title')}</MediaHeader.Title>
           <MediaHeader.Subtitle>{i18n('Login.Password.Subtitle')}</MediaHeader.Subtitle>
         </MediaHeader>
       }

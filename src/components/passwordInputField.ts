@@ -17,6 +17,7 @@ export class PasswordInputHelpers {
     const stealthy = document.createElement('input');
     stealthy.classList.add('stealthy');
     stealthy.tabIndex = -1;
+    stealthy.setAttribute('aria-hidden', 'true');
     stealthy.type = 'password';
     input.parentElement.prepend(stealthy);
     input.parentElement.insertBefore(stealthy.cloneNode(), input.nextSibling);

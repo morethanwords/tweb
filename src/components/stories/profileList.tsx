@@ -8,7 +8,9 @@ import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import {StoriesContext, useStories, createStoriesStore, StoriesContextState} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
+import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import {formatFullSentTime} from '@helpers/date';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
@@ -509,6 +511,10 @@ function StoriesGrid(props: {
         'data-peer-id': stories.peer.peerId,
         'data-timestamp': (storyItem as StoryItem.storyItem).date,
         'class': 'grid-item search-super-item',
+        'role': 'button',
+        'tabindex': 0,
+        'aria-label': `${I18n.format('OpenStory', true)}, ${formatFullSentTime((storyItem as StoryItem.storyItem).date).textContent}`,
+        'onKeyDown': buttonKeyDown,
         'onClick': () => {
           setViewerId(storyItem.id);
         }
@@ -549,6 +555,7 @@ function StoriesGrid(props: {
           // need img for clone animation to work
           gotThumb.loadPromise.then(() => {
             const img = document.createElement('img');
+            img.alt = '';
             img.className = thumb.className;
             img.src = thumb.toDataURL();
             thumb.replaceWith(img);
@@ -723,6 +730,7 @@ function StoriesSelectionToolbar(props: {
       <ButtonTsx
         icon="close"
         class="search-super-selection-cancel btn-icon"
+        aria-label={I18n.format('Close', true)}
         onClick={() => props.selection.cancelSelection()}
       />
       <div class="search-super-selection-count">
@@ -732,6 +740,7 @@ function StoriesSelectionToolbar(props: {
         <ButtonTsx
           icon="crossround"
           class="search-super-selection-remove btn-icon"
+          aria-label={I18n.format('Stories.Albums.RemoveFromAlbum', true)}
           onClick={() => {
             const mids = props.selection.selectedMids.get(props.peerId);
             if(mids?.size) {
@@ -750,6 +759,7 @@ function StoriesSelectionToolbar(props: {
         <ButtonTsx
           icon="pin"
           class="search-super-selection-pintotop btn-icon"
+          aria-label={I18n.format('PinMessage', true)}
           onClick={() => props.selection.onPinStoriesToTopClick(undefined, true)}
         />
       </Show>
@@ -757,6 +767,7 @@ function StoriesSelectionToolbar(props: {
         <ButtonTsx
           icon={props.selection.isStoriesArchive ? 'unarchive' : 'archive'}
           class="search-super-selection-pin btn-icon"
+          aria-label={I18n.format(props.selection.isStoriesArchive ? 'Unarchive' : 'Archive', true)}
           onClick={() => props.selection.onPinStoriesClick(undefined, props.selection.isStoriesArchive)}
         />
       </Show>
@@ -764,6 +775,7 @@ function StoriesSelectionToolbar(props: {
         <ButtonTsx
           icon="delete"
           class="search-super-selection-delete btn-icon danger"
+          aria-label={I18n.format('Delete', true)}
           onClick={() => props.selection.onDeleteStoriesClick()}
         />
       </Show>

@@ -9,10 +9,11 @@ import '@components/mediaEditor/mediaEditor.scss';
 import Toolbar from '@components/mediaEditor/toolbar';
 import {MediaType} from '@components/mediaEditor/types';
 import {delay} from '@components/mediaEditor/utils';
+import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 import overlayCounter from '@helpers/overlayCounter';
 import {doubleRaf} from '@helpers/schedulers';
 import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createEffect, onCleanup, onMount} from 'solid-js';
@@ -49,6 +50,9 @@ export function MediaEditor(props: MediaEditorProps) {
   const {editorState, canFinish} = contextValue;
 
   let overlay: HTMLDivElement;
+  let focusTrap: FocusTrap;
+  let isClosing = false;
+  let isDestroyed = false;
 
   let isOverlayCounterCleaned = false;
 
@@ -60,21 +64,34 @@ export function MediaEditor(props: MediaEditorProps) {
   }
 
   onMount(() => {
-    (async() => {
+    const ownerDocument = overlay.ownerDocument;
+    const previouslyFocused = ownerDocument.activeElement as HTMLElement;
+    focusTrap = createFocusTrap(overlay);
+
+    void (async() => {
       overlay.classList.add('media-editor__overlay--hidden');
+      overlay.setAttribute('aria-hidden', 'true');
       await doubleRaf();
-      overlay.focus();
+
+      if(isClosing || isDestroyed) return;
+
       overlay.classList.remove('media-editor__overlay--hidden');
+      overlay.removeAttribute('aria-hidden');
+      const closeButton = overlay.querySelector<HTMLButtonElement>('.media-editor__topbar > button:not([disabled])');
+      focusTrap.activate(previouslyFocused, closeButton);
     })();
 
     const navigationItem: NavigationItem = {
       type: 'popup',
+      noBlurOnPop: true,
       onPop: () => handleClose()
     };
     appNavigationController.pushItem(navigationItem);
     overlayCounter.isDarkOverlayActive = true;
 
     onCleanup(() => {
+      isDestroyed = true;
+      focusTrap.deactivate();
       cleanupOverlayCounter();
       appNavigationController.removeItem(navigationItem);
     });
@@ -95,7 +112,10 @@ export function MediaEditor(props: MediaEditorProps) {
   });
 
   async function performClose(hasGif = false) {
+    isClosing = true;
+    focusTrap?.deactivate();
     overlay.classList.add('media-editor__overlay--hidden');
+    overlay.setAttribute('aria-hidden', 'true');
     await delay(200);
     props.onClose(hasGif);
   }
@@ -121,7 +141,15 @@ export function MediaEditor(props: MediaEditorProps) {
 
   return (
     <MediaEditorContext.Provider value={contextValue}>
-      <div ref={overlay} class="media-editor__overlay night">
+      <div
+        ref={overlay}
+        class="media-editor__overlay night"
+        role="dialog"
+        aria-modal="true"
+        aria-busy={!editorState.isReady}
+        aria-label={I18n.format('Edit', true)}
+        tabindex={-1}
+      >
         <div class="media-editor__container">
           {(() => {
             // Need to be inside context
@@ -152,8 +180,9 @@ export function MediaEditor(props: MediaEditorProps) {
 }
 
 export function openMediaEditor(props: MediaEditorProps, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider) {
-  const element = document.createElement('div');
-  getOverlayRoot().append(element);
+  const overlayRoot = getOverlayRoot();
+  const element = overlayRoot.ownerDocument.createElement('div');
+  overlayRoot.append(element);
 
   const dispose = render(() => (
     <HotReloadGuardProvider>

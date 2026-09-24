@@ -47,6 +47,7 @@ const ArchivedTab: Component = () => {
   const appendMenu = () => {
     const buttonMenu = ButtonMenuToggle({
       icon: 'more',
+      buttonOptions: {ariaLabel: 'MultiAccount.More'},
       buttons: getArchiveContextMenuButtons(),
       direction: 'bottom-left'
     });

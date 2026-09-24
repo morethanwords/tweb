@@ -1,6 +1,8 @@
-import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import Icon from '@components/icon';
 import ripple from '@components/ripple';
+import {getIconButtonLabelKey} from '@helpers/dom/iconButtonLabel';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 
 export type ButtonOptions = Partial<{
   noRipple: true,
@@ -9,6 +11,7 @@ export type ButtonOptions = Partial<{
   rippleSquare: true,
   text: LangPackKey,
   textArgs?: FormatterArguments,
+  ariaLabel: LangPackKey,
   disabled: boolean,
   asDiv: boolean,
   asLink: boolean
@@ -17,6 +20,7 @@ export type ButtonOptions = Partial<{
 export default function Button<T extends ButtonOptions>(className: string, options: T = {} as T): T['asLink'] extends true ? HTMLAnchorElement : HTMLButtonElement {
   const button = document.createElement(options.asLink ? 'a' : (options.asDiv ? 'div' : 'button'));
   button.className = className;
+  if(!options.asLink) ensureButtonSemantics(button);
 
   if(!options.noRipple) {
     if(options.rippleSquare) {
@@ -40,6 +44,11 @@ export default function Button<T extends ButtonOptions>(className: string, optio
 
   if(options.text) {
     button.append(i18n(options.text, options.textArgs));
+  }
+
+  const ariaLabel = options.ariaLabel || (!options.text && getIconButtonLabelKey(options.icon));
+  if(ariaLabel) {
+    button.setAttribute('aria-label', I18n.format(ariaLabel, true));
   }
 
   return button as any;

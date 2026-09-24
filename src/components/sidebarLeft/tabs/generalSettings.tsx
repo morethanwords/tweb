@@ -4,6 +4,7 @@ import Section from '@components/section';
 import Row from '@components/rowTsx';
 import RangeSettingSelector from '@components/rangeSettingSelector';
 import RadioFieldTsx from '@components/radioFieldTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {i18n, LangPackKey} from '@lib/langPack';
 import I18n from '@lib/langPack';
 import rootScope from '@lib/rootScope';
@@ -64,6 +65,13 @@ const SettingsSection = () => {
       <Row clickable={() => tab.slider.createTab(AppChatBackgroundTab).open()}>
         <Row.Icon icon="appearance_filled" />
         <Row.Title>{i18n('ChatBackground')}</Row.Title>
+      </Row>
+      <Row>
+        <Row.CheckboxFieldToggle>
+          <CheckboxFieldTsx stateKey={joinDeepPath('settings', 'increaseContrast')} toggle />
+        </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('GeneralSettings.IncreaseContrast')}</Row.Title>
+        <Row.Subtitle>{i18n('GeneralSettings.IncreaseContrastInfo')}</Row.Subtitle>
       </Row>
       {/* <Row
         clickable={() => {

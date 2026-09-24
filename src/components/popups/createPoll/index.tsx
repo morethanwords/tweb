@@ -9,6 +9,7 @@ import {toastNew} from '@components/toast';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
+import I18n from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createSignal, Setter, Show} from 'solid-js';
@@ -127,6 +128,7 @@ const QuestionAndDescription = () => {
   });
 
   questionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
+  questionInput.input.setAttribute('aria-label', I18n.format('AskAQuestion', true));
 
   const descriptionInput = new InputField({
     canHaveFormatting: supportedDescriptionFormattingTypes,

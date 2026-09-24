@@ -3,7 +3,7 @@ import appMediaPlaybackController, {AppMediaPlaybackController} from '@component
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import PeerTitle from '@components/peerTitle';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {formatFullSentTime} from '@helpers/date';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import MediaProgressLine from '@components/mediaProgressLine';
@@ -57,7 +57,12 @@ export default function createChatAudio(
   // itself is never late, so the plate follows it directly — the same rule the row's button follows.
   const mediaListenerSetter = new ListenerSetter();
   let playingMedia: HTMLMediaElement;
-  const syncPlayIcon = () => setPlayIcon(!!playingMedia && !playingMedia.paused);
+  const [playing, setPlaying] = createSignal(false);
+  const syncPlayIcon = () => {
+    const isPlaying = !!playingMedia && !playingMedia.paused;
+    setPlaying(isPlaying);
+    setPlayIcon(isPlaying);
+  };
 
   const followMedia = (media: HTMLMediaElement) => {
     if(playingMedia !== media) {
@@ -120,7 +125,7 @@ export default function createChatAudio(
             ref={prevEl}
             class="btn-icon"
             noRipple
-            aria-label="Previous"
+            aria-label={I18n.format('KeyboardShortcuts.Action.PreviousMedia', true)}
             onClick={(e) => { cancelEvent(e); rewindIcon.play(); appMediaPlaybackController.previous(); }}
           >
             {rewindIcon.element}
@@ -128,7 +133,7 @@ export default function createChatAudio(
           <Button
             class="btn-icon pinned-audio-ico"
             noRipple
-            aria-label="Play"
+            aria-label={I18n.format(playing() ? 'Pause' : 'Play', true)}
             onClick={(e) => { cancelEvent(e); appMediaPlaybackController.toggle(); }}
           >
             <div class="pinned-audio-play-icon" ref={playIconContainer} />
@@ -137,12 +142,12 @@ export default function createChatAudio(
             ref={nextEl}
             class="btn-icon"
             noRipple
-            aria-label="Next"
+            aria-label={I18n.format('KeyboardShortcuts.Action.NextMedia', true)}
             onClick={(e) => { cancelEvent(e); forwardIcon.play(); appMediaPlaybackController.next(); }}
           >
             {forwardIcon.element}
           </Button>
-          <TopbarPlate.Content class={classNames('hover-effect', inert() && 'pinned-audio-content-inert')} ripple>
+          <TopbarPlate.Content class={classNames('hover-effect', inert() && 'pinned-audio-content-inert')} ripple clickable disabled={inert()}>
             <TopbarPlate.Title>{title()}</TopbarPlate.Title>
             <TopbarPlate.Subtitle>
               <span class="pinned-audio-time">{timeText()}</span>
@@ -157,6 +162,7 @@ export default function createChatAudio(
               ref={repeatEl}
               icon={repeatIcon()}
               noRipple
+              aria-label={I18n.format('Schedule.Repeat', true)}
               onClick={(e) => {
                 cancelEvent(e);
                 const params = appMediaPlaybackController.getPlaybackParams();

@@ -41,6 +41,7 @@ vi.mock('@components/appNavigationController', () => ({
 }));
 vi.mock('@environment/touchSupport', () => ({default: false}));
 vi.mock('@lib/langPack', () => ({
+  default: {format: (key: string) => key},
   i18n: (key: string) => document.createTextNode(key),
   _i18n: vi.fn()
 }));

@@ -301,6 +301,7 @@ export default function showStickersPopup(
 
       const buttonMenu = ButtonMenuToggle({
         listenerSetter,
+        buttonOptions: {ariaLabel: 'MultiAccount.More'},
         buttons,
         direction: 'bottom-left'
       });

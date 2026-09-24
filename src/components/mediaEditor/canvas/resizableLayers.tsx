@@ -3,8 +3,13 @@ import {createMutable, modifyMutable, produce} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 
 import createContextMenu from '@helpers/dom/createContextMenu';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import positionMenu, {positionMenuTrigger} from '@helpers/positionMenu';
+import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
+import I18n from '@lib/langPack';
 
 import {observeResize} from '@components/resizeObserver';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
 
 import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
@@ -15,7 +20,6 @@ import StickerLayerContent from '@components/mediaEditor/canvas/stickerLayerCont
 import TextLayerContent from '@components/mediaEditor/canvas/textLayerContent';
 import useNormalizePoint from '@components/mediaEditor/canvas/useNormalizePoint';
 import useProcessPoint from '@components/mediaEditor/canvas/useProcessPoint';
-import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 
 
 type ProcessedLayer = {
@@ -56,8 +60,7 @@ export default function ResizableLayers() {
 
   const normalizePoint = useNormalizePoint();
 
-  function addLayer(e: MouseEvent) {
-    if(e.target !== container) return;
+  function activateLayerSurface(e: MouseEvent) {
     if(editorState.selectedResizableLayer) {
       editorState.selectedResizableLayer = undefined;
       return;
@@ -67,10 +70,13 @@ export default function ResizableLayers() {
 
     const bcr = container.getBoundingClientRect();
     const transform = editorState.finalTransform;
+    const point = e.detail === 0 ?
+      [bcr.width / 2, bcr.height / 2] as NumberPair :
+      [e.clientX - bcr.left, e.clientY - bcr.top] as NumberPair;
 
     const newResizableLayer = {
       id: context.resizableLayersSeed++,
-      position: normalizePoint([e.clientX - bcr.left, e.clientY - bcr.top]),
+      position: normalizePoint(point),
       rotation: -transform.rotation,
       scale: 1 / transform.scale,
       type: 'text',
@@ -92,6 +98,8 @@ export default function ResizableLayers() {
     });
   }
 
+  const ownedActivateLayerSurface = withCurrentOwner(activateLayerSurface);
+
   return (
     <div
       class="media-editor__resizable-layers"
@@ -105,11 +113,24 @@ export default function ResizableLayers() {
       <div
         ref={container}
         class="media-editor__resizable-layers-inner"
-        onClick={withCurrentOwner(addLayer)}
         style={{
           'opacity': editorState.isAdjusting ? 0 : 1
         }}
       >
+        <Show when={isTextTab() || editorState.selectedResizableLayer !== undefined}>
+          <button
+            type="button"
+            class="media-editor__resizable-layers-surface"
+            aria-label={I18n.format(
+              editorState.selectedResizableLayer === undefined ?
+                'MediaEditor.AddTextLayer' :
+                'MediaEditor.DeselectLayer',
+              true
+            )}
+            onClick={ownedActivateLayerSurface}
+          />
+        </Show>
+
         <For each={mediaState.resizableLayers}>
           {(layer) => (
             <>
@@ -148,6 +169,7 @@ export function ResizableContainer(props: ParentProps<ResizableLayerProps>) {
 
   const circleOffset = () => (isMobile() ? '-6px' : '-4px');
   const canShowHandles = () => editorState.resizeHandlesContainer && props.layer.id === editorState.selectedResizableLayer;
+  const isStickerLayer = () => props.layer.type === 'sticker';
 
   const processedLayer = createMemo(() => ({
     position: processPoint(props.layer.position),
@@ -156,7 +178,7 @@ export function ResizableContainer(props: ParentProps<ResizableLayerProps>) {
   }));
 
 
-  let container: HTMLDivElement;
+  let container: HTMLDivElement, actionsButton: HTMLButtonElement;
 
   onMount(() => {
     useResizeHandles({
@@ -171,7 +193,7 @@ export function ResizableContainer(props: ParentProps<ResizableLayerProps>) {
       processedLayer
     });
 
-    useContextMenu({container, layer: props.layer});
+    useContextMenu({container, layer: props.layer, actionsButton});
 
     const unobserve = observeResize(container, () => {
       store.containerWidth = container.clientWidth;
@@ -192,16 +214,36 @@ export function ResizableContainer(props: ParentProps<ResizableLayerProps>) {
         '--rotation': (processedLayer().rotation / Math.PI) * 180 + 'deg',
         '--scale': processedLayer().scale
       }}
-      onClick={() => {
-        editorState.selectedResizableLayer = props.layer.id;
-      }}
       ref={container}
     >
       {props.children}
 
+      <ButtonIconTsx
+        ref={actionsButton}
+        icon="more"
+        class="media-editor__layer-actions"
+        style={{display: canShowHandles() ? undefined : 'none'}}
+        aria-label={I18n.format('MediaEditor.LayerActions', true)}
+        aria-haspopup="menu"
+        aria-expanded="false"
+      />
+
+      <Show when={isStickerLayer()}>
+        <button
+          type="button"
+          class="media-editor__resizable-container-select"
+          aria-label={I18n.format('MediaEditor.SelectStickerLayer', true)}
+          onClick={() => {
+            editorState.selectedResizableLayer = props.layer.id;
+          }}
+        />
+      </Show>
+
       {canShowHandles() && <Portal mount={editorState.resizeHandlesContainer}>
         <div
           class="media-editor__resizable-container-handles"
+          // The layer menu exposes move/resize/rotate without dragging.
+          aria-hidden={true}
           style={{
             'left': processedLayer().position[0] + store.diff[0] + 'px',
             'top': processedLayer().position[1] + store.diff[1] + 'px',
@@ -365,10 +407,17 @@ function useResizeHandles({
 type UseContextMenuArgs = {
   container: HTMLDivElement;
   layer: ResizableLayer;
+  actionsButton: HTMLButtonElement;
 }
 
-function useContextMenu({container, layer}: UseContextMenuArgs) {
+function useContextMenu({container, layer, actionsButton}: UseContextMenuArgs) {
   const {editorState, mediaState, actions} = useMediaEditorContext();
+  const processPoint = useProcessPoint(false);
+  const normalizePoint = useNormalizePoint();
+  const move = (x: number, y: number) => {
+    const point = processPoint(layer.position);
+    layer.position = normalizePoint([point[0] + x, point[1] + y]);
+  };
 
   function onClick() {
     const layers = mediaState.resizableLayers;
@@ -392,6 +441,13 @@ function useContextMenu({container, layer}: UseContextMenuArgs) {
 
   const contextMenu = createContextMenu({
     buttons: [
+      {icon: 'up', text: 'MediaEditor.MoveUp', onClick: () => move(0, -10)},
+      {icon: 'down', text: 'MediaEditor.MoveDown', onClick: () => move(0, 10)},
+      {icon: 'left', text: 'MediaEditor.MoveLeft', onClick: () => move(-10, 0)},
+      {icon: 'next', text: 'MediaEditor.MoveRight', onClick: () => move(10, 0)},
+      {icon: 'plus', text: 'MediaEditor.EnlargeLayer', onClick: () => layer.scale *= 1.1},
+      {icon: 'minus', text: 'MediaEditor.ShrinkLayer', onClick: () => layer.scale /= 1.1},
+      {icon: 'rotate', text: 'MediaEditor.RotateLayer', onClick: () => layer.rotation += Math.PI / 12},
       {
         icon: 'delete',
         className: 'danger',
@@ -400,12 +456,21 @@ function useContextMenu({container, layer}: UseContextMenuArgs) {
       }
     ],
     listenTo: container,
+    findElement: () => actionsButton,
+    position: (event, menu) => {
+      if('detail' in event && event.detail === 0) positionMenuTrigger(actionsButton, menu, 'bottom-right');
+      else positionMenu(event, menu);
+    },
+    onOpenAfter: () => actionsButton.setAttribute('aria-expanded', 'true'),
+    onClose: () => actionsButton.setAttribute('aria-expanded', 'false'),
     onElementReady: (element) => {
       element.classList.add('night');
     }
   });
+  const detachClick = attachClickEvent(actionsButton, contextMenu.open);
 
   onCleanup(() => {
+    detachClick();
     contextMenu.destroy();
   });
 }

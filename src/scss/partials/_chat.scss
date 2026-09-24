@@ -1094,6 +1094,14 @@
   font-size: var(--messages-text-size);
   line-height: var(--line-height);
 
+  // The viewport no longer pins `maximum-scale` (WCAG 1.4.4 needs pinch-zoom),
+  // so iOS Safari is free to zoom the page whenever a field below 16px takes
+  // focus — and Settings lets the message text size go down to 12. Floor the
+  // composer only; bubbles keep the size the user picked.
+  html.is-ios & {
+    font-size: max(var(--messages-text-size), 16px);
+  }
+
   pre {
     display: inline;
     margin: 0;

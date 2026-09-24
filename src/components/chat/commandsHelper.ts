@@ -37,7 +37,8 @@ export default class CommandsHelper extends AutocompletePeerHelper {
           chatInput.messageInput.innerHTML = innerHTML;
           chatInput.sendMessage(true, ephemeralReceiverId);
         });
-      }
+      },
+      'Chat.BotCommands'
     );
   }
 

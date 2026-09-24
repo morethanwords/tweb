@@ -214,7 +214,9 @@ export default function Giveaway(props: {
         ref={a}
         class="bubble-giveaway-link"
         data-saved-from={`${giveaway.channel_id.toPeerId(true)}_${giveaway.launch_msg_id}`}
-      />
+      >
+        {I18n.format('BoostingGiveaway', true)}
+      </a>
     );
     header = (
       <>

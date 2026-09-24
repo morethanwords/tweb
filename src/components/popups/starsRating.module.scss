@@ -16,7 +16,7 @@
 .limitLine {
   margin-top: 2rem;
   margin-bottom: 1rem;
-  --limit-background: var(--primary-color);
+  --limit-background: var(--primary-button-color);
   --hint-height: 3rem;
   --hint-icon-gap: .5rem;
   --hint-icon-size: 1.5rem;
@@ -43,7 +43,7 @@
   font-size: 11px;
   line-height: 16px;
   text-transform: uppercase;
-  background-color: var(--secondary-text-color);
+  background-color: var(--secondary-button-color);
   padding-inline: 0.25rem;
   color: #fff;
   border-radius: 0.3125rem;
@@ -57,7 +57,7 @@
   top: -.125rem;
 
   &.active {
-    background-color: var(--primary-color);
+    background-color: var(--primary-button-color);
   }
 }
 
@@ -83,6 +83,11 @@
 }
 
 .previewButton {
+  color: inherit;
+
+  :global(.high-contrast) & {
+    color: var(--link-color);
+  }
   cursor: pointer;
   margin-inline-start: .25rem;
   display: inline-flex;

@@ -131,6 +131,7 @@ function TranslationPlateBody(props: {
   const listenerSetter = new ListenerSetter();
   const menu = ButtonMenuToggle({
     direction: 'bottom-left',
+    buttonOptions: {ariaLabel: 'MultiAccount.More'},
     buttons: [{
       icon: 'premium_translate',
       text: 'Chat.Translate.Menu.To',

@@ -15,7 +15,7 @@ import throttle from '@helpers/schedulers/throttle';
 import Animated from '@helpers/solid/animations';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import classNames from '@helpers/string/classNames';
-import {LangPackKey} from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {Accessor, createEffect, createSignal, onCleanup, Show, untrack} from 'solid-js';
@@ -78,6 +78,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
 
     if(btnConfirm) {
       btnConfirm.classList.add(_additionalClass);
+      if(!btnConfirm.hasAttribute('aria-label')) btnConfirm.setAttribute('aria-label', I18n.format('Send', true));
 
       <Portal
         mount={btnConfirm}
@@ -91,6 +92,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     } else {
       <Button
         {...(props.btnProps || {})}
+        aria-label={props.btnProps?.['aria-label'] || I18n.format('Send', true)}
         ref={(ref) => {
           btnConfirm = ref;
           (props.btnProps?.ref as any)(ref);

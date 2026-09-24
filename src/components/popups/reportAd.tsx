@@ -6,7 +6,7 @@ import Section from '@components/section';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {TransitionGroup} from '@helpers/solid/transitionGroup';
 import TransitionSlider from '@components/transition';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {toastNew} from '@components/toast';
 import Icon from '@components/icon';
 import rootScope from '@lib/rootScope';
@@ -153,6 +153,7 @@ export default function showReportAdPopup(
           placeholder: result.pFlags.optional ? 'Report2CommentOptional' : 'Report2Comment',
           required: !result.pFlags.optional
         });
+        inputField.input.setAttribute('aria-label', I18n.format('ReportHint', true));
 
         [maxHeight, setMaxHeight] = createSignal<number>();
       } else {

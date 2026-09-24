@@ -146,6 +146,11 @@ export default function MicrophoneLevelMeter(props: MicrophoneLevelMeterProps) {
   return (<>
     <div
       class="microphone-level-meter"
+      role="meter"
+      aria-label={i18n('AccDescr.MicrophoneLevel').textContent}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(amplitude() * 100)}
       style={{height: height + 'px'}}
       aria-hidden={hasError() ? 'true' : undefined}
     >

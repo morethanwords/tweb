@@ -120,6 +120,17 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle, cu
     }, true);
     options.element?.classList.add(styles.Item);
 
+    // a11y: each row toggles folder membership, so it is a menuitemcheckbox whose
+    // aria-checked tracks whether the dialog is in the folder; the visible check
+    // icon alone is otherwise invisible to assistive tech. Name from the title.
+    if(options.element) {
+      options.element.setAttribute('role', 'menuitemcheckbox');
+      if(span.textContent) options.element.setAttribute('aria-label', span.textContent);
+    }
+    createEffect(() => {
+      options.element?.setAttribute('aria-checked', '' + isInFilter(filter));
+    });
+
     createEffect(() => {
       if(!isSelected(filter.id)) return;
       options.element?.classList.add(styles.selected);

@@ -318,6 +318,9 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
     }).element;
 
     title.classList.add(className + '-title');
+    // The popup shell names its role="dialog" from the title it finds inside
+    // (see indexTsx.tsx); the call panel's heading is this peer title.
+    title.setAttribute('data-popup-title', '');
 
     const subtitle = document.createElement('div');
     subtitle.classList.add(className + '-subtitle');

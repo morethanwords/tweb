@@ -179,6 +179,8 @@ const ChatInviteLinks: Component = () => {
         withSubtitle: true
       });
 
+      inviteLink.subtitle.setAttribute('role', 'button');
+      inviteLink.subtitle.tabIndex = 0;
       attachClickEvent(inviteLink.subtitle, () => {
         // menuInvite = primaryInvite;
         openLink(primaryInvite);

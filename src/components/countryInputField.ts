@@ -12,6 +12,7 @@ import rootScope from '@lib/rootScope';
 import {getCountryEmoji} from '@vendor/emoji';
 import InputField, {InputFieldOptions} from '@components/inputField';
 import Scrollable from '@components/scrollable';
+import appNavigationController from '@components/appNavigationController';
 
 let countries: HelpCountry.helpCountry[];
 const setCountries = () => {
@@ -29,6 +30,7 @@ let init = () => {
 };
 
 const VIRTUAL_COUNTRIES = new Set(['FT']);
+let countryOptionsIdSeed = 0;
 
 export function filterCountries(value: string, excludeVirtual?: boolean) {
   init?.();
@@ -96,7 +98,15 @@ export default class CountryInputField extends InputField {
     this.container.append(arrowDown);
 
     const selectList = document.createElement('ul');
+    selectList.id = 'country-options-' + (++countryOptionsIdSeed);
+    selectList.setAttribute('role', 'listbox');
     selectWrapper.appendChild(selectList);
+
+    this.input.setAttribute('role', 'combobox');
+    this.input.removeAttribute('aria-multiline');
+    this.input.setAttribute('aria-autocomplete', 'list');
+    this.input.setAttribute('aria-controls', selectList.id);
+    this.input.setAttribute('aria-expanded', 'false');
 
     const scroll = new Scrollable(selectWrapper);
 
@@ -114,6 +124,8 @@ export default class CountryInputField extends InputField {
         for(let i = 0, length = Math.min(c.country_codes.length, options.noPhoneCodes ? 1 : Infinity); i < length; ++i) {
           const countryCode = c.country_codes[i];
           const li = document.createElement('li');
+          li.setAttribute('role', 'option');
+          li.setAttribute('aria-selected', 'false');
 
           const wrapped = wrapEmojiText(emoji);
           if(IS_EMOJI_SUPPORTED) {
@@ -174,6 +186,22 @@ export default class CountryInputField extends InputField {
       selectWrapper.classList.remove('hide');
       void selectWrapper.offsetWidth; // reflow
       selectWrapper.classList.add('active');
+      this.input.setAttribute('aria-expanded', 'true');
+
+      // Escape has to close the list and stop there. The dialog around it reads
+      // the key from a capture-phase listener on the document, so a listener of
+      // ours never gets the chance to hold it back — the navigation stack is
+      // where a closable layer says it is on top.
+      if(!appNavigationController.findItemByType('autocomplete-helper')) {
+        appNavigationController.pushItem({
+          type: 'autocomplete-helper',
+          // returning nothing lets the item be popped: a second Escape then
+          // reaches the dialog, as it would if the list had never been open
+          onPop: () => {
+            this.hidePicker();
+          }
+        });
+      }
 
       this.select();
 
@@ -251,6 +279,20 @@ export default class CountryInputField extends InputField {
     this.input.addEventListener('keydown', (e) => {
       if(e.key === 'Enter') {
         onKeyPress(e);
+        return;
+      }
+
+      if(this.selectWrapper.classList.contains('hide')) {
+        return;
+      }
+
+      // The list is drawn over the rest of the form. Tab moves on to a control
+      // underneath it, whose focus ring would then be hidden behind the open
+      // list, so leaving the field closes it. Escape is not handled here at all
+      // — the navigation item pushed when the list opens takes it, because the
+      // dialogs read that stack before a listener of ours would ever run.
+      if(e.key === 'Tab') {
+        this.hidePicker();
       }
     });
 
@@ -272,6 +314,8 @@ export default class CountryInputField extends InputField {
 
   public hidePicker = () => {
     if(this.hideTimeout !== undefined) return;
+    appNavigationController.removeByType('autocomplete-helper');
+    this.input.setAttribute('aria-expanded', 'false');
     this.selectWrapper.classList.remove('active');
     this.hideTimeout = window.setTimeout(() => {
       this.selectWrapper.classList.add('hide');
@@ -280,6 +324,9 @@ export default class CountryInputField extends InputField {
   }
 
   public selectCountryByTarget = (target: HTMLElement) => {
+    this.selectWrapper.querySelector('[aria-selected="true"]')?.setAttribute('aria-selected', 'false');
+    target.setAttribute('aria-selected', 'true');
+
     const defaultName = target.querySelector<HTMLElement>('[data-default-name]').dataset.defaultName;
     const phoneCodeEl = target.querySelector<HTMLElement>('.phone-code');
     const phoneCode = phoneCodeEl?.innerText;

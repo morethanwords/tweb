@@ -22,6 +22,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import Button from '@components/buttonTsx';
 import RippleElement from '@components/rippleElement';
 import {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
+import I18n from '@lib/langPack';
 
 export type ChatSponsoredPlate = TopbarPlateController & {
   setPeerId: (peerId: PeerId) => void
@@ -95,11 +96,11 @@ function SponsoredPlateBody(props: {
           </div>
         </Show>
         <div class={/* @once */ classNames(styles.content, 'disable-hover')}>
-          <div class="text-bold">
+          <button type="button" class="text-bold" style={{color: 'inherit', 'text-align': 'inherit'}}>
             <I18nTsx class="primary" key="SponsoredMessageAd" />
             {' '}
             {wrapEmojiText(message().title)}
-          </div>
+          </button>
           <div class="pre-wrap">
             {wrapRichText(message().message, {entities: message().entities})}
           </div>
@@ -107,6 +108,7 @@ function SponsoredPlateBody(props: {
       </RippleElement>
       <Button.Icon
         icon="close"
+        aria-label={I18n.format('Premium.Boarding.NoAds.Action', true)}
         onClick={(e) => {
           e.stopPropagation();
           showPremiumPopup({feature: 'no_ads'});

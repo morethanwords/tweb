@@ -6,7 +6,9 @@
 
 import noop from '@helpers/noop';
 import {defineStories} from '../registry';
+
 import {
+  EMBEDDED_PAGE_URL,
   channelChat,
   checkedGiftCode,
   myBoosts,
@@ -18,6 +20,24 @@ import {
   storyItem,
   userFullWithRating
 } from '../fixtures';
+
+defineStories('Live streams', [false, true].map((active) => ({
+  id: `rtmp/${active ? 'active' : 'start'}`,
+  fixtureOnly: true,
+  title: active ? 'Live stream settings' : 'Start a live stream',
+  managers: {
+    appGroupCallsManager: {
+      fetchRtmpUrl: (_peerId: PeerId, revoke: boolean) => ({
+        url: 'rtmp://localhost/sandbox',
+        key: revoke ? 'sandbox-revoked-key' : 'sandbox-stream-key'
+      })
+    }
+  },
+  open: async(ctx) => {
+    const {showRtmpStartStreamPopup} = await import('@components/rtmp/adminPopup');
+    showRtmpStartStreamPopup({peerId: ctx.peer('channel'), active, onEndStream: noop});
+  }
+})));
 
 defineStories('Composer & bots', [
   {
@@ -41,14 +61,34 @@ defineStories('Composer & bots', [
   },
   {
     id: 'newMedia',
+    fixtureOnly: true,
     title: 'Attach media',
     open: async(ctx) => {
       const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
-      // A 1×1 PNG is enough to drive the whole attach flow without shipping a binary fixture.
-      const bytes = Uint8Array.from(atob(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-      ), (c) => c.charCodeAt(0));
-      const file = new File([bytes], 'sandbox.png', {type: 'image/png'});
+      // A real preview size also exercises the edit/spoiler/delete controls.
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const painter = canvas.getContext('2d');
+      painter.fillStyle = '#315d99';
+      painter.fillRect(0, 0, canvas.width, canvas.height);
+      painter.fillStyle = '#fff';
+      painter.font = '32px sans-serif';
+      painter.fillText('Local media preview', 40, 180);
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      const file = new File([blob], 'sandbox-a11y.png', {type: 'image/png'});
+      showNewMediaPopup(ctx.chat(), [file], 'media');
+    }
+  },
+  {
+    id: 'newMedia/video',
+    fixtureOnly: true,
+    title: 'Attach video',
+    open: async(ctx) => {
+      const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
+      const {default: url} = await import('@/tests/fixtures/ephemeralBot/media/video.mp4?url');
+      const blob = await (await fetch(url)).blob();
+      const file = new File([blob], 'sandbox-video.mp4', {type: 'video/mp4'});
       showNewMediaPopup(ctx.chat(), [file], 'media');
     }
   },
@@ -117,9 +157,7 @@ defineStories('Composer & bots', [
     }
   },
   {
-    // Both of these host an <iframe>. Pointed at the dev server's own root so the sandbox stays
-    // off the network — the popup chrome (header, menu, close confirmation) is what a story here
-    // is for, not the bot's page.
+    // A local document tests the iframe chrome without booting another Telegram client.
     id: 'webApp/miniApp',
     fixtureOnly: true,
     title: 'Mini app',
@@ -137,7 +175,7 @@ defineStories('Composer & bots', [
     open: async(ctx) => {
       const {default: showWebAppPopup} = await import('@components/popups/webApp');
       showWebAppPopup({
-        webViewResultUrl: {_: 'webViewResultUrl', pFlags: {}, query_id: '1', url: location.origin + '/'},
+        webViewResultUrl: {_: 'webViewResultUrl', pFlags: {}, query_id: '1', url: EMBEDDED_PAGE_URL},
         webViewOptions: {botId: ctx.peer('bot').toUserId(), peerId: ctx.peer('private')}
       });
     }
@@ -148,7 +186,7 @@ defineStories('Composer & bots', [
     title: 'Payment verification (3-D Secure)',
     open: async(ctx) => {
       const {default: showPaymentVerificationPopup} = await import('@components/popups/paymentVerification');
-      showPaymentVerificationPopup({url: location.origin + '/'});
+      showPaymentVerificationPopup({url: EMBEDDED_PAGE_URL});
     }
   },
   {

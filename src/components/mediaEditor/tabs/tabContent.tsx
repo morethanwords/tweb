@@ -6,7 +6,11 @@ import Scrollable from '@components/scrollable';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {delay} from '@components/mediaEditor/utils';
 
-import {mediaEditorTabsOrder} from '@components/mediaEditor/tabs/tabs';
+import {
+  getMediaEditorTabId,
+  getMediaEditorTabPanelId,
+  mediaEditorTabsOrder
+} from '@components/mediaEditor/tabs/tabs';
 
 type TabContentContextValue = {
   container: Accessor<HTMLDivElement>;
@@ -27,6 +31,25 @@ export default function TabContent(props: {
   let prevTab = editorState.currentTab;
   let scrollable: Scrollable;
 
+  function createTabElement(tab: string) {
+    return (
+      <div
+        id={getMediaEditorTabPanelId(tab)}
+        role="tabpanel"
+        aria-labelledby={getMediaEditorTabId(tab)}
+      >
+        <div class="media-editor__tab-content-scrollable-content">
+          <TabContentContext.Provider value={{container, scrollAmount}}>
+            {props.tabs[tab]()}
+          </TabContentContext.Provider>
+        </div>
+      </div>
+    ) as HTMLDivElement;
+  }
+
+  const initialElement = createTabElement(editorState.currentTab);
+  prevElement = initialElement;
+
   createEffect(async() => {
     if(prevTab === editorState.currentTab) return;
 
@@ -34,43 +57,36 @@ export default function TabContent(props: {
     prevTab = editorState.currentTab;
 
     scrollable.destroy();
-    const newElement = (
-      <div>
-        <div class="media-editor__tab-content-scrollable-content">
-          <TabContentContext.Provider value={{container, scrollAmount}}>
-            {props.tabs[editorState.currentTab]()}
-          </TabContentContext.Provider>
-        </div>
-      </div>
-    ) as HTMLDivElement;
+    const newElement = createTabElement(editorState.currentTab);
     setScrollable(newElement);
+    const oldElement = prevElement;
+    prevElement = newElement;
 
     const cls = (element: HTMLElement, action: 'add' | 'remove', modifier: string) =>
       element.classList[action]('media-editor__tab-content--' + modifier);
 
-    cls(prevElement, 'add', 'exit');
+    cls(oldElement, 'add', 'exit');
+    oldElement.inert = true;
+    oldElement.setAttribute('aria-hidden', 'true');
+    oldElement.removeAttribute('id');
 
     if(toRight) {
       cls(newElement, 'add', 'go-right');
       container().append(newElement);
       await doubleRaf();
-      cls(prevElement, 'add', 'go-left');
+      cls(oldElement, 'add', 'go-left');
       cls(newElement, 'remove', 'go-right');
     } else {
       cls(newElement, 'add', 'go-left');
       container().append(newElement);
       await doubleRaf();
-      cls(prevElement, 'add', 'go-right');
+      cls(oldElement, 'add', 'go-right');
       cls(newElement, 'remove', 'go-left');
     }
 
     await delay(200);
-    prevElement.remove();
-
-    prevElement = newElement;
+    oldElement.remove();
   });
-
-  const initialTab = props.tabs[editorState.currentTab]();
 
   function setScrollable(element: HTMLElement) {
     // TODO: Scrollable thumb not showing
@@ -97,12 +113,10 @@ export default function TabContent(props: {
         props.onContainer(el);
       }}
       class="media-editor__tab-content"
+      inert={!editorState.isReady}
+      aria-hidden={!editorState.isReady}
     >
-      <div ref={prevElement}>
-        <div class="media-editor__tab-content-scrollable-content">
-          <TabContentContext.Provider value={{container, scrollAmount}}>{initialTab}</TabContentContext.Provider>
-        </div>
-      </div>
+      {initialElement}
     </div>
   );
 }

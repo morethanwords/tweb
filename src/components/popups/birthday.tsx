@@ -6,6 +6,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {Birthday} from '@layer';
 import {getMonths, getDaysPerMonthForYear, numberOfDaysEachMonth} from '@helpers/date';
 import InputField from '@components/inputField';
+import I18n from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {createButtonMenuSelect} from '@components/buttonMenuSelect';
 import {IconTsx} from '@components/iconTsx';
@@ -80,18 +81,21 @@ export default async function showBirthdayPopup(props: {
       plainText: true
     });
     dayField.container.classList.add(styles.day);
+    dayField.input.setAttribute('aria-label', I18n.format('BirthdayPopup.Day', true));
 
     const monthField = new InputField({
       label: 'BirthdayPopup.Month',
       plainText: true
     });
     monthField.container.classList.add(styles.month);
+    monthField.input.setAttribute('aria-label', I18n.format('BirthdayPopup.Month', true));
 
     const yearField = new InputField({
       label: 'BirthdayPopup.Year',
       plainText: true
     });
     yearField.container.classList.add(styles.year);
+    yearField.input.setAttribute('aria-label', I18n.format('BirthdayPopup.Year', true));
 
     if(props.initialDate?.day) {
       dayField.setValueSilently(String(props.initialDate.day));
@@ -251,10 +255,14 @@ export default async function showBirthdayPopup(props: {
               <I18nTsx
                     key={isContactsOnly ? 'BirthdayPopup.OnlyContacts' : 'BirthdayPopup.Choose'}
                 args={[
-                  <a class={styles.privacyInfoLink} onClick={openPrivacySettings}>
+                  <button
+                    type="button"
+                    class={styles.privacyInfoLink}
+                    onClick={openPrivacySettings}
+                  >
                     <I18nTsx key={isContactsOnly ? 'BirthdayPopup.OnlyContactsLink' : 'BirthdayPopup.ChooseLink'} />
                     <IconTsx icon="next" />
-                  </a>
+                  </button>
                 ]} />
             </div>
           </Show>

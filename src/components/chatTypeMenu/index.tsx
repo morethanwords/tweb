@@ -41,11 +41,23 @@ const ChatTypeMenu = defineSolidElement({
       }
     }));
 
+    // a11y: this is a single-select (radio-style) menu, so each item is a
+    // menuitemradio and the active one carries aria-checked. Elements are rebuilt
+    // every time the menu opens, so apply on open and whenever selected() changes.
+    const applyRadioState = () => {
+      options.forEach((option) => {
+        if(!option.element) return;
+        option.element.setAttribute('role', 'menuitemradio');
+        option.element.setAttribute('aria-checked', '' + (option.id === selected()));
+      });
+    };
+
     createEffect(() => {
       const option = options.find(({id}) => id === selected());
       if(!option) return;
 
       option.icon = 'check';
+      applyRadioState();
       onCleanup(() => {
         option.icon = undefined;
       });
@@ -56,6 +68,8 @@ const ChatTypeMenu = defineSolidElement({
       classList={{
         [styles.hidden]: !!props.hidden
       }}
+      role="button"
+      tabindex={props.hidden ? -1 : 0}
     >{i18n(langKeyMap[selected()])}</span> as HTMLSpanElement;
 
     const buttonMenu = ButtonMenuToggle({
@@ -64,6 +78,7 @@ const ChatTypeMenu = defineSolidElement({
       direction: 'bottom-left',
       onOpen: (_, element) => {
         element.style.bottom = 'unset';
+        applyRadioState();
       }
     });
 

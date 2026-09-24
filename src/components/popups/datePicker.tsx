@@ -214,6 +214,8 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
     if(opts.withTime) {
       hoursInputField = new InputField({plainText: true});
       minutesInputField = new InputField({plainText: true});
+      hoursInputField.input.setAttribute('aria-label', I18n.format('AccDescr.Hours', true));
+      minutesInputField.input.setAttribute('aria-label', I18n.format('AccDescr.Minutes', true));
       hoursInputField.setValueSilently(hoursValue());
       minutesInputField.setValueSilently(minutesValue());
 
@@ -789,12 +791,15 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
                 icon="select"
                 class={classNames('date-picker-multiselect', 'primary', multiSelectActive() && 'is-active')}
                 noRipple
+                aria-label={I18n.format('Message.Context.Select', true)}
+                aria-pressed={multiSelectActive()}
                 onClick={toggleMultiSelect}
               />
             </Show>
             <ButtonIconTsx
               icon="up"
               class={classNames('date-picker-prev', 'primary')}
+              aria-label={I18n.format('AccDescr.PreviousMonth', true)}
               noRipple
               disabled={isPrevDisabled()}
               onClick={onPrev}
@@ -802,6 +807,7 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
             <ButtonIconTsx
               icon="down"
               class={classNames('date-picker-next', 'primary')}
+              aria-label={I18n.format('AccDescr.NextMonth', true)}
               noRipple
               disabled={isNextDisabled()}
               onClick={onNext}

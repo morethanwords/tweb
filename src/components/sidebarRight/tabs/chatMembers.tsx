@@ -32,7 +32,7 @@ const ChatMembers: Component = () => {
     tab.title.replaceChildren(i18n(isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers'));
 
     const canAddMembers = hasRights(chat, 'invite_users');
-    const addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
+    const addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible', ariaLabel: 'GroupAddMembers'});
     if(canAddMembers) tab.content.append(addBtn);
 
     attachClickEvent(addBtn, () => {

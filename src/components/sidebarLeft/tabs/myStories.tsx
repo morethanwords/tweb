@@ -108,6 +108,7 @@ const MyStories: Component = () => {
     const menuBtn = ButtonMenuToggle({
       listenerSetter: tab.listenerSetter,
       direction: 'bottom-left',
+      buttonOptions: {ariaLabel: 'MultiAccount.More'},
       buttons: [
         ...profileStoriesButtonMenu({
           peerId: rootScope.myId,

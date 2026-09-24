@@ -15,6 +15,7 @@ export default class GroupCallDescriptionElement {
     });
 
     this.descriptionIntl.element.classList.add('group-call-description');
+    this.descriptionIntl.element.setAttribute('role', 'status');
   }
 
   public detach() {
