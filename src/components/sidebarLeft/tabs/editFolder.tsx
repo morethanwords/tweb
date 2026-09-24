@@ -16,6 +16,7 @@ import deepEqual from '@helpers/object/deepEqual';
 import filterAsync from '@helpers/array/filterAsync';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section, {appendSectionContent} from '@components/section';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import {DialogFilter, ExportedChatlistInvite} from '@layer';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
@@ -310,7 +311,11 @@ const EditFolder: Component = () => {
     }
   });
 
-  const inputSection = (
+  // `unwrapSolidElement`, not a bare cast: the dev server wraps every component
+  // in a memo for hot reload, so `<Section/>` is a function there and an element
+  // in a production build. This code keeps the value and reaches into it with
+  // `querySelector`, so it needs the node either way.
+  const inputSection = unwrapSolidElement(
     <Section caption={hasFoldersSidebar ? 'EditFolder.EmojiAsIconTip' : undefined}>
       {nameInputField}
     </Section>
@@ -323,7 +328,7 @@ const EditFolder: Component = () => {
     to: any,
     captionKey?: LangPackKey
   ) => {
-    const section = (
+    const section = unwrapSolidElement(
       <Section
         class={`folder-list ${className}`}
         name={h2Text}

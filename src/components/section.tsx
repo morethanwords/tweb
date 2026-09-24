@@ -105,9 +105,27 @@ const Section: ParentComponent<SectionProps> = (props) => {
  * `generateContentElement()` did.
  */
 export function appendSectionContent(section: HTMLElement) {
+  // `<Section/>` is a COMPONENT, and a component's result is not always the node
+  // it renders: the dev server wraps every component in a memo for hot reload,
+  // so the value is a function there and an element in a production build. Code
+  // that casts it with `as HTMLElement` and keeps it therefore works until
+  // someone opens the page from `pnpm start` — hence the check, which names the
+  // cause instead of dying as `undefined is not a function` inside a render.
+  if(typeof section?.querySelector !== 'function') {
+    throw new Error(
+      `appendSectionContent: expected the section element, got ${typeof section}. ` +
+      'A `<Section/>` value has to go through `unwrapSolidElement` before it is cast to HTMLElement.'
+    );
+  }
+
+  const inner = section.querySelector('.' + className);
+  if(!inner) {
+    throw new Error('appendSectionContent: this section has no content element to append next to (`noContent`?)');
+  }
+
   const content = document.createElement('div');
   content.classList.add(className + '-content');
-  section.querySelector('.' + className).append(content);
+  inner.append(content);
   return content;
 }
 

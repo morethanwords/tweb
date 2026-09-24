@@ -8,6 +8,7 @@ import ButtonCorner from '@components/buttonCorner';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import {handleMissingInvitees} from '@components/addChatUsers';
 import type {AppChatsManager} from '@lib/appManagers/appChatsManager';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
@@ -193,14 +194,14 @@ const NewGroup: Component = () => {
       });
     }, {listenerSetter: tab.listenerSetter});
 
-    const section = (
+    const section = unwrapSolidElement(
       <Section>
         {avatarEdit.container}
         {inputWrapper}
       </Section>
     ) as HTMLElement;
 
-    const chatsSection = (
+    const chatsSection = unwrapSolidElement(
       <Section
         class={!peerIds.length ? 'hide' : undefined}
         name="Members"

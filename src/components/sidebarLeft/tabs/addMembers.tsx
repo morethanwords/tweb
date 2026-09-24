@@ -3,6 +3,7 @@ import {setButtonLoader} from '@components/putPreloader';
 import ButtonCorner from '@components/buttonCorner';
 import Button from '@components/button';
 import Section from '@components/section';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import {i18n} from '@lib/langPack';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppAddMembersTab} from '@components/solidJsTabs/tabs';
@@ -106,7 +107,7 @@ const AddMembersTab = () => {
       return button;
     });
 
-    const categoriesSection = (
+    const categoriesSection = unwrapSolidElement(
       <Section
         class="folder-categories"
         noDelimiter

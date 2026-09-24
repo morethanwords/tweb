@@ -21,7 +21,7 @@ import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getSticker
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {IconTsx} from '@components/iconTsx';
-import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {mountSolidComponent, unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 
 const StickersAndEmoji: Component = () => {
   const [tab] = useSuperTab();
@@ -55,7 +55,7 @@ const StickersAndEmoji: Component = () => {
         setAppSettings('stickers', 'suggest', value);
       };
 
-      const section = (
+      const section = unwrapSolidElement(
         <Section caption="LoopAnimatedStickersInfo">
           <Row
             havePadding
@@ -112,7 +112,7 @@ const StickersAndEmoji: Component = () => {
       tab.scrollable.append(section);
     }
 
-    tab.scrollable.append((
+    tab.scrollable.append(unwrapSolidElement(
       <Section name="Emoji">
         <Row>
           <Row.Icon icon="lamp_filled" />
@@ -137,7 +137,7 @@ const StickersAndEmoji: Component = () => {
       </Section>
     ) as HTMLElement);
 
-    tab.scrollable.append((
+    tab.scrollable.append(unwrapSolidElement(
       <Section name="DynamicPackOrder" caption="DynamicPackOrderInfo">
         <Row>
           <Row.Icon icon="replace_squares" />
@@ -153,7 +153,7 @@ const StickersAndEmoji: Component = () => {
     ) as HTMLElement);
 
     {
-      const section = (
+      const section = unwrapSolidElement(
         <Section
           name="Telegram.InstalledStickerPacksController"
           caption="StickersBotInfo"

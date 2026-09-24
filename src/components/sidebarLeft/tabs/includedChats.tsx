@@ -10,6 +10,7 @@ import {REAL_FOLDERS} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import {DialogFilter} from '@layer';
 import showLimitPopup from '@components/popups/limit';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
@@ -89,7 +90,7 @@ const IncludedChats: Component = () => {
     });
 
     let categoriesContent!: HTMLElement;
-    const categoriesSection = (
+    const categoriesSection = unwrapSolidElement(
       <Section
         class="folder-categories"
         noDelimiter

@@ -15,6 +15,7 @@ import AppSelectPeers from '@components/appSelectPeers';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
 import Section from '@components/section';
+import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
 import {toastNew} from '@components/toast';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -162,7 +163,7 @@ const SharedFolder: Component = () => {
         url: chatlistInvite.url
       });
 
-      linkSection = (
+      linkSection = unwrapSolidElement(
         <Section name="InviteLink">
           {inviteLink.container}
         </Section>
