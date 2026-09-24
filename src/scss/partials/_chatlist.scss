@@ -123,22 +123,29 @@ ul.chatlist {
       --background: var(--light-filled-secondary-text-color);
     }
 
-    // * a row being selected (`DialogsSelectionBase`) wears its checkbox at its start, in a lane it
-    // * opens for it - the way the peer picker lays out its checkboxes. It is the same round one the
-    // * search lays over a thumb, so a selected row is marked by the checkbox alone
-    @include selection-checkbox();
-
     // * the main list's avatar is the larger one, and stands a little further off the checkbox
     &.chatlist-chat-bigger {
       --select-lane-shift: #{1.5rem + .625rem + .25rem};
     }
 
+    // * a row being selected (`DialogsSelectionBase`) wears its checkbox at its start, in a lane it
+    // * opens for it, and it looks like the peer picker's too - so a selected row is marked by the
+    // * checkbox alone. Only this checkbox: the picker's rows are `chatlist-chat` as well, and style
+    // * their own (`_selector.scss`)
     .dialog-select-checkbox {
+      position: absolute;
+      z-index: 2;
+      margin: 0;
       inset-inline-start: $select-checkbox-inset;
       top: 50%;
       transform: translateY(-50%);
       // the row under it is the click target; the checkbox only shows what the selection holds
       pointer-events: none;
+
+      // the fill of a checked one covers the ring, as in the picker
+      .checkbox-box-border {
+        z-index: unset;
+      }
     }
 
     // * the lane opens at once, with no transition on the margins: laying the row out again on every
