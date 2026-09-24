@@ -98,6 +98,17 @@ type InitConnectionParams = {
   langCode?: string
 };
 
+/**
+ * Whether a transport brings the answer back in the response to `send`, the
+ * way HTTP does, instead of through a read loop of its own. A socket's `send`
+ * returns nothing at all (MTTransport), so everything an HTTP send is followed
+ * up with - the response body, the long poll, the offline state - belongs to
+ * the transport that actually took the bytes and to no other.
+ */
+function isHTTPTransport(transport: MTTransport) {
+  return !import.meta.env.VITE_MTPROTO_HAS_WS || transport instanceof HTTP;
+}
+
 // const TEST_RESEND_RPC: string = 'upload.file';
 const TEST_RESEND_RPC: string = undefined;
 let TESTING_RESENDING_RPC = !!TEST_RESEND_RPC;
@@ -550,7 +561,7 @@ export default class MTPNetworker {
     transport.noScheduler = true;
 
     if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-      if(!import.meta.env.VITE_MTPROTO_HAS_WS || transport instanceof HTTP) {
+      if(isHTTPTransport(transport)) {
         if(!this.isFileNetworker || HTTP_POLLING_NEEDED_FOR_FILES) {
           this.longPollInterval = ctx.setInterval(this.checkLongPoll, 10000);
           this.checkLongPoll();
@@ -949,12 +960,12 @@ export default class MTPNetworker {
     }
   }
 
-  private handleSentEncryptedRequestHTTP(promise: ReturnType<MTPNetworker['sendEncryptedRequest']>, message: MTMessage, noResponseMsgs: string[]) {
+  private handleSentEncryptedRequestHTTP(promise: ReturnType<MTPNetworker['sendEncryptedRequest']>, message: MTMessage, noResponseMessages: MTMessage[]) {
     if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
       return;
     }
     // let timeout = setTimeout(() => {
-    //   this.log.error('handleSentEncryptedRequestHTTP timeout', promise, message, noResponseMsgs);
+    //   this.log.error('handleSentEncryptedRequestHTTP timeout', promise, message, noResponseMessages);
     // }, 5e3);
 
     promise.then(async(result) => {
@@ -985,16 +996,27 @@ export default class MTPNetworker {
       return false;
     }).then((shouldResolve) => {
       // clearTimeout(timeout);
-      const sentMessages = this.sentMessages;
-      noResponseMsgs.forEach((msgId) => {
-        const sentMessage = sentMessages[msgId];
-        if(sentMessage) {
-          const {deferred} = sentMessage;
-          delete sentMessages[msgId];
-          delete this.pendingMessages[msgId];
-          shouldResolve ? deferred.resolve() : deferred.reject();
-        }
-      });
+      this.settleNoResponseMessages(noResponseMessages, shouldResolve);
+    });
+  }
+
+  /**
+   * An http_wait is answered by the response to its own send and by nothing
+   * else, so whoever sent it settles it - a long poll left pending keeps
+   * `sendLongPoll` from ever sending another one.
+   *
+   * ! by the message and not by its id: `cleanupSent` takes an http_wait out
+   * ! of `sentMessages` as soon as it goes out, and an id no longer leads to it
+   */
+  private settleNoResponseMessages(noResponseMessages: MTMessage[], shouldResolve: boolean) {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
+    noResponseMessages.forEach(({msg_id, deferred}) => {
+      delete this.sentMessages[msg_id];
+      delete this.pendingMessages[msg_id];
+      shouldResolve ? deferred?.resolve() : deferred?.reject();
     });
   }
 
@@ -1277,7 +1299,7 @@ export default class MTPNetworker {
     }
 
     if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+      if(isHTTPTransport(this.transport)) {
         if(hasApiCall && !hasHttpWait) {
           const options: MTMessageOptions = {...HTTP_WAIT_OPTIONS, noSchedule: true};
           this.wrapMtpCall('http_wait', {
@@ -1299,9 +1321,9 @@ export default class MTPNetworker {
       return;
     }
 
-    let noResponseMsgs: Array<string>;
+    let noResponseMessages: MTMessage[];
     if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-      noResponseMsgs = messages.filter((message) => message.noResponse).map((message) => message.msg_id);
+      noResponseMessages = messages.filter((message) => message.noResponse);
     }
 
     if(messages.length > 1) {
@@ -1314,16 +1336,10 @@ export default class MTPNetworker {
       this.sentMessages[outMessage.msg_id] = outMessage;
     }
 
-    const promise = this.sendEncryptedRequest(outMessage);
+    const promise = this.sendEncryptedRequest(outMessage, noResponseMessages);
     // * over a socket nothing waits for it: what doesn't go out (the networker
     // * has been taken off its connection meanwhile) is sent again on reconnect
     promise.catch(noop);
-
-    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
-        this.handleSentEncryptedRequestHTTP(promise, outMessage, noResponseMsgs);
-      }
-    }
 
     this.cleanupSent();
 
@@ -1456,29 +1472,55 @@ export default class MTPNetworker {
     return requestData;
   }
 
-  private async sendEncryptedRequest(message: MTMessage) {
+  private async sendEncryptedRequest(message: MTMessage, noResponseMessages?: MTMessage[]) {
     const log = this.log.bindPrefix('sendEncryptedRequest');
-    const requestData = await this.getEncryptedOutput(message);
 
-    if(!this.transport) {
-      log.error('trying to send something when offline', this.transport, this);
+    let requestData: Uint8Array;
+    try {
+      requestData = await this.getEncryptedOutput(message);
+    } catch(error) {
+      // * nothing went out at all, and the follow-up below is never reached:
+      // * the batch stays unanswered, and over HTTP nothing else would settle
+      // * the http_wait it was carrying. The transport has not been read yet,
+      // * so the one it would have gone to is the one that answers for it
+      if(import.meta.env.VITE_MTPROTO_HAS_HTTP && noResponseMessages && isHTTPTransport(this.transport)) {
+        this.handleSentEncryptedRequestHTTP(Promise.reject(error), message, noResponseMessages);
+      } else {
+        log.error('could not encrypt', error, message);
+      }
+
+      throw error;
+    }
+
+    // * taken once, after the encryption: the transport may have been swapped
+    // * meanwhile (`https` -> `websocket` right after startup), and the bytes
+    // * go to the one that is here now - so everything below follows it too
+    const transport = this.transport;
+    if(!transport) {
+      log.error('trying to send something when offline', transport, this);
     }
 
     log.debug('sending', message, [message.msg_id].concat(message.inner || []), requestData.length);
-    const promise: Promise<Uint8Array> = this.transport ? this.transport.send(requestData) as any : Promise.reject({});
+    const promise: Promise<Uint8Array> = transport ? transport.send(requestData) as any : Promise.reject({});
 
     if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
       return promise;
     }
 
-    if(import.meta.env.VITE_MTPROTO_HAS_WS && !(this.transport instanceof HTTP)) {
+    // * a socket returns nothing here and answers through its own read loop,
+    // * where an http_wait of this batch would wait for an answer forever
+    if(!isHTTPTransport(transport)) {
+      if(noResponseMessages) {
+        this.settleNoResponseMessages(noResponseMessages, false);
+      }
+
       return promise;
     }
 
     const baseError = makeError('NETWORK_BAD_RESPONSE');
     baseError.code = 406;
 
-    return promise.then((result) => {
+    const responsePromise = promise.then((result) => {
       if(!result?.byteLength) {
         throw baseError;
       }
@@ -1494,9 +1536,31 @@ export default class MTPNetworker {
 
       throw error;
     });
+
+    // * the follow-up is attached here and not by the caller: only now is it
+    // * known that the message went out over HTTP and that its answer is on
+    // * its way back in the response body
+    if(noResponseMessages) {
+      this.handleSentEncryptedRequestHTTP(responsePromise, message, noResponseMessages);
+    }
+
+    return responsePromise;
   }
 
   public async onTransportData(data: Uint8Array, packetTime: number = Date.now()) {
+    // * nothing readable came back, and it is never silently dropped. An empty
+    // * packet off a socket is a stray frame that carries no answer to recover;
+    // * no packet at all means a send that was to bring one answered nothing,
+    // * so everything still unanswered goes out again, as after a reconnect
+    if(!data?.byteLength) {
+      this.log.error('no packet to handle', data, this.transport);
+      if(!data) {
+        this.resend();
+      }
+
+      return;
+    }
+
     const errorCode = getTransportError(data);
     if(errorCode !== undefined) {
       this.onTransportError(errorCode);
@@ -1693,7 +1757,7 @@ export default class MTPNetworker {
     } */
 
     if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+      if(isHTTPTransport(this.transport)) {
         if(this.offline) {
           this.checkConnection('forced schedule');
         }
@@ -1718,7 +1782,7 @@ export default class MTPNetworker {
       this.clearNextReq();
 
       if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-        if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+        if(isHTTPTransport(this.transport)) {
           if(this.offline) {
             log('cancel scheduled');
             return;
@@ -1756,7 +1820,7 @@ export default class MTPNetworker {
     let delay: number;
 
     if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
-      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+      if(isHTTPTransport(this.transport)) {
         delay = 30000;
       }
     }

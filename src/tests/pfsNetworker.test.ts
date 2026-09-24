@@ -1,6 +1,7 @@
 import '../lib/crypto/crypto.worker';
 import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 import MTPNetworker from '@lib/mtproto/networker';
+import {makeNetworker, makePermAuthKey} from './networkerHarness';
 import TempAuthKeys, {TEMP_AUTH_KEY_EXPIRES_IN} from '@lib/mtproto/tempAuthKeys';
 import {MTAuthKey} from '@lib/mtproto/authKey';
 import {TimeManager} from '@lib/mtproto/timeManager';
@@ -15,26 +16,11 @@ import tsNow from '@helpers/tsNow';
 // Perfect Forward Secrecy in the networker, without a server: the binding
 // message, and how a networker moves between temporary keys.
 
-const makePermAuthKey = () => MTAuthKey.fromKey(randomBytes(256));
-
 async function makeTempAuthKey() {
   const authKey = await makePermAuthKey();
   authKey.expiresAt = tsNow(true) + TEMP_AUTH_KEY_EXPIRES_IN;
   authKey.serverSalt = randomBytes(8);
   return authKey;
-}
-
-function makeNetworker(options: Partial<ConstructorParameters<typeof MTPNetworker>[0]>) {
-  return new MTPNetworker({
-    timeManager: new TimeManager(),
-    dcId: 2,
-    permAuthKey: undefined,
-    isFileUpload: false,
-    isFileDownload: false,
-    getInitConnectionParams: () => ({id: 1}),
-    getBaseDcId: async() => 2,
-    ...options
-  });
 }
 
 function makeTempAuthKeys(permAuthKey: MTAuthKey) {
