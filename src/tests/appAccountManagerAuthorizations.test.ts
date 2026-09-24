@@ -2,6 +2,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import AppAccountManager, {
   applyUnconfirmedAuthorizationUpdate,
   filterExpiredUnconfirmedAuthorizations,
+  FRESH_AUTHORIZATION_PERIOD,
   UnconfirmedAuthorization
 } from '@appManagers/appAccountManager';
 import {Authorization, Update} from '@layer';
@@ -28,11 +29,15 @@ function makeUpdate(
 function makeAuthorization(
   hash: string | number,
   unconfirmed: boolean,
-  date = NOW
+  date = NOW,
+  current = false
 ): Authorization.authorization {
   return {
     _: 'authorization',
-    pFlags: unconfirmed ? {unconfirmed: true} : {},
+    pFlags: {
+      ...(unconfirmed ? {unconfirmed: true} : {}),
+      ...(current ? {current: true} : {})
+    },
     hash,
     device_model: 'MacBook Pro',
     platform: 'macOS',
@@ -50,6 +55,7 @@ function makeAuthorization(
 
 async function makeManager(options: {
   saved?: UnconfirmedAuthorization[],
+  currentAuthorizationDate?: number,
   period?: number,
   invokeApi?: ReturnType<typeof vi.fn>,
   beforeStateLoaded?: (
@@ -70,7 +76,8 @@ async function makeManager(options: {
     appConfig: {
       authorization_autoconfirm_period: options.period ?? 100
     },
-    unconfirmedAuthorizations: options.saved ?? []
+    unconfirmedAuthorizations: options.saved ?? [],
+    currentAuthorizationDate: options.currentAuthorizationDate ?? 0
   } as State;
 
   Object.assign(manager as any, {
@@ -345,6 +352,79 @@ describe('unconfirmed authorizations', () => {
 
     expect(invokeApi).toHaveBeenCalledWith('auth.resetAuthorizations');
     expect(manager.getUnconfirmedAuthorizations()).toEqual([]);
+  });
+
+  it('never asks about the session it is running on', async() => {
+    const invokeApi = vi.fn().mockResolvedValue({
+      _: 'account.authorizations',
+      authorization_ttl_days: 30,
+      authorizations: [
+        // the server flags a brand new session as unconfirmed for the others
+        makeAuthorization(0, true, NOW - 2 * FRESH_AUTHORIZATION_PERIOD, true),
+        makeAuthorization(20, true, NOW - 1)
+      ]
+    });
+    const {manager} = await makeManager({invokeApi, period: 3 * FRESH_AUTHORIZATION_PERIOD});
+
+    await manager.getAuthorizations();
+
+    expect(manager.getUnconfirmedAuthorizations().map(({hash}) => hash)).toEqual([20]);
+  });
+
+  it('holds a prompt back while this session is too fresh to review it', async() => {
+    const invokeApi = vi.fn().mockResolvedValue({
+      _: 'account.authorizations',
+      authorization_ttl_days: 30,
+      authorizations: [makeAuthorization(0, true, NOW, true)]
+    });
+    const {dispatchEvent, manager, pushToState, rootListeners, updateListeners} = await makeManager({
+      invokeApi,
+      period: 3 * FRESH_AUTHORIZATION_PERIOD
+    });
+
+    // the session's own age comes from the server, never from the event payload:
+    // a plain start of a signed-in account stamps that one with the current time
+    rootListeners.user_auth({date: NOW - 10 * FRESH_AUTHORIZATION_PERIOD, id: 1, dcID: 2});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(pushToState).toHaveBeenCalledWith('currentAuthorizationDate', NOW);
+
+    updateListeners.updateNewAuthorization(makeUpdate(30, true));
+
+    const prompt = {
+      hash: 30,
+      date: NOW,
+      device: 'Safari on iPhone',
+      location: 'Dubai, UAE'
+    };
+    expect(manager.getUnconfirmedAuthorizations()).toEqual([]);
+    expect(dispatchEvent).not.toHaveBeenCalled();
+    expect(pushToState).toHaveBeenCalledWith('unconfirmedAuthorizations', [prompt]);
+
+    await vi.advanceTimersByTimeAsync(FRESH_AUTHORIZATION_PERIOD * 1000);
+
+    expect(manager.getUnconfirmedAuthorizations()).toEqual([prompt]);
+    expect(dispatchEvent).toHaveBeenLastCalledWith('unconfirmed_authorizations_update', [prompt]);
+  });
+
+  it('keeps a restored prompt hidden until the fresh window passes', async() => {
+    const saved: UnconfirmedAuthorization = {
+      hash: 1,
+      date: NOW - 5,
+      device: 'Safari',
+      location: 'Dubai'
+    };
+    const {dispatchEvent, manager} = await makeManager({
+      saved: [saved],
+      currentAuthorizationDate: NOW - 60,
+      period: 3 * FRESH_AUTHORIZATION_PERIOD
+    });
+
+    expect(manager.getUnconfirmedAuthorizations()).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(FRESH_AUTHORIZATION_PERIOD * 1000);
+
+    expect(manager.getUnconfirmedAuthorizations()).toEqual([saved]);
+    expect(dispatchEvent).toHaveBeenLastCalledWith('unconfirmed_authorizations_update', [saved]);
   });
 
   it('confirms or resets through the account manager before removing the review', async() => {

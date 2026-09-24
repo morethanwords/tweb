@@ -265,6 +265,8 @@ export type State = {
   },
   accountContentSettings: CacheSomething<AccountContentSettings>,
   unconfirmedAuthorizations: UnconfirmedAuthorization[],
+  /** When the session this client runs on was created — see FRESH_AUTHORIZATION_PERIOD */
+  currentAuthorizationDate: number,
 
 
   // playbackParams?: StateSettings['playbackParams'], // ! MIGRATED TO SETTINGS
@@ -633,7 +635,8 @@ export const STATE_INIT: State = {
   birthdayContactsDismissedDayKey: undefined,
   dontShowPaidMessageWarningFor: [],
   accountContentSettings: {} as any,
-  unconfirmedAuthorizations: []
+  unconfirmedAuthorizations: [],
+  currentAuthorizationDate: 0
 };
 
 export const COMMON_STATE_INIT: CommonState = {

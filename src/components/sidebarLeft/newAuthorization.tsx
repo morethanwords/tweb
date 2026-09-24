@@ -8,6 +8,7 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import Animated from '@helpers/solid/animations';
 import classNames from '@helpers/string/classNames';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
+import getAuthorizationErrorLangKey from '@helpers/getAuthorizationErrorLangKey';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {I18n, i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
@@ -167,12 +168,7 @@ export function NewAuthorization(props: {
 
       return true;
     } catch(err) {
-      const error = err as ApiError;
-      toastNew({
-        langPackKey: error?.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN' ?
-          'RecentSessions.Error.FreshReset' :
-          'Error.AnError'
-      });
+      toastNew({langPackKey: getAuthorizationErrorLangKey(err as ApiError)});
       return false;
     } finally {
       setProcessing(false);

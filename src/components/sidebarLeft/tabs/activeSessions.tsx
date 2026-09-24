@@ -14,6 +14,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import {DurationType} from '@helpers/formatDuration';
 import anchorCallback from '@helpers/dom/anchorCallback';
+import getAuthorizationErrorLangKey from '@helpers/getAuthorizationErrorLangKey';
 import getSessionPlatformIcon from '@helpers/sessionPlatformIcon';
 import {Authorization, ConnectedBot} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -111,11 +112,7 @@ const ActiveSessions: Component = () => {
   });
 
   const onError = (err: ApiError) => {
-    toastNew({
-      langPackKey: err?.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN' ?
-        'RecentSessions.Error.FreshReset' :
-        'Error.AnError'
-    });
+    toastNew({langPackKey: getAuthorizationErrorLangKey(err)});
   };
 
   const confirmTerminate = () => confirmationPopup({
