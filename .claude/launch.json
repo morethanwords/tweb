@@ -16,8 +16,8 @@
     {
       "name": "tweb-debug",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["scripts/start-preview.sh", "--no-worker", "--port", "9011"],
-      "port": 9011
+      "runtimeArgs": ["scripts/start-preview.sh", "--no-worker", "--port", "9006"],
+      "port": 9006
     },
     {
       "name": "tweb-a",
@@ -34,7 +34,7 @@
     {
       "name": "tweb-popups",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "TWEB_PREVIEW=1 exec pnpm --config.verify-deps-before-run=false exec vite --port 9007 --strictPort"],
+      "runtimeArgs": ["-c", "TWEB_PREVIEW=1 exec pnpm --config.verify-deps-before-run=false exec vite --host 127.0.0.1 --port 9007 --strictPort"],
       "port": 9007
     }
   ]

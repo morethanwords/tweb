@@ -98,6 +98,12 @@ echo "[start-preview] preview: http://localhost:$PORT"
 # a symlink into the main checkout, and pnpm's pre-run check would try to
 # purge + reinstall it (aborting without a TTY, or wiping the main checkout's
 # modules with one).
+# `--host 127.0.0.1` pins the bind to IPv4 loopback. Vite's default (`localhost`)
+# binds [::1] ONLY on macOS, which is what made every preview unreachable at
+# preview-<port>.enko.club back when the tunnel's ingress dialled the literal
+# 127.0.0.1. That ingress now uses the name `localhost`, which resolves to both
+# families, so this flag is belt-and-braces — keep it and a preview answers
+# whichever form a rule uses. Still loopback: not exposed to the LAN.
 exec env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER" \
   pnpm --config.verify-deps-before-run=false exec vite \
-  --config vite.preview.config.ts --port "$PORT" --strictPort
+  --config vite.preview.config.ts --host 127.0.0.1 --port "$PORT" --strictPort
