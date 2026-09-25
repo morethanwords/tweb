@@ -11,4 +11,9 @@ if(IS_MOV_SUPPORTED) {
   VIDEO_MIME_TYPES_SUPPORTED.add('video/quicktime');
 }
 
+/** The set is keyed by the literal union, so the narrowing cast lives here once. */
+export function isVideoMimeType(mimeType: string): mimeType is VIDEO_MIME_TYPE {
+  return VIDEO_MIME_TYPES_SUPPORTED.has(mimeType as VIDEO_MIME_TYPE);
+}
+
 export default VIDEO_MIME_TYPES_SUPPORTED;

@@ -3,6 +3,7 @@ import {createStore, reconcile} from 'solid-js/store';
 import {render} from 'solid-js/web';
 import {Message, Page, PageBlock, RichText} from '@layer';
 import type {TextRevealFrameScheduler} from '@components/chat/bubbleParts/solidMessageText';
+import onQuoteClick from '@helpers/dom/onQuoteClick';
 
 const instantViewMocks = vi.hoisted(() => ({
   openMedia: vi.fn(),
@@ -293,7 +294,7 @@ describe('InstantViewBlocks streaming updates', () => {
     const textNode = inlineText.firstChild;
     const details = findDetails(container);
     const summary = details.firstElementChild as HTMLElement;
-    const detailsContent = details.children[2] as HTMLElement;
+    const detailsContent = details.querySelector<HTMLElement>('[role="region"]')!;
 
     summary.click();
     const openClass = detailsContent.className;
@@ -360,7 +361,7 @@ describe('InstantViewBlocks streaming updates', () => {
     const tailItem = items[1];
     const details = findDetails(container);
     const summary = details.firstElementChild as HTMLElement;
-    const content = details.children[2] as HTMLElement;
+    const content = details.querySelector<HTMLElement>('[role="region"]')!;
     summary.click();
     const openClass = content.className;
 
@@ -438,7 +439,17 @@ describe('InstantViewBlocks streaming updates', () => {
     expect(openQuote.container.querySelector('.quote-like-collapse')).toBeNull();
     const collapsedEl = collapsedQuote.container.querySelector('blockquote');
     expect(collapsedEl.classList.contains('quote-like-collapsable')).toBe(true);
-    expect(collapsedEl.querySelector('.quote-like-collapse')).not.toBeNull();
+    // its arrow is a disclosure button: a keyboard presses it, a screen reader hears its state
+    const collapseButton = collapsedEl.querySelector<HTMLButtonElement>(':scope > .quote-like-collapse');
+    expect(collapseButton.tagName).toBe('BUTTON');
+    expect(collapseButton.getAttribute('aria-label')).toBeTruthy();
+    expect(collapseButton.getAttribute('aria-expanded')).toBe('false');
+    // the resize observer marks a quote that does not fit; the press bubbles to the host's
+    // click, which unfolds it
+    collapsedEl.classList.add('is-truncated');
+    expect(onQuoteClick(new MouseEvent('click', {cancelable: true}), collapsedEl)).toBe(true);
+    expect(collapsedEl.classList.contains('is-expanded')).toBe(true);
+    expect(collapseButton.getAttribute('aria-expanded')).toBe('true');
     expect(collapsedEl.textContent).toContain('quote');
     openQuote.dispose();
     collapsedQuote.dispose();
@@ -565,7 +576,7 @@ describe('InstantViewBlocks streaming updates', () => {
 
     const details = findDetails(container);
     const summary = details.firstElementChild as HTMLElement;
-    const content = details.children[2] as HTMLElement;
+    const content = details.querySelector<HTMLElement>('[role="region"]')!;
     const closedClass = content.className;
 
     batch(() => {

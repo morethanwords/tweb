@@ -8892,6 +8892,7 @@ export default class ChatBubbles {
         makeSolidMessageBodySnapshot(currentMessage, 1),
         {
           middleware,
+          chat: this.chat,
           richTextOptions: getPolicy(),
           reducedMotion: useReducedMotion(),
           translation: canTranslate ? {
@@ -8982,6 +8983,7 @@ export default class ChatBubbles {
           Component: RichMessageBubble,
           props: {
             message: message as Message.message,
+            chat: this.chat,
             richMessage,
             page: richMessagePage,
             richTextOptions,

@@ -28,12 +28,3 @@ export default function setCaretAt(node: Node) {
     node.parentNode.removeChild(node);
   }
 }
-
-export function setCaretAtEnd(element: HTMLElement) {
-  const range = element.ownerDocument.createRange();
-  const selection = element.ownerDocument.defaultView.getSelection();
-  range.selectNodeContents(element);
-  range.collapse(false);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}

@@ -5,7 +5,13 @@ export const EXTENSION_MIME_TYPE_MAP: {[ext in MTFileExtension]: MTMimeType} = {
   json: 'application/json',
   wav: 'audio/wav',
   mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+  opus: 'audio/ogg',
+  oga: 'audio/ogg',
   ogg: 'audio/ogg',
+  ogv: 'video/ogg',
   jpeg: 'image/jpeg',
   jpg: 'image/jpeg',
   png: 'image/png',
@@ -24,9 +30,20 @@ export const EXTENSION_MIME_TYPE_MAP: {[ext in MTFileExtension]: MTMimeType} = {
 };
 
 export const MIME_TYPE_ALIASES: Record<string, MTMimeType> = {
-  'video/x-quicktime': 'video/quicktime',
+  'audio/m4a': 'audio/mp4',
+  'audio/mp3': 'audio/mpeg',
+  'audio/opus': 'audio/ogg',
+  'audio/x-aac': 'audio/aac',
+  'audio/x-flac': 'audio/flac',
+  'audio/x-m4a': 'audio/mp4',
+  'audio/x-mp3': 'audio/mpeg',
+  'audio/x-mpeg': 'audio/mpeg',
+  'audio/x-ogg': 'audio/ogg',
+  'audio/x-opus+ogg': 'audio/ogg',
+  'audio/x-wav': 'audio/wav',
   // * same container and decoder, only a different brand in the header
-  'image/heif': 'image/heic'
+  'image/heif': 'image/heic',
+  'video/x-quicktime': 'video/quicktime'
 };
 
 export const MIME_TYPE_EXTENSION_MAP: {[mimeType in MTMimeType]?: MTFileExtension} = {};

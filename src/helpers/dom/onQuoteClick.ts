@@ -49,6 +49,7 @@ export default function onQuoteClick(
 
     quoteDiv.classList.toggle('is-expanded');
     quoteDiv.classList.toggle('is-truncated', isExpanded);
+    quoteDiv.querySelector(':scope > .quote-like-collapse')?.setAttribute('aria-expanded', '' + !isExpanded);
     return true;
   }
 

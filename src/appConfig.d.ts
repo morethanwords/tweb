@@ -98,6 +98,12 @@ export interface MTAppConfig {
   giveaway_gifts_purchase_available?:        boolean;
   giveaway_period_max?:                      number;
   ephemeral_welcome_messages_max?:           number;
+  rich_message_length_limit?:                number;
+  rich_message_max_blocks?:                  number;
+  rich_message_max_depth?:                   number;
+  rich_message_max_media?:                   number;
+  rich_message_max_table_cols?:              number;
+  rich_message_posting?:                     'enabled' | 'premium' | 'disabled';
   quote_length_max?:                         number;
   recommended_channels_limit_default?:       number;
   recommended_channels_limit_premium?:       number;

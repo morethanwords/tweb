@@ -13,7 +13,8 @@ const toastEl = document.createElement('div');
 toastEl.classList.add('toast');
 let timeout: number;
 
-const x = new OverlayClickHandler('toast');
+// a click anywhere hides the toast; a keyboard press still reaches its control
+const x = new OverlayClickHandler('toast', false, true);
 x.addEventListener('toggle', (open) => {
   if(!open) {
     hideToast();

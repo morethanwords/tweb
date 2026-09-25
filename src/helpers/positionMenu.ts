@@ -18,11 +18,12 @@ const PADDING_RIGHT = PADDING_LEFT;
 
 export const DEFAULT_MENU_WINDOW_MARGIN = 16;
 
-export type MenuHorizontalDirection = 'left' | 'right';
-
 export type FloatingMenuSide = 'top' | 'left' | 'right' | 'bottom';
 export type FloatingMenuAlignment = 'start' | 'center' | 'end';
 export type FloatingMenuDirection = `${FloatingMenuSide}-${FloatingMenuAlignment}`;
+export type FloatingMenuPositionOptions = {
+  flip?: boolean
+};
 
 const OPPOSITE_SIDE: Record<FloatingMenuSide, FloatingMenuSide> = {
   top: 'bottom',
@@ -64,7 +65,8 @@ export function positionFloatingMenu(
   triggerBcr: DOMRect,
   menu: HTMLElement,
   direction: FloatingMenuDirection,
-  offset: [number, number] = [0, 0]
+  offset: [number, number] = [0, 0],
+  options: FloatingMenuPositionOptions = {}
 ): FloatingMenuDirection {
   const [requestedSide, alignment] = direction.split('-') as [FloatingMenuSide, FloatingMenuAlignment];
 
@@ -74,7 +76,8 @@ export function positionFloatingMenu(
 
   // Flip side if it doesn't fit and the opposite does (mirrors the original right/left logic).
   const opposite = OPPOSITE_SIDE[requestedSide];
-  const side: FloatingMenuSide = canFitSide(triggerBcr, menu, requestedSide, mainOffset) ||
+  const side: FloatingMenuSide = options.flip === false ||
+      canFitSide(triggerBcr, menu, requestedSide, mainOffset) ||
       !canFitSide(triggerBcr, menu, opposite, mainOffset) ?
     requestedSide :
     opposite;
@@ -143,49 +146,6 @@ export function positionFloatingMenu(
   return `${side}-${alignment}` as FloatingMenuDirection;
 }
 
-export function getMenuTopPositionForStartDirection(triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number]) {
-  let top = triggerBcr.top + offset[1];
-  const bottom = top + menu.clientHeight;
-  if(bottom + DEFAULT_MENU_WINDOW_MARGIN > getAppWindow().innerHeight) top -= bottom - getAppWindow().innerHeight + DEFAULT_MENU_WINDOW_MARGIN;
-  top = Math.max(top, DEFAULT_MENU_WINDOW_MARGIN);
-
-  return top;
-}
-
-export function canMenuFitDirection(
-  triggerBcr: DOMRect,
-  menu: HTMLElement,
-  direction: MenuHorizontalDirection,
-  offset: [number, number]
-) {
-  if(direction === 'right') {
-    const left = triggerBcr.right + offset[0];
-    return left + menu.clientWidth + DEFAULT_MENU_WINDOW_MARGIN <= getAppWindow().innerWidth;
-  }
-
-  const right = triggerBcr.left - offset[0];
-  return right - menu.clientWidth - DEFAULT_MENU_WINDOW_MARGIN >= 0;
-}
-
-export function getMenuLeftPositionForDirection(
-  triggerBcr: DOMRect,
-  menu: HTMLElement,
-  direction: MenuHorizontalDirection,
-  offset: [number, number]
-) {
-  if(direction === 'right') {
-    let left = triggerBcr.right + offset[0];
-    const right = left + menu.clientWidth;
-    if(right + DEFAULT_MENU_WINDOW_MARGIN > getAppWindow().innerWidth) left -= right - getAppWindow().innerWidth + DEFAULT_MENU_WINDOW_MARGIN;
-    return left;
-  }
-
-  const right = triggerBcr.left - offset[0];
-  let left = right - menu.clientWidth;
-  if(left - DEFAULT_MENU_WINDOW_MARGIN < 0) left = DEFAULT_MENU_WINDOW_MARGIN;
-  return left;
-}
-
 export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: HTMLElement, side?: 'left' | 'right' | 'center', additionalPadding?: MenuPositionPadding) {
   if((e as TouchEvent).touches) {
     e = (e as TouchEvent).touches[0];
@@ -221,7 +181,6 @@ export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: H
 
   const maxTop = windowHeight - menuHeight - paddingBottom;
   const maxLeft = windowWidth - menuWidth - paddingRight;
-  const minTop = paddingTop;
   const minLeft = paddingLeft;
 
   const getSides = () => {

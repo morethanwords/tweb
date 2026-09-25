@@ -6,6 +6,7 @@ import {MediaAttachment} from '@components/popups/createPoll/mediaAttachment';
 import {AttachedMedia, SupportedMediaType} from '@components/popups/createPoll/storeContext';
 import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
+import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {keepMe} from '@helpers/keepMe';
 import {createDelayed} from '@helpers/solid/createDelayed';
@@ -66,6 +67,10 @@ export const AddOption = (props: {
     }
   });
 
+  // The option travels as text plus entities and holds one line.
+  const inputFieldEditor = attachPlainMessageEditor(inputField.input);
+  onCleanup(() => inputFieldEditor.destroy());
+
   inputField.input.classList.add(styles.inputFieldInput);
   inputField.placeholder.classList.add(...[styles.inputFieldPlaceholder, contextProps.isOutgoing ? styles.outgoing : null].filter(Boolean));
 
@@ -112,10 +117,10 @@ export const AddOption = (props: {
 
   createEffect(() => {
     if(props.isPending) {
-      inputField.input.contentEditable = 'false';
+      inputFieldEditor.setEditable(false);
 
       onCleanup(() => {
-        inputField.input.contentEditable = 'true';
+        inputFieldEditor.setEditable(true);
       });
     }
   });

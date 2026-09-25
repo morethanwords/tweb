@@ -62,6 +62,12 @@
     height: 1rem;
     overflow: hidden;
     cursor: pointer;
+    // a <button>
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
 
     &:after {
       position: relative;

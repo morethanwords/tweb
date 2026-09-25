@@ -52,6 +52,14 @@ describe('trimRichText', () => {
     const {text, entities} = trimRichText('   hi', [{_: 'messageEntityBold', offset: 0, length: 2}]);
     expect(text).toEqual('hi');
     assertEntitiesInBounds(text, entities);
+    expect(entities).toHaveLength(0);
+  });
+
+  test('entity spanning the leading boundary shrinks to the trimmed text', () => {
+    const {text, entities} = trimRichText(' bold', [{_: 'messageEntityBold', offset: 0, length: 5}]);
+    expect(text).toEqual('bold');
+    assertEntitiesInBounds(text, entities);
+    expect(entities[0]).toMatchObject({offset: 0, length: 4});
   });
 
   test('both ends trimmed with an entity surviving in the middle', () => {

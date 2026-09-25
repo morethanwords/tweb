@@ -22,6 +22,7 @@ function makeManager() {
       getPeerMigratedTo: (): PeerId => undefined
     },
     appMessagesIdsManager: new AppMessagesIdsManager(),
+    rootScope: {premium: false},
     getMessageByPeer: (_peerId: PeerId, mid: number) => messages.get(mid),
     checkSendOptions: () => Promise.resolve(),
     forwardMessagesInner: (options: any) => {

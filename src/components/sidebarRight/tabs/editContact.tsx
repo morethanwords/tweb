@@ -185,6 +185,8 @@ const EditContact: Component = () => {
           maxLength: 128,
           withLinebreaks: true
         });
+        // The field owns an editor and an emoji dropdown; both go with the tab.
+        tab.middlewareHelper.get().onClean(() => noteInputField.cleanup());
         if(fullUser?.note) {
           noteInputField.setRichOriginalValue(fullUser.note);
         }

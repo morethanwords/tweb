@@ -16,7 +16,8 @@ export default function getMarkupInSelection<T extends MarkdownType>(types: T[],
   const root = commonAncestor.nodeType === commonAncestor.ELEMENT_NODE ?
     commonAncestor as HTMLElement :
     (commonAncestor as ChildNode).parentElement;
-  let contentEditable = root.closest('[contenteditable="true"]');
+  const editableRoot = root.closest('[contenteditable="true"]');
+  let contentEditable = editableRoot;
   if(!contentEditable) {
     if(ignoreNoContentEditable) {
       contentEditable = root;
@@ -25,7 +26,7 @@ export default function getMarkupInSelection<T extends MarkdownType>(types: T[],
     }
   }
 
-  const treeWalker = document.createTreeWalker(
+  const treeWalker = contentEditable.ownerDocument.createTreeWalker(
     contentEditable,
     NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     {acceptNode: (node) => range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT}
@@ -48,7 +49,7 @@ export default function getMarkupInSelection<T extends MarkdownType>(types: T[],
     for(const type of types) {
       const tag = markdownTags[type];
       const matches = element.closest(tag.match);
-      if(matches) {
+      if(matches && (!editableRoot || matches !== editableRoot && editableRoot.contains(matches))) {
         result[type].elements.push(element);
         result[type].textLength += valueLength;
       }

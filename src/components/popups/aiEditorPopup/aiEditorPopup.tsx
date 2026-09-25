@@ -1,12 +1,11 @@
 import {I18nTsx} from '@helpers/solid/i18n';
-import {AiComposeTone, TextWithEntities} from '@layer';
+import {AiComposeTone, InputRichMessage, RichMessage, TextWithEntities} from '@layer';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {LocalTextWithEntities} from '@types';
-import {createSignal} from 'solid-js';
 import PopupElement, {createPopup} from '../indexTsx';
 import styles from './aiEditorPopup.module.scss';
 import {AiEditorPopupBodyContent} from './bodyContent';
-import {AiEditorPopupContext, AiEditorPopupContextValue} from './context';
+import AiEditorPopupProvider from '@components/popups/aiEditorPopup/provider';
 
 
 export type AiEditorSendOptions = {
@@ -16,51 +15,38 @@ export type AiEditorSendOptions = {
   effect?: DocId;
 };
 
+export type AiEditorActionResult = MaybePromise<boolean | void>;
+
 export type AiEditorPopupProps = {
   peerId: PeerId;
   text: TextWithEntities.textWithEntities;
+  richMessage?: InputRichMessage.inputRichMessage;
   initialTones?: AiComposeTone[];
-  onApply: (text: LocalTextWithEntities) => void;
-  onSend?: (text: LocalTextWithEntities, options?: AiEditorSendOptions) => void;
+  onApply: (text: LocalTextWithEntities) => AiEditorActionResult;
+  onApplyRichMessage?: (richMessage: RichMessage) => AiEditorActionResult;
+  onSend?: (text: LocalTextWithEntities, options?: AiEditorSendOptions) => AiEditorActionResult;
+  onSendRichMessage?: (richMessage: RichMessage, options?: AiEditorSendOptions) => AiEditorActionResult;
   canSendWhenOnline?: () => boolean | Promise<boolean>;
   /** When true, sending always opens the schedule popup and the send context menu is hidden */
   isScheduled?: boolean;
 };
 
 const AiEditorPopup = (props: AiEditorPopupProps) => {
-  const [show, setShow] = createSignal(true);
-
-  const contextValue: AiEditorPopupContextValue = {
-    ...props,
-    /** Will get overriden if undefined once the tones are fetched */
-    initialTones: props.initialTones,
-    onApply: (...args) => {
-      props.onApply(...args);
-      setShow(false);
-    },
-    onSend: props.onSend ? (text, options) => {
-      props.onSend(text, options);
-      setShow(false);
-    } : undefined,
-    resultTextSignal: createSignal<TextWithEntities>()
-  };
-
   return (
     <PopupElement
-      show={show()}
       class={styles.popup}
       containerClass={styles.container}
     >
-      <PopupElement.Header class={styles.header}>
+      <PopupElement.Header>
         <PopupElement.CloseButton />
         <PopupElement.Title>
           <I18nTsx key='AiEditor.Title' />
         </PopupElement.Title>
       </PopupElement.Header>
       <PopupElement.Body>
-        <AiEditorPopupContext.Provider value={contextValue}>
+        <AiEditorPopupProvider {...props}>
           <AiEditorPopupBodyContent />
-        </AiEditorPopupContext.Provider>
+        </AiEditorPopupProvider>
       </PopupElement.Body>
     </PopupElement>
   );

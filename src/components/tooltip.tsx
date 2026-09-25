@@ -6,6 +6,7 @@ import {createRoot, createSignal, onMount, JSX} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {IconTsx} from '@components/iconTsx';
 import SetTransition from '@components/singleTransition';
+import tooltipController from '@helpers/tooltipController';
 
 const KEEP_TOOLTIP = true;
 const tooltipOverlayClickHandler = new OverlayClickHandler(undefined, true);
@@ -59,6 +60,7 @@ export default function showTooltip({
 
   let close: () => void;
   createRoot((dispose) => {
+    let unregisterTooltip = () => false;
     const [getRect, setRect] = createSignal<DOMRect>();
 
     const getStyle = (): JSX.CSSProperties => {
@@ -146,6 +148,7 @@ export default function showTooltip({
         duration: 200,
         forwards: false,
         onTransitionEnd: () => {
+          unregisterTooltip();
           onClose?.();
           dispose();
         }
@@ -157,13 +160,19 @@ export default function showTooltip({
         return;
       }
 
-      if(useOverlay) tooltipOverlayClickHandler.close();
-      else onToggle(false);
+      if(useOverlay) {
+        tooltipOverlayClickHandler.close();
+        if(!closed) onToggle(false);
+      } else {
+        onToggle(false);
+      }
     };
 
     const timeout = KEEP_TOOLTIP && !auto ? 0 : window.setTimeout(close, 3000);
+    unregisterTooltip = tooltipController.register(close);
 
     useOverlay && Promise.resolve().then(() => {
+      if(closed) return;
       tooltipOverlayClickHandler.open(mountOn);
       tooltipOverlayClickHandler.addEventListener('toggle', onToggle, {once: true});
     });

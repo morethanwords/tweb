@@ -8,7 +8,9 @@ export const MESSAGE_LINK_ENTITY_TYPES: ReadonlySet<MessageEntity['_']> = new Se
   'messageEntityUrl',
   'messageEntityTextUrl',
   'messageEntityEmail',
-  'messageEntityBankCard'
+  'messageEntityBankCard',
+  // an inline page button acts like a link; where links are off, its label stays as plain text
+  'messageEntityRichButton'
 ]);
 
 export const MESSAGE_LINK_ENTITY_ATTRIBUTE = 'data-message-link-entity';

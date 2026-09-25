@@ -2,9 +2,9 @@
 
 .Slideshow {
   --secondary-opacity-max: 1;
-  --padding-bottom: 56.25%;
+  aspect-ratio: var(--slideshow-aspect-ratio, 16 / 9);
+  max-height: var(--slideshow-max-height, none);
   width: 100%;
-  padding-bottom: var(--padding-bottom);
   position: relative;
   cursor: pointer;
   background-color: var(--surface-color);
@@ -12,7 +12,7 @@
   overflow: hidden;
 
   @include animation-level-global(2) {
-    transition: padding-bottom var(--transition-standard-in);
+    transition: aspect-ratio var(--transition-standard-in);
   }
 
   /* &:before, &:after {
@@ -29,7 +29,7 @@
 
   &.IsSingle {
     .Arrow,
-    .Tabs {
+    .Dots {
       display: none;
     }
   }
@@ -37,6 +37,12 @@
   &.IsSwiping {
     .Arrow {
       opacity: 0 !important;
+    }
+  }
+
+  &.NoArrows {
+    .Arrow {
+      display: none;
     }
   }
 }
@@ -50,8 +56,7 @@
   transform-origin: left top;
   transition: transform .2s ease-in-out;
   position: absolute;
-  // top: 0;
-  // left: 0;
+  inset: 0;
   // will-change: transform;
 
   .NoTransition & {
@@ -61,40 +66,54 @@
 
 .Item {
   width: inherit;
-  height: 0;
-  padding-bottom: var(--padding-bottom);
+  height: 100%;
   min-width: 100%;
   display: flex;
   position: relative;
 }
 
-.Tabs {
+.Dots {
+  align-items: center;
+  bottom: var(--slideshow-dots-bottom, calc(.75rem * var(--iv-scale, 1)));
   display: flex;
+  height: calc(.75rem * var(--iv-scale, 1));
+  left: 50%;
   position: absolute;
-  top: .5rem;
-  left: .375rem;
-  right: .375rem;
-  height: .125rem;
-  pointer-events: none;
-  z-index: 2;
+  transform: translateX(-50%);
+  z-index: 3;
 
   @include animation-level-global(2) {
     opacity: 1;
-    transition: opacity var(--transition-standard-in);
+    transition:
+      bottom var(--transition-standard-in),
+      opacity var(--transition-standard-in);
   }
 }
 
-.Tab {
-  flex: 1 1 auto;
-  border-radius: 4px;
-  margin: 0 .125rem;
-  background-color: #fff;
-  opacity: .2;
-  transition: opacity .2s ease-in-out;
-  height: inherit;
+.Dot {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  flex: 0 0 calc(.75rem * var(--iv-scale, 1));
+  height: calc(.75rem * var(--iv-scale, 1));
+  margin: 0;
+  padding: calc(.1875rem * var(--iv-scale, 1));
+  width: calc(.75rem * var(--iv-scale, 1));
 
-  &.Active {
-    opacity: .6;
+  &::after {
+    background-color: #fff;
+    border-radius: 50%;
+    content: '';
+    display: block;
+    height: 100%;
+    opacity: .4;
+    transition: opacity .2s ease-in-out;
+    width: 100%;
+  }
+
+  &.Active::after {
+    opacity: 1;
   }
 }
 

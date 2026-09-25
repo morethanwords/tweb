@@ -11,14 +11,17 @@ import {BOM_REG_EXP} from '@helpers/string/bom';
 import {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' |
-  'monospace' | 'link' | 'mentionName' | 'spoiler' | 'quote' | 'date'/*  | 'customEmoji' */;
+  'monospace' | 'link' | 'mentionName' | 'spoiler' | 'quote' | 'date' |
+  'highlight' | 'subscript' | 'superscript'/*  | 'customEmoji' */;
 export type MarkdownTag = {
   match: string,
   entityName: Extract<
     MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' |
     'messageEntityItalic' | 'messageEntityCode' | 'messageEntityStrike' |
     'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler' |
-    'messageEntityBlockquote' | 'messageEntityFormattedDate'/*  | 'messageEntityCustomEmoji' */
+    'messageEntityBlockquote' | 'messageEntityFormattedDate' |
+    'messageEntityHighlight' | 'messageEntitySubscript' |
+    'messageEntitySuperscript'/*  | 'messageEntityCustomEmoji' */
   >;
 };
 
@@ -87,6 +90,18 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   date: {
     match: join('[style*="date"]', '.formatted-date'),
     entityName: 'messageEntityFormattedDate'
+  },
+  highlight: {
+    match: join('[style*="highlight"]', '[data-highlight]', 'mark'),
+    entityName: 'messageEntityHighlight'
+  },
+  subscript: {
+    match: join('[style*="subscript"]', 'sub'),
+    entityName: 'messageEntitySubscript'
+  },
+  superscript: {
+    match: join('[style*="superscript"]', 'sup'),
+    entityName: 'messageEntitySuperscript'
   }
   // customEmoji: {
   //   match: '.custom-emoji',
@@ -128,12 +143,42 @@ const BLOCK_TAGS = new Set([
   'BLOCKQUOTE'
 ]);
 
+function getListItemPrefix(element: HTMLElement) {
+  if(element.tagName !== 'LI') return '';
+  const list = element.parentElement;
+  if(list?.tagName !== 'UL' && list?.tagName !== 'OL') return '';
+
+  let depth = 0;
+  for(let parent = list.parentElement; parent; parent = parent.parentElement) {
+    if(parent.tagName === 'LI') ++depth;
+  }
+
+  if(list.tagName === 'UL') return `${'  '.repeat(depth)}- `;
+
+  const startAttribute = Number(list.getAttribute('start'));
+  const start = list.hasAttribute('start') && Number.isFinite(startAttribute) ? startAttribute : 1;
+  const items = Array.from(list.children).filter((child) => child.tagName === 'LI');
+  const index = items.indexOf(element);
+  const valueAttribute = Number(element.getAttribute('value'));
+  const value = element.hasAttribute('value') && Number.isFinite(valueAttribute) ? valueAttribute : start + index;
+  return `${'  '.repeat(depth)}${value}. `;
+}
+
 // const INSERT_NEW_LINE_TAGS = new Set([
 //   'OL',
 //   'UL'
 // ]);
 
 export const SELECTION_SEPARATOR = '\x01';
+
+const FORMATTED_DATE_FLAGS = [
+  'relative',
+  'short_time',
+  'long_time',
+  'short_date',
+  'long_date',
+  'day_of_week'
+] as const;
 
 export function getFormattedDateEntityByElement(
   element: HTMLElement,
@@ -142,9 +187,13 @@ export function getFormattedDateEntityByElement(
 ): MessageEntity.messageEntityFormattedDate {
   const dateStr = element.dataset.date;
   const date = dateStr ? +dateStr : undefined;
+  const dateFlags = new Set((element.dataset.dateFlags || '').split(','));
+  const pFlags = Object.fromEntries(
+    FORMATTED_DATE_FLAGS.filter((flag) => dateFlags.has(flag)).map((flag) => [flag, true])
+  ) as MessageEntity.messageEntityFormattedDate['pFlags'];
   return {
     _: 'messageEntityFormattedDate',
-    pFlags: {},
+    pFlags,
     date: 0,
     ...((ENTITY_ELEMENT_MAP.get(element) as MessageEntity.messageEntityFormattedDate) || {}),
     ...(date ? {date} : {}),
@@ -385,6 +434,14 @@ export default function getRichElementValue(
     }
   }
 
+  const listItemPrefix = getListItemPrefix(node);
+  if(listItemPrefix) {
+    if(entities) checkElementForEntity(node, listItemPrefix, entities, offset, line, currentEntities);
+    line.push(listItemPrefix);
+    offset.offset += listItemPrefix.length;
+    offset.contentEnd = offset.offset;
+  }
+
   if(isSelected && !selOffset) {
     line.push(SELECTION_SEPARATOR);
   }
@@ -457,7 +514,13 @@ export default function getRichElementValue(
     }
   }
 
-  if(isBlock && !wasNodeEmpty) {
+  const lastChild = node.lastChild as HTMLElement;
+  const childClosedLine = lastChild?.nodeType === node.ELEMENT_NODE &&
+    lastChild.tagName !== 'BR' && (BLOCK_TAGS.has(lastChild.tagName) || lastChild.matches('.quote'));
+  const isFinishedBlockContainer = isLineEmpty(line) && (
+    node.tagName === 'UL' || node.tagName === 'OL' || node.tagName === 'LI' || childClosedLine
+  );
+  if(isBlock && !wasNodeEmpty && !isFinishedBlockContainer) {
     pushLine();
   }
 

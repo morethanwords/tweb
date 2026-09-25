@@ -1,10 +1,14 @@
-import {AiComposeTone, InputAiComposeTone, TextWithEntities} from '@layer';
+import {AiComposeTone, InputAiComposeTone, InputRichMessage, RichMessage, TextWithEntities} from '@layer';
 import {AppManager} from '@lib/appManagers/manager';
+import {flattenRichMessageSummary} from '@lib/richMessage';
 
 type Tone = AiComposeTone;
 
 export type ComposeMessageWithAiArgs = {
   text: TextWithEntities;
+  richMessage?: InputRichMessage.inputRichMessage;
+  createRichMessage?: boolean;
+  customPrompt?: string;
   toneNameOrId?: string;
   proofRead?: boolean;
   translateTo?: string;
@@ -14,6 +18,7 @@ export type ComposeMessageWithAiArgs = {
 export type ComposeMessageWithAiOkResultData = {
   resultText: TextWithEntities;
   diffText?: TextWithEntities;
+  resultRichMessage?: RichMessage;
 };
 
 export type ComposeMessageWithAiResult = {
@@ -187,15 +192,70 @@ export class AiTonesManager extends AppManager {
     await this.saveToneById(toneId, true);
   }
 
-  async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs): Promise<ComposeMessageWithAiResult> {
+  async composeMessageWithAi({
+    text,
+    richMessage,
+    createRichMessage,
+    customPrompt,
+    toneNameOrId,
+    proofRead,
+    translateTo,
+    emojify
+  }: ComposeMessageWithAiArgs): Promise<ComposeMessageWithAiResult> {
     const tone = toneNameOrId ? this.tonesMap.get(toneNameOrId) : undefined;
+    const toneInput: InputAiComposeTone | undefined = customPrompt?.trim() ? {
+      _: 'inputAiComposeToneSingleUse',
+      custom_prompt: customPrompt
+    } : tone ? this.getToneInput(tone) : undefined;
 
     try {
+      if(richMessage || createRichMessage) {
+        const inputRichMessage = richMessage ?
+          this.appMessagesManager.resolveInputRichMessage(richMessage) :
+          undefined;
+        if(inputRichMessage) await this.appMessagesManager.assertRichMessage(inputRichMessage);
+        const invoke = async() => {
+          if(inputRichMessage && translateTo && !toneInput && !proofRead && !emojify) {
+            const translated = await this.apiManager.invokeApi('messages.translateRichMessage', {
+              text: [inputRichMessage],
+              to_lang: translateTo
+            });
+            return translated.result[0];
+          }
+
+          const composed = await this.apiManager.invokeApi('messages.composeRichMessageWithAI', {
+            text: inputRichMessage,
+            emojify,
+            translate_to_lang: translateTo,
+            tone: toneInput,
+            proofread: proofRead
+          });
+          return composed.result;
+        };
+        const resultRichMessage = inputRichMessage ?
+          await this.appMessagesManager.invokeWithRichMessageReferenceRetry(inputRichMessage, invoke) :
+          await invoke();
+        resultRichMessage.documents = (resultRichMessage.documents || [])
+        .map((document) => this.appDocsManager.saveDoc(document))
+        .filter(Boolean);
+        resultRichMessage.photos = (resultRichMessage.photos || [])
+        .map((photo) => this.appPhotosManager.savePhoto(photo))
+        .filter(Boolean);
+
+        return {
+          ok: true,
+          data: {
+            resultText: flattenRichMessageSummary(resultRichMessage, 0),
+            resultRichMessage
+          }
+        };
+      }
+
       const result = await this.apiManager.invokeApi('messages.composeMessageWithAI', {
         text,
         emojify,
         translate_to_lang: translateTo,
-        tone: tone ? this.getToneInput(tone) : undefined,
+        tone: toneInput,
         proofread: proofRead
       });
 

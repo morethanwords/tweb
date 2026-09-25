@@ -117,6 +117,15 @@ export type SupportedMediaType = 'photo' | 'video' | 'gif' | 'sticker' | 'link';
 export type CreatePollContextExtra = {
   isBroadcast: Accessor<boolean>;
   supportedMediaTypes: Accessor<SupportedMediaType[]>;
+  /** set when a bot keyboard asked for a poll: a quiz (`true`) or a regular one, and nothing else */
+  quiz?: boolean;
+};
+
+/** What turning a poll into a quiz changes besides itself: a quiz takes no added options and no revotes. */
+export const QUIZ_POLL_SETTINGS: Pick<CreatePollStore, 'hasCorrectAnswer' | 'allowAddingOptions' | 'allowRevoting'> = {
+  hasCorrectAnswer: true,
+  allowAddingOptions: false,
+  allowRevoting: false
 };
 
 export type CreatePollContextValue = CreatePollContextExtra & {
@@ -162,7 +171,8 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
     timeLimit: {type: 'duration', duration: oneDayInSeconds},
     explanation: '',
     explanationEntities: [],
-    hideResults: false
+    hideResults: false,
+    ...(extra.quiz ? QUIZ_POLL_SETTINGS : {})
   });
 
   const {maxOptions} = useCreatePollLimits();

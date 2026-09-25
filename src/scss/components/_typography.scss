@@ -12,7 +12,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 // Text Styles
-em { font-style: italic; }
+em {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
 strong { font-weight: 500; }
 small { font-size: 75%; }
 

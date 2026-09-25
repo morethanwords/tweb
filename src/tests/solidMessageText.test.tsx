@@ -1592,3 +1592,19 @@ describe('createSolidMessageText', () => {
     controller.dispose();
   });
 });
+
+
+test('keeps linebreak spans when slicing the message at reveal boundaries', () => {
+  const value = textWithEntities('123123\n123123\n123123', [
+    {_: 'messageEntityLinebreak', offset: 6, length: 1},
+    {_: 'messageEntityBlockquote', pFlags: {}, offset: 7, length: 6},
+    {_: 'messageEntityLinebreak', offset: 13, length: 1}
+  ]);
+  for(const visible of [6, 7, 13, 14, 20]) {
+    const sliced = sliceTextWithEntitiesAtGrapheme(value, visible);
+    expect(sliced.entities.filter(entity => entity._ === 'messageEntityLinebreak')).toEqual(
+      value.entities.filter(entity => entity._ === 'messageEntityLinebreak' && entity.offset < visible)
+    );
+    expect(sliceTextWithEntitiesAtGrapheme(sliced, visible)).toEqual(sliced);
+  }
+});

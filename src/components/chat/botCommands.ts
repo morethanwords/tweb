@@ -15,9 +15,9 @@ export default class ChatBotCommands extends AutocompletePeerHelper {
     private managers: AppManagers
   ) {
     super(appendTo, undefined, CLASS_NAME, (target) => {
-      const innerHTML = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).innerHTML;
+      const text = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).textContent;
       return chatInput.getReadyToSend(() => {
-        chatInput.messageInput.innerHTML = innerHTML;
+        chatInput.messageInputField.setValueSilently(text);
         chatInput.sendMessage(true);
         this.toggle(true);
       });

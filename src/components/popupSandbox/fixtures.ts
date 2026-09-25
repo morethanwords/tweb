@@ -549,6 +549,12 @@ export const chatStub = {
     getEphemeralCommandResolution: () => ({state: 'none'}) as any,
     getCurrentInputAsDraft: () => undefined as any,
     canSendWhenOnline: () => false,
+    getAiEditorContext: () => ({capture: () => ({
+      peerId: CONTACT_PEER_ID,
+      isCurrent: () => true,
+      canSendWhenOnline: () => false,
+      clear: () => {}
+    })}),
     onAttachClick: () => {},
     resetSendingFlags: () => {},
     setScheduleTimestamp: () => {},

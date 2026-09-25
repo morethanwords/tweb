@@ -1,0 +1,3634 @@
+{
+  "version": 2,
+  "commit": "c5f4b576eb2d521364bba524616e0702027987d3",
+  "files": [
+    {
+      "file": ".github/scripts/__tests__/resolve-publish-config.test.mjs",
+      "sha256": "d5868f6da24b30be8b6f86e2746e944874b2d0a18b6fb867cd9e5fe558fb55cd",
+      "declarations": 13,
+      "review": "R001"
+    },
+    {
+      "file": "demos/src/Demos/CollaborationSplitPane/index.spec.ts",
+      "sha256": "41fbfb5edfdfc92161a180940d87722588c8970bb5b860453e973ea8f36c0dc7",
+      "declarations": 2,
+      "review": "R002"
+    },
+    {
+      "file": "demos/src/Demos/SingleRoomCollab/index.spec.ts",
+      "sha256": "46f5925892ca36c4705f9c69c74c115990614296041dfefed586ba214c900148",
+      "declarations": 1,
+      "review": "R002"
+    },
+    {
+      "file": "demos/src/Examples/AutolinkValidation/index.spec.ts",
+      "sha256": "4db5c0f9d08bd7ce9337325437bea1379288abfeb4f15ec4f3a298a8d552d8dd",
+      "declarations": 7,
+      "review": "R003"
+    },
+    {
+      "file": "demos/src/Examples/CSSModules/index.spec.ts",
+      "sha256": "3dc0cbdfa2b294f74a5300cca0d0b9f9d9fb3ce5c9c57ee37714779a9a9097e0",
+      "declarations": 1,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/Community/index.spec.ts",
+      "sha256": "e0fa3ef8c4cafb2e63656e79ad72d2712a8d5cddf48730af87ba3f3b9f4674d1",
+      "declarations": 2,
+      "review": "R005"
+    },
+    {
+      "file": "demos/src/Examples/CustomDocument/index.spec.ts",
+      "sha256": "eca5772f0c41ac103126840f1be9f5d211ad81bfe3e34cd6429493662d41065c",
+      "declarations": 5,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/CustomParagraph/index.spec.ts",
+      "sha256": "78033e08ac8c29d945bc29ed6fd86f6591044b74c2c7632a8892c74cbd05a1d5",
+      "declarations": 1,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/Default/index.spec.ts",
+      "sha256": "c08f17d2e52e6358c7a17682f3177df070e78a2230ae42aa9fb062ebc8469390",
+      "declarations": 10,
+      "review": "R006",
+      "overrides": {
+        "R007": [
+          56,
+          107
+        ],
+        "R008": [
+          119,
+          129
+        ],
+        "R009": [
+          140
+        ],
+        "R010": [
+          152,
+          164
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Examples/Drawing/index.spec.ts",
+      "sha256": "1bc1233364e0aa05968bd86bd5f5b7aabef38ba574895b1e0a4bc3177493aa21",
+      "declarations": 3,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/EnterShortcuts/index.spec.ts",
+      "sha256": "b253b60bba08fb6b7d214021f91b337563d60dc76535cf279a9d70af229eae77",
+      "declarations": 3,
+      "review": "R011"
+    },
+    {
+      "file": "demos/src/Examples/Formatting/index.spec.ts",
+      "sha256": "a6e7b0d4233dc141475e89fc05639a98c8e655def7a4a69ca193cd647b005c32",
+      "declarations": 2,
+      "review": "R012",
+      "overrides": {
+        "R013": [
+          46
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Examples/Images/index.spec.ts",
+      "sha256": "6861f544c274f27b33d2a5846ece4a1365c033fe27da4bb4e132e37d23775eac",
+      "declarations": 1,
+      "review": "R014"
+    },
+    {
+      "file": "demos/src/Examples/InteractivityComponent/index.spec.ts",
+      "sha256": "42d784dadb7a3b7ef159af117eebc0f80a5e1319b2defb54a3bb496a7a7fdafc",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/InteractivityComponentContent/index.spec.ts",
+      "sha256": "f894e0e8a4a5b2a36bbb6791e166dd615a4ee0a0a03b6881013b824d1a958808",
+      "declarations": 4,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/InteractivityComponentProvideInject/index.spec.ts",
+      "sha256": "c59ec169fa7bcb3e7cdeeadd581c29d6b2bfea816be84548d6e6be34684ef19b",
+      "declarations": 3,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/JSX/index.spec.ts",
+      "sha256": "7bc472378f0619118f19771babf83d4069325b635f1f80e4d6cd3dcf9e77957a",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/MarkdownShortcuts/index.spec.ts",
+      "sha256": "6ef7fa36f1cf187215486cf584e5d5e8324f403cbc960316f59257c6c6cb73a0",
+      "declarations": 6,
+      "review": "R015",
+      "overrides": {
+        "R016": [
+          33
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Examples/Menus/index.spec.ts",
+      "sha256": "f460e0517112d8175797e82f39eaa6749ce7a8e287d061a7be7a9b2a0e981cd3",
+      "declarations": 3,
+      "review": "R017"
+    },
+    {
+      "file": "demos/src/Examples/Minimal/index.spec.ts",
+      "sha256": "1681eed5bd2a4c201119b7ca9e4ecea7babf9cd0156f8d070645c5b5ddaebeca",
+      "declarations": 4,
+      "review": "R018",
+      "overrides": {
+        "R019": [
+          45
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Examples/MultiMention/index.spec.ts",
+      "sha256": "f75df114f96f4eca6180786582e07dcac176058a2473f3c3b3d5e2ad2cf7864e",
+      "declarations": 23,
+      "review": "R020"
+    },
+    {
+      "file": "demos/src/Examples/Savvy/index.spec.ts",
+      "sha256": "8c98c367b5c5b524e953682771563f34fbeeea8c6ede44e20cab21b6e0e8cc15",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/SuggestionPositioning/index.spec.ts",
+      "sha256": "b30ed5a57292c4ddcbd17978797e86b6988c96ac4ebb268b9fbca0debad31ef7",
+      "declarations": 5,
+      "review": "R020"
+    },
+    {
+      "file": "demos/src/Examples/Tasks/index.spec.ts",
+      "sha256": "7b6cd8a1eaa550dde27e177304c25595639a7f9407433f0515d12626ede2b5ce",
+      "declarations": 3,
+      "review": "R021"
+    },
+    {
+      "file": "demos/src/Examples/TypographyRTL/index.spec.ts",
+      "sha256": "7f8ba094accf2828c519b42fffb51ba4c68da14453c16b5e51fb57de5a4fa02f",
+      "declarations": 4,
+      "review": "R022"
+    },
+    {
+      "file": "demos/src/Experiments/CollaborationAnnotation/index.spec.ts",
+      "sha256": "b349ab2e19f7bbf058c1ac2c174fb38334bff86b0f6ff1af8b22840859827d71",
+      "declarations": 1,
+      "review": "R002"
+    },
+    {
+      "file": "demos/src/Experiments/Commands/index.spec.ts",
+      "sha256": "9d24cb8587ba44b67b023c84f5e8688174345d9fc844658c8105c6cee6567415",
+      "declarations": 3,
+      "review": "R020"
+    },
+    {
+      "file": "demos/src/Experiments/IsolatingClear/index.spec.ts",
+      "sha256": "9a7043a250e6e0877252c21f105115606e49e3fb6a90e446c18964d7093ba60d",
+      "declarations": 1,
+      "review": "R023"
+    },
+    {
+      "file": "demos/src/Experiments/MultipleEditors/index.spec.ts",
+      "sha256": "6334df7dea3b5e0322c4452a48f32b319d295e0b2081f02252f4cf1b49eda5b8",
+      "declarations": 1,
+      "review": "R024"
+    },
+    {
+      "file": "demos/src/Extensions/FloatingMenu/index.spec.ts",
+      "sha256": "5f172ae1e875d9d72531dbb847467f7476fd2a16c8c38764707200dbc4263876",
+      "declarations": 2,
+      "review": "R025"
+    },
+    {
+      "file": "demos/src/Extensions/Focus/index.spec.ts",
+      "sha256": "3ac7237b8acbb9b85ebec91b3b012972fa723e9d06b38823b797e9879ddee39f",
+      "declarations": 1,
+      "review": "R022"
+    },
+    {
+      "file": "demos/src/Extensions/ListKeymap/index.spec.ts",
+      "sha256": "4d337e36098330d3f736cac1bd23e6ee900fbf70957f6146a5609c05bdd49d7b",
+      "declarations": 3,
+      "review": "R026"
+    },
+    {
+      "file": "demos/src/Extensions/Selection/index.spec.ts",
+      "sha256": "b7fc5d15dd5a9832288c9acd20f79a14e8de250ad87fba81e93b78842e3f9ae7",
+      "declarations": 1,
+      "review": "R027"
+    },
+    {
+      "file": "demos/src/Extensions/TextAlign/index.spec.ts",
+      "sha256": "2b6760307a872dc13cbf18133a60ae97d1e43daf59d73a71ed538a50f06b6d21",
+      "declarations": 7,
+      "review": "R028"
+    },
+    {
+      "file": "demos/src/Extensions/Typography/index.spec.ts",
+      "sha256": "9b7b31099983791626ea0928f28efd7cf974e2058cf2c93d28ee4cc16d1e748c",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "demos/src/Extensions/TypographyWithOverrides/index.spec.ts",
+      "sha256": "d3110cfe7bf27f0fbce592cbf02f1dd18f3d60bc9efdcf89ce5f6a147785620e",
+      "declarations": 1,
+      "review": "R022"
+    },
+    {
+      "file": "demos/src/Extensions/UndoRedo/index.spec.ts",
+      "sha256": "05e233b39a240d3f4f2825be14e795de62caa416be8cf444f3ac3c754d2fc932",
+      "declarations": 6,
+      "review": "R029"
+    },
+    {
+      "file": "demos/src/GuideContent/ReadOnly/index.spec.ts",
+      "sha256": "3ceb82427d85b2d3d8a74e7d87d0ec1f2e6f093bc6880f7a5b95261117b85da0",
+      "declarations": 2,
+      "review": "R030"
+    },
+    {
+      "file": "demos/src/GuideGettingStarted/VModel/index.spec.ts",
+      "sha256": "71ea8054090d919a27723ec9cafc537720bd6001a6263b3378164157271e2cf9",
+      "declarations": 1,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/GuideMarkViews/ReactComponent/index.spec.ts",
+      "sha256": "6387ea449b3e4e6e7abda8894d41ed10d843955bfffe2a35b65e9d9479c6fa89",
+      "declarations": 4,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/GuideMarkViews/VueComponent/index.spec.ts",
+      "sha256": "9c102f950da14e61251d48b2588b9a23381217c36cb08c6791b07988f5d6043d",
+      "declarations": 3,
+      "review": "R004"
+    },
+    {
+      "file": "demos/src/Marks/Bold/index.spec.ts",
+      "sha256": "59349016f604e26566e36b434958bc04c05f1a6b104df9846289e3398c0fb03f",
+      "declarations": 8,
+      "review": "R031"
+    },
+    {
+      "file": "demos/src/Marks/Code/index.spec.ts",
+      "sha256": "a7d60118a4903e5e9cd18332e675d56ab40c912b98f533552b1dc3735c793591",
+      "declarations": 7,
+      "review": "R032"
+    },
+    {
+      "file": "demos/src/Marks/Highlight/index.spec.ts",
+      "sha256": "ff2e1a84a85370d4b4b14f40fd3adf9facc9328807a85154c262c411860c7c09",
+      "declarations": 9,
+      "review": "R033"
+    },
+    {
+      "file": "demos/src/Marks/Italic/index.spec.ts",
+      "sha256": "1c9c310df06696fdf86afd705be52f6d6f22733365c50f5f4bc859e6bccc0ffc",
+      "declarations": 7,
+      "review": "R031"
+    },
+    {
+      "file": "demos/src/Marks/Link/index.spec.ts",
+      "sha256": "2dd8598a9920885f3352d7d41ce385e9a6088dca0988260951a8160e479c6fb2",
+      "declarations": 12,
+      "review": "R036",
+      "overrides": {
+        "R034": [
+          37,
+          74,
+          132
+        ],
+        "R035": [
+          48,
+          61
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Marks/Strike/index.spec.ts",
+      "sha256": "9828b7fdc5f0bd6c90c0afe90cc9d3e5547d8c550ecd6ae295de55701992e3cc",
+      "declarations": 5,
+      "review": "R031",
+      "overrides": {
+        "R037": [
+          32
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Marks/Underline/index.spec.ts",
+      "sha256": "a370bd223900e4a0958585c5a24f98c2e9da1aa812a0970e10d723f7fbfec6e2",
+      "declarations": 5,
+      "review": "R031",
+      "overrides": {
+        "R038": [
+          24
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/Blockquote/index.spec.ts",
+      "sha256": "f9e5f5029efea2c55a2a17929047d8b12673c7b563dfe449c2c6c14b5c17fa1e",
+      "declarations": 11,
+      "review": "R043",
+      "overrides": {
+        "R039": [
+          24,
+          33
+        ],
+        "R040": [
+          42,
+          48,
+          58
+        ],
+        "R041": [
+          66
+        ],
+        "R042": [
+          76
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/BulletList/index.spec.ts",
+      "sha256": "44173d2e31157be08805a3a7282dfc2cada20dd4bb1eba39aed48c036ab52560",
+      "declarations": 7,
+      "review": "R044"
+    },
+    {
+      "file": "demos/src/Nodes/CodeBlock/index.spec.ts",
+      "sha256": "a863c86ab5b4500f0ddbb5d853ee432dbdafb77db40a0251ac04038b437227e3",
+      "declarations": 10,
+      "review": "R045"
+    },
+    {
+      "file": "demos/src/Nodes/Emoji/index.spec.ts",
+      "sha256": "98073e63d160300f4b046e01ecf656b0fd67fd57f14bab5d01002d901ac86ca9",
+      "declarations": 4,
+      "review": "R046"
+    },
+    {
+      "file": "demos/src/Nodes/HardBreak/index.spec.ts",
+      "sha256": "61726f1e635e7d61f8886af2fd8d49bca44e980f8c2cfd7d8ba8b34b0e2976e8",
+      "declarations": 5,
+      "review": "R047",
+      "overrides": {
+        "R048": [
+          55
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/Heading/index.spec.ts",
+      "sha256": "49902d4d71b378500b583871438d6e4a0bbea0c979cc534ec87b5bac40bf6971",
+      "declarations": 6,
+      "review": "R051",
+      "overrides": {
+        "R049": [
+          27
+        ],
+        "R050": [
+          37
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/HorizontalRule/index.spec.ts",
+      "sha256": "673bff502783365ec75deda439939166d16e7bd5c80d0b7cdc0cdadb42952a0f",
+      "declarations": 6,
+      "review": "R052"
+    },
+    {
+      "file": "demos/src/Nodes/ListItem/index.spec.ts",
+      "sha256": "2798f41ee5bd8f6feda7043e0d9a6ab101baf79e08311960183438630c1b9ef5",
+      "declarations": 3,
+      "review": "R053"
+    },
+    {
+      "file": "demos/src/Nodes/Mention/index.spec.ts",
+      "sha256": "48836e1edaf2c468bc5d4958974faa858646c98d99d53acc958ac313f336d183",
+      "declarations": 14,
+      "review": "R020"
+    },
+    {
+      "file": "demos/src/Nodes/OrderedList/index.spec.ts",
+      "sha256": "df549989353ce52257720a519cf66ffcb477c0b40c82726b971d053b90311fe9",
+      "declarations": 10,
+      "review": "R044",
+      "overrides": {
+        "R054": [
+          88,
+          99,
+          108
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/Paragraph/index.spec.ts",
+      "sha256": "09f1dc3a7621f1a0670830194c44cde66de7d59b5100a40d4bd3e4b8bd3d7e51",
+      "declarations": 4,
+      "review": "R018",
+      "overrides": {
+        "R019": [
+          42
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/TaskList/index.spec.ts",
+      "sha256": "5696851b9c5b669099d7bdbde2a86a8a9674ce2240812a6eff66eac2bce43275",
+      "declarations": 6,
+      "review": "R044",
+      "overrides": {
+        "R055": [
+          24
+        ]
+      }
+    },
+    {
+      "file": "demos/src/Nodes/Text/index.spec.ts",
+      "sha256": "ff891883bdb0d972f71a87a79e20db84d988a244d88a5cc07c1fa060631f3bf1",
+      "declarations": 1,
+      "review": "R018"
+    },
+    {
+      "file": "packages/ai-toolkit/src/server-ai-toolkit.spec.ts",
+      "sha256": "84fa3a65eea26829b88cd5a7c2dc14cd94e77841de4cab9b1d893c94ee329e95",
+      "declarations": 3,
+      "review": "R056"
+    },
+    {
+      "file": "packages/core/__tests__/attrsEqual.spec.ts",
+      "sha256": "27523c916f5057d1a553ddc49e2e553f27d3b53f826785afa9d39ea6158f313a",
+      "declarations": 12,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/can.spec.ts",
+      "sha256": "f4d1ad4fedd252d7254ac2d89f8fd69651829120527cbda96b672db560a83dc5",
+      "declarations": 14,
+      "review": "R058",
+      "overrides": {
+        "R059": [
+          122,
+          182
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/clipboardTextSerializer.spec.ts",
+      "sha256": "4ac24242e1e4441b26fe089e240db55b310cdbf31b208a34f57de80451c15068",
+      "declarations": 3,
+      "review": "R060"
+    },
+    {
+      "file": "packages/core/__tests__/createNodeFromContent.spec.ts",
+      "sha256": "97223aa2776fc5af88c56ae4221ed4f2dbb7cec2c4176a1340387bc43841c75c",
+      "declarations": 12,
+      "review": "R061"
+    },
+    {
+      "file": "packages/core/__tests__/cut.spec.ts",
+      "sha256": "f1651e57830091b070134b645f9fabd1e7503027a7598a9b076c0c7e9f327259",
+      "declarations": 2,
+      "review": "R062"
+    },
+    {
+      "file": "packages/core/__tests__/delete.spec.ts",
+      "sha256": "02ee54ce154892715e12b2a6d135a55587886ae6324c157f4411e9a050cb2906",
+      "declarations": 7,
+      "review": "R063",
+      "overrides": {
+        "R064": [
+          77
+        ],
+        "R065": [
+          92,
+          105
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/dispatchTransaction.spec.ts",
+      "sha256": "4a74768d0519cfe430de32c68ccb33393469c33b7defc58c0cf2d1af04768b9f",
+      "declarations": 5,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/editorProps.spec.ts",
+      "sha256": "9467ddd45d8ebe966e821bc9638525cc54f88db656b22fa2c643bdaa6ba955eb",
+      "declarations": 2,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/extendExtensions.spec.ts",
+      "sha256": "3bf34806d270963274df3422b3bed9080a13021a3407fb15f56d793b57bb964c",
+      "declarations": 19,
+      "review": "R066"
+    },
+    {
+      "file": "packages/core/__tests__/extendMarkRange.spec.ts",
+      "sha256": "3caf8dbfb4f2291cbb2bc45e749cde492e62412d219e067918a5a2cd21c2f9a3",
+      "declarations": 7,
+      "review": "R067",
+      "overrides": {
+        "R068": [
+          65,
+          390
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/extensionOptions.spec.ts",
+      "sha256": "356b729f2ec8c5c45ca73e8c677a4ece6ab94b8c0d11b8bb00e53851ace4a859",
+      "declarations": 9,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/extensionStorage.spec.ts",
+      "sha256": "4a01a5b77596851e837a1e60de609df6a52ff8dc8a5fee3565a8edb04e34076d",
+      "declarations": 8,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/fromString.spec.ts",
+      "sha256": "cac4081cf2dbc13a5f275568a8c7350fbc45220907e8303f5dfaff4a18c2a092",
+      "declarations": 8,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/generateHTML.spec.ts",
+      "sha256": "09b45c0757ff4d6dbdd12f88340407b1892569c88bdf44b85a5169c4986409a5",
+      "declarations": 1,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/generateJSON.spec.ts",
+      "sha256": "86716b6e434c85c8f23eb5d38785ef7f5abb78fae0df97c7ea42c3bc85d70fc6",
+      "declarations": 1,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/generateText.spec.ts",
+      "sha256": "182f45f739151b8850a981c771ae43824772002cefac0e2c542a90fc273d54d0",
+      "declarations": 1,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/getAttributesFromExtensions.spec.ts",
+      "sha256": "c9d514024ae4c4eb9aefdcdefaf26d792a6ab0a5757133ee2a686982eda0498d",
+      "declarations": 14,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/getContent.spec.ts",
+      "sha256": "775469c52b4c9318710bb8424a79f819924d0f152d0ac9baa3f0eea71ac3fce0",
+      "declarations": 2,
+      "review": "R069"
+    },
+    {
+      "file": "packages/core/__tests__/getMarkRange.spec.ts",
+      "sha256": "d8b87f5eadb3a491b40d3ed095418ede445215779cec7f0d727a633982df5d83",
+      "declarations": 8,
+      "review": "R070"
+    },
+    {
+      "file": "packages/core/__tests__/getStyleProperty.spec.ts",
+      "sha256": "45724c85d44d33b382f7121c4b8454a5a72af323331feadddc16067bc9cc7293",
+      "declarations": 7,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/getTextContentFromNodes.spec.ts",
+      "sha256": "84baf42fe96e90138ef9243d75eba213a3f631f8377c6d08e333c4dd0e8589f3",
+      "declarations": 1,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/insertContent.spec.ts",
+      "sha256": "10f5524a2ac95411ba2e00f4e532fbfa68a923fc3f94f3ad8a6085213a49a122",
+      "declarations": 20,
+      "review": "R073",
+      "overrides": {
+        "R071": [
+          18,
+          71
+        ],
+        "R072": [
+          51,
+          61,
+          84,
+          104
+        ],
+        "R074": [
+          89,
+          94,
+          99,
+          109,
+          114
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/insertContentAt.spec.ts",
+      "sha256": "0c844185c7c0ef8551fd04a4fab3bee754b7a95202563b7c603d080db17b4fdc",
+      "declarations": 5,
+      "review": "R075"
+    },
+    {
+      "file": "packages/core/__tests__/isActive.spec.ts",
+      "sha256": "dbf31addeb77dc33236818b6fbb7577eb71cb3661a0d1e85205107b2b09d156e",
+      "declarations": 8,
+      "review": "R076"
+    },
+    {
+      "file": "packages/core/__tests__/isNodeEmpty.spec.ts",
+      "sha256": "5d2981696ac3118d9f50cc02ee01a769fc46d44e4a33dcf0476b92e7d167e868",
+      "declarations": 21,
+      "review": "R077"
+    },
+    {
+      "file": "packages/core/__tests__/isNodeViewSelected.spec.ts",
+      "sha256": "cae6d0c8d5308e2dcb8e70302ef91bed3228cb45e418f066e101008128857a49",
+      "declarations": 8,
+      "review": "R078"
+    },
+    {
+      "file": "packages/core/__tests__/markPasteRule.spec.ts",
+      "sha256": "fdce6402764cfc0509ead257827f0ab06d228c501b1d9c93f0d457142b983ef3",
+      "declarations": 2,
+      "review": "R079"
+    },
+    {
+      "file": "packages/core/__tests__/marksEqual.spec.ts",
+      "sha256": "8761de1be3055ec3c44f56200ebbad545e77e166174e9e943a8a2e34b10cd62c",
+      "declarations": 16,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/mergeAttributes.spec.ts",
+      "sha256": "698ea333a9c5d95242b1a0a535a924b8e317d12fed10ce9f28f55ca49435f016",
+      "declarations": 15,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/mergeDeep.spec.ts",
+      "sha256": "00d76d4240479ec50552959f441a464462e18d2568ea29bba149c8e8d0d78657",
+      "declarations": 5,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/nodePos.spec.ts",
+      "sha256": "2bed83e0152a70f0fcb6ae7052a24f78a864c6760f13ce77e1b7a1a6b7758282",
+      "declarations": 38,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/onContentError.spec.ts",
+      "sha256": "f1ff6ae6413da3f46565e8f18fa3f5ef01f730e243a3958ceaa65a552e6d71ce",
+      "declarations": 6,
+      "review": "R080",
+      "overrides": {
+        "R081": [
+          128,
+          170
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/parseAttributes.spec.ts",
+      "sha256": "1d33c1a396a582c3754d0587a447e901a7dad6de2f4b399421f1e21141db3008",
+      "declarations": 10,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/pluginOrder.spec.ts",
+      "sha256": "30ec6d2a2193a410e03ea139968835a530ad206eaff7fe0c8ac6ef1788d9ddbb",
+      "declarations": 1,
+      "review": "R082"
+    },
+    {
+      "file": "packages/core/__tests__/requiredAttributes.spec.ts",
+      "sha256": "8be7af2cd9564da57de31c831fd8557a8e09efce60ec5eff4e2340ccb528a9ac",
+      "declarations": 5,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/resizableNodeView.spec.ts",
+      "sha256": "e9e60a02b14760a1433e1d2d01830b5332d80895101d34187753637d0d2b3091",
+      "declarations": 2,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/setContent.spec.ts",
+      "sha256": "62e5b201aced989699a1e515eba5e04169b5bbaa5fab6d0a679eb2ea2af8cfc6",
+      "declarations": 21,
+      "review": "R083"
+    },
+    {
+      "file": "packages/core/__tests__/tabindex.spec.ts",
+      "sha256": "87bb902f3c94c8b5ad1bcb7ff087e4bb41b9a0c2d9e611751987d9336eba5835",
+      "declarations": 5,
+      "review": "R084"
+    },
+    {
+      "file": "packages/core/__tests__/transformPastedHTML.spec.ts",
+      "sha256": "077f05deec468ab9b390fd706b60a48ac4149ed01d8e18499fd31710819d99c0",
+      "declarations": 9,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/__tests__/unmounted.spec.ts",
+      "sha256": "309d11c3ea52dee869c0bbf2c6941d1f2989379b722da79becd0ec65c8f01ef3",
+      "declarations": 14,
+      "review": "R085"
+    },
+    {
+      "file": "packages/core/__tests__/unsetAllMarks.spec.ts",
+      "sha256": "058563d76aaba7edb54250af8a0211163efc7a4d0d1def5d4ceeb550ed55bd56",
+      "declarations": 7,
+      "review": "R086"
+    },
+    {
+      "file": "packages/core/src/__tests__/htmlEntities.test.ts",
+      "sha256": "4de084a6ea2be62c93d236b2a076b6dff00500b7d7d6a0fc962742d3d1ad2662",
+      "declarations": 11,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/src/__tests__/rewriteUnknownContent.test.ts",
+      "sha256": "0aa6a197cc20057408ab22d6e870433076c9bd703ae55811f408c7f959635cd2",
+      "declarations": 3,
+      "review": "R057"
+    },
+    {
+      "file": "packages/core/src/__tests__/transformPastedHTML.test.ts",
+      "sha256": "9266867460f1c05842e919a41be9033b8ec5ee748bc5b284bc4e7bf28c7b63cd",
+      "declarations": 20,
+      "review": "R057"
+    },
+    {
+      "file": "packages/extension-audio/__tests__/audio.spec.ts",
+      "sha256": "dc3e75edc8c710cadac1c837fe09293869cf6fc5a99b16a757ce8433e467f250",
+      "declarations": 8,
+      "review": "R087"
+    },
+    {
+      "file": "packages/extension-blockquote/__tests__/handleBackspace.spec.ts",
+      "sha256": "0ed857f4236adeb84fd5779fc99337032023b2cae25535eb9e06ce9e7c576b6e",
+      "declarations": 1,
+      "review": "R088"
+    },
+    {
+      "file": "packages/extension-bold/__tests__/bold.spec.ts",
+      "sha256": "dcf5dd9f671e49d23ed72ec9aee9053537d129ae35f4e803d4e66eb77790d796",
+      "declarations": 4,
+      "review": "R089"
+    },
+    {
+      "file": "packages/extension-bubble-menu/__tests__/bubble-menu-plugin.spec.ts",
+      "sha256": "3d87da7c04050292e204e5957e7d537a9392184c3f8e0e01056284400f1c9af9",
+      "declarations": 9,
+      "review": "R025"
+    },
+    {
+      "file": "packages/extension-code-block-lowlight/__tests__/codeBlockLowlight.spec.ts",
+      "sha256": "362e88a7dd5ed8900031fa4439928616405b7841efe3be77dceb28d081a0d9b3",
+      "declarations": 1,
+      "review": "R090"
+    },
+    {
+      "file": "packages/extension-code/__tests__/code.spec.ts",
+      "sha256": "12c306c90c8ba4037266569fe2553c0c20df0f6cb21cb14c7f4df146b999c703",
+      "declarations": 19,
+      "review": "R032"
+    },
+    {
+      "file": "packages/extension-collaboration-caret/__tests__/collaboration-caret.spec.ts",
+      "sha256": "fa30ebf4314876584caa391f45899d7872e79b8666f4e3fd1099f8652558428f",
+      "declarations": 5,
+      "review": "R002"
+    },
+    {
+      "file": "packages/extension-collaboration/__tests__/filterInvalidContent.spec.ts",
+      "sha256": "ba694fbcccc05846f9f1a4491cd790e77e146b2afd8b32abf88afe637e175d0e",
+      "declarations": 5,
+      "review": "R002"
+    },
+    {
+      "file": "packages/extension-collaboration/__tests__/memoryLeak.spec.ts",
+      "sha256": "53dd8b932dca062dca1729b64c288e65f128d153798d38be1432bb34697be745",
+      "declarations": 2,
+      "review": "R002"
+    },
+    {
+      "file": "packages/extension-details/__tests__/details-commands.spec.ts",
+      "sha256": "31a390ec509d4220b4b3948b9e1b2836847c6d593f3b5cc87d9c30b01bbb0bb0",
+      "declarations": 3,
+      "review": "R092",
+      "overrides": {
+        "R091": [
+          27
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-details/__tests__/details.spec.ts",
+      "sha256": "ae6cf4ef2ed8fc5eb55f1bc51e18f6c3014d96c311dde66e7bd8196da34c3ef4",
+      "declarations": 5,
+      "review": "R094",
+      "overrides": {
+        "R093": [
+          19
+        ],
+        "R095": [
+          107,
+          157
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-drag-handle-react/src/DragHandle.spec.ts",
+      "sha256": "b48ffaa1c47dea05a654d3e664d88998500b497032f9318f5c1985de146fdf5a",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/cloneElement.spec.ts",
+      "sha256": "6675085d132591780a180e5726f5c7553eb254a83f14471874496782986d0819",
+      "declarations": 4,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/defaultRules.spec.ts",
+      "sha256": "652dcfe93fd97b07b5c36ff8af4c9e5c5d26eeac9f7d1c14aa6b50738faa8bd5",
+      "declarations": 32,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/drag-handle.spec.ts",
+      "sha256": "f04c5c110c3b9f5463782a42aa22642c917e65393ef2d07e2d6474d92ad176c4",
+      "declarations": 7,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/dragHandler.spec.ts",
+      "sha256": "a82eb851b963537ed9da993017725ee79b3fbe1dfc99a62943136cc82b3f4ea8",
+      "declarations": 7,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/edgeDetection.spec.ts",
+      "sha256": "51b94e5bcf6564784894ea3543affb2753ed4c830e71b19e4b5c8f2177e3d727",
+      "declarations": 30,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/findBestDragTarget.spec.ts",
+      "sha256": "ad976ec704103d994ee0971e895a227abe3838a170a6797ef3dfb20d8f1a80a8",
+      "declarations": 11,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/findNextElementFromCursor.spec.ts",
+      "sha256": "b8cc83340f60cf3d5b3751c45272822b4ae72ad2a198887bc7c42bbca626e234",
+      "declarations": 6,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/getDraggedBlockDir.spec.ts",
+      "sha256": "239f3920b29fa384b8a30f5f80034307299e65994c9a6b222694e4fbc71d2cde",
+      "declarations": 10,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/nodeRangeDrop.spec.ts",
+      "sha256": "170f272c730c2dd93d861ed6b843b4db52e2ce7706b4895ac1f90a15b684f65b",
+      "declarations": 11,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/normalizeOptions.spec.ts",
+      "sha256": "fe22d20114682ab0877718091523904e1f373e12349a0d9cc5c393df413bb373",
+      "declarations": 12,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-drag-handle/__tests__/scoring.spec.ts",
+      "sha256": "a9b586175287a7a104b08932f56c0b4a109fd5e2c935f7b33aceca292539d014",
+      "declarations": 12,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-emoji/__tests__/emoji.spec.ts",
+      "sha256": "cfaf90fefbecd04bb20dcbb3d05e35670915975edc25ccd66c387f5d09a80ab9",
+      "declarations": 4,
+      "review": "R046"
+    },
+    {
+      "file": "packages/extension-emoji/__tests__/insert-emoji.spec.ts",
+      "sha256": "159b74accf071a94819e10fc95ab77f03ced3caa234cd7a057e34a8efcfba921",
+      "declarations": 2,
+      "review": "R046"
+    },
+    {
+      "file": "packages/extension-file-handler/__tests__/fileHandler.spec.ts",
+      "sha256": "34465381608b7d503cf8aeeea0c306b002915d8cdf76994da913bdeb14b84219",
+      "declarations": 13,
+      "review": "R097"
+    },
+    {
+      "file": "packages/extension-floating-menu/__tests__/floating-menu-plugin.spec.ts",
+      "sha256": "7496b78b5fe8998ee69db1560e19f3f60cab9b6f5f22037eb982bf20f8226ad5",
+      "declarations": 9,
+      "review": "R025"
+    },
+    {
+      "file": "packages/extension-horizontal-rule/__tests__/horizontalRule.spec.ts",
+      "sha256": "5735d4c3a8bfb7b60bfc8d973900293ac8f879b7d3865e9ea279c6489c2b21a3",
+      "declarations": 1,
+      "review": "R052"
+    },
+    {
+      "file": "packages/extension-image/__tests__/image.spec.ts",
+      "sha256": "b5c4aae281c8e4e46b41accc4c848f83e453a7de11a11b6c5e048812cd976112",
+      "declarations": 6,
+      "review": "R087"
+    },
+    {
+      "file": "packages/extension-invisible-characters/__tests__/invisible-characters.spec.ts",
+      "sha256": "4a10e9b3a2d3ee6ce455c13ceb32108556207cd3e5907a481d12e56f9d279eba",
+      "declarations": 1,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-link/__tests__/link.spec.ts",
+      "sha256": "3a4228dd2c2960e47e3a8f4cd8bf83f1f11368008db06ebac35989396a9c01f7",
+      "declarations": 14,
+      "review": "R098",
+      "overrides": {
+        "R099": [
+          270,
+          280
+        ],
+        "R100": [
+          304,
+          355,
+          394,
+          421
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-list/__tests__/listItemDelete.spec.ts",
+      "sha256": "b9a5da8ad6d9ee5753f3649351b2dd0052343b03ba64fd8d4f2546163c34f5eb",
+      "declarations": 5,
+      "review": "R101"
+    },
+    {
+      "file": "packages/extension-list/__tests__/listItemMarkdown.spec.ts",
+      "sha256": "054a979c791c5bbc0037eb6bf2288e2d0185fb3db3e35f173ac83f0f8d07b6e5",
+      "declarations": 1,
+      "review": "R102"
+    },
+    {
+      "file": "packages/extension-list/__tests__/orderedListPhoneNumber.spec.ts",
+      "sha256": "822c61d82eda5e5f03fd9cceb3aea472b395872ed9ae4d1ab182044bf50f0dcd",
+      "declarations": 5,
+      "review": "R102",
+      "overrides": {
+        "R103": [
+          19,
+          27
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-list/__tests__/orderedListType.spec.ts",
+      "sha256": "3927dbf1ee4f3735fd944a6614052406628eef5be77c70b16c1e000314b2d7d7",
+      "declarations": 74,
+      "review": "R104",
+      "overrides": {
+        "R105": [
+          528,
+          608,
+          633,
+          658,
+          683,
+          708,
+          733,
+          758,
+          783,
+          822,
+          831,
+          837,
+          843,
+          849,
+          858,
+          864,
+          871,
+          884,
+          892,
+          900,
+          908,
+          924
+        ],
+        "R106": [
+          565,
+          585
+        ],
+        "R107": [
+          916
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-list/__tests__/taskItem.spec.ts",
+      "sha256": "e37df55d7b309bad84a0f4434b2f859b8f64b1f2bda0aa28668660ef81df44b4",
+      "declarations": 15,
+      "review": "R108",
+      "overrides": {
+        "R109": [
+          197,
+          243
+        ],
+        "R110": [
+          432,
+          464,
+          492,
+          521
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-mathematics/__tests__/blockMath.spec.ts",
+      "sha256": "9fab9f53d7a5ae44299163b1d556257cb4c1e08e77eba86c660bd7cf7278e3f8",
+      "declarations": 5,
+      "review": "R111",
+      "overrides": {
+        "R112": [
+          114,
+          122
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-mathematics/__tests__/inlineMath.spec.ts",
+      "sha256": "faffa5722c8e8e6542e49b784f62dc4eebbf011ea79ab437a099938b31cbf2e2",
+      "declarations": 2,
+      "review": "R111"
+    },
+    {
+      "file": "packages/extension-node-range/__tests__/NodeRangeSelection.spec.ts",
+      "sha256": "8daf6d1e150b707b288fc8cf2882b782c8242b51fe009791bb7ba689263f2c4e",
+      "declarations": 5,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-node-range/__tests__/getSelectionRanges.spec.ts",
+      "sha256": "4d883e7325b68b6fd154e5952e80c111eb770d02ab5d2cec1c01159cafba12da",
+      "declarations": 4,
+      "review": "R096"
+    },
+    {
+      "file": "packages/extension-subscript/__tests__/subscript.spec.ts",
+      "sha256": "d8e15c2ecfa6e548a3dcb8b88631586d1e2f96abd3275832a35ac94fb5ccad61",
+      "declarations": 4,
+      "review": "R113"
+    },
+    {
+      "file": "packages/extension-superscript/__tests__/superscript.spec.ts",
+      "sha256": "f0cb75f8807fa284aaf4ab2fd612de2fdbce17c14c8854b77201d805b74df1c7",
+      "declarations": 4,
+      "review": "R113"
+    },
+    {
+      "file": "packages/extension-table-of-contents/__tests__/generate-toc-ids.spec.ts",
+      "sha256": "28fdc2e22c038fa903cf68aaafdfdb2985feaeae1880072418c1fa25fb272953",
+      "declarations": 10,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-table/__tests__/colgroupUpdate.spec.ts",
+      "sha256": "835a652d58faf6a9973b7ed831e80ba342ef4285e1372c3df9b9d3df686bcab5",
+      "declarations": 9,
+      "review": "R114",
+      "overrides": {
+        "R115": [
+          128
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-table/__tests__/deleteSelection.spec.ts",
+      "sha256": "4405129cef877343ecca672c88b7f66d5070ef30b595aae073594fd743f3eb93",
+      "declarations": 1,
+      "review": "R116"
+    },
+    {
+      "file": "packages/extension-table/__tests__/tableCell.spec.ts",
+      "sha256": "09efe3c77eefb25ad41e1a93ffe291a58012ec939a359a05df9079c62ad1ddef",
+      "declarations": 5,
+      "review": "R117"
+    },
+    {
+      "file": "packages/extension-table/__tests__/tableClipboard.spec.ts",
+      "sha256": "d95e45a23c69631df30262ffc30c7d7a133432b16535c88454b2d0b09a5a7de3",
+      "declarations": 3,
+      "review": "R116"
+    },
+    {
+      "file": "packages/extension-table/__tests__/tableCommands.spec.ts",
+      "sha256": "8a6ed56603f306ce8fdb1029f216b62a083f48b3f8e51a46e7b5c9426a2c17e2",
+      "declarations": 18,
+      "review": "R118",
+      "overrides": {
+        "R119": [
+          94,
+          99,
+          104
+        ],
+        "R120": [
+          150
+        ]
+      }
+    },
+    {
+      "file": "packages/extension-table/__tests__/tableHTMLAttributes.spec.ts",
+      "sha256": "580f8acee83415e1cc839a1518559162d0cde987dd1dc8016500f004bc1c2245",
+      "declarations": 2,
+      "review": "R121"
+    },
+    {
+      "file": "packages/extension-table/__tests__/tableHeader.spec.ts",
+      "sha256": "afdab390886147be1a1648f68300ea50d5b7134974b5f57d348cee71f651cf88",
+      "declarations": 4,
+      "review": "R117"
+    },
+    {
+      "file": "packages/extension-table/__tests__/tableMarkdown.spec.ts",
+      "sha256": "58cf4c59c4d14685b9c9c6cf389a4d8fc0d0b3b5e4b656ead468567b9bb11eb1",
+      "declarations": 12,
+      "review": "R102"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/background-color-commands.spec.ts",
+      "sha256": "abbb0241b4941a35a7123c8e4676fd7ea414721cc0147cbcc17b37538b39f204",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/background-color.spec.ts",
+      "sha256": "995ee8c3f823715945e74db4648cbdc224c14dc3faa0952ee2183945a39d1fef",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/color-commands.spec.ts",
+      "sha256": "4898d80961528f3ec29802ddaa0a80e72f39d87166ac50fe5c327c3472f942cd",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/color.spec.ts",
+      "sha256": "51f853ba561c7b4a84fbf386ed55ae7055ba894320fb0cea4099b4315245cfb6",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/font-family-commands.spec.ts",
+      "sha256": "f9f4765679ff0a1e170c56215e4a0ba349d28fd139d8c779e0ca7a2a6302467c",
+      "declarations": 5,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/font-family.spec.ts",
+      "sha256": "07816e03a45c4c20ae514e97604a69496c683fefd188ff1c96ba3771d373fc82",
+      "declarations": 9,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/font-size-commands.spec.ts",
+      "sha256": "8c942662121be0e09992cd29d4b36803230fe838b63b332b4cddc79f31e5f448",
+      "declarations": 2,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/font-size.spec.ts",
+      "sha256": "c014100e2fe6b5680ef55eedc857952ff70fae551311f84058ad8cc6378b77ac",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/line-height-commands.spec.ts",
+      "sha256": "39d645beddae7ae00b4b1cf5a4e5ebaccace80ba4bb93a9178969ded5f25d37b",
+      "declarations": 2,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/line-height.spec.ts",
+      "sha256": "79c4dccab0ac57261e0a1a6b39ad3ca9d6c34b3d7b25675e880434bde1f22456",
+      "declarations": 3,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-text-style/__tests__/text-style-merge.spec.ts",
+      "sha256": "d748b89102873d3a7025869b7d65f0bb2dcbc02531cf09c7549b3481fafed9f8",
+      "declarations": 5,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-twitch/__tests__/twitch.spec.ts",
+      "sha256": "79ce571c307f3ad5f63639bdf0238f04044ba8431bf881b755ce4ff75c928d6d",
+      "declarations": 19,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extension-unique-id/__tests__/unique-id-collab.spec.ts",
+      "sha256": "5e2df6a8aa73c8c9f1993f9892c74d2dc17b06d48de7a298030ebb5c42fe3d5a",
+      "declarations": 6,
+      "review": "R002"
+    },
+    {
+      "file": "packages/extension-unique-id/__tests__/unique-id.spec.ts",
+      "sha256": "b10ebf7db8d9e46a69d6a48966eb811d48951d6807d3a5753ffeba58960c4652",
+      "declarations": 3,
+      "review": "R002"
+    },
+    {
+      "file": "packages/extension-youtube/__tests__/youtube.spec.ts",
+      "sha256": "1596453436b54642cf1c2f2930733ce21963441c3b656bcd5f35e2302fa01afb",
+      "declarations": 17,
+      "review": "R022"
+    },
+    {
+      "file": "packages/extensions/__tests__/placeholder.spec.ts",
+      "sha256": "7055fbed85f4ccb677229adfd54ed013122985da88ed1b801264edbaeb7c0ec6",
+      "declarations": 33,
+      "review": "R123",
+      "overrides": {
+        "R122": [
+          65
+        ],
+        "R124": [
+          136,
+          164
+        ],
+        "R125": [
+          229,
+          249,
+          292,
+          316
+        ],
+        "R126": [
+          354,
+          531
+        ],
+        "R127": [
+          387,
+          397
+        ],
+        "R128": [
+          451,
+          471,
+          489
+        ],
+        "R129": [
+          568,
+          583,
+          599,
+          614,
+          628,
+          666
+        ],
+        "R130": [
+          645
+        ]
+      }
+    },
+    {
+      "file": "packages/extensions/__tests__/selection.spec.ts",
+      "sha256": "687c083ce6495e7e0232d650fd3e2589175c50ee8d141c27996db304d800b8a0",
+      "declarations": 3,
+      "review": "R027"
+    },
+    {
+      "file": "packages/extensions/__tests__/trailing-node.spec.ts",
+      "sha256": "b9fbd8a8974686d16655027929fdeb081e8c74f39cf6be74e51961e1fc3ffd9c",
+      "declarations": 3,
+      "review": "R131"
+    },
+    {
+      "file": "packages/html/__tests__/generateHTML.spec.ts",
+      "sha256": "a68234c25cd0e3acb1cd42ba4e3ddd74dc9abebe21d54dd6a05523588067ef0a",
+      "declarations": 3,
+      "review": "R057"
+    },
+    {
+      "file": "packages/html/__tests__/generateJSON.spec.ts",
+      "sha256": "0b1dfd24bbd103e1277a492666872bd67adc5f84f26a75603c059f66fc8537a3",
+      "declarations": 3,
+      "review": "R057"
+    },
+    {
+      "file": "packages/html/__tests__/server-with-jsdom.spec.ts",
+      "sha256": "5f5e899085a41524d25e3e7ef6c083159b7c96181b4e6d68a00678fdadc36276",
+      "declarations": 3,
+      "review": "R057"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion.spec.ts",
+      "sha256": "e49a2b7e423c561639af5705b9fd6c8e221a0e090c07ac16353d68f20b58f53b",
+      "declarations": 52,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/empty-content.spec.ts",
+      "sha256": "a66e08a57d1a20f5979f6772611e0b71ccf309f83786edb88e322f2378e64a62",
+      "declarations": 5,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/extensions/blockquote.spec.ts",
+      "sha256": "beb2867959cfa7f0c2c63113f951e548315ad5de9cea74104155b56026896d08",
+      "declarations": 9,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/htmlTagDetection.spec.ts",
+      "sha256": "61b244a35e4cb0d7aff4f15b4c61b6f5c02f1256b0842d2763ebbc4188225ad3",
+      "declarations": 13,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/inline-marks-punctuation.spec.ts",
+      "sha256": "6d33088b5953229815e3709d2435a0aea01ef7c92bb47b966731fd3bfb7d15d5",
+      "declarations": 14,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/manager.spec.ts",
+      "sha256": "96f0cc65d32e137f5bf026ab47e702e624e0c3a582a3c708978719f9f0b71000",
+      "declarations": 32,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/mixed-html.spec.ts",
+      "sha256": "c46567a6ae83804980afd7f0deb2739a9ce33f991491c7880dab5af9dbe61ac0",
+      "declarations": 3,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/nested-text-style-marks.spec.ts",
+      "sha256": "2cee59248c4c2145d1147c826f2f0d70df94190348a0b7a823a9dd7de9a47725",
+      "declarations": 1,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/ordered-list-lazy-continuation.spec.ts",
+      "sha256": "51fdaf2f18294a0a6fb9ac57131d84ab4b07d83b1bdcbd515d0f5e7258aa0716",
+      "declarations": 15,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/overlapping-marks.spec.ts",
+      "sha256": "12598d0a857d3efa0d15ef675ac074c5506e56c14037c6306492f4e29858ec44",
+      "declarations": 16,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/paragraph.spec.ts",
+      "sha256": "7479cfaabc763ae870130377e5ec23296c47f010ee13c84854f7d95d23b0f076",
+      "declarations": 12,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/server-side-parsing.spec.ts",
+      "sha256": "10cf11697189e96be435d4e217d6ed413b5da39fd813377b2b417544a9f0ea6d",
+      "declarations": 8,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/task-list-nested-siblings.spec.ts",
+      "sha256": "fe32756ad1192f77f82d6a0cde234aca4327f52fbc53307c5439dd810c212e99",
+      "declarations": 7,
+      "review": "R132",
+      "overrides": {
+        "R102": [
+          110
+        ]
+      }
+    },
+    {
+      "file": "packages/markdown/__tests__/unknown-html-tags.spec.ts",
+      "sha256": "aa38fc23b6cdc89d1346910ff72caa67fb286d0c78006ed0c591a7b1e6aff070",
+      "declarations": 7,
+      "review": "R102"
+    },
+    {
+      "file": "packages/markdown/__tests__/utilities.spec.ts",
+      "sha256": "663b635f1af9fa2a1610939015f3b8cea0a9ad23ee5087af3a44a897c0b28fca",
+      "declarations": 19,
+      "review": "R102"
+    },
+    {
+      "file": "packages/react/src/EditorContent.spec.ts",
+      "sha256": "f676c23f770da71f583d92c0b8e0c34cdd70ad745cee4ac18ef7c2dc5cc98c9d",
+      "declarations": 1,
+      "review": "R004"
+    },
+    {
+      "file": "packages/react/src/menus/BubbleMenu.spec.ts",
+      "sha256": "1985f9acd85325f9c73d18dbfba9c2db3d717266e6ddabcea5c22c01e20e1381",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
+      "file": "packages/react/src/menus/FloatingMenu.spec.ts",
+      "sha256": "c3c97eee056f785002c0355103b00e0cbd22a04755d0d714174ad629778c60d8",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
+      "file": "packages/react/src/use-client.spec.ts",
+      "sha256": "d4e2c3db1a642276358d27f138b7f7f35e4c3a02368d8525d7573ec143f36f7e",
+      "declarations": 1,
+      "review": "R004"
+    },
+    {
+      "file": "packages/static-renderer/__tests__/json-string.spec.ts",
+      "sha256": "fd5ab89aa63b4fc793bc3a3ecdb04fe02ab894e4ff32d944ffa0a489b7add818",
+      "declarations": 22,
+      "review": "R057"
+    },
+    {
+      "file": "packages/static-renderer/__tests__/md-string.spec.ts",
+      "sha256": "45b6bfbbe5614fd16357ff0235ce2791dcc42836078ee5d69672d18e0ed85749",
+      "declarations": 8,
+      "review": "R057"
+    },
+    {
+      "file": "packages/static-renderer/__tests__/pm-unhandled-types.spec.ts",
+      "sha256": "89139e9e3b51917ca09e08bbbc53ca5d621c1f414d12805b8f33e79c4c9af2e9",
+      "declarations": 14,
+      "review": "R057"
+    },
+    {
+      "file": "packages/static-renderer/__tests__/react-string.spec.ts",
+      "sha256": "d9eadfee81cf8dfe9587c43a905f1e88aa5ae92bdb06404d68e4a11ad6a85007",
+      "declarations": 5,
+      "review": "R057"
+    },
+    {
+      "file": "packages/suggestion/src/__tests__/suggestion.test.ts",
+      "sha256": "f5d00554c50c809728e73aa2cf5ea99a38021967eaa8a3732895197ac8c2c3f5",
+      "declarations": 34,
+      "review": "R020"
+    },
+    {
+      "file": "packages/vue-3/__tests__/VueMarkViewRenderer.spec.ts",
+      "sha256": "7ce6b291445027af48789bd0fc7f01069ffd29a27d7ec5737a050f851389dd78",
+      "declarations": 3,
+      "review": "R004"
+    },
+    {
+      "file": "packages/vue-3/__tests__/VueNodeViewRenderer.spec.ts",
+      "sha256": "8ad0dd4172fb4bc303bbc89dff607317ded6c989b4b270dc50e6ad066efa8dd1",
+      "declarations": 5,
+      "review": "R004"
+    },
+    {
+      "file": "packages/vue-3/__tests__/VueRenderer.spec.ts",
+      "sha256": "8c9a988949abaf61965cac9c4d0b50c58afb770d653bf72116b0cc188704d728",
+      "declarations": 7,
+      "review": "R004"
+    },
+    {
+      "file": "packages/vue-3/__tests__/useEditor.spec.ts",
+      "sha256": "f01af0226fa6515c33844639211b99772bf2289fccf3bd4467d86f6699bc4f75",
+      "declarations": 1,
+      "review": "R004"
+    }
+  ],
+  "support": [
+    {
+      "file": "demos/test/helpers.ts",
+      "sha256": "70423a953246d6494d5b767166df6210d6c9f6de85372f9dc0a2ac900b362763"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/bullet-list-numeric-punctuation.ts",
+      "sha256": "22f64df32d566fb0756e48f2470062076c5d3fac5ea3f46d89f3d84e7e7903a7"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/bullet-list.ts",
+      "sha256": "c0dfcaee70347aec5db0b2cc19b7f5f976c38803776cbaccde2b2e746181ea4b"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/custom-atom.ts",
+      "sha256": "26cecab05f85f4f21bbdec0f8a5f48434b83b023fa709834bd9dedd888fd2d81"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/custom-block.ts",
+      "sha256": "f9db0d0f0fab854c3db4fcad5abc7c7cc0568bbb78f2bdab6a079c6c2c7ef071"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/custom-inline.ts",
+      "sha256": "df08b05f538b021943fbc58bfd698c88f6967a4cbf2ac652fcf730d1c47f2373"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/hard-break-marks.ts",
+      "sha256": "57cff2d7741a40d63b9aae5502633ae3f05c6111734d32784578e0c99583509b"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/index.ts",
+      "sha256": "f0b709ec4e120272670b54c33b41b58834abfd37c63c1a820bf76a439ceab438"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/link-with-title.ts",
+      "sha256": "fadb0fde6935f7c6d5f5935b583b2dc1c5e994ff43408dd37be4bb86e69f72d8"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/link-without-title.ts",
+      "sha256": "60b7129c290848d10277e3cf2b7bf8cb54b9d75b800ad124d7ee6bef6427471c"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/mixed-list-types.ts",
+      "sha256": "c9c2fb28258af21c0a52ebbb2485a8cf7e1fc12916f1f5b9829d1f4d19394052"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/nested-nodes.ts",
+      "sha256": "5b5545985cf52096d7a677857ceae831d06a7da5f4e551b0a3dcd9005a44b9a8"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/ordered-list-separated-by-bullet.ts",
+      "sha256": "4a72428954d3fa94d142e7bf969f1b7ade30489be0c0bda871ddf5fb1b1aa459"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/ordered-list-with-bullet-list.ts",
+      "sha256": "b5473348ac81814b7f21ca12cdfeef3e7802839419b6fb14d6c965305a6500cc"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/ordered-list.ts",
+      "sha256": "e8168fb45a553d78cbb5315f78a61b51129078f1c53fafc05d8f8ed81a97b29d"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/soft-break-marks.ts",
+      "sha256": "c58f4a0cce31aff73944a654c222375e00cdc3ca057d50daebc84495ef2ec4d1"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/task-list.ts",
+      "sha256": "3465483d4a36c1ad6dfe858460a605165882b6f6452b8194c63ce704433c7058"
+    },
+    {
+      "file": "packages/markdown/__tests__/conversion-files/trailing-whitespace-marks.ts",
+      "sha256": "fecb4daee1ffec60d7be965ebce1aff415cf20ea3f4b957aeb0466208aa580b8"
+    },
+    {
+      "file": "playwright.config.ts",
+      "sha256": "bcf527afc72fb6475fd4df332b39feda8d7decf5c5131fc64561055badab3675"
+    },
+    {
+      "file": "vitest.config.ts",
+      "sha256": "4619a43a4d0ac749475deff13f48297c1377c811fa4f7131c128e849b8ce4ff4"
+    }
+  ],
+  "reviews": {
+    "R001": {
+      "status": "not-used",
+      "reason": "Tiptap release-branch publishing configuration is not part of the tweb editor.",
+      "evidence": [
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R002": {
+      "status": "not-used",
+      "reason": "No Yjs collaboration, awareness, unique-id extension or provider lifecycle is installed in the editor.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R003": {
+      "status": "different-contract",
+      "reason": "autolink/linkOnPaste/openOnClick are explicitly disabled. These autolinking and relinking expectations do not apply.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R004": {
+      "status": "not-used",
+      "reason": "This fixture asserts a demo-specific custom schema/UI or a React/Vue adapter lifecycle. tweb mounts its own Solid/imperative NodeViews without these adapters or demo components.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R005": {
+      "status": "not-used",
+      "reason": "Community demo uses CharacterCount and a demo Suggestion provider, neither installed by the production editor.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        }
+      ]
+    },
+    "R006": {
+      "status": "different-contract",
+      "reason": "The demo setParagraph shortcut / Clear marks / Clear nodes actions are not exposed by ChatParagraph or the public toolbar. tweb resets selected blocks through its own commands.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorDetailsIntegration.test.ts",
+          "test": "resets $block.type to an unmarked body paragraph"
+        }
+      ]
+    },
+    "R007": {
+      "status": "local",
+      "reason": "Public toolbar methods cover every supported mark and block type; heading levels are enumerated and list toggles preserve selection/history.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "applies %s markup"
+        },
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "toggles every heading level back to a paragraph through the public editor API"
+        },
+        {
+          "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
+          "test": "undoes, redoes and branches history for $name"
+        }
+      ]
+    },
+    "R008": {
+      "status": "different-contract",
+      "reason": "horizontalRule disabled; public insertDivider is covered on structural blocks and with history.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
+          "test": "authors editable footer, atomic divider, and updates all map fields losslessly"
+        }
+      ]
+    },
+    "R009": {
+      "status": "local",
+      "reason": "Configured newline inserts exact hardBreak count, including from the trailing placeholder.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "inserts one newline from the terminal placeholder with shiftKey=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "keeps the first configured newline in a paragraph and splits on the second"
+        }
+      ]
+    },
+    "R010": {
+      "status": "local",
+      "reason": "Public undo/redo restore document content and selection.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "undoes and redoes editor transactions"
+        }
+      ]
+    },
+    "R011": {
+      "status": "different-contract",
+      "reason": "Enter is configured by the Telegram send shortcut. The demo replaces hint HTML for modifier keys; tweb tests its actual send/newline policy.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "derives the new-line key from the current send shortcut"
+        }
+      ]
+    },
+    "R012": {
+      "status": "local",
+      "reason": "Boolean highlight is applied through public markup API and survives native continued input.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "applies %s markup"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`typing after pasted ${mark} follows its inclusive mark`"
+        }
+      ]
+    },
+    "R013": {
+      "status": "different-contract",
+      "reason": "No arbitrary TextAlign/justify extension. Telegram rich blocks/table attributes provide the supported alignment surface.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        }
+      ]
+    },
+    "R014": {
+      "status": "local",
+      "reason": "Selected media deletion with Backspace preserves neighboring text and history across browsers.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorCursorMatrix.spec.ts",
+          "test": "deletes each selected top-level atom without taking neighboring text with it"
+        }
+      ]
+    },
+    "R015": {
+      "status": "local",
+      "reason": "Every supported heading/list/code/quote marker is covered by native typing, immediate Backspace, exact text and undo behavior.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`native heading level ${level} supports input rule, undo marker and keyboard toggle`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`native additional input rule ${JSON.stringify(marker)}`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`Backspace reverts native input rule ${JSON.stringify(marker)} to its literal text`"
+        }
+      ]
+    },
+    "R016": {
+      "status": "different-contract",
+      "reason": "Inline code backtick input rule is absent from ChatInlineCode; semantic code paste and monospace commands are supported.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`typing after pasted ${mark} follows its inclusive mark`"
+        }
+      ]
+    },
+    "R017": {
+      "status": "different-contract",
+      "reason": "tweb does not display the demo floating menu for every empty paragraph; MarkupTooltip is selection driven and filters whitespace and cell selections.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorTooltipIntegration.test.ts",
+          "test": "checks formattable text when MarkupTooltip selects $name"
+        },
+        {
+          "file": "src/tests/chatInputEditorTooltipIntegration.test.ts",
+          "test": "checks native MarkupTooltip text for $value"
+        }
+      ]
+    },
+    "R018": {
+      "status": "local",
+      "reason": "Paragraph parsing/default text and deleting authored paragraphs are covered; Enter behavior is explicitly overridden below.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditor.test.ts",
+          "test": "round-trips Telegram text and entities"
+        },
+        {
+          "file": "src/tests/chatInputEditorMediaCaptionsIntegration.test.ts",
+          "test": "removes a user-created empty paragraph after media with $source Backspace and caption=$caption"
+        },
+        {
+          "file": "e2e/chatInputEditorCursorMatrix.spec.ts",
+          "test": "Backspace and Delete join adjacent non-empty paragraphs symmetrically"
+        }
+      ]
+    },
+    "R019": {
+      "status": "different-contract",
+      "reason": "First configured Enter inserts a hardBreak, second splits a paragraph. This is Telegram send/newline behavior.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "keeps the first configured newline in a paragraph and splits on the second"
+        }
+      ]
+    },
+    "R020": {
+      "status": "not-used",
+      "reason": "The Tiptap Suggestion/Mention/slash-command plugin API and its asynchronous providers are not installed. Telegram completion helpers are separate application components; these are not Tiptap plugin parity tests.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R021": {
+      "status": "different-contract",
+      "reason": "The demo restricts its whole document to task items. tweb supports task lists among other blocks; checkbox click/Enter behavior is tested on that schema.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "renders $label with StaticCheckbox and makes checking undoable"
+        },
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "types a visual checklist through real text-input rules and uses the configured newline"
+        }
+      ]
+    },
+    "R022": {
+      "status": "not-used",
+      "reason": "The tested optional typography/focus/invisible-character/text-style/TOC/video-embed extension is not configured in tweb. Arbitrary CSS fonts/colors and external embed commands are not editor features.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R023": {
+      "status": "different-contract",
+      "reason": "tweb block reset commands intentionally respect isolating rich containers; this is checked on every supported resettable block rather than the demo custom isolating schema.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorDetailsIntegration.test.ts",
+          "test": "resets $block.type to an unmarked body paragraph"
+        }
+      ]
+    },
+    "R024": {
+      "status": "local",
+      "reason": "Two mounted production editors retain separate content, selections, history and lifetimes.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps separate editor states and commands alive after another editor is destroyed"
+        }
+      ]
+    },
+    "R025": {
+      "status": "different-contract",
+      "reason": "BubbleMenu/FloatingMenu are not installed: tweb owns MarkupTooltip/tooltip positioning, visibility and disposal. PluginKey messaging and updateOptions commands are not exposed. Async visibility cases need a separate local mapping, not a claim of plugin parity.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "uses one scrollable row in the requested order"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "contains no sliding inline link editor"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "disables ripple on formatting and contextual tooltip buttons"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "keeps AI available in the chat formatting tooltip while the composer is collapsed"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "reuses the composite animated AI icon in every chat editor control"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "uses the new semantic icon set across rich-editor controls"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "keeps the formula tooltip viewport-safe and positions it without transform"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "closes and stays hidden while an application menu is open"
+        },
+        {
+          "file": "src/tests/markupTooltipLayout.test.ts",
+          "test": "closes active tooltips before every popup is shown"
+        },
+        {
+          "file": "src/tests/tooltipController.test.ts",
+          "test": "closes every registered tooltip"
+        },
+        {
+          "file": "src/tests/tooltipController.test.ts",
+          "test": "does not close an unregistered tooltip"
+        }
+      ]
+    },
+    "R026": {
+      "status": "local",
+      "reason": "All three list types cover lift, middle-item split and second Backspace merge with document and history assertions. Mixed task/regular boundaries stop after the first successful handler, including native and virtual input.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "two Backspaces lift then merge a non-first %s item"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "two Backspaces after a quote first enter its body then join the last paragraph"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Backspace splits a %s around a nonempty middle item"
+        },
+        {
+          "file": "src/tests/chatInputEditorListKeymap.test.ts",
+          "test": "${previous} → ${next}: %s handles one Backspace once"
+        },
+        {
+          "file": "e2e/chatInputEditorBoundaryPairs.spec.ts",
+          "test": "repeated list boundary deletion is one native undoable operation"
+        }
+      ]
+    },
+    "R027": {
+      "status": "different-contract",
+      "reason": "Native selection preservation on blur/readonly is owned by tweb toolbar snapshots, not extension-selection decorations. Readonly and backward selection restoration have separate local tests.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "preserves backward text selection with snapshot=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditor.test.ts",
+          "test": "updates editability without replacing the mounted input"
+        }
+      ]
+    },
+    "R028": {
+      "status": "different-contract",
+      "reason": "tweb does not expose the demo arbitrary TextAlign extension or justify shortcut. Rich paragraph/heading and table alignment is represented by our Telegram schema.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableCommands.test.ts",
+          "test": "reads and atomically sets cell alignment attributes"
+        }
+      ]
+    },
+    "R029": {
+      "status": "local",
+      "reason": "Public and native Undo/Redo, empty-history availability, branch/reset semantics, documents and selections are covered.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "undoes and redoes editor transactions"
+        },
+        {
+          "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
+          "test": "undoes, redoes and branches history for $name"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`${source}: Select All toggles off ${type}, Undo/Redo and following Delete preserve the selection`"
+        }
+      ]
+    },
+    "R030": {
+      "status": "local",
+      "reason": "Public readonly changes preserve the mounted input; virtual deletion and checkbox interaction do not mutate readonly content.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditor.test.ts",
+          "test": "updates editability without replacing the mounted input"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "does not let virtual Backspace modify a readonly editor"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "readonly toggles the existing checklist control and prevents edits"
+        }
+      ]
+    },
+    "R031": {
+      "status": "local",
+      "reason": "Semantic tag/style paste and native mark toggle/input-rule cases are covered with exact text/marks. See per-row exceptions for untested HTML variants.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML paste preserves semantic text and marks: $html"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`native ${shortcut} toggles ${mark} twice without moving the selected text`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`native additional input rule ${JSON.stringify(marker)}`"
+        }
+      ]
+    },
+    "R032": {
+      "status": "different-contract",
+      "reason": "ChatInlineCode is a custom mark with no backtick input/paste regex. Semantic <code> and public monospace formatting are supported; regex exports and inline Markdown shortcuts are not.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions/marks.ts",
+          "symbol": "export const ChatInlineCode"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`typing after pasted ${mark} follows its inclusive mark`"
+        }
+      ]
+    },
+    "R033": {
+      "status": "different-contract",
+      "reason": "ChatHighlight is a boolean mark, without multicolor attrs/setHighlight/toggleHighlight API. It is applied through applyMarkup; color-attribute matching is not a feature.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions/marks.ts",
+          "symbol": "export const ChatHighlight"
+        },
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "applies %s markup"
+        }
+      ]
+    },
+    "R034": {
+      "status": "local",
+      "reason": "Link HTML/JSON import, full-range link editing and rejected URL matrix are checked directly.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "retains allowed URL through HTML and JSON import: %s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "never renders a rejected href from HTML or JSON: %j"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "finds a fully selected link at a mark boundary, backward=%s"
+        }
+      ]
+    },
+    "R035": {
+      "status": "dependency",
+      "reason": "Target/rel options use the unchanged Link extension serializer; these options are not public Telegram link-editor settings.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R036": {
+      "status": "different-contract",
+      "reason": "Automatic URL detection/paste linking is explicitly disabled in the editor.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R037": {
+      "status": "local",
+      "reason": "All semantic s/del/strike forms and CSS line-through are imported with exact strike marks.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports the semantic %s mark"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML clipboard has an explicit whitespace/malformed-content contract: $html"
+        }
+      ]
+    },
+    "R038": {
+      "status": "local",
+      "reason": "Semantic u tag imports the underline mark.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports the semantic %s mark"
+        }
+      ]
+    },
+    "R039": {
+      "status": "local",
+      "reason": "Quote HTML is imported with and without paragraph wrappers.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports blockquote HTML with paragraph wrappers=%s"
+        }
+      ]
+    },
+    "R040": {
+      "status": "local",
+      "reason": "Selection-aware quote wrapping/unwrapping is covered including partial text and mixed structural selection; author normalization is an intentional schema adaptation.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorQuotesIntegration.test.ts",
+          "test": "wraps selected text in a Telegram blockquote"
+        },
+        {
+          "file": "src/tests/chatInputEditorQuotesIntegration.test.ts",
+          "test": "unquotes only the selected part of an existing blockquote"
+        },
+        {
+          "file": "src/tests/chatInputEditorQuotesIntegration.test.ts",
+          "test": "applies quote to a mixed plain and structural selection without overlapping entities"
+        }
+      ]
+    },
+    "R041": {
+      "status": "different-contract",
+      "reason": "ChatBlockquote does not register the upstream Mod-Shift-b shortcut; quote is applied by the Telegram formatting toolbar.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        }
+      ]
+    },
+    "R042": {
+      "status": "local",
+      "reason": "Native > input rule and immediate Backspace restoration are covered.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`Backspace reverts native input rule ${JSON.stringify(marker)} to its literal text`"
+        }
+      ]
+    },
+    "R043": {
+      "status": "different-contract",
+      "reason": "Unlike Tiptap list-style quote lifting, tweb Backspace joins paragraphs within the quote. A paragraph after the quote enters its body on the first Backspace and joins on the second. Exact text, structure, caret and Undo/Redo are now asserted; this is an explicit behavioral difference, not a claim of upstream parity.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Backspace inside a quote joins body paragraphs and retains the quote, middle=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "two Backspaces after a quote first enter its body then join the last paragraph"
+        }
+      ]
+    },
+    "R044": {
+      "status": "local",
+      "reason": "Canonical list HTML, native shortcuts/markers, public toggle and immediate Backspace restoration are covered on the production schema.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`${source}: Select All toggles off ${type}, Undo/Redo and following Delete preserve the selection`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`Backspace reverts native input rule ${JSON.stringify(marker)} to its literal text`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`native additional input rule ${JSON.stringify(marker)}`"
+        },
+        {
+          "file": "src/tests/chatInputEditorClipboardIntegration.test.ts",
+          "test": "reads list markers and nested numbering from clipboard HTML"
+        }
+      ]
+    },
+    "R045": {
+      "status": "local",
+      "reason": "Code HTML/language parsing, public toggle, keyboard shortcut and all three fence markers are exercised on production code blocks with history.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "renders preformatted code as a distinct block while keeping inline code inline"
+        },
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "uses $label to leave a code block after three newlines"
+        },
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "starts a code block through the fenced-code input rule"
+        },
+        {
+          "file": "src/tests/chatInputEditorClipboardIntegration.test.ts",
+          "test": "replaces a selected code fragment without splitting its code block"
+        },
+        {
+          "file": "src/tests/chatInputEditorQuotesIntegration.test.ts",
+          "test": "preserves code in the quoted remainder when partially unquoting"
+        },
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "inserts code directly with an Auto language header and searchable-picker hook"
+        },
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "gets, changes, clears, and trims the active code-block language"
+        },
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "keeps an insertion target valid after code detection"
+        },
+        {
+          "file": "src/tests/chatInputEditorUploadRenderingIntegration.test.ts",
+          "test": "shows a predecoded Add item with its final collage geometry immediately"
+        },
+        {
+          "file": "src/tests/chatInputEditorUploadRenderingIntegration.test.ts",
+          "test": "mounts the predecoded pending video poster together with its duration"
+        },
+        {
+          "file": "src/tests/chatInputEditorUploadRenderingIntegration.test.ts",
+          "test": "mounts a predecoded photo and its side fill in the first pending render"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`Backspace reverts native input rule ${JSON.stringify(marker)} to its literal text`"
+        }
+      ]
+    },
+    "R046": {
+      "status": "different-contract",
+      "reason": "Unicode emoji and Telegram customEmoji are used instead of Tiptap named shortcode emoji. Atom traversal, insertion, deletion and UTF-16 offsets are covered by our own contract.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorModel.test.ts",
+          "test": "uses UTF-16 offsets for surrogate pairs and custom emoji atoms"
+        },
+        {
+          "file": "src/tests/chatInputEditorModel.test.ts",
+          "test": "maps text offsets and ProseMirror positions across UTF-16 text, separators, and atoms"
+        },
+        {
+          "file": "src/tests/chatInputEditorClipboardIntegration.test.ts",
+          "test": "keeps custom emoji metadata when copying outside a table"
+        },
+        {
+          "file": "src/tests/chatInputEditorCustomEmojiIntegration.test.ts",
+          "test": "renders a custom emoji through the shared input renderer without changing copy semantics"
+        },
+        {
+          "file": "src/tests/chatInputEditorCustomEmojiIntegration.test.ts",
+          "test": "models a custom emoji as one non-selectable text-like atom"
+        },
+        {
+          "file": "src/tests/chatInputEditorCustomEmojiIntegration.test.ts",
+          "test": "places the caret on the clicked side of a custom emoji"
+        },
+        {
+          "file": "src/tests/chatInputEditorCustomEmojiIntegration.test.ts",
+          "test": "starts a drag selection directly on a custom emoji"
+        },
+        {
+          "file": "src/tests/chatInputEditorCustomEmojiIntegration.test.ts",
+          "test": "extends a mouse selection through a custom emoji"
+        },
+        {
+          "file": "e2e/chatInputEditorCursorMatrix.spec.ts",
+          "test": "crosses inline atoms in mixed-direction text by visual direction"
+        }
+      ]
+    },
+    "R047": {
+      "status": "local",
+      "reason": "HTML br/br/ and configured newline commands preserve exact breaks and caret. Mod+Enter is resolved separately.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML paste preserves semantic text and marks: $html"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "keeps the first configured newline in a paragraph and splits on the second"
+        }
+      ]
+    },
+    "R048": {
+      "status": "different-contract",
+      "reason": "Mod+Enter participates in configured send/newline behavior and is not unconditionally a hardBreak.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "derives the new-line key from the current send shortcut"
+        }
+      ]
+    },
+    "R049": {
+      "status": "local",
+      "reason": "All six HTML heading levels import with exact level attrs and text.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports heading level %i from HTML"
+        }
+      ]
+    },
+    "R050": {
+      "status": "different-contract",
+      "reason": "The upstream demo disables h4-h6; tweb supports all six heading levels.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        }
+      ]
+    },
+    "R051": {
+      "status": "local",
+      "reason": "All six heading levels have public toggle, native shortcut, native input-rule and marker undo coverage.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "uses the rich bubble CSS module class on the editor root and every heading level"
+        },
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "toggles every heading level back to a paragraph through the public editor API"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`native heading level ${level} supports input rule, undo marker and keyboard toggle`"
+        }
+      ]
+    },
+    "R052": {
+      "status": "different-contract",
+      "reason": "Tiptap horizontalRule is disabled and replaced by richDivider plus its own structural insertion. Triple dash/underscore HR shortcuts are not installed.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
+          "test": "authors editable footer, atomic divider, and updates all map fields losslessly"
+        }
+      ]
+    },
+    "R053": {
+      "status": "local",
+      "reason": "List Enter/Tab/Shift+Tab navigation and history are covered through native production browser editing.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorCursorLifecycle.spec.ts",
+          "test": "keeps list, code, quote and Details Enter transitions structurally valid"
+        }
+      ]
+    },
+    "R054": {
+      "status": "local",
+      "reason": "HTML list type and start are tested through DOM output and semantic round trip; default decimal aliases are compared canonically.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "ordered list HTML preserves style and start across serialization: $attr"
+        }
+      ]
+    },
+    "R055": {
+      "status": "local",
+      "reason": "Task-list data-type/data-checked HTML imports exact task list structure and both checked states.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports task-list HTML checked states and child text"
+        }
+      ]
+    },
+    "R056": {
+      "status": "not-used",
+      "reason": "AI Toolkit hash extension is not installed. tweb AI editing uses selected RichMessage fragments and its own revision tracking.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R057": {
+      "status": "dependency",
+      "reason": "Tests of unchanged upstream helper/configuration/renderer APIs. tweb does not reimplement or expose this API; application contracts are audited separately at public editor, paste, selection and serialization boundaries. This status is not a local test pass.",
+      "evidence": [
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R058": {
+      "status": "local",
+      "reason": "Pure nested can chains, undo availability, conflicting inline/stored marks and mixed code/plain selections are checked on the production schema.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "can(setBold) respects $name without mutating state"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "can(setBold) checks every selected textblock, plain neighbor=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "can(setBold) distinguishes selected inline code and plain text, mixed=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "nested can chains never receive a dispatch function"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "capability queries are pure in $name"
+        },
+        {
+          "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
+          "test": "undoes, redoes and branches history for $name"
+        }
+      ]
+    },
+    "R059": {
+      "status": "local",
+      "reason": "Selected code-only and code/italic text cases return the correct can(setBold) result without state mutation.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "can(setBold) distinguishes selected inline code and plain text, mixed=%s"
+        }
+      ]
+    },
+    "R060": {
+      "status": "different-contract",
+      "reason": "Clipboard text uses Telegram separators/markers and specialized selected-cell serialization. Tiptap configurable blockSeparator is not the public output contract.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "parses spreadsheet TSV including quoted tabs, line breaks and quotes"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "serializes a table as semantic Bot API HTML"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "uses a th for telegram-tt highlighted cells"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "normalizes captions and Telegram boolean attributes for the editor schema"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "serializes cells with tabs, rows and blocks with newlines, and includes the title"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "copies a whole CellSelection with its rich title and semantic table text"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "copies a partial CellSelection without the table title"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "hydrates a pasted semantic caption into title RichText and table attributes"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "imports spreadsheet TSV as a bordered table with multiline cells"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableClipboard.test.ts",
+          "test": "replaces the selected table range from TSV and keeps forced plain paste plain"
+        },
+        {
+          "file": "src/tests/chatInputEditorClipboardIntegration.test.ts",
+          "test": "copies lists as their canonical Telegram text with markers"
+        }
+      ]
+    },
+    "R061": {
+      "status": "dependency",
+      "reason": "createNodeFromContent low-level HTML/JSON/errorOnInvalidContent branches are unchanged dependency code. tweb exposes validated atomic setDocument and real HTML paste; their invalid-content cases are separately covered.",
+      "evidence": [
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R062": {
+      "status": "dependency",
+      "reason": "Tiptap cut(from,to,target) is an internal move command, not the browser clipboard cut path or a public tweb editor method. Public clipboard behavior is audited separately.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        }
+      ]
+    },
+    "R063": {
+      "status": "different-contract",
+      "reason": "Upstream declares a custom inline node with text* children. Telegram inline atoms are contentless and deleted atomically; that inline container schema is not installed.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "e2e/chatInputEditorCursorMatrix.spec.ts",
+          "test": "deletes exactly one inline atom with Backspace or Delete"
+        }
+      ]
+    },
+    "R064": {
+      "status": "local",
+      "reason": "Empty selection returns false and preserves snapshot and history.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "deleteSelection on a collapsed caret changes neither document nor history"
+        }
+      ]
+    },
+    "R065": {
+      "status": "local",
+      "reason": "Text selection deletion and cross-paragraph deletion preserve exact document and collapse selection; real-browser boundary behavior is covered.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "collapses the selection after %s clears all content"
+        },
+        {
+          "file": "e2e/chatInputEditorCursorMatrix.spec.ts",
+          "test": "Backspace and Delete join adjacent non-empty paragraphs symmetrically"
+        }
+      ]
+    },
+    "R066": {
+      "status": "dependency",
+      "reason": "Extension inheritance/configuration is supplied by pinned Tiptap. Public multiple-editor lifetime isolation is tested locally; this does not claim a port of every internal parent/child-link assertion.",
+      "evidence": [
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps separate editor states and commands alive after another editor is destroyed"
+        }
+      ]
+    },
+    "R067": {
+      "status": "local",
+      "reason": "Public link lookup rejects mixed/nonmatching links and extends collapsed same-URL ranges across formatting while respecting paragraph boundaries.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "does not offer a single existing link for a range crossing different URLs"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "extends a collapsed link range across formatting but stops before another URL"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "finds a link at its start, interior and end (position %i)"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "finds a fully selected link at a mark boundary, backward=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "does not find a link in an unlinked paragraph %s another linked paragraph"
+        }
+      ]
+    },
+    "R068": {
+      "status": "different-contract",
+      "reason": "Public link editing has no caller-supplied mark attributes or {} wildcard extension API; distinct URLs must stay distinct.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/index.ts",
+          "symbol": "public getSelectedLink"
+        }
+      ]
+    },
+    "R069": {
+      "status": "local",
+      "reason": "Document and Telegram text/entity snapshots are asserted through public wrapper methods.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditor.test.ts",
+          "test": "round-trips Telegram text and entities"
+        }
+      ]
+    },
+    "R070": {
+      "status": "local",
+      "reason": "Start/end/interior/no-mark/cross-paragraph and heterogeneous/same-URL formatting boundaries are exercised through getSelectedLink, which reuses getMarkRange.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "does not offer a single existing link for a range crossing different URLs"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "extends a collapsed link range across formatting but stops before another URL"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "finds a link at its start, interior and end (position %i)"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "finds a fully selected link at a mark boundary, backward=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "does not find a link in an unlinked paragraph %s another linked paragraph"
+        }
+      ]
+    },
+    "R071": {
+      "status": "local",
+      "reason": "Text replacement keeps inline positions and exact multiline Telegram text.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "inserts marked inline text at paragraph offset %i without splitting the paragraph"
+        },
+        {
+          "file": "src/tests/chatInputEditorModel.test.ts",
+          "test": "preserves leading, consecutive, and trailing blank lines"
+        }
+      ]
+    },
+    "R072": {
+      "status": "local",
+      "reason": "Real HTML paste preserves semantic marks, spaces between tags, preformatted newlines/tabs and incomplete paragraph HTML.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML paste preserves semantic text and marks: $html"
+        }
+      ]
+    },
+    "R073": {
+      "status": "different-contract",
+      "reason": "Public replacement uses literal Telegram text/entities or structural JSON; raw insertContent parseOptions, applyInputRules/applyPasteRules and Image URL-node options are not exposed. Actual HTML clipboard behavior is mapped in other rows.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/components/chat/inputEditor/model.ts",
+          "symbol": "telegramTextToTiptap"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML paste preserves semantic text and marks: $html"
+        }
+      ]
+    },
+    "R074": {
+      "status": "different-contract",
+      "reason": "Actual clipboard HTML parsing normalizes normal paragraph whitespace, preserves pre whitespace, ignores inter-block whitespace and repairs malformed tags. These differ from raw insertContent preserveWhitespace defaults; exact public clipboard outputs are now tested.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML clipboard has an explicit whitespace/malformed-content contract: $html"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML paste preserves semantic text and marks: $html"
+        }
+      ]
+    },
+    "R075": {
+      "status": "local",
+      "reason": "Marked inline and block insertion at start/middle/end have exact text/structure/history assertions.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "inserts marked inline text at paragraph offset %i without splitting the paragraph"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "inserts a rich block at paragraph offset %i without empty boundary paragraphs"
+        }
+      ]
+    },
+    "R076": {
+      "status": "different-contract",
+      "reason": "FontFamily/Color/TextStyle attributes tested here are not registered. tweb checks its own markup state and code exclusion instead.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "applies %s markup"
+        }
+      ]
+    },
+    "R077": {
+      "status": "different-contract",
+      "reason": "Public Telegram isEmpty semantics are explicitly tested for whitespace, hardBreaks, headings and formula sources; configurable upstream isNodeEmpty checkChildren/ignoreWhitespace behavior is not exposed.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "isEmpty follows the Telegram send contract for $content"
+        },
+        {
+          "file": "src/components/chat/inputEditor/model.ts",
+          "symbol": "telegramTextToTiptap"
+        }
+      ]
+    },
+    "R078": {
+      "status": "different-contract",
+      "reason": "tweb uses createFullySelectedNodeDecorationPlugin with its own selection policy, rather than configurable isNodeViewSelected. Complete, partial and atom selections are exercised locally.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorMathIntegration.test.ts",
+          "test": "visually selects formulas covered by a text or whole-document selection"
+        }
+      ]
+    },
+    "R079": {
+      "status": "local",
+      "reason": "Native typing after pasted inclusive bold/italic/code/highlight and noninclusive link is tested in three engines.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`typing after pasted ${mark} follows its inclusive mark`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "typing after a pasted link remains outside the non-inclusive link"
+        }
+      ]
+    },
+    "R080": {
+      "status": "local",
+      "reason": "Public setDocument rejects unknown node/mark JSON without changing snapshot, selection or prior undo history. It intentionally returns false instead of emitting upstream contentError.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "rejects invalid document content atomically: %s"
+        }
+      ]
+    },
+    "R081": {
+      "status": "different-contract",
+      "reason": "Document replacement validates our schema before changing state and returns false on invalid input. Tiptap enableContentCheck/contentError/Yjs callbacks are not the public API.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/index.ts",
+          "symbol": "private replaceDocument"
+        }
+      ]
+    },
+    "R082": {
+      "status": "local",
+      "reason": "Input rule undo precedence over custom code/list keymaps and alternate input paths is exercised natively.",
+      "evidence": [
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`Backspace reverts native input rule ${JSON.stringify(marker)} to its literal text`"
+        },
+        {
+          "file": "e2e/chatInputEditorUpstream.spec.ts",
+          "test": "`${source} Backspace reverts input rule ${JSON.stringify(marker)}`"
+        }
+      ]
+    },
+    "R083": {
+      "status": "different-contract",
+      "reason": "Public setContent/string loading is literal Telegram text; setDocument loads JSON and resets history. Tiptap HTML/Fragment options and emitUpdate flags are not exposed by this wrapper.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/model.ts",
+          "symbol": "telegramTextToTiptap"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "starts a fresh undo history when a draft is loaded"
+        }
+      ]
+    },
+    "R084": {
+      "status": "dependency",
+      "reason": "Tabindex configuration cases exercise unchanged Tiptap editorProps behavior; our input element is owned by the app. No custom tabindex override API is exposed.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R085": {
+      "status": "different-contract",
+      "reason": "The public wrapper mounts on an existing input and destroys/recreates it for HMR; unmounted/headless Editor API and injected CSS ownership are not exposed (injectCSS:false).",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/tests/chatInputEditor.test.ts",
+          "test": "restores a snapshot on the same input element for HMR"
+        },
+        {
+          "file": "src/tests/chatInputEditor.test.ts",
+          "test": "mounts and registers on the same input element"
+        }
+      ]
+    },
+    "R086": {
+      "status": "different-contract",
+      "reason": "There is no clearable:false or ignoreClearable configuration in our marks/public API. tweb clear/reset commands and mutually exclusive marks have their own tests.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "applies %s markup"
+        }
+      ]
+    },
+    "R087": {
+      "status": "not-used",
+      "reason": "Tiptap Image/Audio URL-node extensions and their configurable resizable HTMLAttributes are not installed. tweb uses richMedia with Telegram resources and its upload/paste policy.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorMediaInsertionIntegration.test.ts",
+          "test": "inserts audio as a standalone rich-media block and keeps its document resource"
+        }
+      ]
+    },
+    "R088": {
+      "status": "different-contract",
+      "reason": "Upstream test requires a root GapCursor; gapcursor is explicitly disabled. Root atom deletion/caret behavior is exercised with real selections.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        },
+        {
+          "file": "src/tests/chatInputEditorMediaCaptionsIntegration.test.ts",
+          "test": "Backspace from the trailing placeholder selects the adjacent divider"
+        }
+      ]
+    },
+    "R089": {
+      "status": "dependency",
+      "reason": "Exported Bold regex unit tests cover unchanged installed Tiptap regexes. End-to-end shortcut behavior is separately considered in the Bold demo rows.",
+      "evidence": [
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.28.0\""
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R090": {
+      "status": "different-contract",
+      "reason": "Code highlighting uses tweb highlighter and async detection, not lowlight/plugin inheritance. Production code language behavior is tested separately.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorCodeIntegration.test.ts",
+          "test": "gets, changes, clears, and trims the active code-block language"
+        }
+      ]
+    },
+    "R091": {
+      "status": "local",
+      "reason": "Native details/summary/body HTML at document position zero imports body/title and open state.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Details HTML at document start keeps its content and an accessible toggle"
+        }
+      ]
+    },
+    "R092": {
+      "status": "different-contract",
+      "reason": "Details uses a dedicated insertDetails/reset API with editable summary/body and Telegram rich conversion, not setDetails/unsetDetails wrap commands.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorDetailsIntegration.test.ts",
+          "test": "renders Details with Instant View disclosure classes and opens it before entering its body"
+        },
+        {
+          "file": "src/tests/chatInputEditorDetailsCommands.test.ts",
+          "test": "unwraps a body with content instead of deleting it"
+        }
+      ]
+    },
+    "R093": {
+      "status": "local",
+      "reason": "Imported Details toggle has a nonempty accessible name as well as aria-expanded.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Details HTML at document start keeps its content and an accessible toggle"
+        }
+      ]
+    },
+    "R094": {
+      "status": "different-contract",
+      "reason": "renderToggleButton callback is not configurable in tweb. Its custom toggle/NodeView owns DOM updates and ignores internal button mutations.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        }
+      ]
+    },
+    "R095": {
+      "status": "local",
+      "reason": "Details at document position zero is toggled repeatedly with exact document open state, aria-expanded/aria-hidden/inert, focus and body-caret assertions.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorDetailsIntegration.test.ts",
+          "test": "renders Details with Instant View disclosure classes and opens it before entering its body"
+        },
+        {
+          "file": "e2e/chatInputEditorCursorLifecycle.spec.ts",
+          "test": "moves a body caret to the summary when Details is collapsed"
+        }
+      ]
+    },
+    "R096": {
+      "status": "not-used",
+      "reason": "Tiptap DragHandle and NodeRangeSelection are not installed. tweb uses its own block-frame selection and drop policy; upstream scoring/options/Yjs restore internals are not its contract.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorBlockSelectionIntegration.test.ts",
+          "test": "drags adjacent task items atomically and rejects a drop into the range itself"
+        }
+      ]
+    },
+    "R097": {
+      "status": "different-contract",
+      "reason": "FileHandler extension options/callback return values are not used. tweb has a single rich-media paste/drop pipeline with its own allowed types, destination and consume policy.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/mediaPaste.ts",
+          "symbol": "export"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "routes Attach photo/video into the expanded rich editor at the saved selection"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "keeps an explicit media-item Add or Replace action valid while collapsed"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "invalidates a saved media target only when the document revision changes"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "uses the captured target only for an all-media paste or drop"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "does not offer a lossy plain fallback for embedded rich media"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "distinguishes a media clipboard item from a text-only ProseMirror paste"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "prevents the browser from also inserting a handled clipboard file into contenteditable"
+        },
+        {
+          "file": "src/tests/richMessageMediaPaste.test.ts",
+          "test": "recognizes a Files drag even when its MIME list is unavailable"
+        },
+        {
+          "file": "e2e/popupSandboxRichMedia.spec.ts",
+          "test": "native media controls insert, add and replace through the standalone field"
+        },
+        {
+          "file": "src/tests/chatInputRichMediaLifecycle.test.ts",
+          "test": "rich media permission completion respects %s context"
+        },
+        {
+          "file": "src/tests/chatInputEditorMediaInsertionIntegration.test.ts",
+          "test": "enforces the collage limit across pending, Add Media and manual grouping paths"
+        }
+      ]
+    },
+    "R098": {
+      "status": "local",
+      "reason": "All installed allowed protocols, relative URLs and upstream rejected control-character/unknown-scheme inputs are tested through HTML/JSON rendering.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "retains allowed URL through HTML and JSON import: %s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "never renders a rejected href from HTML or JSON: %j"
+        }
+      ]
+    },
+    "R099": {
+      "status": "different-contract",
+      "reason": "Caller-provided custom protocol lists are not exposed. Only the fixed Telegram/HTTP/mail/tel/FTP/tonsite set is configured.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R100": {
+      "status": "different-contract",
+      "reason": "Click opening and automatic linking are disabled.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R101": {
+      "status": "local",
+      "reason": "Branching hoist, repeated Delete and shallow leaf-list Delete run against all three production list types, preserving descendants, selection and Undo/Redo.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Delete hoists a branching %s and a second Delete keeps descendants"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Delete joins shallow nested %s content without losing leaf siblings"
+        }
+      ]
+    },
+    "R102": {
+      "status": "different-contract",
+      "reason": "No CommonMark/MarkdownManager import/export API exists here. Draft conversion takes literal Telegram text plus entities, recognizes canonical list lines, and exports text/entities or RichMessage. Upstream Markdown syntax/escaping/HTML/server-tokenizer expectations are not adopted. Literal preservation and list/entity round trips are local contracts.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/model.ts",
+          "symbol": "telegramTextToTiptap"
+        },
+        {
+          "file": "src/tests/chatInputEditorModel.test.ts",
+          "test": "round-trips overlapping basic marks, spoilers, and links"
+        },
+        {
+          "file": "src/tests/chatInputEditorModel.test.ts",
+          "test": "preserves leading, consecutive, and trailing blank lines"
+        }
+      ]
+    },
+    "R103": {
+      "status": "local",
+      "reason": "Telephone-like lines remain complete literal paragraphs, with no accidental list splitting.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "Telegram text preserves literal syntax without CommonMark parsing: %s"
+        }
+      ]
+    },
+    "R104": {
+      "status": "different-contract",
+      "reason": "Upstream Markdown marker tokenizer/formatter/paste-detector helpers are not the Telegram text/entity API. Canonical numeric list lines and HTML styles are handled separately.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/model.ts",
+          "symbol": "telegramTextToTiptap"
+        },
+        {
+          "file": "src/tests/chatInputEditorModel.test.ts",
+          "test": "round-trips bullet, ordered, and nested lists with entity offsets after markers"
+        }
+      ]
+    },
+    "R105": {
+      "status": "local",
+      "reason": "Ordered-list type/start roundtrip is covered for numeric, alpha, Roman and CSS styles. Decimal aliases are compared by canonicalOrderedListType; exact raw aliases are intentionally not normalized to upstream null.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "ordered list HTML preserves style and start across serialization: $attr"
+        }
+      ]
+    },
+    "R106": {
+      "status": "local",
+      "reason": "Converting a middle paragraph merges only compatible decimal lists and keeps differently styled alpha lists separate.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "does not join a differently styled ordered list %s the converted paragraph"
+        }
+      ]
+    },
+    "R107": {
+      "status": "local",
+      "reason": "Google Docs li-child upper-roman style is preserved by the production paste pipeline.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports Google Docs list numbering from a styled li child"
+        }
+      ]
+    },
+    "R108": {
+      "status": "local",
+      "reason": "All 3x3 list conversions with AllSelection preserve selected text/history; dynamic checked/value/type attributes and checkbox DOM identity are asserted.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "`Select All converts ${from} to ${to} and subsequent Backspace clears all text`"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "removes obsolete list-item DOM attributes while retaining the checkbox node"
+        }
+      ]
+    },
+    "R109": {
+      "status": "different-contract",
+      "reason": "Caller-defined static HTMLAttributes and dynamic overrides of the same arbitrary key are not exposed. The fixed production checkbox NodeView keeps its own classes/attributes.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        }
+      ]
+    },
+    "R110": {
+      "status": "local",
+      "reason": "All three source list types report all three target toggles available with AllSelection and no live state changes. Query simulation uses the same command on isolated state.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "can() offers every list toggle on a whole %s document without changing it"
+        }
+      ]
+    },
+    "R111": {
+      "status": "different-contract",
+      "reason": "No dollar-sign math input rules or update*Math latex API are registered. Formulas are inserted/edited through public methods using source; blank formulas are rejected intentionally. Existing source and surrounding text are preserved.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorMathIntegration.test.ts",
+          "test": "edits clicked formulas through the contextual tooltip with undo and redo"
+        },
+        {
+          "file": "src/tests/chatInputEditorMathIntegration.test.ts",
+          "test": "disables expanding inline math where block math is not allowed"
+        }
+      ]
+    },
+    "R112": {
+      "status": "different-contract",
+      "reason": "Unlike upstream, public inline/block formula editing rejects empty sources atomically. Both types are tested with an existing selected formula and unchanged history.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "rejects clearing %s to a blank formula without destroying the existing formula"
+        }
+      ]
+    },
+    "R113": {
+      "status": "local",
+      "reason": "HTML vertical-align and semantic sub/sup, public toggle and mutual exclusion are covered; nonmatching styles remain unmarked.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorFormattingIntegration.test.ts",
+          "test": "keeps subscript and superscript mutually exclusive"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "HTML paste preserves semantic text and marks: $html"
+        }
+      ]
+    },
+    "R114": {
+      "status": "local",
+      "reason": "Column mutations preserve colgroup/cell widths in readonly and editable states; merge/split retain all columns and widths.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps colgroup and cell widths aligned after column mutations, readonly=%s"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps colgroup widths and table width consistent through merge and split"
+        }
+      ]
+    },
+    "R115": {
+      "status": "local",
+      "reason": "Empty-table min-width changes by cellMinWidth on insertion/deletion and restores correctly.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "empty table min-width follows column insertions and deletions"
+        }
+      ]
+    },
+    "R116": {
+      "status": "local",
+      "reason": "Full rectangular cell clearing and forward/backward selected-column copy are tested with exact cell content, order and history.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "clears every selected table cell via %s and restores all cells through history"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "copies only a rectangular column selection in document order, backward=%s"
+        }
+      ]
+    },
+    "R117": {
+      "status": "local",
+      "reason": "TableCell/TableHeader single and multiple colwidth parsing, colgroup fallback and explicit-width precedence are tested directly.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports colgroup widths and honors an explicit %s width"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "imports a multi-column %s width and retains its merged cell geometry"
+        }
+      ]
+    },
+    "R118": {
+      "status": "local",
+      "reason": "Table insertion size/header matrix, row/column mutation, merge/split, header cell conversion, deletion and native Tab cell navigation are covered.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "creates a $rows by $columns table with and without headers"
+        },
+        {
+          "file": "src/tests/chatInputEditorTablesIntegration.test.ts",
+          "test": "renders HTML tables and supports row and column commands with history"
+        },
+        {
+          "file": "src/tests/chatInputEditorTableCommands.test.ts",
+          "test": "toggles selected cells between tableHeader and tableCell nodes"
+        },
+        {
+          "file": "e2e/chatInputEditorTableCursor.spec.ts",
+          "test": "cycles through cells with Tab and creates a row only after the final cell"
+        }
+      ]
+    },
+    "R119": {
+      "status": "different-contract",
+      "reason": "Public API toggles captured selected cell headers and exposes separate merge/split. Whole-column/row header toggles and mergeOrSplit raw command are not public toolbar actions.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorTableCommands.test.ts",
+          "test": "toggles selected cells between tableHeader and tableCell nodes"
+        },
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "TIPTAP_STARTER_KIT"
+        }
+      ]
+    },
+    "R120": {
+      "status": "local",
+      "reason": "The 64px minimum column width is asserted as 192px/256px for three/four columns.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "empty table min-width follows column insertions and deletions"
+        }
+      ]
+    },
+    "R121": {
+      "status": "different-contract",
+      "reason": "Table View:null/nonresizable optional serializers and arbitrary HTMLAttributes are not exposed. The fixed production table NodeView/classes are exercised by DOM/table tests.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/extensions.ts",
+          "symbol": "CHAT_INPUT_EXTENSIONS"
+        },
+        {
+          "file": "src/tests/chatInputEditorTablesIntegration.test.ts",
+          "test": "renders HTML tables and supports row and column commands with history"
+        }
+      ]
+    },
+    "R122": {
+      "status": "local",
+      "reason": "Shared placeholder attrs and actual production trailing placeholder use data-placeholder.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorPlaceholders.test.ts",
+          "test": "creates the shared attributes for every placeholder renderer"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "never decorates %s wrapper nodes as empty text placeholders"
+        }
+      ]
+    },
+    "R123": {
+      "status": "different-contract",
+      "reason": "tweb has fixed localized contextual placeholders, shown independently of current selection/editability; configurable dataAttribute/class/current-node/includeChildren/function options of Tiptap Placeholder are not supported.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/placeholders.ts",
+          "symbol": "ChatInputPlaceholders"
+        },
+        {
+          "file": "src/tests/chatInputEditorDetailsIntegration.test.ts",
+          "test": "shows contextual empty-block placeholders and keeps closed Details body in the document"
+        }
+      ]
+    },
+    "R124": {
+      "status": "local",
+      "reason": "All three list types keep data-placeholder off ul/ol/li wrapper nodes.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "never decorates %s wrapper nodes as empty text placeholders"
+        }
+      ]
+    },
+    "R125": {
+      "status": "different-contract",
+      "reason": "Ordinary paragraph main-placeholder ownership differs from Tiptap Placeholder fast path. Contextual heading placeholders and technical trailing paragraphs have explicit empty/nonempty/deletion assertions.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps heading placeholders correct through rapid edits, deletion, splitting and joining"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "creates a new terminal paragraph as soon as the current sentinel receives text"
+        }
+      ]
+    },
+    "R126": {
+      "status": "different-contract",
+      "reason": "The fixed contextual policy decorates all applicable empty headings/cells/captions, but not every ordinary paragraph. It is not configurable showOnlyCurrent:false parity.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps heading placeholders correct through rapid edits, deletion, splitting and joining"
+        },
+        {
+          "file": "src/tests/chatInputEditorDetailsIntegration.test.ts",
+          "test": "shows contextual empty-block placeholders and keeps closed Details body in the document"
+        }
+      ]
+    },
+    "R127": {
+      "status": "different-contract",
+      "reason": "The upstream is-editor-empty class is not installed; public isEmpty/isPlaceholderEmpty and the app input field determine Telegram placeholder/send state.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "isEmpty follows the Telegram send contract for $content"
+        },
+        {
+          "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
+          "test": "does not treat empty pullquotes, details, or task items as content"
+        }
+      ]
+    },
+    "R128": {
+      "status": "dependency",
+      "reason": "Content-range helper APIs are internal to the unused Tiptap Placeholder implementation. Complexity of our own decoration traversal is recorded separately.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/placeholders.ts",
+          "symbol": "ChatInputPlaceholders"
+        }
+      ]
+    },
+    "R129": {
+      "status": "local",
+      "reason": "Local and background edits, rapid insertion/deletion, split/join and selected deletion maintain exact contextual placeholder states and preserve untouched DOM.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "updates only the edited heading placeholder during a background edit at index %i"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps heading placeholders correct through rapid edits, deletion, splitting and joining"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "keeps heading placeholders correct through rapid edits, deletion, splitting and joining"
+        }
+      ]
+    },
+    "R130": {
+      "status": "local",
+      "reason": "A stronger local check asserts identical decoration results for selection-only state changes and no root/unchanged-subtree traversal after editing one of 200 blocks. Upstream nodesBetween spy destructures arguments incorrectly. Local caching still rebuilds the final decoration set over top-level blocks on document changes; this is not a logarithmic latency claim.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "placeholder updates reuse unchanged subtrees and selection-only decoration results"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "placeholder cache refreshes after language apply and releases its listener on destroy"
+        },
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "cached centered placeholders keep click caret positions after preceding text grows"
+        }
+      ]
+    },
+    "R131": {
+      "status": "different-contract",
+      "reason": "ChatTrailingPlaceholder is technical and excluded from message/clipboard serialization; UniqueID transactions do not exist. Authored empty paragraphs are kept separate and covered explicitly.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "keeps exactly one empty terminal paragraph after every document mutation"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "creates a new terminal paragraph as soon as the current sentinel receives text"
+        },
+        {
+          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
+          "test": "excludes the terminal paragraph from text, rich-message, and clipboard serialization"
+        },
+        {
+          "file": "src/tests/chatInputEditorTablesIntegration.test.ts",
+          "test": "moves %s from the final table cell into the terminal paragraph without adding a row"
+        },
+        {
+          "file": "src/tests/chatInputEditorMediaCaptionsIntegration.test.ts",
+          "test": "removes a user-created empty paragraph after media with $source Backspace and caption=$caption"
+        }
+      ]
+    },
+    "R132": {
+      "status": "local",
+      "reason": "Nested checkbox/plain sibling order and literal canonical Telegram list roundtrip are now tested explicitly, including deep nesting.",
+      "evidence": [
+        {
+          "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
+          "test": "preserves every nested mixed task/bullet sibling: %s"
+        }
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import {describe, expect, test, vi} from 'vitest';
 import type {JSX} from 'solid-js';
-import type {Message, RichMessage} from '@layer';
+import type {Message, Page, RichMessage} from '@layer';
 import {render} from 'solid-js/web';
 import '@helpers/peerIdPolyfill';
 
@@ -15,7 +15,19 @@ import '@helpers/peerIdPolyfill';
 const mocks = vi.hoisted(() => ({
   translateText: vi.fn(),
   translateRichMessage: vi.fn(),
+  renderRichPage: vi.fn(),
   wrapRichText: vi.fn((text: string) => document.createTextNode(text))
+}));
+
+vi.mock('@components/browser', () => ({openInstantViewInAppBrowser: vi.fn()}));
+vi.mock('@lib/solidjs/hotReloadGuardProvider', () => ({
+  default: (props: {children: JSX.Element}) => props.children
+}));
+vi.mock('@components/instantView', () => ({
+  InstantViewBlocks: (props: {page: Page.page}) => {
+    mocks.renderRichPage(props.page);
+    return <div data-rich-page="" />;
+  }
 }));
 
 vi.mock('@lib/solidjs/hotReloadGuard', () => ({
@@ -126,23 +138,22 @@ describe('translate card source selection', () => {
     mocks.translateText.mockReset();
     mocks.translateRichMessage.mockReset();
     mocks.wrapRichText.mockClear();
+    mocks.renderRichPage.mockClear();
   });
 
   test('translates a rich message through the rich endpoint and renders its blocks', async() => {
-    mocks.translateRichMessage.mockResolvedValue(richMessage('Fenwick Tree', 'A data structure.'));
+    const translated = richMessage('Fenwick Tree', 'A data structure.');
+    mocks.translateRichMessage.mockResolvedValue(translated);
     const {host, dispose} = mount(message(richMessage('Дерево Фенвика', 'Структура данных.')));
 
-    await vi.waitFor(() => expect(mocks.wrapRichText).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mocks.renderRichPage).toHaveBeenCalled());
 
     expect(mocks.translateRichMessage).toHaveBeenCalledWith({peerId, mid: 5, lang: 'en'});
     expect(mocks.translateText).not.toHaveBeenCalled();
 
-    // The card is a compact side-by-side, so the blocks arrive flattened — but they must all
-    // arrive, not just the first one.
-    const calls = mocks.wrapRichText.mock.calls;
-    const rendered = calls[calls.length - 1][0] as string;
-    expect(rendered).toContain('Fenwick Tree');
-    expect(rendered).toContain('A data structure.');
+    expect(mocks.renderRichPage).toHaveBeenCalledWith(expect.objectContaining({blocks: translated.blocks}));
+    expect(host.querySelector('[data-rich-page]')).not.toBeNull();
+    expect(mocks.wrapRichText).not.toHaveBeenCalled();
 
     dispose();
     expect(host.isConnected).toBe(false);

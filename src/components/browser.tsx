@@ -127,7 +127,7 @@ function BrowserHeaderTab(props: {
       }}
       onClick={() => actions.select(props.page)}
     >
-      <BrowserHeaderButton class={styles.BrowserHeaderTabIcon}>
+      <BrowserHeaderButton class={styles.BrowserHeaderTabIcon} aria-label={props.page.title}>
         <span class={styles.BrowserHeaderTabIconInner}>{props.page.icon}</span>
         <IconTsx
           icon="more"
@@ -245,6 +245,7 @@ function BrowserHeader(props: {
   return (
     <div class={styles.BrowserHeader}>
       <BrowserHeaderButton
+        aria-label={I18n.format(needBackButton() ? 'AccDescr.Back' : 'Close', true)}
         onClick={() => {
           if(needBackButton()) {
             state.page.onBackClick();
@@ -287,6 +288,7 @@ function BrowserHeader(props: {
           </Animated>
           <BrowserHeaderButton
             class={classNames(styles.BrowserHeaderTabIcon, styles.BrowserHeaderNewButton)}
+            aria-label={I18n.format('MiniApps.OpenApp', true)}
             onClick={() => openCatalogueInAppBrowser()}
           >
             <span class={styles.BrowserHeaderTabIconInner}><IconTsx icon="plus" /></span>
@@ -302,6 +304,7 @@ function BrowserHeader(props: {
       <Show when={state.canCollapse}>
         <BrowserHeaderButton
           icon={state.collapsed ? 'app_expand' : 'app_shrink'}
+          aria-label={I18n.format(state.collapsed ? 'InAppBrowser.Restore' : 'InAppBrowser.Minimize', true)}
           onClick={() => actions.toggleCollapsed()}
         />
       </Show>
@@ -639,6 +642,11 @@ export function openInAppBrowser(page?: BrowserPageProps) {
       </BrowserContext.Provider>
     );
   });
+}
+
+/** Takes the in-app browser down with every page in it, the way its own close button does. */
+export function closeInAppBrowser() {
+  lastContext?.[1].destroy();
 }
 
 export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {

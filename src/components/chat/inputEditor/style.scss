@@ -1,0 +1,743 @@
+@use "../../../scss/shared" as *;
+
+.input-message-input {
+  &[data-chat-input-editor="tiptap"] {
+    --iv-font-size: var(--messages-text-size);
+  }
+
+  &.ProseMirror-hideselection {
+    caret-color: transparent;
+
+    // CellSelection is represented by ProseMirror decorations. Its native DOM
+    // range is only a synchronization detail and must not paint text in the
+    // head cell on top of the table selection frame.
+    .chat-input-table ::selection {
+      background-color: transparent;
+    }
+
+    .chat-input-table ::-moz-selection {
+      background-color: transparent;
+    }
+  }
+
+  .chat-input-block-drop-indicator {
+    display: none;
+    height: 0;
+    line-height: 0;
+    pointer-events: none;
+    position: relative;
+    z-index: 2;
+  }
+
+  .chat-input-block-drop-indicator::after {
+    background-color: var(--primary-color);
+    border-radius: 1px;
+    content: '';
+    height: 2px;
+    inset-inline: 0;
+    position: absolute;
+    top: -1px;
+  }
+
+  &.chat-input-editor-expanded .chat-input-block-selected,
+  .chat-input-rich-media.ProseMirror-selectednode::after {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  &.chat-input-editor-expanded {
+    .chat-input-block-frame-hover {
+      cursor: grab;
+    }
+
+    &.chat-input-block-dragging {
+      cursor: grabbing;
+
+      .chat-input-block-selected {
+        cursor: grabbing;
+      }
+    }
+
+    &.chat-input-block-reorderable .chat-input-block-drop-indicator {
+      display: block;
+    }
+  }
+
+  .chat-input-code-block {
+
+    .code-content {
+      position: relative;
+    }
+
+    .chat-input-code-highlight {
+      box-sizing: border-box;
+      direction: ltr;
+      display: block;
+      hyphens: none;
+      inset: 0;
+      padding: var(--code-content-padding);
+      pointer-events: none;
+      position: absolute;
+      tab-size: 4;
+      text-align: left;
+      user-select: none;
+      width: 100%;
+      word-spacing: normal;
+    }
+
+    .chat-input-code-editable-highlighted {
+      caret-color: var(--primary-text-color);
+      color: transparent;
+      position: relative;
+
+      &::selection,
+      *::selection {
+        background-color: var(--selection-background-color);
+        color: transparent;
+      }
+
+      &::-moz-selection,
+      *::-moz-selection {
+        background-color: var(--selection-background-color);
+        color: transparent;
+      }
+    }
+  }
+
+  .chat-input-trailing-placeholder {
+    min-height: 1.3125em;
+    position: relative;
+  }
+
+  &:not(.is-empty) .chat-input-trailing-placeholder::after {
+    color: var(--secondary-text-color);
+    opacity: .65;
+  }
+
+  .chat-input-table-block {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: visible;
+    position: relative;
+  }
+
+  .tableWrapper {
+    box-sizing: border-box;
+    margin: 0;
+    max-width: 100%;
+    overflow: visible;
+    position: relative;
+  }
+
+  .tableWrapper > .no-scrollbar {
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-input-table-controls {
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 3;
+  }
+
+  .chat-input-table-row-selector,
+  .chat-input-table-column-selector,
+  .chat-input-table-table-selector {
+    background: transparent;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+
+    &:hover {
+      background-color: rgba(var(--primary-color-rgb), .12);
+    }
+  }
+
+  .chat-input-table-table-selector {
+    border-radius: .25rem;
+  }
+
+  .chat-input-table-cell-handle {
+    background-color: var(--primary-color);
+    border: 0;
+    border-radius: .3125rem;
+    color: #fff;
+    cursor: pointer;
+    height: .625rem;
+    padding: 0;
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+    transform: translate(-50%, -50%);
+    width: 1.375rem;
+    z-index: 4;
+
+    &::before {
+      background-color: currentColor;
+      border-radius: 50%;
+      box-shadow: .25rem 0 currentColor, .5rem 0 currentColor;
+      content: '';
+      height: .125rem;
+      left: calc(50% - .3125rem);
+      position: absolute;
+      top: calc(50% - .0625rem);
+      width: .125rem;
+    }
+
+    &::after {
+      content: '';
+      inset: -.5rem;
+      position: absolute;
+    }
+
+    &.is-draggable::before {
+      box-shadow:
+        .25rem 0 currentColor,
+        .5rem 0 currentColor,
+        0 .25rem currentColor,
+        .25rem .25rem currentColor,
+        .5rem .25rem currentColor;
+      top: calc(50% - .1875rem);
+    }
+
+    &.is-row {
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+  }
+
+  .chat-input-table-range-handle {
+    background-color: var(--primary-color);
+    border: 2px solid var(--surface-color);
+    border-radius: 50%;
+    cursor: nwse-resize;
+    height: .625rem;
+    padding: 0;
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+    transform: translate(-50%, -50%);
+    width: .625rem;
+    z-index: 5;
+
+    &::after {
+      content: '';
+      inset: -.5rem;
+      position: absolute;
+    }
+  }
+
+  .chat-input-table-range-dragging {
+    cursor: nwse-resize;
+    user-select: none;
+  }
+
+  .chat-input-table-drop-indicator,
+  .chat-input-table-drag-preview {
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .chat-input-table-drop-indicator {
+    background-color: var(--primary-color);
+    z-index: 6;
+
+    &-row {
+      height: .1875rem;
+      transform: translateY(-50%);
+    }
+
+    &-column {
+      transform: translateX(-50%);
+      width: .1875rem;
+    }
+  }
+
+  .chat-input-table-drag-preview {
+    background-color: rgba(var(--primary-color-rgb), .12);
+    border: 2px solid var(--primary-color);
+    border-radius: .25rem;
+    box-sizing: border-box;
+    opacity: .75;
+    z-index: 5;
+  }
+
+  .chat-input-table-drop-indicator[hidden],
+  .chat-input-table-drag-preview[hidden] {
+    display: none;
+  }
+
+  @at-root .chat-input-table-menu {
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+
+    .btn-menu-item.active {
+      color: var(--primary-color);
+    }
+
+    .chat-input-table-menu-check {
+      color: var(--primary-color);
+    }
+  }
+
+  .chat-input-table {
+
+    &-title {
+      outline: none;
+
+      &-empty > .chat-input-context-placeholder-label {
+        color: var(--secondary-text-color);
+        display: inline;
+      }
+    }
+
+    [data-chat-input-paragraph] {
+      min-height: 1em;
+    }
+
+    &-active-cell-frame {
+      border: 2px solid var(--primary-color);
+      border-radius: .125rem;
+      box-sizing: border-box;
+      pointer-events: none;
+      position: absolute;
+      z-index: 1;
+
+      &.has-top-left-radius {
+        border-top-left-radius: var(--table-border-radius);
+      }
+
+      &.has-top-right-radius {
+        border-top-right-radius: var(--table-border-radius);
+      }
+
+      &.has-bottom-right-radius {
+        border-bottom-right-radius: var(--table-border-radius);
+      }
+
+      &.has-bottom-left-radius {
+        border-bottom-left-radius: var(--table-border-radius);
+      }
+    }
+
+    .selectedCell {
+      &::selection,
+      ::selection {
+        background-color: transparent;
+      }
+
+      &::-moz-selection,
+      ::-moz-selection {
+        background-color: transparent;
+      }
+
+      &::after {
+        display: none;
+      }
+    }
+  }
+
+  .formatted-date {
+    cursor: text;
+  }
+
+  .chat-input-inline-rich-anchor {
+    background-color: rgba(var(--primary-color-rgb), .08);
+    border-radius: .25rem;
+    color: var(--primary-color);
+    display: inline-block;
+    @include rounded-font-size(.75em);
+    margin-inline: .125em;
+    max-width: 12em;
+    overflow: hidden;
+    padding: .125em .25em;
+    text-overflow: ellipsis;
+    user-select: none;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .chat-input-opaque-rich-block {
+    align-items: center;
+    background-color: var(--light-filled-secondary-text-color);
+    border-radius: .5rem;
+    color: var(--secondary-text-color);
+    display: flex;
+    @include rounded-font-size(.875em);
+    gap: .5rem;
+    margin-block: .25rem;
+    min-height: 2.5rem;
+    padding-block: .5rem;
+    user-select: none;
+
+    &::before {
+      background-color: var(--primary-color);
+      border-radius: 50%;
+      content: '';
+      flex: 0 0 auto;
+      height: .5rem;
+      width: .5rem;
+    }
+  }
+
+  .chat-input-rich-anchor-block {
+    display: block;
+    height: 0;
+    margin: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .chat-input-rich-footer {
+    min-height: 1.3125em;
+    outline: none;
+  }
+
+  .chat-input-blockquote {
+    &.quote-block > .chat-input-blockquote-author {
+      display: none;
+    }
+
+    .chat-input-context-placeholder-empty::after,
+    .chat-input-context-placeholder-label {
+      color: rgba(var(--primary-color-rgb), .34);
+      opacity: 1;
+    }
+
+  }
+
+  .chat-input-pullquote {
+    &-text > .chat-input-context-placeholder-label,
+    &-author > .chat-input-context-placeholder-label {
+      color: rgba(var(--primary-color-rgb), .34);
+      opacity: 1;
+    }
+  }
+
+  .chat-input-context-placeholder-empty > .ProseMirror-separator,
+  .chat-input-context-placeholder-empty > .ProseMirror-trailingBreak {
+    display: none;
+  }
+
+  .chat-input-context-placeholder-empty::after {
+    color: var(--secondary-text-color);
+    content: attr(data-placeholder);
+    opacity: .65;
+    pointer-events: none;
+  }
+
+  .chat-input-context-placeholder-centered::after {
+    content: none;
+  }
+
+  .chat-input-context-placeholder-label {
+    color: var(--secondary-text-color);
+    opacity: .65;
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  .chat-input-rich-divider {
+    cursor: default;
+
+    &.ProseMirror-selectednode {
+      box-shadow: 0 0 0 2px var(--primary-color);
+    }
+  }
+
+  .chat-input-rich-map {
+    margin: 0;
+    max-width: 100%;
+
+    &-preview {
+      display: block;
+      position: relative;
+      user-select: none;
+
+      > .geo-pin {
+        inset: 50% auto auto 50%;
+        position: absolute;
+        transform: translate(-50%, -100%);
+        z-index: 1;
+      }
+
+      > .media-container,
+      > .media-container .media-photo {
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+      }
+    }
+
+  }
+
+  .chat-input-rich-media {
+    margin: 0;
+    max-width: 100%;
+    position: relative;
+
+    &.ProseMirror-selectednode::after {
+      content: '';
+      inset: 0;
+      pointer-events: none;
+      position: absolute;
+      z-index: 1;
+    }
+
+    &-preview {
+      max-width: 100%;
+      position: relative;
+      user-select: none;
+    }
+
+    &-canvas {
+      display: contents;
+    }
+
+    &-item {
+      min-width: 0;
+      overflow: hidden;
+      position: relative;
+
+      > img,
+      > video {
+        display: block;
+        max-width: 100%;
+      }
+
+    }
+
+    &-item-audio {
+      min-height: 3rem;
+
+      > .chat-input-rich-media-upload {
+        border-radius: 50%;
+        inset: 0 auto 0 0;
+        width: 3rem;
+
+        &[data-state="error"] {
+          border-radius: 0;
+          inset-inline-end: 0;
+          width: auto;
+        }
+      }
+    }
+
+    &[data-rich-media-layout="collage"] {
+      .chat-input-rich-media-canvas {
+        display: block;
+      }
+
+      .chat-input-rich-media-item {
+        position: absolute;
+      }
+    }
+
+    &[data-rich-media-layout="slideshow"] {
+      .chat-input-rich-media-slideshow {
+        --slideshow-dots-bottom-visible: calc(1.75rem * var(--iv-scale, 1));
+      }
+
+      .chat-input-rich-media-item {
+        inset: 0;
+        position: absolute;
+      }
+
+      .chat-input-rich-media-preview:hover,
+      .chat-input-rich-media-preview:focus-within {
+        .chat-input-rich-media-slideshow {
+          --slideshow-dots-bottom: var(--slideshow-dots-bottom-visible);
+        }
+      }
+    }
+
+    &-upload {
+      inset: 0;
+      pointer-events: none;
+      position: absolute;
+      z-index: 2;
+
+      .preloader-container {
+        pointer-events: auto;
+      }
+
+      &-progress {
+        cursor: pointer;
+
+        &-complete {
+          cursor: default;
+          pointer-events: none !important;
+        }
+      }
+
+      &-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .375rem;
+        justify-content: center;
+        pointer-events: auto;
+      }
+
+      &-action {
+        appearance: none;
+        background-color: rgba(0, 0, 0, .62);
+        border: 1px solid rgba(255, 255, 255, .7);
+        border-radius: 1rem;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        font-size: .75rem;
+        font-weight: var(--font-weight-bold);
+        line-height: 1.25rem;
+        padding-inline: .625rem;
+      }
+
+      &[data-state="error"] {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+      }
+    }
+
+    &-more {
+      background-color: rgba(0, 0, 0, .2);
+      color: #fff;
+      position: absolute;
+      right: .25rem;
+      top: .25rem;
+      z-index: 4;
+
+      @include hover() {
+        background-color: rgba(0, 0, 0, .4);
+      }
+
+      &.btn-menu-toggle.menu-open {
+        background-color: rgba(0, 0, 0, .4);
+      }
+
+      &[hidden] {
+        display: none;
+      }
+    }
+
+    &-fallback {
+      color: var(--secondary-text-color);
+      font-size: .875rem;
+      padding: 2rem;
+    }
+
+    &[data-rich-media-type="pageBlockAudio"] {
+      .chat-input-rich-media-preview {
+        user-select: auto;
+
+        .document {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+      }
+    }
+  }
+
+  .chat-input-details-toggle {
+    appearance: none;
+    background: none;
+    border: 0;
+    color: inherit;
+    font-family: inherit;
+    font-style: inherit;
+    font-weight: inherit;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .chat-input-custom-emoji:before {
+    content: attr(data-sticker-emoji);
+    display: inline;
+    width: auto;
+    height: auto;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .chat-input-custom-emoji-selected {
+    background-color: var(--selection-background-color);
+  }
+
+  .chat-input-inline-math.chat-input-math-selected,
+  .chat-input-inline-math.ProseMirror-selectednode,
+  .chat-input-block-math.chat-input-math-selected > .chat-input-math-content,
+  .chat-input-block-math.ProseMirror-selectednode > .chat-input-math-content {
+    background-color: var(--selection-background-color);
+  }
+
+  // layer 229's buttons: drawn as they will be sent, a click opens their box
+  .chat-input-rich-button {
+    user-select: none;
+
+    &.ProseMirror-selectednode {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 1px;
+    }
+  }
+
+  // "Disabled" is what the button does, not the state of the chip: it stays editable
+  .chat-input-rich-button-disabled {
+    opacity: .6;
+  }
+
+  .chat-input-button-row {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+
+    &.ProseMirror-selectednode .chat-input-button-row-buttons {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+      border-radius: calc(.75rem * var(--iv-scale));
+    }
+  }
+
+  .chat-input-button-row-buttons {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .chat-input-button-row-menu {
+    flex: 0 0 auto;
+  }
+}
+
+// A quote's fold switch (`quotes.ts`): an invisible button over the corner icon that
+// `.can-send-collapsed` draws, there only while the input offers the fold. Every field that
+// edits quotes gets it, not only the composer.
+.chat-input-quote-toggle {
+  display: none;
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius);
+  background: none;
+  cursor: pointer;
+}
+
+.can-send-collapsed > .chat-input-quote-toggle {
+  display: block;
+}

@@ -15,7 +15,8 @@
     "test:a11y:full": "A11Y_ALL_THEMES=1 playwright test --config playwright.a11y.config.ts",
     "test:ephemeral-bot": "node ./src/tests/fixtures/ephemeralBot/bot.mjs",
     "test:lottie": "playwright test e2e/lottie*.spec.ts",
-    "test:popups": "playwright test e2e/popupSandbox.spec.ts",
+    "test:popups": "playwright test --config=playwright.popups.config.ts",
+    "test:editor:e2e": "playwright test --config=playwright.editor.config.ts",
     "test:focus": "playwright test e2e/focusPixels.spec.ts e2e/focusPixelsAuth.spec.ts",
     "test:focus:app": "playwright test e2e/focusPixelsApp.spec.ts",
     "test:a11y:app": "playwright test e2e/accessibilitySignedIn.spec.ts",
@@ -76,6 +77,7 @@
     "fake-indexeddb": "^6.2.5",
     "fast-png": "^8.0.0",
     "fflate": "^0.8.3",
+    "highlight.js": "11.12.0",
     "hls.js": "^1.6.16",
     "http-proxy": "^1.18.1",
     "js-md5": "^0.9.2",
@@ -101,6 +103,19 @@
   },
   "packageManager": "pnpm@11.16.0",
   "dependencies": {
+    "@tiptap/core": "3.28.0",
+    "@tiptap/extension-bold": "3.28.0",
+    "@tiptap/extension-code-block": "3.28.0",
+    "@tiptap/extension-document": "3.28.0",
+    "@tiptap/extension-hard-break": "3.28.0",
+    "@tiptap/extension-italic": "3.28.0",
+    "@tiptap/extension-list": "3.28.0",
+    "@tiptap/extension-strike": "3.28.0",
+    "@tiptap/extension-table": "3.28.0",
+    "@tiptap/extension-text": "3.28.0",
+    "@tiptap/extension-underline": "3.28.0",
+    "@tiptap/extensions": "3.28.0",
+    "@tiptap/pm": "3.28.0",
     "temml": "^0.13.3"
   }
 }

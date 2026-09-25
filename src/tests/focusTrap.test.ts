@@ -1,5 +1,5 @@
 import {afterEach, expect, it} from 'vitest';
-import createFocusTrap, {getFocusableElements} from '@helpers/dom/focusTrap';
+import createFocusTrap, {FOCUS_TRAP_ATTACHED_ATTRIBUTE, getFocusableElements} from '@helpers/dom/focusTrap';
 import {setAppWindow} from '@helpers/appWindow';
 
 const mounted: HTMLElement[] = [];
@@ -177,4 +177,28 @@ it('restores past a parent dialog closed by an action in its nested menu', () =>
   parent.deactivate();
   child.deactivate();
   expect(document.activeElement).toBe(opener);
+});
+
+it('lets focus into an overlay attached to the dialog, pulls it back from anywhere else', () => {
+  const dialog = document.createElement('div');
+  const field = document.createElement('button');
+  const toolbar = document.createElement('div');
+  const bold = document.createElement('button');
+  const elsewhere = document.createElement('button');
+  dialog.append(field);
+  toolbar.setAttribute(FOCUS_TRAP_ATTACHED_ATTRIBUTE, '');
+  toolbar.append(bold);
+  document.body.append(dialog, toolbar, elsewhere);
+  mounted.push(dialog, toolbar, elsewhere);
+  [field, bold, elsewhere].forEach(makeVisible);
+  const trap = createFocusTrap(dialog);
+  trap.activate();
+
+  // the formatting toolbar over a caption is mounted outside the dialog, but serves it
+  bold.focus();
+  expect(document.activeElement).toBe(bold);
+
+  elsewhere.focus();
+  expect(document.activeElement).toBe(field);
+  trap.deactivate(false);
 });

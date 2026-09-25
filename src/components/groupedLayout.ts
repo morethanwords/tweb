@@ -37,8 +37,18 @@ export class Layouter {
   private proportions: string;
   private averageRatio: number;
   private maxSizeRatio: number;
+  private maxHeight: number;
+  private maxHeightConstraint?: number;
 
-  constructor(private sizes: Size[], private maxWidth: number, private minWidth: number, private spacing: number, private maxHeight = maxWidth) {
+  constructor(
+    private sizes: Size[],
+    private maxWidth: number,
+    private minWidth: number,
+    private spacing: number,
+    maxHeight?: number
+  ) {
+    this.maxHeight = maxHeight ?? maxWidth;
+    this.maxHeightConstraint = maxHeight;
     this.count = sizes.length;
     this.ratios = Layouter.countRatios(sizes);
     this.proportions = Layouter.countProportions(this.ratios);
@@ -51,7 +61,14 @@ export class Layouter {
     else if(this.count === 1) return this.layoutOne();
 
     if(this.count >= 5 || this.ratios.find((r) => r > 2)) {
-      return new ComplexLayouter(this.ratios, this.averageRatio, this.maxWidth, this.minWidth, this.spacing).layout();
+      return new ComplexLayouter(
+        this.ratios,
+        this.averageRatio,
+        this.maxWidth,
+        this.minWidth,
+        this.spacing,
+        this.maxHeightConstraint
+      ).layout();
     }
 
     if(this.count === 2) return this.layoutTwo();
@@ -86,7 +103,10 @@ export class Layouter {
 
   private layoutOne(): ReturnType<Layouter['layout']> {
     const width = this.maxWidth;
-    const height = (this.sizes[0].h * width) / this.sizes[0].w;
+    const naturalHeight = (this.sizes[0].h * width) / this.sizes[0].w;
+    const height = this.maxHeightConstraint === undefined ?
+      naturalHeight :
+      Math.min(naturalHeight, this.maxHeight);
 
     return [
       {
@@ -320,10 +340,21 @@ export class Layouter {
 class ComplexLayouter {
   private ratios: number[];
   private count: number;
+  private maxHeight: number;
+  private constrainHeight: boolean;
 
-  constructor(ratios: number[], private averageRatio: number, private maxWidth: number, private minWidth: number, private spacing: number, private maxHeight = maxWidth * 4 / 3) {
+  constructor(
+    ratios: number[],
+    private averageRatio: number,
+    private maxWidth: number,
+    private minWidth: number,
+    private spacing: number,
+    maxHeight?: number
+  ) {
     this.ratios = ComplexLayouter.cropRatios(ratios, averageRatio);
     this.count = ratios.length;
+    this.maxHeight = maxHeight ?? maxWidth * 4 / 3;
+    this.constrainHeight = maxHeight !== undefined;
   }
 
   private static cropRatios(ratios: number[], averageRatio: number) {
@@ -393,7 +424,6 @@ class ComplexLayouter {
       const totalHeight = accumulate(heights, 0) +
         this.spacing * (lineCount - 1);
       const minLineHeight = Math.min(...heights);
-      const maxLineHeight = Math.max(...heights);
       const bad1 = (minLineHeight < this.minWidth) ? 1.5 : 1;
       const bad2 = (() => {
         for(let line = 1; line !== lineCount; ++line) {
@@ -413,13 +443,37 @@ class ComplexLayouter {
     const optimalCounts = optimalAttempt.lineCounts;
     const optimalHeights = optimalAttempt.heights;
     const rowCount = optimalCounts.length;
+    const naturalHeight = accumulate(optimalHeights, 0) +
+      this.spacing * (rowCount - 1);
+    const heightScale = this.constrainHeight && naturalHeight > this.maxHeight ?
+      Math.max(0, this.maxHeight - this.spacing * (rowCount - 1)) /
+        accumulate(optimalHeights, 0) :
+      1;
+    let accumulatedScaledHeight = 0;
+    const scaledHeights = optimalHeights.map((height, row) => {
+      let scaledHeight: number;
+      if(heightScale === 1) {
+        scaledHeight = Math.round(height);
+      } else if(row !== rowCount - 1) {
+        scaledHeight = Math.floor(height * heightScale);
+      } else {
+        scaledHeight = Math.max(
+          0,
+          this.maxHeight -
+            this.spacing * (rowCount - 1) -
+            accumulatedScaledHeight
+        );
+      }
+      accumulatedScaledHeight += scaledHeight;
+      return scaledHeight;
+    });
 
     let index = 0;
     let y = 0;
     for(let row = 0; row !== rowCount; ++row) {
       const colCount = optimalCounts[row];
       const lineHeight = optimalHeights[row];
-      const height = Math.round(lineHeight);
+      const height = scaledHeights[row];
 
       let x = 0;
       for(let col = 0; col !== colCount; ++col) {

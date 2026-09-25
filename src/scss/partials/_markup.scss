@@ -36,11 +36,20 @@
   font-family: inherit !important;
 }
 
+.dialog-subtitle-flex,
+.reply-subtitle {
+  sub,
+  sup {
+    line-height: 0;
+  }
+}
+
 [data-markup*="bold"] {
   font-weight: bold;
 }
 
 [data-markup*="italic"] {
+  font-family: var(--font-serif) !important;
   font-style: italic;
 }
 

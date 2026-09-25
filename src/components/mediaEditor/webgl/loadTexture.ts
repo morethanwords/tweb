@@ -1,4 +1,3 @@
-import deferredPromise from '@helpers/cancellablePromise';
 import {Middleware} from '@helpers/middleware';
 import createVideoForDrawing from '@components/mediaEditor/canvas/createVideoForDrawing';
 import {MediaType} from '@components/mediaEditor/types';
@@ -27,18 +26,13 @@ type LoadTextureResult = {
 };
 
 export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware}: LoadTextureArgs): Promise<LoadTextureResult> {
-  const texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-
   let media: LoadTextureMedia;
 
   if(mediaType === 'image') {
     const image = new Image();
     image.src = mediaSrc;
 
-    const deferred = deferredPromise<void>();
-    image.addEventListener('load', () => void deferred.resolve());
-    await deferred;
+    await image.decode();
 
     media = {
       image,
@@ -55,6 +49,9 @@ export async function loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSee
     };
   }
 
+  if(middleware && !middleware() || gl.isContextLost()) return;
+  const texture = gl.createTexture();
+  if(!texture) return;
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media.video || media.image);
 

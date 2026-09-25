@@ -1,37 +1,68 @@
 @use "../scss/mixins.scss" as *;
+@use "../scss/tgico/variables.scss" as *;
 @use "../scss/variables.scss" as *;
 
-.InstantView {
-  --iv-max-width: 50rem;
-  --iv-scale: 1.125;
+.RichText {
+  --iv-scale: 1;
+  --iv-media-max-height: 360px;
   --padding-horizontal: calc(1rem * var(--iv-scale));
   --margin-horizontal: calc(var(--padding-horizontal) * -1);
   --paddings: 1;
   --iv-font-size: calc(var(--font-size-16) * var(--iv-scale));
-  --iv-line-height: calc(var(--line-height-16) * var(--iv-scale));
-  // padding: 0 var(--padding-horizontal);
+  font-family: var(--font-regular);
+  user-select: text;
+  white-space: pre-wrap;
+  @include rounded-font-size(var(--iv-font-size));
+
+  // a link button is a link too, but it paints itself (.PageButton)
+  a:not(:global(.rich-button-link)) {
+    color: var(--primary-color);
+  }
+
+  :global(.text-highlight) {
+    background-color: var(--light-filled-secondary-text-color);
+    font-style: normal;
+    padding: 0 .1666em;
+    border-radius: .1666em;
+  }
+
+  :global(.video-time) {
+    --height: calc(var(--messages-time-text-size) + .375rem);
+    align-items: center;
+    background-color: var(--message-time-background);
+    border-radius: var(--height);
+    color: #fff;
+    display: flex;
+    font-size: var(--messages-time-text-size);
+    height: var(--height);
+    inset-inline-start: 3px;
+    line-height: 1;
+    padding-inline: 6px;
+    pointer-events: none;
+    position: absolute;
+    top: 3px;
+    user-select: none;
+    z-index: 3;
+  }
+}
+
+// In the in-app browser the page's scroller takes the keyboard focus (an article), but the page
+// paints over the scroller's own ring, so the page wears it instead.
+:global(.scrollable):focus-visible > .InstantView {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.InstantView {
+  --iv-max-width: 50rem;
   background-color: var(--surface-color);
-  color: var(--text-primary);
-  font-family: var(--font-family);
+  color: var(--primary-text-color);
   max-width: var(--iv-max-width);
   margin: 0 auto;
-  user-select: text;
-  font-size: var(--iv-font-size);
-  line-height: var(--iv-line-height);
   min-height: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
-  white-space: pre-wrap;
-
-  :global(.text-highlight) {
-    font-style: normal;
-    background-color: var(--light-filled-secondary-text-color);
-  }
-
-  // :global(.anchor-url) {
-  //   color: var(--primary-color);
-  // }
 
   &Content {
     flex: 1 1 auto;
@@ -39,29 +70,23 @@
 
   &Footer {
     background-color: var(--light-secondary-text-color);
-    padding: .25em var(--padding-horizontal);
-    font-size: .8888em;
+    padding: calc(.25rem * var(--iv-scale)) var(--padding-horizontal);
+    @include rounded-font-size(.8888em);
     text-align: center;
     flex: 0 0 auto;
   }
 }
 
 .RichMessage {
-  --iv-scale: 1;
   --iv-max-width: 100%;
-  --padding-horizontal: 0.5rem;
+  --iv-font-size: 1em;
   background-color: transparent;
   max-width: 100%;
   margin: 0;
   min-height: 0;
-  font-size: inherit;
-  line-height: inherit;
 }
 
 .RichMessageWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
   white-space: normal;
   margin: -4px -8px -5px; // * the opposite to `_chatBubble .message`
 }
@@ -87,7 +112,7 @@
   padding-inline: var(--padding-horizontal);
 }
 
-// Marks a block that hosts child page-blocks (.List, .Post content, .BlockquoteBlocks). It
+// Marks a block that hosts child page-blocks (.List, .Post content, blockquotes). It
 // neutralises the per-block .Padding gutter of the blocks nested inside, so the container's own
 // gutter isn't doubled.
 .BlockContainer {
@@ -98,7 +123,9 @@
   // a nested .BlockGutter (list / embed-post inside this container) is already indented by the
   // container, so it uses a tighter start floor than a top-level one.
   .BlockGutter {
-    padding-inline: calc(max(0.5rem, var(--padding-horizontal)) * 2) var(--padding-horizontal);
+    --block-gutter-regular-padding-inline-start:
+      calc(max(calc(.5rem * var(--iv-scale)), var(--padding-horizontal)) * 2);
+    --block-gutter-padding-inline-start: var(--block-gutter-regular-padding-inline-start);
   }
 }
 
@@ -106,17 +133,19 @@
 // bullets, the embed-post border): a doubled start inset — floored so it survives the compact
 // rich-message `--padding-horizontal` — plus a single-gutter end. Used by .List and .Post.
 .BlockGutter {
-  padding-inline: calc(max(.75rem, var(--padding-horizontal)) * 2) var(--padding-horizontal);
+  --block-gutter-padding-inline-end: var(--padding-horizontal);
+  --block-gutter-regular-padding-inline-start:
+    calc(max(calc(.75rem * var(--iv-scale)), var(--padding-horizontal)) * 2);
+  --block-gutter-padding-inline-start: var(--block-gutter-regular-padding-inline-start);
+  padding-inline:
+    var(--block-gutter-padding-inline-start)
+    var(--block-gutter-padding-inline-end);
 }
 
 .Anchor {
   color: var(--primary-color);
   background-color: var(--light-filled-primary-color);
   font-weight: var(--font-weight-bold);
-}
-
-.Anchor,
-.InstantView :global(.text-highlight) {
   padding: 0 .1666em;
   border-radius: .1666em;
 }
@@ -126,10 +155,9 @@
 // }
 
 .SectionName {
-  padding: .375em var(--padding-horizontal);
+  padding: calc(.375rem * var(--iv-scale)) var(--padding-horizontal);
   background-color: var(--light-secondary-text-color);
-  font-size: 1.1111em;
-  line-height: 1.3em;
+  @include rounded-font-size(1.1111em);
   font-weight: var(--font-weight-bold);
 }
 
@@ -137,81 +165,90 @@
   cursor: pointer;
 }
 
-.Title {
-  font-size: 1.3333em;
-  line-height: 1.25em;
-  margin: .5em 0;
-}
-
 .AuthorDate {
-  font-size: 0.8888em;
-  margin: 1em 0;
+  @include rounded-font-size(.8888em);
+  margin-block: calc(1rem * var(--iv-scale));
+  margin-inline: 0;
 }
 
-.Subtitle {
-  font-size: 1.1111em;
-  margin: -0.25em 0 0.5em;
-}
-
-.Header {
-  font-size: 1.25em;
+// Shared H1-H6 presentation for Instant View, rich-message bubbles and the editor. The
+// root's `--iv-scale` scales the fixed block rhythm without maintaining separate layouts.
+.Title,
+.Subtitle,
+.Header,
+.Subheader,
+.HeadingH1,
+.HeadingH2,
+.HeadingH3,
+.HeadingH4,
+.HeadingH5,
+.HeadingH6 {
+  --font-serif: var(--font-heading);
+  font-family: var(--font-heading);
+  font-variation-settings: 'wght' 700;
   font-weight: var(--font-weight-bold);
-  margin: .5em 0;
+  margin-block: 0;
+  margin-inline: 0;
+  padding-block:
+    calc(.75rem * var(--iv-scale))
+    calc(.5rem * var(--iv-scale));
 }
 
-.Subheader {
-  font-size: 1.1111em;
-  line-height: 1.3em;
-  font-weight: var(--font-weight-normal);
-  margin: 1em 0 0.5em;
+.Title, .HeadingH1 {
+  @include rounded-font-size(1.1875em);
 }
 
-// Per-level overrides for markdown H1-H6 (set by parseMarkdownToPage's `headingLevel`
-// metadata + Block component). They sit on top of `.Header` / `.Subheader` to give each
-// level a distinct size while keeping the base style.
-.HeadingH1 {
-  font-size: 1.4444em;
-  font-weight: var(--font-weight-bold);
+.Subtitle, .HeadingH2 {
+  @include rounded-font-size(1.125em);
 }
 
-.HeadingH2 {
-  font-size: 1.25em;
-  font-weight: var(--font-weight-bold);
+.Header, .HeadingH3 {
+  @include rounded-font-size(1.0625em);
 }
 
-.HeadingH3 {
-  font-size: 1.1111em;
-  font-weight: var(--font-weight-bold);
-}
-
-.HeadingH4 {
-  font-size: 1em;
-  font-weight: var(--font-weight-bold);
+.Subheader, .HeadingH4 {
+  @include rounded-font-size(1em);
 }
 
 .HeadingH5 {
-  font-size: .9em;
-  font-weight: var(--font-weight-bold);
+  @include rounded-font-size(.9375em);
 }
 
 .HeadingH6 {
-  font-size: .85em;
-  font-weight: var(--font-weight-bold);
+  @include rounded-font-size(.875em);
 }
 
 .Paragraph {
-  margin-bottom: 1em;
+  margin-block: 0;
+}
+
+.Blocks > .Paragraph {
+  padding-block: calc(.375rem * var(--iv-scale));
 }
 
 // wraps the app-standard `.code` block (see pageBlockPreformatted) in the IV horizontal gutter
 .PreformattedWrapper {
-  margin-block: 0.6666em;
+  margin-block: calc(.6666rem * var(--iv-scale));
+
+  :global(.code) {
+    color: var(--primary-text-color);
+    font-size: .875em;
+    max-width: 100%;
+  }
+
+  :global(.code-content) {
+    line-height: calc(1em + 5px);
+  }
+
+  :global(.code-header) {
+    margin-top: 1px;
+  }
 }
 
 // Math (Temml → MathML). Block formulas (`$$…$$`) display-centered in a horizontal scroller for
 // wide equations; inline formulas (`$x$`) flow with the surrounding text.
 .MathBlockWrapper {
-  margin-block: 0.6666em;
+  margin-block: calc(.6666rem * var(--iv-scale));
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -222,83 +259,256 @@
 
 .LatexBlock {
   display: block;
+  font-size: 1.5em;
+  margin-inline: auto;
+  width: max-content;
 }
 
 .LatexInline {
+  font-size: 1.25em;
   white-space: normal;
 }
 
 .Footer {
-  margin: 1em 0;
+  margin-block: calc(1rem * var(--iv-scale));
+  margin-inline: 0;
 }
 
 .Divider {
-  margin: 1em auto;
+  margin-block: calc(.5rem * var(--iv-scale));
+  margin-inline: auto;
   height: 1px;
+  min-height: 1px;
+  border: 0;
+  display: block;
+  flex: 0 0 1px;
   background-color: var(--border-color);
-  width: 50%;
+  width: calc(100% / 3);
 }
 
 .List {
-  --margin-horizontal: 0em;
-  margin-bottom: 1em;
-  // horizontal gutter comes from the shared .BlockGutter class
-
-  .List {
-    padding-inline: var(--padding-horizontal) 0;
-  }
+  --margin-horizontal: 0;
+  --block-gutter-padding-inline-end: calc(1rem * var(--iv-scale));
+  --block-gutter-regular-padding-inline-start:
+    calc(
+      max(calc(.75rem * var(--iv-scale)), var(--padding-horizontal)) * 2 -
+      .0625rem * var(--iv-scale)
+    );
+  --block-gutter-padding-inline-start: var(--block-gutter-regular-padding-inline-start);
+  margin: 0;
+  padding-block: calc(.375rem * var(--iv-scale));
 
   &Item {
-    margin-bottom: 0.5em;
+    margin-block-end: calc(.375rem * var(--iv-scale));
     position: relative;
-    min-height: var(--iv-line-height);
+    min-height: 1lh;
+
+    &:last-child {
+      margin-block-end: 0;
+    }
+
+    &::marker {
+      font-weight: var(--font-weight-bold);
+    }
 
     &Number {
-      position: absolute;
-      // inset-inline-start: calc(var(--padding-horizontal) * -1);
-      margin-inline-start: -100%;
+      font-weight: var(--font-weight-bold);
+      grid-column: 1;
+      min-width: 0;
       pointer-events: none;
       text-align: end;
-      white-space: pre;
-      width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
   }
 
-  &Ordered {
+  &Bullet {
     list-style: none;
+
+    > .ListItem::before {
+      background-color: currentColor;
+      border-radius: 50%;
+      content: '';
+      height: calc(.25rem * var(--iv-scale));
+      inset-inline-start: calc(-.875rem * var(--iv-scale));
+      position: absolute;
+      top: .5lh;
+      transform: translateY(-50%);
+      width: calc(.25rem * var(--iv-scale));
+    }
   }
 
   .Table {
-    --padding-horizontal: 0em;
+    --padding-horizontal: 0;
+  }
+}
+
+.ListItem {
+  > .TaskCheckboxButton {
+    display: none;
+  }
+
+  &[data-checkbox="true"] {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    list-style: none;
+
+    > .TaskCheckboxButton {
+      display: block;
+    }
+
+    &::before,
+    > .ListItemNumber {
+      display: none;
+    }
+  }
+
+  > .ListItemContent {
+    min-width: 0;
+  }
+}
+
+.ListOrdered {
+  --iv-list-style: decimal;
+  --iv-list-value: initial;
+  display: grid;
+  list-style: none;
+  column-gap: calc(.25rem * var(--iv-scale));
+  grid-template-columns: fit-content(50%) minmax(0, 1fr);
+  padding-inline-start: calc(var(--block-gutter-regular-padding-inline-start) - 1rem * var(--iv-scale));
+
+  > .ListItem {
+    align-items: first baseline;
+    counter-increment: iv-list-item var(--iv-list-step);
+    counter-set: iv-list-item var(--iv-list-value);
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    list-style: none;
+    min-width: 0;
+
+    &::before {
+      content: counter(iv-list-item, var(--iv-list-style)) '.';
+      font-weight: var(--font-weight-bold);
+      grid-column: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      text-align: end;
+    }
+
+    &.ListItemHasNumber::before {
+      display: none;
+    }
+
+    > .ListItemContent {
+      grid-column: 2;
+    }
+
+    &[data-checkbox="true"] {
+      &::before {
+        display: none;
+      }
+
+      > .TaskCheckboxButton {
+        grid-column: 1;
+      }
+    }
+  }
+}
+
+
+.List.ListChecklist {
+  padding-inline-start: calc(
+    var(--block-gutter-regular-padding-inline-start) - 1rem * var(--iv-scale)
+  );
+}
+
+.Blockquote {
+  @include rounded-font-size(.875em);
+  max-width: 100%;
+  margin: 0;
+  // padding for the .quote-like accent bar (start) and the quote glyph (end), mirroring chat quotes
+  padding-block: calc(.1875rem * var(--iv-scale));
+  padding-inline:
+    calc(.5625rem * var(--iv-scale))
+    calc(1.125rem * var(--iv-scale));
+
+  &Wrapper {
+    margin-block: calc(.5rem * var(--iv-scale));
+    margin-inline: 0;
+  }
+
+  &Caption {
+    color: var(--primary-color);
+    font-weight: var(--font-weight-bold);
+    margin-top: 0.2352941176em;
+    @include rounded-font-size(1em);
   }
 }
 
 .Pullquote {
-  margin: 0.5em 0;
-  font-size: 1.1111em;
-  line-height: 1.3em;
+  --border-radius: .375rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-block: calc(.5rem * var(--iv-scale));
+  margin-inline: auto;
+  max-width: 100%;
+  min-height: 38px;
+  padding:
+    calc(.5625rem * var(--iv-scale))
+    calc(1.5rem * var(--iv-scale));
+  width: fit-content;
   @include text-center();
-}
 
-.Blockquote {
-  margin: 0;
-  // padding for the .quote-like accent bar (start) and the quote glyph (end), mirroring chat quotes
-  padding: 0.1875em 0;
-  padding-inline: 0.5625rem 1.125rem;
-
-  &Wrapper {
-    margin: 1em 0;
+  &Text,
+  &Author {
+    align-self: stretch;
+    box-sizing: border-box;
+    text-align: center;
   }
 
-  // block-hosting variant (pageBlockBlockquoteBlocks): the quote's own inline padding provides the
-  // indent; the child-block .Padding gutter is neutralised by the shared .BlockContainer class.
-  &Blocks {
-    padding-block: 0.375em;
+  &Text {
+    @include rounded-font-size(.875em);
+    font-style: italic;
+    min-height: 1lh;
+    position: relative;
+
+    &::before,
+    &::after {
+      color: var(--primary-color);
+      content: $tgico-quote;
+      display: block;
+      font-family: '#{$tgico-font-family}' !important;
+      font-size: 1em;
+      font-style: normal;
+      line-height: 1;
+      pointer-events: none;
+      position: absolute;
+      text-align: left;
+    }
+
+    &::before {
+      inset-inline-start: -1.375em;
+      top: -.5625em;
+      transform: scale(-1, -1);
+    }
+
+    &::after {
+      bottom: -.375em;
+      inset-inline-end: -1.375em;
+      transform: scaleY(-1);
+    }
   }
 
-  &Caption {
-    margin-top: 0.2352941176em;
-    font-size: 0.85em;
+  &Author {
+    color: var(--primary-color);
+    @include rounded-font-size(.9375em);
+    font-weight: var(--font-weight-bold);
+    margin-top: 0;
+    min-height: 1lh;
   }
 }
 
@@ -309,24 +519,45 @@
   --checkbox-size: 1.125em;
 }
 
+.TaskCheckboxButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  margin-inline-end: 0.4em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  vertical-align: -0.3em;
+
+  .TaskCheckbox {
+    margin: 0;
+    vertical-align: initial;
+  }
+}
+
 .Unsupported {
   color: var(--error-color);
-  font-size: 0.8em;
-  margin-bottom: 1em;
+  @include rounded-font-size(.8em);
+  margin-block-end: calc(1rem * var(--iv-scale));
 }
 
 .Media {
-  --width: min(calc(var(--browser-width) - var(--padding-horizontal) * var(--paddings)), var(--iv-max-width));
-  // margin: 0 var(--margin-horizontal);
   position: relative;
-  width: var(--width) !important;
-  height: calc(var(--width) / var(--aspect-ratio)) !important;
+  aspect-ratio: var(--aspect-ratio);
+  width: 100% !important;
+  height: auto !important;
+  max-height: var(--iv-media-max-height);
 
   :global(.media-photo),
   :global(.media-video) {
     width: 100%;
     max-width: 100%;
   }
+
 }
 
 .Embed {
@@ -376,29 +607,32 @@
 
 .RelatedArticle {
   cursor: pointer;
-  padding: .75em var(--padding-horizontal);
-  font-size: .8888em;
+  padding: calc(.75rem * var(--iv-scale)) var(--padding-horizontal);
+  @include rounded-font-size(.8888em);
   display: block;
   color: currentColor;
   position: relative;
 
   &.WithPhoto {
-    padding-inline-end: calc(var(--padding-horizontal) + 7.25rem);
+    // Reserve the fixed 100px thumbnail plus the same scale-aware text gap as the
+    // regular horizontal gutter.
+    padding-inline-end:
+      calc(var(--padding-horizontal) + 6.25rem + 1rem * var(--iv-scale));
   }
 
   &Title {
-    line-height: 1.3125em;
+    @include rounded-line-height();
   }
 
   &Description {
-    margin: 0.25em 0;
+    margin-block: calc(.25rem * var(--iv-scale));
+    margin-inline: 0;
     @include text-overflow(3);
   }
 
   &Description,
   &Author {
-    font-size: 0.875em;
-    line-height: 1.2857142857em;
+    @include rounded-font-size(.875em);
   }
 
   &Photo {
@@ -406,7 +640,7 @@
     width: 100px !important;
     height: 100px !important;
     inset-inline-end: var(--padding-horizontal);
-    top: .75em;
+    top: calc(.75rem * var(--iv-scale));
     border-radius: .5rem;
     overflow: hidden;
 
@@ -419,7 +653,7 @@
 }
 
 .Border {
-  margin-inline-start: var(--padding-horizontal);
+  margin-inline-start: var(--details-border-offset, var(--padding-horizontal));
   height: 1px;
   background-color: var(--border-color);
 }
@@ -433,8 +667,8 @@
 }
 
 .Table {
-  // margin: 0 var(--margin-horizontal);
-  // padding: 0 var(--padding-horizontal);
+  border-radius: var(--table-border-radius);
+  padding-block: calc(.5rem * var(--iv-scale));
 
   // pageBlockTable.compact (layer 229) — the same table with tighter cells
   &Compact {
@@ -445,43 +679,231 @@
   }
 
   &Wrapper {
-    margin: 0.75em 0;
+    --table-layout: fixed;
+    --table-border-radius: 10px;
+    --table-cell-min-height: calc(36em / 14);
+    --table-cell-min-width: calc(4rem * var(--iv-scale));
+    --table-cell-padding:
+      calc(.625rem * var(--iv-scale))
+      calc(.75rem * var(--iv-scale));
+    --table-font-size: .875em;
   }
 
   &Name {
-    color: var(--secondary-text-color);
-    font-size: 0.8888em;
-    margin-bottom: 0.2222em;
+    color: var(--primary-text-color);
+    @include rounded-font-size(.875em);
+    padding-block:
+      calc(.5rem * var(--iv-scale))
+      calc(.25rem * var(--iv-scale));
     padding-inline: var(--padding-horizontal);
+    position: relative;
+    text-align: center;
+    white-space: pre-wrap;
+  }
+}
+
+// layer 229's buttons: rows of them (pageBlockButtonRow) and single ones inside the text
+// (textButton). A stretched row shares its width evenly; an aligned one keeps each button to its
+// label.
+.PageButtonRow {
+  display: flex;
+  gap: calc(.5rem * var(--iv-scale));
+  margin-block: calc(.5rem * var(--iv-scale));
+
+  &Left,
+  &Center,
+  &Right {
+    --page-button-flex: 0 1 auto;
+  }
+
+  &Left {
+    justify-content: flex-start;
+  }
+
+  &Center {
+    justify-content: center;
+  }
+
+  &Right {
+    justify-content: flex-end;
+  }
+}
+
+.PageButton {
+  --page-button-color: var(--primary-color);
+  // the tint lets the page show through; a host on another background names what to mix it over
+  --page-button-background: color-mix(in srgb, var(--page-button-color) 12%, var(--page-button-backdrop, transparent));
+  --page-button-hover-background: color-mix(in srgb, var(--page-button-color) 20%, var(--page-button-backdrop, transparent));
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: var(--page-button-flex, 1 1 0);
+  min-width: 0;
+  min-height: calc(2.25rem * var(--iv-scale));
+  padding: calc(.5rem * var(--iv-scale)) calc(1.25rem * var(--iv-scale));
+  border: 0;
+  border-radius: calc(.75rem * var(--iv-scale));
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  color: var(--page-button-color);
+  background-color: var(--page-button-background);
+  text-align: center;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: background-color .2s;
+
+  @include hover() {
+    background-color: var(--page-button-hover-background);
+  }
+
+  &Label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &Icon {
+    position: absolute;
+    top: .25rem;
+    inset-inline-end: .25rem;
+    font-size: .875rem;
+  }
+
+  &IconLink {
+    transform: rotate(-45deg);
+  }
+
+  &-primary,
+  &-success,
+  &-danger {
+    --page-button-color: #fff;
+    --page-button-background: var(--page-button-solid);
+    --page-button-hover-background: color-mix(in srgb, var(--page-button-solid) 88%, #000);
+
+    // Increase Contrast: white on the lighter palettes (night, tinted) falls below 4.5:1, so the
+    // fill darkens instead — 60% keeps every shipped palette at 4.9:1 or more
+    :global(.high-contrast) & {
+      --page-button-background: color-mix(in srgb, var(--page-button-solid) 60%, #000);
+      --page-button-hover-background: color-mix(in srgb, var(--page-button-solid) 52%, #000);
+    }
+  }
+
+  &-primary {
+    --page-button-solid: var(--primary-color);
+  }
+
+  &-success {
+    --page-button-solid: var(--green-color);
+  }
+
+  &-danger {
+    --page-button-solid: var(--danger-color);
+  }
+
+  // the link an inline link button carries
+  :global(.rich-button-link) {
+    color: inherit;
+  }
+
+  // an inline button inside the text flows with it
+  &Inline {
+    display: inline;
+    padding: .0625em .375em;
+    border-radius: .375em;
+    min-height: 0;
+    box-decoration-break: clone;
+  }
+
+  &Link {
+    --page-button-background: transparent;
+    --page-button-hover-background: var(--light-filled-primary-color);
+    padding-inline: 0;
+    font-weight: inherit;
+  }
+
+  &Disabled {
+    opacity: .5;
+    cursor: default;
+    pointer-events: none;
   }
 }
 
 .Kicker {
-  margin: 1em 0;
-  font-size: 0.8888em;
+  margin-block: calc(1rem * var(--iv-scale));
+  margin-inline: 0;
+  @include rounded-font-size(.8888em);
+}
+
+.Thinking {
+  color: var(--secondary-text-color);
+  background: linear-gradient(
+    90deg,
+    var(--secondary-text-color) 0%,
+    var(--secondary-text-color) 25%,
+    var(--primary-color) 50%,
+    var(--secondary-text-color) 75%,
+    var(--secondary-text-color) 100%
+  );
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-gradient 2s linear infinite;
+
+  &::selection {
+    color: var(--primary-text-color);
+    -webkit-text-fill-color: var(--primary-text-color);
+  }
+}
+
+@keyframes thinking-gradient {
+  0% {
+    background-position: 100% 0;
+  }
+
+  50%,
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Thinking {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    animation: none;
+  }
 }
 
 .Caption {
-  margin: .3333em 0 .6666em;
+  color: var(--secondary-text-color);
+  margin: 0;
+  padding-block: calc(.75rem * var(--iv-scale));
 
   &Text {
-    font-size: 0.8888em;
-    line-height: 1.3125em;
+    @include rounded-font-size(.875em);
+    font-weight: var(--font-weight-normal);
   }
 
   &Credit {
-    font-size: 0.7222em;
-    line-height: 1.3076923077em;
+    @include rounded-font-size(.7222em);
   }
 }
 
 .Details {
+  --details-icon-gap: calc(.5rem * var(--iv-scale));
+  --details-summary-padding-horizontal: calc(1rem * var(--iv-scale));
+
   // margin: 0 var(--margin-horizontal);
   // overflow: hidden;
 
   & & {
-    --margin-horizontal: 0em;
-    // --padding-horizontal: 0em;
+    --margin-horizontal: 0;
+    // --padding-horizontal: 0;
 
     // .DetailsSummary,
     // .DetailsContentInner {
@@ -489,21 +911,30 @@
     // }
   }
 
-  // .Border {
-    // margin-inline: 0 var(--margin-horizontal);
-  // }
+  &[data-editor-open='false'] &Content {
+    grid-template-rows: 0fr;
+  }
+
+  &[data-editor-open='true'] &Content {
+    grid-template-rows: 1fr;
+  }
 
   &Summary {
-    padding: 0.75em var(--padding-horizontal);
+    padding: calc(.75rem * var(--iv-scale)) var(--details-summary-padding-horizontal);
     display: flex;
     align-items: center;
     cursor: pointer;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
   }
 
   &Icon {
-    margin-inline: -.1777em var(--padding-horizontal);
-    font-size: 1.25em;
-    color: var(--text-secondary);
+    font-size: 1.5em;
+    margin-inline: 0 var(--details-icon-gap);
     transition: transform 0.2s ease-in-out;
 
     &Open {
@@ -512,7 +943,7 @@
   }
 
   &Title {
-    font-size: 1em;
+    @include rounded-font-size(1em);
   }
 
   &Content {
@@ -526,7 +957,13 @@
 
     &Inner {
       overflow: hidden;
-      // padding: 0 var(--padding-horizontal);
+
+      > .Paragraph {
+        padding:
+          0
+          calc(1rem * var(--iv-scale))
+          calc(.75rem * var(--iv-scale));
+      }
     }
   }
 }
@@ -547,19 +984,23 @@
 }
 
 .Audio {
-  margin: .7777em 0;
+  margin-block: calc(.7777rem * var(--iv-scale));
+  margin-inline: 0;
 }
 
 .Slideshow {
+  --slideshow-max-height: var(--iv-media-max-height);
+
   .Media {
     width: 100% !important;
     height: 100% !important;
     position: absolute;
     inset: 0;
 
-    :global(.media-photo) {
+    :global(.media-photo),
+    :global(.media-video) {
       max-height: 100%;
-      object-fit: cover;
+      object-fit: contain;
     }
   }
 }
@@ -579,6 +1020,34 @@
         height: 100%;
         object-fit: cover;
       }
+    }
+  }
+}
+
+.Media:global(.media-container-fitted) {
+  overflow: hidden;
+
+  > :global(.media-photo),
+  > :global(.media-video) {
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.08);
+    width: 100%;
+  }
+
+  > :global(.media-container-aspecter) {
+    height: 100% !important;
+    inset: 0;
+    margin: auto;
+    position: absolute;
+    width: 100% !important;
+    z-index: 1;
+
+    :global(.media-photo),
+    :global(.media-video) {
+      height: 100%;
+      object-fit: contain;
+      width: 100%;
     }
   }
 }

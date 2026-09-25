@@ -7,9 +7,14 @@ import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMen
 import filterAsync from '@helpers/array/filterAsync';
 import {doubleRaf} from '@helpers/schedulers';
 import callbackify from '@helpers/callbackify';
-import findUpClassName from '@helpers/dom/findUpClassName';
-import {MenuPositionPadding, positionMenuTrigger} from '@helpers/positionMenu';
-import {getOverlayRoot} from '@helpers/appWindow';
+import {
+  DEFAULT_MENU_WINDOW_MARGIN,
+  FloatingMenuDirection,
+  MenuPositionPadding,
+  positionFloatingMenu,
+  positionMenuTrigger
+} from '@helpers/positionMenu';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {getFullScreenElement} from '@helpers/dom/fullScreen';
 import I18n from '@lib/langPack';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -104,6 +109,7 @@ export default function ButtonMenuToggle({
   noIcon,
   icon = 'more',
   appendTo,
+  floatingDirection,
   positionPadding
 }: {
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
@@ -111,6 +117,7 @@ export default function ButtonMenuToggle({
   container?: HTMLElement
   appendTo?: HTMLElement,
   direction: ButtonMenuDirection,
+  floatingDirection?: FloatingMenuDirection,
   buttons: ButtonMenuItemOptionsVerifiable[],
   onOpenBefore?: (e: Event) => any,
   onOpen?: (e: Event, element: HTMLElement) => any,
@@ -191,7 +198,27 @@ export default function ButtonMenuToggle({
         (fullScreenElement?.contains(button) ? fullScreenElement : getOverlayRoot());
       mountTarget.append(_element);
       if(autoPosition) {
-        positionMenuTrigger(button, _element, direction, positionPadding ?? {top: 8, bottom: 8});
+        if(floatingDirection) {
+          const appWindow = getAppWindow();
+          const margin = DEFAULT_MENU_WINDOW_MARGIN * 2;
+          _element.style.inset = 'auto';
+          _element.style.maxHeight = `${Math.max(0, appWindow.innerHeight - margin)}px`;
+          _element.style.maxWidth = `${Math.max(0, appWindow.innerWidth - margin)}px`;
+          _element.style.overflowY = 'auto';
+          positionFloatingMenu(
+            button.getBoundingClientRect(),
+            _element,
+            floatingDirection,
+            [0, 8]
+          );
+        } else {
+          positionMenuTrigger(
+            button,
+            _element,
+            direction,
+            positionPadding ?? {top: 8, bottom: 8}
+          );
+        }
       }
       await doubleRaf();
       if(_tempId !== tempId) {

@@ -212,8 +212,8 @@ export default class DotRenderer implements AnimationItemWrapper {
       underLyingCtx: CanvasRenderingContext2D
     };
 
-    const x = getUnsafeRandomInt(0, instance.canvas.width - canvas.width);
-    const y = getUnsafeRandomInt(0, instance.canvas.height - canvas.height);
+    const x = getUnsafeRandomInt(0, Math.max(0, instance.canvas.width - canvas.width));
+    const y = getUnsafeRandomInt(0, Math.max(0, instance.canvas.height - canvas.height));
 
     const draw = () => {
       const {width, height} = canvas;
@@ -224,7 +224,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       context.clearRect(0, 0, width, height);
 
       if(!revealAnimation) {
-        context.drawImage(instance.canvas, x, y, width, height, 0, 0, width, height);
+        drawImageFromSource(context, instance.canvas, x, y, width, height, 0, 0, width, height);
       } else {
         const {
           progress,
@@ -237,7 +237,7 @@ export default class DotRenderer implements AnimationItemWrapper {
 
         // Zoom (push) the particles
         const scaledProgress = progress ** 2 /* * Math.sqrt(progress) */ * 0.5;
-        context.drawImage(instance.canvas,
+        drawImageFromSource(context, instance.canvas,
           x + transformedCoords.x * scaledProgress, y + transformedCoords.y * scaledProgress, width * (1 - scaledProgress), height * (1 - scaledProgress),
           0, 0, width, height
         );
@@ -491,8 +491,8 @@ export default class DotRenderer implements AnimationItemWrapper {
     const id = this.createdIndex;
 
     const simSize = IMAGE_SPOILER_SIZE * dpr;
-    const x = getUnsafeRandomInt(0, simSize - canvas.width);
-    const y = getUnsafeRandomInt(0, simSize - canvas.height);
+    const x = getUnsafeRandomInt(0, Math.max(0, simSize - canvas.width));
+    const y = getUnsafeRandomInt(0, Math.max(0, simSize - canvas.height));
 
     const offscreen = canvas.transferControlToOffscreen();
     connection.postMessage({

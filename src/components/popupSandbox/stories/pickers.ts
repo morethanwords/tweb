@@ -122,6 +122,19 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'createPoll/botQuiz',
+    title: 'New quiz asked for by a bot',
+    open: async(ctx) => {
+      const [{openCreatePollPopup}, {default: HotReloadGuard}] = await Promise.all([
+        import('@components/popups/createPoll'),
+        import('@lib/solidjs/hotReloadGuardProvider')
+      ]);
+
+      // a bot's `buttonTypeRequestPoll` with `quiz`: the kind of poll is fixed
+      openCreatePollPopup({quiz: true, onSubmit: noop}, HotReloadGuard);
+    }
+  },
+  {
     id: 'pollLink/editor',
     title: 'Poll link editor',
     open: async(ctx) => {

@@ -49,6 +49,12 @@ export function getFocusableElements(container: HTMLElement) {
   .sort((a, b) => (a.tabIndex > 0 ? a.tabIndex : Infinity) - (b.tabIndex > 0 ? b.tabIndex : Infinity));
 }
 
+/**
+ * Marks an overlay that serves a control inside a trapped element but is mounted elsewhere — the
+ * formatting toolbar over a caption. Focus may move into it without the trap pulling it back.
+ */
+export const FOCUS_TRAP_ATTACHED_ATTRIBUTE = 'data-focus-trap-attached';
+
 export type FocusTrap = ReturnType<typeof createFocusTrap>;
 type FocusScope = {element: HTMLElement, restoreTo?: HTMLElement};
 const documentTraps = new WeakMap<Document, FocusScope[]>();
@@ -73,7 +79,12 @@ export default function createFocusTrap(element: HTMLElement, isActive: () => bo
   };
 
   const onFocusIn = (event: FocusEvent) => {
-    if(isTopmost() && !element.contains(event.target as Node)) focusInside();
+    const target = event.target as Element;
+    if(
+      isTopmost() &&
+      !element.contains(target) &&
+      !target.closest?.(`[${FOCUS_TRAP_ATTACHED_ATTRIBUTE}]`)
+    ) focusInside();
   };
 
   const onKeyDown = (e: KeyboardEvent) => {

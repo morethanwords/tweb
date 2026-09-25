@@ -205,6 +205,12 @@ $transition: .2s var(--transition-standard-easing);
           }
         }
       }
+
+      // Tab reaches the tab's close button as well: show it while it holds the focus
+      &:focus-within .BrowserHeaderTabHover {
+        opacity: 1;
+        pointer-events: all;
+      }
     }
 
     &Selector {

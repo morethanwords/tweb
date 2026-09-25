@@ -1,5 +1,6 @@
 import type {AnimationItemGroup} from '@components/animationIntersector';
 import Button from '@components/buttonTsx';
+import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
 import createEmojiDropdownButton from '@components/emojiDropdownButton';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import {IconTsx} from '@components/iconTsx';
@@ -13,15 +14,13 @@ import {getOverlayRoot} from '@helpers/appWindow';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import throttle from '@helpers/schedulers/throttle';
 import Animated from '@helpers/solid/animations';
-import createMiddleware from '@helpers/solid/createMiddleware';
 import classNames from '@helpers/string/classNames';
 import I18n, {LangPackKey} from '@lib/langPack';
-import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {Accessor, createEffect, createSignal, onCleanup, Show, untrack} from 'solid-js';
 import {Portal} from 'solid-js/web';
-import ChatInput from './chat/input';
-import {AiEditorButton} from './chat/inputState/aiEditorButton';
+import type {AiEditorContext} from '@components/richMessageInput/aiContext';
+import {AiEditorButton} from '@components/richMessageInput/aiButton';
 
 type InputFieldMessageProps = {
   placeholder?: LangPackKey,
@@ -37,7 +36,7 @@ type InputFieldMessageProps = {
   btnConfirm?: HTMLElement,
   btnProps?: Parameters<typeof Button>[0],
   stars?: Accessor<number>,
-  chatInput?: ChatInput,
+  ai?: AiEditorContext,
 };
 
 const InputFieldMessage = (props: InputFieldMessageProps) => {
@@ -135,15 +134,17 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     inputField.input.dataset.animationGroup = props.animationGroup;
   }
 
-  [inputField.input, inputField.inputFake].forEach((input) => {
-    input.classList.replace('input-field-input', 'input-message-input');
-    input.classList.add(additionalClass + '-input');
-  });
+  inputField.input.classList.replace('input-field-input', 'input-message-input');
+  inputField.input.classList.add(additionalClass + '-input');
 
   inputField.placeholder.classList.add(
     'input-message-placeholder',
     additionalClass + '-placeholder'
   );
+  inputField.label?.classList.add(additionalClass + '-limit');
+
+  // A caption or a forward comment travels as text plus entities.
+  const editor = attachPlainMessageEditor(inputField.input);
 
   if(props.listenerSetter) {
     if(props.onScroll) {
@@ -183,7 +184,11 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     }
   });
 
-  onCleanup(dispose);
+  onCleanup(() => {
+    dispose();
+    editor.destroy();
+    inputField.destroy();
+  });
 
   props.ref?.(inputField);
 
@@ -194,28 +199,21 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     >
       {emojiButton}
       <div ref={setInputFieldContainer} class={classNames('input-message-container', additionalClass + '-inputs')}>
-        {inputField.input}
+        {inputField.heightWrapper}
         {inputField.placeholder}
-        {inputField.inputFake}
       </div>
+      {inputField.label}
       {btnConfirm}
-      {props.chatInput && (
+      {props.ai && (
         <SolidJSHotReloadGuardProvider>
           <AiEditorButton
             class='simple-message-input-ai-button'
-            instance={props.chatInput}
+            context={props.ai}
             container={inputFieldContainer()}
             appendTo={container()}
             canSend={false}
             inputField={inputField}
-            onApply={(text) => {
-              const node = wrapDraftText(text.text, {
-                entities: text.entities,
-                wrappingForPeerId: props.chatInput.chat.peerId,
-                middleware: createMiddleware().get()
-              });
-              inputField.setValueSilently(node);
-            }}
+            onApply={(text) => inputField.setValueSilently(text)}
             shouldShowFromHeight={100}
           />
         </SolidJSHotReloadGuardProvider>

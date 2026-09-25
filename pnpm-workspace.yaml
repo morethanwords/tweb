@@ -1,3 +1,32 @@
+# Keep the whole Tiptap release aligned with the audited editor version.
+overrides:
+  '@tiptap/core': &tiptapVersion 3.28.0
+  '@tiptap/extension-blockquote': *tiptapVersion
+  '@tiptap/extension-bold': *tiptapVersion
+  '@tiptap/extension-bullet-list': *tiptapVersion
+  '@tiptap/extension-code': *tiptapVersion
+  '@tiptap/extension-code-block': *tiptapVersion
+  '@tiptap/extension-document': *tiptapVersion
+  '@tiptap/extension-dropcursor': *tiptapVersion
+  '@tiptap/extension-gapcursor': *tiptapVersion
+  '@tiptap/extension-hard-break': *tiptapVersion
+  '@tiptap/extension-heading': *tiptapVersion
+  '@tiptap/extension-horizontal-rule': *tiptapVersion
+  '@tiptap/extension-italic': *tiptapVersion
+  '@tiptap/extension-link': *tiptapVersion
+  '@tiptap/extension-list': *tiptapVersion
+  '@tiptap/extension-list-item': *tiptapVersion
+  '@tiptap/extension-list-keymap': *tiptapVersion
+  '@tiptap/extension-ordered-list': *tiptapVersion
+  '@tiptap/extension-paragraph': *tiptapVersion
+  '@tiptap/extension-strike': *tiptapVersion
+  '@tiptap/extension-table': *tiptapVersion
+  '@tiptap/extension-text': *tiptapVersion
+  '@tiptap/extension-underline': *tiptapVersion
+  '@tiptap/extensions': *tiptapVersion
+  '@tiptap/pm': *tiptapVersion
+  '@tiptap/starter-kit': *tiptapVersion
+
 allowBuilds:
   '@parcel/watcher@2.6.0': true
   'cpu-features@0.0.10': true

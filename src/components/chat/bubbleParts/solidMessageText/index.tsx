@@ -2,7 +2,6 @@ import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import deepEqual from '@helpers/object/deepEqual';
 import {MessageEntity, TextWithEntities} from '@layer';
 import {
-  getCommonGraphemePrefixLength,
   getGraphemeOffsets,
   snapGraphemeOffsetDown,
   updateGraphemeOffsets,
@@ -533,8 +532,12 @@ function getIncrementalRenderStart(
   for(const entity of [...previousEntities, ...currentEntities]) {
     const start = entity.offset || 0;
     const end = start + (entity.length || 0);
-    if(!isSplittableTextEntity(entity) && start < dirtyStart && end > dirtyStart) {
-      dirtyStart = start;
+    // A quote also owns the preceding separator's rendering. When the quote
+    // first appears during reveal, replace the previously visible newline.
+    const renderStart = entity._ === 'messageEntityBlockquote' &&
+      (previous.text[start - 1] === '\n' || current.text[start - 1] === '\n') ? start - 1 : start;
+    if(!isSplittableTextEntity(entity) && renderStart < dirtyStart && end > dirtyStart) {
+      dirtyStart = renderStart;
     }
   }
 
@@ -834,8 +837,13 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
         const wrapperIndex = chunk.nodes.indexOf(wrapper);
         if(wrapperIndex !== -1) chunk.nodes[wrapperIndex] = container;
       }
-      chunk.to = currentEnd;
-      return currentEnd;
+      // The completed quote supplies the line boundary. Consume its external
+      // separator here too, before the independently rendered suffix loses
+      // the quote context needed by wrapRichText to suppress that newline.
+      const separatorLength = currentEntity._ === 'messageEntityBlockquote' &&
+        current.text[currentEnd] === '\n' && current.text[currentEnd - 1] !== '\n' ? 1 : 0;
+      chunk.to = currentEnd + separatorLength;
+      return chunk.to;
     }
     return;
   };

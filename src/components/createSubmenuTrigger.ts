@@ -60,7 +60,7 @@ export default function createSubmenuTrigger<T = {}>({
       },
       offset: [-5, -5],
       level: 2,
-      triggerEvent: 'mouseenter',
+      triggerEvent: ['mouseenter', CLICK_EVENT_NAME],
       canOpen: () => !isDisabled,
       onClose: onClose
     });
@@ -80,6 +80,7 @@ export default function createSubmenuTrigger<T = {}>({
 
   const menuBtnOptions: ButtonMenuItemOptionsVerifiable & T = {
     ...options,
+    keepOpen: true,
 
     // * fix langpack
     get regularText() {
@@ -92,7 +93,6 @@ export default function createSubmenuTrigger<T = {}>({
       return content;
     },
     onClick: noop,
-    keepOpen: true,
     onOpen,
     onClose,
     dispose: () => {

@@ -44,6 +44,7 @@ declare global {
   }
 
   interface Window {
+    fillChatInputEditorTestData?: () => boolean | Promise<boolean>;
     Prism?: {
       manual?: boolean
     };
@@ -141,13 +142,15 @@ declare global {
     'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
-    'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
+    'video/mp4' | 'image/webp' | 'audio/aac' | 'audio/flac' | 'audio/mp4' | 'audio/mpeg' |
+    'audio/ogg' | 'video/ogg' | 'application/octet-stream' |
     'application/x-tgsticker' | 'video/webm' | 'image/svg+xml' | 'image/png' | 'application/json' |
     'application/x-tgwallpattern' | 'audio/wav' | 'image/avif' | 'image/jxl' | 'image/bmp' |
     'image/heic' | 'application/x-mpegurl' | 'application/x-tgstoryboard' | 'application/x-tgstoryboardmap';
 
   type MTFileExtension = 'mov' | 'gif' | 'pdf' | 'jpg' | 'jpeg' | 'wav' |
-    'tgv' | 'tgs' | 'svg' | 'mp4' | 'webm' | 'webp' | 'mp3' | 'ogg' | 'json' |
+    'tgv' | 'tgs' | 'svg' | 'mp4' | 'webm' | 'webp' | 'mp3' | 'm4a' | 'aac' |
+    'flac' | 'opus' | 'oga' | 'ogg' | 'ogv' | 'json' |
     'png' | 'avif' | 'jxl' | 'bmp' | 'heic' | 'heif';
 
   type ApiFileManagerError = 'DOWNLOAD_CANCELED' | 'UPLOAD_CANCELED' | 'FILE_TOO_BIG' | 'REFERENCE_IS_NOT_REFRESHED';

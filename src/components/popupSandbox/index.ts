@@ -207,6 +207,10 @@ export function startPopupSandbox() {
     ownsLocationHash = true;
     watchForEdits();
     const close = await mountPanel();
+    const {default: MarkupTooltip} = await import('@components/chat/markupTooltip');
+    const {default: showDatePickerPopup} = await import('@components/popups/datePicker');
+    MarkupTooltip.getInstance().handleSelection();
+    MarkupTooltip.showDatePickerPopup = showDatePickerPopup;
 
     // Deep-link straight into a story: ?popups=1#deleteMessages/private. Editing the hash on an
     // open sandbox switches stories too — a same-document hash change never reloads the page.

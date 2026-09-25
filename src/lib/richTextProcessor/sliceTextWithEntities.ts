@@ -28,7 +28,6 @@ const ATOMIC: ReadonlySet<MessageEntity['_']> = new Set([
 ]);
 
 const ZERO_LENGTH: ReadonlySet<MessageEntity['_']> = new Set([
-  'messageEntityLinebreak',
   'messageEntityCaret'
 ]);
 

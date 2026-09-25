@@ -4,8 +4,9 @@ import {
   type ObjectURLPinUpdate,
   type SharedObjectURLUpdate
 } from '@helpers/objectUrlUtils';
-import {forgetLoadedURL} from '@helpers/dom/loadedUrlCache';
 import Modes from '@config/modes';
+
+export {createObjectURL, revokeObjectURL, ObjectURLScope} from '@helpers/objectUrlScope';
 
 type SharedObjectURLUpdateListener = (update: SharedObjectURLUpdate) => void;
 
@@ -22,21 +23,6 @@ function queuePinUpdate(update: ObjectURLPinUpdate) {
     pendingPinUpdates = [];
     apiManagerProxy.invokeVoid('updateObjectURLPins', updates);
   });
-}
-
-export function createObjectURL(blob: Blob) {
-  return URL.createObjectURL(blob);
-}
-
-// * Deliberately NOT gated behind Modes.noObjectUrlRevoke: this only ever
-// * revokes URLs minted in this tab (a blob URL can only be revoked in the
-// * realm that created it, so a worker-minted one would be a no-op here), and
-// * those are one-off previews whose disposal is a plain leak fix.
-export function revokeObjectURL(url: string) {
-  if(isObjectURL(url)) {
-    forgetLoadedURL(url);
-    URL.revokeObjectURL(url);
-  }
 }
 
 // * Keeps a worker-owned shared blob URL alive for a consumer that needs the
@@ -58,34 +44,6 @@ export function pinObjectURL(url: string) {
       queuePinUpdate({url, active: false});
     }
   };
-}
-
-export class ObjectURLScope {
-  private urls = new Set<string>();
-
-  public create(blob: Blob) {
-    return this.add(createObjectURL(blob));
-  }
-
-  public add(url: string) {
-    if(isObjectURL(url)) {
-      this.urls.add(url);
-    }
-    return url;
-  }
-
-  public release(url: string) {
-    if(this.urls.delete(url)) {
-      revokeObjectURL(url);
-    }
-  }
-
-  public dispose() {
-    for(const url of this.urls) {
-      revokeObjectURL(url);
-    }
-    this.urls.clear();
-  }
 }
 
 export function createSharedObjectURL(blob: Blob, owner: string) {

@@ -56,6 +56,15 @@
   background-color: var(--surface-color);
 }
 
+.tab, .tone {
+  color: inherit;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+}
+
 .tab {
   position: relative;
   overflow: hidden;
@@ -98,6 +107,22 @@
   --original-collapsed-height: calc(1lh + var(--original-extra-height));
 
   position: relative;
+}
+
+.createResult {
+  --content-padding-y: 0rem;
+  --content-padding-x: 0.5em;
+}
+
+.promptField {
+  padding: 1rem var(--content-padding-x) 0;
+}
+
+.promptInput {
+  :global(.input-field-input) {
+    max-height: calc(5lh + 1.625rem);
+    overflow-y: auto;
+  }
 }
 
 .exit {

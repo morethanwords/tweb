@@ -19,12 +19,19 @@ type InitWebGLArgs = {
 };
 
 export async function initWebGL({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware}: InitWebGLArgs) {
-  const [{vertexShaderSource, fragmentShaderSource}, {texture, media}] = await Promise.all([
-    import('./shaderSources'),
+  const isActive = () => (!middleware || middleware()) && gl && !gl.isContextLost();
+  if(!isActive()) return;
+  const loaded = await Promise.all([
+    import('@components/mediaEditor/webgl/shaderSources'),
     loadTexture({gl, mediaSrc, mediaType, videoTime, waitToSeek, middleware})
-  ]);
+  ]).catch(error => {
+    if(isActive()) throw error;
+  });
+  if(!isActive() || !loaded || !loaded[1]) return;
+  const [{vertexShaderSource, fragmentShaderSource}, {texture, media}] = loaded;
 
   const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+  if(!shaderProgram) return;
 
   const buffers = {
     position: initPositionBuffer(gl, media.width, media.height),

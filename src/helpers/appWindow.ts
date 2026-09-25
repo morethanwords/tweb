@@ -103,6 +103,12 @@ export function bindActiveWindowListener(
   type: string,
   listener: EventListenerOrEventListenerObject,
   options?: boolean | AddEventListenerOptions
+): () => void;
+export function bindActiveWindowListener(
+  getTarget: (win: Window) => EventTarget,
+  type: string,
+  listener: EventListenerOrEventListenerObject,
+  options?: boolean | AddEventListenerOptions
 ): () => void {
   let target: EventTarget;
   const attach = (win: Window) => {

@@ -14,7 +14,7 @@ import getSelectionElementFromTarget from '@components/chat/getSelectionElementF
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, TextWithEntities, TodoItem, TodoCompletion, MessageReplyHeader, PollAnswer} from '@layer';
+import {Message, Poll, Chat as MTChat, MessageEntity, MessageMedia, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, TextWithEntities, TodoItem, TodoCompletion, MessageReplyHeader, PollAnswer} from '@layer';
 import assumeType from '@helpers/assumeType';
 import showSponsoredPopup from '@components/popups/sponsored';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -35,7 +35,6 @@ import filterAsync from '@helpers/array/filterAsync';
 import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
 import {SERVICE_PEER_ID} from '@appManagers/constants';
 import {MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
-import filterUnique from '@helpers/array/filterUnique';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapEmojiText, {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
@@ -49,7 +48,7 @@ import Icon from '@components/icon';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import showPremiumPopup from '@components/popups/premium';
 import {ChatInputReplyTo} from '@components/chat/input';
-import {makeFullMid, TEST_BUBBLES_DELETION} from '@components/chat/bubbles';
+import {makeFullMid} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
 import {canEditMessageMediaWithEditor, getEditMediaLangKey} from './editMessageMedia';
@@ -65,18 +64,15 @@ import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import {getMessageSourceText} from '@stores/peerLanguage';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
 import {showAdReport, showMessageReport} from '@components/popups/reportAd';
 import showAboutAdPopup from '@components/popups/aboutAd';
-import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
 import deepEqual from '@helpers/object/deepEqual';
-import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import showStarReactionPopup from '@components/popups/starReaction';
 import getUniqueCustomEmojisFromMessage from '@appManagers/utils/messages/getUniqueCustomEmojisFromMessage';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import {getFullDate} from '@helpers/date/getFullDate';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
+import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {MySponsoredPeer} from '@appManagers/appChatsManager';
 import showChecklistPopup from '@components/popups/checklist';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
@@ -103,6 +99,7 @@ import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedba
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
+import {flattenRichMessageSummary} from '@lib/richMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -382,7 +379,6 @@ export default class ChatContextMenu {
   public onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
     if(this.chat.type === ChatType.Static) return;
 
-
     let bubble: HTMLElement, contentWrapper: HTMLElement, avatar: HTMLElement;
 
     try {
@@ -548,7 +544,6 @@ export default class ChatContextMenu {
         this.pollAnswer = undefined;
       }
     };
-
 
     const prepareForLog = async() => {
       const log = this.chat.bubbles.logsByBubble.get(bubble);
@@ -1096,7 +1091,7 @@ export default class ChatContextMenu {
       welcome: true,
       onClick: this.onCopyClick,
       verify: () => this.canCopyText() &&
-        !!(this.message as Message.message).message &&
+        !!this.selectedMessagesText &&
         !this.isTextSelected &&
         (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
     }, {
@@ -1105,7 +1100,7 @@ export default class ChatContextMenu {
       welcome: true,
       onClick: this.onCopyClick,
       verify: () => this.canCopyText() &&
-        !!(this.message as Message.message).message &&
+        !!((this.message as Message.message).message || (this.message as Message.message).rich_message) &&
         this.isTextSelected
     }, this.copyMediaButton = {
       icon: 'copy',
@@ -1126,7 +1121,8 @@ export default class ChatContextMenu {
         const selection = getAppWindow().getSelection();
         this.chat.initSearch({query: selection.toString()});
       },
-      verify: () => !!(this.message as Message.message).message && this.isTextSelected
+      verify: () => !!((this.message as Message.message).message || (this.message as Message.message).rich_message) &&
+        this.isTextSelected
     }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
@@ -1143,7 +1139,7 @@ export default class ChatContextMenu {
           const storageKey: MessagesStorageKey = `${peerId}_${this.chat.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
           for(const mid of mids) {
             const message = (await this.managers.appMessagesManager.getMessageFromStorage(storageKey, mid)) as Message.message;
-            if(!!message.message) {
+            if(!!(message.message || message.rich_message)) {
               return true;
             }
           }
@@ -2013,8 +2009,15 @@ export default class ChatContextMenu {
     }
 
     // sort by send time so the copied text follows the chronological order, not the selection order (#357)
-    const messages = (rawMessages.filter((message) => message?.message) as Message.message[])
+    const messages = (rawMessages.filter((message) => {
+      const richMessage = (message as Message.message)?.rich_message;
+      return message?.message || richMessage;
+    }) as Message.message[])
     .sort((a, b) => a.date - b.date || a.mid - b.mid);
+    if(!messages.length) {
+      return;
+    }
+
     const meta = messages.length > 1 ? await Promise.all(messages.map(async(message) => {
       const peerTitle = await getPeerTitle({
         peerId: message.fromId,
@@ -2032,6 +2035,11 @@ export default class ChatContextMenu {
     })) : [];
 
     return prepareTextWithEntitiesForCopying(messages.map((message) => {
+      if(message.rich_message) {
+        const {text, entities} = flattenRichMessageSummary(message.rich_message, 0);
+        return {text, entities};
+      }
+
       return {
         text: message.message,
         entities: (message as Message.message).totalEntities || message.entities
@@ -2130,10 +2138,12 @@ export default class ChatContextMenu {
       canHaveFormatting: ['bold', 'italic', 'link']
     });
 
+    const editor = attachPlainMessageEditor(inputField.input);
     if(factCheck) {
-      inputField.setValueSilently(wrapDraftText(factCheck.text.text, {entities: factCheck.text.entities}));
+      inputField.setValueSilently(factCheck.text);
     }
 
+    let text: string, entities: MessageEntity[];
     try {
       await confirmationPopup({
         titleLangKey: 'FactCheckDialog',
@@ -2141,11 +2151,13 @@ export default class ChatContextMenu {
         button: buttonOptions,
         confirmShortcutIsSendShortcut: true
       });
+      ({value: text, entities} = editor.getRichValue(true));
     } catch(err) {
       return;
+    } finally {
+      editor.destroy();
     }
 
-    const {value: text, entities} = getRichValueWithCaret(inputField.input, true, false);
     const newTextWithEntities: TextWithEntities = text ? {_: 'textWithEntities', text, entities} : undefined;
     if(factCheck && deepEqual(factCheck.text, newTextWithEntities)) {
       return;

@@ -1328,6 +1328,24 @@
     "type": "MessageEntity"
   },
   {
+    "predicate": "messageEntityRichButton",
+    "params": [
+      {
+        "name": "offset",
+        "type": "number"
+      },
+      {
+        "name": "length",
+        "type": "number"
+      },
+      {
+        "name": "button",
+        "type": "RichText.textButton"
+      }
+    ],
+    "type": "MessageEntity"
+  },
+  {
     "predicate": "messageEntityCustomEmoji",
     "params": [
       {

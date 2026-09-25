@@ -1,5 +1,6 @@
 import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import Button from '@components/buttonTsx';
+import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
 import Section from '@components/section';
@@ -12,7 +13,7 @@ import classNames from '@helpers/string/classNames';
 import I18n from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {createSignal, Setter, Show} from 'solid-js';
+import {createSignal, onCleanup, Setter, Show} from 'solid-js';
 import PopupElement, {createPopup, useSnitchedPopupContext} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
@@ -34,6 +35,7 @@ import {createFormFieldClickHandler, getFinalPayload, hasMeaningfulChanges, inte
 type CreatePollPopupProps = {
   isBroadcast?: boolean;
   supportedMediaTypes?: SupportedMediaType[];
+  quiz?: boolean;
   onSubmit: (payload: CreatePollPayload) => void;
 };
 
@@ -42,7 +44,8 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
 
   const context = createPollStoreContextValue({
     isBroadcast: () => props.isBroadcast ?? false,
-    supportedMediaTypes: () => props.supportedMediaTypes ?? []
+    supportedMediaTypes: () => props.supportedMediaTypes ?? [],
+    quiz: props.quiz
   });
   const [countriesElement, setCountriesElement] = createSignal<HTMLElement>();
 
@@ -127,6 +130,10 @@ const QuestionAndDescription = () => {
     }
   });
 
+  // The question travels as text plus entities and holds one line.
+  const questionInputEditor = attachPlainMessageEditor(questionInput.input);
+  onCleanup(() => questionInputEditor.destroy());
+
   questionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
   questionInput.input.setAttribute('aria-label', I18n.format('AskAQuestion', true));
 
@@ -142,6 +149,11 @@ const QuestionAndDescription = () => {
       });
     }
   });
+
+  // The description travels as text plus entities; the composer's engine on
+  // the plain schema gives it the same formatting as the chat input.
+  const descriptionInputEditor = attachPlainMessageEditor(descriptionInput.input);
+  onCleanup(() => descriptionInputEditor.destroy());
 
   descriptionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 

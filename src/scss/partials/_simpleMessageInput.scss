@@ -48,6 +48,24 @@
     max-height: inherit !important;
   }
 
+  &-limit {
+    align-self: flex-end;
+    color: var(--secondary-text-color);
+    flex: 0 0 auto;
+    font-size: .75rem;
+    line-height: 1rem;
+    margin: 0 .25rem calc((var(--height) - 1rem) / 2);
+    pointer-events: none;
+
+    &:empty {
+      display: none;
+    }
+
+    &.error {
+      color: var(--danger-color);
+    }
+  }
+
   &-confirm {
     flex: 0 0 auto;
     width: auto;

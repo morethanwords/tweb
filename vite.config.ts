@@ -8,6 +8,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
+import {createHash} from 'crypto';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import {watchScssTypes} from './scss-types.js';
@@ -30,6 +31,12 @@ if(existsSync(NODE_MODULES_PATH)) {
 }
 
 const isDEV = process.env.NODE_ENV === 'development';
+const generateDevCssModuleScopedName = (name: string, filename: string) => {
+  const relativePath = path.relative(rootDir, filename).split(path.sep).join('/');
+  const fileHash = createHash('sha1').update(relativePath).digest('hex').slice(0, 10);
+  return `_${name}_${fileHash}`;
+};
+
 if(!existsSync(LANG_PACK_LOCAL_FILE_PATH)) {
   copyFileSync(path.join(rootDir, 'src', 'langPackLocalVersion.example.ts'), LANG_PACK_LOCAL_FILE_PATH);
 }
@@ -274,6 +281,12 @@ export default defineConfig({
   },
   css: {
     devSourcemap: true,
+    // Vite's default CSS Modules name hashes the entire stylesheet and its line
+    // numbers. Every SCSS edit would therefore rename all classes while
+    // imperative DOM (for example ProseMirror node views) kept the old names.
+    modules: isDEV ? {
+      generateScopedName: generateDevCssModuleScopedName
+    } : undefined,
     postcss: {
       plugins: [
         autoprefixer({}) // add options if needed

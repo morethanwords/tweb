@@ -1,82 +1,176 @@
 @use "../shared" as *;
 
 .markup-tooltip {
-	$widthRegular: 312px;
-	$widthLink: 420px;
-	$padding: 7px;
+	$widthRegular: 344px;
+	$rowHeight: 48px;
+	$buttonMargin: 4px;
+	$delimiterWidth: 4px;
+	$padding: 4px;
 
 	background: var(--surface-color);
-	border-radius: $border-radius-medium;
+	border-radius: $border-radius-big;
+	box-shadow: 0 0 20px 0 rgba(0, 0, 0, .15);
 	transform: translateZ(0);
 	opacity: 0;
-	transition: opacity var(--layer-transition), transform var(--layer-transition), width var(--layer-transition);
+	transition:
+		opacity var(--layer-transition),
+		transform var(--layer-transition);
 	position: fixed;
 	top: 0;
 	right: 0;
 	bottom: 0;
 	left: 0;
-	height: 44px;
+	height: $rowHeight;
+	max-width: $widthRegular;
 	width: $widthRegular;
 	overflow: hidden;
 	z-index: 5;
 	display: flex;
 	justify-content: flex-start;
 
+	&.markup-tooltip-contextual {
+		bottom: auto;
+		height: $rowHeight;
+		max-width: none;
+		right: auto;
+		width: auto;
+
+		.markup-tooltip-wrapper {
+			position: relative;
+			width: 100%;
+		}
+
+		.markup-tooltip-tools {
+			width: 100%;
+		}
+	}
+
+	&.chat-input-rich-media-tooltip {
+		bottom: 0;
+		left: 50%;
+		opacity: 0;
+		position: absolute;
+		top: auto;
+		transform: translate(-50%, 50%);
+	}
+
+	&.chat-input-math-tooltip {
+		max-width: calc(100vw - .5rem);
+		width: 27.25rem;
+
+		.chat-input-math-tooltip-input-wrapper {
+			flex: 1 1 auto;
+			margin-inline-end: .5rem;
+			min-width: 0;
+			overflow: hidden;
+			position: relative;
+
+			&::before,
+			&::after {
+				content: '';
+				height: 100%;
+				opacity: 0;
+				pointer-events: none;
+				position: absolute;
+				top: 0;
+				transition: opacity var(--layer-transition);
+				width: 1.5rem;
+				z-index: 1;
+			}
+
+			&::before {
+				background: linear-gradient(to right, var(--surface-color), transparent);
+				inset-inline-start: 0;
+			}
+
+			&::after {
+				background: linear-gradient(to left, var(--surface-color), transparent);
+				inset-inline-end: 0;
+			}
+
+			&.can-scroll-start::before,
+			&.can-scroll-end::after {
+				opacity: 1;
+			}
+		}
+
+		.markup-tooltip-math-input {
+			margin: 0;
+			min-width: 0;
+			text-indent: 1rem;
+			width: 100%;
+		}
+	}
+
 	body.animation-level-0 & {
 		transition: none;
 	}
 
 	&-wrapper {
-		position: absolute;
-		left: 0;
-		top: 0;
+		direction: ltr;
 		display: flex;
 		align-items: center;
 		justify-content: flex-start;
-		//width: 420px;
-		width: #{$widthRegular + $widthLink};
 		height: 100%;
-		transform: translateX(0);
-		transition: transform var(--layer-transition);
 		max-width: 100%;
-
-		body.animation-level-0 & {
-			transition: none;
-		}
+		width: 100%;
 	}
 
 	&-tools {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: $padding;
+		justify-content: flex-start;
+		padding-block: $padding;
+		padding-inline: 0;
 		flex: 0 0 auto;
 		max-width: 100%;
 
 		&-regular {
+			height: $rowHeight;
+			padding-block: 0;
 			width: $widthRegular;
 		}
+	}
 
-		&-link {
-			width: $widthLink;
+	&-row {
+		align-items: center;
+		display: flex;
+		flex: 0 0 auto;
+		height: $rowHeight;
+		min-width: 100%;
+		width: max-content;
 
-			.markup-tooltip-delimiter {
-				margin: 0 .25rem;
-			}
+		> .btn-icon {
+			flex: 0 0 auto;
+			height: 2.5rem;
+			width: 2.5rem;
 		}
+	}
+
+	&-monospace-icon {
+		font-family: var(--font-monospace);
+		font-size: 1.125rem;
+		font-weight: 600;
 	}
 
 	&-delimiter {
-		width: 1px;
+		flex: 0 0 $delimiterWidth;
 		height: 25px;
-		background-color: var(--border-color);
+		position: relative;
+		width: $delimiterWidth;
+
+		&::after {
+			background-color: var(--border-color);
+			content: '';
+			height: 100%;
+			inset-inline-start: calc(50% - .5px);
+			position: absolute;
+			width: 1px;
+		}
 	}
 
 	.btn-icon {
-		border-radius: .625rem !important;
-		width: 1.875rem;
-		height: 1.875rem;
-		padding: 0;
+		margin-inline: $buttonMargin;
 
 		&.active {
 			color: #fff !important;
@@ -92,40 +186,21 @@
 		opacity: 1;
 	}
 
-	&.is-link {
-		width: $widthLink;
-	}
-
-	&.is-link &-wrapper {
-		transform: translateX(#{-$widthRegular});
-	}
-
-	&-link-apply {
-		color: var(--primary-color);
-		font-size: 2rem;
-
-		&-container {
-			display: flex;
-			align-items: center;
-			opacity: 0;
-			transition: opacity var(--layer-transition);
-			pointer-events: none;
-
-			body.animation-level-0 & {
-				transition: none;
-			}
-		}
-	}
-
 	.input-clear {
 		flex: 1 1 auto;
+		min-width: 0;
 		text-overflow: ellipsis;
 
 		margin: 0 .5rem;
+	}
+}
 
-		&.is-valid + .markup-tooltip-link-apply-container {
+.chat-input-rich-media-preview {
+	&:hover,
+	&:focus-within {
+		> .chat-input-rich-media-tooltip:not([hidden]) {
 			opacity: 1;
-			pointer-events: all;
+			pointer-events: auto;
 		}
 	}
 }

@@ -1,4 +1,4 @@
-import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction, createMemo, on, Accessor, batch} from 'solid-js';
+import {For, createEffect, createContext, useContext, Show, createSignal, createUniqueId, Setter, onCleanup, createMemo, on, Accessor, batch} from 'solid-js';
 import type {JSX} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
@@ -6,6 +6,7 @@ import {
   Document,
   Page,
   PageBlock,
+  PageButton,
   PageCaption,
   PageListOrderedItem,
   PageTableCell,
@@ -14,7 +15,18 @@ import {
   RichText
 } from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
-import styles from '@components/instantView.module.scss';
+import {
+  applyInstantViewMediaSize,
+  getMaximumHeightMediaSize,
+  getInstantViewHeadingPresentation,
+  getPageButtonClasses,
+  getPageButtonRowClasses,
+  INSTANT_VIEW_MEDIA_MAX_HEIGHT,
+  instantViewStyles as styles,
+  type InstantViewHeadingLevel
+} from '@components/instantViewFormatting';
+import {orderedListCounterStyle, orderedListItemStyle} from '@components/instantViewList';
+import {canonicalOrderedListType, getOrderedListTypePresentation} from '@lib/richTextProcessor/orderedList';
 import wrapRichText, {makeQuoteCollapsable} from '@lib/richTextProcessor/wrapRichText';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
@@ -22,7 +34,9 @@ import GenericTable, {GenericTableCell, GenericTableRow} from '@components/gener
 import {SolidJSHotReloadGuardContextValue, useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {formatDate, formatFullSentTime} from '@helpers/date';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import findUpTag from '@helpers/dom/findUpTag';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
 import Scrollable, {ScrollableContext} from '@components/scrollable2';
 import fastSmoothScroll, {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
@@ -51,6 +65,8 @@ import copyFromElement from '@helpers/dom/copyFromElement';
 import {toastNew} from '@components/toast';
 import {Latex, hydrateInlineMath} from '@components/instantViewMath';
 import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
+import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
+import showTooltip from '@components/tooltip';
 import {reconcileStablePageBlockEntries} from '@components/instantView/stablePageBlocks';
 import {
   MessageTextLayoutEvent,
@@ -63,6 +79,20 @@ import deepEqual from '@helpers/object/deepEqual';
 import filterDisabledEntities, {
   MESSAGE_LINK_ENTITY_TYPES
 } from '@lib/richTextProcessor/filterDisabledEntities';
+import {
+  CHATLESS_BUTTON_TYPES,
+  RichPageButton,
+  getButtonBackground,
+  getButtonTypeIcon,
+  getPageButtonRowAlign
+} from '@components/wrappers/buttonTypes';
+import {
+  RICH_BUTTON_LINK_CLASS,
+  copyUrlButtonAnchor,
+  createUrlButtonAnchor
+} from '@components/wrappers/urlButtonAnchor';
+import {getRichTextButton, RICH_TEXT_BUTTON_SELECTOR} from '@lib/richTextProcessor/richTextButtons';
+import type Chat from '@components/chat/chat';
 
 export type ReactiveInstantViewValue<T> = T | Accessor<T>;
 
@@ -93,6 +123,10 @@ export function readReactiveInstantViewValue<T>(value: ReactiveInstantViewValue<
 type InstantViewContextValue = {
   webPageId: Long,
   page: Page.page,
+  // the message a rich message's page is shown in: its buttons act on it (absent for a page
+  // opened on its own, where only links, copying and profiles work)
+  chat?: Chat,
+  message?: Message.message,
   sourceRevision: number,
   phase: MessageTextPhase,
   revealCoordinator?: MessageTextRevealCoordinator,
@@ -104,8 +138,11 @@ type InstantViewContextValue = {
   scrollToAnchor: (anchor: string, instantly: boolean) => void,
   customEmojiRenderer: CustomEmojiRendererElement,
   details: WeakMap<HTMLElement, Setter<boolean>>,
+  referenceTooltipClose?: () => void,
   ready: boolean,
   savingScroll: boolean,
+  displayTextDiff?: boolean,
+  onChecklistToggle?: (path: number[], checked: boolean) => void,
   isAlive: () => boolean,
   navigationGeneration: number,
   media: Array<{ref: HTMLElement, media: Photo.photo | Document.document, caption: PageCaption}>
@@ -197,6 +234,20 @@ function onClick(context: InstantViewContextValue, e: MouseEvent) {
     const m = href.match(FRAGMENT_HREF_RE);
     if(m) {
       cancelEvent(e);
+      const target = document.getElementById(context.randomId + m[1].slice(1));
+      if(target?.classList.contains('tg-reference')) {
+        const textElement = document.createDocumentFragment();
+        textElement.append(...Array.from(target.childNodes, (node) => node.cloneNode(true)));
+        context.referenceTooltipClose?.();
+        context.referenceTooltipClose = showTooltip({
+          element: anchor,
+          container: anchor.closest(`.${styles.InstantView}`) as HTMLElement || anchor.parentElement,
+          vertical: 'top',
+          textElement
+        }).close;
+        return;
+      }
+
       context.scrollToAnchor(m[1], false);
       return;
     }
@@ -221,6 +272,8 @@ function expandDetailsAncestors(context: InstantViewContextValue, element: HTMLE
 export function InstantViewBlocks(props: {
   webPageId: ReactiveInstantViewValue<Long>,
   page: ReactiveInstantViewValue<Page.page>,
+  chat?: Chat,
+  message?: ReactiveInstantViewValue<Message.message>,
   sourceRevision?: ReactiveInstantViewValue<number>,
   phase?: ReactiveInstantViewValue<MessageTextPhase>,
   richTextOptions?: ReactiveInstantViewValue<InstantViewRichTextOptions>,
@@ -235,6 +288,8 @@ export function InstantViewBlocks(props: {
   class?: string,
   contentClass?: string,
   paddings?: number,
+  displayTextDiff?: boolean,
+  onChecklistToggle?: (path: number[], checked: boolean) => void,
   style?: JSX.CSSProperties
 }) {
   let disposed = false;
@@ -251,6 +306,10 @@ export function InstantViewBlocks(props: {
     },
     get page() {
       return readReactiveInstantViewValue(props.page);
+    },
+    chat: props.chat,
+    get message() {
+      return props.message === undefined ? undefined : readReactiveInstantViewValue(props.message);
     },
     get sourceRevision() {
       return props.sourceRevision === undefined ? 0 : readReactiveInstantViewValue(props.sourceRevision);
@@ -289,9 +348,16 @@ export function InstantViewBlocks(props: {
     get navigationGeneration() {
       return navigationGeneration;
     },
+    get displayTextDiff() {
+      return props.displayTextDiff;
+    },
+    get onChecklistToggle() {
+      return props.onChecklistToggle;
+    },
     media: []
   };
 
+  onCleanup(() => value.referenceTooltipClose?.());
   let policyInitialized = false;
   createEffect(() => {
     // `richTextOptions` is a value or an accessor of one (ReactiveInstantViewValue), never a
@@ -335,14 +401,15 @@ function InstantViewContent(props: {
     <InstantViewContext.Provider value={props.value}>
       <div
         dir={props.value.page.pFlags.rtl ? 'auto' : undefined}
-        class={classNames(styles.InstantView, props.class, 'text-overflow-wrap')}
+        class={classNames(styles.RichText, styles.InstantView, props.class, 'text-overflow-wrap')}
         onClick={onClick.bind(null, props.value)}
         style={props.style}
       >
         {props.value.customEmojiRenderer}
-        <div class={classNames(styles.InstantViewContent, props.contentClass)}>
+        <div class={classNames(styles.InstantViewContent, styles.Blocks, props.contentClass)}>
           <StablePageBlocks
             blocks={props.value.page.blocks}
+            path={[]}
             paddings={props.paddings ?? 2}
           />
           {props.afterBlocks}
@@ -407,6 +474,8 @@ export function InstantView(props: {
   };
   onCleanup(() => disposed = true);
 
+  onCleanup(() => value.referenceTooltipClose?.());
+
   // console.log(props.page);
 
   let firstAnchor = true;
@@ -442,7 +511,7 @@ export function InstantView(props: {
           <InstantViewContent
             value={value}
             paddings={2}
-            style={{'--iv-scale': (1.125 * appSettings.instantView.scale).toFixed(3)}}
+            style={{'--iv-scale': appSettings.instantView.scale.toFixed(3)}}
           >
             <div
               dir="auto"
@@ -482,16 +551,7 @@ function _onMediaResult(
   height: number,
   paddings: number
 ) {
-  ref.style.setProperty(
-    '--aspect-ratio',
-    '' + (width / height)
-  );
-
-  ref.style.setProperty(
-    '--paddings',
-    // '' + (paddings > 1 ? paddings + 1 : 0)
-    '' + (paddings > 2 ? paddings : 0)
-  );
+  applyInstantViewMediaSize(ref, width, height, paddings);
 }
 
 function onMediaResult(
@@ -520,9 +580,9 @@ function findPageDocument(context: InstantViewContextValue, id: string | number)
 function Caption(props: {caption: PageCaption}) {
   return (
     <Show when={!isRichTextEmpty(props.caption.text) || !isRichTextEmpty(props.caption.credit)}>
-      <div class={classNames(styles.Padding, styles.Caption, 'secondary')}>
+      <div class={classNames(styles.Padding, styles.Caption)}>
         <Show when={!isRichTextEmpty(props.caption.text)}>
-          <div class={classNames(styles.CaptionText, 'text-bold')}>
+          <div class={styles.CaptionText}>
             <RichTextRenderer text={props.caption.text} />
           </div>
         </Show>
@@ -771,15 +831,16 @@ function StablePageBlocks(props: {
   blocks: PageBlock[],
   paddings: number,
   noCaption?: boolean,
+  path?: number[],
   render?: (block: PageBlock) => JSX.Element
 }) {
   const entries = createStablePageBlockEntries(() => props.blocks);
 
   return (
-    <For each={entries()}>{(entry) => (
+    <For each={entries()}>{(entry, index) => (
       props.render ?
         props.render(entry.block) :
-        <Block block={entry.block} paddings={props.paddings} noCaption={props.noCaption} />
+        <Block block={entry.block} paddings={props.paddings} noCaption={props.noCaption} path={props.path && [...props.path, index()]} />
     )}</For>
   );
 }
@@ -863,9 +924,130 @@ function isNestedPageBlockSnapshot(block: PageBlock, property: string) {
     );
 }
 
+function createMediaSpoilerAttacher(
+  media: Accessor<Photo.photo | Document.document>,
+  enabled: Accessor<boolean>
+) {
+  const [target, setTarget] = createSignal<{
+    container: HTMLElement,
+    size: {width: number, height: number}
+  }>();
+  createEffect(() => {
+    const current = target();
+    const source = media();
+    if(!enabled() || !source || !current) return;
+    const middleware = createMiddleware().get();
+    let spoiler: HTMLElement;
+    onCleanup(() => spoiler?.remove());
+    void wrapMediaSpoiler({
+      animationGroup: 'chat',
+      media: source,
+      middleware,
+      width: Math.max(1, current.size.width || current.container.clientWidth),
+      height: Math.max(1, current.size.height || current.container.clientHeight),
+      multiply: 0.3
+    }).then((mediaSpoiler) => {
+      if(!mediaSpoiler || !middleware()) return;
+      spoiler = mediaSpoiler;
+      mediaSpoiler.tabIndex = 0;
+      mediaSpoiler.setAttribute('role', 'button');
+      mediaSpoiler.setAttribute('aria-label', 'Spoiler');
+      const reveal = (event: Event) => onMediaSpoilerClick({mediaSpoiler, event});
+      mediaSpoiler.addEventListener('click', reveal);
+      mediaSpoiler.addEventListener('keydown', (event) => {
+        if(event.key === 'Enter' || event.key === ' ') reveal(event);
+      });
+      current.container.append(mediaSpoiler);
+    }).catch(() => {});
+  });
+  return (container: HTMLElement, size: {width: number, height: number}) => {
+    setTarget((current) => current?.container === container &&
+      current.size.width === size.width && current.size.height === size.height ? current : {container, size});
+  };
+}
+
+function orderedListItemValue(block: PageBlock.pageBlockOrderedList, index: number) {
+  const step = block.pFlags.reversed ? -1 : 1;
+  let value = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
+  for(let i = 0; i <= index; ++i) {
+    value = block.items[i].value ?? value;
+    if(i === index) {
+      return value;
+    }
+
+    value += step;
+  }
+}
+
+function toRoman(value: number) {
+  if(value <= 0 || value >= 4000) {
+    return '' + value;
+  }
+
+  const parts: Array<[number, string]> = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ];
+  let result = '';
+  for(const [amount, marker] of parts) {
+    while(value >= amount) {
+      result += marker;
+      value -= amount;
+    }
+  }
+
+  return result;
+}
+
+function toAlpha(value: number) {
+  if(value <= 0) {
+    return '' + value;
+  }
+
+  let result = '';
+  while(value > 0) {
+    --value;
+    result = String.fromCharCode(65 + value % 26) + result;
+    value = Math.floor(value / 26);
+  }
+
+  return result;
+}
+
+function getOrderedListMarker(
+  block: PageBlock.pageBlockOrderedList,
+  item: PageListOrderedItem,
+  index: number
+) {
+  if(item.num !== undefined && item.num !== '') {
+    return '' + item.num;
+  }
+
+  const value = orderedListItemValue(block, index);
+  const type = canonicalOrderedListType(item.type || block.type);
+  switch(type) {
+    case 'a':
+      return toAlpha(value).toLowerCase();
+    case 'A':
+      return toAlpha(value);
+    case 'i':
+      return toRoman(value).toLowerCase();
+    case 'I':
+      return toRoman(value);
+    default:
+      return '' + value;
+  }
+}
+
+function getOrderedListType(type?: string): '1' | 'a' | 'A' | 'i' | 'I' | undefined {
+  return getOrderedListTypePresentation(type)?.htmlType as '1' | 'a' | 'A' | 'i' | 'I' | undefined;
+}
+
 function Block(props: {
   block: PageBlock,
   paddings: number,
+  path?: number[],
   noCaption?: boolean,
   onSize?: (size: {width: number, height: number}) => void,
 }) {
@@ -878,43 +1060,32 @@ function Block(props: {
 
   switch(block._) {
     case 'pageBlockTitle':
-      return <h1 class={classNames(styles.Padding, styles.Title)}><RichTextRenderer text={block.text} /></h1>;
-    case 'pageBlockHeading1':
-      return <h1 class={classNames(styles.Padding, styles.Title)}><RichTextRenderer text={block.text} /></h1>;
     case 'pageBlockSubtitle':
-      return <h2 class={classNames(styles.Padding, styles.Subtitle, 'secondary')}><RichTextRenderer text={block.text} /></h2>;
-    case 'pageBlockHeading2':
-      return <h2 class={classNames(styles.Padding, styles.Subtitle)}><RichTextRenderer text={block.text} /></h2>;
     case 'pageBlockHeader':
     case 'pageBlockSubheader': {
-      // Markdown levels 1-6 are stashed as `headingLevel` on the block by parseMarkdownToPage
-      // (see comment there). Without it (e.g. native IV articles) fall back to the original
-      // h3 / h4 tag. With it, render the matching semantic tag and add `HeadingH{n}` so the
-      // CSS module can size each level distinctly.
-      const isHeader = block._ === 'pageBlockHeader';
-      const level = () => (block as typeof block & {headingLevel?: number}).headingLevel;
-      const tag = () => level() ? `h${Math.min(level() + 1, 6)}` : (isHeader ? 'h3' : 'h4');
+      const nativeLevel = {pageBlockTitle: 1, pageBlockSubtitle: 2, pageBlockHeader: 3, pageBlockSubheader: 4}[block._];
+      const level = (block as typeof block & {headingLevel?: number}).headingLevel || nativeLevel;
+      const presentation = getInstantViewHeadingPresentation(Math.max(1, Math.min(6, level)) as InstantViewHeadingLevel);
       return (
-        <Dynamic
-          component={tag()}
-          class={classNames(
-            styles.Padding,
-            isHeader ? styles.Header : styles.Subheader,
-            level() && styles[`HeadingH${level()}` as keyof typeof styles]
-          )}
-        >
+        <Dynamic component={presentation.tag} class={presentation.class}>
           <RichTextRenderer text={block.text} />
         </Dynamic>
       );
     }
+    case 'pageBlockHeading1':
+    case 'pageBlockHeading2':
     case 'pageBlockHeading3':
-      return <h3 class={classNames(styles.Padding, styles.Header)}><RichTextRenderer text={block.text} /></h3>;
     case 'pageBlockHeading4':
-      return <h4 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h4>;
     case 'pageBlockHeading5':
-      return <h5 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h5>;
-    case 'pageBlockHeading6':
-      return <h6 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h6>;
+    case 'pageBlockHeading6': {
+      const level = Number(block._.slice('pageBlockHeading'.length)) as InstantViewHeadingLevel;
+      const presentation = getInstantViewHeadingPresentation(level);
+      return (
+        <Dynamic component={presentation.tag} class={presentation.class}>
+          <RichTextRenderer text={block.text} />
+        </Dynamic>
+      );
+    }
     case 'pageBlockParagraph':
       return <p class={classNames(styles.Padding, styles.Paragraph)}><RichTextRenderer text={block.text} /></p>;
     case 'pageBlockPreformatted': {
@@ -945,55 +1116,100 @@ function Block(props: {
       return <div class={styles.Divider} />;
     case 'pageBlockOrderedList':
     case 'pageBlockList': {
-      // * own numbers cannot be perfectly vertical aligned if children is not plain text
       const isOrdered = block._ === 'pageBlockOrderedList';
       const orderedBlock = block as PageBlock.pageBlockOrderedList;
-      const shouldHaveOwnNumbers = createMemo(() => (
-        isOrdered && block.items.some((item) => item.num && !item.num.match(/^\d+$/))
-      ));
-      const {wrapEmojiText} = useHotReloadGuard();
+      const isChecklist = createMemo(() => block.items.length > 0 && block.items.every((item) => item.pFlags?.checkbox));
+      const shouldHaveOwnNumbers = createMemo(() => isOrdered && orderedBlock.items.some((item) => item.num !== undefined && item.num !== ''));
+      const {i18n, wrapEmojiText} = useHotReloadGuard();
+      const context = useContext(InstantViewContext);
       return (
         <Dynamic
           component={isOrdered ? 'ol' : 'ul'}
           reversed={isOrdered ? orderedBlock.pFlags.reversed : undefined}
           start={isOrdered ? orderedBlock.start : undefined}
-          type={isOrdered ? orderedBlock.type as '1' | 'a' | 'i' | 'A' | 'I' : undefined}
+          type={isOrdered ? getOrderedListType(orderedBlock.type) : undefined}
+          style={isOrdered ? orderedListCounterStyle(
+            orderedBlock.start ?? (orderedBlock.pFlags.reversed ? orderedBlock.items.length : 1),
+            !!orderedBlock.pFlags.reversed,
+            orderedBlock.type
+          ) : undefined}
           class={classNames(
             styles.List,
+            isChecklist() && styles.ListChecklist,
             styles.BlockContainer,
             styles.BlockGutter,
-            shouldHaveOwnNumbers() && styles.ListOrdered,
+            !isOrdered && styles.ListBullet,
+            isOrdered && styles.ListOrdered,
             'browser-default'
           )}
         >
-          <For each={block.items}>{(item, idx) => (
-            <li class={styles.ListItem}>
-              {shouldHaveOwnNumbers() && (
-                <span class={styles.ListItemNumber}>
-                  {(item as PageListOrderedItem.pageListOrderedItemText).num ?
-                    wrapEmojiText((item as PageListOrderedItem.pageListOrderedItemText).num) :
-                    idx() + 1}
-                  {`. `}
-                </span>
-              )}
-              {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
-                <>
-                  <Show when={item.pFlags?.checkbox}>
-                    <StaticCheckbox
-                      class={styles.TaskCheckbox}
-                      checked={item.pFlags?.checked}
-                    />
+          <For each={block.items}>{(item, idx) => {
+            const orderedItem = isOrdered ? item as PageListOrderedItem : undefined;
+            return (
+              <li
+                class={classNames(styles.ListItem, shouldHaveOwnNumbers() && styles.ListItemHasNumber)}
+                data-checkbox={item.pFlags?.checkbox ? 'true' : undefined}
+                value={orderedItem?.value}
+                type={getOrderedListType(orderedItem?.type)}
+                style={isOrdered ? orderedListItemStyle(orderedItem.value, orderedItem.type) : undefined}
+              >
+                {shouldHaveOwnNumbers() && (
+                  <span class={styles.ListItemNumber}>
+                    {wrapEmojiText(getOrderedListMarker(orderedBlock!, orderedItem!, idx()))}
+                    {`. `}
+                  </span>
+                )}
+                <Show when={item.pFlags?.checkbox}>
+                  <Show
+                    when={context.onChecklistToggle && props.path}
+                    fallback={
+                      <span class={styles.TaskCheckboxButton}>
+                        <StaticCheckbox class={styles.TaskCheckbox} checked={item.pFlags?.checked} />
+                      </span>
+                    }
+                  >
+                    <button
+                      type="button"
+                      class={styles.TaskCheckboxButton}
+                      role="checkbox"
+                      aria-checked={!!item.pFlags?.checked}
+                      aria-label={i18n(
+                        item.pFlags?.checked ? 'ChecklistUncheck' : 'ChecklistCheck'
+                      ).textContent || undefined}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        context.onChecklistToggle!(
+                          [...props.path!, idx()],
+                          !item.pFlags?.checked
+                        );
+                      }}
+                    >
+                      <StaticCheckbox
+                        class={styles.TaskCheckbox}
+                        checked={item.pFlags?.checked}
+                      />
+                    </button>
                   </Show>
-                  <RichTextRenderer text={item.text} />
-                </>
-              ) : (
-                <StablePageBlocks blocks={item.blocks} paddings={props.paddings + 1} />
-              )}
-            </li>
-          )}</For>
+                </Show>
+                <div class={styles.ListItemContent}>
+                  {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
+                    <RichTextRenderer text={item.text} />
+                  ) : (
+                    <StablePageBlocks
+                      blocks={item.blocks}
+                      paddings={props.paddings + 1}
+                      path={props.path && [...props.path, idx()]}
+                    />
+                  )}
+                </div>
+              </li>
+            );
+          }}</For>
         </Dynamic>
       );
     }
+    case 'pageBlockButtonRow':
+      return <PageButtonRow block={block} />;
     case 'pageBlockBlockquote':
       return (
         <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
@@ -1001,7 +1217,7 @@ function Block(props: {
           <CollapsableBlockquote collapsed={block.pFlags.collapsed}>
             <RichTextRenderer text={block.text} />
             <Show when={!isRichTextEmpty(block.caption)}>
-              <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
+              <div class={styles.BlockquoteCaption}>
                 <RichTextRenderer text={block.caption} />
               </div>
             </Show>
@@ -1013,10 +1229,10 @@ function Block(props: {
         <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
           {/* same app-standard quote chrome as the inline blockquote (accent bar + tinted bg + glyph),
               but hosting parsed child blocks instead of a single rich-text run */}
-          <blockquote class={classNames('quote-like', 'quote-like-border', 'quote-like-icon', styles.Blockquote, styles.BlockquoteBlocks, styles.BlockContainer)}>
-            <StablePageBlocks blocks={block.blocks} paddings={props.paddings + 1} />
+          <blockquote class={classNames('quote-like', 'quote-like-border', 'quote-like-icon', styles.Blockquote, styles.BlockContainer)}>
+            <StablePageBlocks path={props.path} blocks={block.blocks} paddings={props.paddings + 1} />
             <Show when={!isRichTextEmpty(block.caption)}>
-              <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
+              <div class={styles.BlockquoteCaption}>
                 <RichTextRenderer text={block.caption} />
               </div>
             </Show>
@@ -1026,13 +1242,14 @@ function Block(props: {
     case 'pageBlockCover':
       return (
         <div>
-          <StablePageBlocks blocks={[block.cover]} paddings={props.paddings} />
+          <StablePageBlocks blocks={[block.cover]} paddings={props.paddings} render={(cover) => <Block block={cover} paddings={props.paddings} path={props.path} />} />
         </div>
       );
     case 'pageBlockPhoto': {
       const context = useContext(InstantViewContext);
       const {PhotoTsx} = useHotReloadGuard();
       const photo = createMemo(() => findPagePhoto(context, block.photo_id));
+      const attachSpoiler = createMediaSpoilerAttacher(photo, () => !!block.pFlags.spoiler);
       let ref: HTMLDivElement, onClick: () => void;
       return (
         <>
@@ -1050,7 +1267,10 @@ function Block(props: {
             class={styles.Media}
             photo={photo()}
             withoutPreloader
-            onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
+            onResult={() => {
+              const size = onMediaResult(ref, props.paddings, props.onSize);
+              void attachSpoiler(ref, size);
+            }}
             onClick={() => onClick()}
           />
           <CaptionC caption={block.caption} />
@@ -1061,6 +1281,7 @@ function Block(props: {
       const context = useContext(InstantViewContext);
       const {VideoTsx} = useHotReloadGuard();
       const doc = createMemo(() => findPageDocument(context, block.video_id));
+      const attachSpoiler = createMediaSpoilerAttacher(doc, () => !!block.pFlags.spoiler);
       let ref: HTMLDivElement, onClick: () => void;
       return (
         <>
@@ -1074,7 +1295,10 @@ function Block(props: {
             withoutPreloader
             withPreview
             noInfo
-            onResult={() => onMediaResult(ref, props.paddings, props.onSize)}
+            onResult={() => {
+              const size = onMediaResult(ref, props.paddings, props.onSize);
+              void attachSpoiler(ref, size);
+            }}
             onClick={() => onClick()}
           />
           <CaptionC caption={block.caption} />
@@ -1251,7 +1475,7 @@ function Block(props: {
       return (
         <div class={styles.TableWrapper}>
           <Show when={!isRichTextEmpty(block.title)}>
-            <div class={styles.TableName}>
+            <div class={classNames(styles.TableName, 'text-bold')}>
               <RichTextRenderer text={block.title} />
             </div>
           </Show>
@@ -1412,25 +1636,51 @@ function Block(props: {
     case 'pageBlockSlideshow': {
       const {Slideshow} = useHotReloadGuard();
       const items = createStablePageBlockEntries(() => block.items);
+      const [sizes, setSizes] = createSignal<Record<string, {height: number, width: number}>>({});
+      const aspectRatio = () => {
+        const size = getMaximumHeightMediaSize(items().map((item) => sizes()[item.key]).filter(Boolean));
+        return size ? size.width / size.height : 16 / 9;
+      };
 
       return (
         <>
           <Slideshow
+            aspectRatio={aspectRatio()}
             class={styles.Slideshow}
             items={items()}
             getItemKey={(item) => item.key}
           >
             {(item, idx) => (
-              <Block block={item.block} paddings={0} noCaption />
+              <Block
+                block={item.block}
+                paddings={0}
+                noCaption
+                onSize={(size) => {
+                  setSizes((current) => {
+                    if(
+                      current[item.key]?.width === size.width &&
+                      current[item.key]?.height === size.height
+                    ) return current;
+                    const next = {...current};
+                    next[item.key] = size;
+                    return next;
+                  });
+                }}
+              />
             )}
           </Slideshow>
           <CaptionC caption={block.caption} />
         </>
       );
     }
-    case 'pageBlockMap': {
+    case 'pageBlockMap':
+    case 'inputPageBlockMap': {
       const context = useContext(InstantViewContext);
-      const geo = block.geo as GeoPoint.geoPoint;
+      const geo = block.geo._ === 'inputGeoPoint' ? {
+        ...block.geo,
+        _: 'geoPoint' as const,
+        access_hash: 0
+      } : block.geo as GeoPoint.geoPoint;
       const url = makeGoogleMapsUrl(geo);
       const location = getWebFileLocation(geo, block.w, block.h, block.zoom);
       const {PhotoTsx} = useHotReloadGuard();
@@ -1471,16 +1721,18 @@ function Block(props: {
       );
     case 'pageBlockThinking':
       return (
-        <p class={classNames(styles.Padding, styles.Paragraph, 'secondary')}>
+        <p class={classNames(styles.Padding, styles.Paragraph, styles.Thinking)}>
           <RichTextRenderer text={block.text} />
         </p>
       );
     case 'pageBlockPullquote':
       return (
-        <div class={styles.Pullquote}>
-          <RichTextRenderer text={block.text} />
+        <div class={classNames(styles.Pullquote, 'quote-like')}>
+          <div class={classNames(styles.PullquoteText, 'text-italic')}>
+            <RichTextRenderer text={block.text} />
+          </div>
           <Show when={!isRichTextEmpty(block.caption)}>
-            <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
+            <div class={classNames(styles.BlockquoteCaption, styles.PullquoteAuthor, 'text-bold')}>
               <RichTextRenderer text={block.caption} />
             </div>
           </Show>
@@ -1494,13 +1746,23 @@ function Block(props: {
         const serverOpen = !!block.pFlags.open;
         if(!userToggled) setOpen(serverOpen);
       });
+      const summaryId = createUniqueId();
+      const contentId = createUniqueId();
+      let content: HTMLDivElement;
+      createEffect(() => {
+        content.inert = !open();
+      });
       return (
         <div
           ref={(ref) => {detailsMap.set(ref, setOpen)}}
           class={classNames(styles.Details)}
         >
-          <div
+          <button
+            type="button"
+            id={summaryId}
             class={classNames(styles.DetailsSummary, 'hover-effect')}
+            aria-expanded={open()}
+            aria-controls={contentId}
             onClick={() => {
               userToggled = true;
               setOpen(!open());
@@ -1513,16 +1775,20 @@ function Block(props: {
             <div class={classNames(styles.DetailsTitle, 'text-bold')}>
               <RichTextRenderer text={block.title} />
             </div>
-          </div>
-          <div class={styles.Border} />
+          </button>
           <div
+            ref={content}
+            id={contentId}
+            role="region"
+            aria-labelledby={summaryId}
+            aria-hidden={!open()}
             class={classNames(
               styles.DetailsContent,
               open() && styles.DetailsContentOpen
             )}
           >
             <div class={styles.DetailsContentInner}>
-              <StablePageBlocks blocks={block.blocks} paddings={props.paddings} />
+              <StablePageBlocks path={props.path} blocks={block.blocks} paddings={props.paddings} />
             </div>
           </div>
         </div>
@@ -1579,7 +1845,8 @@ function Block(props: {
           items: sizes,
           maxWidth: 400,
           minWidth: 100,
-          spacing: 2
+          spacing: 2,
+          maxHeight: INSTANT_VIEW_MEDIA_MAX_HEIGHT
         });
         _onMediaResult(ref, width, height, props.paddings);
         // console.warn('collage map', map, ref.childElementCount);
@@ -1679,12 +1946,129 @@ function CollapsableBlockquote(props: {collapsed?: boolean, children: JSX.Elemen
   );
 }
 
+/**
+ * Layer 229's buttons in a page: rows of them and single ones inside the text. A button does
+ * what the bot keyboard's button of the same type does, acting on the message the page is shown
+ * in; where the host hides links (a translation, a suspected spammer), buttons go inert with them.
+ */
+function isPageButtonDisabled(context: InstantViewContextValue, button: RichPageButton) {
+  return (!context.chat && !CHATLESS_BUTTON_TYPES.has(button.type._)) ||
+    button.type._ === 'inlineButtonTypeDisabled' ||
+    !!getInstantViewDisabledEntities(context.richTextOptions)?.has('messageEntityRichButton');
+}
+
+/** The actions pull in half the popups, so they come with the first click, not with the page. */
+async function activatePageButton(
+  context: InstantViewContextValue,
+  button: RichPageButton,
+  element: HTMLElement,
+  event: MouseEvent
+) {
+  const {getRichPageButtonHandler} = await import('@components/wrappers/keyboardButton');
+  if(!context.isAlive() || !element.isConnected) return;
+  const handler = getRichPageButtonHandler({
+    button,
+    label: richTextToString(button.text),
+    chat: context.chat,
+    message: context.message
+  });
+  if(!handler || handler.unavailable) return;
+  handler.refCallbacks.forEach((callback) => callback(element));
+  handler.onClick?.(event);
+}
+
+function getRichPageButtonClasses(button: RichPageButton) {
+  return getPageButtonClasses(getButtonBackground(button.style), button.style?.pFlags.link);
+}
+
+function PageButtonRow(props: {block: PageBlock.pageBlockButtonRow}) {
+  return (
+    <div class={classNames(styles.Padding, ...getPageButtonRowClasses(getPageButtonRowAlign(props.block)))}>
+      <For each={props.block.buttons}>
+        {(button) => <PageButtonView button={button} />}
+      </For>
+    </div>
+  );
+}
+
+function PageButtonView(props: {button: PageButton}) {
+  const context = useContext(InstantViewContext);
+  const {button} = props;
+  const disabled = isPageButtonDisabled(context, button);
+  // a link button is a link: opening it takes the same path as a link in the text
+  const anchor = !disabled && button.type._ === 'inlineButtonTypeUrl' ?
+    createUrlButtonAnchor(button.type.url) :
+    undefined;
+  const icon = getButtonTypeIcon(button.type);
+  return (
+    <Dynamic
+      component={anchor ? 'a' : 'button'}
+      ref={(element: HTMLElement) => anchor && copyUrlButtonAnchor(anchor, element)}
+      class={classNames(
+        ...getRichPageButtonClasses(button),
+        disabled && styles.PageButtonDisabled,
+        // IV opens a link by this class (onClick above)
+        anchor?.className
+      )}
+      disabled={!anchor ? disabled : undefined}
+      aria-disabled={disabled || undefined}
+      onClick={(e: MouseEvent) => {
+        if(anchor) return;
+        cancelEvent(e);
+        if(!disabled) void activatePageButton(context, button, e.currentTarget as HTMLElement, e);
+      }}
+    >
+      <span class={styles.PageButtonLabel}>
+        <RichTextRenderer text={button.text} />
+      </span>
+      <Show when={icon}>
+        <IconTsx
+          icon={icon}
+          class={classNames(styles.PageButtonIcon, button.type._ === 'inlineButtonTypeUrl' && styles.PageButtonIconLink)}
+        />
+      </Show>
+    </Dynamic>
+  );
+}
+
+/** The text drew its inline buttons (wrapRichText); give each its look and its action. */
+function wireInlinePageButtons(context: InstantViewContextValue, fragment: DocumentFragment) {
+  fragment.querySelectorAll<HTMLElement>(RICH_TEXT_BUTTON_SELECTOR).forEach((element) => {
+    const button = getRichTextButton(element);
+    if(!button) return;
+    const disabled = isPageButtonDisabled(context, button);
+    element.classList.add(
+      ...getRichPageButtonClasses(button).filter(Boolean),
+      styles.PageButtonInline,
+      ...(disabled ? [styles.PageButtonDisabled] : [])
+    );
+    element.querySelector('.anchor-url')?.classList.add(RICH_BUTTON_LINK_CLASS);
+    if(disabled) {
+      element.setAttribute('aria-disabled', 'true');
+      return;
+    }
+
+    // a link button carries its link inside: the link takes the focus and opens itself
+    if(button.type._ !== 'inlineButtonTypeUrl') {
+      element.tabIndex = 0;
+    }
+
+    // Enter and Space come through here too (role="button")
+    attachClickEvent(element, (e) => {
+      const anchor = findUpTag(e.target, 'A');
+      if(anchor && element.contains(anchor)) return;
+      cancelEvent(e);
+      void activatePageButton(context, button, element, e);
+    });
+  });
+}
+
 function RichTextRenderer(props: {text: RichText}) {
   const context = useContext(InstantViewContext);
   const value = createMemo(() => {
     return wrapTelegramRichText(
       props.text,
-      {webPageId: context.webPageId, url: context.page.url, randomId: context.randomId}
+      {webPageId: context.webPageId, url: context.page.url, randomId: context.randomId, displayTextDiff: context.displayTextDiff}
     );
   });
   const hasInlineMath = createMemo(() => value().text.includes('\x02'));
@@ -1693,7 +2077,8 @@ function RichTextRenderer(props: {text: RichText}) {
     return hasInlineMath() || wrapped.entities?.some((entity) => (
       entity._ === 'messageEntityAnchor' ||
       entity._ === 'messageEntityUrl' ||
-      entity._ === 'messageEntityTextUrl'
+      entity._ === 'messageEntityTextUrl' ||
+      entity._ === 'messageEntityRichButton'
     ));
   });
   const richTextOptions = createMemo(() => getInstantViewRichTextOptions(context));
@@ -1709,6 +2094,7 @@ function RichTextRenderer(props: {text: RichText}) {
     fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
       el.classList.add(styles.Anchor);
     });
+    wireInlinePageButtons(context, fragment);
     // In-page fragment links (`#x`) get wrapped by wrapUrl into `https://#x` and flagged as
     // masked → wrapRichText attaches `showMaskedAlert` onclick. That alert is meaningless for
     // a same-page scroll, strip it so the IV onClick delegator can run scrollToAnchor.

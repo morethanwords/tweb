@@ -57,7 +57,7 @@ export function getEditMediaLangKey(message: Message.message | null | undefined)
   return message?.media?._ === 'messageMediaPhoto' ? 'EditThisPhoto' : 'EditThisVideo';
 }
 
-function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
+export function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   const photoSizes = photo.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
   photoSizes.sort((a, b) => b.size - a.size);
   const fullPhotoSize = photoSizes?.[0];
@@ -75,7 +75,7 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   };
 }
 
-function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
+export function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
   if(!document.size || document.size > MAX_EDITABLE_VIDEO_SIZE) return;
 
   return {
@@ -89,13 +89,13 @@ function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload
   };
 }
 
-async function createImageSource(url: string) {
+export async function createImageSource(url: string) {
   const img = new Image();
   await renderImageFromUrlPromise(img, url);
   return img;
 }
 
-async function createVideoSource(url: string, middleware: Middleware) {
+export async function createVideoSource(url: string, middleware?: Middleware) {
   // loaded here and not at the top so that merely ASKING whether a message can be
   // edited does not drag the video/streaming stack into the caller's bundle
   const {default: createVideo} = await import('@helpers/dom/createVideo');

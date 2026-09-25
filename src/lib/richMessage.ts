@@ -136,7 +136,7 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '', includeFal
     case 'pageBlockTable':
       appendRichTextLine(summary, block.title, prefix);
       for(const row of block.rows) {
-        appendTextWithEntitiesLine(summary, joinCells(row.cells.map((cell) => cell.text || emptyRichText)), prefix);
+        appendTextWithEntitiesLine(summary, joinRichTexts(row.cells.map((cell) => cell.text || emptyRichText), '\t'), prefix);
       }
       break;
     case 'pageBlockDetails':
@@ -204,6 +204,9 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '', includeFal
     case 'pageBlockAuthorDate':
       appendRichTextLine(summary, block.author, prefix);
       break;
+    case 'pageBlockButtonRow':
+      appendTextWithEntitiesLine(summary, joinRichTexts(block.buttons.map((button) => button.text), ' '), prefix);
+      break;
     default:
       if(includeFallbacks) appendPlainLine(summary, `Unsupported block: ${(block as PageBlock)._}`, prefix);
       break;
@@ -236,6 +239,8 @@ function appendRichTextLine(summary: Summary, richText: RichText, prefix = '') {
 // shift any following entities by the length delta so their offsets stay aligned.
 function wrapSummaryRichText(richText: RichText): TextWithEntities {
   const textWithEntities = wrapTelegramRichText(richText);
+  // a summary is text: an inline button is only its label there
+  textWithEntities.entities = textWithEntities.entities?.filter((entity) => entity._ !== 'messageEntityRichButton');
   const {text} = textWithEntities;
   if(!text.includes('\x02')) {
     return textWithEntities;
@@ -311,13 +316,13 @@ function appendEntities(summary: Summary, entities: MessageEntity[], offset: num
   }
 }
 
-function joinCells(cells: RichText[]): TextWithEntities {
+function joinRichTexts(texts: RichText[], separator: string): TextWithEntities {
   const joined = emptySummary();
-  for(const [index, cell] of cells.entries()) {
-    const textWithEntities = wrapSummaryRichText(cell);
-    const offset = joined.text.length + (index ? 1 : 0);
+  for(const [index, text] of texts.entries()) {
+    const textWithEntities = wrapSummaryRichText(text);
+    const offset = joined.text.length + (index ? separator.length : 0);
     if(index) {
-      joined.text += '\t';
+      joined.text += separator;
     }
 
     joined.text += textWithEntities.text;

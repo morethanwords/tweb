@@ -28,6 +28,7 @@ export function installNodeEnv() {
   installIndexedDBPolyfill();
   installCacheStoragePolyfill();
   installBroadcastChannelPolyfill();
+  installWorkerPolyfill();
   installStoragePolyfill();
 }
 
@@ -223,6 +224,30 @@ function installBroadcastChannelPolyfill() {
   }
 
   target.BroadcastChannel = NoopBroadcastChannel as any;
+}
+
+function installWorkerPolyfill() {
+  const target: any = globalThis as any;
+  if(typeof target.Worker !== 'undefined') return;
+
+  const WorkerMock = class Worker extends EventTarget {
+    public onerror: ((this: Worker, event: ErrorEvent) => any) | null = null;
+    public onmessage: ((this: Worker, event: MessageEvent) => any) | null = null;
+    public onmessageerror: ((this: Worker, event: MessageEvent) => any) | null = null;
+
+    constructor(_scriptURL: string | URL, _options?: WorkerOptions) {
+      super();
+    }
+
+    public postMessage(_message: any, _options?: StructuredSerializeOptions | Transferable[]) {}
+    public terminate() {}
+  };
+
+  Object.defineProperty(target, 'Worker', {
+    configurable: true,
+    value: WorkerMock,
+    writable: true
+  });
 }
 
 function ensureSelfAlias() {

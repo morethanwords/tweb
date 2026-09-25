@@ -2,6 +2,8 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
+import {InstantViewBlocks} from '@components/instantView';
+import {instantViewStyles} from '@components/instantViewFormatting';
 import ripple from '@components/ripple';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
@@ -18,8 +20,9 @@ import classNames from '@helpers/string/classNames';
 import {AiComposeTone} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiOkResultData} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
+import {richMessageToPage} from '@lib/richMessage';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, ParentProps, Show, Switch} from 'solid-js';
+import {children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, createUniqueId, For, JSX, Match, onCleanup, ParentProps, Show, Switch} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {EmojifyCheckbox, previewStyles, processEntities} from '@components/popups/previewCard';
 import {usePopupContext} from '../indexTsx';
@@ -47,17 +50,19 @@ export const Tabs = <T, >(props: TabsProps<T>) => {
     <div class={styles.padded}>
       <div class={styles.tabs}>
         <For each={props.items}>{(item) => (
-          <div
+          <button
+            type="button"
             use:ripple
             onClick={() => props.onTabChange(item.key)}
+            aria-pressed={props.activeKey === item.key}
             class={styles.tab}
             classList={{
               [styles.active]: props.activeKey === item.key
             }}
           >
-            <IconTsx class={styles.tabIcon} icon={item.icon} />
+            <IconTsx class={styles.tabIcon} icon={item.icon} aria-hidden="true" />
             <I18nTsx class={styles.tabLabel} key={item.label} />
-          </div>
+          </button>
         )}</For>
       </div>
     </div>
@@ -68,6 +73,7 @@ const MAX_CACHED_COMPOSED_MESSAGES = 50;
 export const cachedComposedMessages: Map<string, ComposeMessageWithAiOkResultData> = new Map();
 
 const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => {
+  if(args.customPrompt) return undefined;
   try {
     return JSON.stringify(args);
   } catch{
@@ -101,10 +107,15 @@ export const Result = (props: {
   onEmojify?: () => void;
   isAppearing?: boolean;
   useDiffText?: boolean;
+  onPendingChange?: (pending: boolean) => void;
   composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
   const {rootScope, toastNew, wrapRichText, showPremiumPopup} = useHotReloadGuard();
-  const {resultTextSignal: [, setResultText]} = useAiEditorPopupContext();
+  const {
+    richMessage,
+    resultTextSignal: [, setResultText],
+    resultRichMessageSignal: [, setResultRichMessage]
+  } = useAiEditorPopupContext();
   const popupContext = usePopupContext();
 
   let appearDeferred = props.isAppearing ? deferredPromise<void>() : undefined;
@@ -117,7 +128,11 @@ export const Result = (props: {
     track(() => props.isAppearing);
   }
 
-  const [composedMessage] = createResource(() => props.composeMessageWithAiArgs, (args) => {
+  const composeMessageWithAiArgs = () => ({
+    ...props.composeMessageWithAiArgs,
+    richMessage
+  });
+  const [composedMessage] = createResource(composeMessageWithAiArgs, (args) => {
     const cached = getCachedComposedMessage(args);
     if(cached) return cached;
 
@@ -130,8 +145,15 @@ export const Result = (props: {
       return result.data;
     })();
   }, {
-    initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
+    initialValue: getCachedComposedMessage(composeMessageWithAiArgs())
   } as {} /* Note that we need the 'pending' state when the initialValue is undefined - solved by `as {}` */);
+
+  createEffect(() => {
+    props.onPendingChange?.(
+      composedMessage.state === 'pending' || composedMessage.state === 'refreshing'
+    );
+  });
+  onCleanup(() => props.onPendingChange?.(false));
 
   let scrollableRef: HTMLDivElement, scrollableContextRef: ScrollableContextValue;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
@@ -141,18 +163,27 @@ export const Result = (props: {
   const textToRender = createMemo(() => {
     if(composedMessage.state !== 'ready') return;
     const localComposedMessage = composedMessage();
+    if(localComposedMessage.resultRichMessage) return;
     if(props.useDiffText) return localComposedMessage.diffText || localComposedMessage.resultText;
     return localComposedMessage.resultText;
+  });
+
+  const richPageToRender = createMemo(() => {
+    if(composedMessage.state !== 'ready') return;
+    const result = composedMessage().resultRichMessage;
+    return result && richMessageToPage(result);
   });
 
   createComputed(() => {
     if(composedMessage.state !== 'ready') return;
 
     setResultText(composedMessage().resultText);
+    setResultRichMessage(composedMessage().resultRichMessage);
 
     // Note that it needs to be cleared when switching to another tab
     onCleanup(() => {
       setResultText();
+      setResultRichMessage();
     });
   });
 
@@ -207,6 +238,32 @@ export const Result = (props: {
             });
           }}>
           <Switch>
+            <Match when={richPageToRender()} keyed>
+              {(page) => (
+                <Scrollable
+                  ref={scrollableRef}
+                  contextRef={(value) => void (scrollableContextRef = value)}
+                  relative
+                  class={previewStyles.richTextScrollable}
+                  withBorders='manual'
+                >
+                  <InstantViewBlocks
+                    webPageId={0}
+                    page={page}
+                    openNewPage={() => {}}
+                    collapse={() => {}}
+                    class={instantViewStyles.RichMessage}
+                    contentClass={classNames(
+                      previewStyles.richTextScrollableContent,
+                      previewStyles.nonInteractive
+                    )}
+                    paddings={0}
+                    displayTextDiff={props.useDiffText}
+                    style={{'--padding-horizontal': '0px'}}
+                  />
+                </Scrollable>
+              )}
+            </Match>
             <Match when={textToRender()} keyed>
               {(text) => (
                 <Scrollable
@@ -258,9 +315,8 @@ const ResultSkeleton = (props: {height?: number}) => {
   );
 };
 
-export const Tone = (props: {
-  docId: DocId;
-  name: string;
+type ToneProps = {
+  name: JSX.Element;
   selected: boolean;
   withContextMenu?: {
     isSaved: boolean;
@@ -268,11 +324,14 @@ export const Tone = (props: {
     onShare: () => void;
     onEdit?: () => void;
   };
-  onClick: JSX.EventHandlerUnion<HTMLDivElement, MouseEvent>;
-}) => {
-  const {rootScope} = useHotReloadGuard();
+  onClick: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
+} & ({docId: DocId, icon?: never} | {docId?: never, icon: Icon});
 
-  let div: HTMLDivElement;
+export const Tone = (props: ToneProps) => {
+  const {rootScope} = useHotReloadGuard();
+  const labelId = createUniqueId();
+
+  let button: HTMLButtonElement;
 
   createEffect(() => {
     if(!props.withContextMenu) return;
@@ -298,15 +357,18 @@ export const Tone = (props: {
           onClick: props.withContextMenu.onDelete
         }
       ],
-      listenTo: div
+      listenTo: button
     });
 
     onCleanup(() => destroy());
   });
 
   return (
-    <div
-      ref={div}
+    <button
+      type="button"
+      ref={button}
+      aria-pressed={props.selected}
+      aria-labelledby={labelId}
       class={styles.tone}
       classList={{
         [styles.active]: props.selected
@@ -314,18 +376,26 @@ export const Tone = (props: {
       use:ripple
       onClick={props.onClick}
     >
-      <EmojiDocumentIcon
-        docId={props.docId}
-        color={props.selected ? 'primary-color' : 'primary-text-color'}
-        size={42}
-        class={styles.toneIcon}
-        managers={rootScope.managers}
-      />
-      <div class={styles.toneName}>{props.name}</div>
+      <Show
+        when={props.docId}
+        fallback={<IconTsx class={styles.toneIcon} icon={props.icon!} />}
+        keyed
+      >
+        {(docId) => (
+          <EmojiDocumentIcon
+            docId={docId}
+            color={props.selected ? 'primary-color' : 'primary-text-color'}
+            size={42}
+            class={styles.toneIcon}
+            managers={rootScope.managers}
+          />
+        )}
+      </Show>
+      <div id={labelId} class={styles.toneName}>{props.name}</div>
       <Show when={props.withContextMenu}>
         <IconTsx icon='more' class={styles.toneContextMenuIcon} />
       </Show>
-    </div>
+    </button>
   );
 };
 
@@ -336,7 +406,7 @@ type CreateToneProps = {
 export const CreateTone = (props: CreateToneProps) => {
   const {HotReloadGuard, rootScope} = useHotReloadGuard();
   return (
-    <div class={styles.tone} use:ripple onClick={() => {
+    <button type="button" class={styles.tone} use:ripple onClick={() => {
       showCreateTonePopup({
         onSubmit: async(args) => {
           const createdTone = await rootScope.managers.aiTonesManager.createTone(args);
@@ -345,11 +415,11 @@ export const CreateTone = (props: CreateToneProps) => {
         HotReloadGuard
       });
     }}>
-      <IconTsx class={styles.toneIcon} icon='edit_stars_add' />
+      <IconTsx class={styles.toneIcon} icon='edit_stars_add' aria-hidden="true" />
       <div class={styles.toneName}>
         <I18nTsx key='Create' />
       </div>
-    </div>
+    </button>
   );
 };
 

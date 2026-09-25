@@ -22,12 +22,13 @@ import liteMode from '@helpers/liteMode';
 import isWebFileLocation from '@appManagers/utils/webFiles/isWebFileLocation';
 import apiManagerProxy from '@lib/apiManagerProxy';
 
-export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer, uploadingFileName}: {
+export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, fillBox, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer, uploadingFileName}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,
   message?: Message.message | Message.messageService,
   container?: HTMLElement,
   boxWidth?: number,
   boxHeight?: number,
+  fillBox?: boolean,
   withTail?: boolean,
   isOut?: boolean,
   lazyLoadQueue?: LazyLoadQueue | false,
@@ -129,6 +130,11 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
     });
     size = set.photoSize;
     isFit = set.isFit;
+    if(fillBox) {
+      container.style.width = boxWidth + 'px';
+      container.style.height = boxHeight + 'px';
+      isFit = false;
+    }
     cacheContext = apiManagerProxy.getCacheContext(photo, size.type);
 
     if(!isFit && !isWebDoc) {
@@ -360,4 +366,3 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
 
   return ret;
 }
-

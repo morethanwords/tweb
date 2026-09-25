@@ -12,6 +12,7 @@ import findConflictingEntity from '@lib/richTextProcessor/findConflictingEntity'
 import sortEntities from '@lib/richTextProcessor/sortEntities';
 import getRichElementValue, {SELECTION_SEPARATOR} from '@helpers/dom/getRichElementValue';
 import {SINGLE_ENTITIES} from '@lib/richTextProcessor';
+import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 
 export function getCaretPos(field: Node) {
   const sel = field.ownerDocument.defaultView.getSelection();
@@ -55,6 +56,11 @@ export default function getRichValueWithCaret(
   withEntities = true,
   withCaret = true
 ) {
+  if(field.nodeType === field.ELEMENT_NODE) {
+    const editor = getChatInputEditor(field as HTMLElement);
+    if(editor) return editor.getRichValue(withEntities, withCaret);
+  }
+
   const lines: string[] = [];
   const line: string[] = [];
 

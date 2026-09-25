@@ -1,8 +1,9 @@
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import deepEqual from '@helpers/object/deepEqual';
 import {TextWithEntities} from '@layer';
-import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import InputField, {InputFieldOptions} from '@components/inputField';
+import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
+import type {ChatInputEditor} from '@components/chat/inputEditor/types';
 import createEmojiDropdownButton from '@components/emojiDropdownButton';
 import classNames from '@helpers/string/classNames';
 import styles from '@components/inputFieldEmoji.module.scss';
@@ -12,12 +13,18 @@ import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 export class InputFieldEmoji extends InputField {
   private richOriginalValue: TextWithEntities;
   private dispose: () => void;
+  private editor: ChatInputEditor;
 
   constructor(options?: InputFieldOptions) {
     super({
       canWrapCustomEmojis: true,
       ...options
     })
+
+    // Every field of this class sends text plus entities, so it gets the
+    // composer's engine: the clipboard, undo and custom emoji then behave as in
+    // the chat input, and a one-line field gets the one-line schema.
+    this.editor = attachPlainMessageEditor(this.input);
 
     const {button, dispose} = createEmojiDropdownButton({
       inputField: this,
@@ -51,6 +58,7 @@ export class InputFieldEmoji extends InputField {
   }
 
   public cleanup() {
+    this.editor.destroy();
     this.dispose();
   }
 
@@ -59,12 +67,12 @@ export class InputFieldEmoji extends InputField {
     return {_: 'textWithEntities', text: value, entities};
   }
   set richValue(value: TextWithEntities) {
-    this.value = wrapEmojiText(value.text, false, value.entities);
+    this.value = value;
   }
 
   public setRichOriginalValue(value: TextWithEntities) {
     this.richOriginalValue = value;
-    this.value = wrapEmojiText(value.text, true, value.entities);
+    this.value = value;
   }
 
   isChanged() {

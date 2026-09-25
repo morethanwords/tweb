@@ -21,7 +21,6 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import whichChild from '@helpers/dom/whichChild';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import DropdownHover from '@helpers/dropdownHover';
-import pause from '@helpers/schedulers/pause';
 import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import {AppManagers} from '@lib/managers';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
@@ -41,6 +40,7 @@ import Tabs from '@components/tabs';
 import StickersTabCategory from '@components/emoticonsDropdown/category';
 import {Middleware} from '@helpers/middleware';
 import {Accessor, createSignal, Setter} from 'solid-js';
+import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
@@ -314,6 +314,12 @@ export class EmoticonsDropdown extends DropdownHover {
     attachClickEvent(this.deleteBtn, (e) => {
       cancelEvent(e);
       const input = this.chatInput.messageInput;
+      const editor = getChatInputEditor(input);
+      if(editor) {
+        editor.deleteBackward();
+        return;
+      }
+
       // RichInputHandler.getInstance().makeFocused(this.chatInput.messageInput);
       let range = RichInputHandler.getInstance().getSavedRange(input);
       if(!range) {

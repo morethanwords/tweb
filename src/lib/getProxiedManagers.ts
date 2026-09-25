@@ -71,6 +71,10 @@ const DEBUG_MANAGER_REQUESTS: {[managerName: string]: Set<string>} = {
   // appMessagesManager: new Set(['getMessageByPeer', 'getGroupsFirstMessage'])
 };
 
+function isProxyIntrospectionProperty(property: PropertyKey) {
+  return typeof(property) === 'symbol' || property === 'then' || property === 'toJSON';
+}
+
 function createProxy(
   /* source: T,  */
   name: string,
@@ -79,6 +83,8 @@ function createProxy(
 ) {
   const proxy = new Proxy({}, {
     get: (target, p, receiver) => {
+      if(isProxyIntrospectionProperty(p)) return undefined;
+
       // console.log('get', target, p, receiver);
       // @ts-ignore
       // const value = source[p];
@@ -142,6 +148,8 @@ type CombinedManagers = ProxiedManagers & {
 function createProxyProxy(proxied: any, accountNumber: ActiveAccountNumber, ack?: boolean) {
   return new Proxy(proxied, {
     get: (target, p, receiver) => {
+      if(isProxyIntrospectionProperty(p)) return undefined;
+
       // @ts-ignore
       return target[p] ??= createProxy(p as string, accountNumber, ack);
     }

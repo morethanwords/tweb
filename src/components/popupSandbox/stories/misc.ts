@@ -5,6 +5,7 @@
  */
 
 import noop from '@helpers/noop';
+import browserStyles from '@components/browser.module.scss';
 import {defineStories, PopupStory} from '../registry';
 
 import {
@@ -65,18 +66,11 @@ defineStories('Composer & bots', [
     title: 'Attach media',
     open: async(ctx) => {
       const {default: showNewMediaPopup} = await import('@components/popups/newMedia');
-      // A real preview size also exercises the edit/spoiler/delete controls.
-      const canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 360;
-      const painter = canvas.getContext('2d');
-      painter.fillStyle = '#315d99';
-      painter.fillRect(0, 0, canvas.width, canvas.height);
-      painter.fillStyle = '#fff';
-      painter.font = '32px sans-serif';
-      painter.fillText('Local media preview', 40, 180);
-      const blob = await new Promise<Blob>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      const file = new File([blob], 'sandbox-a11y.png', {type: 'image/png'});
+      // a real photo: a real preview size also exercises the edit/spoiler/delete controls
+      const {CHAT_INPUT_EDITOR_TEST_MEDIA_URL} = await import('@components/chat/inputEditor/testData');
+      const response = await fetch(CHAT_INPUT_EDITOR_TEST_MEDIA_URL);
+      if(!response.ok) throw new Error('Sandbox media fixture could not be loaded');
+      const file = new File([await response.blob()], 'sandbox-photo.jpg', {type: 'image/jpeg'});
       showNewMediaPopup(ctx.chat(), [file], 'media');
     }
   },
@@ -141,6 +135,84 @@ defineStories('Composer & bots', [
         message: ctx.message('private'),
         detectedLanguage: 'en'
       }, HotReloadGuard);
+    }
+  },
+  {
+    // layer 229 in a page: rows of buttons, buttons inside the text, a folded quote, a compact
+    // table. Read outside a message, only links, copying and profiles act; a callback is inert.
+    id: 'instantView/layer229',
+    title: 'Instant View — buttons and folded quotes',
+    // a page opens in the in-app browser, not in a popup; the page itself is made up
+    surface: `.${browserStyles.Browser}`,
+    fixtureOnly: true,
+    open: async() => {
+      const [{openInstantViewInAppBrowser, closeInAppBrowser}, {default: HotReloadGuard}] = await Promise.all([
+        import('@components/browser'),
+        import('@lib/solidjs/hotReloadGuardProvider')
+      ]);
+      const text = (value: string) => ({_: 'textPlain' as const, text: value});
+      const cell = (value: string) => ({_: 'pageTableCell' as const, pFlags: {}, text: text(value)});
+      openInstantViewInAppBrowser({
+        cachedPage: {
+          _: 'page',
+          pFlags: {},
+          url: 'https://telegram.org/sandbox',
+          photos: [],
+          documents: [],
+          views: 0,
+          blocks: [
+            {_: 'pageBlockTitle', text: text('Buttons in a page')},
+            {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [
+              text('Read '),
+              {_: 'textButton', text: text('the docs'), type: {_: 'inlineButtonTypeUrl', url: 'https://core.telegram.org'}},
+              text(' or '),
+              {
+                _: 'textButton',
+                text: text('copy the code'),
+                type: {_: 'inlineButtonTypeCopy', copy_text: 'TELEGRAM'},
+                style: {_: 'richButtonStyle', pFlags: {link: true}}
+              },
+              text(' — both work anywhere.')
+            ]}},
+            {_: 'pageBlockButtonRow', pFlags: {}, buttons: [
+              {
+                _: 'pageButton',
+                text: text('Open site'),
+                type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'},
+                style: {_: 'richButtonStyle', pFlags: {bg_primary: true}}
+              },
+              {_: 'pageButton', text: text('Copy'), type: {_: 'inlineButtonTypeCopy', copy_text: 'TELEGRAM'}},
+              {_: 'pageButton', text: text('Vote'), type: {_: 'inlineButtonTypeCallback', pFlags: {}, data: new Uint8Array([1])}}
+            ]},
+            {_: 'pageBlockButtonRow', pFlags: {align_right: true}, buttons: [
+              {
+                _: 'pageButton',
+                text: text('Accept'),
+                type: {_: 'inlineButtonTypeDisabled'},
+                style: {_: 'richButtonStyle', pFlags: {bg_success: true}}
+              },
+              {
+                _: 'pageButton',
+                text: text('Decline'),
+                type: {_: 'inlineButtonTypeCopy', copy_text: 'no'},
+                style: {_: 'richButtonStyle', pFlags: {bg_danger: true}}
+              }
+            ]},
+            {
+              _: 'pageBlockBlockquote',
+              pFlags: {collapsed: true},
+              text: text('A folded quote keeps a few lines in sight.\nThe rest waits for a click.\nLine three.\nLine four.\nLine five.'),
+              caption: text('Author')
+            },
+            {_: 'pageBlockTable', pFlags: {bordered: true, compact: true}, title: text('Compact table'), rows: [
+              {_: 'pageTableRow', cells: [cell('One'), cell('Two')]},
+              {_: 'pageTableRow', cells: [cell('Three'), cell('Four')]}
+            ]}
+          ]
+        },
+        HotReloadGuardProvider: HotReloadGuard
+      });
+      return closeInAppBrowser;
     }
   },
   {

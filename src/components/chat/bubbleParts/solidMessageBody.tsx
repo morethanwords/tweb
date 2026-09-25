@@ -1,3 +1,4 @@
+import type Chat from '@components/chat/chat';
 import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 import {
   createMessageTextRevealCoordinator,
@@ -38,6 +39,8 @@ export type SolidMessageBodyTranslationOptions = {
 
 export type CreateSolidMessageBodyOptions = {
   middleware?: Middleware,
+  // the chat the bubble is in, for a rich message's buttons
+  chat?: Chat,
   richTextOptions?: WrapRichTextOptions,
   translation?: SolidMessageBodyTranslationOptions,
   reducedMotion?: Accessor<boolean>,
@@ -118,6 +121,7 @@ export function makeSolidMessageBodySnapshot(
 
 function SolidMessageBody(props: {
   snapshot: Accessor<SolidMessageBodySnapshot>,
+  chat?: Chat,
   richTextOptions: Accessor<WrapRichTextOptions | undefined>,
   translation?: SolidMessageBodyTranslationOptions,
   reducedMotion?: Accessor<boolean>,
@@ -369,8 +373,10 @@ function SolidMessageBody(props: {
         <div style={{display: 'contents'}}>
           <RichMessageBubble
             message={() => props.snapshot().message}
+            chat={props.chat}
             richMessage={() => displayedRichMessage()!}
             page={currentPage}
+            checklistsDisabled={() => !!display() || loading()}
             sourceRevision={() => props.snapshot().sourceRevision}
             phase={() => props.snapshot().phase}
             richTextOptions={props.richTextOptions}
@@ -405,6 +411,7 @@ export function createSolidMessageBody(
         translation={options.translation}
         reducedMotion={options.reducedMotion}
         scrollToElement={options.scrollToElement}
+        chat={options.chat}
         onLayout={options.onLayout}
         onReveal={options.onReveal}
         onTextFinalized={(event) => {

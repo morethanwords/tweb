@@ -1,4 +1,7 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {openInstantViewInAppBrowser} from '@components/browser';
+import {InstantViewBlocks} from '@components/instantView';
+import {instantViewStyles} from '@components/instantViewFormatting';
 import {previewStyles} from '@components/popups/previewCard';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
@@ -9,12 +12,16 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {Message, TextWithEntities} from '@layer';
-import {flattenRichMessageContent} from '@lib/richMessage';
+import {Message, RichMessage, TextWithEntities} from '@layer';
+import {flattenRichMessageContent, richMessageToPage} from '@lib/richMessage';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createEffect, createResource, createSignal, JSX, Match, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 
+type TranslationResult =
+  {type: 'text', value: TextWithEntities} |
+  {type: 'rich', value: RichMessage};
 
 const ResultSkeleton = (props: {height?: number}) => {
   return (
@@ -36,26 +43,29 @@ export const Result = (props: {
 }) => {
   const {rootScope, wrapRichText} = useHotReloadGuard();
 
-  const [translation] = createResource(() => props.language, async(lang) => {
-    const message = props.message;
-    // A rich message has no plain text to send: it translates through its own endpoint and
-    // comes back as blocks, flattened here to the shape the original side renders. Desktop
-    // only swaps the rich page inside the bubble; offering it from the menu as well is a
-    // deliberate difference, so this branch has no upstream counterpart to follow.
-    if(message?.rich_message) {
-      const richMessage = await rootScope.managers.appTranslationsManager.translateRichMessage({
-        peerId: message.peerId,
-        mid: message.mid,
-        lang
-      });
-      return flattenRichMessageContent(richMessage);
-    }
+  const [translation] = createResource<TranslationResult, TranslatableLanguageISO>(
+    () => props.language,
+    async(lang) => {
+      if(props.message?.rich_message) {
+        return {
+          type: 'rich',
+          value: await rootScope.managers.appTranslationsManager.translateRichMessage({
+            peerId: props.message.peerId,
+            mid: props.message.mid,
+            lang
+          })
+        };
+      }
 
-    return rootScope.managers.appTranslationsManager.translateText({
-      ...(message ? {peerId: message.peerId, mid: message.mid} : {text: props.textWithEntities}),
-      lang
-    });
-  });
+      return {
+        type: 'text',
+        value: await rootScope.managers.appTranslationsManager.translateText({
+          ...(props.message ? {peerId: props.message.peerId, mid: props.message.mid} : {text: props.textWithEntities}),
+          lang
+        })
+      };
+    }
+  );
 
   let scrollableRef: HTMLDivElement, scrollableContextRef: ScrollableContextValue;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
@@ -70,7 +80,12 @@ export const Result = (props: {
 
   const onCopyClick = async() => {
     if(translation.state !== 'ready') return;
-    const {text, html} = prepareTextWithEntitiesForCopying(translation());
+    const translated = translation();
+    if(!translated?.value) return;
+    const textWithEntities = translated.type === 'rich' ?
+      flattenRichMessageContent(translated.value) :
+      translated.value;
+    const {text, html} = prepareTextWithEntitiesForCopying(textWithEntities);
     try {
       await copyTextToClipboard(text, html, {rethrow: true});
       toastNew({langPackKey: 'TextCopied'});
@@ -105,7 +120,7 @@ export const Result = (props: {
           }}>
           <Switch>
             <Match when={translation.state === 'ready' && translation()} keyed>
-              {(text) => (
+              {(translated) => (
                 <Scrollable
                   tabIndex={0}
                   ref={scrollableRef}
@@ -119,7 +134,25 @@ export const Result = (props: {
                     dir='auto'
                     ref={(el) => props.wireCaptionClick?.(el)}
                   >
-                    {wrapRichText(text.text, {textColor: 'primary-text-color', middleware: createMiddleware().get(), entities: text.entities})}
+                    {translated.type === 'rich' ? (
+                      <InstantViewBlocks
+                        webPageId={props.message.mid}
+                        page={richMessageToPage(translated.value)}
+                        openNewPage={(page) => {
+                          openInstantViewInAppBrowser({
+                            cachedPage: page,
+                            HotReloadGuardProvider: SolidJSHotReloadGuardProvider
+                          });
+                        }}
+                        collapse={() => {}}
+                        class={instantViewStyles.RichMessage}
+                        paddings={0}
+                      />
+                    ) : wrapRichText(translated.value.text, {
+                      textColor: 'primary-text-color',
+                      middleware: createMiddleware().get(),
+                      entities: translated.value.entities
+                    })}
                   </div>
                 </Scrollable>
               )}

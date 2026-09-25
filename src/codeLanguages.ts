@@ -1,4 +1,5 @@
 import callbackify from '@helpers/callbackify';
+import detectRawCodeLanguage from '@/codeLanguageDetector';
 
 export const CodeLanguageMap: {[key: string]: string[]} = {
   'Markup': [
@@ -1010,6 +1011,28 @@ export function highlightCode(code: string, _language: string) {
     const {prism, language} = imported;
     const html: string = prism.highlight(code, prism.languages[language], language);
     return html;
+  });
+}
+
+export type AutoCodeHighlight = {
+  html: string,
+  language: string
+};
+
+export function detectCodeLanguage(code: string): Promise<string | undefined> {
+  return detectRawCodeLanguage(code).then((detectedLanguage) => (
+    detectedLanguage && CodeLanguageAliases[detectedLanguage.toLowerCase()]
+  ));
+}
+
+export function highlightCodeAuto(code: string): Promise<AutoCodeHighlight | undefined> {
+  return detectCodeLanguage(code).then((detectedLanguage) => {
+    if(!detectedLanguage) return;
+
+    return callbackify(highlightCode(code, detectedLanguage), (html) => {
+      if(!html) return;
+      return {html, language: detectedLanguage};
+    });
   });
 }
 

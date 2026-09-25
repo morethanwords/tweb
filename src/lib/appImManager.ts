@@ -24,7 +24,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
 import {AppPrivateSearchTab} from '@components/solidJsTabs/tabs';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
-import {ChatFull, ChatParticipants, Game, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '@layer';
+import {ChatFull, Game, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, InputChannel, HelpPeerColors, MessageEntity, SponsoredMessage, InputGroupCall} from '@layer';
 import PeerTitle from '@components/peerTitle';
 import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -130,6 +130,12 @@ import {savedReactionTags} from '@components/chat/reactions';
 import {setAppState, useAppState} from '@stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
 import openRtmpCallViewer from '@lib/calls/openRtmpCallViewer';
+import {
+  dragEventHasFiles,
+  shouldPreventDefaultFilePaste,
+  shouldInsertRichMediaFiles
+} from '@components/chat/inputEditor/mediaPaste';
+import {isRichMessageMediaMimeType} from '@helpers/files/richMessageMediaInsertPolicy';
 import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';
@@ -146,18 +152,16 @@ import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import createChatAudio, {ChatAudioController} from '@components/chat/audio';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {useAppSettings} from '@stores/appSettings';
-import {MyMessage} from '@appManagers/appMessagesManager';
+import {MessageSendingParams, MyMessage} from '@appManagers/appMessagesManager';
 import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {usePeer} from '@stores/peers';
 import {untrack} from 'solid-js';
-import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import positionMenu from '@helpers/positionMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import showDatePickerPopup from '@components/popups/datePicker';
-import {getFullDate} from '@helpers/date/getFullDate';
 import noop from '@helpers/noop';
 
 export type ChatSavedPosition = {
@@ -273,7 +277,6 @@ export class AppImManager extends EventListenerBase<{
   private prevTab: HTMLElement;
   private chatsSelectTabDebounced: () => void;
 
-  private backgroundPromises: {[url: string]: MaybePromise<string>};
   private joinChatFlowsByQueryId = new Map<string, JoinChatFlow>();
   private callTransitions = callTransitionCoordinator;
 
@@ -331,7 +334,6 @@ export class AppImManager extends EventListenerBase<{
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
-    this.backgroundPromises = {};
     // Pre-cache the bundled wallpaper svg for every base entry — multiple base themes
     // can reference the same `pattern` slug, so we dedupe via the cache itself.
     SETTINGS_INIT.themes.forEach((theme) => {
@@ -2839,8 +2841,31 @@ export class AppImManager extends EventListenerBase<{
 
       const newMediaPopup = getCurrentNewMediaPopup();
       const types: string[] = await getFilesFromEvent(e, true);
+      const richMessageEditorExpanded = (
+        !newMediaPopup &&
+        this.chat.input?.isRichMessageEditorExpanded()
+      );
+      const richMediaPasteTarget = mount && richMessageEditorExpanded ?
+        this.chat.input?.captureRichMediaPasteTarget(e) :
+        undefined;
+      const canInsertAsRichMedia = !!(
+        richMediaPasteTarget &&
+        (
+          !types.length ||
+          types.every((mimeType) => (
+            !mimeType ||
+            mimeType === 'application/octet-stream' ||
+            isRichMessageMediaMimeType(mimeType) ||
+            mimeType === 'video/quicktime'
+          ))
+        )
+      );
       if(mount) {
-        if(!isFiles || (!(await this.canDrag()) && !newMediaPopup)) { // * skip dragging text case
+        if(
+          !isFiles ||
+          richMessageEditorExpanded && !canInsertAsRichMedia ||
+          (!(await this.canDrag(canInsertAsRichMedia)) && !newMediaPopup)
+        ) { // * skip dragging text case
           mount = false;
         }
 
@@ -2857,74 +2882,88 @@ export class AppImManager extends EventListenerBase<{
       if(mount && !_drops.length) {
         const force = isFiles && !types.length; // * can't get file items not from 'drop' on Safari
 
-        // * a .mov counts as media — it gets converted to mp4 in the send popup
-        const [foundMedia, foundDocuments] = partition(types, (t) => MEDIA_MIME_TYPES_SUPPORTED.has(t) || t === 'video/quicktime');
-        const [foundPhotos, foundVideos] = partition(foundMedia, (t) => IMAGE_MIME_TYPES_SUPPORTED.has(t));
-
-        if(!rights.send_docs) {
-          foundDocuments.length = 0;
-        } else {
-          foundDocuments.push(...foundMedia);
-        }
-
-        if(!rights.send_photos) {
-          foundPhotos.forEach((mimeType) => indexOfAndSplice(foundMedia, mimeType));
-          foundPhotos.length = 0;
-        }
-
-        if(!rights.send_videos) {
-          foundVideos.forEach((mimeType) => indexOfAndSplice(foundMedia, mimeType));
-          foundVideos.length = 0;
-        }
-
-        log('drag files', types, foundMedia, foundDocuments, foundPhotos, foundVideos);
-
-        if(newMediaPopup) {
-          newMediaPopup.appendDrops(_dropsContainer);
-
-          const length = (rights.send_docs ? [foundDocuments] : [foundPhotos, foundVideos]).reduce((acc, v) => acc + v.length, 0);
-          if(length || force) {
-            _drops.push(new ChatDragAndDrop(_dropsContainer, {
-              header: 'Preview.Dragging.AddItems',
-              headerArgs: [length],
-              onDrop: (e: DragEvent) => {
-                toggle(e, false);
-                log('drop', e);
-                this.onDocumentPaste(e, 'document');
-              }
-            }));
-          }
-        } else {
-          const canDragMediaWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'media'});
-          const canDragDocumentWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'document'});
-
-          if(canDragDocumentWhenEditing && (foundDocuments.length || force)) {
-            _drops.push(new ChatDragAndDrop(_dropsContainer, {
-              icon: 'dragfiles',
-              header: 'Chat.DropTitle',
-              subtitle: 'Chat.DropAsFilesDesc',
-              onDrop: (e: DragEvent) => {
-                toggle(e, false);
-                log('drop', e);
-                this.onDocumentPaste(e, 'document');
-              }
-            }));
-          }
-
-          if(canDragMediaWhenEditing && (foundMedia.length || force)) {
-            _drops.push(new ChatDragAndDrop(_dropsContainer, {
-              icon: 'dragmedia',
-              header: 'Chat.DropTitle',
-              subtitle: 'Chat.DropQuickDesc',
-              onDrop: (e: DragEvent) => {
-                toggle(e, false);
-                log('drop', e);
-                this.onDocumentPaste(e, 'media');
-              }
-            }));
-          }
-
+        if(canInsertAsRichMedia && !newMediaPopup) {
+          _drops.push(new ChatDragAndDrop(_dropsContainer, {
+            icon: 'dragmedia',
+            header: 'Chat.DropTitle',
+            subtitle: 'Chat.DropQuickDesc',
+            onDrop: (event: DragEvent) => {
+              toggle(event, false);
+              log('drop rich media', event);
+              this.onDocumentPaste(event);
+            }
+          }));
           this.chat.container.append(_dropsContainer);
+        } else {
+          // * a .mov counts as media — it gets converted to mp4 in the send popup
+          const [foundMedia, foundDocuments] = partition(types, (t) => MEDIA_MIME_TYPES_SUPPORTED.has(t) || t === 'video/quicktime');
+          const [foundPhotos, foundVideos] = partition(foundMedia, (t) => IMAGE_MIME_TYPES_SUPPORTED.has(t));
+
+          if(!rights.send_docs) {
+            foundDocuments.length = 0;
+          } else {
+            foundDocuments.push(...foundMedia);
+          }
+
+          if(!rights.send_photos) {
+            foundPhotos.forEach((mimeType) => indexOfAndSplice(foundMedia, mimeType));
+            foundPhotos.length = 0;
+          }
+
+          if(!rights.send_videos) {
+            foundVideos.forEach((mimeType) => indexOfAndSplice(foundMedia, mimeType));
+            foundVideos.length = 0;
+          }
+
+          log('drag files', types, foundMedia, foundDocuments, foundPhotos, foundVideos);
+
+          if(newMediaPopup) {
+            newMediaPopup.appendDrops(_dropsContainer);
+
+            const length = (rights.send_docs ? [foundDocuments] : [foundPhotos, foundVideos]).reduce((acc, v) => acc + v.length, 0);
+            if(length || force) {
+              _drops.push(new ChatDragAndDrop(_dropsContainer, {
+                header: 'Preview.Dragging.AddItems',
+                headerArgs: [length],
+                onDrop: (event: DragEvent) => {
+                  toggle(event, false);
+                  log('drop', event);
+                  this.onDocumentPaste(event, 'document');
+                }
+              }));
+            }
+          } else {
+            const canDragMediaWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'media'});
+            const canDragDocumentWhenEditing = canUploadAsWhenEditing({message: this.chat.input?.editMessage, asWhat: 'document'});
+
+            if(canDragDocumentWhenEditing && (foundDocuments.length || force)) {
+              _drops.push(new ChatDragAndDrop(_dropsContainer, {
+                icon: 'dragfiles',
+                header: 'Chat.DropTitle',
+                subtitle: 'Chat.DropAsFilesDesc',
+                onDrop: (event: DragEvent) => {
+                  toggle(event, false);
+                  log('drop', event);
+                  this.onDocumentPaste(event, 'document');
+                }
+              }));
+            }
+
+            if(canDragMediaWhenEditing && (foundMedia.length || force)) {
+              _drops.push(new ChatDragAndDrop(_dropsContainer, {
+                icon: 'dragmedia',
+                header: 'Chat.DropTitle',
+                subtitle: 'Chat.DropQuickDesc',
+                onDrop: (event: DragEvent) => {
+                  toggle(event, false);
+                  log('drop', event);
+                  this.onDocumentPaste(event, 'media');
+                }
+              }));
+            }
+
+            this.chat.container.append(_dropsContainer);
+          }
         }
       }
 
@@ -3023,6 +3062,14 @@ export class AppImManager extends EventListenerBase<{
           this.onDocumentPaste(e, undefined, files);
           clearLastDialogElement();
         });
+      } else if(
+        !getCurrentNewMediaPopup() &&
+        this.chat.input?.isRichMessageEditorExpanded() &&
+        dragEventHasFiles(e)
+      ) {
+        cancelEvent(e);
+        const files = await getFilesFromEvent(e);
+        await this.onDocumentPaste(e, undefined, files);
       }
 
       toggle(e, false);
@@ -3034,12 +3081,15 @@ export class AppImManager extends EventListenerBase<{
     const mediaDropsContainer = dropsContainer.cloneNode(true) as HTMLElement;
   }
 
-  private async canDrag(ephemeral = this.chat?.input?.isEphemeralComposerMode()) {
+  private async canDrag(
+    insertingRichMedia = false,
+    ephemeral = this.chat?.input?.isEphemeralComposerMode()
+  ) {
     const chat = this.chat;
     const peerId = chat?.peerId;
     const good = !(!peerId || overlayCounter.isOverlayActive || (!ephemeral && !(await chat.canSend('send_media'))));
-    if(good && !chat.input?.editMessage) {
-      if(!ephemeral && await this.chat.input.showSlowModeTooltipIfNeeded({
+    if(good && !ephemeral && !insertingRichMedia && !chat.input?.editMessage) {
+      if(await this.chat.input.showSlowModeTooltipIfNeeded({
         element: this.chat.input.attachMenu
       })) {
         return false;
@@ -3056,6 +3106,14 @@ export class AppImManager extends EventListenerBase<{
   ) => {
     const newMediaPopup = getCurrentNewMediaPopup();
     const ephemeralSnapshot = this.chat?.input?.getEphemeralSendingSnapshot();
+    const chatInput = this.chat.input;
+    const richMessageEditorExpanded = (
+      !newMediaPopup &&
+      chatInput?.isRichMessageEditorExpanded()
+    );
+    const richMediaPasteTarget = !newMediaPopup && attachType !== 'document' ?
+      chatInput?.captureRichMediaPasteTarget(e) :
+      undefined;
 
     // console.log('document paste');
     // console.log('item', event.clipboardData.getData());
@@ -3069,16 +3127,41 @@ export class AppImManager extends EventListenerBase<{
       }
     }
 
-    files ??= await getFilesFromEvent(e);
-    if(!(await this.canDrag(!!ephemeralSnapshot)) && !newMediaPopup) {
-      return;
+    // Prevent Chromium from inserting the same raw image into the focused
+    // contenteditable while the async attachment path prepares its preview.
+    if('clipboardData' in e && shouldPreventDefaultFilePaste(
+      e,
+      !!newMediaPopup || !!chatInput
+    )) {
+      cancelEvent(e);
     }
 
+    files ??= await getFilesFromEvent(e);
     if(!files.length) {
       return;
     }
 
-    const chatInput = this.chat.input;
+    const insertAsRichMedia = shouldInsertRichMediaFiles(
+      files,
+      richMediaPasteTarget,
+      attachType,
+      (file) => (
+        isRichMessageMediaMimeType(getFileMimeType(file), file.name)
+      )
+    );
+    if(richMessageEditorExpanded && !insertAsRichMedia) {
+      toastNew({langPackKey: 'RichMessage.Error.FileUnsupported'});
+      return;
+    }
+    if(!(
+      await this.canDrag(
+        insertAsRichMedia,
+        !!ephemeralSnapshot || chatInput.isEphemeralComposerMode()
+      )
+    ) && !newMediaPopup) {
+      return;
+    }
+
     if((ephemeralSnapshot || chatInput.isEphemeralComposerMode()) && files.length > 1) {
       files = files.slice(0, 1);
       toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
@@ -3090,6 +3173,11 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(!chatInput.canPaste()) {
+      return;
+    }
+
+    if(insertAsRichMedia) {
+      await chatInput.insertRichMediaFiles(files as File[], richMediaPasteTarget);
       return;
     }
 
@@ -3293,7 +3381,7 @@ export class AppImManager extends EventListenerBase<{
     options.peerId ??= NULL_PEER_ID;
     options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(options.peerId) || options.peerId;
 
-    const {peerId, lastMsgId, threadId} = options;
+    const {peerId} = options;
 
     // * replenish `min` peer
     if(peerId && options.stack) {
@@ -3833,6 +3921,42 @@ export class AppImManager extends EventListenerBase<{
       descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
     }).then(() => {
       return this.managers.appMessagesManager.sendContact({peerId, contactPeerId: rootScope.myId});
+    });
+  }
+
+  /** A bot keyboard asked where we are: confirm, then answer its message with the current position. */
+  public async requestLocation(options: Pick<MessageSendingParams, 'peerId' | 'threadId' | 'replyToMsgId'>) {
+    try {
+      await confirmationPopup({
+        titleLangKey: 'ShareYouLocationTitle',
+        descriptionLangKey: 'ShareYouLocationInfo',
+        button: {
+          langKey: 'OK'
+        }
+      });
+    } catch{
+      return;
+    }
+
+    let position: GeolocationPosition;
+    try {
+      position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 10_000});
+      });
+    } catch{
+      toastNew({langPackKey: 'ShareYouLocationUnable'});
+      return;
+    }
+
+    const {latitude: lat, longitude: long, accuracy} = position.coords;
+    const accuracy_radius = accuracy ? Math.round(accuracy) : undefined;
+    return this.managers.appMessagesManager.sendOther({
+      ...options,
+      inputMedia: {
+        _: 'inputMediaGeoPoint',
+        geo_point: {_: 'inputGeoPoint', lat, long, accuracy_radius}
+      },
+      geoPoint: {_: 'geoPoint', lat, long, access_hash: 0, accuracy_radius}
     });
   }
 

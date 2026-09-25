@@ -31,6 +31,7 @@ export default function GenericTable(props: {
         class={classNames(
           styles.genericTable,
           props.bordered && styles.bordered,
+          props.striped && styles.striped,
           props.class
         )}
       >
@@ -38,12 +39,9 @@ export default function GenericTable(props: {
           <div class={styles.border} />
         </Show>
         <tbody>
-          <For each={props.rows}>{(row, idx) => (
+          <For each={props.rows}>{(row) => (
             <tr
-              class={classNames(
-                styles.genericRow,
-                props.striped && !(idx() % 2) && styles.striped
-              )}
+              class={styles.genericRow}
             >
               <For each={row.cells}>{(cell) => (
                 <Dynamic

@@ -21,8 +21,8 @@ import CustomEmojiElement, {CustomEmojiElements} from '@lib/customEmoji/element'
 import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import {setDirection} from '@helpers/dom/setInnerHTML';
 import I18n, {i18n} from '@lib/langPack';
-import Icon from '@components/icon';
-import {CodeLanguageAliases, highlightCode} from '@/codeLanguages';
+import {createCodeHeaderButton} from '@helpers/dom/codeBlockClick';
+import {CodeLanguageAliases, highlightCode, highlightCodeAuto} from '@/codeLanguages';
 import callbackify from '@helpers/callbackify';
 import findIndexFrom from '@helpers/array/findIndexFrom';
 import {observeResize} from '@components/resizeObserver';
@@ -33,6 +33,7 @@ import formatFormattedDate from '@helpers/date/formatFormattedDate';
 import formatRelativeTime from '@helpers/date/formatRelativeTime';
 import tsNow from '@helpers/tsNow';
 import filterDisabledEntities, {markMessageLinkEntity} from '@lib/richTextProcessor/filterDisabledEntities';
+import {setRichTextButton} from '@lib/richTextProcessor/richTextButtons';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -117,9 +118,14 @@ function onQuoteResize(entry: ResizeObserverEntry) {
 export function makeQuoteCollapsable(element: HTMLElement) {
   element.classList.add('quote-like-collapsable');
 
-  const collapseIcon = document.createElement('span');
-  collapseIcon.classList.add('quote-like-icon', 'quote-like-collapse');
-  element.append(collapseIcon);
+  // A disclosure button, so the keyboard and screen readers reach it too. It only has to take
+  // the press: the host's click on the quote (`onQuoteClick`) folds and unfolds it.
+  const collapseButton = document.createElement('button');
+  collapseButton.type = 'button';
+  collapseButton.classList.add('quote-like-icon', 'quote-like-collapse');
+  collapseButton.setAttribute('aria-label', I18n.format('Chat.Quote.FullText', true));
+  collapseButton.setAttribute('aria-expanded', 'false');
+  element.append(collapseButton);
 
   return observeResize(element, onQuoteResize);
 }
@@ -310,12 +316,21 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           const headerName = document.createElement('span');
           headerName.classList.add('code-header-name');
           headerName.append(languageName || i18n('CopyCode'));
-          const headerWrapButton = Icon('menu', 'code-header-button', 'code-header-toggle-wrap');
-          header.append(headerName, headerWrapButton, Icon('copy', 'code-header-button', 'code-header-copy'));
+          const headerWrapButton = createCodeHeaderButton(
+            'menu',
+            'code-header-toggle-wrap'
+          );
+          header.append(
+            headerName,
+            headerWrapButton,
+            createCodeHeaderButton('copy_alt', 'code-header-copy')
+          );
 
           container.append(header, content);
 
-          const result = !options.noCodeHighlight && languageName && highlightCode(fullEntityText, languageName);
+          const result = !options.noCodeHighlight && (languageName ?
+            highlightCode(fullEntityText, languageName) :
+            !entityLanguage ? highlightCodeAuto(fullEntityText).then((highlight) => highlight?.html) : undefined);
           result && callbackify(result, (html) => {
             if(html && (!options.middleware || options.middleware())) {
               element.innerHTML = html;
@@ -376,17 +391,31 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         break;
       }
 
+      case 'messageEntityRichButton': {
+        element = document.createElement('span');
+        // a link button is the link it carries (the text url inside), one control rather than two
+        if(entity.button.type._ !== 'inlineButtonTypeUrl') {
+          element.setAttribute('role', 'button');
+        }
+        setRichTextButton(element, entity.button);
+        break;
+      }
+
       case 'messageEntityAnchor': {
         element = document.createElement('span');
         element.id = entity.name;
+        if((entity as MessageEntity & {richTextReference?: boolean}).richTextReference) {
+          element.classList.add('tg-reference');
+        }
         break;
       }
 
       case 'messageEntityPhone': {
         if(!(options.noLinks && !passEntities[entity._])) {
+          const target = (entity as MessageEntity & {richTextTarget?: string}).richTextTarget || fullEntityText;
           element = document.createElement('a');
           element.classList.add('phone-url');
-          (element as HTMLAnchorElement).href = encodeEntities('tel:' + fullEntityText);
+          (element as HTMLAnchorElement).href = encodeEntities('tel:' + target);
         }
         break;
       }
@@ -536,8 +565,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityLinebreak': {
-        // slice linebreaks before and after quote
-        if(options.ignoreNextIndex === nasty.i || (options.wrappingDraft && nextEntity?._ === 'messageEntityBlockquote' && nextEntity.offset === endOffset)) {
+        // The block boundary replaces one separator in messages and drafts.
+        if(options.ignoreNextIndex === nasty.i || (!options.noTextFormat && nextEntity?._ === 'messageEntityBlockquote' && nextEntity.offset === endOffset)) {
           usedText = true;
         } else if(options.wrappingDraft && IS_FIREFOX) {
           element = document.createElement('br');
@@ -630,8 +659,9 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityEmail': {
         if(!options.noLinks && !passEntities[entity._]) {
+          const target = (entity as MessageEntity & {richTextTarget?: string}).richTextTarget || fullEntityText;
           element = document.createElement('a');
-          (element as HTMLAnchorElement).href = encodeEntities('mailto:' + fullEntityText);
+          (element as HTMLAnchorElement).href = encodeEntities('mailto:' + target);
           setBlankToAnchor(element as HTMLAnchorElement);
         }
 
@@ -839,7 +869,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
         }
 
-        element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
+        element.classList.add(
+          'quote-like',
+          'quote-like-border',
+          'quote-like-icon',
+          'input-collapsible-quote'
+        );
         setDirection(element);
 
         processingBlockElement = true;

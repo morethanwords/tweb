@@ -271,3 +271,20 @@ describe('solid message text against the real wrapRichText markup', () => {
     harness.dispose();
   });
 });
+
+
+test.each([false, true])('renders the supplied middle quote without separator text (streaming=%s)', (streaming) => {
+  const source = textWithEntities('123123\n123123\n123123', [
+    {_: 'messageEntityLinebreak', offset: 6, length: 1},
+    {_: 'messageEntityBlockquote', pFlags: {}, offset: 7, length: 6},
+    {_: 'messageEntityLinebreak', offset: 13, length: 1}
+  ]);
+  const harness = mount(source, streaming ? 1 : source.text.length);
+  if(streaming) for(let visible = 2; visible <= source.text.length; ++visible) harness.setVisible(visible);
+  harness.setPhase('final');
+  expect(harness.root.firstChild?.textContent).toBe('123123');
+  expect(harness.root.querySelector('blockquote')?.textContent).toBe('123123');
+  expect(harness.root.lastChild?.textContent).toBe('123123');
+  expect(harness.root.textContent).toBe('123123123123123123');
+  harness.dispose();
+});

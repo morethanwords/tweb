@@ -30,3 +30,14 @@ export default function isSendShortcutPressed(e: KeyboardEvent) {
 
   return false;
 }
+
+export function isNewLineShortcutPressed(e: KeyboardEvent) {
+  if(e.key !== 'Enter' || IS_MOBILE || e.isComposing || e.altKey) return false;
+
+  const [appSettings] = useAppSettings();
+  if(appSettings.sendShortcut === 'enter') {
+    return e.shiftKey && !e.ctrlKey && !e.metaKey;
+  }
+
+  return !e.shiftKey && !e.ctrlKey && !e.metaKey;
+}

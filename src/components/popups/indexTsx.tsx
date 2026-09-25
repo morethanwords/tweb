@@ -13,7 +13,7 @@ import appNavigationController, {NavigationItem} from '@components/appNavigation
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
 import {bindActiveWindowListener, getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import MarkupTooltip from '@components/chat/markupTooltip';
+import tooltipController from '@helpers/tooltipController';
 import Button from '@components/buttonTsx';
 import {putPreloader} from '@components/putPreloader';
 import {doubleRaf} from '@helpers/schedulers';
@@ -182,6 +182,7 @@ const PopupElement = (props: {
 
     const realmDocument = capturedRoot.ownerDocument || document;
     previouslyFocusedEl = realmDocument.activeElement as HTMLElement;
+    tooltipController.closeAll();
     setShown(true);
     const navItem: NavigationItem = {
       type: 'popup',
@@ -287,7 +288,7 @@ const PopupElement = (props: {
       setHiding(false);
       middlewareHelper.destroy();
       controllerContext.dispose(); // * call it here for the content
-      MarkupTooltip.getInstance().hide();
+      tooltipController.closeAll();
 
       if(!withoutOverlay) {
         overlayCounter.isOverlayActive = false;

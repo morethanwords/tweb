@@ -96,7 +96,8 @@ export default function BrushCanvas() {
   onMount(async() => {
     if(mediaType !== 'image') return;
     const middleware = createMiddleware().get();
-    setFullImageGLPayload(await initWebGL({gl, mediaSrc, mediaType, videoTime: 0, middleware}));
+    const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: 0, middleware});
+    if(middleware() && payload) setFullImageGLPayload(payload);
   });
 
   onCleanup(() => {

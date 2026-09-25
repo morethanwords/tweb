@@ -639,7 +639,8 @@ const Icons = {
   table_filled: 'eb7d',
   blockquote: 'eb7e',
   sort_name: 'eb7f',
-  sort_online: 'eb80'
+  sort_online: 'eb80',
+  ai_letters_plain: 'eb81'
 };
 
 export default Icons;

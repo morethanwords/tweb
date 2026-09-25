@@ -13,3 +13,4 @@ import './misc';
 import './storySettings';
 import './authCards';
 import './calls';
+import './richEditor';

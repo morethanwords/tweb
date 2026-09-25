@@ -6,7 +6,7 @@ import {AppMessagesManager, HistoryStorage, MessagesStorage} from '@appManagers/
 import {AppMessagesIdsManager} from '@appManagers/appMessagesIdsManager';
 import {EPHEMERAL_MESSAGE_ID_OFFSET} from '@appManagers/constants';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import {BotInfo, Document, EphemeralMessage, Message, MessageEntity, ReplyMarkup, Updates} from '@layer';
+import {BotInfo, Document, EphemeralMessage, InputRichMessage, Message, MessageEntity, ReplyMarkup, RichMessage, Updates} from '@layer';
 
 const CHAT_ID = 777 as ChatId;
 const PEER_ID = CHAT_ID.toPeerId(true);
@@ -1497,19 +1497,52 @@ describe('AppMessagesManager ephemeral messages', () => {
       expect(manager.getWelcomeMessagesCount(PEER_ID)).toBe(0);
     });
 
-    it('does not offer to edit a rich template: this composer cannot carry it back', async() => {
+    it('offers to edit a rich template, unless only part of it came', async() => {
       const {manager} = makeWelcomeManager();
       manager.canManageWelcomeMessages = () => true;
+      const richMessage = (part?: true): RichMessage => ({_: 'richMessage', pFlags: {part}, blocks: [], photos: [], documents: []});
       manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(5, {message: 'Hi'})});
       manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(6, {
         message: '',
-        rich_message: {_: 'richMessage', pFlags: {}, blocks: [], photos: [], documents: []}
+        rich_message: richMessage()
       })});
-      const [plain, rich] = [...manager.getWelcomeMessagesStorage(PEER_ID).values()] as Message.message[];
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(7, {
+        message: '',
+        rich_message: richMessage(true)
+      })});
+      const [plain, rich, partial] = [...manager.getWelcomeMessagesStorage(PEER_ID).values()] as Message.message[];
 
       expect(await manager.canEditMessage(plain)).toBe(true);
-      expect(await manager.canEditMessage(rich)).toBe(false);
-      expect(manager.canDeleteMessage(rich)).toBe(true);
+      expect(await manager.canEditMessage(rich)).toBe(true);
+      expect(await manager.canEditMessage(partial)).toBe(false);
+      expect(manager.canDeleteMessage(partial)).toBe(true);
+    });
+
+    it('sends and edits a rich template as a rich message', async() => {
+      const {invokeApi, manager} = makeWelcomeManager();
+      manager.apiManager.getAppConfig = () => Promise.resolve({rich_message_posting: 'enabled'});
+      const input = {
+        _: 'inputRichMessage',
+        pFlags: {},
+        blocks: [{_: 'pageBlockParagraph', text: {_: 'textPlain', text: 'Welcome aboard'}}]
+      } as InputRichMessage.inputRichMessage;
+      const richMessage = {input, output: {_: 'richMessage', pFlags: {}, blocks: input.blocks, photos: [], documents: []}} as any;
+
+      await manager.sendText({peerId: PEER_ID, text: 'Welcome aboard', ephemeral: true, welcome: true, richMessage});
+      const sent = invokeApi.mock.calls.find(([method]) => method === 'ephemeral.sendMessage')[1];
+      expect(sent).toMatchObject({welcome: true, message: '', rich_message: input});
+      expect(sent.entities).toBeUndefined();
+      expect(sent.media).toBeUndefined();
+
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(9)});
+      const [message] = [...manager.getWelcomeMessagesStorage(PEER_ID).values()] as Message.message[];
+      invokeApi.mockClear();
+
+      await manager.editMessage(message, 'Welcome aboard', {richMessage});
+      const edited = invokeApi.mock.calls.find(([method]) => method === 'ephemeral.editMessage')[1];
+      expect(edited).toMatchObject({welcome: true, id: 9, rich_message: input});
+      expect(edited.message).toBeUndefined();
+      expect(edited.entities).toBeUndefined();
     });
 
     it('shows every template as sent by the chat itself, even one a bot admin wrote', () => {

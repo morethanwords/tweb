@@ -1,20 +1,17 @@
 import cancelEvent from '@helpers/dom/cancelEvent';
 import safePlay from '@helpers/dom/safePlay';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import getImageFromStrippedThumb from '@helpers/getImageFromStrippedThumb';
 import withTimeout from '@helpers/schedulers/withTimeout';
 import {Document, Photo, PhotoSize} from '@layer';
 import {i18n} from '@lib/langPack';
-import rootScope from '@lib/rootScope';
-import useContentSettings from '@stores/contentSettings';
-import confirmationPopup from '@components/confirmationPopup';
 import DotRenderer from '@components/dotRenderer';
 import Icon from '@components/icon';
-import createAgeVerification from '@components/popups/ageVerification';
 import SetTransition from '@components/singleTransition';
-import {toastNew} from '@components/toast';
 import Button from '@components/button';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import makeMediaPreviewsAccessible, {MEDIA_PREVIEW_SELECTOR} from '@helpers/dom/mediaPreviewAccessibility';
+import {doubleRaf} from '@helpers/schedulers';
 
 // * the dot canvas is decoration on top of an already-covering blurred thumbnail; never let it
 // * hold up the message batch for longer than this
@@ -65,6 +62,23 @@ export function toggleMediaSpoiler(options: {
   });
 }
 
+export async function concealMediaSpoilerWithAnimation(options: {
+  mediaSpoiler: HTMLElement,
+  canAnimate?: () => boolean
+}) {
+  const {mediaSpoiler, canAnimate} = options;
+  mediaSpoiler.classList.add('is-revealing', 'forwards');
+  await doubleRaf();
+  if(
+    !mediaSpoiler.isConnected ||
+    canAnimate && !canAnimate()
+  ) return;
+  toggleMediaSpoiler({
+    mediaSpoiler,
+    reveal: false
+  });
+}
+
 
 function revealSpoilerWithAnimation(options: {
   mediaSpoiler: HTMLElement,
@@ -92,7 +106,6 @@ export function onMediaSpoilerClick(options: {
   event: Event
 }) {
   const {mediaSpoiler, event} = options;
-  const contentSettings = useContentSettings();
   cancelEvent(event);
 
   if(mediaSpoiler.classList.contains('is-revealing') || mediaSpoiler.dataset.isRevealing) {
@@ -100,39 +113,9 @@ export function onMediaSpoilerClick(options: {
   }
 
   if(mediaSpoiler.dataset.isSensitive) {
-    if(!contentSettings.sensitiveCanChange()) {
-      toastNew({langPackKey: 'SensitiveContentUnavailable'});
-      return;
-    }
-
-    if(contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
-      createAgeVerification().then((verified) => {
-        if(verified) {
-          clearSensitiveSpoilers();
-        }
-      });
-      return;
-    }
-
-    confirmationPopup({
-      titleLangKey: '18Plus',
-      descriptionLangKey: 'SensitiveContentDesc',
-      button: {
-        langKey: 'SensitiveContentConfirm'
-      },
-      checkbox: {
-        text: 'SensitiveContentRemember'
-      }
-    }).then((remember) => {
-      if(remember) {
-        rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
-        clearSensitiveSpoilers();
-        return
-      }
-
-      delete mediaSpoiler.dataset.isSensitive;
-      onMediaSpoilerClick(options);
-    })
+    void onSensitiveMediaSpoilerClick(options).catch((error) => {
+      console.error('sensitive media spoiler error', error);
+    });
     return;
   }
 
@@ -154,21 +137,87 @@ export function onMediaSpoilerClick(options: {
   });
 }
 
+async function onSensitiveMediaSpoilerClick(options: {
+  mediaSpoiler: HTMLElement,
+  event: Event
+}) {
+  const {mediaSpoiler} = options;
+  const [
+    {default: useContentSettings},
+    {default: confirmationPopup},
+    {default: createAgeVerification},
+    {toastNew},
+    {default: rootScope}
+  ] = await Promise.all([
+    import('@stores/contentSettings'),
+    import('@components/confirmationPopup'),
+    import('@components/popups/ageVerification'),
+    import('@components/toast'),
+    import('@lib/rootScope')
+  ]);
+  if(!mediaSpoiler.isConnected || !mediaSpoiler.dataset.isSensitive) return;
+  const contentSettings = useContentSettings();
+
+  if(!contentSettings.sensitiveCanChange()) {
+    toastNew({langPackKey: 'SensitiveContentUnavailable'});
+    return;
+  }
+
+  if(contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
+    createAgeVerification().then((verified) => {
+      if(verified) {
+        clearSensitiveSpoilers();
+      }
+    });
+    return;
+  }
+
+  confirmationPopup({
+    titleLangKey: '18Plus',
+    descriptionLangKey: 'SensitiveContentDesc',
+    button: {
+      langKey: 'SensitiveContentConfirm'
+    },
+    checkbox: {
+      text: 'SensitiveContentRemember'
+    }
+  }).then((remember) => {
+    if(remember) {
+      rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
+      clearSensitiveSpoilers();
+      return;
+    }
+
+    delete mediaSpoiler.dataset.isSensitive;
+    onMediaSpoilerClick(options);
+  });
+}
+
 function wrapMediaSpoilerWithImage(options: {
-  image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image']
+  image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image'],
+  // only covers the media, never reveals it: the composer shows where a spoiler will be and has
+  // its own control to take it off
+  decorative?: boolean
 } & Parameters<typeof DotRenderer['create']>[0]) {
-  const {middleware, image} = options;
+  const {middleware, image, decorative} = options;
   if(!middleware()) {
     return;
   }
 
   image.classList.add('media-spoiler-thumbnail');
 
-  const container = Button('media-spoiler-container', {noRipple: true, ariaLabel: 'AccDescr.RevealMedia'});
-  container.middlewareHelper = middleware.create();
-  container.middlewareHelper.get().onClean(attachClickEvent(container, (event) => {
-    onMediaSpoilerClick({mediaSpoiler: container, event});
-  }));
+  let container: HTMLElement;
+  if(decorative) {
+    container = document.createElement('div');
+    container.classList.add('media-spoiler-container');
+    container.middlewareHelper = middleware.create();
+  } else {
+    container = Button('media-spoiler-container', {noRipple: true, ariaLabel: 'AccDescr.RevealMedia'});
+    container.middlewareHelper = middleware.create();
+    container.middlewareHelper.get().onClean(attachClickEvent(container, (event) => {
+      onMediaSpoilerClick({mediaSpoiler: container, event});
+    }));
+  }
 
   const {canvas, readyResult} = DotRenderer.create({
     ...options,
@@ -186,24 +235,39 @@ export function hasSensitiveSpoiler(container: HTMLElement) {
 
 export default async function wrapMediaSpoiler(
   options: Omit<Parameters<typeof wrapMediaSpoilerWithImage>[0], 'image'> & {
-    media: Document.document | Photo.photo,
-    sensitive?: boolean
+    media?: Document.document | Photo.photo,
+    previewUrl?: string,
+    sensitive?: boolean,
+    waitForReady?: boolean
   }
 ) {
-  const {media, sensitive} = options;
-  const sizes = (media as Photo.photo).sizes || (media as Document.document).thumbs;
-  const thumb = sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
-  if(!thumb) {
+  const {media, previewUrl, sensitive, waitForReady = true} = options;
+  const sizes = media && (
+    (media as Photo.photo).sizes ||
+    (media as Document.document).thumbs
+  );
+  const thumb = sizes?.find((size) => (
+    size._ === 'photoStrippedSize'
+  )) as PhotoSize.photoStrippedSize;
+  let image: HTMLCanvasElement | HTMLImageElement;
+  if(thumb) {
+    const result = getImageFromStrippedThumb(media, thumb, true);
+    image = result.image;
+    await result.loadPromise;
+  } else if(previewUrl) {
+    image = new Image();
+    image.classList.add('thumbnail', 'media-spoiler-thumbnail-preview');
+    await renderImageFromUrlPromise(image, previewUrl);
+  } else {
     return;
   }
 
-  const {image, loadPromise} = getImageFromStrippedThumb(media, thumb, true);
-  await loadPromise;
-
-  const {container, readyResult} = wrapMediaSpoilerWithImage({
+  const result = wrapMediaSpoilerWithImage({
     ...options,
     image
   });
+  if(!result) return;
+  const {container, readyResult} = result;
 
   if(sensitive) {
     const div = document.createElement('div');
@@ -217,7 +281,7 @@ export default async function wrapMediaSpoiler(
     });
   }
 
-  if(readyResult instanceof Promise) {
+  if(waitForReady && readyResult instanceof Promise) {
     // Waiting here only avoids a blank first frame of the dot canvas — the media is already covered
     // by the blurred thumbnail underneath. The bubble's render promise is awaited by the message
     // batch processor, so blocking on this indefinitely stalls the whole chat: bail out after a

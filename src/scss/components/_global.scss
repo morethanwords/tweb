@@ -151,6 +151,11 @@ Utility Classes
   font-weight: var(--font-weight-bold) !important;
 }
 
+.text-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
 .text-normal {
   font-weight: var(--font-weight-normal) !important;
 }

@@ -937,6 +937,21 @@ $btn-menu-z-index: 4;
   &-select {
     padding-block: 0;
 
+    &.is-height-constrained {
+      display: flex;
+      flex-direction: column;
+
+      > .btn-menu-search,
+      > .btn-menu-search-delimiter {
+        flex: 0 0 auto;
+      }
+
+      > .btn-menu-search-scrollable {
+        flex: 0 1 auto;
+        min-height: 0;
+      }
+    }
+
     &-text-faded {
       opacity: 0.3;
     }

@@ -8,7 +8,7 @@ import {Accessor, createEffect, createMemo, createSignal, JSX, onCleanup, untrac
 import classNames from '@helpers/string/classNames';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
-import styles from '@components/instantView.module.scss';
+import styles from '@components/instantViewStyles';
 import loadTemml from '@helpers/math/loadTemml';
 import {TextWithEntities} from '@layer';
 import {updateGraphemeOffsets} from '@lib/richTextProcessor/graphemes';

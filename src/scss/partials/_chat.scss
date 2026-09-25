@@ -112,6 +112,14 @@
 		}
 	}
 
+  &.is-message-input-expanded:not(.is-recording),
+  &.is-message-input-resizing:not(.is-recording) {
+    .float.show:not(.hide) {
+      display: none !important;
+      pointer-events: none;
+    }
+  }
+
 	.btn-send-container {
 		position: relative;
 		flex: 0 0 auto;
@@ -145,14 +153,16 @@
 	}
 
 	.btn-send {
+    --size: 2.5rem;
     color: #fff !important;
     background-color: var(--primary-color) !important;
 		z-index: 3;
     opacity: 1 !important;
-    min-width: 3rem;
-    border-radius: 1.25rem !important;
-    height: 2.5rem !important;
+    min-width: var(--size);
+    border-radius: 50% !important;
+    height: var(--size) !important;
     margin: 0 !important;
+    width: var(--size);
 
     .is-rtl & {
       transform: scaleX(-1);
@@ -285,13 +295,12 @@
 
   &-ai-editor-button {
     position: absolute;
-    top: 0.25rem;
-    right: 0.75rem;
-    --button-size: 2rem;
+    top: var(--padding-vertical);
+    inset-inline-end: var(--padding-horizontal);
 
     &__icon {
       pointer-events: none;
-      font-size: 1.25rem;
+      font-size: 1.5rem;
     }
 
     &__star-1 {
@@ -341,6 +350,61 @@
   }
 }
 
+.message-input-editor-premium-star {
+  color: var(--primary-color);
+  display: inline-flex;
+  font-size: .625rem;
+  height: .75rem;
+  margin: 0;
+  pointer-events: none;
+  width: .75rem;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.message-input-editor-toolbar-button,
+.markup-tooltip .btn-icon {
+  > .message-input-editor-premium-star {
+    inset-block-start: .125rem;
+    inset-inline-end: .125rem;
+    position: absolute;
+  }
+}
+
+.btn-menu-item-text,
+.submenu-label-text {
+  > .message-input-editor-premium-star {
+    margin-inline-start: .25rem;
+    vertical-align: text-top;
+  }
+}
+
+.chat-input-code-language-picker {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  line-height: inherit;
+  min-width: 0;
+  padding: 0;
+  text-align: start;
+}
+
+.chat-input-code-language-menu {
+  max-width: calc(100vw - 1rem);
+  width: 20rem;
+
+  .btn-menu-item-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .chat-input-main {
   --translateY: 0;
   z-index: 2; // fix safari topbar bug
@@ -351,6 +415,43 @@
   transition: transform var(--transition-standard-out);
   transform: translate3d(0, var(--translateY), 0);
 
+}
+
+.chat-input-main {
+  --rich-message-input-expanded-height: calc(
+    100% -
+    var(--chat-topbar-height) -
+    var(--topbar-floating-call-height) -
+    var(--topbar-floating-audio-height) -
+    .625rem
+  );
+
+  &.is-message-input-expanded,
+  &.is-message-input-resizing {
+    .chat-input-main-container {
+      align-items: stretch;
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .rows-wrapper-wrapper {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .chat-rows-wrapper {
+      height: 100%;
+      justify-content: flex-end;
+      max-height: none;
+      min-height: 0;
+    }
+
+  }
+}
+
+.chat-input-main {
   &-container {
     &.is-centering {
       .new-message-wrapper {
@@ -576,6 +677,13 @@
 	--padding: var(--padding-vertical) var(--padding-horizontal);
   --button-size: 2.5rem;
   --button-horizontal-margin: 0.25rem;
+  --message-input-editor-side-controls-width: calc(
+    var(--button-size) +
+    var(--button-size) +
+    var(--button-horizontal-margin) +
+    var(--button-horizontal-margin) +
+    var(--padding-horizontal)
+  );
 	display: flex;
 	align-items: center;
 	flex-direction: column;
@@ -591,6 +699,7 @@
 	z-index: 3;
   box-shadow: $chat-input-box-shadow;
 }
+
 
 .chat-input-control {
   position: absolute;
@@ -873,8 +982,8 @@
   }
 
   .input-message-input {
-    // max-height is JS-owned — see ChatInput.computeMessageInputMaxHeight()
-    // in components/chat/input.ts. The same number drives both the inline
+    // max-height is JS-owned — see RichMessageInputController.syncHeight()
+    // in components/richMessageInput/index.tsx. The same number drives both the inline
     // style.maxHeight and the scrollHeight clamp in InputFieldAnimated, so
     // `--chat-input-height-surplus` matches what the user actually sees.
 
@@ -886,6 +995,7 @@
   }
 
 	.new-message-wrapper {
+    --message-input-editor-toolbar-inset: calc(var(--chat-input-height) + var(--padding-vertical));
     --send-as-size: 2.5rem;
     --send-as-margin-left: 0rem;
     --send-as-margin-right: .25rem;
@@ -897,6 +1007,7 @@
     --offset-translateX: 0px;
 		align-items: flex-end;
 		min-height: var(--chat-input-height);
+		overflow: hidden;
 
     .new-message-bot-commands,
     .new-message-send-as-container {
@@ -1095,6 +1206,12 @@
   .scrollable {
     position: relative;
   }
+
+  .input-message-input {
+    // Override the global `.scrollable { height: 100% }`. `max-content` keeps
+    // the observed editor independent from the wrapper's transitional height.
+    height: max-content;
+  }
 }
 
 .input-message-input {
@@ -1102,15 +1219,14 @@
   background: none;
   border: none;
   width: 100%;
-  padding: .5rem 0;
+  padding: 0;
   /* height: 100%; */
   //min-height: inherit;
   overflow-y: none;
   resize: none;
   border: none;
   outline: none;
-  font-size: var(--messages-text-size);
-  line-height: var(--line-height);
+  @include rounded-font-size(var(--messages-text-size));
 
   // The viewport no longer pins `maximum-scale` (WCAG 1.4.4 needs pinch-zoom),
   // so iOS Safari is free to zoom the page whenever a field below 16px takes
@@ -1118,19 +1234,6 @@
   // composer only; bubbles keep the size the user picked.
   html.is-ios & {
     font-size: max(var(--messages-text-size), 16px);
-  }
-
-  pre {
-    display: inline;
-    margin: 0;
-  }
-
-  .formatted-date {
-    cursor: text;
-  }
-
-  @include animation-level(2) {
-    transition: height $input-half-transition-time;
   }
 }
 

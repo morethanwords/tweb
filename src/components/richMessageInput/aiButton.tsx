@@ -1,12 +1,12 @@
 import type InputField from '@components/inputField';
 import {LocalTextWithEntities} from '@types';
 import {JSX} from 'solid-js';
-import type ChatInput from '../input';
-import {defaultShouldShowFromHeight, useAiEditorButton} from './useAiEditorButton';
+import type {AiEditorContext} from '@components/richMessageInput/aiContext';
+import {defaultShouldShowFromHeight, useAiEditorButton} from '@components/richMessageInput/ai';
 
 
 type AiEditorButtonProps = {
-  instance: ChatInput;
+  context: AiEditorContext;
   container: HTMLDivElement;
   appendTo: HTMLDivElement;
   canSend: boolean;
@@ -18,7 +18,7 @@ type AiEditorButtonProps = {
 
 export const AiEditorButton = (props: AiEditorButtonProps): JSX.Element => {
   useAiEditorButton({
-    instance: props.instance,
+    context: props.context,
     class: props.class,
     container: () => props.container,
     appendTo: () => props.appendTo,

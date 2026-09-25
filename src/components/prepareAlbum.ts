@@ -10,7 +10,13 @@ export default function prepareAlbum(options: {
   forMedia?: true,
   noGroupedItem?: boolean
 }) {
-  const layouter = new Layouter(options.items, options.maxWidth, options.minWidth, options.spacing, options.maxHeight);
+  const layouter = new Layouter(
+    options.items,
+    options.maxWidth,
+    options.minWidth,
+    options.spacing,
+    options.maxHeight
+  );
   const layout = layouter.layout();
 
   const widthItem = layout.find((item) => item.sides & RectPart.Right);

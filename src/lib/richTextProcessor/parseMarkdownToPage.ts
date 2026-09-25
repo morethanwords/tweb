@@ -396,7 +396,7 @@ export default function parseMarkdownToPage(raw: string, url = ''): Page.page {
         block = {_: 'pageBlockSubheader', text: inner};
       }
       // Stash the original markdown level (1-6) so the renderer can pick the right
-      // semantic tag (h2-h6) and a level-specific CSS class — pageBlockHeader/Subheader
+      // semantic tag (h1-h6) and a level-specific CSS class — pageBlockHeader/Subheader
       // alone collapses h2 with h1-rest and h3..h6 into one style each.
       if(block._ !== 'pageBlockTitle') {
         (block as PageBlock & {headingLevel: number}).headingLevel = level;

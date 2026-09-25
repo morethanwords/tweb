@@ -53,6 +53,7 @@ export default function ImageCanvas() {
 
   async function init() {
     const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.currentVideoTime, middleware});
+    if(!middleware() || !payload) return;
 
     batch(() => {
       editorState.renderingPayload = payload;

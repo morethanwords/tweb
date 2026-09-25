@@ -1,0 +1,49 @@
+@use '../../src/scss/variables' as *;
+
+:root {
+  --primary-color: #3390ec;
+  --primary-color-rgb: 51, 144, 236;
+  --primary-text-color: #000;
+  --secondary-text-color: #707579;
+  --surface-color: #fff;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #e6ebee;
+  color: var(--primary-text-color);
+  font-family: Roboto, Arial, sans-serif;
+}
+
+.editor-fixture {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 100%;
+  padding: 2rem;
+}
+
+.editor-fixture__surface {
+  align-self: stretch;
+  background: var(--surface-color);
+  border-radius: $border-radius-big;
+  box-sizing: border-box;
+  display: flex;
+  margin: auto;
+  max-width: 52rem;
+  min-height: 32rem;
+  padding: 1rem;
+  width: 100%;
+}
+
+.input-message-input {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  outline: none;
+  overflow: auto;
+}

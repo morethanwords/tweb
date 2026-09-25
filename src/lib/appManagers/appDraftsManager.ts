@@ -5,7 +5,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo, MessageMedia, WebPage, InputMedia} from '@layer';
+import {MessageEntity, DraftMessage, MessagesSaveDraft, InputReplyTo, InputRichMessage} from '@layer';
 import tsNow from '@helpers/tsNow';
 import assumeType from '@helpers/assumeType';
 import {AppManager} from '@appManagers/manager';
@@ -14,6 +14,8 @@ import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessag
 import draftsAreEqual from '@appManagers/utils/drafts/draftsAreEqual';
 import isObject from '@helpers/object/isObject';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
+import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
+import ctx from '@environment/ctx';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -22,6 +24,7 @@ type SyncDraftArgs = {
   threadId?: number;
   monoforumThreadId?: PeerId;
   localDraft?: DraftMessage;
+  inputRichMessage?: InputRichMessage.inputRichMessage;
   saveOnServer?: boolean;
   force?: boolean;
 };
@@ -32,8 +35,22 @@ type ClearDraftArgs = {
   monoforumThreadId?: PeerId;
 };
 
+type DraftSyncState = {
+  id: number;
+  status: 'failed' | 'pending';
+  queue: SerializedQueue;
+};
+
+const DRAFT_SYNC_UPDATE_GRACE = 2000;
+
 export class AppDraftsManager extends AppManager {
   private drafts: {[peerIdAndThreadId: string]: MyDraftMessage};
+  private draftSyncId = 0;
+  private draftSyncStates = new Map<string, DraftSyncState>();
+  private draftSyncProtectedUntil = new Map<string, number>();
+  private draftSyncProtectionTimeouts = new Map<string, number>();
+  private draftSyncReconcileKeys = new Set<string>();
+  private draftSyncReconcileTimeout: number;
   private getAllDraftPromise: Promise<void>;
   private getAllDraftsResolved = false;
 
@@ -61,6 +78,15 @@ export class AppDraftsManager extends AppManager {
           }
         }
 
+        const key = this.getKey(peerId, monoforumThreadId || threadId || update.top_msg_id);
+        if(this.isDraftSyncProtected(key)) {
+          // Another session may have written this draft while our own save was
+          // in flight. Dropping the update keeps the local text, but the server
+          // state is then unknown — re-read it once the window closes.
+          this.scheduleDraftSyncReconcile(key);
+          return;
+        }
+
         this.saveDraft({
           peerId,
           threadId: threadId || update.top_msg_id,
@@ -73,10 +99,23 @@ export class AppDraftsManager extends AppManager {
 
     /* return  */this.appStateManager.storage.get('drafts').then((drafts) => {
       this.drafts = drafts || {};
+      for(const key in this.drafts) {
+        this.saveRichMessageMedia(this.drafts[key]);
+      }
     });
   }
 
   public clear = (init?: boolean) => {
+    this.draftSyncStates.clear();
+    this.draftSyncProtectedUntil.clear();
+    this.draftSyncProtectionTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.draftSyncProtectionTimeouts.clear();
+    this.draftSyncReconcileKeys.clear();
+    if(this.draftSyncReconcileTimeout !== undefined) {
+      clearTimeout(this.draftSyncReconcileTimeout);
+      this.draftSyncReconcileTimeout = undefined;
+    }
+
     if(!init) {
       this.getAllDraftPromise = undefined;
       this.getAllDraftsResolved = false;
@@ -88,6 +127,66 @@ export class AppDraftsManager extends AppManager {
   private getKey(peerId: PeerId, threadId?: number) {
     return '' + peerId + (threadId ? '_' + threadId : '');
   }
+
+  private isDraftSyncProtected(key: string) {
+    if(this.draftSyncStates.get(key)?.status === 'pending') return true;
+
+    const protectedUntil = this.draftSyncProtectedUntil.get(key);
+    if(!protectedUntil) return false;
+    if(protectedUntil > Date.now()) return true;
+
+    // A throttled worker can run the expiry timer late.
+    this.releaseDraftSyncProtection(key);
+    return false;
+  }
+
+  /**
+   * Holds off incoming draft updates for a moment after our own write, so the
+   * server echoing it back cannot overwrite what is being typed. Every entry
+   * expires on its own — the map must not grow with one record per chat.
+   */
+  private protectDraftSync(key: string) {
+    this.draftSyncProtectedUntil.set(key, Date.now() + DRAFT_SYNC_UPDATE_GRACE);
+
+    const pendingTimeout = this.draftSyncProtectionTimeouts.get(key);
+    if(pendingTimeout !== undefined) clearTimeout(pendingTimeout);
+    this.draftSyncProtectionTimeouts.set(key, ctx.setTimeout(() => {
+      this.releaseDraftSyncProtection(key);
+    }, DRAFT_SYNC_UPDATE_GRACE));
+  }
+
+  private releaseDraftSyncProtection(key: string) {
+    const pendingTimeout = this.draftSyncProtectionTimeouts.get(key);
+    if(pendingTimeout !== undefined) clearTimeout(pendingTimeout);
+    this.draftSyncProtectionTimeouts.delete(key);
+    this.draftSyncProtectedUntil.delete(key);
+  }
+
+  private scheduleDraftSyncReconcile(key: string) {
+    this.draftSyncReconcileKeys.add(key);
+    this.draftSyncReconcileTimeout ??= ctx.setTimeout(
+      this.reconcileDroppedDrafts,
+      DRAFT_SYNC_UPDATE_GRACE
+    );
+  }
+
+  private reconcileDroppedDrafts = () => {
+    this.draftSyncReconcileTimeout = undefined;
+    if(!this.draftSyncReconcileKeys.size) return;
+
+    // Still typing: a newer save re-armed the protection and the refetched
+    // update would be dropped again. Wait it out instead of asking twice.
+    if([...this.draftSyncReconcileKeys].some((key) => this.isDraftSyncProtected(key))) {
+      this.draftSyncReconcileTimeout = ctx.setTimeout(
+        this.reconcileDroppedDrafts,
+        DRAFT_SYNC_UPDATE_GRACE
+      );
+      return;
+    }
+
+    this.draftSyncReconcileKeys.clear();
+    this.requestAllDrafts().catch(() => {});
+  };
 
   public getDraft(peerId: PeerId, threadId?: number) {
     return this.drafts[this.getKey(peerId, threadId)];
@@ -128,14 +227,18 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
-  private getAllDrafts() {
-    return this.getAllDraftPromise ??= this.apiManager.invokeApi('messages.getAllDrafts')
+  private requestAllDrafts() {
+    return this.apiManager.invokeApi('messages.getAllDrafts')
     .then((updates) => {
       const p = this.apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
       return p.then(() => {
         this.apiUpdatesManager.processUpdateMessage(updates);
       });
     });
+  }
+
+  private getAllDrafts() {
+    return this.getAllDraftPromise ??= this.requestAllDrafts();
   }
 
   public saveDraft({
@@ -189,6 +292,10 @@ export class AppDraftsManager extends AppManager {
       return false;
     }
 
+    if(draft.rich_message?.blocks?.length) {
+      return false;
+    }
+
     if(!draft.message.length) {
       return true;
     }
@@ -200,6 +307,8 @@ export class AppDraftsManager extends AppManager {
     if(draft?._ !== 'draftMessage') {
       return undefined;
     }
+
+    this.saveRichMessageMedia(draft);
 
     const replyTo = draft.reply_to as InputReplyTo.inputReplyToMessage;
     if(replyTo?.reply_to_msg_id) {
@@ -213,10 +322,25 @@ export class AppDraftsManager extends AppManager {
     return draft;
   }
 
-  public syncDraft({peerId, threadId, monoforumThreadId, localDraft, saveOnServer = true, force = false}: SyncDraftArgs) {
+  private saveRichMessageMedia(draft: DraftMessage) {
+    if(draft?._ === 'draftMessage' && draft.rich_message) {
+      draft.rich_message.documents = (draft.rich_message.documents || [])
+      .map((document) => this.appDocsManager.saveDoc(document))
+      .filter(Boolean);
+      draft.rich_message.photos = (draft.rich_message.photos || [])
+      .map((photo) => this.appPhotosManager.savePhoto(photo))
+      .filter(Boolean);
+    }
+  }
+
+  public syncDraft({peerId, threadId, monoforumThreadId, localDraft, inputRichMessage, saveOnServer = true, force = false}: SyncDraftArgs) {
     // console.warn(dT(), 'sync draft', peerID)
-    const serverDraft = this.getDraft(peerId, monoforumThreadId || threadId);
-    if(draftsAreEqual(serverDraft, localDraft)) {
+    const key = this.getKey(peerId, monoforumThreadId || threadId);
+    const serverDraft = this.drafts[key];
+    if(
+      draftsAreEqual(serverDraft, localDraft) &&
+      (!saveOnServer || this.draftSyncStates.get(key)?.status !== 'failed')
+    ) {
       // console.warn(dT(), 'equal drafts', localDraft, serverDraft)
       return true;
     }
@@ -315,7 +439,51 @@ export class AppDraftsManager extends AppManager {
     });
 
     if(saveOnServer) {
-      const promise = this.apiManager.invokeApi('messages.saveDraft', params);
+      const syncId = ++this.draftSyncId;
+      const queue = this.draftSyncStates.get(key)?.queue || createSerializedQueue();
+      this.draftSyncStates.set(key, {id: syncId, status: 'pending', queue});
+
+      let promise: Promise<unknown>;
+      try {
+        let resolvedInputRichMessage: InputRichMessage.inputRichMessage;
+        if(inputRichMessage) {
+          resolvedInputRichMessage = this.appMessagesManager.resolveInputRichMessage(inputRichMessage);
+          params.rich_message = resolvedInputRichMessage;
+        }
+
+        // Validation and reference refresh can finish after a newer draft. Check at
+        // dispatch time, and serialize requests already sent for this draft key.
+        const invoke = () => queue.enqueue(() => {
+          if(this.draftSyncStates.get(key)?.id !== syncId) return;
+          return this.apiManager.invokeApi('messages.saveDraft', params);
+        });
+        promise = resolvedInputRichMessage ?
+          this.appMessagesManager.assertRichMessage(resolvedInputRichMessage, {draft: true}).then(() => {
+            return this.appMessagesManager.invokeWithRichMessageReferenceRetry(
+              resolvedInputRichMessage,
+              invoke
+            );
+          }) :
+          invoke();
+      } catch(error) {
+        promise = Promise.reject(error);
+      }
+
+      promise = promise.then((result) => {
+        if(this.draftSyncStates.get(key)?.id === syncId) {
+          this.draftSyncStates.delete(key);
+          this.protectDraftSync(key);
+        }
+
+        return result;
+      }, (error) => {
+        if(this.draftSyncStates.get(key)?.id === syncId) {
+          this.draftSyncStates.set(key, {id: syncId, status: 'failed', queue});
+        }
+
+        throw error;
+      });
+
       const dialog = this.dialogsStorage.getDialogOnly(peerId); // * create or delete dialog when draft changes
       if(!dialog || !getServerMessageId(dialog.top_message)) {
         return promise.then(() => {
@@ -326,6 +494,19 @@ export class AppDraftsManager extends AppManager {
       return promise;
     }
 
+    // Local clearing after send cancels preparation, but retains the queue until
+    // any already dispatched write settles so a new draft cannot overtake it.
+    const previousSync = this.draftSyncStates.get(key);
+    if(previousSync) {
+      const id = ++this.draftSyncId;
+      const {queue} = previousSync;
+      this.draftSyncStates.set(key, {id, status: 'pending', queue});
+      void queue.enqueue(() => {
+        if(this.draftSyncStates.get(key)?.id !== id) return;
+        this.draftSyncStates.delete(key);
+        this.protectDraftSync(key);
+      });
+    }
     return true;
   }
 

@@ -30,7 +30,7 @@ export default function setWorkerProxy() {
   };
 
   [
-    Worker,
+    typeof(Worker) !== 'undefined' && Worker,
     typeof(SharedWorker) !== 'undefined' && SharedWorker
   ].filter(Boolean).forEach((w) => {
     window[w.name as any] = new Proxy(w, workerHandler);

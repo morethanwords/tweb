@@ -5,6 +5,7 @@ import type {Message, Page, RichMessage} from '@layer';
 
 const richMessageMocks = vi.hoisted(() => ({
   getRichMessage: vi.fn(),
+  readPage: undefined as (() => Page.page) | undefined,
   openInstantView: vi.fn()
 }));
 
@@ -13,9 +14,10 @@ vi.mock('@components/browser', () => ({
 }));
 
 vi.mock('@components/instantView', () => ({
-  InstantViewBlocks: (props: {afterBlocks?: JSX.Element}) => (
-    <div data-instant-view-blocks="">{props.afterBlocks}</div>
-  ),
+  InstantViewBlocks: (props: {afterBlocks?: JSX.Element, page: Page.page | (() => Page.page)}) => {
+    richMessageMocks.readPage = () => typeof props.page === 'function' ? props.page() : props.page;
+    return <div data-instant-view-blocks="">{props.afterBlocks}</div>;
+  },
   hasInstantViewDisabledNavigation(options?: {noLinks?: boolean, noNavigation?: boolean}) {
     return !!(options?.noNavigation || options?.noLinks);
   },
@@ -111,6 +113,42 @@ function page(rich = richMessage()): Page.page {
   };
 }
 
+class FakeIntersectionObserver {
+  public static instances: FakeIntersectionObserver[] = [];
+  public disconnected = false;
+
+  constructor(private callback: IntersectionObserverCallback) {
+    FakeIntersectionObserver.instances.push(this);
+  }
+
+  public observe() {}
+  public unobserve() {}
+  public takeRecords(): IntersectionObserverEntry[] {return [];}
+  public disconnect() {this.disconnected = true;}
+
+  public enter() {
+    this.callback(
+      [{isIntersecting: true} as IntersectionObserverEntry],
+      this as unknown as IntersectionObserver
+    );
+  }
+}
+
+type IntersectionObserverGlobal = typeof globalThis & {
+  IntersectionObserver?: typeof IntersectionObserver
+};
+
+function withFakeIntersectionObserver() {
+  const target = globalThis as IntersectionObserverGlobal;
+  const previous = target.IntersectionObserver;
+  FakeIntersectionObserver.instances = [];
+  target.IntersectionObserver = FakeIntersectionObserver as unknown as typeof IntersectionObserver;
+  return () => {
+    if(previous) target.IntersectionObserver = previous;
+    else delete target.IntersectionObserver;
+  };
+}
+
 describe('RichMessageBubble Read More lifecycle', () => {
   afterEach(() => {
     richMessageMocks.getRichMessage.mockReset();
@@ -160,7 +198,8 @@ describe('RichMessageBubble Read More lifecycle', () => {
     await Promise.resolve();
 
     expect(richMessageMocks.getRichMessage).toHaveBeenCalledTimes(2);
-    expect(richMessageMocks.openInstantView).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(richMessageMocks.readPage()?.pFlags.part).toBeUndefined());
+    expect(richMessageMocks.openInstantView).not.toHaveBeenCalled();
 
     dispose();
     host.remove();
@@ -213,26 +252,16 @@ describe('RichMessageBubble Read More lifecycle', () => {
       />
     ), host);
 
-    const button = host.querySelector('button');
-    button.click();
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(richMessageMocks.readPage()?.blocks).toBe(first.blocks));
     expect(richMessageMocks.getRichMessage).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('button')).toBeNull();
+    expect(richMessageMocks.openInstantView).not.toHaveBeenCalled();
 
-    // A second click on the same revision must reuse the resolved page.
-    button.click();
-    await Promise.resolve();
-    expect(richMessageMocks.getRichMessage).toHaveBeenCalledTimes(1);
-    expect(richMessageMocks.openInstantView).toHaveBeenCalledTimes(2);
-
-    // A newer revision invalidates it: the cached page describes older content.
+    // A newer revision must hydrate again; the cached page contains the old source.
     setSourceRevision(2);
-    await Promise.resolve();
-    button.click();
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(richMessageMocks.readPage()?.blocks).toBe(second.blocks));
     expect(richMessageMocks.getRichMessage).toHaveBeenCalledTimes(2);
-    expect(richMessageMocks.openInstantView).toHaveBeenCalledTimes(3);
+    expect(richMessageMocks.openInstantView).not.toHaveBeenCalled();
 
     dispose();
     host.remove();
@@ -264,5 +293,36 @@ describe('RichMessageBubble Read More lifecycle', () => {
     expect(richMessageMocks.openInstantView).not.toHaveBeenCalled();
     expect(onTextLayout).not.toHaveBeenCalled();
     host.remove();
+  });
+
+  test('hydrates a part only once the bubble approaches the screen', async() => {
+    const restoreIntersectionObserver = withFakeIntersectionObserver();
+    richMessageMocks.getRichMessage.mockResolvedValueOnce(richMessage(false));
+    const host = document.createElement('div');
+    document.body.append(host);
+    const value = richMessage();
+    const dispose = render(() => (
+      <RichMessageBubble
+        message={message()}
+        richMessage={value}
+        page={page(value)}
+        phase="final"
+      />
+    ), host);
+
+    // Off screen: a channel of long posts must not pay a request per post.
+    expect(richMessageMocks.getRichMessage).not.toHaveBeenCalled();
+    expect(host.querySelector('button')).not.toBeNull();
+
+    const [observer] = FakeIntersectionObserver.instances;
+    observer.enter();
+    await vi.waitFor(() => expect(richMessageMocks.readPage()?.pFlags.part).toBeUndefined());
+    expect(richMessageMocks.getRichMessage).toHaveBeenCalledTimes(1);
+    expect(observer.disconnected).toBe(true);
+    expect(host.querySelector('button')).toBeNull();
+
+    dispose();
+    host.remove();
+    restoreIntersectionObserver();
   });
 });

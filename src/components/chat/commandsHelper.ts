@@ -20,11 +20,11 @@ export default class CommandsHelper extends AutocompletePeerHelper {
       (target) => {
         const targetElement = target as HTMLElement;
         const botPeerId = targetElement.dataset.peerId.toPeerId();
-        let innerHTML = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).innerHTML;
+        let text = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).textContent;
         if(chatInput.chat.peerId.isAnyChat()) {
           const username = getPeerActiveUsernames(apiManagerProxy.getPeer(botPeerId))[0];
           if(username) {
-            innerHTML += '@' + username;
+            text += '@' + username;
           }
         }
 
@@ -34,7 +34,7 @@ export default class CommandsHelper extends AutocompletePeerHelper {
           undefined;
         hideCommandAutocomplete(controller);
         return chatInput.getReadyToSend(() => {
-          chatInput.messageInput.innerHTML = innerHTML;
+          chatInput.messageInputField.setValueSilently(text);
           chatInput.sendMessage(true, ephemeralReceiverId);
         });
       },

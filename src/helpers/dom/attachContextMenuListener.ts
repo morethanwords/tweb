@@ -3,6 +3,7 @@ import {IS_APPLE} from '@environment/userAgent';
 import contextMenuController from '@helpers/contextMenuController';
 import ListenerSetter, {ListenerOptions} from '@helpers/listenerSetter';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {TOUCH_HOLD_DURATION} from '@helpers/dom/touchHold';
 
 let _cancelContextMenuOpening = false, _cancelContextMenuOpeningTimeout = 0;
 export function cancelContextMenuOpening() {
@@ -13,7 +14,7 @@ export function cancelContextMenuOpening() {
   _cancelContextMenuOpeningTimeout = window.setTimeout(() => {
     _cancelContextMenuOpeningTimeout = 0;
     _cancelContextMenuOpening = false;
-  }, .4e3);
+  }, TOUCH_HOLD_DURATION);
 
   _cancelContextMenuOpening = true;
 }
@@ -95,7 +96,7 @@ export function attachContextMenuListener({
         if(contextMenuController.isOpened()) {
           add('touchend', cancelEvent, {once: true}); // * fix instant closing
         }
-      }, .4e3);
+      }, TOUCH_HOLD_DURATION);
     }, listenerOptions);
 
     /* if(!isSafari) {

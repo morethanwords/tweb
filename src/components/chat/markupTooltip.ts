@@ -4,22 +4,39 @@ import {replaceButtonIcon} from '@components/button';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_APPLE, IS_MOBILE} from '@environment/userAgent';
 import appNavigationController from '@components/appNavigationController';
-import {_i18n} from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
 import {getFormattedDateEntityByElement, MarkdownType} from '@helpers/dom/getRichElementValue';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import clamp from '@helpers/number/clamp';
-import matchUrl from '@lib/richTextProcessor/matchUrl';
-import {normalizeUrlProtocol} from '@lib/richTextProcessor/matchUrlProtocol';
 import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '@helpers/dom/markdown';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import overlayCounter from '@helpers/overlayCounter';
 import type showDatePickerPopup from '@components/popups/datePicker';
+import {getChatInputEditor} from '@components/chat/inputEditor/registry';
+import type {ChatInputEditorSelection} from '@components/chat/inputEditor/types';
+import rootScope from '@lib/rootScope';
+import generatePremiumIcon from '@components/generatePremiumIcon';
+import openCreateLinkPopupForInput from '@components/popups/createLinkForInput';
+import mountMarkupTooltipScrollable from '@components/chat/markupTooltipScrollable';
+import {CHAT_INPUT_EDITOR_SELECTION_UPDATE_EVENT} from '@components/chat/inputEditor/events';
+import contextMenuController from '@helpers/contextMenuController';
+import createAiEditorIcon from '@components/chat/createAiEditorIcon';
+import tooltipController from '@helpers/tooltipController';
+import captureInputContent from '@components/chat/inputEditor/captureInputContent';
+import {FOCUS_TRAP_ATTACHED_ATTRIBUTE} from '@helpers/dom/focusTrap';
 
-export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link' | 'date'>;
+export type MarkupTooltipTypes = Extract<
+  MarkdownType,
+  'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' |
+  'spoiler' | 'quote' | 'link' | 'date' | 'highlight' | 'subscript' |
+  'superscript'
+>;
+
+const RICH_ONLY_MARKUP_TYPES = new Set<MarkupTooltipTypes>(['highlight', 'subscript', 'superscript']);
 
 export default class MarkupTooltip {
   private static INSTANCE: MarkupTooltip;
@@ -27,20 +44,37 @@ export default class MarkupTooltip {
 
   public container: HTMLElement;
   private wrapper: HTMLElement;
+  private scrollContainer: HTMLDivElement;
   private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
   private buttonIcons: Partial<{[type in MarkupTooltipTypes]: {inactive: Icon, active: Icon}}> = {};
-  private linkBackButton: HTMLElement;
-  private linkApplyButton: HTMLButtonElement;
-  private linkDelimiter: HTMLElement;
+  private dateLinkDelimiter: HTMLElement;
+  private extendedDelimiter: HTMLElement;
+  private aiButton: HTMLElement;
+  private aiDelimiter: HTMLElement;
   private hideTimeout: number;
   private addedListener = false;
+  private mouseSelectionActive = false;
   private waitingForMouseUp = false;
-  private linkInput: HTMLInputElement;
-  private savedRange: Range;
+  private selectionChangeQueued = false;
+  private savedEditorSelection: ChatInputEditorSelection;
   private mouseUpCounter: number = 0;
   private input: HTMLElement;
-  private linkInputFocusTimeout: number;
   // private log: ReturnType<typeof logger>;
+
+  private onMenuToggle = (open: boolean) => {
+    if(open) tooltipController.closeAll();
+  };
+
+  private onDocumentMouseDown = (event: MouseEvent) => {
+    const target = event.target as Element;
+    if(event.button !== 0 || !target?.closest) return;
+    const input = target.closest<HTMLElement>('.input-message-input, [can-format]');
+    this.mouseSelectionActive = !!input && this.canFormatInput(input);
+  };
+
+  private onDocumentMouseUp = () => {
+    this.mouseSelectionActive = false;
+  };
 
   public static showDatePickerPopup: typeof showDatePickerPopup;
 
@@ -53,28 +87,59 @@ export default class MarkupTooltip {
   }
 
   private init() {
+    tooltipController.register(() => this.hide());
+    contextMenuController.addEventListener('toggle', this.onMenuToggle);
+
     this.container = document.createElement('div');
     this.container.classList.add('markup-tooltip', 'z-depth-1', 'hide');
+    // it formats a field that may sit in a popup, whose focus trap must let the keyboard in here
+    this.container.setAttribute(FOCUS_TRAP_ATTACHED_ATTRIBUTE, '');
 
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('markup-tooltip-wrapper');
 
-    const tools1 = document.createElement('div');
-    const tools2 = document.createElement('div');
-    tools1.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-regular');
-    tools2.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-link');
+    const row = document.createElement('div');
+    row.classList.add('markup-tooltip-row');
+    mountMarkupTooltipScrollable({
+      mount: this.wrapper,
+      row,
+      onRef: (element) => this.scrollContainer = element
+    });
 
     const arr: Array<keyof MarkupTooltip['buttons'] | [keyof MarkupTooltip['buttons'], Icon] | [keyof MarkupTooltip['buttons'], Icon, Icon]> = [
       'bold',
       'italic',
       'underline',
       'strikethrough',
-      'monospace',
-      'spoiler',
       ['quote', 'blockquote'],
       ['date', 'calendar'],
-      'link'
+      'link',
+      'monospace',
+      'spoiler',
+      ['highlight', 'highlights'],
+      ['subscript', 'text'],
+      ['superscript', 'text']
     ];
+    const textLabels: Partial<Record<MarkupTooltipTypes, string>> = {
+      monospace: 'Aa',
+      subscript: 'x₂',
+      superscript: 'x²'
+    };
+    const labels: Record<MarkupTooltipTypes, LangPackKey> = {
+      bold: 'KeyboardShortcuts.Action.Bold',
+      italic: 'KeyboardShortcuts.Action.Italic',
+      underline: 'KeyboardShortcuts.Action.Underline',
+      strikethrough: 'KeyboardShortcuts.Action.Strikethrough',
+      quote: 'Quote',
+      date: 'AddDate',
+      link: 'KeyboardShortcuts.Action.Link',
+      monospace: 'KeyboardShortcuts.Action.Monospace',
+      spoiler: 'KeyboardShortcuts.Action.Spoiler',
+      highlight: 'Chat.Input.Editor.Format.Highlight',
+      subscript: 'Chat.Input.Editor.Format.Subscript',
+      superscript: 'Chat.Input.Editor.Format.Superscript'
+    };
+    const premiumIndicators: HTMLElement[] = [];
     arr.forEach((c) => {
       const type = typeof(c) === 'string' ? c : c[0];
       const inactiveIcon = (typeof(c) === 'string' ? c : c[1]) as Icon;
@@ -82,14 +147,31 @@ export default class MarkupTooltip {
       if(activeIcon !== undefined && activeIcon !== inactiveIcon) {
         this.buttonIcons[type] = {inactive: inactiveIcon, active: activeIcon};
       }
-      const button = ButtonIcon(inactiveIcon, {noRipple: true});
-      tools1.append(this.buttons[type] = button);
+      const textLabel = textLabels[type];
+      const button = ButtonIcon(textLabel ? undefined : inactiveIcon, {noRipple: true});
+      button.setAttribute('type', 'button');
+      if(type !== 'link' && type !== 'date') button.setAttribute('aria-pressed', 'false');
+      if(textLabel) {
+        const icon = document.createElement('span');
+        icon.classList.add('button-icon', type === 'monospace' ? 'markup-tooltip-monospace-icon' : 'markup-tooltip-script-icon');
+        icon.textContent = textLabel;
+        button.append(icon);
+      }
+      this.buttons[type] = button;
+      if(RICH_ONLY_MARKUP_TYPES.has(type)) {
+        const indicator = generatePremiumIcon();
+        indicator.classList.add('message-input-editor-premium-star');
+        indicator.hidden = true;
+        premiumIndicators.push(indicator);
+        button.append(indicator);
+      }
 
       if(type === 'link') {
         attachClickEvent(button, (e) => {
           cancelEvent(e);
-          this.showLinkEditor();
-          this.cancelClosening();
+          const {input} = this;
+          void openCreateLinkPopupForInput(input);
+          this.hide();
         });
       } else if(type === 'date') {
         attachClickEvent(button, (e) => {
@@ -97,79 +179,98 @@ export default class MarkupTooltip {
           this.showDatePicker();
         });
       } else {
-        button.addEventListener('mousedown', (e) => {
-          cancelEvent(e);
+        const apply = (restoreSelection = false) => {
+          if(!this.input?.isConnected || restoreSelection && !this.resetSelection()) return;
           applyMarkdown({input: this.input, type});
+          // Applying advanced the document, so the selection saved before it is
+          // stale. Without re-saving, a second markup applied from the keyboard
+          // (where the button has the focus and the selection has to be restored)
+          // is dropped by the revision check.
+          this.saveRange();
           this.cancelClosening();
+        };
+        button.addEventListener('mousedown', (e) => {
+          if(e.button !== 0) return;
+          cancelEvent(e);
+          apply();
 
           /* this.mouseUpCounter = 0;
           this.setMouseUpEvent(); */
           // this.hide();
         });
+        button.addEventListener('click', (event) => {
+          if(event.detail !== 0) return;
+          cancelEvent(event);
+          apply(true);
+        });
       }
     });
 
-    this.linkBackButton = ButtonIcon('left', {noRipple: true});
-    this.linkInput = document.createElement('input');
-    _i18n(this.linkInput, 'MarkupTooltip.LinkPlaceholder', undefined, 'placeholder');
-    this.linkInput.classList.add('input-clear');
-    this.linkInput.addEventListener('keydown', (e) => {
-      const valid = !this.linkInput.value.length || !!matchUrl(this.linkInput.value);// /^(http)|(https):\/\//i.test(this.linkInput.value);
+    this.aiButton = ButtonIcon(undefined, {noRipple: true});
+    this.aiButton.classList.add('markup-tooltip-ai');
+    this.aiButton.append(createAiEditorIcon());
+    const updateLabels = () => {
+      const setLabel = (button: HTMLElement, key: LangPackKey) => {
+        const label = I18n.format(key, true);
+        button.setAttribute('aria-label', label);
+        button.title = label;
+      };
+      for(const type in labels) setLabel(this.buttons[type as MarkupTooltipTypes], labels[type as MarkupTooltipTypes]);
+      setLabel(this.aiButton, 'Chat.Input.Editor.Toolbar.AI');
+    };
+    updateLabels();
+    rootScope.addEventListener('language_apply', updateLabels);
+    attachClickEvent(this.aiButton, (event) => {
+      cancelEvent(event);
+      const wrapper = findUpClassName(this.input, 'new-message-wrapper');
+      const editorButton = wrapper?.querySelector<HTMLElement>(
+        '.chat-input-ai-editor-button'
+      );
+      if(editorButton) editorButton.click();
+      else this.input?.focus();
+      this.hide();
+    });
 
-      if(e.key === 'Enter') {
-        if(!valid) {
-          if(this.linkInput.classList.contains('error')) {
-            this.linkInput.classList.remove('error');
-            void this.linkInput.offsetLeft; // reflow
-          }
-
-          this.linkInput.classList.add('error');
-        } else {
-          this.applyLink(e);
-        }
+    this.aiDelimiter = document.createElement('span');
+    this.dateLinkDelimiter = document.createElement('span');
+    this.extendedDelimiter = document.createElement('span');
+    this.aiDelimiter.classList.add('markup-tooltip-delimiter');
+    this.dateLinkDelimiter.classList.add('markup-tooltip-delimiter');
+    this.extendedDelimiter.classList.add('markup-tooltip-delimiter');
+    row.append(
+      this.aiButton,
+      this.aiDelimiter,
+      this.buttons.bold,
+      this.buttons.italic,
+      this.buttons.underline,
+      this.buttons.strikethrough,
+      this.buttons.quote,
+      this.dateLinkDelimiter,
+      this.buttons.date,
+      this.buttons.link,
+      this.extendedDelimiter,
+      this.buttons.monospace,
+      this.buttons.spoiler,
+      this.buttons.highlight,
+      this.buttons.subscript,
+      this.buttons.superscript
+    );
+    let premiumIndicatorGeneration = 0;
+    const updatePremiumIndicators = async() => {
+      const generation = ++premiumIndicatorGeneration;
+      try {
+        const state = await rootScope.managers.appMessagesManager.getRichMessagePostingState();
+        if(generation !== premiumIndicatorGeneration) return;
+        const visible = state.mode === 'premium' && !state.allowed;
+        premiumIndicators.forEach((indicator) => indicator.hidden = !visible);
+      } catch{
+        if(generation !== premiumIndicatorGeneration) return;
+        premiumIndicators.forEach((indicator) => indicator.hidden = true);
       }
-    });
+    };
+    rootScope.addEventListener('premium_toggle', updatePremiumIndicators);
+    queueMicrotask(() => void updatePremiumIndicators());
 
-    this.linkInput.addEventListener('input', (e) => {
-      const valid = this.isLinkValid();
-
-      this.linkInput.classList.toggle('is-valid', valid);
-      this.linkInput.classList.remove('error');
-    });
-
-    this.linkBackButton.addEventListener('mousedown', (e) => {
-      // this.log('linkBackButton click');
-      cancelEvent(e);
-      this.container.classList.remove('is-link');
-      this.clearLinkInputFocusTimeout();
-      // input.value = '';
-      this.resetSelection();
-      this.setTooltipPosition();
-      this.cancelClosening();
-    });
-
-    this.linkApplyButton = ButtonIcon('check markup-tooltip-link-apply', {noRipple: true});
-    this.linkApplyButton.addEventListener('mousedown', (e) => {
-      // this.log('linkApplyButton click');
-      this.applyLink(e);
-    });
-
-    const applyDiv = document.createElement('div');
-    applyDiv.classList.add('markup-tooltip-link-apply-container');
-
-    const delimiter1 = document.createElement('span');
-    const delimiter2 = document.createElement('span');
-    const delimiter3 = document.createElement('span');
-    delimiter1.classList.add('markup-tooltip-delimiter');
-    delimiter2.classList.add('markup-tooltip-delimiter');
-    delimiter3.classList.add('markup-tooltip-delimiter');
-    tools1.insertBefore(delimiter1, this.buttons.link);
-    this.linkDelimiter = delimiter1;
-    applyDiv.append(delimiter3, this.linkApplyButton);
-    tools2.append(this.linkBackButton, delimiter2, this.linkInput, applyDiv);
-    // tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
-
-    this.wrapper.append(tools1, tools2);
     this.container.append(this.wrapper);
     getOverlayRoot().append(this.container);
 
@@ -178,16 +279,11 @@ export default class MarkupTooltip {
     });
   }
 
-  private clearLinkInputFocusTimeout() {
-    if(this.linkInputFocusTimeout) {
-      clearTimeout(this.linkInputFocusTimeout);
-      this.linkInputFocusTimeout = undefined;
-    }
-  }
-
   public showDatePicker() {
     this.saveRange();
     const {input} = this;
+    const editorSelection = this.savedEditorSelection;
+    const contentIsCurrent = captureInputContent(input, getChatInputEditor(input));
     const markup = getMarkupInSelection(['date']);
     const element = markup.date.elements[0];
     let initDate = new Date();
@@ -200,7 +296,8 @@ export default class MarkupTooltip {
       withTime: true,
       onPick: (timestamp: number) => {
         setTimeout(() => {
-          this.resetSelection();
+          if(!input.isConnected || !contentIsCurrent(getChatInputEditor(input))) return;
+          if(!this.resetSelection(input, editorSelection)) return;
 
           // if(!timestamp) {
           //   ENTITY_ELEMENT_MAP.delete(element);
@@ -218,68 +315,35 @@ export default class MarkupTooltip {
     });
   }
 
-  public showLinkEditor() {
-    if(!this.container || !this.container.classList.contains('is-visible')) { // * if not inited yet (Ctrl+A + Ctrl+K)
-      this.show();
-    }
+  private resetSelection(
+    input: HTMLElement = this.input,
+    editorSelection: ChatInputEditorSelection = this.savedEditorSelection
+  ) {
+    if(!input?.isConnected || !editorSelection) return false;
+    const editor = getChatInputEditor(input);
+    if(!editor) return false;
+    if(editorSelection.revision !== undefined &&
+      editorSelection.revision !== editor.captureSelection().revision) return false;
 
-    const button = this.buttons.link;
-    this.container.classList.add('is-link');
-
-    this.saveRange();
-
-    const markup = getMarkupInSelection(['link']);
-    const anchor = markup['link'].elements.find((element) => element.tagName === 'A') as HTMLAnchorElement;
-
-    if(button.classList.contains('active')) {
-      this.linkInput.value = anchor.href;
-    } else {
-      this.linkInput.value = '';
-    }
-
-    this.setTooltipPosition(true);
-
-    this.linkInputFocusTimeout = window.setTimeout(() => {
-      this.linkInputFocusTimeout = undefined;
-      this.linkInput.focus(); // !!! instant focus will break animation
-    }, 200);
-    this.linkInput.classList.toggle('is-valid', this.isLinkValid());
+    editor.restoreSelection(editorSelection);
+    return true;
   }
 
-  private applyLink(e: Event) {
-    cancelEvent(e);
-    this.resetSelection();
-    let url = this.linkInput.value;
-    if(url) {
-      url = normalizeUrlProtocol(url);
-    }
-    applyMarkdown({input: this.input, type: 'link', href: url});
-    setTimeout(() => {
-      this.hide();
-    }, 0);
-  }
+  private saveRange() {
+    const input = this.input || getAppWindow().document.activeElement as HTMLElement;
+    const editor = input && getChatInputEditor(input);
+    if(!editor) return;
 
-  private isLinkValid() {
-    return !this.linkInput.value.length || !!matchUrl(this.linkInput.value);
-  }
-
-  private resetSelection(range: Range = this.savedRange) {
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-    this.input?.focus();
-  }
-
-  private saveRange(selection: Selection = document.getSelection()) {
-    return this.savedRange = selection.getRangeAt(0);
+    this.input = input;
+    this.savedEditorSelection = editor.captureSelection();
   }
 
   public hide() {
     // return;
 
-    if(this.init) return;
-
     this.input = undefined;
+    this.savedEditorSelection = undefined;
+    if(this.init) return;
     this.container.classList.remove('is-visible');
     // document.removeEventListener('mouseup', this.onMouseUp);
     document.removeEventListener('mouseup', this.onMouseUpSingle);
@@ -288,11 +352,10 @@ export default class MarkupTooltip {
     appNavigationController.removeByType('markup');
 
     if(this.hideTimeout) clearTimeout(this.hideTimeout);
-    this.clearLinkInputFocusTimeout();
     this.hideTimeout = window.setTimeout(() => {
       this.hideTimeout = undefined;
+      this.scrollContainer.scrollLeft = 0;
       this.container.classList.add('hide');
-      this.container.classList.remove('is-link');
     }, 200);
   }
 
@@ -314,11 +377,11 @@ export default class MarkupTooltip {
     // });
 
     const types = Object.keys(this.buttons) as MarkupTooltipTypes[];
-    const markup = getMarkupInSelection(types);
+    const editor = this.input && getChatInputEditor(this.input);
     types.forEach((type) => {
-      const {partly, fully} = markup[type];
-      if(MarkupTooltip.DISPLAY_MARKUP_PARTLY ? partly : fully) {
-        currentMarkups.add(this.buttons[type as MarkupTooltipTypes]);
+      const state = editor?.getMarkupState(type);
+      if(MarkupTooltip.DISPLAY_MARKUP_PARTLY ? state?.partly : state?.fully) {
+        currentMarkups.add(this.buttons[type]);
       }
     });
 
@@ -334,6 +397,7 @@ export default class MarkupTooltip {
       const isActive = activeButtons.includes(button);
       const wasActive = button.classList.contains('active');
       button.classList.toggle('active', isActive);
+      if(type !== 'link' && type !== 'date') button.setAttribute('aria-pressed', `${isActive}`);
 
       const icons = this.buttonIcons[type];
       if(icons && wasActive !== isActive) {
@@ -342,8 +406,9 @@ export default class MarkupTooltip {
     }
   }
 
-  private setTooltipPosition(isLinkToggle = false) {
+  private setTooltipPosition() {
     const selection = document.getSelection();
+    if(!selection?.rangeCount) return;
     const range = selection.getRangeAt(0);
 
     const rowsWrapper = findUpClassName(this.input, 'simple-message-input-container') ||
@@ -354,13 +419,10 @@ export default class MarkupTooltip {
 
     if(!rowsWrapper) return;
 
-    const currentTools = this.container.classList.contains('is-link') ?
-      this.wrapper.lastElementChild :
-      this.wrapper.firstElementChild;
     const bodyRect = getOverlayRoot().getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
     const inputRect = rowsWrapper.getBoundingClientRect();
-    const sizesRect = currentTools.getBoundingClientRect();
+    const sizesRect = this.scrollContainer.getBoundingClientRect();
 
     this.container.style.maxWidth = inputRect.width + 'px';
 
@@ -383,29 +445,34 @@ export default class MarkupTooltip {
 
     const minX = inputRect.left;
     const maxX = (inputRect.left + inputRect.width) - Math.min(inputRect.width, sizesRect.width);
-    let left: number;
-    if(isLinkToggle) {
-      const containerRect = this.container.getBoundingClientRect();
-      left = clamp(containerRect.left, minX, maxX);
-    } else {
-      const x = selectionRect.left + (selectionRect.width - sizesRect.width) / 2;
-      left = clamp(x, minX, maxX);
-    }
-
-    /* const isClamped = x !== minX && x !== maxX && (left === minX || left === maxX || this.container.getBoundingClientRect().left >= maxX);
-
-    if(isLinkToggle && this.container.classList.contains('is-link') && !isClamped) return; */
+    const x = selectionRect.left + (selectionRect.width - sizesRect.width) / 2;
+    const left = clamp(x, minX, maxX);
 
     this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
   }
 
+  private hasFormattableSelection(input = this.input) {
+    const editor = input && getChatInputEditor(input);
+    if(!editor) return false;
+
+    const selection = editor.captureSelection();
+    return (!selection.type || selection.type === 'all') &&
+      selection.from !== selection.to &&
+      !!editor.getSelectedText().trim();
+  }
+
   public show() {
+    if(!this.input || !this.canFormatInput(this.input) || contextMenuController.isOpened()) {
+      this.hide();
+      return;
+    }
+
     if(this.init) {
       this.init();
       this.init = null;
     }
 
-    if(isSelectionEmpty()) {
+    if(!this.hasFormattableSelection()) {
       this.hide();
       return;
     }
@@ -423,18 +490,50 @@ export default class MarkupTooltip {
     this.setActiveMarkupButton();
 
     const canFormat = this.input.getAttribute('can-format');
-    const allowedTypes = canFormat ?
+    const allowedTypes = canFormat !== null ?
       new Set(canFormat.split(',').filter(Boolean) as MarkupTooltipTypes[]) :
       null;
+    const hiddenTypes = new Set<MarkupTooltipTypes>();
+    const editor = getChatInputEditor(this.input);
     (Object.keys(this.buttons) as MarkupTooltipTypes[]).forEach((type) => {
-      const hidden = !!allowedTypes && !allowedTypes.has(type);
+      // What the mounted schema cannot apply must not be offered: a plain field
+      // carries no highlight or script marks.
+      const hidden = !!allowedTypes && !allowedTypes.has(type) || !editor?.supportsMarkup(type);
       this.buttons[type].classList.toggle('hide', hidden);
-      if(type === 'link') {
-        this.linkDelimiter.classList.toggle('hide', hidden);
-      }
+      if(hidden) hiddenTypes.add(type);
     });
+    const hasBasicFormatting = ([
+      'bold',
+      'italic',
+      'underline',
+      'strikethrough',
+      'quote'
+    ] as const).some((type) => !hiddenTypes.has(type));
+    const hasDateOrLink = (['date', 'link'] as const)
+    .some((type) => !hiddenTypes.has(type));
+    const hasExtendedFormatting = ([
+      'monospace',
+      'spoiler',
+      'highlight',
+      'subscript',
+      'superscript'
+    ] as const).some((type) => !hiddenTypes.has(type));
 
-    this.container.classList.remove('is-link');
+    const aiAvailable = this.input.classList.contains('input-message-input');
+    this.aiButton.classList.toggle('hide', !aiAvailable);
+    this.aiDelimiter.classList.toggle(
+      'hide',
+      !aiAvailable || !(hasBasicFormatting || hasDateOrLink || hasExtendedFormatting)
+    );
+    this.dateLinkDelimiter.classList.toggle(
+      'hide',
+      !hasBasicFormatting || !hasDateOrLink
+    );
+    this.extendedDelimiter.classList.toggle(
+      'hide',
+      !hasExtendedFormatting || !(aiAvailable || hasBasicFormatting || hasDateOrLink)
+    );
+
     const isFirstShow = this.container.classList.contains('hide');
     if(isFirstShow) {
       this.container.classList.remove('hide');
@@ -512,39 +611,42 @@ export default class MarkupTooltip {
   }
 
   public canFormatInput(input: Element) {
-    return input.classList.contains('input-message-input') || input.getAttribute('can-format');
+    if(!input) return false;
+    const canFormat = input.getAttribute('can-format');
+    return canFormat !== null ? !!canFormat.trim() : input.classList.contains('input-message-input');
   }
 
-  public handleSelection() {
-    if(this.addedListener) return;
-    this.addedListener = true;
-    // selectionchange/beforeinput are document-level — follow the active window so text-selection
-    // formatting works in a Document PiP window (the events fire on the PiP document there).
-    bindActiveWindowListener((w) => w.document, 'selectionchange', (e) => {
+  private handleSelectionChange = (event?: Event) => {
+    if(this.selectionChangeQueued) return;
+    const editorSelectionCommitted =
+      event?.type === CHAT_INPUT_EDITOR_SELECTION_UPDATE_EVENT;
+    this.selectionChangeQueued = true;
+    queueMicrotask(() => {
+      this.selectionChangeQueued = false;
       const doc = getAppWindow().document;
-      if(this.linkInputFocusTimeout) { // * if it soon will be focused, ignore the event because of click event
-        return;
-      }
-      // this.log('selectionchange');
-
-      if(doc.activeElement === this.linkInput) {
-        return;
-      }
-
+      // ProseMirror commits its TextSelection from the same native
+      // selectionchange event. Read it after every listener for that event has
+      // run, otherwise a mouse drag is checked against the previous cursor.
       const activeElement = doc.activeElement as HTMLElement;
+      if(this.input?.isConnected && this.container?.contains(activeElement)) return;
       if(this.input ? activeElement !== this.input : !this.canFormatInput(activeElement)) {
         this.hide();
         return;
       }
 
       const selection = doc.getSelection();
-      if(isSelectionEmpty(selection)) {
+      if(!editorSelectionCommitted && isSelectionEmpty(selection)) {
         this.hide();
         return;
       }
 
       this.input = activeElement;
+      if(!this.hasFormattableSelection(activeElement)) {
+        this.hide();
+        return;
+      }
 
+      this.saveRange();
       if(IS_TOUCH_SUPPORTED) {
         if(IS_APPLE) {
           this.show();
@@ -555,7 +657,6 @@ export default class MarkupTooltip {
             return;
           }
 
-          this.saveRange(selection);
           this.setMouseUpEvent();
           /* document.addEventListener('touchend', (e) => {
             cancelEvent(e);
@@ -566,16 +667,54 @@ export default class MarkupTooltip {
       } else if(this.container && this.container.classList.contains('is-visible')) {
         this.setActiveMarkupButton();
         this.setTooltipPosition();
-      } else if(this.input.matches(':active')) {
+      } else if(this.mouseSelectionActive || this.input.matches(':active')) {
         this.setMouseUpEvent();
       } else {
         this.show();
       }
     });
+  };
+
+  public handleSelection() {
+    if(this.addedListener) return;
+    this.addedListener = true;
+    // selectionchange/beforeinput are document-level — follow the active window so text-selection
+    // formatting works in a Document PiP window (the events fire on the PiP document there).
+    bindActiveWindowListener(
+      (w) => w.document,
+      'selectionchange',
+      this.handleSelectionChange
+    );
+    bindActiveWindowListener(
+      (w) => w.document,
+      CHAT_INPUT_EDITOR_SELECTION_UPDATE_EVENT,
+      this.handleSelectionChange
+    );
+    bindActiveWindowListener(
+      (w) => w.document,
+      'mousedown',
+      this.onDocumentMouseDown,
+      {capture: true}
+    );
+    bindActiveWindowListener(
+      (w) => w.document,
+      'mouseup',
+      this.onDocumentMouseUp,
+      {capture: true}
+    );
 
     bindActiveWindowListener((w) => w.document, 'beforeinput', (e) => {
       if(e.inputType === 'historyRedo' || e.inputType === 'historyUndo') {
         e.target.addEventListener('input', () => this.setActiveMarkupButton(), {once: true});
+      }
+    });
+
+    // ProseMirror applies history transactions without a native beforeinput event,
+    // but the chat editor emits input after its state has been committed.
+    bindActiveWindowListener((w) => w.document, 'input', (e) => {
+      const input = e.target as HTMLElement;
+      if(input === this.input && getChatInputEditor(input)) {
+        this.setActiveMarkupButton();
       }
     });
   }

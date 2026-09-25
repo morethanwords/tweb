@@ -6,6 +6,7 @@
  */
 
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 
 export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false, focus = true) {
   // Safari leaves `activeElement` null when nothing is focused (other engines fall back to <body>),
@@ -15,6 +16,12 @@ export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = fals
   const isEditableFocused = !!activeElement &&
     (activeElement.tagName === 'INPUT' || activeElement.isContentEditable);
   if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || !isEditableFocused)) {
+    return;
+  }
+
+  const editor = getChatInputEditor(el);
+  if(editor) {
+    editor.focusAtEnd(focus);
     return;
   }
 

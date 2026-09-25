@@ -8,7 +8,7 @@ export type FloatingButtonMenuDirection = FloatingMenuDirection;
 
 export type AttachFloatingButtonMenuOptions = {
   element: HTMLElement;
-  triggerEvent: keyof HTMLElementEventMap;
+  triggerEvent: keyof HTMLElementEventMap | Array<keyof HTMLElementEventMap>;
   direction: FloatingButtonMenuDirection;
   level: number;
   offset?: [number, number];
@@ -27,6 +27,7 @@ export default function attachFloatingButtonMenu({
   canOpen = () => true,
   onClose: onCloseArg
 }: AttachFloatingButtonMenuOptions) {
+  const triggerEvents = Array.isArray(triggerEvent) ? triggerEvent : [triggerEvent];
   let opened = false;
   let hovered = false;
   let requestId = 0;
@@ -82,18 +83,20 @@ export default function attachFloatingButtonMenu({
     ++requestId;
   };
 
-  element.addEventListener(triggerEvent, listener);
-  const detachActivation = triggerEvent === 'mouseenter' ?
+  triggerEvents.forEach((event) => element.addEventListener(event, listener));
+  const hoverTriggered = triggerEvents.includes('mouseenter');
+  // a menu that opens on hover opens on activation too, unless a click already opens it
+  const detachActivation = hoverTriggered && !triggerEvents.includes('click') ?
     attachClickEvent(element, listener) :
     undefined;
-  if(triggerEvent === 'mouseenter') {
+  if(hoverTriggered) {
     element.addEventListener('mouseleave', onMouseLeave);
     element.addEventListener('keydown', onKeyDown);
   }
 
   return () => {
     ++requestId;
-    element.removeEventListener(triggerEvent, listener);
+    triggerEvents.forEach((event) => element.removeEventListener(event, listener));
     element.removeEventListener('mouseleave', onMouseLeave);
     element.removeEventListener('keydown', onKeyDown);
     detachActivation?.();

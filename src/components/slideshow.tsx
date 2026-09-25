@@ -1,5 +1,14 @@
 
-import {createEffect, createSignal, For, onCleanup, onMount, Show, JSX} from 'solid-js';
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+  JSX
+} from 'solid-js';
 import SwipeHandler from '@components/swipeHandler';
 import styles from '@components/slideshow.module.scss';
 import classNames from '@helpers/string/classNames';
@@ -8,12 +17,15 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {IconTsx} from '@components/iconTsx';
 
 export type SlideshowProps<T> = {
+  aspectRatio?: number;
   class?: string;
   items?: T[];
   getItemKey?: (item: T) => unknown;
   children?: (item: T, index: number) => JSX.Element;
   initialIndex?: number;
   activeIndex?: number;
+  hideArrows?: boolean;
+  keepItemsMounted?: boolean;
   onIndexChange?: (index: number) => void;
   onClick?: (index: number) => void;
 };
@@ -91,7 +103,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
           if(newIndex < 0) newIndex = 0;
           if(newIndex >= getCount()) newIndex = getCount() - 1;
 
-          selectIndex(newIndex);
+          setActiveIndex(newIndex);
           setIsSwiping(false);
         });
       }
@@ -154,22 +166,20 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
     }
   };
 
+  const setActiveIndex = (newIndex: number) => {
+    if(newIndex === index() || newIndex < 0 || newIndex >= getCount()) return;
+    selectIndex(newIndex);
+    props.onIndexChange?.(newIndex);
+  };
+
   const handlePrev = (e: Event) => {
     e.stopPropagation();
-    if(index() > 0) {
-      const newIndex = index() - 1;
-      selectIndex(newIndex);
-      props.onIndexChange?.(newIndex);
-    }
+    setActiveIndex(index() - 1);
   };
 
   const handleNext = (e: Event) => {
     e.stopPropagation();
-    if(index() < (getCount() - 1)) {
-      const newIndex = index() + 1;
-      selectIndex(newIndex);
-      props.onIndexChange?.(newIndex);
-    }
+    setActiveIndex(index() + 1);
   };
 
   return (
@@ -179,9 +189,13 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
         styles.Slideshow,
         isSwiping() && styles.IsSwiping,
         getCount() <= 1 && styles.IsSingle,
+        props.hideArrows && styles.NoArrows,
         noTransition() && styles.NoTransition,
         props.class
       )}
+      style={{
+        '--slideshow-aspect-ratio': `${props.aspectRatio || 16 / 9}`
+      }}
       onClick={handleClick}
     >
       <div
@@ -190,16 +204,28 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
       >
         <For each={props.items}>{(item, i) => (
           <div class={styles.Item}>
-            <Show when={Math.abs(i() - index()) < 5}>
-              {props.children?.(item, i())}
-            </Show>
+            {props.keepItemsMounted ?
+              untrack(() => props.children?.(item, i())) :
+              <Show when={Math.abs(i() - index()) < 5}>
+                {props.children?.(item, i())}
+              </Show>
+            }
           </div>
         )}</For>
       </div>
 
-      <div class={styles.Tabs}>
+      <div class={styles.Dots}>
         <For each={new Array(getCount())}>{(_, i) => (
-          <div class={classNames(styles.Tab, i() === index() && styles.Active)} />
+          <button
+            type="button"
+            class={classNames(styles.Dot, i() === index() && styles.Active)}
+            aria-label={`${i() + 1} / ${getCount()}`}
+            aria-current={i() === index() ? 'true' : undefined}
+            onClick={(event) => {
+              event.stopPropagation();
+              setActiveIndex(i());
+            }}
+          />
         )}</For>
       </div>
 

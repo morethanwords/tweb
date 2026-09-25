@@ -10,7 +10,7 @@ import Space from '@components/space';
 import {toastNew} from '@components/toast';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
-import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import SuperIntersectionObserver from '@helpers/dom/superIntersectionObserver';
 import {keepMe} from '@helpers/keepMe';
 import mediaSizes from '@helpers/mediaSizes';
@@ -35,7 +35,6 @@ import {
   PollVoteRestrictionState
 } from '@appManagers/utils/polls/pollVoteRestriction';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
-import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {useAppConfig} from '@stores/appState';
 import {usePeer} from '@stores/peers';
@@ -362,10 +361,8 @@ export const PollMessageContent =
 
       setNewOption(sliced.text ? sliced : {...sliced, attachment: undefined});
       if(sliced.text.length < inputField?.value.length) {
-        inputField?.setValueSilently(
-          wrapDraftText(sliced.text, {entities: sliced.entities, middleware})
-        );
-        setCaretAtEnd(inputField?.input);
+        inputField?.setValueSilently(sliced);
+        placeCaretAtEnd(inputField?.input, true);
       }
     });
 

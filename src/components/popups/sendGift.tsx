@@ -23,6 +23,7 @@ import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import Button from '@components/buttonTsx';
+import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {formatMonthsDuration} from '@helpers/date';
@@ -956,6 +957,9 @@ function ChosenGiftPage(props: {
               placeholder='StarGiftMessagePlaceholder'
               instanceRef={(input) => {
                 input.input.setAttribute('aria-label', I18n.format('StarGiftMessagePlaceholder', true))
+                // The message travels as text plus entities and holds one line.
+                const editor = attachPlainMessageEditor(input.input);
+                onCleanup(() => editor.destroy());
                 input.input.addEventListener('input', () => {
                   const value = getRichValueWithCaret(input.input, true)
                   setTextWithEntities(value.value ? {

@@ -22,7 +22,10 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
   constructor(
     protected navigationType?: NavigationItem['type'],
-    protected withOverlay?: boolean
+    protected withOverlay?: boolean,
+    // a press from the keyboard (or assistive technology) is aimed at the focused control: close,
+    // but let it through — for an overlay that only informs, like a toast
+    protected passKeyboardActivation?: boolean
   ) {
     super(false);
     this.listenerOptions = withOverlay ? {} : {capture: true};
@@ -40,7 +43,8 @@ export default class OverlayClickHandler extends EventListenerBase<{
       }
     }
 
-    if(this.listenerOptions?.capture) {
+    const keyboardActivation = e.type === 'click' && (e as MouseEvent).detail === 0;
+    if(this.listenerOptions?.capture && !(this.passKeyboardActivation && keyboardActivation)) {
       cancelEvent(e);
     }
 

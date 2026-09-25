@@ -3,7 +3,7 @@ import {createEffect, mergeProps, on, splitProps} from 'solid-js';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {InstanceOf} from '@types';
 
-import InputField, {InputFieldOptions, InputState} from '@components/inputField';
+import InputField, {InputFieldOptions, InputFieldValue, InputState} from '@components/inputField';
 
 export interface InputFieldTsxProps<T extends typeof InputField> extends InputFieldOptions {
   InputFieldClass?: T
@@ -11,7 +11,7 @@ export interface InputFieldTsxProps<T extends typeof InputField> extends InputFi
   instanceRef?: (value: InstanceOf<T>) => void
 
   class?: string
-  value?: string | Node
+  value?: InputFieldValue
   onRawInput?: (value: string) => void
   errorLabel?: LangPackKey | null
   errorLabelOptions?: any[]
