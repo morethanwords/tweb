@@ -1,6 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import {expect, Page, test} from '@playwright/test';
-import {expectNoA11yViolations, moveClient, setIncreasedContrast, settleForMeasurement, trackBrowserErrors} from './accessibility.helpers';
+import {expect, Page} from '@playwright/test';
+import {test} from './workerContext';
+import {createAxeBuilder, expectNoA11yViolations, moveClient, setIncreasedContrast, settleForMeasurement, trackBrowserErrors} from './accessibility.helpers';
 import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
 const readPalette = (page: Page) => page.locator('html').evaluate((element) => {
@@ -37,7 +37,7 @@ for(const theme of ['day', 'night', 'light', 'tinted']) test(`contrast mode rest
   // it the popup can still be arriving and axe fails with "No elements found
   // for include" instead of measuring anything.
   await settleForMeasurement(page, '.popup.active');
-  const ordinary = await new AxeBuilder({page}).include('.popup.active').disableRules(['color-contrast']).analyze();
+  const ordinary = await (await createAxeBuilder(page, '.popup.active')).disableRules(['color-contrast']).analyze();
   expect(ordinary.violations).toEqual([]);
   await setIncreasedContrast(page, true);
   expect(await readPalette(page)).not.toEqual(original);

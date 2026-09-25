@@ -26,8 +26,9 @@ export default defineConfig({
     viewport: {width: 800, height: 600}
   },
   projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}],
+  // No hot reload (vite.e2e.config.ts): an edit during a run must not reload the page under a test.
   webServer: externalBaseURL ? undefined : {
-    command: `pnpm exec vite --port ${PORT} --strictPort`,
+    command: `pnpm exec vite --config vite.e2e.config.ts --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
     env: {TWEB_PREVIEW: '1'},
     reuseExistingServer: !process.env.CI,

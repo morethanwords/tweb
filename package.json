@@ -12,6 +12,7 @@
     "check-bundle": "node scripts/check-bundle-mangling.mjs dist",
     "test": "vitest",
     "test:a11y": "playwright test --config playwright.a11y.config.ts",
+    "test:a11y:full": "A11Y_ALL_THEMES=1 playwright test --config playwright.a11y.config.ts",
     "test:ephemeral-bot": "node ./src/tests/fixtures/ephemeralBot/bot.mjs",
     "test:lottie": "playwright test e2e/lottie*.spec.ts",
     "test:popups": "playwright test e2e/popupSandbox.spec.ts",

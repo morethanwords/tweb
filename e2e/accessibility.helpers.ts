@@ -96,11 +96,25 @@ export async function settleForMeasurement(page: Page, include?: string) {
   }, include);
 }
 
-export async function expectNoA11yViolations(page: Page, include?: string) {
-  await settleForMeasurement(page, include);
+/**
+ * An axe scan of `include` (the whole page without it).
+ *
+ * By default AxeBuilder opens a blank page for every scan to merge the per-frame results in — a new
+ * renderer each time, which was most of what a scan cost and most of what the popup sweep spent.
+ * Legacy mode runs axe in the page itself, and differs only in which frames it reaches: same-origin
+ * ones. So it is used wherever there is no frame to reach; a surface that holds one (the mini app
+ * and payment verification embed a data: URL) keeps the default.
+ */
+export async function createAxeBuilder(page: Page, include?: string) {
   const builder = new AxeBuilder({page});
   if(include) builder.include(include);
-  const {violations} = await builder.analyze();
+  if(!await page.locator(include ?? 'body').locator('iframe').count()) builder.setLegacyMode();
+  return builder;
+}
+
+export async function expectNoA11yViolations(page: Page, include?: string) {
+  await settleForMeasurement(page, include);
+  const {violations} = await (await createAxeBuilder(page, include)).analyze();
   const details = violations.map(({help, id, impact, nodes}) => {
     const targets = nodes.map(({target, failureSummary}) => `${target.join(' ')}: ${failureSummary}`).join(', ');
     return `[${impact ?? 'unknown'}] ${id}: ${help} (${targets})`;

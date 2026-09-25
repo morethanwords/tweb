@@ -1,4 +1,5 @@
-import {expect, Page, test} from '@playwright/test';
+import {expect, Page} from '@playwright/test';
+import {test} from './workerContext';
 import {expectNoA11yViolations} from './accessibility.helpers';
 import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
 

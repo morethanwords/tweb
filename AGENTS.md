@@ -471,7 +471,8 @@ Browser suites (Playwright):
 
 ```bash
 pnpm test:popups   # every sandbox story opens and becomes visible
-pnpm test:a11y     # Axe matrix, keyboard interop, contrast, media editor, stories
+pnpm test:a11y     # Axe matrix, keyboard interop, contrast, media editor, stories (~2 min)
+pnpm test:a11y:full  # the same, with the story sweep in all four themes (~4 min; always on CI)
 pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens
 pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE_URL)
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
@@ -481,6 +482,15 @@ pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
 login screen is outside it — the chat list, a conversation, the profile sidebar,
 settings. `test:a11y:app` is that half, and it needs an authorized preview for
 the same reason `test:focus:app` does.
+
+`test:a11y` runs in parallel and sweeps every popup story with Axe in one theme
+(`day`): roles, names and keyboard wiring do not change with the theme, only
+colour does. `test:a11y:full` (`A11Y_ALL_THEMES=1`, implied on CI) sweeps all
+four — run it after touching colours or theme variables. `A11Y_THEMES=night,tinted`
+picks themes, `A11Y_STORIES=a,b` picks stories, `A11Y_WORKERS` / `A11Y_STORY_PARTS`
+tune the split, and `--project=chromium` drops the other engines (~70 s).
+Playwright suites run on `vite.e2e.config.ts` — the dev server without hot
+reload, so an edit made while a suite runs no longer reloads the page under it.
 
 `test:focus` answers a question the others cannot: not whether a control has a
 name and a role, but whether a person pressing Tab can *see* where they are. It
