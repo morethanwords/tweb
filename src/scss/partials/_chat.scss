@@ -313,6 +313,16 @@
   line-height: 1.25rem;
 }
 
+.ephemeral-context-revert {
+  display: flex;
+  flex-direction: column;
+
+  &-about {
+    font-size: var(--font-size-12);
+    line-height: var(--line-height-12);
+  }
+}
+
 @keyframes chat-input-ai-editor-button-star-animation {
   0% {
     opacity: 0;
@@ -647,6 +657,14 @@
       --ripple-color: var(--light-danger-color);
     }
   }
+}
+
+// the welcome messages limit in the composer's place: a line of text, not a button
+.chat-input-welcome-limit {
+  display: flex;
+  align-items: center;
+  color: var(--secondary-text-color);
+  font-weight: var(--font-weight-normal);
 }
 
 .selection-wrapper,

@@ -7,5 +7,7 @@ export enum ChatType {
   Saved = 'saved',
   Search = 'search',
   Static = 'static',
-  Logs = 'logs'
+  Logs = 'logs',
+  // layer 229: the welcome messages a chat sends each new member (desktop's WelcomeMessages section)
+  Welcome = 'welcome'
 }

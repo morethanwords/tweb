@@ -192,7 +192,9 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     onSomethingChanged?: () => void,
     fields?: AdministratorRightsCheckboxFieldsField[],
     canGrant?: (right: ChatRights) => boolean,
-    preserveUnhandledRights?: boolean
+    preserveUnhandledRights?: boolean,
+    // a bot sends the welcome messages itself rather than managing them (desktop's wording)
+    isBot?: boolean
   }) {
     super({
       listenerSetter: options.listenerSetter,
@@ -230,6 +232,11 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       flags: [...field.flags]
     })) || [
       {flags: ['change_info'], text: isBroadcast ? 'EditAdminChangeChannelInfo' : 'EditAdminChangeGroupInfo'},
+      // three keys, as the API group asked: a bot in a channel, a bot in a group, any user admin;
+      // second in the list, right under the chat info, as in desktop
+      {flags: ['manage_welcome_messages'], text: options.isBot ?
+        (isBroadcast ? 'AdminRights.SendWelcomeMessages' : 'AdminRights.GroupSendWelcomeMessages') :
+        'AdminRights.ManageWelcomeMessages'},
       isBroadcast && {flags: [manageMessagesNestedKey], text: 'AdminRights.ManageMessages', nested: manageMessagesNested},
       isBroadcast && {flags: [manageStoriesNestedKey], text: 'AdminRights.ManageStories', nested: manageStoriesNested},
       !isBroadcast && {flags: ['delete_messages'], text: isBroadcast ? 'EditAdminDeleteMessages' : 'EditAdminGroupDeleteMessages'},
@@ -240,7 +247,6 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       {flags: ['manage_call'], text: isBroadcast ? 'StartVoipChatPermission' : 'Channel.EditAdmin.ManageCalls'},
       isBroadcast && {flags: ['invite_users'], text: 'Channel.EditAdmin.PermissionInviteSubscribers'},
       isBroadcast && {flags: ['manage_direct_messages'], text: 'Channel.EditAdmin.ManageDirectMessages'},
-      {flags: ['manage_welcome_messages'], text: 'AdminRights.ManageWelcomeMessages'},
       !isBroadcast && {flags: ['anonymous'], text: 'EditAdminSendAnonymously', checked: rights ? undefined : false},
       {flags: ['add_admins'], text: 'EditAdminAddAdmins', checked: rights ? undefined : isCreator}
     ];

@@ -7,6 +7,7 @@ import {KeyboardButton, KeyboardInlineButton, Message, ReplyMarkup, InlineQueryP
 import {i18n} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import Chat from '@components/chat/chat';
 import {showPickUser3Popup} from '@components/popups/pickUser';
 import selectRequestPeers from '@components/popups/requestPeer';
@@ -329,9 +330,14 @@ export function getKeyboardButtonHandler({
 
     default: {
       if(!message) {
+        // a keyboard an ephemeral message brought answers its bot privately: the press replies
+        // to that message, which makes the send an ephemeral reply (desktop replies to the
+        // keyboard's message in groups for the same reason)
+        const replyToEphemeral = isEphemeralMessageId(messageMid) ? {replyToMsgId: messageMid} : undefined;
         onClick = () => {
           rootScope.managers.appMessagesManager.sendText({
             ...chat.input?.getEphemeralSendingSnapshot(),
+            ...replyToEphemeral,
             peerId,
             text: button.text
           });
@@ -340,6 +346,13 @@ export function getKeyboardButtonHandler({
 
       break;
     }
+  }
+
+  // a welcome message is only a template until someone joins, and its id is no message's id: a
+  // link or a copy button still works, anything that would ask a bot about "this message" must
+  // not fire (desktop's `api_bot.cpp` guard)
+  if(message?.pFlags.welcome_template && buttonType._ !== 'inlineButtonTypeUrl' && buttonType._ !== 'inlineButtonTypeCopy') {
+    onClick = undefined;
   }
 
   let bg: 'success' | 'danger' | 'primary';

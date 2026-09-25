@@ -5,6 +5,11 @@ import {
   parseAllowedChatIds
 } from './allowlist.mjs';
 import {
+  isAnchorCallback,
+  makeAnchorMessage,
+  processAnchorCallback
+} from './anchor.mjs';
+import {
   isBusinessChatAllowed,
   isBusinessConnectionAllowed,
   isBusinessMessageFromCurrentRun,
@@ -20,6 +25,7 @@ import {
   BotApiError,
   getErrorDetails,
   getPollRetryDelay,
+  isGoneEphemeralTargetError,
   isRetryablePollError,
   processUpdateBatch,
   UpdateHandlingError
@@ -110,6 +116,7 @@ const businessStartedAt = Math.floor(Date.now() / 1000);
 const businessConnections = new Map();
 const handledBusinessMessages = new Set();
 const handledJoinQueries = new Set();
+const anchors = new Map();
 let stopRequested = false;
 let activePollController;
 let offset;
@@ -271,6 +278,12 @@ async function handleMessage(message) {
     return;
   }
 
+  if(command === 'anchor') {
+    await call('sendMessage', makeAnchorMessage(message.chat.id));
+    log('ordinary-message', {command});
+    return;
+  }
+
   const context = getReplyContext(message);
   const mediaType = getMediaType(message);
   if(!command && context) {
@@ -399,6 +412,26 @@ async function handleMessage(message) {
     return;
   }
 
+  if(command === 'keyboard') {
+    await sendEphemeral(context, 'sendMessage', {
+      text: 'Private reply keyboard: a press answers me privately',
+      reply_markup: {
+        keyboard: [[{text: 'Option A'}, {text: 'Option B'}]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
+    });
+    return;
+  }
+
+  if(command === 'forcereply') {
+    await sendEphemeral(context, 'sendMessage', {
+      text: 'Private force reply: answer this message',
+      reply_markup: {force_reply: true}
+    });
+    return;
+  }
+
   if(command === 'edit') {
     const sent = await sendEphemeral(context, 'sendMessage', {
       text: 'Private reply before edit'
@@ -435,6 +468,18 @@ async function handleCallbackQuery(query) {
   await call('answerCallbackQuery', {
     callback_query_id: query.id
   });
+
+  if(isAnchorCallback(query.data)) {
+    const result = await processAnchorCallback({
+      query,
+      anchors,
+      sendMessage: (params) => call('sendMessage', params),
+      editEphemeralMessageText: (params) => call('editEphemeralMessageText', params),
+      deleteEphemeralMessage: (params) => call('deleteEphemeralMessage', params)
+    });
+    log('anchor-callback', result);
+    return;
+  }
 
   const chatId = query.message?.chat?.id;
   if(!chatId || !query.from?.id) {
@@ -640,10 +685,18 @@ async function handleUpdate(update) {
     return;
   }
 
-  if(update.callback_query) {
-    await handleCallbackQuery(update.callback_query);
-  } else if(update.message) {
-    await handleMessage(update.message);
+  try {
+    if(update.callback_query) {
+      await handleCallbackQuery(update.callback_query);
+    } else if(update.message) {
+      await handleMessage(update.message);
+    }
+  } catch(error) {
+    if(!isGoneEphemeralTargetError(error)) {
+      throw error;
+    }
+
+    log('ephemeral-target-gone', getErrorDetails(error));
   }
 }
 
@@ -675,9 +728,12 @@ const commands = [
   {command: 'link', description: 'Private link preview', is_ephemeral: true},
   {command: 'burst', description: 'Three private responses', is_ephemeral: true},
   {command: 'button', description: 'Private callback button', is_ephemeral: true},
+  {command: 'keyboard', description: 'Private reply keyboard', is_ephemeral: true},
+  {command: 'forcereply', description: 'Private force reply', is_ephemeral: true},
   {command: 'edit', description: 'Private edited response', is_ephemeral: true},
   {command: 'delete', description: 'Private deleted response', is_ephemeral: true},
-  {command: 'plain', description: 'Ordinary public response'}
+  {command: 'plain', description: 'Ordinary public response'},
+  {command: 'anchor', description: 'Public message you can swap for a private version'}
 ];
 
 if(allowedChatIds.size) {

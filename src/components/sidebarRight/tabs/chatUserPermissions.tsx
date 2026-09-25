@@ -143,7 +143,8 @@ const ChatUserPermissions: Component = () => {
         participant: goodTypes.includes(participant._) ? participant as any : undefined,
         rights: editingAdmin ? initialAdminRights : undefined,
         chat,
-        canEdit: _canEditAdmin
+        canEdit: _canEditAdmin,
+        isBot: !!user?.pFlags.bot
       };
 
       if(editingAdmin) {

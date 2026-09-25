@@ -97,6 +97,7 @@ export interface MTAppConfig {
   giveaway_countries_max?:                   number;
   giveaway_gifts_purchase_available?:        boolean;
   giveaway_period_max?:                      number;
+  ephemeral_welcome_messages_max?:           number;
   quote_length_max?:                         number;
   recommended_channels_limit_default?:       number;
   recommended_channels_limit_premium?:       number;

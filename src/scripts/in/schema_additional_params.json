@@ -423,6 +423,14 @@
         "type": "true"
       },
       {
+        "name": "ephemeral_anchored",
+        "type": "true"
+      },
+      {
+        "name": "welcome_template",
+        "type": "true"
+      },
+      {
         "name": "repayRequest",
         "type": "{id: number, messageCount: number}"
       }
@@ -843,6 +851,31 @@
       {
         "name": "hidden",
         "type": "true"
+      },
+      {
+        "name": "used",
+        "type": "true"
+      },
+      {
+        "name": "fromId",
+        "type": "PeerId"
+      }
+    ]
+  },
+  {
+    "predicate": "replyInlineMarkup",
+    "params": [
+      {
+        "name": "hidden",
+        "type": "true"
+      },
+      {
+        "name": "used",
+        "type": "true"
+      },
+      {
+        "name": "mid",
+        "type": "number"
       },
       {
         "name": "fromId",

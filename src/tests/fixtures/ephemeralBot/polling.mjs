@@ -16,6 +16,17 @@ export class UpdateHandlingError extends Error {
   }
 }
 
+/**
+ * The ephemeral message an answer was meant for is gone: it lives only a couple of days, and a
+ * restarted fixture is handed back the updates it did not finish. Like an expired guard query
+ * this is logged and skipped — dying on it wedges the fixture on the redelivered update.
+ */
+export function isGoneEphemeralTargetError(error) {
+  return error instanceof BotApiError &&
+    error.errorCode === 400 &&
+    /REPLY_TO_INVALID|message to be replied not found|MESSAGE_ID_INVALID/i.test(error.message);
+}
+
 export function getErrorDetails(error) {
   const details = {
     message: error instanceof Error ? error.message : String(error)

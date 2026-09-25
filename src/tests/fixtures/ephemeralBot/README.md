@@ -26,7 +26,12 @@ export TG_EPHEMERAL_BOT_CHAT_IDS='-1001234567890'
 pnpm test:ephemeral-bot
 ```
 
-`TG_EPHEMERAL_BOT_CHAT_IDS` accepts a comma-separated list. Messages and
+`TG_EPHEMERAL_BOT_CHAT_IDS` accepts a comma-separated list. A user id in it is
+that user's private chat with the bot. There, as established against the live
+API, the bot cannot send an ephemeral message on its own (`BOT_NOT_ADMIN`), and
+a bare ephemeral command from the user is accepted by the server but never
+delivered to the bot. What works is the bot answering a button press
+(`callback_query_id`) and the user replying to that ephemeral answer. Messages and
 callback queries from every other chat are ignored, and the fixture registers
 its commands only in allowlisted chats.
 
@@ -169,9 +174,18 @@ differently. Each answered query is logged as `guard-join-request-answered`.
 - `/location` and `/link` cover location and link previews.
 - `/burst` sends three grouped ephemeral replies.
 - `/button` covers an inline callback.
+- `/keyboard` and `/forcereply` cover a reply keyboard and force-reply on an
+  ephemeral message: a press or an answer comes back as an ephemeral reply,
+  acknowledged with "Received private text".
 - `/edit` and `/delete` cover ephemeral mutations.
 - `/poll` returns the expected unsupported-content notice.
 - `/plain` sends an ordinary public bot reply as a control case.
+- `/anchor` covers anchored ephemeral messages. It posts an ordinary public
+  message with a button; pressing it replaces that message, for the pressing
+  user only, with a private version (`replace_callback_query_message`). The
+  private version's buttons edit it and delete it from the bot's side, which
+  gives the original back; the client's own **Revert** does the same from the
+  user's side.
 
 The fixture also acknowledges ephemeral client media when the user replies
 without a command.

@@ -584,6 +584,14 @@ export default class BubbleGroups {
 
     if(isEphemeralMessage(item1.message) !== isEphemeralMessage(item2.message)) return false;
 
+    // our own ephemeral messages say whom they went to ("Only visible to @bot"), so ones to
+    // different bots stay apart (desktop groups outgoing ephemerals by receiver)
+    if(
+      isEphemeralMessage(item1.message) &&
+      isEphemeralMessage(item2.message) &&
+      item1.message.ephemeral_receiver_id !== item2.message.ephemeral_receiver_id
+    ) return false;
+
     // a message an ephemeral one stands in for shows content of its own — desktop keeps it
     // out of its neighbours' group for the same reason (`sameAnchored`)
     if(isAnchoredEphemeralMessage(item1.message) !== isAnchoredEphemeralMessage(item2.message)) return false;
@@ -598,7 +606,8 @@ export default class BubbleGroups {
       // * keep guest-chat messages from different visitors in separate groups (own avatar + "for <visitor>")
       getGuestChatViaFromId(item1.message) === getGuestChatViaFromId(item2.message) &&
       item1.dateTimestamp === item2.dateTimestamp &&
-      Math.abs(item2.timestamp - item1.timestamp) <= this.newGroupDiff &&
+      // welcome messages are read in one go whenever they were written (Android and desktop)
+      (this.chat.type === ChatType.Welcome || Math.abs(item2.timestamp - item1.timestamp) <= this.newGroupDiff) &&
       !item1.single &&
       !item2.single &&
       isOut1 === this.chat.isOutMessage(item2.message) &&

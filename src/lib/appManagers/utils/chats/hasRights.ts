@@ -136,6 +136,7 @@ export default function hasRights(
     case 'post_messages':
     case 'manage_direct_messages':
     case 'manage_linked_peers':
+    case 'manage_welcome_messages':
     case 'edit_messages': {
       return isAdmin && !!myFlags[action];
     }

@@ -252,6 +252,7 @@ import {richMessageToPage} from '@lib/richMessage';
 import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
+import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import {
   CommunityChangedServiceBubble
@@ -575,6 +576,7 @@ type EmptyPlaceholderType =
   | 'saved'
   | 'noMessages'
   | 'noScheduledMessages'
+  | 'welcomeMessages'
   | 'greeting'
   | 'restricted'
   | 'premiumRequired'
@@ -723,6 +725,11 @@ export default class ChatBubbles {
   private solidMessageBodies = new Map<HTMLElement, Map<number, SolidMessageBodyEntry>>();
   private pendingStreamedMessageUpdates = new Map<FullMid, Message.message>();
   private streamedMessageFinals = new Map<FullMid, StreamedMessageFinalMarker>();
+  /**
+   * Android's `welcomeTemplateFirst`: new members read the chat's welcome messages from the
+   * oldest, so only that one says who sees them.
+   */
+  private welcomeFirstMid: number;
   private streamFollowInvalidatedUntil = 0;
   private testPeerNonContactState: TestPeerNonContactState;
   private testPeerNonContactRequest = 0;
@@ -1501,7 +1508,7 @@ export default class ChatBubbles {
 
     if(!DO_NOT_UPDATE_MESSAGE_REACTIONS/*  && false */) {
       this.listenerSetter.add(rootScope)('messages_reactions', async(arr) => {
-        if(this.chat.type === ChatType.Scheduled) {
+        if(this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) {
           return;
         }
 
@@ -1877,7 +1884,7 @@ export default class ChatBubbles {
           if(
             message.pFlags.is_outgoing ||
             message.peerId !== this.peerId ||
-            (isEphemeralMessage(message) && message.pFlags.out)
+            !this.canReplyToBubble(bubble)
           ) {
             return;
           }
@@ -2206,7 +2213,10 @@ export default class ChatBubbles {
 
   private canReplyToBubble(bubble: HTMLElement) {
     const message = this.chat.getMessage(getBubbleFullMid(bubble));
-    return !!message && !(isEphemeralMessage(message) && message.pFlags.out);
+    // a welcome template is replied to by nobody (desktop's welcome section has no Reply)
+    return !!message &&
+      !(isEphemeralMessage(message) && !canReplyToEphemeralMessage(message)) &&
+      !(message as Message.message).pFlags.welcome_template;
   }
 
   public constructPeerHelpers() {
@@ -2249,7 +2259,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
-      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs || this.chat.type === ChatType.Pinned) return;
+      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs || this.chat.type === ChatType.Pinned) return;
       const streamedFinal = this.streamedMessageFinals.get(makeFullMid(message));
       if(streamedFinal) {
         window.clearTimeout(streamedFinal.timeout);
@@ -2270,7 +2280,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-      if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) {
+      if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) {
         return;
       }
 
@@ -2316,7 +2326,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      if(!dialogs.has(this.peerId) || this.chat.monoforumThreadId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
+      if(!dialogs.has(this.peerId) || this.chat.monoforumThreadId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome || this.chat.type === ChatType.Saved) {
         return;
       }
 
@@ -2475,7 +2485,7 @@ export default class ChatBubbles {
     });
 
     !DO_NOT_UPDATE_MESSAGE_VIEWS && this.listenerSetter.add(rootScope)('messages_views', (arr) => {
-      if(this.chat.type === ChatType.Scheduled) return;
+      if(this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) return;
 
       fastRaf(() => {
         let scrollSaver: ScrollSaver;
@@ -2564,6 +2574,30 @@ export default class ChatBubbles {
       onUpdate();
     });
     // * scheduled part end
+
+    // * welcome messages (layer 229): their own list, changed by any of the chat's admins
+    this.listenerSetter.add(rootScope)('welcome_message_new', (message) => {
+      if(this.chat.type !== ChatType.Welcome || message.peerId !== this.peerId) return;
+      this.welcomeFirstMid ??= message.mid;
+      this.renderNewMessage(message);
+    });
+
+    this.listenerSetter.add(rootScope)('welcome_messages_delete', async({peerId, mids}) => {
+      if(this.chat.type !== ChatType.Welcome || peerId !== this.peerId) return;
+
+      // the next one is read first now: it takes the chip over, before its neighbour's removal
+      // starts regrouping the bubbles under a re-render
+      if(mids.includes(this.welcomeFirstMid)) {
+        const [firstMid] = await this.managers.appMessagesManager.getWelcomeMessagesMids(peerId);
+        if(this.peerId !== peerId || this.chat.type !== ChatType.Welcome) return;
+        this.welcomeFirstMid = firstMid;
+        const bubble = firstMid && this.getBubble(makeFullMid(peerId, firstMid));
+        const message = bubble && this.chat.getMessage(firstMid);
+        if(message) await this.safeRenderMessage({message, bubble});
+      }
+
+      this.deleteMessagesByIds(mids.map((mid) => makeFullMid(peerId, mid)));
+    });
   }
 
   private get peerId() {
@@ -2575,6 +2609,12 @@ export default class ChatBubbles {
   }
 
   private async onHistoryReload() {
+    // welcome templates are not the chat's messages: reloading those says nothing about them, and
+    // their ids would name other messages there
+    if(this.chat.type === ChatType.Welcome) {
+      return;
+    }
+
     const {peerId} = this;
     const wasLikeGroup = this.chat.isLikeGroup;
     this.chat.isLikeGroup = await this.chat._isLikeGroup(peerId);
@@ -3095,6 +3135,7 @@ export default class ChatBubbles {
     const content = findUpClassName(e.target, 'bubble-content');
     if(!(
       this.chat.type !== ChatType.Scheduled &&
+      this.chat.type !== ChatType.Welcome &&
       content &&
       !this.chat.selection.isSelecting &&
       !findUpClassName(e.target, 'service') &&
@@ -5524,10 +5565,20 @@ export default class ChatBubbles {
   }
 
   private createDateBubble(timestamp: number, date: Date = new Date(timestamp * 1000)) {
-    return createDateBubble(timestamp, date, this.chat.type === ChatType.Scheduled);
+    return createDateBubble(
+      timestamp,
+      date,
+      this.chat.type === ChatType.Scheduled,
+      this.chat.type === ChatType.Welcome ? i18n('WelcomeMessages.PreviewAbout') : undefined
+    );
   }
 
   public getDateForDateContainer(timestamp: number) {
+    // welcome messages are not a timeline: one heading over all of them, as on Android
+    if(this.chat.type === ChatType.Welcome) {
+      return {date: new Date(1000), dateTimestamp: 1000};
+    }
+
     const date = new Date(timestamp * 1000);
     if(timestamp !== SEND_WHEN_ONLINE_TIMESTAMP) {
       date.setHours(0, 0, 0);
@@ -5803,7 +5854,7 @@ export default class ChatBubbles {
 
     const chatType = this.chat.type;
 
-    if(chatType === ChatType.Scheduled || this.chat.isRestricted) {
+    if(chatType === ChatType.Scheduled || chatType === ChatType.Welcome || this.chat.isRestricted) {
       lastMsgFullMid = EMPTY_FULL_MID;
     } else if(lastMsgId) {
       lastMsgFullMid = makeFullMid(lastMsgPeerId ?? peerId, lastMsgId);
@@ -5965,7 +6016,7 @@ export default class ChatBubbles {
     }
 
     // add last message, bc in getHistory will load < max_id
-    const additionalMid = isJump || [ChatType.Search, ChatType.Scheduled].includes(chatType) || this.chat.isRestricted ? undefined : overrideAdditionMsgId ?? splitFullMid(topMessageFullMid).mid;
+    const additionalMid = isJump || [ChatType.Search, ChatType.Scheduled, ChatType.Welcome].includes(chatType) || this.chat.isRestricted ? undefined : overrideAdditionMsgId ?? splitFullMid(topMessageFullMid).mid;
     const additionalFullMid = additionalMid ? makeFullMid(peerId, additionalMid) : undefined;
 
     let maxBubbleFullMid = EMPTY_FULL_MID;
@@ -6043,7 +6094,8 @@ export default class ChatBubbles {
       this.processRanks = undefined;
       this.canShowRanks = false;
 
-      let canShowRanks = this.chat.isMegagroup, chatId = this.peerId.toChatId();
+      // a welcome message is signed by nobody's role (Android drops the admin tag there)
+      let canShowRanks = this.chat.isMegagroup && this.chat.type !== ChatType.Welcome, chatId = this.peerId.toChatId();
       if(this.chat.type === ChatType.Saved && !this.chat.threadId.isUser()) {
         const chat = apiManagerProxy.getChat(chatId = this.chat.threadId.toChatId());
         canShowRanks = chat?._ === 'channel';
@@ -8953,7 +9005,11 @@ export default class ChatBubbles {
     // line, and has no delivery state worth showing — tdesktop says the same
     // with `customInfoLayout() = true` (history_view_call.h:39). So it gets no
     // message-info block at all, rather than one parked in a corner.
-    const noMessageInfo = isSponsored || context.messageMedia?._ === 'messageMediaCall';
+    // A welcome template is sent whenever someone joins, so its own date means nothing (Android
+    // draws no time there either).
+    const noMessageInfo = isSponsored ||
+      context.messageMedia?._ === 'messageMediaCall' ||
+      this.chat.type === ChatType.Welcome;
 
     let timeSpan: HTMLElement, _clearfix: HTMLElement;
     if(!noMessageInfo) {
@@ -9982,7 +10038,7 @@ export default class ChatBubbles {
             }
 
             const lastContainer = messageDiv.lastElementChild.querySelector('.document-message') || messageDiv.lastElementChild.querySelector('.document, .audio');
-            if(lastContainer) {
+            if(lastContainer && timeSpan) {
               appendBubbleTime(
                 bubble,
                 lastContainer as HTMLElement,
@@ -10388,8 +10444,8 @@ export default class ChatBubbles {
             editDate: geoMessage.edit_date,
             onLiveExpire: (footer) => {
               bubble.classList.add('is-message-empty');
-              timeSpan.classList.remove('hide');
-              footer.replaceWith(timeSpan);
+              timeSpan?.classList.remove('hide');
+              timeSpan ? footer.replaceWith(timeSpan) : footer.remove();
               this.updateLocalOnEdit.delete(bubble);
             }
           });
@@ -10400,10 +10456,10 @@ export default class ChatBubbles {
           }
 
           if(result.isLive && !result.isLiveExpired) {
-            timeSpan.classList.add('hide');
+            timeSpan?.classList.add('hide');
           }
 
-          if(result.address) {
+          if(result.address && timeSpan) {
             result.address.append(timeSpan);
           }
 
@@ -10983,8 +11039,11 @@ export default class ChatBubbles {
       bubble.classList.add('with-beside-button');
     }
 
-    if(isEphemeral) {
-      const badge = this.createEphemeralBadge(message, wrapOptions);
+    const isWelcomeFirst = this.chat.type === ChatType.Welcome && message.mid === this.welcomeFirstMid;
+    if(isEphemeral || isWelcomeFirst) {
+      // the chip over a sticker is styled by what the bubble is, and a template is no ephemeral yet
+      bubble.classList.toggle('is-welcome-first', isWelcomeFirst);
+      const badge = this.createEphemeralBadge(message as Message.message, wrapOptions);
       placeEphemeralBadge(
         bubbleContainer,
         nameDiv,
@@ -11391,7 +11450,7 @@ export default class ChatBubbles {
   }
 
   private createEphemeralBadge(
-    message: MyEphemeralMessage,
+    message: MyEphemeralMessage | Message.message,
     wrapOptions: WrapSomethingOptions
   ) {
     const container = document.createElement('div');
@@ -11403,7 +11462,8 @@ export default class ChatBubbles {
     badge.title = I18n.format('Ephemeral.About', true);
     badge.append(Icon('eyecross', 'ephemeral-badge-icon'));
 
-    if(message.pFlags.out) {
+    // a welcome message is shown to whoever receives it, so it reads the way they will see it
+    if(message.pFlags.out && !message.pFlags.welcome_template) {
       const receiverPeerId = message.ephemeral_receiver_id.toPeerId(false);
       const receiver = apiManagerProxy.getPeer(receiverPeerId);
       const receiverTitle = new PeerTitle({
@@ -11741,6 +11801,24 @@ export default class ChatBubbles {
         limit,
         backLimit
       });
+    } else if(this.chat.type === ChatType.Welcome) {
+      return this.managers.acknowledged.appMessagesManager.getWelcomeMessages(this.peerId).then((ackedResult) => {
+        return {
+          cached: ackedResult.cached,
+          result: Promise.resolve(ackedResult.result).then((mids) => {
+            this.welcomeFirstMid = mids[0];
+            return {
+              history: mids.slice().reverse(),
+              count: mids.length,
+              isEnd: {
+                both: true,
+                bottom: true,
+                top: true
+              }
+            };
+          })
+        };
+      });
     } else if(this.chat.type === ChatType.Scheduled) {
       return this.managers.acknowledged.appMessagesManager.getScheduledMessages(this.peerId).then((ackedResult) => {
         return {
@@ -11928,6 +12006,7 @@ export default class ChatBubbles {
     else if(type === 'saved') title = i18n('ChatYourSelfTitle');
     else if(type === 'noMessages' || type === 'greeting') title = i18n('NoMessages');
     else if(type === 'noScheduledMessages') title = i18n('NoScheduledMessages');
+    else if(type === 'welcomeMessages') title = i18n('WelcomeMessages.EmptyTitle');
     else if(type === 'restricted') {
       title = document.createElement('span');
       const reason = getRestrictionReason(await this.managers.appPeersManager.getPeerRestrictions(this.peerId))
@@ -11949,7 +12028,9 @@ export default class ChatBubbles {
     }
 
     let listElements: HTMLElement[];
-    if(type === 'group') {
+    if(type === 'welcomeMessages') {
+      elements.push(i18n('WelcomeMessages.EmptyAbout'));
+    } else if(type === 'group') {
       elements.push(i18n('GroupEmptyTitle2'));
       listElements = [
         i18n('GroupDescription1'),
@@ -12281,6 +12362,9 @@ export default class ChatBubbles {
         appendTo = this.chatInner;
       } else if(this.chat.isMonoforum && !this.chat.canManageDirectMessages) {
         renderPromise = this.renderEmptyPlaceholder('directChannelMessages', bubble, message, elements);
+      } else if(this.chat.type === ChatType.Welcome) {
+        // before the group's own intro: the section is about its welcome messages, not the group
+        renderPromise = this.renderEmptyPlaceholder('welcomeMessages', bubble, message, elements);
       } else if(this.chat.isAnyGroup && (this.chat.peer as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === ChatType.Scheduled) {
@@ -12781,7 +12865,7 @@ export default class ChatBubbles {
           Object.keys(this.bubbles).length &&
           !this.getRenderedLength()
         ) ||
-        (this.chat.type === ChatType.Scheduled && !this.getRenderedLength()) ||
+        ((this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Welcome) && !this.getRenderedLength()) ||
         !this.chat.getHistoryStorage().count
       )
     ) {

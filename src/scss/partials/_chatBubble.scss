@@ -163,7 +163,8 @@
     }
   }
 
-  &.is-ephemeral.just-media {
+  &.is-ephemeral.just-media,
+  &.is-welcome-first.just-media {
     .ephemeral-badge-container.ephemeral-badge-standalone {
       margin: 0;
       background-color: transparent;

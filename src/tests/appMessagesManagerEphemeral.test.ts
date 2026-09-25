@@ -6,7 +6,7 @@ import {AppMessagesManager, HistoryStorage, MessagesStorage} from '@appManagers/
 import {AppMessagesIdsManager} from '@appManagers/appMessagesIdsManager';
 import {EPHEMERAL_MESSAGE_ID_OFFSET} from '@appManagers/constants';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import {BotInfo, Document, EphemeralMessage, Message, MessageEntity, Updates} from '@layer';
+import {BotInfo, Document, EphemeralMessage, Message, MessageEntity, ReplyMarkup, Updates} from '@layer';
 
 const CHAT_ID = 777 as ChatId;
 const PEER_ID = CHAT_ID.toPeerId(true);
@@ -86,6 +86,9 @@ function makeManager() {
     threadsStorage,
     appPeersManager: {
       getPeerId,
+      getOutputPeer: (peerId: PeerId) => peerId.isUser() ?
+        {_: 'peerUser', user_id: peerId.toUserId()} :
+        {_: 'peerChannel', channel_id: peerId.toChatId()},
       getPeerMigratedTo: (): PeerId => undefined,
       getPeerUsername: () => 'helperbot',
       getInputPeerById: () => ({
@@ -93,7 +96,7 @@ function makeManager() {
         channel_id: CHAT_ID,
         access_hash: '1'
       }),
-      isAnyGroup: () => true,
+      isAnyGroup: (peerId: PeerId) => !peerId.isUser(),
       isChannel: () => true,
       isForum: () => true,
       isBotforum: () => false,
@@ -104,6 +107,7 @@ function makeManager() {
       getCachedFullChat: (): any => undefined
     },
     appUsersManager: {
+      isBot: (userId: UserId) => userId === BOT_ID,
       getUser: (userId: UserId) => ({
         _: 'user',
         pFlags: {bot: userId === BOT_ID},
@@ -841,7 +845,7 @@ describe('AppMessagesManager ephemeral messages', () => {
     expect(invokeApi).not.toHaveBeenCalled();
   });
 
-  it('does not leak ephemeral media failures into ordinary message storage or events', async() => {
+  it('shows an ephemeral media send as a placeholder, and a failure takes it away quietly', async() => {
     const {dispatchEvent, manager, storage} = makeManager();
     manager.insertEphemeralMessage(makeEphemeralMessage(80));
     const storageSize = storage.size;
@@ -897,26 +901,22 @@ describe('AppMessagesManager ephemeral messages', () => {
       invokeApiWithReference: ({callback}: {callback: () => Promise<unknown>}) => callback()
     };
     manager.setTyping = vi.fn();
-    manager.beforeMessageSending = (message: Message.message, options: {noOutgoingMessage?: boolean}) => {
-      expect(options.noOutgoingMessage).toBe(true);
+    let placeholder: Message.message;
+    manager.beforeMessageSending = (message: Message.message, options: {
+      noOutgoingMessage?: boolean,
+      keepOutOfDialog?: boolean
+    }) => {
+      // a placeholder while it uploads, as desktop's local sending item — never the chat's last
+      expect(options.noOutgoingMessage).toBe(false);
+      expect(options.keepOutOfDialog).toBe(true);
+      placeholder = message;
       message.send();
     };
     manager.onMessagesSendError = onMessagesSendError;
-
-    const rejectedThenable = {
-      catch: (callback: (error: ApiError) => unknown) => {
-        try {
-          callback(error);
-        } catch(err) {
-          expect(err).toBe(error);
-        }
-
-        return Promise.resolve();
-      }
-    };
-    manager.sendEphemeralMessage = vi.fn(() => ({
-      then: () => rejectedThenable
-    }));
+    const cancelPendingMessage = vi.fn();
+    manager.cancelPendingMessage = cancelPendingMessage;
+    manager.pendingByRandomId = {'123': {}};
+    manager.sendEphemeralMessage = vi.fn(() => Promise.reject(error));
 
     await manager.sendFile({
       peerId: PEER_ID,
@@ -926,9 +926,12 @@ describe('AppMessagesManager ephemeral messages', () => {
         id: 80
       }
     });
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
+    // it reads as what it becomes: an ephemeral message only visible to its bot
+    expect(placeholder.pFlags.ephemeral).toBe(true);
+    expect((placeholder as any).ephemeral_receiver_id).toBe(BOT_ID);
+    expect(cancelPendingMessage).toHaveBeenCalledWith('123');
     expect(onMessagesSendError).not.toHaveBeenCalled();
     expect(storage.size).toBe(storageSize);
     expect((storage as Map<unknown, unknown>).has(undefined)).toBe(false);
@@ -1036,6 +1039,14 @@ describe('AppMessagesManager ephemeral messages', () => {
     expect((storage.get(anchorMid) as Message.message).message).toBe('bot stand-in, revised');
     expect(storage.size).toBe(1);
 
+    // the server sends the anchor over again (a history reload): the stand-in stays on top, and
+    // the fresh copy is what Revert will bring back
+    const refetched: Message.message = {...original, pFlags: {}, message: 'original text, refetched'};
+    manager.keepAnchoredEphemeralOverRefetch(PEER_ID, refetched);
+    expect(refetched.message).toBe('bot stand-in, revised');
+    expect(refetched.pFlags.ephemeral_anchored).toBe(true);
+    storage.set(anchorMid, refetched);
+
     manager.onUpdateDeleteEphemeralMessages({
       _: 'updateDeleteEphemeralMessages',
       peer: {_: 'peerChannel', channel_id: CHAT_ID},
@@ -1043,7 +1054,7 @@ describe('AppMessagesManager ephemeral messages', () => {
     });
 
     const restored = storage.get(anchorMid) as Message.message;
-    expect(restored.message).toBe('original text');
+    expect(restored.message).toBe('original text, refetched');
     expect(restored.pFlags.ephemeral_anchored).toBeUndefined();
     expect(restored.ephemeral_id).toBeUndefined();
     expect(storage.size).toBe(1);
@@ -1249,5 +1260,284 @@ describe('AppMessagesManager ephemeral messages', () => {
 
     // a real chat peer still wins over the bot/receiver fallback
     expect(manager.getEphemeralPeerId(makeEphemeralMessage(15))).toBe(PEER_ID);
+  });
+
+  it('answers a bot privately in its own chat', async() => {
+    const {invokeApi, manager} = makeManager();
+    const botPeerId = BOT_ID.toPeerId(false);
+    manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: makeEphemeralMessage(50, {
+      peer_id: {_: 'peerUser', user_id: SELF_ID}
+    })});
+    const target = manager.getEphemeralMessage(botPeerId, 50) as Message.message;
+    expect(target).toBeDefined();
+
+    await manager.sendText({peerId: botPeerId, text: 'the answer', replyToMsgId: target.mid, ephemeral: true});
+    expect(invokeApi).toHaveBeenCalledWith('ephemeral.sendMessage', expect.objectContaining({
+      message: 'the answer',
+      receiver_id: expect.objectContaining({user_id: BOT_ID}),
+      reply_to: {_: 'inputReplyToEphemeralMessage', id: 50}
+    }));
+  });
+
+  it('puts an ephemeral message from a bot chat into that chat, whatever peer_id says', () => {
+    const {manager} = makeManager();
+    // in a private chat with a bot the server names the reader in peer_id
+    const incoming = makeEphemeralMessage(16, {peer_id: {_: 'peerUser', user_id: SELF_ID}});
+    const botPeerId = manager.getEphemeralPeerId(incoming);
+    expect(botPeerId).toBe(BOT_ID.toPeerId(false));
+
+    const local = manager.makeLocalEphemeralMessage(incoming, botPeerId, 1);
+    expect(local.peer_id).toEqual({_: 'peerUser', user_id: BOT_ID});
+  });
+
+  it('lets a keyboard an ephemeral message brings become the chat keyboard, until it goes', () => {
+    const {baseHistory, dispatchEvent, manager} = makeManager();
+    const now = Date.now() / 1000 | 0;
+    // our own ephemeral command comes back first: its random mid must not count as the last
+    // outgoing message, or a single-use keyboard answering it would start out hidden
+    manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: makeEphemeralMessage(39, {
+      pFlags: {out: true},
+      from_id: {_: 'peerUser', user_id: SELF_ID},
+      receiver_id: BOT_ID,
+      date: now,
+      message: '/keyboard'
+    })});
+    expect(baseHistory.maxOutId).toBeUndefined();
+    manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: makeEphemeralMessage(40, {
+      date: now,
+      reply_markup: {_: 'replyKeyboardMarkup', pFlags: {single_use: true}, rows: []}
+    })});
+    const stored = manager.getEphemeralMessage(PEER_ID, 40) as Message.message;
+
+    expect(baseHistory.replyMarkup?.mid).toBe(stored.mid);
+    expect((baseHistory.replyMarkup as ReplyMarkup.replyKeyboardMarkup)?.pFlags.hidden).toBeUndefined();
+    expect(dispatchEvent).toHaveBeenCalledWith('history_reply_markup', {peerId: PEER_ID});
+
+    // ephemeral mids sit above every history mid: an older history keyboard must not take over,
+    // a newer one must, whatever the mids say
+    const regular = (mid: number, date: number) => ({
+      _: 'message',
+      pFlags: {},
+      mid,
+      id: mid,
+      peerId: PEER_ID,
+      peer_id: {_: 'peerChannel', channel_id: CHAT_ID},
+      from_id: {_: 'peerUser', user_id: BOT_ID},
+      date,
+      message: '',
+      reply_markup: {_: 'replyKeyboardMarkup', pFlags: {}, rows: []}
+    }) as any as Message.message;
+    expect(manager.mergeReplyKeyboard(baseHistory, regular(600, now - 60))).toBe(false);
+    expect(baseHistory.replyMarkup?.mid).toBe(stored.mid);
+
+    manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: makeEphemeralMessage(41, {
+      date: now + 1,
+      reply_markup: {_: 'replyKeyboardMarkup', pFlags: {}, rows: []}
+    })});
+    const second = manager.getEphemeralMessage(PEER_ID, 41) as Message.message;
+    expect(baseHistory.replyMarkup?.mid).toBe(second.mid);
+
+    manager.onUpdateDeleteEphemeralMessages({
+      _: 'updateDeleteEphemeralMessages',
+      peer: {_: 'peerChannel', channel_id: CHAT_ID},
+      ids: [41]
+    });
+    expect(baseHistory.replyMarkup).toBeUndefined();
+
+    expect(manager.mergeReplyKeyboard(baseHistory, regular(601, now + 60))).toBe(true);
+    expect(baseHistory.replyMarkup?.mid).toBe(601);
+  });
+
+  it('spends a force-reply by the answer to it, in a way the tab mirror sees', () => {
+    const {baseHistory, manager} = makeManager();
+    const now = Date.now() / 1000 | 0;
+    const make = (mid: number, date: number, extra: Partial<Message.message>) => ({
+      _: 'message',
+      pFlags: {},
+      mid,
+      id: mid,
+      peerId: PEER_ID,
+      peer_id: {_: 'peerChannel', channel_id: CHAT_ID},
+      from_id: {_: 'peerUser', user_id: BOT_ID},
+      date,
+      message: '',
+      ...extra
+    }) as any as Message.message;
+
+    manager.mergeReplyKeyboard(baseHistory, make(700, now, {
+      reply_markup: {_: 'replyKeyboardForceReply', pFlags: {}}
+    }));
+    const asked = baseHistory.replyMarkup;
+    expect(asked?.mid).toBe(700);
+
+    // an unrelated message of ours leaves a (non-single-use) force-reply standing
+    expect(manager.mergeReplyKeyboard(baseHistory, make(701, now + 1, {pFlags: {out: true}, message: 'hi'}))).toBe(false);
+
+    expect(manager.mergeReplyKeyboard(baseHistory, make(702, now + 2, {
+      pFlags: {out: true},
+      message: 'the answer',
+      reply_to_mid: 700
+    }))).toBe(true);
+    // replaced, not mutated: only top-level writes reach the mirror
+    expect(baseHistory.replyMarkup).not.toBe(asked);
+    expect((baseHistory.replyMarkup as ReplyMarkup.replyKeyboardForceReply).pFlags.hidden).toBe(true);
+  });
+
+  describe('welcome messages (layer 229)', () => {
+    function makeWelcomeManager() {
+      const harness = makeManager();
+      const {manager} = harness;
+      manager.welcomeMessagesStorage = {};
+      manager.welcomeMessagesHashes = new Map();
+      // the real mid scheme: a template's id becomes a channel mid, and back
+      manager.saveMessage = (message: Message.message, {storage}: {storage: MessagesStorage}) => {
+        message.peerId = PEER_ID;
+        message.mid = manager.appMessagesIdsManager.generateMessageId(message.id, CHAT_ID);
+        message.storageKey = storage.key;
+        storage.set(message.mid, message);
+        return message;
+      };
+      return harness;
+    }
+
+    const template = (id: number, overrides: Partial<EphemeralMessage> = {}) => makeEphemeralMessage(id, {
+      pFlags: {out: true, welcome_template: true},
+      from_id: {_: 'peerUser', user_id: SELF_ID},
+      receiver_id: 0,
+      ...overrides
+    });
+
+    it('keeps templates apart from the chat and follows every update to them', () => {
+      const {dispatchEvent, manager, storage} = makeWelcomeManager();
+
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(3)});
+      const welcome = manager.getWelcomeMessagesStorage(PEER_ID) as MessagesStorage;
+      expect(welcome.key).toBe(`${PEER_ID}_welcome`);
+      expect(welcome.size).toBe(1);
+      expect(storage.size).toBe(0);
+      expect(manager.getEphemeralMessage(PEER_ID, 3)).toBeUndefined();
+      const [stored] = [...welcome.values()] as Message.message[];
+      expect(stored.pFlags.welcome_template).toBe(true);
+      expect(getServerMessageId(stored.mid)).toBe(3);
+      expect(dispatchEvent).toHaveBeenCalledWith('welcome_message_new', stored);
+
+      manager.onUpdateEditEphemeralMessage({_: 'updateEditEphemeralMessage', message: template(3, {message: 'hello'})});
+      expect((welcome.get(stored.mid) as Message.message).message).toBe('hello');
+      expect(dispatchEvent).toHaveBeenCalledWith('message_edit', expect.objectContaining({
+        storageKey: `${PEER_ID}_welcome`
+      }));
+
+      manager.onUpdateDeleteEphemeralMessages({
+        _: 'updateDeleteEphemeralMessages',
+        peer: {_: 'peerChannel', channel_id: CHAT_ID},
+        ids: [3]
+      });
+      expect(welcome.size).toBe(0);
+      expect(dispatchEvent).toHaveBeenCalledWith('welcome_messages_delete', {peerId: PEER_ID, mids: [stored.mid]});
+    });
+
+    it('sends a template to nobody yet, and edits and deletes it by its own id', async() => {
+      const {invokeApi, manager} = makeWelcomeManager();
+
+      // a reply the composer still holds (a bot's force-reply, say) must not ride along
+      await manager.sendText({
+        peerId: PEER_ID,
+        text: 'Welcome aboard',
+        ephemeral: true,
+        welcome: true,
+        replyTo: {_: 'inputReplyToMessage', reply_to_msg_id: 5}
+      });
+      expect(invokeApi).toHaveBeenCalledWith('ephemeral.sendMessage', expect.objectContaining({
+        welcome: true,
+        message: 'Welcome aboard',
+        receiver_id: {_: 'inputUserEmpty'}
+      }));
+      expect(invokeApi.mock.calls.find(([method]) => method === 'ephemeral.sendMessage')[1].reply_to).toBeUndefined();
+
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(9)});
+      const [message] = [...manager.getWelcomeMessagesStorage(PEER_ID).values()] as Message.message[];
+      invokeApi.mockClear();
+
+      await manager.editMessage(message, 'Hi there');
+      expect(invokeApi).toHaveBeenCalledWith('ephemeral.editMessage', expect.objectContaining({
+        welcome: true,
+        id: 9,
+        message: 'Hi there',
+        receiver_id: {_: 'inputUserEmpty'}
+      }));
+
+      // saving it unchanged is no failure: nothing may reject into the composer
+      invokeApi.mockImplementationOnce(() => Promise.reject({type: 'MESSAGE_NOT_MODIFIED'}));
+      await expect(manager.editMessage(message, 'Hi there')).resolves.toBeUndefined();
+
+      await manager.deleteWelcomeMessages(PEER_ID, [message.mid]);
+      expect(invokeApi).toHaveBeenCalledWith('ephemeral.deleteWelcomeMessage', expect.objectContaining({id: 9}));
+      expect(manager.getWelcomeMessagesCount(PEER_ID)).toBe(0);
+    });
+
+    it('calls off a template still uploading when all of them are deleted', async() => {
+      const {invokeApi, manager} = makeWelcomeManager();
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(9)});
+      const storage = manager.getWelcomeMessagesStorage(PEER_ID) as MessagesStorage;
+      const tempMid = 0.5;
+      storage.set(tempMid, {
+        _: 'message',
+        pFlags: {is_outgoing: true, welcome_template: true},
+        mid: tempMid,
+        peerId: PEER_ID,
+        random_id: '42'
+      } as any as Message.message);
+      manager.tempFinalizeCallbacks = {};
+      manager.pendingByRandomId = {'42': {peerId: PEER_ID, tempId: tempMid, storage}};
+
+      await manager.deleteAllWelcomeMessages(PEER_ID);
+      expect(invokeApi).toHaveBeenCalledWith('ephemeral.deleteAllWelcomeMessages', expect.anything());
+      // its send is off, so no echo brings it back after the server has cleared the rest
+      expect(manager.pendingByRandomId['42']).toBeUndefined();
+      expect(manager.getWelcomeMessagesCount(PEER_ID)).toBe(0);
+    });
+
+    it('does not offer to edit a rich template: this composer cannot carry it back', async() => {
+      const {manager} = makeWelcomeManager();
+      manager.canManageWelcomeMessages = () => true;
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(5, {message: 'Hi'})});
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(6, {
+        message: '',
+        rich_message: {_: 'richMessage', pFlags: {}, blocks: [], photos: [], documents: []}
+      })});
+      const [plain, rich] = [...manager.getWelcomeMessagesStorage(PEER_ID).values()] as Message.message[];
+
+      expect(await manager.canEditMessage(plain)).toBe(true);
+      expect(await manager.canEditMessage(rich)).toBe(false);
+      expect(manager.canDeleteMessage(rich)).toBe(true);
+    });
+
+    it('shows every template as sent by the chat itself, even one a bot admin wrote', () => {
+      const {manager} = makeWelcomeManager();
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(7, {
+        pFlags: {welcome_template: true},
+        from_id: {_: 'peerUser', user_id: BOT_ID},
+        peer_id: {_: 'peerChannel', channel_id: CHAT_ID}
+      })});
+      const [stored] = [...manager.getWelcomeMessagesStorage(PEER_ID).values()] as Message.message[];
+
+      expect(stored.from_id).toEqual({_: 'peerChannel', channel_id: CHAT_ID});
+    });
+
+    it('lists the templates, dropping those another admin deleted meanwhile', async() => {
+      const {manager} = makeWelcomeManager();
+      manager.onUpdateNewEphemeralMessage({_: 'updateNewEphemeralMessage', message: template(1)});
+      manager.apiManager.invokeApiSingleProcess = ({processResult}: {processResult: (result: any) => any}) => {
+        return Promise.resolve(processResult({
+          _: 'ephemeral.welcomeMessages',
+          hash: 5,
+          messages: [template(2, {date: 20}), template(4, {date: 10})]
+        }));
+      };
+
+      const mids = await manager.getWelcomeMessages(PEER_ID);
+      expect(mids.map(getServerMessageId)).toEqual([4, 2]);
+      expect(manager.welcomeMessagesHashes.get(PEER_ID)).toBe(5);
+    });
   });
 });

@@ -1755,7 +1755,7 @@ export class AppImManager extends EventListenerBase<{
           }
         });
         return;
-      } else if((key === 'ArrowUp' || key === 'ArrowDown') && this.chat?.type !== ChatType.Scheduled) {
+      } else if((key === 'ArrowUp' || key === 'ArrowDown') && this.chat?.type !== ChatType.Scheduled && this.chat?.type !== ChatType.Welcome) {
         // In chats/channels where the user can't post (read-only broadcasts, restricted groups,
         // unjoined chats), there's no message to edit, so let ArrowUp/Down scroll the chat instead.
         if(chat?.input && !chat.input.canSendPlain()) {

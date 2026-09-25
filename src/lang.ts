@@ -520,6 +520,19 @@ const lang = {
   'AdminRights.DeleteStories': 'Delete Stories of Others',
   'AdminRights.Other': 'Other',
   'AdminRights.ManageWelcomeMessages': 'Manage Welcome Messages',
+  'AdminRights.SendWelcomeMessages': 'Send Welcome Messages',
+  'AdminRights.GroupSendWelcomeMessages': 'Send Welcome Messages',
+  'WelcomeMessages.Title': 'Welcome Message',
+  'WelcomeMessages.EmptyTitle': 'Create a Welcome Message',
+  'WelcomeMessages.EmptyAbout': 'Automatically greet new members when they join.',
+  'WelcomeMessages.PreviewAbout': 'New members will see this message when they join',
+  'WelcomeMessages.Placeholder': 'Add a Welcome Message',
+  'WelcomeMessages.DeleteAll': 'Delete All',
+  'WelcomeMessages.DeleteAllSure': 'Are you sure you want to delete all welcome messages?',
+  'WelcomeMessages.LimitReached': {
+    'one_value': 'Limit of %d message reached.',
+    'other_value': 'Limit of %d messages reached.'
+  },
   'Payments.Terms.Accept': 'I accept [Terms of Service]() of **%@**.',
   'AddChannel': 'Add Channel',
   'AllSubscribers': 'All Subscribers',
@@ -5616,6 +5629,7 @@ const lang = {
   'Ephemeral.Retry': 'Retry',
   'Ephemeral.Revert': 'Revert',
   'Ephemeral.Revert.About': 'restores the message to its original content',
+  'Ephemeral.AnchoredAbout': 'This version of the message is only visible to you.',
   'Ephemeral.Updated': 'updated',
 
   'AuthSessions.View.Device': 'Device',

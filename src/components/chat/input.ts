@@ -199,7 +199,7 @@ type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' 
 export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 const CLASS_NAME = 'chat-input';
-const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
+const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved, ChatType.Welcome]);
 
 type WatchDownloadProgressArgs<T> = {
   getDownloadPromise: () => DownloadBlob;
@@ -368,6 +368,10 @@ export default class ChatInput {
   private onlyPremiumBtn: HTMLButtonElement;
   private onlyPremiumBtnText: I18n.IntlElement;
   private frozenBtn: HTMLButtonElement;
+  private welcomeLimitPlate: HTMLElement;
+  private welcomeLimitText: I18n.IntlElement;
+  /** The chat's welcome messages limit while it is reached, which takes the composer away. */
+  private welcomeLimitReached: number;
   private joinBtn: HTMLButtonElement;
   private channelMuteBtn: HTMLButtonElement;
   private directControlBtn: HTMLButtonElement;
@@ -449,6 +453,14 @@ export default class ChatInput {
   };
   private replyIsEphemeral = false;
   private ephemeralComposer = false;
+  /**
+   * The composer of a chat's welcome messages (layer 229). What it sends is an ephemeral message
+   * the server keeps: one attachment, no schedule, no voice notes, no polls — desktop and Android
+   * narrow it the same way.
+   */
+  private get isWelcomeComposer() {
+    return this.chat?.type === ChatType.Welcome;
+  }
   private ephemeralCommandReceiverId: UserId;
   private ephemeralCommandResolution: EphemeralCommandResolution = {state: 'none'};
 
@@ -1130,7 +1142,7 @@ export default class ChatInput {
         showMusicSearchPopup({chat: this.chat});
       },
       verify: async() => {
-        if(this.editMsgId) return false;
+        if(this.editMsgId || this.isWelcomeComposer) return false;
         // Either half of the picker is reason enough to offer it: the inline-bot search (which the
         // server gates behind an app-config username) or the user's own profile playlist.
         // getAppConfig comes off the proxy's warm cache, and the ids list is cached in the worker.
@@ -1153,7 +1165,7 @@ export default class ChatInput {
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
       verify: () => {
-        if(this.editMsgId) return;
+        if(this.editMsgId || this.isWelcomeComposer) return;
         return this.chat && Promise.all([
           this.chat.canGiftPremium(),
           this.managers.apiManager.getAppConfig()
@@ -1244,7 +1256,7 @@ export default class ChatInput {
         // PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: () => {
-        if(this.editMsgId || this.ephemeralComposer) return;
+        if(this.editMsgId || this.ephemeralComposer || this.isWelcomeComposer) return;
         return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot || this.chat.peerId === rootScope.myId;
       }
     }, {
@@ -1274,7 +1286,7 @@ export default class ChatInput {
 
         showChecklistPopup({chat: this.chat});
       },
-      verify: () => !this.editMsgId && !this.chat.isMonoforum && !this.ephemeralComposer
+      verify: () => !this.editMsgId && !this.chat.isMonoforum && !this.ephemeralComposer && !this.isWelcomeComposer
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
@@ -1287,7 +1299,7 @@ export default class ChatInput {
       direction: 'top-right',
       buttons: this.attachMenuButtons,
       onOpenBefore: this.excludeParts.attachMenu ? undefined : async() => {
-        const attachMenuBots = (this.chat.isMonoforum || this.editMsgId) ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const attachMenuBots = (this.chat.isMonoforum || this.isWelcomeComposer || this.editMsgId) ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return attachMenuBot.pFlags.show_in_attach_menu;
@@ -1431,6 +1443,7 @@ export default class ChatInput {
       onOpen: () => {
         const good = !this.ephemeralComposer &&
           this.chat.type !== ChatType.Scheduled &&
+          !this.isWelcomeComposer &&
           // the button is a Stop right now, and stopping has no send options
           this.sendBtnIcon !== 'stop' &&
           (this.recording || !this.isInputEmpty() || !!(this.forwarding && Object.keys(this.forwarding).length)) &&
@@ -1529,7 +1542,7 @@ export default class ChatInput {
       const selectedFiles = Array.from(fileList);
       const ephemeralSnapshot = this.fileSelectionEphemeralSnapshot;
       this.fileSelectionEphemeralSnapshot = undefined;
-      const isEphemeral = !!ephemeralSnapshot || this.ephemeralComposer;
+      const isEphemeral = !!ephemeralSnapshot || this.ephemeralComposer || this.isWelcomeComposer;
       const files = isEphemeral ? selectedFiles.slice(0, 1) : selectedFiles;
       if(files.length !== selectedFiles.length) {
         toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
@@ -1581,6 +1594,13 @@ export default class ChatInput {
     frozenText2.classList.add('secondary', 'chat-input-frozen-text-subtitle');
     frozenText.append(frozenText1, frozenText2);
     this.frozenBtn = makeControlButton(frozenText);
+    // a statement, not an action: there is nothing to do about the limit here but delete or edit
+    // what is already there, so it is no (disabled) button, and it says so when the composer goes
+    this.welcomeLimitText = new I18n.IntlElement({key: 'WelcomeMessages.LimitReached', args: [0]});
+    this.welcomeLimitPlate = document.createElement('div');
+    this.welcomeLimitPlate.classList.add('chat-input-plate-button', 'chat-input-welcome-limit');
+    this.welcomeLimitPlate.setAttribute('role', 'status');
+    this.welcomeLimitPlate.append(this.welcomeLimitText.element);
 
     attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
@@ -1649,6 +1669,7 @@ export default class ChatInput {
         this.channelMuteBtn,
         this.onlyPremiumBtn,
         this.frozenBtn,
+        this.welcomeLimitPlate,
         this.pinnedControlBtn,
         this.openChatBtn
       ].filter(Boolean)
@@ -1663,6 +1684,17 @@ export default class ChatInput {
   private setChatListeners() {
     this.listenerSetter.add(rootScope)('global_privacy_update', () => {
       this.updateGiftButtonVisibility();
+    });
+
+    this.listenerSetter.add(rootScope)('welcome_message_new', (message) => {
+      if(this.isWelcomeComposer && message.peerId === this.chat.peerId) void this.updateWelcomeMessagesLimit();
+    });
+
+    this.listenerSetter.add(rootScope)('welcome_messages_delete', ({peerId, mids}) => {
+      if(!this.isWelcomeComposer || peerId !== this.chat.peerId) return;
+      // the template being edited is gone (another admin, or Delete All): there is nothing to save
+      if(mids.includes(this.editMsgId)) this.onMessageSent();
+      void this.updateWelcomeMessagesLimit();
     });
 
     this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
@@ -1766,7 +1798,40 @@ export default class ChatInput {
     });
   }
 
+  /**
+   * The welcome messages limit when the chat has reached it. `load` asks the server for the list
+   * (shared with the bubbles' own request) instead of counting what is already known.
+   */
+  private async getReachedWelcomeMessagesLimit(load?: boolean) {
+    const {peerId} = this.chat;
+    const [count, limit] = await Promise.all([
+      this.managers.appMessagesManager.getWelcomeMessagesCount(peerId, load),
+      this.managers.appMessagesManager.getWelcomeMessagesLimit()
+    ]);
+    return count >= limit ? limit : undefined;
+  }
+
+  /** Desktop's `checkLimit`: a chat keeps a few welcome messages at most, so a new one may not fit. */
+  private async checkWelcomeMessagesLimit() {
+    if(!this.isWelcomeComposer || this.editMsgId) return true;
+    const limit = await this.getReachedWelcomeMessagesLimit();
+    if(limit === undefined) return true;
+    toastNew({langPackKey: 'WelcomeMessages.LimitReached', langPackArguments: [limit]});
+    return false;
+  }
+
+  /** Desktop's write restriction: at the limit the composer turns into a plate saying so. */
+  private async updateWelcomeMessagesLimit(load?: boolean) {
+    const {peerId} = this.chat;
+    const limit = this.isWelcomeComposer ? await this.getReachedWelcomeMessagesLimit(load) : undefined;
+    if(this.chat.peerId !== peerId || this.welcomeLimitReached === limit) return;
+    this.welcomeLimitReached = limit;
+    if(limit) this.welcomeLimitText.compareAndUpdate({args: [limit]});
+    void this.center(true);
+  }
+
   public onAttachClick = async(documents?: boolean, photos?: boolean, videos?: boolean) => {
+    if(!(await this.checkWelcomeMessagesLimit())) return;
     const initialEphemeralSnapshot = this.getEphemeralSendingSnapshot();
     if(!initialEphemeralSnapshot && !this.editMessage && await this.showSlowModeTooltipIfNeeded({
       element: this.attachMenu,
@@ -2033,6 +2098,7 @@ export default class ChatInput {
       this.getJoinButtonType() ||
       await this.isChannelControlNeeded() ||
       this.isRepliesChat() ||
+      (this.isWelcomeComposer && this.welcomeLimitReached && !this.editMsgId) ||
       (this.frozenBtn && this.chat.appConfig.freeze_since_date && !(await this.chat.canSend()))
     ) {
       return this.controlContainer;
@@ -2457,6 +2523,7 @@ export default class ChatInput {
     const {peerId, startParam, middleware} = options;
 
     this.peerChanging = true;
+    this.welcomeLimitReached = undefined;
 
     const {
       forwardElements,
@@ -2620,6 +2687,13 @@ export default class ChatInput {
         this.giftControlBtn.classList.toggle('hide', !(good && isBroadcast));
       }
 
+      if(this.chat && this.welcomeLimitPlate) {
+        // the plate's only occupant in this section, shown once the limit turns out to be reached
+        const good = !haveSomethingInControl && this.isWelcomeComposer;
+        haveSomethingInControl ||= good;
+        this.welcomeLimitPlate.classList.toggle('hide', !good);
+      }
+
       if(this.chat && this.pinnedControlBtn) {
         const good = !haveSomethingInControl && this.chat.type === ChatType.Pinned;
         haveSomethingInControl ||= good;
@@ -2734,6 +2808,8 @@ export default class ChatInput {
 
       this.peerChanging = false;
       this.refreshStreamStoppable();
+      // after the chat is shown, never on its way: the count comes with the list
+      if(this.isWelcomeComposer) void this.updateWelcomeMessagesLimit(true);
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -2886,6 +2962,8 @@ export default class ChatInput {
     let key: LangPackKey, args: FormatterArguments, inputStarsCountEl: HTMLElement;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
+    } else if(type === ChatType.Welcome) {
+      key = 'WelcomeMessages.Placeholder';
     } else if(threadId && !isForum && !peerId.isUser()) {
       key = 'Comment';
     } else if(
@@ -3258,7 +3336,8 @@ export default class ChatInput {
   }
 
   public getEphemeralCommandResolution(value: string) {
-    if(!this.chat.isAnyGroup) {
+    // in the welcome messages section a /command is only a template's text
+    if(!this.chat.isAnyGroup || this.isWelcomeComposer) {
       return {state: 'none'} as const;
     }
 
@@ -3428,7 +3507,7 @@ export default class ChatInput {
       }
     } else {
       const time = Date.now();
-      if(!this.ephemeralComposer && (time - this.lastTimeType) >= 6000 && e?.isTrusted) {
+      if(!this.ephemeralComposer && !this.isWelcomeComposer && (time - this.lastTimeType) >= 6000 && e?.isTrusted) {
         this.lastTimeType = time;
         this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'}, undefined, this.chat.threadId);
       }
@@ -3807,12 +3886,14 @@ export default class ChatInput {
       }
     }
 
+    // a welcome message cannot be an inline bot's result (desktop turns inline bots off there)
+    const noInline = this.ephemeralComposer || this.isWelcomeComposer;
     let canSendInline: boolean;
-    if(!this.ephemeralComposer && !foundHelpers.size) {
+    if(!noInline && !foundHelpers.size) {
       canSendInline = await this.chat.canSend('send_inline');
     }
 
-    const inlineResult = !this.ephemeralComposer &&
+    const inlineResult = !noInline &&
       this.checkInlineAutocomplete(value, canSendInline, foundHelpers.values().next().value);
     if(inlineResult === this.inlineHelper) {
       foundHelpers.add(this.inlineHelper);
@@ -4316,7 +4397,7 @@ export default class ChatInput {
     // Stopping a bot's text stream takes the button over whatever is typed, exactly like in the
     // other clients — saving an edit and finishing a recording still win over it.
     else if(this.streamStoppable && !this.recording) icon = 'stop';
-    else if(!this.recordingController?.hasVoiceRecorder() || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
+    else if(!this.recordingController?.hasVoiceRecorder() || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia || this.isWelcomeComposer) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
     else icon = this.recordingController.getActiveRecordingMediaType() === 'video' ? 'record-video' : 'record';
 
     this.sendBtnIcon = icon;
@@ -4342,15 +4423,15 @@ export default class ChatInput {
     });
 
     if(this.btnScheduled) {
-      this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
+      this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled && !this.isWelcomeComposer);
     }
 
     if(this.btnToggleReplyMarkup) {
-      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
+      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled && !this.isWelcomeComposer);
     }
 
     if(this.btnSendGift) {
-      this.btnSendGift.classList.toggle('show', isInputEmpty);
+      this.btnSendGift.classList.toggle('show', isInputEmpty && !this.isWelcomeComposer);
     }
 
     // External listeners (e.g. star badge animation) want the icon family, not
@@ -4583,6 +4664,10 @@ export default class ChatInput {
       return;
     }
 
+    if(!(await this.checkWelcomeMessagesLimit())) {
+      return;
+    }
+
     const {peerId} = chat;
     const {noWebPage} = this;
     const sendingParams = {
@@ -4609,7 +4694,8 @@ export default class ChatInput {
           webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
           webPageOptions: this.webPageOptions,
           invertMedia: this.willSendWebPage ? this.invertMedia : undefined,
-          clearDraft: true
+          // the welcome composer keeps no draft, and the one it would clear is the group's own
+          clearDraft: !this.isWelcomeComposer
         },
         slowModeParams: this.getDefaultParamsForSlowModeTooltip(),
         paidMessageInterceptor: this.paidMessageInterceptor,
@@ -4675,7 +4761,7 @@ export default class ChatInput {
     target?: HTMLElement,
     ignoreNoPremium?: boolean
   }) {
-    if(!this.verifyEphemeralCommand()) {
+    if(!this.verifyEphemeralCommand() || !(await this.checkWelcomeMessagesLimit())) {
       return false;
     }
 
@@ -4801,6 +4887,8 @@ export default class ChatInput {
       this.editMsgId = mid;
       this.editMessage = message;
       input = undefined;
+      // the limit plate steps aside for editing what is already there
+      if(this.welcomeLimitReached) void this.center(true);
 
       this.restoreInputLock = restoreInputLock;
     };
@@ -5204,6 +5292,7 @@ export default class ChatInput {
 
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
+    if(this.welcomeLimitReached) void this.center(true);
     this.setCurrentHover();
     this.saveDraftDebounced();
 

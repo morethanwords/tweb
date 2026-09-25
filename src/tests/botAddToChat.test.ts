@@ -47,6 +47,15 @@ describe('parseBotAdminRights', () => {
     });
   });
 
+  test('maps the welcome messages right the way desktop does', () => {
+    expect(parseBotAdminRights('manage_welcome_messages')).toEqual({
+      _: 'chatAdminRights',
+      pFlags: {
+        manage_welcome_messages: true
+      }
+    });
+  });
+
   test('ignores unknown and empty names', () => {
     expect(parseBotAdminRights('unknown++pin_messages+manage_linked_peers')).toEqual({
       _: 'chatAdminRights',

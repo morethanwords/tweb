@@ -102,12 +102,15 @@ import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
+import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
   notDirect?: () => boolean,
   withSelection?: true,
   isSponsored?: true,
+  // offered on a welcome message too (layer 229): its section only edits, copies and deletes
+  welcome?: true,
   localName?: 'views' | 'emojis' | 'sponsorInfo' | 'sponsorAdditionalInfo'
 };
 
@@ -733,6 +736,10 @@ export default class ChatContextMenu {
         return false;
       }
 
+      if(this.chat.type === ChatType.Welcome && !button.welcome) {
+        return false;
+      }
+
       // if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
       if(this.chat.selection.isSelecting && !button.withSelection) {
         good = false;
@@ -907,6 +914,16 @@ export default class ChatContextMenu {
     };
 
     this.buttons = [pollVoteRestrictionsButton, {
+      // an anchored ephemeral message looks like any other, so the menu says first whose version
+      // it is — above the choice to revert it (desktop's `InsertPollMenuLabel`, Android's hint)
+      regularText: i18n('Ephemeral.AnchoredAbout'),
+      className: 'ephemeral-context-about',
+      secondary: true,
+      separatorDown: true,
+      // a label, not an action: keyboard focus starts at the first thing to do
+      onClick: undefined,
+      verify: () => isAnchoredEphemeralMessage(this.message)
+    }, {
       // secondary: true,
       onClick: () => {
         if(this.canViewReadTime === false) {
@@ -992,7 +1009,7 @@ export default class ChatContextMenu {
       text: 'Reply',
       onClick: this.onReplyClick,
       verify: async() => !this.isLegacy &&
-        !(isEphemeralMessage(this.message) && this.message.pFlags.out) &&
+        !(isEphemeralMessage(this.message) && !canReplyToEphemeralMessage(this.message)) &&
         !isAnchoredEphemeralMessage(this.message) &&
         // await this.chat.canSend() &&
         !this.message.pFlags.is_outgoing &&
@@ -1012,7 +1029,8 @@ export default class ChatContextMenu {
         });
       },
       verify: () => {
-        if(this.chat.threadId) return false;
+        // what an anchored message shows is not the post its replies belong to (desktop)
+        if(this.chat.threadId || isAnchoredEphemeralMessage(this.message)) return false;
         const replies = (this.message as Message.message)?.replies;
         return !!(replies && !replies.pFlags.comments && replies.replies);
       }
@@ -1045,6 +1063,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'edit',
       text: 'Edit',
+      welcome: true,
       onClick: this.onEditClick,
       verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) &&
         !!this.chat.input.messageInput ||
@@ -1074,26 +1093,29 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Copy',
+      welcome: true,
       onClick: this.onCopyClick,
-      verify: () => (isEphemeralMessage(this.message) || !this.noForwards) &&
+      verify: () => this.canCopyText() &&
         !!(this.message as Message.message).message &&
         !this.isTextSelected &&
         (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
     }, {
       icon: 'copy',
       text: 'Chat.CopySelectedText',
+      welcome: true,
       onClick: this.onCopyClick,
-      verify: () => (isEphemeralMessage(this.message) || !this.noForwards) &&
+      verify: () => this.canCopyText() &&
         !!(this.message as Message.message).message &&
         this.isTextSelected
     }, this.copyMediaButton = {
       icon: 'copy',
       text: 'MediaViewer.Context.Copy',
+      welcome: true,
       onClick: this.onCopyMediaClick,
       verify: () => ChatContextMenu.canCopyMedia(
         this.message,
         this.target,
-        this.noForwards,
+        this.contentNoForwards,
         this.chat.container
       ),
       keepOpen: true
@@ -1112,7 +1134,7 @@ export default class ChatContextMenu {
       verify: async() => {
         if(
           !this.isSelected ||
-          (this.noForwards && !this.selectedMessages?.every(isEphemeralMessage))
+          this.noForwards
         ) {
           return false;
         }
@@ -1134,12 +1156,14 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: this.isEmailTarget ? 'Text.Context.Copy.Email' : 'CopyLink',
+      welcome: true,
       onClick: this.onCopyAnchorLinkClick,
       verify: () => this.isAnchorTarget,
       withSelection: true
     }, {
       icon: 'copy',
       text: 'Text.Context.Copy.Username',
+      welcome: true,
       onClick: () => {
         copyTextToClipboard(this.target.textContent);
       },
@@ -1148,6 +1172,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Text.Context.Copy.Hashtag',
+      welcome: true,
       onClick: () => {
         copyTextToClipboard(this.target.textContent);
       },
@@ -1221,15 +1246,16 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
+      welcome: true,
       onClick: () => ChatContextMenu.onDownloadClick(
         this.message,
-        isEphemeralMessage(this.message) ? false : this.noForwards,
+        this.contentNoForwards,
         this.chat.container
       ),
       verify: () => ChatContextMenu.canDownload(
         this.message,
         this.target,
-        isEphemeralMessage(this.message) ? false : this.noForwards,
+        this.contentNoForwards,
         this.chat.container
       )
     }, {
@@ -1280,7 +1306,7 @@ export default class ChatContextMenu {
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
       verify: () => !isAnchoredEphemeralMessage(this.message) &&
-        (isEphemeralMessage(this.message) || !this.noForwards) &&
+        !this.noForwards &&
         this.chat.type !== ChatType.Scheduled &&
         (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) &&
         this.message._ !== 'messageService'
@@ -1298,13 +1324,13 @@ export default class ChatContextMenu {
       text: 'Message.Context.Selection.Download',
       onClick: () => ChatContextMenu.onDownloadClick(
         this.selectedMessages,
-        this.selectedMessages?.every(isEphemeralMessage) ? false : this.noForwards,
+        this.noForwards,
         this.chat.container
       ),
       verify: () => this.selectedMessages && ChatContextMenu.canDownload(
         this.selectedMessages,
         undefined,
-        this.selectedMessages.every(isEphemeralMessage) ? false : this.noForwards,
+        this.noForwards,
         this.chat.container
       ),
       withSelection: true
@@ -1380,25 +1406,28 @@ export default class ChatContextMenu {
         });
         return content;
       },
+      welcome: true,
       onClick: this.onDeleteClick,
       verify: async() => !isAnchoredEphemeralMessage(this.message) &&
         this.managers.appMessagesManager.canDeleteMessage(this.message)
     }, {
       // an anchored ephemeral message is not deleted — dismissing it gives the reader back the
       // message the bot was standing in front of
+      // what it does goes on a second line of the item itself, as in Android and desktop
       icon: 'rotate_left',
-      className: 'danger',
-      text: 'Ephemeral.Revert',
+      className: 'danger with-subtitle',
+      get regularText() {
+        const container = document.createElement('span');
+        container.classList.add('ephemeral-context-revert');
+        const about = i18n('Ephemeral.Revert.About');
+        about.classList.add('ephemeral-context-revert-about');
+        container.append(i18n('Ephemeral.Revert'), about);
+        return container;
+      },
       onClick: () => {
         const {peerId, mid} = this.message;
         this.managers.appMessagesManager.deleteEphemeralMessage(peerId, mid);
       },
-      verify: () => isAnchoredEphemeralMessage(this.message)
-    }, {
-      regularText: i18n('Ephemeral.Revert.About'),
-      className: 'ephemeral-context-about',
-      secondary: true,
-      onClick: noop,
       verify: () => isAnchoredEphemeralMessage(this.message)
     }, {
       regularText: i18n('Ephemeral.About'),
@@ -1563,7 +1592,7 @@ export default class ChatContextMenu {
   private getSavedMusicDocId() {
     return getSavedMusicDocument(
       this.message,
-      isEphemeralMessage(this.message) ? false : this.noForwards
+      this.contentNoForwards
     )?.id;
   }
 
@@ -1812,6 +1841,8 @@ export default class ChatContextMenu {
       !(this.message._ === 'message' && this.message.pFlags.is_scheduled) &&
       !this.message.pFlags.local &&
       !isEphemeralMessage(this.message) &&
+      // a welcome template's id is no message's id: nothing to react to (desktop's `canReact`)
+      !(this.message as Message.message).pFlags.welcome_template &&
       !this.reactionElement
     ) {
       const reactions = this.message.reactions;
@@ -2131,6 +2162,31 @@ export default class ChatContextMenu {
     });
   };
 
+  /**
+   * Whether the message's content may not be copied or saved: the chat's protection and the
+   * message's own noforwards, as desktop's `hasCopyRestriction` — which is what `canForward`
+   * already checks, ephemeral messages included (layer 229 made them forwardable). Two kinds
+   * differ: a welcome template is the admins' own whatever the chat protects, and an anchored
+   * message is never forwardable (what it shows is not its own) while its content is protected
+   * like any other.
+   */
+  private get contentNoForwards() {
+    const message = this.message as Message.message;
+    if(message?.pFlags?.welcome_template) {
+      return false;
+    }
+
+    if(isAnchoredEphemeralMessage(message)) {
+      return !!message.pFlags.noforwards || this.chat.noForwards;
+    }
+
+    return this.noForwards;
+  }
+
+  private canCopyText() {
+    return !this.contentNoForwards;
+  }
+
   private onCopyClick = async() => {
     if(isSelectionEmpty()) {
       const {text, html} = this.selectedMessagesText;
@@ -2280,7 +2336,10 @@ export default class ChatContextMenu {
   };
 
   private canViewMessageStatistics = async() => {
-    return await this.managers.appPeersManager.isBroadcast(this.messagePeerId) &&
+    // neither an ephemeral message nor one standing in for a post has the post's numbers (desktop)
+    return !isEphemeralMessage(this.message) &&
+      !isAnchoredEphemeralMessage(this.message) &&
+      await this.managers.appPeersManager.isBroadcast(this.messagePeerId) &&
       await this.managers.appProfileManager.canViewStatistics(this.messagePeerId) &&
       !this.message.pFlags.is_outgoing;
   };

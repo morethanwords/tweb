@@ -31,10 +31,14 @@ export default async function showDeleteMessagesPopup(
     // return undefined / another chat's message (breaking the megagroup-admin & giveaway checks)
     messages: Promise.all(mids.map((mid) => type === ChatType.Scheduled ?
       managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) :
-      managers.appMessagesManager.getMessageByPeer(peerId, mid)))
+      type === ChatType.Welcome ?
+        managers.appMessagesManager.getWelcomeMessage(peerId, mid) :
+        managers.appMessagesManager.getMessageByPeer(peerId, mid)))
   });
 
-  const isEphemeral = !!messages.length && messages.every(isEphemeralMessage);
+  // a welcome message is a template nobody has received as such: deleting it revokes nothing
+  const isEphemeral = type === ChatType.Welcome ||
+    (!!messages.length && messages.every(isEphemeralMessage));
   const isMegagroup = await managers.appPeersManager.isMegagroup(peerId);
   if(!isEphemeral && isMegagroup && !messages.some((message) => message.pFlags.out)) {
     const participants = await managers.appProfileManager.getParticipants({
@@ -64,6 +68,8 @@ export default async function showDeleteMessagesPopup(
     onConfirm?.();
     if(type === ChatType.Scheduled) {
       managers.appMessagesManager.deleteScheduledMessages(peerId, mids);
+    } else if(type === ChatType.Welcome) {
+      managers.appMessagesManager.deleteWelcomeMessages(peerId, mids);
     } else {
       const needRevoke = !!checked.size || revoke;
       if(peerId.isUser() && needRevoke && canRevoke.length !== mids.length) {

@@ -130,6 +130,8 @@ export type BroadcastEvents = {
 
   'scheduled_new': Message.message,
   'scheduled_delete': {peerId: PeerId, mids: number[]},
+  'welcome_message_new': Message.message,
+  'welcome_messages_delete': {peerId: PeerId, mids: number[]},
 
   'grouped_edit': {peerId: PeerId, groupedId: string, deletedMids: number[], messages: Message.message[]},
 

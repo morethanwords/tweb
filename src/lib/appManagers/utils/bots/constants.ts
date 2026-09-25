@@ -19,7 +19,8 @@ export const BOT_ADMIN_RIGHTS: BotAdminRight[] = [
   'edit_stories',
   'delete_stories',
   'manage_direct_messages',
-  'manage_ranks'
+  'manage_ranks',
+  'manage_welcome_messages'
 ];
 
 export const BOT_ADMIN_RIGHTS_BY_LINK_NAME: Record<string, BotAdminRight> = {
@@ -37,6 +38,7 @@ export const BOT_ADMIN_RIGHTS_BY_LINK_NAME: Record<string, BotAdminRight> = {
   delete_stories: 'delete_stories',
   manage_video_chats: 'manage_call',
   manage_direct_messages: 'manage_direct_messages',
+  manage_welcome_messages: 'manage_welcome_messages',
   anonymous: 'anonymous',
   manage_chat: 'other'
 };

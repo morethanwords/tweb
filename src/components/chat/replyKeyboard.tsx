@@ -16,6 +16,8 @@ import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {createRoot, For, onCleanup} from 'solid-js';
 import {render} from 'solid-js/web';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
+import {ChatType} from '@components/chat/chatType';
+import isForceReplyMarkup from '@appManagers/utils/messages/isForceReplyMarkup';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -96,14 +98,7 @@ export default class ReplyKeyboard extends DropdownHover {
       return;
     }
 
-    // layer 229 moved the force-reply bit onto the keyboard markups themselves, so a
-    // `replyKeyboardMarkup` / `replyInlineMarkup` carrying `force_reply` asks for a reply
-    // exactly like the standalone `replyKeyboardForceReply` does.
-    const forcesReply = replyMarkup._ === 'replyKeyboardForceReply' ||
-      ((replyMarkup._ === 'replyKeyboardMarkup' || replyMarkup._ === 'replyInlineMarkup') &&
-        !!replyMarkup.pFlags.force_reply);
-
-    if(forcesReply &&
+    if(isForceReplyMarkup(replyMarkup) &&
       !replyMarkup.pFlags.hidden &&
       !replyMarkup.pFlags.used) {
       replyMarkup.pFlags.used = true;
@@ -112,7 +107,11 @@ export default class ReplyKeyboard extends DropdownHover {
   }
 
   private async getReplyMarkup(): Promise<ReplyMarkup> {
-    return this.chatInput.chat.historyStorageNoThreadId.replyMarkup ?? {
+    // the welcome messages section shares the chat's history storage, yet a bot's keyboard or
+    // force-reply there is not for writing templates (desktop and Android have none in it)
+    const replyMarkup = this.chatInput.chat.type !== ChatType.Welcome &&
+      this.chatInput.chat.historyStorageNoThreadId.replyMarkup;
+    return replyMarkup || {
       _: 'replyKeyboardHide',
       pFlags: {}
     };

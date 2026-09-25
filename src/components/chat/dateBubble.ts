@@ -5,13 +5,17 @@ import {i18n} from '@lib/langPack';
 export default function createDateBubble(
   timestamp: number,
   date: Date = new Date(timestamp * 1000),
-  isScheduled = false
+  isScheduled = false,
+  // a section whose messages are not a timeline heads them with this instead of a date
+  label?: HTMLElement
 ) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   let dateElement: HTMLElement;
-  if(today.getTime() === date.getTime()) {
+  if(label) {
+    dateElement = label;
+  } else if(today.getTime() === date.getTime()) {
     dateElement = i18n(isScheduled ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
   } else if(isScheduled && timestamp === SEND_WHEN_ONLINE_TIMESTAMP) {
     dateElement = i18n('MessageScheduledUntilOnline');

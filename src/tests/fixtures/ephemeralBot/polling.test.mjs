@@ -2,12 +2,23 @@ import {describe, expect, it, vi} from 'vitest';
 import {
   BotApiError,
   getPollRetryDelay,
+  isGoneEphemeralTargetError,
   isRetryablePollError,
   processUpdateBatch,
   UpdateHandlingError
 } from './polling.mjs';
 
 describe('ephemeral bot polling errors', () => {
+  it('skips an answer whose ephemeral target is gone, and nothing else', () => {
+    expect(isGoneEphemeralTargetError(
+      new BotApiError('sendMessage', {error_code: 400, description: 'Bad Request: REPLY_TO_INVALID'}, 400)
+    )).toBe(true);
+    expect(isGoneEphemeralTargetError(
+      new BotApiError('sendMessage', {error_code: 400, description: 'Bad Request: chat not found'}, 400)
+    )).toBe(false);
+    expect(isGoneEphemeralTargetError(new TypeError('fetch failed'))).toBe(false);
+  });
+
   it('retries only network, timeout, rate-limit, and server errors', () => {
     expect(isRetryablePollError(new TypeError('fetch failed'))).toBe(true);
     expect(isRetryablePollError(

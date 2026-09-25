@@ -41,6 +41,8 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
+import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
+import isForceReplyMarkup from '@appManagers/utils/messages/isForceReplyMarkup';
 import resolveEphemeralCommand, {
   EphemeralCommandCandidate
 } from '@appManagers/utils/bots/resolveEphemeralCommand';
@@ -221,7 +223,9 @@ type AnchoredEphemeral = {
   /** the mid of the ordinary message being stood in for */
   mid: number,
   receiverId: UserId,
-  backup: EphemeralMessageContent
+  backup: EphemeralMessageContent,
+  /** what stands in, to put back over a fresh server copy of the anchor */
+  content: EphemeralMessageContent
 };
 
 export type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
@@ -245,7 +249,7 @@ export type PinnedStorage = Partial<{
   maxId: number
 }>;
 export type MessagesStorage = Map<number, Message.message | Message.messageService> & {peerId: PeerId, type: MessagesStorageType, key: MessagesStorageKey};
-export type MessagesStorageType = 'scheduled' | 'history' | 'grouped' | 'logs';
+export type MessagesStorageType = 'scheduled' | 'history' | 'grouped' | 'logs' | 'welcome';
 export type MessagesStorageKey = `${PeerId}_${MessagesStorageType}`;
 
 export type MyMessageActionType = Message.messageService['action']['_'];
@@ -316,7 +320,9 @@ export type MessageSendingParams = Partial<{
   suggestedPost: SuggestedPostPayload,
   ephemeral: boolean,                // ! FOR INNER USE ONLY
   ephemeralReceiverId: UserId,       // ! FOR INNER USE ONLY
-  forceOrdinary: boolean              // ! FOR INNER USE ONLY
+  forceOrdinary: boolean,             // ! FOR INNER USE ONLY
+  /** layer 229: a chat's welcome message — an ephemeral template new members are sent. INNER USE ONLY */
+  welcome: boolean
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -561,8 +567,10 @@ type EphemeralSendContext = {
   drop: true
 } | {
   drop: false,
+  // absent for a welcome message: it goes to whoever joins next
   receiverId: UserId,
-  replyTo?: InputReplyTo.inputReplyToEphemeralMessage
+  replyTo?: InputReplyTo.inputReplyToEphemeralMessage,
+  welcome?: true
 };
 
 type SendEphemeralMessageArgs = Omit<EphemeralSendMessage, 'peer' | 'receiver_id' | 'random_id'> & {
@@ -586,6 +594,8 @@ export class AppMessagesManager extends AppManager {
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
   private groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
   private scheduledMessagesStorage: {[peerId: PeerId]: MessagesStorage};
+  private welcomeMessagesStorage: {[peerId: PeerId]: MessagesStorage};
+  private welcomeMessagesHashes: Map<PeerId, Long>;
   private logsMessagesStorage: {[peerId: PeerId]: MessagesStorage}; // messages extracted from admin logs
 
   private historiesStorage: {
@@ -972,6 +982,8 @@ export class AppMessagesManager extends AppManager {
     this.messagesStorageByPeerId = {};
     this.groupedMessagesStorage = {};
     this.scheduledMessagesStorage = {};
+    this.welcomeMessagesStorage = {};
+    this.welcomeMessagesHashes = new Map();
     this.logsMessagesStorage = {};
     this.historiesStorage = {};
     this.threadsStorage = {};
@@ -1033,6 +1045,15 @@ export class AppMessagesManager extends AppManager {
 
   public isEphemeralMessage(message: any): message is MyEphemeralMessage {
     return isEphemeralMessage(message);
+  }
+
+  /**
+   * An ephemeral message the server delivered, which lives by its ephemeral id and apart from the
+   * global storage. The placeholder of our own ephemeral media send is not one yet: until its echo
+   * replaces it, it is a pending message like any other, stored and deleted as one.
+   */
+  private isDeliveredEphemeralMessage(message: MyMessage) {
+    return this.isEphemeralMessage(message) && !message.pFlags.is_outgoing;
   }
 
   public isAnchoredEphemeralMessage(message: any) {
@@ -1119,7 +1140,7 @@ export class AppMessagesManager extends AppManager {
   private getEphemeralSendReceiverId(message: Message.message) {
     const receiverId = message.pFlags.out ?
       message.ephemeral_receiver_id :
-      message.fromId?.isUser() ? message.fromId.toUserId() : undefined;
+      canReplyToEphemeralMessage(message) ? message.fromId.toUserId() : undefined;
 
     return receiverId && this.appUsersManager.getUser(receiverId)?._ === 'user' ?
       receiverId :
@@ -1168,8 +1189,14 @@ export class AppMessagesManager extends AppManager {
     replyToMsgId?: number,
     replyTo?: InputReplyTo,
     ephemeral?: boolean,
-    ephemeralReceiverId?: UserId
+    ephemeralReceiverId?: UserId,
+    welcome?: boolean
   ): EphemeralSendContext {
+    // a welcome message is sent to nobody yet: no receiver, no reply, only the chat
+    if(welcome) {
+      return {drop: false, receiverId: undefined, welcome: true};
+    }
+
     const hasEphemeralReply = replyTo?._ === 'inputReplyToEphemeralMessage' ||
       (
         !!replyToMsgId &&
@@ -1178,7 +1205,12 @@ export class AppMessagesManager extends AppManager {
           this.isEphemeralMessage(this.getMessageByPeer(peerId, replyToMsgId))
         )
       );
-    if(!this.appPeersManager.isAnyGroup(peerId)) {
+    // ephemeral messages live in groups and in private chats with bots (desktop's
+    // `SupportsEphemeral`). In a bot chat only a reply to the bot's ephemeral message reaches it —
+    // a bare ephemeral command is accepted by the server yet never delivered to the bot, which is
+    // why `resolveEphemeralCommand` stays with groups
+    const isBotChat = peerId.isUser() && this.appUsersManager.isBot(peerId.toUserId());
+    if(!this.appPeersManager.isAnyGroup(peerId) && !isBotChat) {
       return ephemeral || hasEphemeralReply ?
         this.blockEphemeralSend(peerId, 'unavailable') :
         undefined;
@@ -1248,6 +1280,12 @@ export class AppMessagesManager extends AppManager {
     randomId = randomLong(),
     ...params
   }: SendEphemeralMessageArgs) {
+    // a welcome template goes to nobody and answers nothing (receiver_id = inputUserEmpty and no
+    // reply, as desktop sends it): a reply the composer still holds must not ride along
+    if(params.welcome) {
+      delete params.reply_to;
+    }
+
     return this.invokeEphemeralMessageSend({
       ...params,
       peerId,
@@ -1264,7 +1302,7 @@ export class AppMessagesManager extends AppManager {
     return this.apiManager.invokeApi('ephemeral.sendMessage', {
       ...apiParams,
       peer: this.appPeersManager.getInputPeerById(peerId),
-      receiver_id: this.appUsersManager.getUserInput(receiverId),
+      receiver_id: receiverId ? this.appUsersManager.getUserInput(receiverId) : {_: 'inputUserEmpty'},
       random_id: randomId
     }).then((updates) => {
       if(retryId !== undefined) {
@@ -1327,6 +1365,12 @@ export class AppMessagesManager extends AppManager {
 
   public deleteEphemeralMessage(peerId: PeerId, mid: number) {
     const message = this.getMessageByPeer(peerId, mid);
+    // the placeholder of an ephemeral media send still uploading: deleting it calls the send off
+    if((message as Message.message)?.pFlags?.is_outgoing) {
+      this.cancelUploadingEphemeralSend(message as Message.message);
+      return Promise.resolve();
+    }
+
     // an anchored one is an ordinary message wearing ephemeral content — deleting it gives the
     // original back rather than removing a bubble (desktop's `EphemeralMessages::deleteMessage`)
     if(!this.isEphemeralMessage(message) && !isAnchoredEphemeralMessage(message)) {
@@ -1528,6 +1572,39 @@ export class AppMessagesManager extends AppManager {
     throw makeError('UNKNOWN');
   }
 
+  /**
+   * Deleting the placeholder of an ephemeral media send — or of a welcome template — calls the send
+   * off: the file stops uploading and the placeholder goes.
+   */
+  private cancelUploadingEphemeralSend(message: Message.message) {
+    message.uploadingFileName?.forEach((fileName) => this.apiFileManager.cancelDownload(fileName));
+    this.cancelPendingMessage(message.random_id);
+  }
+
+  /** What an ephemeral message is kept as locally, before its kind adds its own. */
+  private makeLocalEphemeralMessage(message: EphemeralMessage, peerId: PeerId, id: number): Message.message {
+    return {
+      _: 'message',
+      pFlags: {
+        ...(message.pFlags.out ? {out: true} : {}),
+        // layer 229 added these two to `ephemeralMessage`
+        ...(message.pFlags.invert_media ? {invert_media: true} : {}),
+        ...(message.pFlags.noforwards ? {noforwards: true} : {})
+      },
+      id,
+      from_id: message.from_id,
+      // the chat the message was put into, not the server's peer_id: in a private chat with a bot
+      // that one names the reader (desktop's `PeerIdFromEphemeral` decides the chat either way)
+      peer_id: this.appPeersManager.getOutputPeer(peerId),
+      date: message.date,
+      message: message.message,
+      entities: message.entities,
+      media: message.media,
+      rich_message: message.rich_message,
+      reply_markup: message.reply_markup
+    };
+  }
+
   private makeEphemeralMessage(message: EphemeralMessage, localMid: number, forceMissingReply: boolean) {
     const peerId = this.getEphemeralPeerId(message);
     let ephemeralReplyTarget: Message.message;
@@ -1597,29 +1674,11 @@ export class AppMessagesManager extends AppManager {
       replyTo = undefined;
     }
 
-    const localMessage: Message.message = {
-      _: 'message',
-      pFlags: {
-        ...(message.pFlags.out ? {out: true} : {}),
-        // layer 229 added these two to `ephemeralMessage`
-        ...(message.pFlags.invert_media ? {invert_media: true} : {}),
-        ...(message.pFlags.noforwards ? {noforwards: true} : {}),
-        ephemeral: true
-      },
-      id: localMid,
-      from_id: message.from_id,
-      peer_id: message.peer_id || this.appPeersManager.getOutputPeer(peerId),
-      date: message.date,
-      message: message.message,
-      entities: message.entities,
-      media: message.media,
-      rich_message: message.rich_message,
-      reply_markup: message.reply_markup,
-      reply_to: replyTo,
-      ephemeral_id: message.id,
-      ephemeral_receiver_id: +message.receiver_id as UserId
-    };
-
+    const localMessage = this.makeLocalEphemeralMessage(message, peerId, localMid);
+    localMessage.pFlags.ephemeral = true;
+    localMessage.reply_to = replyTo;
+    localMessage.ephemeral_id = message.id;
+    localMessage.ephemeral_receiver_id = +message.receiver_id as UserId;
     return localMessage;
   }
 
@@ -1691,23 +1750,10 @@ export class AppMessagesManager extends AppManager {
     decorate?: (newMessage: Message.message) => void
   ) {
     const storage = this.getHistoryMessagesStorage(oldMessage.peerId);
-    const newMessage: Message.message = {
-      ...oldMessage,
-      pFlags: {...oldMessage.pFlags},
-      message: content.message,
-      entities: content.entities,
-      media: content.media,
-      reply_markup: content.reply_markup,
-      rich_message: content.rich_message,
-      edit_date: content.edit_date
-    };
-
-    if(content.invert_media) newMessage.pFlags.invert_media = true;
-    else delete newMessage.pFlags.invert_media;
-
+    const newMessage: Message.message = {...oldMessage, pFlags: {...oldMessage.pFlags}};
+    this.applyMessageContent(newMessage, content);
     decorate?.(newMessage);
 
-    delete newMessage.totalEntities;
     const richMessageChanged = this.releaseEditedMessageRichMedia(oldMessage, newMessage);
     this.saveMessage(newMessage, {storage});
     delete newMessage.pFlags.unread;
@@ -1715,6 +1761,19 @@ export class AppMessagesManager extends AppManager {
     this.handleEditedMessage(oldMessage, newMessage, storage, richMessageChanged);
     this.dispatchMessageEditEvent(newMessage, storage.key);
     return newMessage;
+  }
+
+  /** Writes what an anchor shows into a message that is not stored yet. */
+  private applyMessageContent(message: Message.message, content: EphemeralMessageContent) {
+    message.message = content.message;
+    message.entities = content.entities;
+    message.media = content.media;
+    message.reply_markup = content.reply_markup;
+    message.rich_message = content.rich_message;
+    message.edit_date = content.edit_date;
+    if(content.invert_media) message.pFlags.invert_media = true;
+    else delete message.pFlags.invert_media;
+    delete message.totalEntities;
   }
 
   private markAnchoredEphemeral(newMessage: Message.message, anchored: AnchoredEphemeral | undefined) {
@@ -1766,7 +1825,8 @@ export class AppMessagesManager extends AppManager {
       ephemeralId: message.id,
       mid,
       receiverId: +message.receiver_id as UserId,
-      backup: this.captureMessageContent(target)
+      backup: this.captureMessageContent(target),
+      content: this.getEphemeralMessageContent(message)
     };
 
     this.anchoredEphemerals ??= new Map();
@@ -1778,7 +1838,7 @@ export class AppMessagesManager extends AppManager {
 
     return this.replaceMessageContentInPlace(
       target,
-      this.getEphemeralMessageContent(message),
+      anchored.content,
       (newMessage) => this.markAnchoredEphemeral(newMessage, anchored)
     );
   }
@@ -1789,11 +1849,36 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    anchored.content = this.getEphemeralMessageContent(message);
     return this.replaceMessageContentInPlace(
       target,
-      this.getEphemeralMessageContent(message),
+      anchored.content,
       (newMessage) => this.markAnchoredEphemeral(newMessage, anchored)
     );
+  }
+
+  /**
+   * The server sent an anchor over again — a history reload, since an edit drops the anchor
+   * before saving. Its fresh copy becomes what Revert brings back, and the stand-in stays on top:
+   * desktop keeps the existing item there, and replacing it would lose the bot's content while
+   * the registration still claims it is shown.
+   */
+  private keepAnchoredEphemeralOverRefetch(peerId: PeerId, message: Message.message) {
+    const byId = this.anchoredEphemerals?.get(peerId);
+    if(!byId || message.pFlags.ephemeral_anchored) {
+      return;
+    }
+
+    for(const anchored of byId.values()) {
+      if(anchored.mid !== message.mid) {
+        continue;
+      }
+
+      anchored.backup = this.captureMessageContent(message);
+      this.applyMessageContent(message, anchored.content);
+      this.markAnchoredEphemeral(message, anchored);
+      return;
+    }
   }
 
   /** Puts the original message back. */
@@ -1905,6 +1990,13 @@ export class AppMessagesManager extends AppManager {
       message: storedMessage as MyEphemeralMessage
     });
 
+    // a bot's keyboard or force-reply comes on ephemeral messages too (layer 229): it becomes the
+    // chat's keyboard like any other (desktop adds them through the same `addNewItem`), and a
+    // press answers the bot privately, in reply to this message
+    if(this.mergeReplyKeyboard(this.getHistoryStorage(peerId), storedMessage)) {
+      this.rootScope.dispatchEvent('history_reply_markup', {peerId});
+    }
+
     return storedMessage;
   }
 
@@ -1954,6 +2046,13 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    // the keyboard goes with the ephemeral message that brought it
+    const historyStorage = this.getHistoryStorage(peerId);
+    if(historyStorage.replyMarkup && deletedMids.has(historyStorage.replyMarkup.mid)) {
+      historyStorage.replyMarkup = undefined;
+      this.rootScope.dispatchEvent('history_reply_markup', {peerId});
+    }
+
     this.rootScope.dispatchEvent('ephemeral_history_delete', {peerId, msgs: deletedMids});
   }
 
@@ -1978,6 +2077,11 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateNewEphemeralMessage = (update: Update.updateNewEphemeralMessage) => {
     const {message} = update;
+    if(message.pFlags.welcome_template) {
+      this.applyWelcomeMessage(message);
+      return;
+    }
+
     const peerId = this.getEphemeralPeerId(message);
     if(this.getEphemeralMessage(peerId, message.id) || this.getAnchoredEphemeral(peerId, message.id)) {
       return;
@@ -1994,6 +2098,11 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateEditEphemeralMessage = (update: Update.updateEditEphemeralMessage) => {
     const {message} = update;
+    if(message.pFlags.welcome_template) {
+      this.applyWelcomeMessage(message);
+      return;
+    }
+
     const peerId = this.getEphemeralPeerId(message);
     const anchored = this.getAnchoredEphemeral(peerId, message.id);
     if(anchored) {
@@ -2018,7 +2127,13 @@ export class AppMessagesManager extends AppManager {
   };
 
   private onUpdateDeleteEphemeralMessages = (update: Update.updateDeleteEphemeralMessages) => {
-    this.removeEphemeralMessages(this.appPeersManager.getPeerId(update.peer), update.ids);
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    // a deleted welcome template comes the same way (desktop's `applyDelete` goes first)
+    const welcomeStorage = this.welcomeMessagesStorage?.[peerId];
+    const ids = welcomeStorage ? update.ids.filter((id) => {
+      return !this.removeWelcomeMessages(peerId, [this.getWelcomeMessageMid(peerId, id)]).length;
+    }) : update.ids;
+    this.removeEphemeralMessages(peerId, ids);
   };
 
   public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
@@ -2069,6 +2184,10 @@ export class AppMessagesManager extends AppManager {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'} as ApiError);
     }
 
+    if(message._ === 'message' && message.pFlags.welcome_template) {
+      return this.editWelcomeMessage(message, text, options);
+    }
+
     const {mid, peerId} = message;
 
     if(message.pFlags.is_outgoing) {
@@ -2101,21 +2220,24 @@ export class AppMessagesManager extends AppManager {
       ...(inputMediaWebPage ? {media: inputMediaWebPage} : {})
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
-    }, (error: ApiError) => {
-      this.log.error('editMessage error:', error);
-
-      if(error?.type === 'MESSAGE_NOT_MODIFIED') {
-        error.handled = true;
-        return;
-      }
-
-      if(error?.type === 'MESSAGE_EMPTY') {
-        error.handled = true;
-      }
-
-      throw error;
-    });
+    }, this.onEditMessageError);
   }
+
+  /** Saving an edit that changes nothing is no failure; an empty one the composer explains. */
+  private onEditMessageError = (error: ApiError) => {
+    this.log.error('editMessage error:', error);
+
+    if(error?.type === 'MESSAGE_NOT_MODIFIED') {
+      error.handled = true;
+      return;
+    }
+
+    if(error?.type === 'MESSAGE_EMPTY') {
+      error.handled = true;
+    }
+
+    throw error;
+  };
 
   public async editMessageMedia({message, text, sendFileDetails, options = {}}: EditMessageMediaArgs) {
     let {file} = sendFileDetails;
@@ -2492,7 +2614,8 @@ export class AppMessagesManager extends AppManager {
         options.replyToMsgId,
         options.replyTo,
         options.ephemeral,
-        options.ephemeralReceiverId
+        options.ephemeralReceiverId,
+        options.welcome
       );
 
     options.entities ??= [];
@@ -2521,6 +2644,7 @@ export class AppMessagesManager extends AppManager {
       return this.sendEphemeralMessage({
         peerId,
         receiverId,
+        welcome: ephemeralContext.welcome,
         message: text,
         entities: this.getInputEntities(entities),
         media: this.getInputMediaWebPage(options),
@@ -2757,7 +2881,8 @@ export class AppMessagesManager extends AppManager {
         options.replyToMsgId,
         options.replyTo,
         options.ephemeral,
-        options.ephemeralReceiverId
+        options.ephemeralReceiverId,
+        options.welcome
       );
 
     await this.checkSendOptions(options);
@@ -2783,6 +2908,20 @@ export class AppMessagesManager extends AppManager {
 
     const hadMessageBefore = !!options.groupedMessage;
     const message = options.groupedMessage || this.generateOutgoingMessage(peerId, options);
+    // an ephemeral media send shows a placeholder while it uploads, as desktop's local sending
+    // item does, and the echo of the send replaces it. It reads as what it becomes: an ephemeral
+    // message only visible to its bot (`ephemeral_id` 0 — it has no server id yet), or a welcome
+    // template, which sits in the welcome section and comes from the chat
+    const ephemeralPlaceholder = !!activeEphemeralContext && !hadMessageBefore;
+    const isWelcome = !!activeEphemeralContext?.welcome;
+    if(ephemeralPlaceholder && isWelcome) {
+      message.pFlags.welcome_template = true;
+      message.from_id = message.peer_id;
+    } else if(ephemeralPlaceholder) {
+      message.pFlags.ephemeral = true;
+      (message as MyEphemeralMessage).ephemeral_id = 0;
+      (message as MyEphemeralMessage).ephemeral_receiver_id = activeEphemeralContext.receiverId;
+    }
 
     let caption = options.caption || '';
 
@@ -2922,7 +3061,9 @@ export class AppMessagesManager extends AppManager {
               this.log('cancelling upload', media);
 
               message && this.cancelPendingMessage(message.random_id);
-              this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+              if(!activeEphemeralContext) {
+                this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+              }
               sentDeferred.reject(err);
             });
 
@@ -2932,7 +3073,8 @@ export class AppMessagesManager extends AppManager {
               } */
 
               const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
-              if(actionName) {
+              // an ephemeral send is nobody else's business: the chat is not told of the upload
+              if(actionName && !activeEphemeralContext) {
                 this.setTyping(peerId, {_: actionName, progress: percents | 0}, undefined, options.threadId);
               }
               sentDeferred.notifyAll(progress);
@@ -3008,7 +3150,7 @@ export class AppMessagesManager extends AppManager {
 
             sentDeferred.resolve(inputMedia);
           }, (error: ApiError) => {
-            if(activeEphemeralContext) {
+            if(activeEphemeralContext && error?.type !== 'UPLOAD_CANCELED') {
               this.registerEphemeralRetry(peerId, {
                 type: 'file',
                 options
@@ -3043,7 +3185,10 @@ export class AppMessagesManager extends AppManager {
       threadId: options.threadId,
       clearDraft: options.clearDraft,
       processAfter: options.processAfter,
-      noOutgoingMessage: !!activeEphemeralContext
+      noOutgoingMessage: !!activeEphemeralContext && !ephemeralPlaceholder,
+      // an ephemeral message never becomes the chat's last message
+      keepOutOfDialog: ephemeralPlaceholder,
+      isWelcome: ephemeralPlaceholder && isWelcome
     });
 
     if(!options.isGroupedItem) {
@@ -3051,15 +3196,28 @@ export class AppMessagesManager extends AppManager {
 
       const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
         if(activeEphemeralContext) {
+          // its placeholder was deleted while it uploaded: the send is off
+          if(ephemeralPlaceholder && !this.pendingByRandomId[message.random_id]) {
+            return Promise.resolve();
+          }
+
           return this.sendEphemeralMessage({
             peerId,
             receiverId: activeEphemeralContext.receiverId,
+            welcome: activeEphemeralContext.welcome,
             message: caption,
             entities: sendEntities,
             media: inputMedia,
+            // the caption above the media, as desktop sends it for ephemeral media
+            invert_media: options.invertMedia || undefined,
             reply_to: activeEphemeralContext.replyTo || options.replyTo,
             randomId: message.random_id
-          }).then(noop);
+          }).then(noop).finally(() => {
+            // the echo of the send stands in its place now, or the send failed and says so
+            if(ephemeralPlaceholder) {
+              this.cancelPendingMessage(message.random_id);
+            }
+          });
         }
 
         return this.apiManager.invokeApi('messages.sendMedia', {
@@ -3091,7 +3249,9 @@ export class AppMessagesManager extends AppManager {
 
       const send = () => {
         sentDeferred.then((inputMedia) => {
-          this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+          if(!activeEphemeralContext) {
+            this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+          }
 
           let promise: Promise<void>;
           if(inputMedia._ === 'inputMediaDocument') {
@@ -3104,9 +3264,11 @@ export class AppMessagesManager extends AppManager {
           }
 
           return promise.catch((error: ApiError) => {
+            // an ephemeral send already said it failed (its retry toast) and took its placeholder
+            // away; nothing awaits this chain, so a rethrow would only be an unhandled rejection
             if(activeEphemeralContext) {
               toggleError(error);
-              throw error;
+              return;
             }
 
             if(attachType === 'photo' &&
@@ -3447,7 +3609,8 @@ export class AppMessagesManager extends AppManager {
         options.replyToMsgId,
         options.replyTo,
         options.ephemeral,
-        options.ephemeralReceiverId
+        options.ephemeralReceiverId,
+        options.welcome
       );
 
     await this.checkSendOptions(options);
@@ -3593,6 +3756,7 @@ export class AppMessagesManager extends AppManager {
               promise = promise.then(() => this.sendEphemeralMessage({
                 peerId,
                 receiverId: activeEphemeralContext.receiverId,
+                welcome: activeEphemeralContext.welcome,
                 message: input.message,
                 entities: input.entities,
                 media: input.media,
@@ -3786,7 +3950,8 @@ export class AppMessagesManager extends AppManager {
         options.replyToMsgId,
         options.replyTo,
         options.ephemeral,
-        options.ephemeralReceiverId
+        options.ephemeralReceiverId,
+        options.welcome
       );
     if(inputMedia?._ === 'inputMediaTodo') {
       this.stripEphemeralReply(options);
@@ -3814,6 +3979,7 @@ export class AppMessagesManager extends AppManager {
       return this.sendEphemeralMessage({
         peerId,
         receiverId,
+        welcome: ephemeralContext.welcome,
         message: '',
         media: inputMedia,
         query_id: options.queryId,
@@ -4194,17 +4360,27 @@ export class AppMessagesManager extends AppManager {
     clearDraft: boolean,
     sequential: boolean,
     processAfter?: (cb: () => void) => void,
-    noOutgoingMessage?: boolean
+    noOutgoingMessage?: boolean,
+    keepOutOfDialog?: boolean,
+    /** a welcome template's placeholder: it lives in the welcome section, not in the history */
+    isWelcome?: boolean
   }> = {}) {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
-    const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
+    const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) :
+      options.isWelcome ? this.getWelcomeMessagesStorage(peerId) :
+      this.getHistoryMessagesStorage(peerId);
     const monoforumThreadId = this.getMonoforumThreadId(peerId, message.saved_peer_id);
 
     message.storageKey = storage.key;
 
     const callbacks: Array<() => void> = [];
-    if(options.isScheduled && !options.noOutgoingMessage) {
+    if(options.isWelcome && !options.noOutgoingMessage) {
+      this.saveMessages([message], {storage, isOutgoing: true});
+      callbacks.push(() => {
+        this.rootScope.dispatchEvent('welcome_message_new', message);
+      });
+    } else if(options.isScheduled && !options.noOutgoingMessage) {
       // if(!options.isGroupedItem) {
       this.saveMessages([message], {storage, isScheduled: true, isOutgoing: true});
       callbacks.push(() => {
@@ -4224,17 +4400,19 @@ export class AppMessagesManager extends AppManager {
       }
 
       this.saveMessages([message], {storage, isOutgoing: true});
-      this.setDialogTopMessage(message);
+      if(!options.keepOutOfDialog) {
+        this.setDialogTopMessage(message);
+      }
       this.updateMessageContextForInserting(message);
 
-      if(options.threadId) {
+      if(options.threadId && !options.keepOutOfDialog) {
         const dialog = this.dialogsStorage.getAnyDialog(peerId, options.threadId);
         if(dialog) {
           this.setDialogTopMessage(message, dialog);
         }
       }
 
-      if(monoforumThreadId) {
+      if(monoforumThreadId && !options.keepOutOfDialog) {
         this.monoforumDialogsStorage.checkLastMessageForExistingDialog(message);
       }
 
@@ -4256,7 +4434,7 @@ export class AppMessagesManager extends AppManager {
         sequential: options.sequential
       };
 
-      if(!options.isScheduled) {
+      if(!options.isScheduled && !options.keepOutOfDialog) {
         this.pendingTopMsgs[peerId] = messageId;
 
         if(options.threadId) {
@@ -4803,6 +4981,14 @@ export class AppMessagesManager extends AppManager {
 
     if(pendingData) {
       const {peerId, tempId, storage} = pendingData;
+      // a welcome template's placeholder never entered the history: the section drops it
+      if(storage.type === 'welcome') {
+        this.rejectPendingMessageCallbacks(tempId, makeError('UPLOAD_CANCELED'));
+        delete this.pendingByRandomId[randomId];
+        this.removeWelcomeMessages(peerId, [tempId]);
+        return true;
+      }
+
       const historyStorage = this.getHistoryStorage(peerId);
 
       const tempMessage = this.getMessageFromStorage(storage, tempId);
@@ -5793,7 +5979,8 @@ export class AppMessagesManager extends AppManager {
     const mirror: Mirrors['messages'] = {};
     [
       this.messagesStorageByPeerId,
-      this.scheduledMessagesStorage
+      this.scheduledMessagesStorage,
+      this.welcomeMessagesStorage
     ].forEach((storages) => {
       for(const key in storages) {
         const storage = storages[key];
@@ -5861,6 +6048,7 @@ export class AppMessagesManager extends AppManager {
     const s = key.split('_');
     const peerId: PeerId = +s[0];
     const type: MessagesStorageType = s[1] as any;
+    if(type === 'welcome') return this.getWelcomeMessagesStorage(peerId);
     return type === 'scheduled' ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
   }
 
@@ -5889,7 +6077,7 @@ export class AppMessagesManager extends AppManager {
       storage?.type === 'history' &&
       isLegacyMessageId(mid) &&
       storage.peerId !== GLOBAL_HISTORY_PEER_ID &&
-      !this.isEphemeralMessage(message)
+      !this.isDeliveredEphemeralMessage(message)
     ) {
       const globalStorage = this.getGlobalHistoryMessagesStorage();
       this.setMessageToStorage(globalStorage, message);
@@ -5913,7 +6101,7 @@ export class AppMessagesManager extends AppManager {
       storage?.type === 'history' &&
       isLegacyMessageId(mid) &&
       storage.peerId !== GLOBAL_HISTORY_PEER_ID &&
-      !this.isEphemeralMessage(message)
+      !this.isDeliveredEphemeralMessage(message)
     ) {
       const globalStorage = this.getGlobalHistoryMessagesStorage();
       this.deleteMessageFromStorage(globalStorage, mid);
@@ -7141,6 +7329,11 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    // only the chat's own copy: a log or scheduled copy of the anchor is no fresh original
+    if(isMessage && storage.type === 'history') {
+      this.keepAnchoredEphemeralOverRefetch(peerId, message);
+    }
+
     if(isMessage && message.message.length && !message.totalEntities) {
       this.wrapMessageEntities(message);
     }
@@ -8155,6 +8348,15 @@ export class AppMessagesManager extends AppManager {
       return false;
     }
 
+    // a welcome message stays editable for as long as it exists, by anyone who manages them —
+    // unless it is a rich message, which this composer cannot carry back
+    if(message?._ === 'message' && message.pFlags.welcome_template) {
+      return kind === 'text' &&
+        !message.rich_message &&
+        this.canMessageBeEdited(message, kind) &&
+        this.canManageWelcomeMessages(message.peerId);
+    }
+
     if(!message || !this.canMessageBeEdited(message, kind)) {
       return false;
     }
@@ -8189,7 +8391,15 @@ export class AppMessagesManager extends AppManager {
     return true;
   }
 
+  public canManageWelcomeMessages(peerId: PeerId) {
+    return peerId.isAnyChat() && this.appChatsManager.hasRights(peerId.toChatId(), 'manage_welcome_messages');
+  }
+
   public canDeleteMessage(message: MyMessage) {
+    if(message?._ === 'message' && message.pFlags.welcome_template) {
+      return this.canManageWelcomeMessages(message.peerId);
+    }
+
     return this.isEphemeralMessage(message) || message && (
       message.peerId.isUser() ||
       message.pFlags.out ||
@@ -8200,6 +8410,27 @@ export class AppMessagesManager extends AppManager {
 
   public getReplyKeyboard(peerId: PeerId) {
     return this.getHistoryStorage(peerId).replyMarkup;
+  }
+
+  /**
+   * Whether a message comes after the one the chat's keyboard came with. Ephemeral mids live in a
+   * range of their own above every history mid, so when either side is ephemeral the date decides.
+   */
+  private isAfterReplyMarkup(message: Message.messageService | Message.message, replyMarkup: ReplyMarkup) {
+    if(message.mid === replyMarkup.mid) {
+      return false;
+    }
+
+    if(!isEphemeralMessageId(message.mid) && !isEphemeralMessageId(replyMarkup.mid)) {
+      return message.mid > replyMarkup.mid;
+    }
+
+    // strictly later: our own ephemeral command comes back from the server only after the bot's
+    // answer to it may already be here, dated the same second — it is not an answer to that answer.
+    // A tie keeps the keyboard there is for incoming ones too: a history load merges every message
+    // of that second again, older ones included
+    const keyboardMessage = this.getMessageByPeer(message.peerId, replyMarkup.mid);
+    return !keyboardMessage || message.date > keyboardMessage.date;
   }
 
   public mergeReplyKeyboard(historyStorage: HistoryStorage, message: Message.messageService | Message.message) {
@@ -8224,7 +8455,7 @@ export class AppMessagesManager extends AppManager {
 
     const lastReplyMarkup = historyStorage.replyMarkup;
     if(messageReplyMarkup) {
-      if(lastReplyMarkup && lastReplyMarkup.mid >= message.mid) {
+      if(lastReplyMarkup && !this.isAfterReplyMarkup(message, lastReplyMarkup)) {
         return false;
       }
 
@@ -8255,16 +8486,28 @@ export class AppMessagesManager extends AppManager {
     if(message.pFlags.out) {
       if(lastReplyMarkup) {
         assumeType<ReplyMarkup.replyKeyboardMarkup>(lastReplyMarkup);
-        if(lastReplyMarkup.pFlags.single_use &&
+        // a single-use keyboard is spent by the next message, a force-reply by the answer to it
+        // (desktop's `lastKeyboardUsed`) — so reopening the chat does not ask for the reply again
+        const answersForceReply = isForceReplyMarkup(lastReplyMarkup) &&
+          (message as Message.message).reply_to_mid === lastReplyMarkup.mid;
+        if((lastReplyMarkup.pFlags.single_use || answersForceReply) &&
           !lastReplyMarkup.pFlags.hidden &&
-          (message.mid > lastReplyMarkup.mid || message.pFlags.is_outgoing) &&
+          (answersForceReply || this.isAfterReplyMarkup(message, lastReplyMarkup) || message.pFlags.is_outgoing) &&
           (message as Message.message).message) {
-          lastReplyMarkup.pFlags.hidden = true;
-          // this.log('set', historyStorage.reply_markup)
+          // a new object rather than a flag set in place: only top-level writes of the history
+          // storage reach the tab's mirror, and the tab is where the flag is read
+          historyStorage.replyMarkup = {
+            ...lastReplyMarkup,
+            pFlags: {...lastReplyMarkup.pFlags, hidden: true}
+          };
           return true;
         }
-      } else if(!historyStorage.maxOutId ||
-        message.mid > historyStorage.maxOutId) {
+      } else if(
+        // ephemeral mids are random and above the history's: they would make every later
+        // single-use keyboard look answered already
+        !isEphemeralMessageId(message.mid) &&
+        (!historyStorage.maxOutId || message.mid > historyStorage.maxOutId)
+      ) {
         historyStorage.maxOutId = message.mid;
       }
     }
@@ -11224,11 +11467,11 @@ export class AppMessagesManager extends AppManager {
     const ephemeralIds: number[] = [];
     mids = mids.filter((mid) => {
       const message = this.getMessageByPeer(peerId, mid);
-      if(!this.isEphemeralMessage(message)) {
+      if(!this.isDeliveredEphemeralMessage(message)) {
         return true;
       }
 
-      ephemeralIds.push(message.ephemeral_id);
+      ephemeralIds.push((message as MyEphemeralMessage).ephemeral_id);
       return false;
     });
     if(ephemeralIds.length) {
@@ -12181,6 +12424,183 @@ export class AppMessagesManager extends AppManager {
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     });
+  }
+
+  // * welcome messages (layer 229)
+
+  public getWelcomeMessagesStorage(peerId: PeerId) {
+    return this.welcomeMessagesStorage[peerId] ??= this.createMessageStorage(peerId, 'welcome');
+  }
+
+  public getWelcomeMessage(peerId: PeerId, mid: number) {
+    return this.getMessageFromStorage(this.getWelcomeMessagesStorage(peerId), mid);
+  }
+
+  /** How many welcome messages the chat has; `load` asks the server for the list first. */
+  public getWelcomeMessagesCount(peerId: PeerId, load?: boolean): MaybePromise<number> {
+    return load ?
+      this.getWelcomeMessages(peerId).then((mids) => mids.length) :
+      this.getWelcomeMessagesStorage(peerId).size;
+  }
+
+  /** How many welcome messages a chat may have (desktop and Android read the same key). */
+  public async getWelcomeMessagesLimit() {
+    const appConfig = await this.apiManager.getAppConfig();
+    return appConfig.ephemeral_welcome_messages_max ?? 5;
+  }
+
+  private getWelcomeMessageMid(peerId: PeerId, ephemeralId: number) {
+    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
+    return this.appMessagesIdsManager.generateMessageId(ephemeralId, channelId);
+  }
+
+  /** The chat's welcome messages in the order they are sent in, oldest first. */
+  public getWelcomeMessagesMids(peerId: PeerId) {
+    const storage = this.getWelcomeMessagesStorage(peerId);
+    return [...storage.values()]
+    .sort((a, b) => (a.date - b.date) || (a.mid - b.mid))
+    .map((message) => message.mid);
+  }
+
+  /**
+   * Layer 229's welcome messages: templates a chat's admins write, which the server sends, as
+   * ephemeral messages, to each member who joins. They are kept apart from the chat's history,
+   * like desktop's `WelcomeMessages`, and are only ever seen in their own section.
+   */
+  public getWelcomeMessages(peerId: PeerId): Promise<number[]> {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'ephemeral.getWelcomeMessages',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        hash: this.welcomeMessagesHashes.get(peerId) ?? 0
+      },
+      processResult: (result) => {
+        if(result._ === 'ephemeral.welcomeMessages') {
+          this.welcomeMessagesHashes.set(peerId, result.hash);
+          const received = new Set(result.messages.map((message) => this.saveWelcomeMessage(message).message.mid));
+          const storage = this.getWelcomeMessagesStorage(peerId);
+          // a template still uploading is not on the server yet: it stays until its echo comes
+          const gone = [...storage.keys()].filter((mid) => {
+            return !received.has(mid) && !(storage.get(mid) as Message.message).pFlags.is_outgoing;
+          });
+          this.removeWelcomeMessages(peerId, gone);
+        }
+
+        return this.getWelcomeMessagesMids(peerId);
+      }
+    });
+  }
+
+  private saveWelcomeMessage(message: EphemeralMessage) {
+    const peerId = this.getEphemeralPeerId(message);
+    const storage = this.getWelcomeMessagesStorage(peerId);
+    const existing = this.getMessageFromStorage(storage, this.getWelcomeMessageMid(peerId, message.id));
+    const localMessage = this.makeLocalEphemeralMessage(message, peerId, message.id);
+    localMessage.pFlags.welcome_template = true;
+    // new members get it from the chat itself, whoever wrote it: desktop shows the chat as its
+    // sender (`displayFrom`), Android writes the chat into from_id. It also keeps a template a bot
+    // admin wrote editable by the other admins, as a bot's own message would not be
+    localMessage.from_id = localMessage.peer_id;
+
+    if(existing) {
+      this.handleReleasingMessage(existing, storage);
+    }
+
+    const stored = this.saveMessage(localMessage, {storage}) as Message.message;
+    delete stored.pFlags.unread;
+    stored.storageKey = storage.key;
+    this.setMessageToStorage(storage, stored);
+    return {message: stored, existing};
+  }
+
+  /** An update carrying a welcome template: a new one, or a change to one, by any of the admins. */
+  private applyWelcomeMessage(message: EphemeralMessage) {
+    const {message: stored, existing} = this.saveWelcomeMessage(message);
+    if(existing) {
+      this.dispatchMessageEditEvent(stored, stored.storageKey);
+    } else {
+      this.rootScope.dispatchEvent('welcome_message_new', stored);
+    }
+  }
+
+  private removeWelcomeMessages(peerId: PeerId, mids: number[]) {
+    const storage = this.getWelcomeMessagesStorage(peerId);
+    const removed = mids.filter((mid) => {
+      const message = storage.get(mid);
+      if(!message) return false;
+      this.handleReleasingMessage(message, storage);
+      this.deleteMessageFromStorage(storage, mid);
+      return true;
+    });
+
+    if(removed.length) {
+      this.rootScope.dispatchEvent('welcome_messages_delete', {peerId, mids: removed});
+    }
+
+    return removed;
+  }
+
+  private editWelcomeMessage(
+    message: Message.message,
+    text: string,
+    options: Parameters<AppMessagesManager['editMessage']>[2]
+  ) {
+    let entities = options.entities || [];
+    if(text) {
+      [text, entities] = parseMarkdown(text, entities);
+    }
+
+    return this.apiManager.invokeApi('ephemeral.editMessage', {
+      welcome: true,
+      peer: this.appPeersManager.getInputPeerById(message.peerId),
+      receiver_id: {_: 'inputUserEmpty'},
+      id: getServerMessageId(message.mid),
+      invert_media: options.invertMedia,
+      message: text,
+      entities: this.getInputEntities(entities),
+      // there is no `no_webpage` here: the link preview picked in the composer rides as media, as
+      // it does when the template is sent
+      media: this.getInputMediaWebPage(options) ?? options.newMedia
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    }, this.onEditMessageError);
+  }
+
+  /**
+   * A template still uploading has no server id: deleting it calls its send off, or its echo
+   * would bring it back. Returns the ones the server has to delete.
+   */
+  private cancelUploadingWelcomeMessages(peerId: PeerId, mids: number[]) {
+    const storage = this.getWelcomeMessagesStorage(peerId);
+    return mids.filter((mid) => {
+      const message = storage.get(mid) as Message.message;
+      if(!message?.pFlags.is_outgoing) {
+        return true;
+      }
+
+      this.cancelUploadingEphemeralSend(message);
+      return false;
+    });
+  }
+
+  public deleteWelcomeMessages(peerId: PeerId, mids: number[]) {
+    const peer = this.appPeersManager.getInputPeerById(peerId);
+    mids = this.cancelUploadingWelcomeMessages(peerId, mids);
+    const promises = mids.map((mid) => this.apiManager.invokeApi('ephemeral.deleteWelcomeMessage', {
+      peer,
+      id: getServerMessageId(mid)
+    }));
+    this.removeWelcomeMessages(peerId, mids);
+    return Promise.all(promises).then(noop);
+  }
+
+  public deleteAllWelcomeMessages(peerId: PeerId) {
+    const promise = this.apiManager.invokeApi('ephemeral.deleteAllWelcomeMessages', {
+      peer: this.appPeersManager.getInputPeerById(peerId)
+    });
+    const mids = [...this.getWelcomeMessagesStorage(peerId).keys()];
+    this.removeWelcomeMessages(peerId, this.cancelUploadingWelcomeMessages(peerId, mids));
+    return promise.then(noop);
   }
 
   public deleteScheduledMessages(peerId: PeerId, mids: number[]) {

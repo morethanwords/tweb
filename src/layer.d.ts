@@ -1062,6 +1062,7 @@ export namespace Message {
       fakeForSavedMusic?: true,
       ephemeral?: true,
       ephemeral_anchored?: true,
+      welcome_template?: true,
     }>,
     flags2?: number,
     id: number,

@@ -1093,6 +1093,9 @@ export default class ChatSelection extends AppSelection {
       // * which is a read-only view whose entries live outside the message storage
       !bubble.classList.contains('is-date') &&
       this.chat.type !== ChatType.Logs &&
+      // * welcome messages are templates, not the chat's messages: there is nothing to forward, and
+      // * the few there are get edited and deleted one by one from their menu
+      this.chat.type !== ChatType.Welcome &&
       // * a report is about what someone posted, and a service message is not that — tdesktop
       // * rules them out of the choose-messages flow too (HistoryItem::suggestReport)
       !(this.isReportSelection && bubble.classList.contains('service')) &&
