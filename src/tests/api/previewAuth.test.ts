@@ -81,6 +81,11 @@ async function muteManagerStorm(): Promise<() => void> {
   proto.invokeApiSingleProcess = function(o: any) {
     return allowed(o?.method) ? originals.invokeApiSingleProcess.call(this, o) : hang();
   };
+  // a 406 AUTH_KEY_DUPLICATED on the seed (a live tab holds its key) answers
+  // with logOut() — auth.logOut on every DC, which the allow-list above lets
+  // through. A failed mint must never revoke the seed it minted from.
+  originals.logOut = proto.logOut;
+  proto.logOut = () => Promise.resolve();
 
   return () => {
     for(const name in originals) proto[name] = originals[name];
