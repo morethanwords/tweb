@@ -17,6 +17,12 @@ $color-inactive: rgba(255, 255, 255, .5);
   justify-content: center;
   visibility: visible;
 
+  // the dialog itself takes the initial focus (a landing spot, not a tab stop) — a ring around the
+  // whole screen would say nothing; `:root` outranks the global `:root :focus-visible`
+  :root &:focus-visible {
+    outline: none;
+  }
+
   &.isInvisible {
     visibility: hidden;
 

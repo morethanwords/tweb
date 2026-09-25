@@ -89,11 +89,6 @@ export class AppBackgroundTab {
 
     container.classList.add('background-item');
     container.dataset.id = '' + wallPaper.id;
-    // The tile is a plain <div> selected via a delegated grid click; expose it as a focusable
-    // control with a name so keyboard / screen-reader users can pick a wallpaper.
-    container.setAttribute('role', 'button');
-    container.setAttribute('tabindex', '0');
-    container.setAttribute('aria-label', I18n.format('ChatBackground', true));
 
     const media = document.createElement('div');
     media.classList.add('background-item-media');
@@ -358,6 +353,12 @@ const ChatBackground = () => {
     if(result) {
       const {container, media, dispose} = result;
       container.classList.add('grid-item');
+      // The tile is a plain <div> selected via a delegated grid click; expose it as a focusable
+      // control with a name so keyboard / screen-reader users can pick a wallpaper. Here and not
+      // in the static builder: the theme picker nests the same element inside its own tiles.
+      container.setAttribute('role', 'button');
+      container.setAttribute('tabindex', '0');
+      container.setAttribute('aria-label', I18n.format('ChatBackground', true));
       media.classList.add('grid-item-media');
       solidRoots.push(dispose);
 

@@ -1,5 +1,6 @@
-import {createContext, Index, JSX, Show, useContext} from 'solid-js';
+import {createContext, Index, JSX, onCleanup, Show, useContext} from 'solid-js';
 
+import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import classNames from '@helpers/string/classNames';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
 import type {SliderSuperTabConstructable} from '@components/sliderTab';
@@ -20,16 +21,19 @@ import styles from '@components/chatTips/chatTips.module.scss';
  */
 
 /**
- * How a card tells the carousel its content has landed. The deck stays folded away until the card
- * being shown reports in, so the first thing the empty column does is animate a finished card in
- * rather than show three quarters of one assembling itself.
+ * What the carousel hands each card through its slot:
+ * - `ready` — how a card tells the carousel its content has landed. The deck stays folded away
+ *   until the card being shown reports in, so the first thing the empty column does is animate a
+ *   finished card in rather than show three quarters of one assembling itself.
+ * - `titleId` — the id the card's title is rendered with, so the slot can be named by it and the
+ *   carousel can announce it when stepping to the card.
  */
-const TipReadyContext = createContext<() => void>();
+const TipSlotContext = createContext<{ready: () => void, titleId: string}>();
 
-export const TipReadyProvider = TipReadyContext.Provider;
+export const TipSlotProvider = TipSlotContext.Provider;
 
 /** Call once the card's own content is on screen. Safe to call more than once. */
-export const useTipReady = () => useContext(TipReadyContext) ?? (() => {});
+export const useTipReady = () => useContext(TipSlotContext)?.ready ?? (() => {});
 
 /**
  * Opens the settings screen a card's description points at. An already-open copy is brought back
@@ -63,17 +67,30 @@ export default function TipCard(props: {
   /** Bottom line, secondary; build it with `i18n(key, [anchorCallback(…)])` to get the link. */
   description: JSX.Element
 }) {
+  const slot = useContext(TipSlotContext);
   return (
     <div class={styles.card}>
-      <div class={styles.cardTitle}>{props.title}</div>
-      <div class={styles.buttons}>
+      <div id={slot?.titleId} class={styles.cardTitle}>{props.title}</div>
+      {/* One choice out of a few, so one tab stop: Tab enters on the chosen button, the arrows move
+          between them, Enter / Space picks — the same as the theme strip, and without applying
+          on every arrow press, which here would switch the theme. A toolbar from three controls
+          up, a plain group below that (the Chats filters hide the empty ones). */}
+      <div
+        class={styles.buttons}
+        role={props.buttons.length > 2 ? 'toolbar' : 'group'}
+        aria-labelledby={slot?.titleId}
+        ref={(el) => onCleanup(attachPickerGrid(el, 'button'))}
+      >
         {/* `Index`, not `For`: the cards rebuild the whole array whenever the selection moves, and
             `For` would key those fresh objects by reference and recreate every button — killing
-            the ripple of the one just clicked. By position the element stays and only updates. */}
+            the ripple of the one just clicked. By position the element stays and only updates.
+            Toggle buttons: `aria-pressed` says which one is on. */}
         <Index each={props.buttons}>{(button) => (
           <RippleElement
-            component="div"
+            component="button"
+            type="button"
             class={classNames(styles.button, button().selected && styles.buttonSelected)}
+            aria-pressed={button().selected}
             onClick={(e: MouseEvent) => button().onClick(e)}
           >
             <IconTsx icon={button().icon} class={styles.buttonIcon} />

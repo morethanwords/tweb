@@ -3508,7 +3508,9 @@ export default function StoriesViewer(props: {
         onAfterEnter={() => {
           animating = false;
           focusTrap = createFocusTrap(div);
-          focusTrap.activate(previouslyFocused);
+          // land on the dialog, not on its first button: that one is Close, and Space — the
+          // pause key — would press it
+          focusTrap.activate(previouslyFocused, div);
           actions.viewerReady(true);
           deferred.resolve();
           // play();

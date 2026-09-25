@@ -148,7 +148,10 @@ export default function attachListNavigation({
   };
 
   const scrollable = findUpClassName(list, 'scrollable');
-  list.classList.add('navigable-list');
+  // Paints `.active` as the keyboard highlight — autocomplete only. A focusable grid highlights
+  // with its own class and the focus ring, and its items may use `.active` for something else
+  // (the selected theme tile).
+  if(!focusable) list.classList.add('navigable-list');
 
   const onMouseMove = (e: MouseEvent) => {
     const target = findUpAsChild(e.target as HTMLElement, list) as HTMLElement;
@@ -235,30 +238,53 @@ export default function attachListNavigation({
   };
 }
 
-/** Roving focus and activation for lazy emoji, sticker and GIF grids. */
-export function attachPickerGrid(list: HTMLElement, itemSelector: string, getLabel: (item: HTMLElement, index: number) => string) {
-  const sync = () => {
+/**
+ * Roving focus and activation for lazy emoji, sticker and GIF grids, and for single-choice rows
+ * (`aria-pressed` items). Items that carry their own name (native buttons with text) can omit
+ * `getLabel`.
+ */
+export function attachPickerGrid(list: HTMLElement, itemSelector: string, getLabel?: (item: HTMLElement, index: number) => string) {
+  const sync = (records?: MutationRecord[]) => {
     const controls = (Array.from(list.children) as HTMLElement[]).filter((item) => item.matches(itemSelector));
-    const current = controls.find((item) => item.tabIndex === 0) || controls[0];
+    // The one tab stop stays on the focused item while focus is inside; otherwise Tab enters a
+    // single-choice grid on its chosen item — following the choice when it moves without the
+    // keyboard (a click, a change made elsewhere) — and any other grid on its first item.
+    const focused = controls.find((item) => item.contains(list.ownerDocument.activeElement));
+    const pressed = controls.find((item) => item.getAttribute('aria-pressed') === 'true');
+    const choiceMoved = records?.some((record) => record.type === 'attributes');
+    // By the attribute: a native button reports `tabIndex` 0 before anything has set it.
+    const current = focused ||
+      (choiceMoved && pressed) ||
+      controls.find((item) => item.getAttribute('tabindex') === '0') ||
+      pressed ||
+      controls[0];
     controls.forEach((item, index) => {
-      item.setAttribute('role', 'button');
+      if(item.tagName !== 'BUTTON') item.setAttribute('role', 'button');
       item.tabIndex = item === current ? 0 : -1;
-      item.setAttribute('aria-label', getLabel(item, index));
+      if(getLabel) item.setAttribute('aria-label', getLabel(item, index));
     });
+    return current;
   };
   const observer = new MutationObserver(sync);
   observer.observe(list, {childList: true});
-  sync();
+  // Separate, as `subtree` here would also report every node a lazy grid item loads into itself.
+  const choiceObserver = new MutationObserver(sync);
+  choiceObserver.observe(list, {subtree: true, attributeFilter: ['aria-pressed']});
+  // Handed over as the starting target, or the navigation would put a second tab stop on the
+  // first item of a grid that already has its items.
+  const initialTarget = sync();
   const navigation = attachListNavigation({
     list,
     type: 'xy',
     focusable: true,
     itemSelector,
     activeClassName: 'keyboard-focused',
+    target: initialTarget,
     onSelect: (target) => { (target as HTMLElement).click(); }
   });
   return () => {
     observer.disconnect();
+    choiceObserver.disconnect();
     navigation.detach();
   };
 }

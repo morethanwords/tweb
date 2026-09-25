@@ -1,4 +1,4 @@
-import {Component, createEffect, createSignal, For, onCleanup, Show} from 'solid-js';
+import {Component, createEffect, createSignal, createUniqueId, For, onCleanup, Show} from 'solid-js';
 import {Dynamic, Portal, render} from 'solid-js/web';
 
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -6,7 +6,7 @@ import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import {useMediaSizes} from '@helpers/mediaSizes';
 import classNames from '@helpers/string/classNames';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {useAppSettings} from '@stores/appSettings';
@@ -18,7 +18,7 @@ import Scrollable from '@components/scrollable2';
 import AppearanceTipCard from '@components/chatTips/appearanceCard';
 import ChatsTipCard from '@components/chatTips/chatsCard';
 import StickersTipCard from '@components/chatTips/stickersCard';
-import {TipReadyProvider} from '@components/chatTips/tipCard';
+import {TipSlotProvider} from '@components/chatTips/tipCard';
 import styles from '@components/chatTips/chatTips.module.scss';
 
 /**
@@ -84,9 +84,22 @@ function ChatTipsDeck() {
   const index = () => Math.min(appSettings.chatTips?.index ?? 0, TIPS.length - 1);
   const hidden = () => !!appSettings.chatTips?.hidden;
 
+  // Each card renders its title under this id; the slot is named by it, and a step reads it out.
+  const titleIds = TIPS.map(() => createUniqueId());
+  const carouselId = createUniqueId();
+
+  // A step swaps the card in place while focus stays on the nav pill, so nothing would tell a
+  // screen reader the card changed. Say its title — short, unlike the card itself.
+  const [announcement, setAnnouncement] = createSignal('');
+  let carousel: HTMLDivElement;
+
   // Cyclic — with three tips and two labelled buttons, wrapping around beats dead ends.
-  const step = (by: number) =>
-    setAppSettings('chatTips', 'index', (index() + by + TIPS.length) % TIPS.length);
+  const step = (by: number) => {
+    const next = (index() + by + TIPS.length) % TIPS.length;
+    setAppSettings('chatTips', 'index', next);
+    // the owning document: the client can be moved into a Document PiP window
+    setAnnouncement(carousel.ownerDocument.getElementById(titleIds[next])?.textContent ?? '');
+  };
 
   // Where a card waits while it isn't the one showing: its side is its cyclic position relative to
   // the current tip — next waits on the right, previous on the left. That makes a step animate
@@ -154,6 +167,9 @@ function ChatTipsDeck() {
             ref={pinServiceColor}
             class={styles.toggleButton}
             icon={hidden() ? 'lamp_filled' : 'close'}
+            aria-label={I18n.format('ChatTips.Title', true)}
+            aria-expanded={!hidden()}
+            aria-controls={carouselId}
             onClick={() => setAppSettings('chatTips', 'hidden', !hidden())}
           />
         </Portal>
@@ -165,7 +181,7 @@ function ChatTipsDeck() {
         )}
       >
         <div class={styles.placeholder} />
-        <div class={classNames(styles.carousel, folded() && styles.carouselHidden)}>
+        <div ref={carousel} id={carouselId} class={classNames(styles.carousel, folded() && styles.carouselHidden)}>
           {/* All three cards stay mounted and cross-fade in place, the way macOS keeps its
               widget controllers alive and only swaps which view sits in the hierarchy. That is
               what stops the content flashing: each card loads once, when the tips first
@@ -176,16 +192,22 @@ function ChatTipsDeck() {
               `transitionend`) can't leave a dead card on top swallowing clicks. */}
           <div class={styles.stage}>
             <For each={TIPS}>{(Tip, i) => (
+              // A waiting card is only faded, so `inert` is what takes it out of the tab order
+              // and the accessibility tree.
               <div
                 class={classNames(styles.slot, i() === index() && styles.slotActive)}
                 style={{'--tip-slide': offsetOf(i())}}
+                role="group"
+                aria-labelledby={titleIds[i()]}
+                inert={i() !== index()}
               >
-                <TipReadyProvider value={() => onTipReady(i())}>
+                <TipSlotProvider value={{ready: () => onTipReady(i()), titleId: titleIds[i()]}}>
                   <Dynamic component={Tip} />
-                </TipReadyProvider>
+                </TipSlotProvider>
               </div>
             )}</For>
           </div>
+          <div class="sr-only" aria-live="polite">{announcement()}</div>
           <div class={styles.nav}>
             <Button
               class={styles.navButton}
@@ -208,7 +230,10 @@ function ChatTipsDeck() {
       {/* Always mounted, centred under the deck, and cross-faded against it — that's how macOS
           handles the same label, and it means toggling animates rather than swapping one
           centred block for another. */}
-      <div class={classNames(styles.selectChat, hidden() && styles.selectChatShown)}>
+      <div
+        class={classNames(styles.selectChat, hidden() && styles.selectChatShown)}
+        aria-hidden={!hidden()}
+      >
         <span class={styles.selectChatPill}>{i18n('EmptyPeer.Description')}</span>
       </div>
     </div>

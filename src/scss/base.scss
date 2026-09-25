@@ -799,6 +799,12 @@ b {
 }
 
 .avatar-edit {
+  // AvatarEdit's container is a <button>: undo the inline-block and the UA chrome it brings,
+  // or `margin: auto` stops centering it
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
   position: relative;
   border-radius: 50%;
   cursor: pointer;
@@ -806,6 +812,12 @@ b {
 
   &.is-forum {
     border-radius: var(--avatar-border-radius-forum);
+  }
+
+  // the placeholder avatar is positioned over the whole circle and hides the global ring, which is
+  // drawn inside the edge — draw it just outside instead
+  :root &:focus-visible {
+    outline-offset: var(--focus-ring-width);
   }
 
   &-canvas {

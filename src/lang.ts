@@ -5675,6 +5675,7 @@ const lang = {
   'ChatTips.Chats.RecentlyClosed': 'Closed',
   'ChatTips.Chats.Empty': 'Nothing here yet.',
   'ChatTips.Stickers.Description': 'More trending stickers are available in [Trending Stickers]().',
+  'ChatTips.Title': 'Tips',
   'ChatTips.PreviousTip': 'Previous Tip',
   'ChatTips.NextTip': 'Next Tip',
   'EmptyPeer.Description': 'Select a chat to start messaging',

@@ -94,6 +94,25 @@
       }
     }
 
+    // The global ring is drawn inside the edge, under the positioned wallpaper, and the selection
+    // ring outside is the same colour — so a focused tile, the selected one above all, would look
+    // exactly like a selected one. Draw focus inside instead, on top of the wallpaper, with a line
+    // in the surface colour that separates it from any wallpaper.
+    &:focus-visible {
+      outline: none;
+
+      &:after {
+        content: " ";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow:
+          inset 0 0 0 var(--focus-ring-width) var(--focus-ring-color),
+          inset 0 0 0 calc(var(--focus-ring-width) * 2) var(--surface-color);
+        pointer-events: none;
+      }
+    }
+
     .background-item {
       position: absolute;
       inset: 0;

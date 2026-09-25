@@ -81,9 +81,10 @@ function TrendingStickerSet(props: {set: StickerSet.stickerSet}) {
     return set.documents.find((doc) => doc._ !== 'documentEmpty');
   });
 
+  // Named by the pack title under the cover; the cover itself is decoration.
   return (
-    <div class={styles.stickerSet} onClick={() => showStickersPopup(input())}>
-      <div class={styles.stickerSetCover}>
+    <button type="button" class={styles.stickerSet} onClick={() => showStickersPopup(input())}>
+      <div class={styles.stickerSetCover} aria-hidden="true">
         <Show when={cover()}>{(doc) => (
           <StickerTsx
             sticker={doc()}
@@ -94,6 +95,6 @@ function TrendingStickerSet(props: {set: StickerSet.stickerSet}) {
         )}</Show>
       </div>
       <div class={styles.stickerSetName}>{wrapEmojiText(props.set.title)}</div>
-    </div>
+    </button>
   );
 }

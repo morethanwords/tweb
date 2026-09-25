@@ -9,6 +9,8 @@ type ButtonAccessibilityProps = Pick<JSX.ButtonHTMLAttributes<HTMLButtonElement>
   | 'aria-hidden'
   | 'aria-label'
   | 'aria-pressed'
+  | 'aria-expanded'
+  | 'aria-controls'
   // Native, non-delegated listeners. Needed wherever an ancestor cancels the
   // event before it reaches the document listener Solid delegates from — a row
   // inside `AppSelectPeers`, say (appSelectPeers.ts:420).
@@ -77,6 +79,8 @@ const Button = (props: Partial<{
       aria-hidden={props['aria-hidden']}
       aria-label={props['aria-label']}
       aria-pressed={props['aria-pressed']}
+      aria-expanded={props['aria-expanded']}
+      aria-controls={props['aria-controls']}
       on:click={props['on:click']}
       on:keydown={props['on:keydown']}
     >
