@@ -1,6 +1,11 @@
 .ChildBadge {
   position: absolute;
-  z-index: 3;
+  // Over the avatar's own corner decorations (z-index 1, earlier in the row),
+  // but below anything the list lifts (a dragged row, the selection checkbox)
+  // and the panels the list scrolls under (`.chatlist-overlay` with the folder
+  // tabs, search) — the row is not a stacking context, so a higher value here
+  // escapes it and paints over them.
+  z-index: 1;
   top: 2.75rem;
   inset-inline-start: 2.875rem;
   display: flex;
