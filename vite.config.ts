@@ -100,6 +100,12 @@ const serverOptions: ServerOptions = {
       // in here (642 of 1157 when measured), i.e. a whole foreign worktree's
       // worth of fs watches on top of the store's own tree.
       resolve(rootDir, '.pnpm-store') + '/**',
+      // Scratch, and — since start-preview.sh builds a static bundle for remote
+      // requests into tmp/preview-dist — written to constantly. Watching it
+      // means every rebuild (this preview's or ANOTHER preview's) full-reloads
+      // the pages of every dev server in the repo: observed as
+      // `page reload tmp/preview-dist/<other id>/index.html`.
+      resolve(rootDir, 'tmp') + '/**',
       // nothing imports the generated `*.module.scss` types, but a rewritten one still wakes the
       // watcher — and anything listening for updates (the popup sandbox reloads on them) reacts
       '**/*.module.d.scss.ts'

@@ -101,7 +101,7 @@
     "watchFile": "useFsEvents",
     "watchDirectory": "useFsEvents",
     "fallbackPolling": "dynamicPriority",
-    "excludeDirectories": ["**/node_modules", "**/.claude", "dist", "public", "coverage"]
+    "excludeDirectories": ["**/node_modules", "**/.claude", "dist", "public", "coverage", "tmp"]
   },
   "exclude": [
     "node_modules",
@@ -109,6 +109,15 @@
     "public",
     "dist",
     "coverage",
+    /* Scratch + build artefacts, all gitignored — start-preview.sh --static
+       builds into tmp/preview-dist. They have to stay out of the program:
+       allowJs is on, and a build emits worker chunks with no import/export, so
+       TS reads them as classic scripts and their minified top-level names become
+       GLOBALS. One such name shadowed vitest's `vi` (it typed as `(e: any) =>
+       any`) and produced 1196 phantom errors across the test suite. The
+       dep-optimizer cache under tmp/ also dragged 1515 files into every
+       typecheck for nothing: 5029 files before this line, 3222 after. */
+    "tmp",
     "src/scripts",
     "src/solid",
     "src/opus-recorder",
