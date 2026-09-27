@@ -16,6 +16,7 @@
     "test:ephemeral-bot": "node ./src/tests/fixtures/ephemeralBot/bot.mjs",
     "test:lottie": "playwright test e2e/lottie*.spec.ts",
     "test:popups": "playwright test --config=playwright.popups.config.ts",
+    "test:popups:full": "POPUPS_ALL_ENGINES=1 playwright test --config=playwright.popups.config.ts",
     "test:editor:e2e": "playwright test --config=playwright.editor.config.ts",
     "test:focus": "playwright test e2e/focusPixels.spec.ts e2e/focusPixelsAuth.spec.ts",
     "test:focus:app": "playwright test e2e/focusPixelsApp.spec.ts",

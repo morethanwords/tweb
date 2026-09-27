@@ -1,7 +1,7 @@
 import {createAxeBuilder, expectNoA11yViolations, setIncreasedContrast, settleForMeasurement} from './accessibility.helpers';
 import {Page, expect} from '@playwright/test';
 import {test} from './workerContext';
-import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
+import {openStory, preparePopupSandbox, takeStoryPart} from './popupSandbox.helpers';
 import {writeFile} from 'node:fs/promises';
 
 async function waitForAuthScreen(page: Page) {
@@ -41,8 +41,7 @@ test.describe(() => {
 const ALL_THEMES = ['day', 'night', 'light', 'tinted'];
 const THEMES = process.env.A11Y_THEMES?.split(',').filter(Boolean) ||
   (process.env.A11Y_ALL_THEMES || process.env.CI ? ALL_THEMES : ALL_THEMES.slice(0, 1));
-// Each theme's sweep is split into parts that run in parallel. A part takes every Nth story, so
-// the heavy groups (transactions, calls) spread over all of them instead of landing in one.
+// Each theme's sweep is split into parts that run in parallel (takeStoryPart).
 const PARTS = Number(process.env.A11Y_STORY_PARTS) || 8;
 
 for(const theme of THEMES) for(let part = 0; part < PARTS; ++part) test(`popup stories expose named dialogs and accessible controls (${theme}, increased contrast, part ${part + 1}/${PARTS})`, async({page}, testInfo) => {
@@ -54,7 +53,7 @@ for(const theme of THEMES) for(let part = 0; part < PARTS; ++part) test(`popup s
   const requestedStories = process.env.A11Y_STORIES?.split(',').filter(Boolean);
   const wantedStories = requestedStories ? allStories.filter(({id}) => requestedStories.includes(id)) : allStories;
   if(requestedStories) expect(wantedStories.map(({id}) => id).sort()).toEqual([...new Set(requestedStories)].sort());
-  const stories = wantedStories.filter((_, index) => index % PARTS === part);
+  const stories = takeStoryPart(wantedStories, part, PARTS);
   const failures: object[] = [];
   let completed = 0;
   for(const story of stories) {

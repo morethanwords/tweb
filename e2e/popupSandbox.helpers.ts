@@ -20,6 +20,14 @@ declare global {
 // Generous: the slowest story builds its popup in well under a second.
 const OPEN_TIMEOUT = 30_000;
 
+/**
+ * One part of a story sweep that is split to run in parallel. A part takes every Nth story, so the
+ * heavy groups (transactions, calls) spread over all of them instead of landing in one.
+ */
+export function takeStoryPart<T>(stories: T[], part: number, parts: number) {
+  return stories.filter((_, index) => index % parts === part);
+}
+
 export async function preparePopupSandbox(page: Page, keepPanel = true) {
   await page.goto('/?popups=1');
   await page.waitForFunction(() => !!window.popupSandbox, null, {timeout: 30_000});

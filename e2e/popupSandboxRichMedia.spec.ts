@@ -1,4 +1,5 @@
-import {expect, test, type Page} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
+import {test} from './workerContext';
 import path from 'node:path';
 import type {RichMediaComposerHarness} from './fixtures/richMediaComposer';
 

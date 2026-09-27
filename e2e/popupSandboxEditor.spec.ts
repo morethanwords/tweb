@@ -1,4 +1,5 @@
-import {expect, test} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './workerContext';
 import type {CreateLinkPopupResult} from '@components/popups/createLink';
 
 declare global {

@@ -92,8 +92,10 @@ Either way every `rootScope.managers` call is answered from
 - `window.popupSandbox` (`ready` / `show` / `hide` / `list` / `open` /
   `closePopups` / `calls` / `unhandled`) drives the same registry from a script;
   `calls` and `unhandled` follow the active data source.
-  `pnpm test:popups` runs `e2e/popupSandbox.spec.ts`, which opens every story in
-  headless Chromium and fails on one that throws or never becomes visible.
+  `pnpm test:popups` runs the `e2e/popupSandbox*.spec.ts` suites in headless
+  Chromium (~50 s): `popupSandbox.spec.ts` opens every story and fails on one
+  that throws or never becomes visible; the others drive the composer's popups.
+  `pnpm test:popups:full` adds Firefox and WebKit (~3 min).
 - `src/tests/popupSandboxCoverage.test.ts` fails when a module under
   `components/popups/` can open a popup and no story imports it, so a new popup
   cannot land without one. It also fails when a story builds its popup out of a
@@ -390,6 +392,17 @@ import {Message, Chat, User, InputPeer} from '@layer';
 - **After every context compaction, reread this entire `AGENTS.md` before
   continuing work.** A compacted context or summary does not replace the
   canonical instructions in this file.
+- **Heavy test suites belong to the final review only — and only those the
+  change touches.** `test:a11y`, `test:focus`, the Playwright e2e configs and a
+  full `vitest run` take a minute or more each — never run them after every
+  small change. While iterating, check the change live in the preview, or run
+  the one test file that covers it (plus `tsc` when types changed). At the
+  final review (task wrap-up, or a review is asked for) run a suite only if it
+  can observe what changed: `test:popups` / `test:a11y` /
+  `test:focus` cover the popup sandbox and the sign-in screens, their `:app`
+  variants the signed-in client, `test:editor:e2e` the composer. A change none
+  of them exercises (chat-only styling, a manager fix) skips them. Report what
+  ran, and what was skipped and why.
 
 ## Accessibility (a11y) is part of every UI feature
 
@@ -432,8 +445,9 @@ before calling the feature complete.
 - **Verify the affected flow in the browser preview.** Exercise opening,
   changing, submitting/cancelling, and closing with Tab/Shift+Tab, Enter/Space,
   arrows, and Escape as applicable; check focus restoration and pointer/touch
-  behavior too. Run the relevant existing accessibility checks and add focused
-  regression coverage for shared or complex interaction changes. Include
+  behavior too. Run the relevant existing accessibility checks (in the final
+  review — see Agent Workflow) and add focused regression coverage for shared
+  or complex interaction changes. Include
   responsive/PiP states when the feature supports them.
 - **Report what was actually verified.** Distinguish automated checks (including
   Axe), fixture tests, authenticated UI checks, and screen-reader testing.
@@ -470,7 +484,8 @@ Vitest config: `threads: false`, `globals: true`, jsdom environment, setup in `s
 Browser suites (Playwright):
 
 ```bash
-pnpm test:popups   # every sandbox story opens and becomes visible
+pnpm test:popups   # every sandbox story opens and becomes visible, composer popups (~50 s)
+pnpm test:popups:full  # the same in Firefox and WebKit too (~3 min)
 pnpm test:a11y     # Axe matrix, keyboard interop, contrast, media editor, stories (~2 min)
 pnpm test:a11y:full  # the same, with the story sweep in all four themes (~4 min; always on CI)
 pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens
@@ -489,6 +504,9 @@ colour does. `test:a11y:full` (`A11Y_ALL_THEMES=1`, implied on CI) sweeps all
 four — run it after touching colours or theme variables. `A11Y_THEMES=night,tinted`
 picks themes, `A11Y_STORIES=a,b` picks stories, `A11Y_WORKERS` / `A11Y_STORY_PARTS`
 tune the split, and `--project=chromium` drops the other engines (~70 s).
+`test:popups` works the same way: parallel, the story sweep split into parts
+(`POPUPS_WORKERS` / `POPUP_STORY_PARTS`), Chromium unless `POPUPS_ALL_ENGINES=1`
+(`test:popups:full`, implied on CI).
 Playwright suites run on `vite.e2e.config.ts` — the dev server without hot
 reload, so an edit made while a suite runs no longer reloads the page under it.
 

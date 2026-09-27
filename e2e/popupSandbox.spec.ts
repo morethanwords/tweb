@@ -1,9 +1,13 @@
-import {expect, Page, test} from '@playwright/test';
+import {expect, Page} from '@playwright/test';
 import {trackBrowserErrors} from './accessibility.helpers';
-import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
+import {openStory, preparePopupSandbox, takeStoryPart} from './popupSandbox.helpers';
+import {test} from './workerContext';
 
 const SHOWN_TIMEOUT = 10_000;
 const LAYOUT_SETTLE = 300;
+// The sweep is split into parts that run in parallel (takeStoryPart): walked in one piece it was
+// most of this suite's time.
+const PARTS = Number(process.env.POPUP_STORY_PARTS) || 8;
 
 /*
  * Opens every popup the sandbox knows about and asserts it actually renders.
@@ -133,15 +137,15 @@ async function layoutComplaints(page: Page): Promise<string[]> {
   return await page.evaluate(collectLayoutComplaints);
 }
 
-test('every popup story opens and becomes visible', async({page}) => {
-  // One test walks the whole registry, so it needs far more than the config's per-test default.
-  test.setTimeout(5 * 60_000);
+for(let part = 0; part < PARTS; ++part) test(`every popup story opens and becomes visible (part ${part + 1}/${PARTS})`, async({page}) => {
+  // A part still walks a slice of the registry, more than the config's per-test default allows.
+  test.setTimeout(3 * 60_000);
 
   const {pageErrors, renderErrors} = trackBrowserErrors(page);
 
   await preparePopupSandbox(page);
 
-  const stories = await page.evaluate(() => window.popupSandbox.list());
+  const stories = takeStoryPart(await page.evaluate(() => window.popupSandbox.list()), part, PARTS);
   expect(stories.length).toBeGreaterThan(0);
 
   const failed: string[] = [];
@@ -159,7 +163,9 @@ test('every popup story opens and becomes visible', async({page}) => {
       try {
         await expect.poll(
           () => page.evaluate((selector) => document.querySelectorAll(selector).length, shown),
-          {timeout: SHOWN_TIMEOUT}
+          // a popup turns active a frame after it opens: the default 100/250/500ms steps waited
+          // out most of a step on nearly every story
+          {timeout: SHOWN_TIMEOUT, intervals: [20]}
         ).toBeGreaterThan(0);
       } catch{
         failed.push(`${story.id}: never became visible`);
@@ -178,8 +184,21 @@ test('every popup story opens and becomes visible', async({page}) => {
     // several popups model "cancelled" as a rejected promise, and closing one from a script rather
     // than through the caller's own flow leaves that rejection unhandled — the sandbox's doing.
     await page.evaluate(() => window.popupSandbox.closePopups());
-    // Longer than the 250ms hide timeout, after which a closed popup fires `closeAfterTimeout`.
-    await page.waitForTimeout(400);
+    // A closed popup leaves the DOM in the same 250ms hide timeout that fires `closeAfterTimeout`,
+    // so once it is gone its teardown has run; a fixed 400ms overpaid that on every story. A
+    // surface (the sign-in cards, the in-app browser) gives no such signal and keeps the 400ms.
+    if(story.surface) {
+      await page.waitForTimeout(400);
+    } else {
+      try {
+        await expect.poll(
+          () => page.evaluate(() => !!document.querySelector('.popup')),
+          {timeout: SHOWN_TIMEOUT, intervals: [20]}
+        ).toBe(false);
+      } catch{
+        failed.push(`${story.id}: still in the DOM after closing`);
+      }
+    }
     if(renderErrors.length) {
       failed.push(`${story.id}: render error — ${renderErrors.join(' | ')}`);
     }

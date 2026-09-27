@@ -1,4 +1,5 @@
-import {expect, test} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './workerContext';
 
 for(const options of [
   {fontSize: 16, width: 400, rtl: false, legacyHeadings: false},
