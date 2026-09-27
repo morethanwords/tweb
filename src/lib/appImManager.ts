@@ -125,7 +125,7 @@ import safePlay from '@helpers/dom/safePlay';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import showWebAppPopup from '@components/popups/webApp';
-import {setPeerColors} from '@appManagers/utils/peers/getPeerColorById';
+import {setMyPeerColor, setPeerColors} from '@appManagers/utils/peers/getPeerColorById';
 import {savedReactionTags} from '@components/chat/reactions';
 import {setAppState, useAppState} from '@stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
@@ -1602,6 +1602,11 @@ export class AppImManager extends EventListenerBase<{
     };
     rootScope.addEventListener('theme_changed', () => onHelpPeerColors());
     this.managers.apiManager.getPeerColors().then(onHelpPeerColors);
+    rootScope.addEventListener('user_update', (userId) => {
+      if(userId === rootScope.myId.toUserId()) {
+        setMyPeerColor(apiManagerProxy.getUser(userId));
+      }
+    });
 
     const [_, setProfileColors] = useProfileColors();
     this.managers.apiManager.getPeerProfileColors().then((helpPeerColors) => {

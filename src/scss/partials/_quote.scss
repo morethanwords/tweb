@@ -37,6 +37,17 @@
     // transform: skew(0deg, -45deg);
   }
 
+  // * peer-colour background-emoji pattern, a mask painted with the box's colour (wrapPeerColorPattern)
+  &-pattern {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    pointer-events: none;
+    background-color: var(--primary-color);
+    mask-image: var(--pattern-mask);
+    mask-size: 100% 100%;
+  }
+
   &-icon {
     &:after {
       position: absolute;

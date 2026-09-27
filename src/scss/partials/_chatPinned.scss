@@ -224,13 +224,6 @@
     display: flex;
   }
 
-  &-background-canvas {
-    position: absolute;
-    top: 0;
-    inset-inline-end: 0;
-    pointer-events: none;
-  }
-
   &.quote-like-icon &-title {
     padding-inline-end: .875rem;
   }

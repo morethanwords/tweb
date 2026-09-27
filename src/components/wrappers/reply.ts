@@ -58,9 +58,6 @@ export default function wrapReply(options: WrapReplyOptions) {
       peerId: setColorPeerId,
       container: replyContainer.container,
       middleware: options.middleware,
-      colorAsOut: options.colorAsOut,
-      useHighlightingColor: options.useHighlightingColor,
-      canvasClassName: 'reply-background-canvas',
       withCollectible: true
     });
   }

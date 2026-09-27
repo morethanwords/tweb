@@ -184,9 +184,6 @@
   --peer-avatar-saved-top: var(--light-filled-saved-color);
   --peer-avatar-saved-bottom: var(--saved-color);
 
-  --peer-color: var(--primary-color);
-  --peer-color-rgb: var(--primary-color-rgb);
-
   --avatar-color-story-unread-from: #34c76f;
   --avatar-color-story-unread-to: #3da1fd;
   --avatar-color-story-close-from: #88D93A;
@@ -287,6 +284,15 @@
   --gc-right-column-width: 26.25rem;
 
   // * Day theme end
+}
+
+// * A var() is substituted where the property is declared, so these follow the theme only if
+// * re-declared on every element that carries one — a chat with its own theme included
+:root,
+.night,
+.chat {
+  --peer-color: var(--primary-color);
+  --peer-color-rgb: var(--primary-color-rgb);
 }
 
 .night {

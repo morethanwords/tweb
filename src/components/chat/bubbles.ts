@@ -9771,8 +9771,7 @@ export default class ChatBubbles {
                   wrapPeerColorPattern({
                     peerId: (message as Message.message).fwdFromId || message.fromId,
                     container: box,
-                    middleware,
-                    canvasClassName: 'webpage-background-canvas'
+                    middleware
                   });
                 }
               },
