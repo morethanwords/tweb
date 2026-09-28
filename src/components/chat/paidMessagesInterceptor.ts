@@ -48,8 +48,6 @@ export const PAYMENT_REJECTED = Symbol('Payment rejected');
 export default class PaidMessagesInterceptor {
   private pendingUndoableMessage = createPendingUndoableMessage();
 
-  private static rawStars = useStars();
-
   /**
    * Mininum required params to make the message(s) undoable
    *
@@ -72,8 +70,11 @@ export default class PaidMessagesInterceptor {
     this.pendingUndoableMessage.dispose();
   }
 
+  // Read on use, never in a static initializer: that would fetch the balance while the module
+  // evaluates — whenever the bundler's chunking happens to load it, possibly before
+  // `rootScope.managers` exists.
   private static get starsBalance() {
-    return +this.rawStars();
+    return +useStars()();
   }
 
   /**

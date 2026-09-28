@@ -45,7 +45,7 @@ function _useStars(ton: boolean) {
     return cached;
   }
 
-  return useDynamicCachedValue(() => _useStars.name + (ton ? 'ton' : ''), () => {
+  return useDynamicCachedValue(() => 'useStars' + (ton ? 'ton' : ''), () => {
     (ton ? fetchTonBalance : fetchStars)();
     const handler: BroadcastEventsListeners['stars_balance'] = ({balance, fulfilledReservedStars, ton}) => {
       batch(() => {

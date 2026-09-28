@@ -52,7 +52,7 @@ function _useFullPeer(peerId: PeerId) {
 
 export function useFullPeer(peerId: PeerId) {
   return useDynamicCachedValue(
-    () => _useFullPeer.name + '-' + peerId,
+    () => 'useFullPeer-' + peerId,
     () => _useFullPeer(peerId)
   )();
 }

@@ -80,5 +80,5 @@ function _usePeerTranslation(peerId: PeerId) {
 }
 
 export default function usePeerTranslation(peerId: PeerId) {
-  return useDynamicCachedValue(() => usePeerTranslation.name + '-' + peerId, () => _usePeerTranslation(peerId))();
+  return useDynamicCachedValue(() => 'usePeerTranslation-' + peerId, () => _usePeerTranslation(peerId))();
 }

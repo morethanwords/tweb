@@ -434,6 +434,8 @@ if(import.meta.env.DEV) {
   // before chunking, and with it the whole sandbox chunk. Behind the imported const alone the
   // branch still folds away, but a ~150 KB orphan chunk is emitted that nothing ever loads.
   if(import.meta.env.DEV && IS_POPUP_SANDBOX) {
+    // `bootstrapState` goes first, on its own: see the note at the top of that module.
+    await import('@components/popupSandbox/bootstrapState');
     const {startPopupSandbox} = await import('@components/popupSandbox');
     await startPopupSandbox();
     return;
