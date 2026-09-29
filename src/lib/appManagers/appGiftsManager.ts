@@ -479,7 +479,8 @@ export default class AppGiftsManager extends AppManager {
       }).catch((): null => null)
     ]);
 
-    this.appUsersManager.saveApiUsers(result.users);
+    // * the owner (or host) can be a channel, so the chats matter as much as the users
+    this.appPeersManager.saveApiPeers(result);
 
     const ret = this.wrapGift(result.gift);
     if(savedResult) {

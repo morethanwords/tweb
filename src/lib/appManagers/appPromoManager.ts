@@ -45,6 +45,15 @@ export default class AppPromoManager extends AppManager {
   private contactBirthdaysState: ContactBirthdaysState;
 
   protected after() {
+    // * the server signals changed suggestions (a required login email, for one) through updateConfig
+    this.apiUpdatesManager.addMultipleEventsListeners({
+      updateConfig: () => {
+        if(this.promoDataLoaded) {
+          void this.getPromoData(true).catch(() => {});
+        }
+      }
+    });
+
     return this.appStateManager.getState().then((state) => {
       this.birthdayContactsDismissedDayKey = state.birthdayContactsDismissedDayKey;
     });

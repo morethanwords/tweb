@@ -7755,6 +7755,10 @@ export class AppMessagesManager extends AppManager {
       this.wrapMessageEntities(message);
     }
 
+    if(storage.type === 'history') {
+      this.appPeersManager.registerMessagePeers(message);
+    }
+
     this.setMessageToStorage(storage, message);
 
     return message;

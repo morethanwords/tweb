@@ -1681,6 +1681,35 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
+  /**
+   * A user who is not a contact is in the feed only as a top correspondent: the server will not hide
+   * their stories to the archive, dropping the rating takes them out instead (as Android does)
+   */
+  public removeTopPeerFromStories(peerId: PeerId) {
+    return this.appUsersManager.resetTopPeerRating(peerId).then(() => {
+      const cache = this.getPeerStoriesCache(peerId, false);
+      if(cache?.position) {
+        indexOfAndSplice(this.lists[cache.position.type], peerId);
+        cache.position = undefined;
+      }
+
+      this.rootScope.dispatchEvent('stories_position', {peerId, position: undefined});
+    });
+  }
+
+  /**
+   * How a peer's stories leave the feed: a top correspondent who is not a contact is removed from it
+   * (Android shows it only then), everyone else is hidden to the archive
+   */
+  public async getPeerStoriesRemoval(peerId: PeerId): Promise<'hide' | 'remove'> {
+    if(!peerId.isUser() || peerId === this.changelogPeerId || this.appUsersManager.isContact(peerId.toUserId())) {
+      return 'hide';
+    }
+
+    const topPeers = await this.appUsersManager.getTopPeers('correspondents');
+    return topPeers.some((topPeer) => topPeer.id === peerId) ? 'remove' : 'hide';
+  }
+
   public activateStealthMode() {
     // this.apiUpdatesManager.processLocalUpdate({
     //   _: 'updateStoriesStealthMode',

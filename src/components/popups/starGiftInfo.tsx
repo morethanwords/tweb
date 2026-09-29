@@ -79,12 +79,14 @@ function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
     );
   }
 
+  // * the server rounds a rarity below 0.1% down to zero
+  const percent = props.rarity.permille > 0 ? `${props.rarity.permille / 10}%` : '< 0.1%';
   return (
     <TableButtonWithTooltip
-      tooltipTextElement={i18n('StarGiftAttributeTooltip', [`${props.rarity.permille / 10}%`])}
+      tooltipTextElement={i18n('StarGiftAttributeTooltip', [percent])}
       tooltipClass="popup-star-gift-info-tooltip"
     >
-      {props.rarity.permille / 10}%
+      {percent}
     </TableButtonWithTooltip>
   );
 }

@@ -10,6 +10,8 @@ import noop from '@helpers/noop';
 import {defineStories} from '../registry';
 import type {PopupStoryContext} from '@components/popupSandbox/context';
 import {starGiftUpgradePreview, starGiftValueInfo} from '../fixtures';
+import {STARS_CURRENCY} from '@appManagers/constants';
+import type {StarGift} from '@layer';
 
 defineStories('Star gifts', [
   {
@@ -72,6 +74,37 @@ defineStories('Star gifts', [
     open: async(ctx) => {
       const {default: showBuyResaleGiftPopup} = await import('@components/popups/buyResaleGift');
       showBuyResaleGiftPopup({recipientId: ctx.peer('private'), gift: ctx.uniqueGift()});
+    }
+  },
+  {
+    // the seller raised the price after the buyer saw it: the payment form comes back dearer, and
+    // the purchase stops to ask again instead of paying the new price silently
+    id: 'gift/buyResalePriceChanged',
+    title: 'Buy a resold gift — the price changed',
+    fixtureOnly: true,
+    managers: {
+      appPaymentsManager: {
+        getPaymentForm: () => ({
+          _: 'payments.paymentFormStarGift',
+          form_id: '1',
+          invoice: {_: 'invoice', pFlags: {}, currency: STARS_CURRENCY, prices: [{_: 'labeledPrice', label: '', amount: 1200}]}
+        })
+      }
+    },
+    open: async(ctx) => {
+      const {createPaymentPopup} = await import('@components/popups/payment');
+      const gift = ctx.uniqueGift();
+      createPaymentPopup({
+        inputInvoice: {
+          _: 'inputInvoiceStarGiftResale',
+          pFlags: {},
+          slug: (gift.raw as StarGift.starGiftUnique).slug,
+          to_id: {_: 'inputPeerSelf'}
+        },
+        noShowIfStars: true,
+        purpose: 'stargift',
+        expectedPrice: {amount: gift.resellPriceStars, currency: STARS_CURRENCY}
+      });
     }
   },
   {

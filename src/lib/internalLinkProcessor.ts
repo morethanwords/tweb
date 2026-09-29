@@ -1470,6 +1470,19 @@ export class InternalLinkProcessor {
     }
 
     const peerId = peer.id.toPeerId(peer._ !== 'user');
+    // * `t.me/<name>/s/live` names the peer's current live stream, not a story id — open the peer's
+    // * stories, as tdesktop does
+    if(link.story === 'live') {
+      const peerStories = await this.managers.appStoriesManager.getPeerStories(peerId);
+      if(!peerStories?.stories.length) {
+        toastNew({langPackKey: 'NoStoryFound'});
+        return;
+      }
+
+      createStoriesViewerWithPeer({peerId});
+      return;
+    }
+
     const storyItem = await this.managers.appStoriesManager.getStoryById(peerId, +link.story);
     if(!storyItem) {
       toastNew({langPackKey: 'NoStoryFound'});

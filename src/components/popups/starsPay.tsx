@@ -38,7 +38,8 @@ import anchorCallback from '@helpers/dom/anchorCallback';
 import DEBUG from '@config/debug';
 import makeError from '@helpers/makeError';
 import bigInt from 'big-integer';
-import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
+import paymentsWrapCurrencyAmount, {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
+import confirmationPopup from '@components/confirmationPopup';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {getMiddleware} from '@helpers/middleware';
 
@@ -66,6 +67,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     inputInvoice, paidMedia, message, transaction, ledgerPeerId,
     chatInvite, subscription, boost, noShowIfStars, purpose
   } = options;
+  let expectedPrice = options.expectedPrice;
 
   let paymentForm = options.paymentForm as StarsPaymentForm;
   const isReceipt = !!transaction || paymentForm?._ === 'payments.paymentReceiptStars';
@@ -130,11 +132,55 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     paymentForm = await managers.appPaymentsManager.getPaymentForm(inputInvoice) as PaymentsPaymentForm.paymentsPaymentFormStars;
   };
 
+  // * the user pays only a price they have seen: a form in another currency fails the purchase, a
+  // * different amount is asked about again — and every reload is checked against the last agreed one
+  const confirmFormPrice = async() => {
+    const {currency, prices: [{amount}]} = paymentForm.invoice;
+    if(currency !== expectedPrice.currency) {
+      result = 'failed';
+      return false;
+    }
+
+    // * a price that was not shown in this currency is no agreement either
+    if(expectedPrice.amount !== undefined && bigInt(amount as number).equals(expectedPrice.amount as number)) {
+      return true;
+    }
+
+    try {
+      await confirmationPopup({
+        titleLangKey: 'StarGiftResalePriceChangedTitle',
+        descriptionLangKey: 'StarGiftResalePriceChangedText',
+        descriptionLangArgs: [paymentsWrapCurrencyAmount(amount, currency)],
+        button: {
+          langKey: 'StarGiftResaleBuyConfirm',
+          langArgs: [paymentsWrapCurrencyAmount(amount, currency)]
+        }
+      });
+    } catch(err) {
+      result = 'cancelled';
+      return false;
+    }
+
+    expectedPrice = {amount, currency};
+    return true;
+  };
+
   let test = TEST_FIRST_TIME;
   const onConfirm = async() => {
     if(isReceipt || subscription?.pFlags.bot_canceled || (!paymentForm && !chatInvite && !subscription)) {
       closePopup();
       return;
+    }
+
+    if(expectedPrice && paymentForm) {
+      if(paying()) return;
+      setPaying(true);
+      const confirmed = await confirmFormPrice();
+      setPaying(false);
+      if(!confirmed) {
+        closePopup();
+        return;
+      }
     }
 
     const itemPrice = paymentForm ? +paymentForm.invoice.prices[0].amount : (chatInvite ? +chatInvite.subscription_pricing.amount : +subscription.pricing.amount);

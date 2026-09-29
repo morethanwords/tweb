@@ -72,6 +72,8 @@ export class AppChatsManager extends AppManager {
   // private megagroups: {[id: number]: true};
 
   private recommendations: {[chatId: ChatId]: MaybePromise<MessagesChats>};
+  // * the paid messages price the full channel last named for this user (0 — exempt)
+  private fullPaidMessagesStars: Map<ChatId, number> = new Map();
 
   protected after() {
     this.clear(true);
@@ -134,6 +136,7 @@ export class AppChatsManager extends AppManager {
     }
 
     this.recommendations = {};
+    this.fullPaidMessagesStars.clear();
   };
 
   public saveApiChats(apiChats: any[], override?: boolean) {
@@ -458,7 +461,8 @@ export class AppChatsManager extends AppManager {
 
   public isMonoforum(id: ChatId) {
     const chat: Chat = this.chats[id];
-    return !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
+    // * a channel we lost access to keeps the flag too (`channelForbidden.monoforum`)
+    return !!((chat?._ === 'channel' || chat?._ === 'channelForbidden') && chat.pFlags?.monoforum);
   }
 
   public isInChat(id: ChatId) {
@@ -493,9 +497,20 @@ export class AppChatsManager extends AppManager {
    */
   public getStarsAmount(chatId: ChatId): number | undefined {
     const chat = this.getChat(chatId);
-    if(chat?._ !== 'channel') return;
+    if(chat?._ !== 'channel' || chat.admin_rights) return;
 
-    return !chat.admin_rights && +chat.send_paid_messages_stars || undefined;
+    const stars = +chat.send_paid_messages_stars;
+    if(!stars) return;
+
+    // * the channel carries the public price; the full channel carries the price for this user and has
+    // * none when an admin removed the fee for them — it outranks the channel, like userFull does a user.
+    // * Its last answer is kept, so an exemption does not flicker away while the full channel reloads
+    const chatFull = this.appProfileManager.getCachedFullChat(chatId);
+    if(chatFull?._ === 'channelFull') {
+      this.fullPaidMessagesStars.set(chatId, +chatFull.send_paid_messages_stars || 0);
+    }
+
+    return this.fullPaidMessagesStars.get(chatId) === 0 ? undefined : stars;
   }
 
   public isPublic(id: ChatId) {
@@ -505,6 +520,12 @@ export class AppChatsManager extends AppManager {
 
   public getChannelInput(id: ChatId): InputChannel {
     const chat = this.getChat(id);
+    // * a `min` channel's access_hash is not accepted by most methods — name it through a message
+    const fromMessage = (chat as Chat.channel)?.pFlags?.min && this.appPeersManager.getMessageWithPeer(id.toPeerId(true));
+    if(fromMessage) {
+      return {_: 'inputChannelFromMessage', ...fromMessage, channel_id: id};
+    }
+
     if(!chat || !('access_hash' in chat) || !chat.access_hash) {
       return {
         _: 'inputChannelEmpty'
@@ -531,8 +552,12 @@ export class AppChatsManager extends AppManager {
     };
   }
 
-  public getChannelInputPeer(id: ChatId): InputPeer.inputPeerChannel {
+  public getChannelInputPeer(id: ChatId): InputPeer.inputPeerChannel | InputPeer.inputPeerChannelFromMessage {
     const channel = this.getChannelInput(id);
+    if(channel._ === 'inputChannelFromMessage') {
+      return {_: 'inputPeerChannelFromMessage', peer: channel.peer, msg_id: channel.msg_id, channel_id: id};
+    }
+
     return {
       _: 'inputPeerChannel',
       channel_id: id,

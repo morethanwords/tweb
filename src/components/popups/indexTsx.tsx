@@ -106,6 +106,8 @@ type PopupControllerContextValue = {
 export const PopupContext = createContext<PopupContextValue>();
 export const usePopupContext = () => useContext(PopupContext);
 const PopupControllerContext = createContext<PopupControllerContextValue>();
+/** Inside `createPopup`: disposes the popup's root — for a popup that has to go before it ever showed. */
+export const usePopupController = () => useContext(PopupControllerContext);
 
 const DEFAULT_APPEND_TO = document.body;
 // A fullscreen element always wins; otherwise each popup uses the realm it captured at creation

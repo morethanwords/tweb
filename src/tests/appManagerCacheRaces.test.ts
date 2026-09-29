@@ -945,7 +945,8 @@ describe('manager cache race guards', () => {
       Object.assign(manager, {
         appPeersManager: {
           peerId: 999 as PeerId,
-          getPeerId: () => peerId
+          getPeerId: () => peerId,
+          registerMessagePeers: vi.fn()
         },
         appMessagesIdsManager: {generateMessageId: (id: number) => id},
         timeManager: {getServerTimeOffset: () => 0},

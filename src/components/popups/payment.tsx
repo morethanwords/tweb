@@ -241,7 +241,10 @@ export type PopupPaymentOptions = {
   boost?: Boost,
   giftPeerId?: PeerId,
   noShowIfStars?: boolean,
-  purpose?: Parameters<typeof showStarsPopup>[0]['purpose']
+  purpose?: Parameters<typeof showStarsPopup>[0]['purpose'],
+  // * the price the user agreed to (stars, or nanotons for TON): a form priced differently is
+  // * confirmed again before paying
+  expectedPrice?: {amount: Long, currency: string}
 };
 
 export default function showPaymentPopup(options: PopupPaymentOptions): PopupPaymentHandle {

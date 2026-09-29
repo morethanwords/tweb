@@ -2859,6 +2859,8 @@ const lang = {
   'Story.Notification.ReactedHiddenSender': 'Story Reaction',
   'StoriesMovedToContacts': 'Stories of **%s** were moved to the **Archive**.',
   'StoriesMovedToDialogs': 'Stories of **%s** were moved to **Chats**.',
+  'StoriesRemoveFromRecent': 'Remove from Recent',
+  'StoriesRemovedFromRecent': 'Stories of **%s** were removed from Recent.',
   'StorySharedTo': 'Story forwarded to **%s**.',
   'StorySharedToSavedMessages': 'Story forwarded to **Saved Messages**',
   'BoostLinkButton': 'BOOST',
@@ -3769,9 +3771,21 @@ const lang = {
     'one_value': '**%2$s** sent an upgrade worth **%1$d Star** for your gift',
     'other_value': '**%2$s** sent an upgrade worth **%1$d Stars** for your gift'
   },
+  'StarGiftSentMessagePrepaidIncomingOther': {
+    'one_value': '**%2$s** sent an upgrade worth **%1$d Star** for the gift you received from **%3$s**',
+    'other_value': '**%2$s** sent an upgrade worth **%1$d Stars** for the gift you received from **%3$s**'
+  },
   'StarGiftSentMessagePrepaidOutgoing': {
     'one_value': 'You sent an upgrade worth **%d Star**',
     'other_value': 'You sent an upgrade worth **%d Stars**'
+  },
+  'StarGiftSentMessagePrepaidOutgoingOther': {
+    'one_value': 'You sent an upgrade worth **%1$d Star** for the gift **%2$s** received from **%3$s**',
+    'other_value': 'You sent an upgrade worth **%1$d Stars** for the gift **%2$s** received from **%3$s**'
+  },
+  'StarGiftSentMessagePrepaidChannel': {
+    'one_value': 'You sent an upgrade worth **%1$d Star** for your gift to **%2$s**',
+    'other_value': 'You sent an upgrade worth **%1$d Stars** for your gift to **%2$s**'
   },
   'StarGiftSentMessageSelf': {
     'one_value': 'You bought a gift for **%d Star**',
@@ -3929,6 +3943,8 @@ const lang = {
   'StarGiftResaleBuy': 'Buy for %s',
   'StarGiftResaleStarsAmount': 'Equals to %s',
   'StarGiftResaleBuyConfirm': 'Buy for %s',
+  'StarGiftResalePriceChangedTitle': 'Price change!',
+  'StarGiftResalePriceChangedText': 'This gift price was changed and now is **%s**. Do you still want to buy?',
   'StarGiftResalePayInStars': 'Pay in Stars',
   'StarGiftResalePayInTon': 'Pay in Grams',
   'StarGiftResaleBuyText': 'Do you want to buy **%s** for **%s**?',

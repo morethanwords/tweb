@@ -74,10 +74,28 @@ export function getStarGiftActionLangParams(options: {
   };
 
   if(action._ === 'messageActionStarGift') {
-    const stars = +(action.gift as StarGift.starGift).stars;
+    const giftStars = +(action.gift as StarGift.starGift).stars;
+    const upgradeStars = +(action.upgrade_stars || 0);
+    // * `prepaid_upgrade` is the separate message about somebody paying for the upgrade: it costs the
+    // * upgrade alone. `upgrade_separate` marks a gift whose upgrade was paid later by someone else, so
+    // * its price no longer includes it; otherwise an upgrade bought with the gift is part of the price
+    const prepaidUpgrade = !!action.pFlags.prepaid_upgrade;
+    const stars = prepaidUpgrade ? upgradeStars : giftStars + (action.pFlags.upgrade_separate ? 0 : upgradeStars);
+    // * for a prepaid upgrade `from_id` is the one who sent the gift itself, not the payer
+    const giftFromId = prepaidUpgrade && action.from_id ? getPeerId(action.from_id) : undefined;
 
     if(channelId) {
-      return sentToChannel(stars);
+      if(!prepaidUpgrade) {
+        return sentToChannel(stars);
+      }
+
+      return !giftFromId || giftFromId === myId ? {
+        langPackKey: 'StarGiftSentMessagePrepaidChannel',
+        args: [stars, peerTitle(channelId)]
+      } : {
+        langPackKey: 'StarGiftSentMessagePrepaidOutgoingOther',
+        args: [stars, peerTitle(channelId), peerTitle(giftFromId)]
+      };
     }
 
     if(direction === 'self') {
@@ -85,14 +103,28 @@ export function getStarGiftActionLangParams(options: {
     }
 
     if(direction === 'outgoing') {
-      return {
-        langPackKey: action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidOutgoing' : 'StarGiftSentMessageOutgoing',
+      if(!prepaidUpgrade) {
+        return {langPackKey: 'StarGiftSentMessageOutgoing', args: [stars]};
+      }
+
+      return !giftFromId || giftFromId === myId ? {
+        langPackKey: 'StarGiftSentMessagePrepaidOutgoing',
         args: [stars]
+      } : {
+        langPackKey: 'StarGiftSentMessagePrepaidOutgoingOther',
+        args: [stars, peerTitle(message.peerId), peerTitle(giftFromId)]
       };
     }
 
-    return {
-      langPackKey: action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidIncoming' : 'StarGiftSentMessageIncoming',
+    if(!prepaidUpgrade) {
+      return {langPackKey: 'StarGiftSentMessageIncoming', args: [stars, peerTitle(fromId)]};
+    }
+
+    return giftFromId && giftFromId !== fromId && giftFromId !== myId ? {
+      langPackKey: 'StarGiftSentMessagePrepaidIncomingOther',
+      args: [stars, peerTitle(fromId), peerTitle(giftFromId)]
+    } : {
+      langPackKey: 'StarGiftSentMessagePrepaidIncoming',
       args: [stars, peerTitle(fromId)]
     };
   }

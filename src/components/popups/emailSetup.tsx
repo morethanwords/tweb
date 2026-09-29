@@ -1,4 +1,4 @@
-import PopupElement, {createPopup} from '@components/popups/indexTsx'
+import PopupElement, {createPopup, usePopupController} from '@components/popups/indexTsx'
 
 import {TransitionSliderTsx} from '@components/transitionTsx';
 import {createSignal, onCleanup, Show} from 'solid-js';
@@ -25,8 +25,11 @@ export function showEmailSetupPopup(options: {
   const [page, setPage] = createSignal(0);
   const [code, setCode] = createSignal<AccountSentEmailCode.accountSentEmailCode | undefined>(undefined);
   const [codePageTransitionEnded, setCodePageTransitionEnded] = createSignal(false);
+  // * the server may withdraw the requirement while the popup is open — then it goes away without
+  // * counting as a dismissal, even when it cannot be skipped
+  let closedFromOutside = false;
 
-  return createPopup(() => {
+  createPopup(() => {
     const secondPageNavigationItem: NavigationItem = {
       type: 'left',
       onPop: () => void setPage(0)
@@ -37,7 +40,15 @@ export function showEmailSetupPopup(options: {
       appNavigationController.removeItem(secondPageNavigationItem);
     });
 
-    doubleRaf().then(() => setShow(true));
+    const controller = usePopupController();
+    doubleRaf().then(() => {
+      if(closedFromOutside) {
+        controller.dispose();
+        return;
+      }
+
+      setShow(true);
+    });
 
     let isSuccess = false
 
@@ -48,10 +59,10 @@ export function showEmailSetupPopup(options: {
         closable={!options.noskip}
         onClose={() => {
           isCurrentlyShowing = false;
-          if(!isSuccess) options.onDismiss?.()
+          if(!isSuccess && !closedFromOutside) options.onDismiss?.()
         }}
         isConfirmationNeededOnClose={() => {
-          if(options.noskip && !isSuccess) return Promise.reject()
+          if(options.noskip && !isSuccess && !closedFromOutside) return Promise.reject()
         }}
         old
       >
@@ -114,5 +125,12 @@ export function showEmailSetupPopup(options: {
         </PopupElement.Body>
       </PopupElement>
     );
-  })
+  });
+
+  return {
+    close: () => {
+      closedFromOutside = true;
+      setShow(false);
+    }
+  };
 }

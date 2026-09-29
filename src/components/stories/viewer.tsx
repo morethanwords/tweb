@@ -57,6 +57,7 @@ import idleController from '@helpers/idleController';
 import OverlayClickHandler from '@helpers/overlayClickHandler';
 import getStoryPrivacyType, {StoryPrivacyType} from '@appManagers/utils/stories/privacyType';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import removeStoriesFromRecent from '@components/stories/removeFromRecent';
 import StackedAvatars from '@components/stackedAvatars';
 import {processDialogElementForReaction} from '@components/popups/reactedList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -2289,6 +2290,12 @@ const Stories = (props: {
       text: 'UnarchiveStories',
       onClick: () => togglePeerHidden(false),
       verify: () => isPeerArchived(false)
+    }, {
+      icon: 'delete',
+      text: 'StoriesRemoveFromRecent',
+      onClick: () => removeStoriesFromRecent(props.state.peerId),
+      verify: async() => props.state.peerId !== rootScope.myId &&
+        await rootScope.managers.appStoriesManager.getPeerStoriesRemoval(props.state.peerId) === 'remove'
     }, {
       icon: 'statistics_filled',
       text: 'ViewStatistics',

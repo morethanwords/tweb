@@ -675,7 +675,7 @@ export default class Chat extends EventListenerBase<{
       });
     }
 
-    this.bubbles.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
+    const onChatOrFullUpdate = async(chatId: ChatId) => {
       const {peerId} = this;
       if(peerId.isAnyChat() && peerId.toChatId() === chatId) {
         const {
@@ -694,7 +694,11 @@ export default class Chat extends EventListenerBase<{
           this.updateStarsAmount(starsAmount);
         }
       }
-    });
+    };
+
+    this.bubbles.listenerSetter.add(rootScope)('chat_update', onChatOrFullUpdate);
+    // * the full channel may lift the per-message price for this user ("Remove Fee")
+    this.bubbles.listenerSetter.add(rootScope)('chat_full_update', onChatOrFullUpdate);
 
     this.bubbles.listenerSetter.add(rootScope)('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
       if(peerId !== this.peerId || (this.threadId && this.threadId !== tempId)) return;

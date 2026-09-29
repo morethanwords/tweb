@@ -16,6 +16,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import removeStoriesFromRecent from '@components/stories/removeFromRecent';
 import {ChatType} from '@components/chat/chatType';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useCollapsable} from '@hooks/useCollapsable';
@@ -367,7 +368,7 @@ function _StoriesList(props: {
       });
     };
 
-    let peer: PeerStories, isSelf: boolean;
+    let peer: PeerStories, isSelf: boolean, removal: 'hide' | 'remove';
     createContextMenu({
       buttons: [{
         icon: 'stories',
@@ -435,7 +436,12 @@ function _StoriesList(props: {
         icon: 'archive',
         text: 'ArchivePeerStories',
         onClick: () => toggleHidden(true),
-        verify: () => !isSelf && !props.archive
+        verify: () => !isSelf && !props.archive && removal === 'hide'
+      }, {
+        icon: 'delete',
+        text: 'StoriesRemoveFromRecent',
+        onClick: () => removeStoriesFromRecent(peer.peerId),
+        verify: () => !isSelf && !props.archive && removal === 'remove'
       }, {
         icon: 'unarchive',
         text: 'UnarchiveStories',
@@ -447,9 +453,10 @@ function _StoriesList(props: {
       findElement: (e) => {
         return !folded() && findUpClassName(e.target, styles.ListItem);
       },
-      onOpen: (e, target) => {
+      onOpen: async(e, target) => {
         peer = itemsTarget.get(target as HTMLDivElement);
         isSelf = peer.peerId === rootScope.myId;
+        removal = await rootScope.managers.appStoriesManager.getPeerStoriesRemoval(peer.peerId);
       },
       onClose: () => {
         peer = undefined;

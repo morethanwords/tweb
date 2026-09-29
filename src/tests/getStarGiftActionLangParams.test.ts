@@ -29,12 +29,15 @@ function createGift(options: {
   stars?: number,
   actionFromId?: UserId,
   channel?: true,
-  upgradeSeparate?: true
+  upgradeSeparate?: true,
+  prepaidUpgrade?: true,
+  upgradeStars?: number
 } = {}): MessageAction.messageActionStarGift {
   return {
     _: 'messageActionStarGift',
-    pFlags: {upgrade_separate: options.upgradeSeparate},
+    pFlags: {upgrade_separate: options.upgradeSeparate, prepaid_upgrade: options.prepaidUpgrade},
     gift: {_: 'starGift', stars: options.stars ?? 1500} as MessageAction.messageActionStarGift['gift'],
+    upgrade_stars: options.upgradeStars,
     from_id: options.actionFromId === undefined ? undefined : {_: 'peerUser', user_id: options.actionFromId},
     peer: options.channel ? {_: 'peerChannel', channel_id: '100' as ChatId} : undefined
   };
@@ -94,13 +97,76 @@ describe('getStarGiftActionLangParams', () => {
       expect(getParams(message)).toEqual({langPackKey: 'StarGiftSentMessageSelf', args: [1500]});
     });
 
-    test('switches to the prepaid upgrade texts', () => {
-      const message = createMessage(createGift({upgradeSeparate: true}), {peerId: SENDER_ID, fromId: SENDER_ID});
+    test('counts an upgrade bought with the gift into its price', () => {
+      const message = createMessage(createGift({upgradeStars: 500}), {peerId: SENDER_ID, fromId: SENDER_ID});
+
+      expect(getParams(message)).toEqual({
+        langPackKey: 'StarGiftSentMessageIncoming',
+        args: [2000, 'peer' + SENDER_ID]
+      });
+    });
+
+    test('leaves out an upgrade somebody else paid for separately', () => {
+      const message = createMessage(
+        createGift({upgradeStars: 500, upgradeSeparate: true}),
+        {peerId: SENDER_ID, fromId: SENDER_ID}
+      );
+
+      expect(getParams(message)).toEqual({
+        langPackKey: 'StarGiftSentMessageIncoming',
+        args: [1500, 'peer' + SENDER_ID]
+      });
+    });
+
+    test('prices a prepaid upgrade by the upgrade alone', () => {
+      const message = createMessage(
+        createGift({upgradeStars: 500, prepaidUpgrade: true}),
+        {peerId: SENDER_ID, fromId: SENDER_ID}
+      );
 
       expect(getParams(message)).toEqual({
         langPackKey: 'StarGiftSentMessagePrepaidIncoming',
-        args: [1500, 'peer' + SENDER_ID]
+        args: [500, 'peer' + SENDER_ID]
       });
+    });
+
+    test('names who sent the gift when a third person prepaid its upgrade', () => {
+      const message = createMessage(
+        createGift({upgradeStars: 500, prepaidUpgrade: true, actionFromId: 3 as UserId}),
+        {peerId: SENDER_ID, fromId: SENDER_ID}
+      );
+
+      expect(getParams(message)).toEqual({
+        langPackKey: 'StarGiftSentMessagePrepaidIncomingOther',
+        args: [500, 'peer' + SENDER_ID, 'peer3']
+      });
+    });
+
+    test('keeps my prepaid upgrade of a gift I sent short', () => {
+      const message = createMessage(
+        createGift({upgradeStars: 500, prepaidUpgrade: true, actionFromId: MY_ID as UserId}),
+        {peerId: SENDER_ID, fromId: MY_ID, out: true}
+      );
+
+      expect(getParams(message)).toEqual({langPackKey: 'StarGiftSentMessagePrepaidOutgoing', args: [500]});
+    });
+
+    test('names the owner and the sender when I prepay somebody else\'s gift', () => {
+      const message = createMessage(
+        createGift({upgradeStars: 500, prepaidUpgrade: true, actionFromId: 3 as UserId}),
+        {peerId: SENDER_ID, fromId: MY_ID, out: true}
+      );
+
+      expect(getParams(message)).toEqual({
+        langPackKey: 'StarGiftSentMessagePrepaidOutgoingOther',
+        args: [500, 'peer' + SENDER_ID, 'peer3']
+      });
+    });
+
+    test('does not treat a separately paid upgrade as the prepaid upgrade message', () => {
+      const message = createMessage(createGift({upgradeSeparate: true}), {peerId: SENDER_ID, fromId: SENDER_ID});
+
+      expect(getParams(message).langPackKey).toBe('StarGiftSentMessageIncoming');
     });
 
     test('names both the buyer and the channel for a gift to a channel', () => {
@@ -315,9 +381,21 @@ describe('getStarGiftActionLangParams', () => {
     });
 
     test('puts the sender and the price of a prepaid upgrade in their slots', () => {
-      const message = createMessage(createGift({upgradeSeparate: true}), {peerId: SENDER_ID, fromId: SENDER_ID});
+      const message = createMessage(
+        createGift({upgradeStars: 500, prepaidUpgrade: true}),
+        {peerId: SENDER_ID, fromId: SENDER_ID}
+      );
 
-      expect(render(message)).toBe('<b>peer2</b> sent an upgrade worth <b>1500 Stars</b> for your gift');
+      expect(render(message)).toBe('<b>peer2</b> sent an upgrade worth <b>500 Stars</b> for your gift');
+    });
+
+    test('puts the payer, the price and the gift sender of a third-party prepaid upgrade in their slots', () => {
+      const message = createMessage(
+        createGift({upgradeStars: 500, prepaidUpgrade: true, actionFromId: 3 as UserId}),
+        {peerId: SENDER_ID, fromId: SENDER_ID}
+      );
+
+      expect(render(message)).toBe('<b>peer2</b> sent an upgrade worth <b>500 Stars</b> for the gift you received from <b>peer3</b>');
     });
 
     // * the plural form is picked from the first argument, so every counted text has to lead with it
@@ -327,6 +405,10 @@ describe('getStarGiftActionLangParams', () => {
         createMessage(createGift(), {peerId: SENDER_ID, fromId: MY_ID, out: true}),
         createMessage(createGift(), {peerId: MY_ID, fromId: MY_ID, out: true}),
         createMessage(createGift({upgradeSeparate: true}), {peerId: SENDER_ID, fromId: SENDER_ID}),
+        createMessage(createGift({prepaidUpgrade: true, upgradeStars: 500}), {peerId: SENDER_ID, fromId: SENDER_ID}),
+        createMessage(createGift({prepaidUpgrade: true, upgradeStars: 500, actionFromId: 3 as UserId}), {peerId: SENDER_ID, fromId: SENDER_ID}),
+        createMessage(createGift({prepaidUpgrade: true, upgradeStars: 500, actionFromId: 3 as UserId}), {peerId: SENDER_ID, fromId: MY_ID, out: true}),
+        createMessage(createGift({prepaidUpgrade: true, upgradeStars: 500, channel: true}), {peerId: CHANNEL_ID, fromId: MY_ID, out: true}),
         createMessage(createGift({channel: true, actionFromId: SENDER_ID as UserId}), {peerId: CHANNEL_ID, fromId: CHANNEL_ID}),
         createMessage(createGift({channel: true}), {peerId: CHANNEL_ID, fromId: MY_ID, out: true}),
         createMessage(createUniqueGift({resale: STARS, actionFromId: SENDER_ID as UserId}), {peerId: SENDER_ID, fromId: SENDER_ID}),

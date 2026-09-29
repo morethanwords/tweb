@@ -2300,8 +2300,9 @@ export default class AppSearchSuper {
       group.setActive();
       group.nameEl.style.display = 'none';
 
-      const SEARCH_LIMIT = 200; // will get filtered anyway
-      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT);
+      // * the server returns channels only; the check below stays as a guard
+      const SEARCH_LIMIT = 200;
+      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'broadcasts');
       const filteredResultsWithUndefined = await Promise.all(
         globalResults.map(async(user) => await this.managers.appPeersManager.isBroadcast(user) ? user : undefined)
       );
@@ -2371,8 +2372,9 @@ export default class AppSearchSuper {
       const group = createSearchGroup({name: 'ChatList.Filter.Bots', type: 'apps', onFound: onClick, middleware});
       group.setActive();
 
-      const SEARCH_LIMIT = 200; // will get filtered anyway
-      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT);
+      // * the server returns bots only; the check below stays as a guard
+      const SEARCH_LIMIT = 200;
+      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'bots');
       const filteredResultsWithUndefined = await Promise.all(
         globalResults.map(async(user) => await this.managers.appPeersManager.isBot(user) ? user : undefined)
       );

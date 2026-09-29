@@ -59,7 +59,10 @@ export default function showBuyResaleGiftPopup(options: {
           message: textWithEntities()
         },
         noShowIfStars: true,
-        purpose: 'stargift'
+        purpose: 'stargift',
+        expectedPrice: ton() ?
+          {amount: myGift.resellPriceTon, currency: TON_CURRENCY} :
+          {amount: myGift.resellPriceStars, currency: STARS_CURRENCY}
       });
 
       popup.addEventListener('finish', (result) => {

@@ -8452,7 +8452,7 @@ export default class ChatBubbles {
             asUpgrade: gift.isIncoming &&
               !(action._ === 'messageActionStarGift' && action.pFlags.upgraded) &&
               (gift.isUpgradedBySender || action.pFlags.prepaid_upgrade),
-            asPrepaidUpgrade: action._ === 'messageActionStarGift' && action.pFlags.upgrade_separate,
+            asPrepaidUpgrade: action._ === 'messageActionStarGift' && action.pFlags.prepaid_upgrade,
             ownerId: gift.isIncoming ? undefined : message.peerId,
             wrapStickerOptions: {
               middleware,

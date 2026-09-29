@@ -5,7 +5,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {Chat, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, User} from '@layer';
+import type {Chat, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Message, Peer, RestrictionReason, User} from '@layer';
 import type {LangPackKey} from '@lib/langPack';
 import isObject from '@helpers/object/isObject';
 import {AppManager} from '@appManagers/manager';
@@ -19,9 +19,15 @@ import getPeerPhoto from '@appManagers/utils/peers/getPeerPhoto';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import callbackify from '@helpers/callbackify';
+import {isTempId} from '@appManagers/utils/messages/isTempId';
 
 export type PeerType = 'channel' | 'community' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread' | 'botforum_thread';
+// * a few messages per `min` peer are enough: one of them is still around when it is needed
+const MESSAGES_WITH_PEER_LIMIT = 3;
+
 export class AppPeersManager extends AppManager {
+  private messagesWithPeer: Map<PeerId, Array<{peerId: PeerId, mid: number}>> = new Map();
+
   public get peerId() {
     return this.appUsersManager.userId.toPeerId();
   }
@@ -33,6 +39,81 @@ export class AppPeersManager extends AppManager {
   public saveApiPeers(object: {chats?: Chat[], users?: User[]}) {
     this.appChatsManager.saveApiChats(object.chats);
     this.appUsersManager.saveApiUsers(object.users);
+  }
+
+  /**
+   * The access_hash of a `min` user or channel is accepted by a handful of methods only (bans,
+   * reports, its photo); everywhere else the server wants `input*FromMessage` — a message the peer
+   * appears in. So messages are remembered for every peer that is not fully known, as tdesktop does
+   */
+  public registerMessagePeers(message: Message.message | Message.messageService) {
+    const {peerId, mid} = message;
+    if(!peerId || !mid || isTempId(mid) || !getServerMessageId(mid)) {
+      return;
+    }
+
+    const peerIds: PeerId[] = [message.fromId, message.viaBotId, (message as Message.message).fwdFromId];
+    for(const entity of (message as Message.message).entities || []) {
+      if(entity._ === 'messageEntityMentionName') {
+        peerIds.push(entity.user_id.toPeerId(false));
+      }
+    }
+
+    const action = (message as Message.messageService).action;
+    if(action?._ === 'messageActionChatAddUser' || action?._ === 'messageActionChatAddUsers') {
+      peerIds.push(...(action.users || []).map((userId) => userId.toPeerId(false)));
+    } else if(action?._ === 'messageActionChatJoinedByLink') {
+      peerIds.push(action.inviter_id.toPeerId(false));
+    } else if(action?._ === 'messageActionChatDeleteUser') {
+      peerIds.push(action.user_id.toPeerId(false));
+    } else if(action?._ === 'messageActionChatJoinedViaCommunity') {
+      peerIds.push(action.community_id.toPeerId(true));
+    }
+
+    for(const minPeerId of peerIds) {
+      // * a peer that is not loaded yet may still arrive as `min` later
+      if(!minPeerId || minPeerId === peerId || (this.getPeer(minPeerId) && !this.isMinPeer(minPeerId))) {
+        continue;
+      }
+
+      const refs = this.messagesWithPeer.get(minPeerId) || [];
+      if(refs.some((ref) => ref.peerId === peerId && ref.mid === mid)) {
+        continue;
+      }
+
+      refs.unshift({peerId, mid});
+      refs.length = Math.min(refs.length, MESSAGES_WITH_PEER_LIMIT);
+      this.messagesWithPeer.set(minPeerId, refs);
+    }
+  }
+
+  public isMinPeer(peerId: PeerId) {
+    return !!(this.getPeer(peerId) as User.user | Chat.channel)?.pFlags?.min;
+  }
+
+  /**
+   * A message to name a `min` peer through, or nothing when the peer is complete or no such message
+   * is still around
+   */
+  public getMessageWithPeer(peerId: PeerId) {
+    const refs = this.isMinPeer(peerId) && this.messagesWithPeer.get(peerId);
+    if(!refs) {
+      return;
+    }
+
+    while(refs.length) {
+      const {peerId: messagePeerId, mid} = refs[0];
+      if(this.appMessagesManager.getMessageByPeer(messagePeerId, mid) && !this.isMinPeer(messagePeerId)) {
+        return {
+          peer: this.getInputPeerById(messagePeerId),
+          msg_id: getServerMessageId(mid)
+        };
+      }
+
+      refs.shift();
+    }
+
+    this.messagesWithPeer.delete(peerId);
   }
 
   public canPinMessage(peerId: PeerId) {

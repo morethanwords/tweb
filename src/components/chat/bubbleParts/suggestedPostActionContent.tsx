@@ -2,7 +2,8 @@ import {Match, onCleanup, Show, Switch} from 'solid-js';
 import {formatFullSentTime} from '@helpers/date';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {Message, MessageAction} from '@layer';
+import {Message, MessageAction, StarsAmount} from '@layer';
+import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
@@ -15,6 +16,13 @@ if(import.meta.hot) import.meta.hot.accept();
 
 
 const LIMIT_SYMBOLS = 20;
+
+// * a TON amount comes in nanotons
+const PriceTsx = (props: {price: StarsAmount}) => <>
+  {props.price._ === 'starsTonAmount' ?
+    <I18nTsx key='SuggestedPosts.TONAmount' args={[formatNanoton(props.price.amount, 2)]} /> :
+    <I18nTsx key='Stars' args={[numberThousandSplitterForStars(props.price.amount)]} />}
+</>;
 
 type PossibleAction = MessageAction.messageActionSuggestedPostApproval | MessageAction.messageActionSuggestedPostSuccess | MessageAction.messageActionSuggestedPostRefund;
 
@@ -43,13 +51,10 @@ const SuggestedPostActionContent = defineSolidElement({
     const savedPeerId = () => props.message.saved_peer_id && getPeerId(props.message.saved_peer_id);
     const chargedPeerId = () => savedPeerId() !== rootScope.myId ? savedPeerId() : undefined;
 
-    const awardedStars = () => props.action?._ === 'messageActionSuggestedPostSuccess' && props.action.price.amount;
+    const awardedPrice = () => props.action?._ === 'messageActionSuggestedPostSuccess' && props.action.price;
 
     const chargedPrice = () => props.action?._ === 'messageActionSuggestedPostApproval' && props.action.price ?
-      <I18nTsx
-        key={props.action.price._ === 'starsTonAmount' ? 'SuggestedPosts.TONAmount' : 'Stars'}
-        args={[numberThousandSplitterForStars(props.action.price.amount)]}
-      /> :
+      <PriceTsx price={props.action.price} /> :
       undefined;
 
     const makeEmoji = (text: string) => <span>{wrapEmojiText(text)}</span>;
@@ -92,7 +97,7 @@ const SuggestedPostActionContent = defineSolidElement({
               key='SuggestedPosts.PostSuccess'
               args={[
                 makeEmoji('✅'),
-                <I18nTsx key='Stars' args={[numberThousandSplitterForStars(awardedStars())]} />
+                <PriceTsx price={awardedPrice() as StarsAmount} />
               ]}
             />
           </Match>
@@ -104,10 +109,7 @@ const SuggestedPostActionContent = defineSolidElement({
           <Show when={suggestedPost().price}>
             <div><I18nTsx key='SuggestedPosts.Price' /></div>
             <div class={styles.GridValue}>
-              <I18nTsx
-                key={suggestedPost().price._ === 'starsTonAmount' ? 'SuggestedPosts.TONAmount' : 'Stars'}
-                args={[numberThousandSplitterForStars(suggestedPost().price.amount)]}
-              />
+              <PriceTsx price={suggestedPost().price} />
             </div>
           </Show>
           <Show when={suggestedPost().schedule_date}>
