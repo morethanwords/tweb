@@ -7,9 +7,11 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import positionMenu, {positionMenuTrigger} from '@helpers/positionMenu';
 import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 import I18n from '@lib/langPack';
+import Modes from '@config/modes';
 
 import {observeResize} from '@components/resizeObserver';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
+import type {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
 
 import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
@@ -61,6 +63,8 @@ export default function ResizableLayers() {
   const normalizePoint = useNormalizePoint();
 
   function activateLayerSurface(e: MouseEvent) {
+    // without the a11y layer the container itself takes the click, as before
+    if(!Modes.a11y && e.target !== container) return;
     if(editorState.selectedResizableLayer) {
       editorState.selectedResizableLayer = undefined;
       return;
@@ -113,11 +117,12 @@ export default function ResizableLayers() {
       <div
         ref={container}
         class="media-editor__resizable-layers-inner"
+        onClick={Modes.a11y ? undefined : ownedActivateLayerSurface}
         style={{
           'opacity': editorState.isAdjusting ? 0 : 1
         }}
       >
-        <Show when={isTextTab() || editorState.selectedResizableLayer !== undefined}>
+        <Show when={Modes.a11y && (isTextTab() || editorState.selectedResizableLayer !== undefined)}>
           <button
             type="button"
             class="media-editor__resizable-layers-surface"
@@ -214,21 +219,26 @@ export function ResizableContainer(props: ParentProps<ResizableLayerProps>) {
         '--rotation': (processedLayer().rotation / Math.PI) * 180 + 'deg',
         '--scale': processedLayer().scale
       }}
+      onClick={Modes.a11y ? undefined : () => {
+        editorState.selectedResizableLayer = props.layer.id;
+      }}
       ref={container}
     >
       {props.children}
 
-      <ButtonIconTsx
-        ref={actionsButton}
-        icon="more"
-        class="media-editor__layer-actions"
-        style={{display: canShowHandles() ? undefined : 'none'}}
-        aria-label={I18n.format('MediaEditor.LayerActions', true)}
-        aria-haspopup="menu"
-        aria-expanded="false"
-      />
+      <Show when={Modes.a11y}>
+        <ButtonIconTsx
+          ref={actionsButton}
+          icon="more"
+          class="media-editor__layer-actions"
+          style={{display: canShowHandles() ? undefined : 'none'}}
+          aria-label={I18n.format('MediaEditor.LayerActions', true)}
+          aria-haspopup="menu"
+          aria-expanded="false"
+        />
+      </Show>
 
-      <Show when={isStickerLayer()}>
+      <Show when={Modes.a11y && isStickerLayer()}>
         <button
           type="button"
           class="media-editor__resizable-container-select"
@@ -439,15 +449,19 @@ function useContextMenu({container, layer, actionsButton}: UseContextMenuArgs) {
     });
   }
 
+  // the move/resize/rotate items and the actions button stand in for dragging — a11y layer only
+  const a11y = Modes.a11y;
   const contextMenu = createContextMenu({
     buttons: [
-      {icon: 'up', text: 'MediaEditor.MoveUp', onClick: () => move(0, -10)},
-      {icon: 'down', text: 'MediaEditor.MoveDown', onClick: () => move(0, 10)},
-      {icon: 'left', text: 'MediaEditor.MoveLeft', onClick: () => move(-10, 0)},
-      {icon: 'next', text: 'MediaEditor.MoveRight', onClick: () => move(10, 0)},
-      {icon: 'plus', text: 'MediaEditor.EnlargeLayer', onClick: () => layer.scale *= 1.1},
-      {icon: 'minus', text: 'MediaEditor.ShrinkLayer', onClick: () => layer.scale /= 1.1},
-      {icon: 'rotate', text: 'MediaEditor.RotateLayer', onClick: () => layer.rotation += Math.PI / 12},
+      ...(a11y ? [
+        {icon: 'up', text: 'MediaEditor.MoveUp', onClick: () => move(0, -10)},
+        {icon: 'down', text: 'MediaEditor.MoveDown', onClick: () => move(0, 10)},
+        {icon: 'left', text: 'MediaEditor.MoveLeft', onClick: () => move(-10, 0)},
+        {icon: 'next', text: 'MediaEditor.MoveRight', onClick: () => move(10, 0)},
+        {icon: 'plus', text: 'MediaEditor.EnlargeLayer', onClick: () => layer.scale *= 1.1},
+        {icon: 'minus', text: 'MediaEditor.ShrinkLayer', onClick: () => layer.scale /= 1.1},
+        {icon: 'rotate', text: 'MediaEditor.RotateLayer', onClick: () => layer.rotation += Math.PI / 12}
+      ] as ButtonMenuItemOptionsVerifiable[] : []),
       {
         icon: 'delete',
         className: 'danger',
@@ -456,21 +470,23 @@ function useContextMenu({container, layer, actionsButton}: UseContextMenuArgs) {
       }
     ],
     listenTo: container,
-    findElement: () => actionsButton,
-    position: (event, menu) => {
-      if('detail' in event && event.detail === 0) positionMenuTrigger(actionsButton, menu, 'bottom-right');
-      else positionMenu(event, menu);
-    },
-    onOpenAfter: () => actionsButton.setAttribute('aria-expanded', 'true'),
-    onClose: () => actionsButton.setAttribute('aria-expanded', 'false'),
+    ...(a11y ? {
+      findElement: () => actionsButton,
+      position: (event: MouseEvent | TouchEvent, menu: HTMLElement) => {
+        if('detail' in event && event.detail === 0) positionMenuTrigger(actionsButton, menu, 'bottom-right');
+        else positionMenu(event, menu);
+      },
+      onOpenAfter: () => actionsButton.setAttribute('aria-expanded', 'true'),
+      onClose: () => actionsButton.setAttribute('aria-expanded', 'false')
+    } : {}),
     onElementReady: (element) => {
       element.classList.add('night');
     }
   });
-  const detachClick = attachClickEvent(actionsButton, contextMenu.open);
+  const detachClick = a11y ? attachClickEvent(actionsButton, contextMenu.open) : undefined;
 
   onCleanup(() => {
-    detachClick();
+    detachClick?.();
     contextMenu.destroy();
   });
 }

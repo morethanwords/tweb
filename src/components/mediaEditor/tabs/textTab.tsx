@@ -11,6 +11,7 @@ import RangeInput from '@components/mediaEditor/rangeInput';
 import {fontInfoMap, textLayerInfoDefaults} from '@components/mediaEditor/utils';
 import {FontKey, TextLayerInfo} from '@components/mediaEditor/types';
 import {createStoredValue, Optional} from '../createStoredValue';
+import A11yButton from '@components/a11yButton';
 
 
 const textSizeMin = 16;
@@ -68,8 +69,7 @@ export default function TextTab() {
     currentValue: Accessor<string>,
     setValue: (value: string) => void
   ) => (
-    <button
-      type="button"
+    <A11yButton
       class="media-editor__toggle-button"
       classList={{'media-editor__toggle-button--active': value === currentValue()}}
       aria-pressed={value === currentValue()}
@@ -77,7 +77,7 @@ export default function TextTab() {
       onClick={() => setValue(value)}
     >
       <IconTsx icon={icon} aria-hidden={true} />
-    </button>
+    </A11yButton>
   );
 
   let toggleGroupRow: HTMLDivElement;

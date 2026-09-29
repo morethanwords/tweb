@@ -35,6 +35,7 @@ import {changeTitleEmojiColor} from '@components/peerTitle';
 import ProgressivePreloader from '@components/preloader';
 import {avatarUploads} from '@stores/avatarUpload';
 import Button from '@components/button';
+import Modes from '@config/modes';
 
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = true;
@@ -102,13 +103,14 @@ export default class PeerProfileAvatars {
     this.tabs = document.createElement('div');
     this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
 
-    this.arrowPrevious = Button('', {noRipple: true, ariaLabel: 'KeyboardShortcuts.Action.PreviousMedia'});
+    // native buttons only with the keyboard layer: they take the focus on click
+    this.arrowPrevious = Button('', {noRipple: true, ariaLabel: 'KeyboardShortcuts.Action.PreviousMedia', asDiv: !Modes.a11y});
     this.arrowPrevious.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow');
     this.arrowPrevious.append(Icon('avatarprevious', PeerProfileAvatars.BASE_CLASS + '-arrow-icon'));
 
     this.middlewareHelper = getMiddleware();
 
-    this.arrowNext = Button('', {noRipple: true, ariaLabel: 'KeyboardShortcuts.Action.NextMedia'});
+    this.arrowNext = Button('', {noRipple: true, ariaLabel: 'KeyboardShortcuts.Action.NextMedia', asDiv: !Modes.a11y});
     this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next');
     this.arrowNext.append(Icon('avatarnext', PeerProfileAvatars.BASE_CLASS + '-arrow-icon'));
 

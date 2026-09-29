@@ -335,7 +335,7 @@
       width: calc(100% / 3);
       opacity: 0;
 
-      &:focus-visible {
+      :where(.a11y) &:focus-visible {
         opacity: 1;
       }
 
@@ -486,7 +486,7 @@
         opacity: 0 !important;
       }
 
-      .profile-avatars-arrow {
+      :where(.a11y) & .profile-avatars-arrow {
         visibility: hidden;
       }
 

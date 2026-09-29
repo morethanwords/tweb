@@ -1,6 +1,7 @@
 import {createRoot, createSignal} from 'solid-js';
 import generated from './generated';
-import {NON_NAVIGABLE_SECTIONS} from './openers';
+import {A11Y_ONLY_ENTRIES, NON_NAVIGABLE_SECTIONS} from './openers';
+import Modes from '@config/modes';
 import type {
   GeneratedSettingsEntry,
   GeneratedSettingsLink,
@@ -41,7 +42,8 @@ const load = (data: GeneratedSettingsSearchData) => {
   sections = new Map(
     data.sections.filter((section) => isReachable(section.id)).map((section) => [section.id, section])
   );
-  entries = data.entries.filter((entry) => sections.has(entry.sectionId));
+  // the flag is fixed for the page's life (it comes from the URL), so it can be read here
+  entries = data.entries.filter((entry) => sections.has(entry.sectionId) && (Modes.a11y || !A11Y_ONLY_ENTRIES.has(entry.id)));
   links = data.links.filter((link) => sections.has(link.sectionId));
 };
 

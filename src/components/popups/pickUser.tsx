@@ -16,6 +16,7 @@ import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import {Middleware} from '@helpers/middleware';
 import deferredPromise from '@helpers/cancellablePromise';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import rootScope from '@lib/rootScope';
@@ -590,7 +591,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     return (
       <PopupElement.FooterButton
         confirm
-        langKey="Next"
+        langKey={Modes.a11y ? 'Next' : undefined}
         callback={() => {
           finalize();
         }}

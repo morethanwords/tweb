@@ -1,4 +1,5 @@
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import {useAppSettings} from '@stores/appSettings';
 
 export type LiteModeKey = 'all' | 'gif' | 'video' |
@@ -25,7 +26,7 @@ export class LiteMode {
     // The OS reduce-motion preference disables UI animations app-wide. This
     // also flips the body `animation-level-0` class through appImManager's
     // setSettings, so every `@include animation-level()` SCSS block turns off.
-    if(key === 'animations' && this.isReducedMotion()) {
+    if(key === 'animations' && Modes.a11y && this.isReducedMotion()) {
       return false;
     }
 

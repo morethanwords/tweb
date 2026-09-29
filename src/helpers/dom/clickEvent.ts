@@ -3,6 +3,7 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 
 let lastMouseDownElement: HTMLElement;
 const onGlobalMouseDown = (e: MouseEvent) => {
@@ -31,7 +32,7 @@ export function hasMouseMovedSinceDown(e: Event) {
   // Native controls activated from the keyboard dispatch a trusted click
   // without a preceding mousedown. `detail === 0` distinguishes that path
   // (and assistive-technology activation) from a pointer click.
-  if(e.type === 'click' && (e as MouseEvent).detail === 0) {
+  if(Modes.a11y && e.type === 'click' && (e as MouseEvent).detail === 0) {
     return false;
   }
 
@@ -116,14 +117,14 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
   // hardware keyboard and assistive technologies activate native controls with
   // a synthetic click (detail === 0). Handle that click without duplicating the
   // pointer click that follows an already-handled mousedown.
-  const onKeyboardClick = CLICK_EVENT_NAME !== 'click' && isHtmlElement ? (e: MouseEvent) => {
+  const onKeyboardClick = Modes.a11y && CLICK_EVENT_NAME !== 'click' && isHtmlElement ? (e: MouseEvent) => {
     if(e.detail === 0) invokeCallback(e);
   } : undefined;
 
   // Non-native role=button elements do not receive the browser's implicit
   // keyboard click. Generate one so both Solid onClick and this helper use the
   // same semantic activation path on desktop, touch and hybrid devices.
-  const onKeyDown = isHtmlElement && !isNativeInteractive ? (e: KeyboardEvent) => {
+  const onKeyDown = Modes.a11y && isHtmlElement && !isNativeInteractive ? (e: KeyboardEvent) => {
     if(element.getAttribute('role') === 'button') buttonKeyDown(e);
   } : undefined;
 

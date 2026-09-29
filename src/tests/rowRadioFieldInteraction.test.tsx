@@ -18,6 +18,7 @@ vi.mock('@helpers/dom/createContextMenu', () => ({
 import RadioFieldTsx from '@components/radioFieldTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import Row from '@components/rowTsx';
+import '@/tests/helpers/a11yLayer';
 
 describe('Row.RadioField interaction', () => {
   let dispose: VoidFunction;

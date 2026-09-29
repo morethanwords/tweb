@@ -23,6 +23,8 @@ export function attachSkipToContent(link: HTMLElement, target: HTMLElement) {
   // and there is nothing to skip to until the chat UI exists. Name it, then show it.
   link.append(I18n.format('AccDescr.SkipToConversation', true));
   link.hidden = false;
+  // the link moves focus onto the column, which is otherwise not focusable
+  target.tabIndex = -1;
 
   return attachClickEvent(link, (e) => {
     cancelEvent(e);

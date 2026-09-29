@@ -3,11 +3,13 @@ import {createEffect, createMemo, createSignal, createUniqueId, on, onCleanup, o
 import {doubleRaf} from '@helpers/schedulers';
 import {hexToRgb} from '@helpers/color';
 import I18n from '@lib/langPack';
+import Modes from '@config/modes';
 import _ColorPicker from '@components/colorPicker';
 import ripple from '@components/ripple';
 
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {delay} from '@components/mediaEditor/utils';
+import A11yButton from '@components/a11yButton';
 
 
 export const colorPickerSwatches = [
@@ -50,6 +52,20 @@ export default function ColorPicker(props: {
 
   const swatch = (hexColor: string, i: number) => {
     const isActive = () => props.value === hexColor && collapsed();
+    if(!Modes.a11y) return (
+      <div
+        class="media-editor__color-picker-swatch"
+        classList={{'media-editor__color-picker-swatch--active': isActive()}}
+        style={{
+          '--color-rgb': hexToRgb(hexColor).join(' '),
+          '--i': i
+        }}
+        onClick={() => props.onChange(hexColor)}
+      >
+        <div class="media-editor__color-picker-swatch-color" />
+      </div>
+    );
+
     // Roving tabindex: the checked swatch is tabbable; when none is checked,
     // the first swatch is the group's tab stop.
     const isTabbable = () => isActive() || (!anySwatchActive() && i === 0);
@@ -103,8 +119,7 @@ export default function ColorPicker(props: {
             aria-label={I18n.format('SetColor', true)}
           >
             {colorPickerSwatches.map(swatch)}
-            <button
-              type="button"
+            <A11yButton
               class="media-editor__color-picker-swatch media-editor__color-picker-swatch--gradient"
               classList={{'media-editor__color-picker-swatch--active': !collapsed()}}
               aria-label={I18n.format('MediaEditor.CustomColor', true)}
@@ -113,12 +128,12 @@ export default function ColorPicker(props: {
               onClick={onCollapseToggle}
             >
               <div class="media-editor__color-picker-swatch-color" />
-            </button>
+            </A11yButton>
 
-            <div class="media-editor__color-picker-slider" inert={collapsed()} aria-hidden={collapsed()}>{parts.slider}</div>
+            <div class="media-editor__color-picker-slider" inert={Modes.a11y && collapsed()} aria-hidden={collapsed()}>{parts.slider}</div>
           </div>
 
-          <div class="media-editor__color-picker-layout-wrapper" inert={collapsed()} aria-hidden={collapsed()}>
+          <div class="media-editor__color-picker-layout-wrapper" inert={Modes.a11y && collapsed()} aria-hidden={collapsed()}>
             <div class="media-editor__color-picker-layout">
               <div class="media-editor__color-picker-box">{parts.pickerBox}</div>
               <div class="media-editor__color-picker-inputs">

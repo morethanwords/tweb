@@ -11,6 +11,7 @@ import rootScope from '@lib/rootScope';
 import liteMode from '@helpers/liteMode';
 import {getFocusableElements} from '@helpers/dom/focusTrap';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import Modes from '@config/modes';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
@@ -66,7 +67,7 @@ export default class DropdownHover extends EventListenerBase<{
     listenerSetter.add(this)('open', () => button.setAttribute('aria-expanded', 'true'));
     listenerSetter.add(this)('close', () => button.setAttribute('aria-expanded', 'false'));
     attachClickEvent(button, (event) => {
-      this.keyboardTrigger = event.type === 'click' && event.detail === 0 ? button : undefined;
+      this.keyboardTrigger = Modes.a11y && event.type === 'click' && event.detail === 0 ? button : undefined;
       if(IS_TOUCH_SUPPORTED) {
         if(firstTime) {
           firstTime = false;
@@ -234,7 +235,7 @@ export default class DropdownHover extends EventListenerBase<{
 
       appNavigationController.pushItem(this.navigationItem = {
         type: 'dropdown',
-        noBlurOnPop: true,
+        noBlurOnPop: Modes.a11y,
         onPop: () => {
           this.toggle(false);
         }

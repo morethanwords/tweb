@@ -5,7 +5,7 @@ import {moveClient, trackBrowserErrors} from './accessibility.helpers';
 
 test('an open dialog keeps its focus scope when the client moves to another document and back', async({page}) => {
   const errors = trackBrowserErrors(page);
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   expect(await openStory(page, 'confirmation/generic')).toBeNull();
   const cancel = page.getByRole('dialog').getByRole('button', {name: 'Cancel', exact: true});
   await cancel.focus();
@@ -30,7 +30,7 @@ test('an open dialog keeps its focus scope when the client moves to another docu
 
 test('a menu closes on a window move while its parent dialog remains keyboard-operable', async({page}) => {
   const errors = trackBrowserErrors(page);
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   expect(await openStory(page, 'rtmp/start')).toBeNull();
   expect(await moveClient(page, true)).toBe(true);
   const inFrame = page.frameLocator('#a11y-other-window');
@@ -47,7 +47,7 @@ test('a menu closes on a window move while its parent dialog remains keyboard-op
 
 test('a dialog created in the other window can close after returning to the tab', async({page}) => {
   const errors = trackBrowserErrors(page);
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   expect(await moveClient(page, true)).toBe(true);
   const frame = page.frameLocator('#a11y-other-window');
   const triggerName = 'confirmationPopup() confirmation/generic';

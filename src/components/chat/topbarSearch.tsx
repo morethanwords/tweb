@@ -1,6 +1,7 @@
 import type {ReactionsContext} from '@appManagers/appReactionsManager';
 import type {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, on, untrack, batch, Accessor} from 'solid-js';
+import Modes from '@config/modes';
 import InputSearch from '@components/inputSearch';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import classNames from '@helpers/string/classNames';
@@ -54,6 +55,7 @@ import getHistoryStorageKey, {getHistoryStorageType} from '@appManagers/utils/me
 import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
 import ButtonCorner from '@components/buttonCorner';
 import deferSideEffect from '@helpers/solid/deferSideEffect';
+import A11yButton from '@components/a11yButton';
 
 type SearchType = RequestHistoryOptions['hashtagType'];
 const SEARCH_TYPES: SearchType[] = ['this', 'my', 'public'];
@@ -263,14 +265,15 @@ function SearchFooter(props: {
         </span>
       </div>
       <div class={classNames('chat-search-footer-right', !props.count() && 'hide')}>
-        <button
-          type="button"
+        {/* a native button only with the keyboard layer: it brings the button's color and takes the focus on click */}
+        <A11yButton
+          as="span"
           class="chat-search-footer-type"
-          aria-pressed={props.resultsShown()}
+          aria-pressed={Modes.a11y ? props.resultsShown() : undefined}
           onClick={() => props.onToggle()}
         >
           {i18n(props.resultsShown() ? 'SearchAsChat' : 'SearchAsList')}
-        </button>
+        </A11yButton>
       </div>
     </div>
   );
@@ -308,7 +311,8 @@ function SearchMobileButtons(props: {
   const makeButton = (icon: 'up' | 'down', onClick: () => void) => {
     const btn = ButtonCorner({
       icon,
-      className: 'is-visible bubbles-corner-button chat-secondary-button chat-search-go chat-search-go-' + icon,
+      // `is-visible` only answers the keyboard layer's `.btn-corner` visibility; it also lifts the button
+      className: (Modes.a11y ? 'is-visible ' : '') + 'bubbles-corner-button chat-secondary-button chat-search-go chat-search-go-' + icon,
       ariaLabel: icon === 'up' ? 'Chat.Search.PreviousResult' : 'Chat.Search.NextResult'
     });
     const detach = attachClickEvent(btn, onClick);
@@ -722,7 +726,7 @@ export default function TopbarSearch(props: {
         // Safe to opt into the tab order: the only hidden state is the `hide`
         // class above, which is `display: none !important`, so it leaves the DOM
         // focus order entirely while hidden.
-        tabIndex={0}
+        tabIndex={Modes.a11y ? 0 : undefined}
         onClick={() => {
           onArrowButtonClick(direction);
         }}

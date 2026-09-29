@@ -37,6 +37,83 @@ async function savePng(path: string, png: PNG) {
   await writeFile(path, PNG.sync.write(png));
 }
 
+type Stop = {key: string, describe: string, label: string, judgedElsewhere: boolean};
+
+/**
+ * Brings what a focus change (or an opening surface) sets off to rest, instead
+ * of a fixed pause per stop — 300ms twice a stop was most of this sweep's
+ * quarter of an hour. The finite transitions under `root` are run to their end
+ * rather than waited out — a list that opens as its field takes the focus is not
+ * there before its own transition is — and the focused element then has to keep
+ * its place from one frame to the next, so a scroll bringing it into view is
+ * over. That is usually a single frame.
+ *
+ * One round trip does the lot, the blur before it and the look at the focused
+ * stop after it included: a sweep makes a thousand stops, and under load every
+ * trip to the page costs more than the work it carries.
+ */
+function settle(page: Page, root: ElementHandle<HTMLElement>, {blur = false, describe = false} = {}) {
+  return page.evaluate(async({root, blur, describe}): Promise<Stop> => {
+    if(blur) (document.activeElement as HTMLElement)?.blur?.();
+
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    (root?.isConnected ? root : document.body).getAnimations({subtree: true}).forEach((animation) => {
+      if(!Number.isFinite(animation.effect?.getComputedTiming().endTime)) return;
+      try {
+        animation.finish();
+      } catch{}
+    });
+
+    const el = document.activeElement as HTMLElement;
+    const position = () => {
+      const r = el?.getBoundingClientRect();
+      return r ? `${r.x},${r.y},${r.width},${r.height}` : '';
+    };
+
+    let last = position();
+    for(let i = 0; i < 30; ++i) {
+      await frame();
+      const now = position();
+      if(now === last) break;
+      last = now;
+    }
+
+    if(!describe || !el || el === document.body || !root || !root.contains(el)) return null;
+    const r = el.getBoundingClientRect();
+    return {
+      key: el.tagName + '|' + (el.className || '') + '|' + Math.round(r.x) + ',' + Math.round(r.y),
+      describe: el.tagName.toLowerCase() +
+        (typeof el.className === 'string' && el.className ?
+          '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''),
+      label: (el.getAttribute('aria-label') ||
+        el.closest('.row')?.querySelector('.row-title')?.textContent ||
+        el.textContent || '').trim().slice(0, 40),
+      // Two kinds of stop this sweep cannot rule on.
+      //
+      // Text entry is judged by its caret, which W3C names as a focus
+      // indicator and which this design relies on. A caret blinks, so a
+      // screenshot catches it or not at random — these are left out rather
+      // than reported on the strength of a coin flip.
+      //
+      // A frame is left out for a different reason: it is not a control.
+      // Focusing it hands the keyboard to the document inside, which draws
+      // its own indicator on whatever it focuses — nothing that belongs to
+      // this page changes, and there is nothing here to fix.
+      judgedElsewhere: el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'IFRAME' ||
+        (el.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button', 'submit', 'file', 'color']
+        .includes((el as HTMLInputElement).type))
+    };
+  }, {root, blur, describe});
+}
+
+/**
+ * The frame as it will stay: a transition still under way is run to its end,
+ * and an endless one (a loader) is held at its start in both frames alike.
+ */
+async function capture(page: Page, clip: {x: number, y: number, width: number, height: number}) {
+  return decode(await page.screenshot({clip, animations: 'disabled'}));
+}
+
 /**
  * Checks keyboard focus the way a person does: press Tab, and look at whether
  * the control now looks different.
@@ -66,7 +143,6 @@ async function sweepOneSurface(page: Page, opts: {
   name: string,
   outDir: string,
   maxStops?: number,
-  settleMs?: number,
   /** how many controls of one kind on a surface are worth photographing */
   perKind?: number,
   /**
@@ -77,7 +153,7 @@ async function sweepOneSurface(page: Page, opts: {
    */
   walkKey?: 'Tab' | 'ArrowDown'
 }) {
-  const {surface, name, outDir, maxStops = 40, settleMs = 300, perKind = 2, walkKey = 'Tab'} = opts;
+  const {surface, name, outDir, maxStops = 40, perKind = 2, walkKey = 'Tab'} = opts;
   const findings: PixelFinding[] = [];
   const unjudged: string[] = [];
 
@@ -88,7 +164,9 @@ async function sweepOneSurface(page: Page, opts: {
   const onScreen = page.locator(surface).filter({visible: true});
   const located = (await onScreen.count()) ? onScreen.last() : page.locator(surface).last();
   const root = await located.elementHandle() as ElementHandle<HTMLElement>;
-  const surfaceBox = root && await located.boundingBox();
+  // a surface still arriving (an opening popup scales in) would be measured mid-way
+  if(root) await settle(page, root);
+  const surfaceBox = root && await located.boundingBox({timeout: 1_000}).catch((): null => null);
   if(!surfaceBox) return {stops: 0, findings, unjudged};
 
   // A screenshot only holds what is on screen. A surface can be taller than the
@@ -116,7 +194,7 @@ async function sweepOneSurface(page: Page, opts: {
     root.tabIndex = -1;
     root.focus({preventScroll: true});
   }, root);
-  await page.waitForTimeout(settleMs);
+  await settle(page, root);
 
   const seen = new Set<string>();
   // A month grid is thirty-one identical day cells and a peer list is a hundred
@@ -127,36 +205,7 @@ async function sweepOneSurface(page: Page, opts: {
 
   for(let i = 0; i < maxStops; i++) {
     await page.keyboard.press(walkKey);
-    await page.waitForTimeout(settleMs);
-
-    const info = await page.evaluate((root) => {
-      const el = document.activeElement as HTMLElement;
-      if(!el || el === document.body || !root || !root.contains(el)) return null;
-      const r = el.getBoundingClientRect();
-      return {
-        key: el.tagName + '|' + (el.className || '') + '|' + Math.round(r.x) + ',' + Math.round(r.y),
-        describe: el.tagName.toLowerCase() +
-          (typeof el.className === 'string' && el.className ?
-            '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''),
-        label: (el.getAttribute('aria-label') ||
-          el.closest('.row')?.querySelector('.row-title')?.textContent ||
-          el.textContent || '').trim().slice(0, 40),
-        // Two kinds of stop this sweep cannot rule on.
-        //
-        // Text entry is judged by its caret, which W3C names as a focus
-        // indicator and which this design relies on. A caret blinks, so a
-        // screenshot catches it or not at random — these are left out rather
-        // than reported on the strength of a coin flip.
-        //
-        // A frame is left out for a different reason: it is not a control.
-        // Focusing it hands the keyboard to the document inside, which draws
-        // its own indicator on whatever it focuses — nothing that belongs to
-        // this page changes, and there is nothing here to fix.
-        judgedElsewhere: el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'IFRAME' ||
-          (el.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button', 'submit', 'file', 'color']
-          .includes((el as HTMLInputElement).type))
-      };
-    }, root);
+    const info = await settle(page, root, {describe: true});
 
     if(!info || seen.has(info.key)) break;
     seen.add(info.key);
@@ -167,22 +216,22 @@ async function sweepOneSurface(page: Page, opts: {
     perKindSeen.set(info.describe, kindCount);
     if(kindCount > perKind) continue;
 
-    // Geometry comes from Playwright, in the same coordinate space its clip
-    // expects. Reading getBoundingClientRect() in the page instead mixes
-    // viewport coordinates with document ones, and the crop then holds whatever
-    // occupies that place in the other space — which is what made earlier
-    // versions of this sweep report perfectly good rows as unmarked.
-    await page.evaluate((): void => {
-      (document.activeElement as HTMLElement)?.setAttribute('data-focus-sweep-at', '');
-    });
-
+    // Marks the control and the host of its indicator, and says whether
+    // something sits on top of it.
+    //
+    // The indicator does not always sit on the control itself: a radio's circle
+    // is a pseudo-element on a sibling, and a toggle's ring is on its row. What
+    // gets photographed is that host, not the control.
+    //
     // Focus can also land on something another element sits on top of — a row
     // that scrolled under a sticky footer. There is nothing to see there,
     // whatever the styles say.
     const covered = await page.evaluate(() => {
-      const el = document.querySelector<HTMLElement>('[data-focus-sweep-at]');
-      if(!el) return null;
+      const el = document.activeElement as HTMLElement;
+      el.setAttribute('data-focus-sweep-at', '');
       const target = (el.closest('.row') || el.closest('.checkbox-field, .radio-field') || el) as HTMLElement;
+      target.setAttribute('data-focus-sweep-host', '');
+
       const r = target.getBoundingClientRect();
       // Only a control small enough for its points to stand for the whole of it
       // can be judged this way. A scroll container spans the popup, and its
@@ -217,27 +266,26 @@ async function sweepOneSurface(page: Page, opts: {
           '.' + over.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
     });
 
-    const drop = () => page.evaluate((): void => {
-      document.querySelector('[data-focus-sweep-at]')?.removeAttribute('data-focus-sweep-at');
-    });
-
-    // The indicator does not always sit on the control itself: a radio's circle
-    // is a pseudo-element on a sibling, and a toggle's ring is on its row. What
-    // gets photographed is that host, not the control.
-    const marked = page.locator('[data-focus-sweep-at]');
-    const hostBox = await marked.evaluate((el) => {
-      const target = (el.closest('.row') || el.closest('.checkbox-field, .radio-field') || el) as HTMLElement;
-      target.setAttribute('data-focus-sweep-host', '');
-      return true;
-    }).then(() => page.locator('[data-focus-sweep-host]').boundingBox()).catch((): null => null);
-
-    const dropHost = () => page.evaluate((): void => {
+    // Puts the focus back where the walk left it, and drops the marks.
+    const unmark = () => page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>('[data-focus-sweep-at]');
+      el?.removeAttribute('data-focus-sweep-at');
       document.querySelector('[data-focus-sweep-host]')?.removeAttribute('data-focus-sweep-host');
+      el?.focus({preventScroll: true});
+      return document.activeElement === el;
     });
 
+    // Geometry comes from Playwright, in the same coordinate space its clip
+    // expects. Reading getBoundingClientRect() in the page instead mixes
+    // viewport coordinates with document ones, and the crop then holds whatever
+    // occupies that place in the other space — which is what made earlier
+    // versions of this sweep report perfectly good rows as unmarked.
+    const host = page.locator('[data-focus-sweep-host]');
+    // bounded: without a timeout a mark that went with its element would hold the walk until the test times out
+    const hostBox = await host.boundingBox({timeout: 1_000}).catch((): null => null);
     if(!hostBox || hostBox.width < 4 || hostBox.height < 4) {
       unjudged.push(`${name}#${i} ${info.describe} (nothing visible to compare)`);
-      await drop(); await dropHost();
+      await unmark();
       continue;
     }
 
@@ -252,27 +300,15 @@ async function sweepOneSurface(page: Page, opts: {
     area.height = Math.min(Math.ceil(hostBox.height) + pad * 2, view.height - area.y);
     if(area.width < 4 || area.height < 4) {
       unjudged.push(`${name}#${i} ${info.describe} (not on screen)`);
-      await drop(); await dropHost();
+      await unmark();
       continue;
     }
 
-    const focused = decode(await page.screenshot({clip: area}));
-
-    await page.evaluate((): void => {
-      (document.activeElement as HTMLElement)?.blur?.();
-    });
-    await page.waitForTimeout(settleMs);
-
-    const stillThere = await page.locator('[data-focus-sweep-host]').boundingBox().catch((): null => null);
-    const unfocused = decode(await page.screenshot({clip: area}));
-
-    const restored = await page.evaluate(() => {
-      const el = document.querySelector<HTMLElement>('[data-focus-sweep-at]');
-      el?.removeAttribute('data-focus-sweep-at');
-      el?.focus({preventScroll: true});
-      return document.activeElement === el;
-    });
-    await dropHost();
+    const focused = await capture(page, area);
+    await settle(page, root, {blur: true});
+    const stillThere = await host.boundingBox({timeout: 1_000}).catch((): null => null);
+    const unfocused = await capture(page, area);
+    const restored = await unmark();
 
     if(!stillThere || Math.round(stillThere.y) !== Math.round(hostBox.y) ||
       Math.round(stillThere.x) !== Math.round(hostBox.x)) {

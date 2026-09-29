@@ -198,7 +198,7 @@ $card-padding: 1rem;
 
   // The global ring sits inside the edge — right on top of the selected ring, so Tab landing on
   // the chosen button would show nothing new. Keep focus outside, across a gap.
-  :root &:focus-visible {
+  :root:global(:where(.a11y)) &:focus-visible {
     outline-offset: var(--focus-ring-width);
   }
 }

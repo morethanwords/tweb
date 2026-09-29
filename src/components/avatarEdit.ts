@@ -5,6 +5,7 @@ import type {CancellablePromise} from '@helpers/cancellablePromise';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Button from '@components/button';
+import Modes from '@config/modes';
 import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import {revokeObjectURL} from '@helpers/objectUrl';
 import type {InputFile, Photo} from '@layer';
@@ -238,7 +239,8 @@ export default class AvatarEdit {
   private icon: HTMLSpanElement;
 
   constructor(onChange: (payload: AvatarEditPayload) => void, options?: Options) {
-    this.container = Button('avatar-edit', {noRipple: true, ariaLabel: 'AccDescr.EditAvatar'});
+    // a native button only with the keyboard layer: it takes the focus on click
+    this.container = Button('avatar-edit', {noRipple: true, ariaLabel: 'AccDescr.EditAvatar', asDiv: !Modes.a11y});
 
     this.canvas = document.createElement('canvas');
     this.canvas.classList.add('avatar-edit-canvas');

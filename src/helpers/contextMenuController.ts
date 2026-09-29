@@ -9,6 +9,7 @@ import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 
 import {getEnabledMenuItems, handleMenuKeyDown} from '@helpers/dom/menuKeyboard';
 import {onAppWindowChange} from '@helpers/appWindow';
+import Modes from '@config/modes';
 
 type AdditionalMenuItem = {
   level: number,
@@ -66,6 +67,8 @@ class ContextMenuController extends OverlayClickHandler {
   };
 
   protected activateFocus(element: HTMLElement, initialFocus?: HTMLElement) {
+    // without the a11y layer a menu never takes the focus, so it has none to give back either
+    if(!Modes.a11y) return;
     this.deactivateFocus(false);
     this.focusedMenu = element;
     this.focusTrap = createFocusTrap(element);

@@ -8,6 +8,7 @@ import {STICKER_EFFECT_MULTIPLIER} from '@components/wrappers/sticker';
 import {Document} from '@layer';
 import Button from '@components/button';
 import I18n from '@lib/langPack';
+import Modes from '@config/modes';
 
 export default class PremiumStickersCarousel {
   private superStickerRenderer: SuperStickerRenderer;
@@ -37,7 +38,7 @@ export default class PremiumStickersCarousel {
     this.container.children[bottomSiblingIndex].classList.add('visible');
     (Array.from(this.container.children) as HTMLButtonElement[]).forEach((element, index) => {
       const visible = index === topSiblingIndex || index === bottomSiblingIndex || index === this.activeStickerIndex;
-      element.disabled = !visible;
+      if(Modes.a11y) element.disabled = !visible;
       element.setAttribute('aria-hidden', String(!visible));
       element.setAttribute('aria-pressed', String(index === this.activeStickerIndex));
     });
@@ -59,7 +60,7 @@ export default class PremiumStickersCarousel {
           this.ignoreUnmount = undefined;
           return;
         }
-        if(!this.destroyed && !this.container.contains(this.container.ownerDocument.activeElement)) {
+        if(!this.destroyed && (!Modes.a11y || !this.container.contains(this.container.ownerDocument.activeElement))) {
           this.previousSticker();
         }
       }
@@ -135,7 +136,7 @@ export default class PremiumStickersCarousel {
     this.container.classList.add('premium-stickers-carousel');
     this.activeStickerIndex = Math.round(this.stickers.length / 2);
     stickers.forEach((sticker, index) => {
-      const carouselItem = Button('premium-stickers-carousel-item', {noRipple: true});
+      const carouselItem = Button('premium-stickers-carousel-item', {noRipple: true, asDiv: !Modes.a11y});
       carouselItem.setAttribute('aria-label', I18n.format('AccDescr.StickerNumber', true, [String(index + 1)]));
       const element = this.superStickerRenderer.renderSticker(sticker);
       carouselItem.append(element);

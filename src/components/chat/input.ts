@@ -8,6 +8,7 @@ import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostP
 import type Chat from '@components/chat/chat';
 import {AppImManager, APP_TABS} from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import Modes from '@config/modes';
 import ChatRecording from '@components/chat/recording/chatRecording';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
@@ -787,6 +788,7 @@ export default class ChatInput {
     }
 
     const button = ButtonIcon(...args);
+    if(!Modes.a11y) button.tabIndex = -1;
     return button;
   }
 
@@ -1122,7 +1124,7 @@ export default class ChatInput {
     this.botCommandsToggle.classList.add('new-message-bot-commands');
     this.botCommandsToggle.setAttribute('role', 'button');
     this.botCommandsToggle.setAttribute('aria-label', I18n.format('Chat.BotCommands', true));
-    this.botCommandsToggle.tabIndex = -1;
+    if(Modes.a11y) this.botCommandsToggle.tabIndex = -1;
     this.botCommandsToggle.append(Icon('webview', 'new-message-bot-commands-view-icon'));
 
     const scaler = document.createElement('div');
@@ -3206,7 +3208,7 @@ export default class ChatInput {
 
     const isInputEmpty = this.isInputEmpty();
     const show = isNeeded && (isInputEmpty || !!botMenuButton);
-    botCommandsToggle.tabIndex = show ? 0 : -1;
+    if(Modes.a11y) botCommandsToggle.tabIndex = show ? 0 : -1;
     botCommandsToggle.setAttribute('aria-hidden', '' + !show);
     if(!isNeeded) {
       if(!botCommandsToggle.parentElement) {

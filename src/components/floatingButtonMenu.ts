@@ -1,4 +1,5 @@
 import contextMenuController from '@helpers/contextMenuController';
+import Modes from '@config/modes';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {FloatingMenuDirection, positionFloatingMenu} from '@helpers/positionMenu';
@@ -86,12 +87,12 @@ export default function attachFloatingButtonMenu({
   triggerEvents.forEach((event) => element.addEventListener(event, listener));
   const hoverTriggered = triggerEvents.includes('mouseenter');
   // a menu that opens on hover opens on activation too, unless a click already opens it
-  const detachActivation = hoverTriggered && !triggerEvents.includes('click') ?
+  const detachActivation = Modes.a11y && hoverTriggered && !triggerEvents.includes('click') ?
     attachClickEvent(element, listener) :
     undefined;
   if(hoverTriggered) {
     element.addEventListener('mouseleave', onMouseLeave);
-    element.addEventListener('keydown', onKeyDown);
+    if(Modes.a11y) element.addEventListener('keydown', onKeyDown);
   }
 
   return () => {

@@ -4,6 +4,7 @@ import {IconTsx} from '@components/iconTsx';
 import classNames from '@helpers/string/classNames';
 import RippleElement from '@components/rippleElement';
 import iconButtonLabel from '@helpers/dom/iconButtonLabel';
+import Modes from '@config/modes';
 
 type ButtonAccessibilityProps = Pick<JSX.ButtonHTMLAttributes<HTMLButtonElement>,
   | 'aria-hidden'
@@ -104,7 +105,7 @@ Button.Corner = (props: Partial<{
     <Button
       {...props}
       class={classNames('btn-circle', 'btn-corner', 'z-depth-1', props.class)}
-      tabIndex={props.tabIndex}
+      tabIndex={props.tabIndex ?? (Modes.a11y ? undefined : -1)}
     />
   );
 };
@@ -123,7 +124,7 @@ Button.Icon = (props: {icon: Icon} & Partial<{
       {...props}
       class={classNames('btn-icon', props.icon, props.class)}
       aria-label={props['aria-label'] || iconButtonLabel(props.icon)}
-      tabIndex={props.tabIndex}
+      tabIndex={props.tabIndex ?? (Modes.a11y ? undefined : -1)}
     />
   );
 };

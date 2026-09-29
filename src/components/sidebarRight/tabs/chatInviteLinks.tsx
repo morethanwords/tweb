@@ -1,6 +1,7 @@
 import {Component} from 'solid-js';
 import {hexToRgb, hslaToString, mixColors, rgbaToHsla} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import Modes from '@config/modes';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import customProperties from '@helpers/dom/customProperties';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -180,7 +181,7 @@ const ChatInviteLinks: Component = () => {
       });
 
       inviteLink.subtitle.setAttribute('role', 'button');
-      inviteLink.subtitle.tabIndex = 0;
+      if(Modes.a11y) inviteLink.subtitle.tabIndex = 0;
       attachClickEvent(inviteLink.subtitle, () => {
         // menuInvite = primaryInvite;
         openLink(primaryInvite);

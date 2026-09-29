@@ -1231,8 +1231,9 @@
   // The viewport no longer pins `maximum-scale` (WCAG 1.4.4 needs pinch-zoom),
   // so iOS Safari is free to zoom the page whenever a field below 16px takes
   // focus — and Settings lets the message text size go down to 12. Floor the
-  // composer only; bubbles keep the size the user picked.
-  html.is-ios & {
+  // composer only; bubbles keep the size the user picked. Without the a11y layer
+  // the viewport still pins it.
+  html.is-ios:where(.a11y) & {
     font-size: max(var(--messages-text-size), 16px);
   }
 }

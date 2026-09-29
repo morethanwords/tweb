@@ -1,4 +1,5 @@
 import labelControl from '@helpers/dom/labelControl';
+import Modes from '@config/modes';
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import {createUniqueId} from 'solid-js';
 import type {AnimationItemGroup} from '@components/animationIntersector';
@@ -714,7 +715,9 @@ export default class InputField {
   public setState(state: InputState, label?: LangPackKey, labelOptions?: any[]) {
     const isError = !!(state & InputState.Error);
 
-    if(label && isError) {
+    // Without the a11y layer the error replaces the floating label's text, as it
+    // always did; the layer gives it an element of its own to announce.
+    if(label && isError && Modes.a11y) {
       if(!this.errorLabel) {
         this.errorLabel = this.container.ownerDocument.createElement('span');
         this.errorLabel.id = 'input-field-error-' + (++inputFieldErrorIdSeed);

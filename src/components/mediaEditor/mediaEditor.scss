@@ -1214,12 +1214,16 @@
 
   &__resizable-container {
     position: absolute;
-    z-index: 1;
     transform: translate(-50%, -50%) rotate(var(--rotation)) scale(var(--scale));
     padding: 10px 16px;
 
     pointer-events: initial;
     cursor: grab;
+
+    // above the a11y layer's click surface
+    :where(.a11y) & {
+      z-index: 1;
+    }
 
     &-select {
       position: absolute;
@@ -1437,7 +1441,7 @@
   cursor: pointer;
 }
 
-.media-editor__color-picker-swatch-input:focus-visible + .media-editor__color-picker-swatch-color {
+:where(.a11y) .media-editor__color-picker-swatch-input:focus-visible + .media-editor__color-picker-swatch-color {
   outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }
@@ -1460,7 +1464,7 @@
   pointer-events: none;
 }
 
-.media-editor__rotation-wheel:focus-within {
+:where(.a11y) .media-editor__rotation-wheel:focus-within {
   outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }

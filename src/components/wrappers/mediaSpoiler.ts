@@ -9,6 +9,7 @@ import DotRenderer from '@components/dotRenderer';
 import Icon from '@components/icon';
 import SetTransition from '@components/singleTransition';
 import Button from '@components/button';
+import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import makeMediaPreviewsAccessible, {MEDIA_PREVIEW_SELECTOR} from '@helpers/dom/mediaPreviewAccessibility';
 import {doubleRaf} from '@helpers/schedulers';
@@ -20,7 +21,7 @@ const SPOILER_READY_TIMEOUT = 2000;
 const sensitiveSpoilers = new Set<HTMLElement>();
 
 function removeSpoiler(mediaSpoiler: HTMLElement) {
-  const restoreFocus = mediaSpoiler.contains(mediaSpoiler.ownerDocument.activeElement);
+  const restoreFocus = Modes.a11y && mediaSpoiler.contains(mediaSpoiler.ownerDocument.activeElement);
   const preview = mediaSpoiler.closest<HTMLElement>(MEDIA_PREVIEW_SELECTOR);
   mediaSpoiler.remove();
   mediaSpoiler.middlewareHelper?.destroy();
@@ -207,7 +208,8 @@ function wrapMediaSpoilerWithImage(options: {
   image.classList.add('media-spoiler-thumbnail');
 
   let container: HTMLElement;
-  if(decorative) {
+  // without the a11y layer the spoiler is a plain box again, revealed by its owner's delegated click
+  if(decorative || !Modes.a11y) {
     container = document.createElement('div');
     container.classList.add('media-spoiler-container');
     container.middlewareHelper = middleware.create();

@@ -6,6 +6,7 @@ import pause from '@helpers/schedulers/pause';
 import {bindActiveWindowListener, getOverlayRoot} from '@helpers/appWindow';
 import createFocusTrap from '@helpers/dom/focusTrap';
 import {i18n} from '@lib/langPack';
+import Modes from '@config/modes';
 
 import ripple from '@components/ripple'; ripple; // keep
 
@@ -31,8 +32,8 @@ const SimplePopup: Component<{
     const trap = createFocusTrap(element);
     trap.activate(undefined, element.querySelector('[autofocus]'));
     const listener = (e: KeyboardEvent) => {
-      if(e.key === 'Escape' && !e.defaultPrevented) {
-        e.preventDefault();
+      if(e.key === 'Escape' && (!Modes.a11y || !e.defaultPrevented)) {
+        if(Modes.a11y) e.preventDefault();
         props.onClose?.();
       }
     }
@@ -67,7 +68,7 @@ const SimplePopup: Component<{
             }
           }}
         >
-          <div ref={setContainer} class='popup-container' role='dialog' aria-modal='true' aria-labelledby={titleId} aria-describedby={descriptionId} tabindex={-1}>
+          <div ref={setContainer} class='popup-container' role='dialog' aria-modal='true' aria-labelledby={titleId} aria-describedby={descriptionId} tabindex={Modes.a11y ? -1 : undefined}>
             <div class='popup-header'>
               <div class='popup-title' id={titleId}>
                 {props.title}

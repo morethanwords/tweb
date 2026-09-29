@@ -7,6 +7,9 @@
 // Accessibility baseline — focus visibility, screen-reader utilities and
 // reduced-motion handling. Loaded last in style.scss so these rules win the
 // cascade over component-level `outline: none` declarations.
+//
+// The focus rings exist only with the a11y layer (`?a11y=1` puts `.a11y` on the
+// root). `:where()` keeps each selector's specificity what it was without it.
 
 :root {
   --focus-ring-color: var(--primary-color);
@@ -22,7 +25,7 @@
 
 // Respect the browser's focus indicator heuristic. Text editors also match
 // :focus-visible after pointer focus because they expect keyboard input.
-:focus:not(:focus-visible) {
+:where(.a11y) :focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -30,7 +33,7 @@
 // so this overrides single-class and attribute `outline: none` rules without
 // needing !important. An inset offset keeps the ring inside clipped/scrollable
 // containers so it is never cut off.
-:root :focus-visible {
+:root:where(.a11y) :focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);
 }
@@ -38,8 +41,8 @@
 // Text fields show focus with the native caret and their own border/label
 // styling. A second global outline would duplicate or cover those cues.
 // https://www.w3.org/WAI/WCAG22/Understanding/focus-visible#examples
-:root .input-field-input:focus-visible,
-:root .input-message-input:focus-visible {
+:root:where(.a11y) .input-field-input:focus-visible,
+:root:where(.a11y) .input-message-input:focus-visible {
   outline: none;
 }
 

@@ -15,6 +15,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Button from '@components/button';
 import attachTabList from '@helpers/dom/tabList';
+import Modes from '@config/modes';
 
 export default class FeaturesCarousel {
   private features: PremiumPromoFeature[];
@@ -129,7 +130,7 @@ export default class FeaturesCarousel {
       await this.appendVideo(featureIndex, this.carouselItems[featureIndex].querySelector('.device-frame'));
     } else {
       if(feature.type !== 'premium-stickers') {
-        slideTopSectionContainer.tabIndex = 0;
+        if(Modes.a11y) slideTopSectionContainer.tabIndex = 0;
         slideTopSectionContainer.addEventListener('scroll', this.scrollListener);
       }
 
@@ -280,7 +281,7 @@ export default class FeaturesCarousel {
   }
 
   private createFeatureDot(options: PopupPremiumProps, feature: PremiumPromoFeatureType, index: number) {
-    const dot = Button('popup-premium-controls-dot', {noRipple: true});
+    const dot = Button('popup-premium-controls-dot', {noRipple: true, asDiv: !Modes.a11y});
     dot.setAttribute('role', 'tab');
     dot.setAttribute('aria-label', i18n(this.features[index].titleLangKey, this.features[index].titleLangArgs).textContent);
     if(feature === this.selectedFeature) {

@@ -386,7 +386,7 @@
     // spaces the wrapper, so it stays in the layout, but a control nobody can
     // see must not be a tab stop or be announced; `visibility` takes it out of
     // both without moving anything.
-    .pinned-message-unpin {
+    :where(.a11y) & .pinned-message-unpin {
       visibility: hidden;
     }
   }

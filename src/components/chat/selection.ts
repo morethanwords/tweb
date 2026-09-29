@@ -15,6 +15,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import showSendNowPopup from '@components/popups/sendNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
+import Modes from '@config/modes';
 import I18n, {i18n, _i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -412,7 +413,7 @@ export class AppSelection extends EventListenerBase<{
         round: true
       });
       checkboxField.input.setAttribute('aria-label', element.getAttribute('aria-label') || element.textContent || I18n.format('Message.Context.Select', true));
-      if(element.getAttribute('role') === 'button') {
+      if(Modes.a11y && element.getAttribute('role') === 'button') {
         this.selectionRoles.set(element, {role: 'button', tabIndex: element.getAttribute('tabindex')});
         element.setAttribute('role', 'group');
         element.removeAttribute('tabindex');

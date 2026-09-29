@@ -8,6 +8,7 @@ import Row from '@components/rowTsx';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
+import Modes from '@config/modes';
 import lastItem from '@helpers/array/lastItem';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import focusInput from '@helpers/dom/focusInput';
@@ -221,7 +222,7 @@ const PollOptionFullField = (props: {
               <div
                 class={styles.checkButtonWrapper}
                 role='checkbox'
-                tabindex={canBeReordered() ? 0 : -1}
+                tabindex={Modes.a11y ? (canBeReordered() ? 0 : -1) : undefined}
                 aria-checked={!!props.mappedItem.option.checked}
                 aria-label={I18n.format('NewPoll.SetCorrectAnswer', true)}
                 onClick={() => setStore('pollOptions', props.index, 'checked', (v) => !v)}

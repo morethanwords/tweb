@@ -15,6 +15,7 @@ import {StickerTsx} from '@components/wrappers/sticker';
 
 import TipCard, {openSettingsTab, TipCardButton, useTipReady} from '@components/chatTips/tipCard';
 import styles from '@components/chatTips/chatTips.module.scss';
+import A11yButton from '@components/a11yButton';
 
 /** macOS shows three featured packs side by side in the content slot. */
 const SETS_LIMIT = 3;
@@ -81,9 +82,13 @@ function TrendingStickerSet(props: {set: StickerSet.stickerSet}) {
     return set.documents.find((doc) => doc._ !== 'documentEmpty');
   });
 
-  // Named by the pack title under the cover; the cover itself is decoration.
+  // Named by the pack title under the cover; the cover itself is decoration. A native button only
+  // with the keyboard layer: it takes the focus on click.
   return (
-    <button type="button" class={styles.stickerSet} onClick={() => showStickersPopup(input())}>
+    <A11yButton
+      class={styles.stickerSet}
+      onClick={() => showStickersPopup(input())}
+    >
       <div class={styles.stickerSetCover} aria-hidden="true">
         <Show when={cover()}>{(doc) => (
           <StickerTsx
@@ -95,6 +100,6 @@ function TrendingStickerSet(props: {set: StickerSet.stickerSet}) {
         )}</Show>
       </div>
       <div class={styles.stickerSetName}>{wrapEmojiText(props.set.title)}</div>
-    </button>
+    </A11yButton>
   );
 }

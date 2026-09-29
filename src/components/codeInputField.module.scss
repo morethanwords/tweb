@@ -39,7 +39,7 @@
 // The global ring would add a second outline around all six boxes at once, so
 // it is turned off here — the `.wrap` prefix outweighs the rule in
 // scss/partials/_accessibility.scss, which is loaded last on purpose.
-.wrap .input:focus-visible {
+:global(:where(.a11y)) .wrap .input:focus-visible {
   outline: none;
 }
 

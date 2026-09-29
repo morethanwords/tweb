@@ -5,7 +5,7 @@ import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
 async function openEditor(page: Page, story = 'newMedia') {
   page.setDefaultTimeout(30_000);
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   expect(await openStory(page, story)).toBeNull();
   const actions = page.getByRole('button', {name: 'Media actions', exact: true});
   await expect(actions).toBeEnabled();
@@ -95,7 +95,7 @@ test('video trimming exposes values and supports keyboard changes', async({page}
 });
 
 test('removing the last local attachment restores focus past its closing dialog', async({page}) => {
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   const trigger = page.getByRole('button', {name: 'Attach media newMedia', exact: true});
   await trigger.press('Enter');
   const actions = page.getByRole('button', {name: 'Media actions', exact: true});

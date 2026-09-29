@@ -17,6 +17,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {Transition} from 'solid-transition-group';
 import {IconTsx} from '@components/iconTsx';
 import formatNumber from '@helpers/number/formatNumber';
+import A11yButton from '@components/a11yButton';
 
 function Badge(props: {
   active: boolean
@@ -112,14 +113,10 @@ export default function showStarsRatingPopup(props: {
                         pendingStars.toString()
                       ]}
                     />
-                    <button
-                      type="button"
-                      class={styles.previewButton}
-                      onClick={() => setIsFuture(true)}
-                    >
+                    <A11yButton as="a" class={styles.previewButton} onClick={() => setIsFuture(true)}>
                       <I18nTsx key="StarsRating.Preview" />
                       <IconTsx icon="next" />
-                    </button>
+                    </A11yButton>
                   </div>
                 </Show>
                 <Show when={isFuture()}>
@@ -131,14 +128,10 @@ export default function showStarsRatingPopup(props: {
                         pendingStars.toString()
                       ]}
                     />
-                    <button
-                      type="button"
-                      class={styles.previewButton}
-                      onClick={() => setIsFuture(false)}
-                    >
+                    <A11yButton as="a" class={styles.previewButton} onClick={() => setIsFuture(false)}>
                       <I18nTsx key="StarsRating.Back" />
                       <IconTsx icon="next" />
-                    </button>
+                    </A11yButton>
                   </div>
                 </Show>
               </Transition>

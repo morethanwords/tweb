@@ -237,6 +237,14 @@ function setSidebarLeftWidth() {
 function setRootClasses() {
   const add: string[] = [];
 
+  if(Modes.a11y) {
+    add.push('a11y');
+    // Pinch zoom. Not without the flag: with maximum-scale gone iOS also zooms
+    // into every field whose text is under 16px.
+    const viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if(viewport) viewport.content = viewport.content.replace(/,(maximum-scale=1|user-scalable=no)/g, '');
+  }
+
   if(IS_EMOJI_SUPPORTED) {
     add.push('native-emoji');
   }

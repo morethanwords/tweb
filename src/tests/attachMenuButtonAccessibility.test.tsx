@@ -6,6 +6,7 @@ vi.mock('@components/ripple', () => ({default: vi.fn()}));
 import AttachMenuButton from '@components/chat/attachMenuButton';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import '@/tests/helpers/a11yLayer';
 
 afterEach(() => document.body.replaceChildren());
 

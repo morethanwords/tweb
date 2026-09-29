@@ -2,6 +2,7 @@ import {render} from 'solid-js/web';
 import {createSignal} from 'solid-js';
 import {Message, Page, RichMessage, RichText} from '@layer';
 import {InstantViewBlocks} from '@components/instantView';
+import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 import {
   getMaximumHeightMediaSize,
@@ -647,7 +648,7 @@ describe('Instant View buttons (layer 229)', () => {
     expect(button.classList.contains(instantViewStyles.PageButtonInline)).toBe(true);
     expect(button.parentElement.textContent).toBe('Press Copy please');
 
-    button.click();
+    simulateClickEvent(button);
     await flush();
     expect(mocks.getRichPageButtonHandler).toHaveBeenCalledWith(expect.objectContaining({
       button: copy,

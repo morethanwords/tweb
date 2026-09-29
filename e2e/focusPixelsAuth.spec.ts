@@ -5,13 +5,13 @@ import {createSweepRecorder} from './focusPixels.helpers';
  * The sign-in screens as they really are: the entry point of an unauthorized
  * client, not the sandbox's fixtures of the same cards.
  *
- * It runs against a plain dev server with no session, which is what
- * `playwright.config.ts` starts when PLAYWRIGHT_BASE_URL is unset.
+ * It runs against a plain dev server with no session: the popup suite's, which
+ * `playwright.focus.config.ts` starts.
  */
 test('the sign-in screens show visible keyboard focus', async({page}, testInfo) => {
   test.setTimeout(15 * 60_000);
 
-  await page.goto('/');
+  await page.goto('/?a11y=1');
   await page.locator('#auth-pages').waitFor({state: 'visible', timeout: 120_000});
   await page.waitForTimeout(2500);
 

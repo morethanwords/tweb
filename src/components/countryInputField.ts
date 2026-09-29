@@ -13,6 +13,7 @@ import {getCountryEmoji} from '@vendor/emoji';
 import InputField, {InputFieldOptions} from '@components/inputField';
 import Scrollable from '@components/scrollable';
 import appNavigationController from '@components/appNavigationController';
+import Modes from '@config/modes';
 
 let countries: HelpCountry.helpCountry[];
 const setCountries = () => {
@@ -184,6 +185,7 @@ export default class CountryInputField extends InputField {
       this.hideTimeout = undefined;
 
       selectWrapper.classList.remove('hide');
+      selectWrapper.inert = false;
       void selectWrapper.offsetWidth; // reflow
       selectWrapper.classList.add('active');
       this.input.setAttribute('aria-expanded', 'true');
@@ -192,7 +194,7 @@ export default class CountryInputField extends InputField {
       // the key from a capture-phase listener on the document, so a listener of
       // ours never gets the chance to hold it back — the navigation stack is
       // where a closable layer says it is on top.
-      if(!appNavigationController.findItemByType('autocomplete-helper')) {
+      if(Modes.a11y && !appNavigationController.findItemByType('autocomplete-helper')) {
         appNavigationController.pushItem({
           type: 'autocomplete-helper',
           // returning nothing lets the item be popped: a second Escape then
@@ -282,7 +284,7 @@ export default class CountryInputField extends InputField {
         return;
       }
 
-      if(this.selectWrapper.classList.contains('hide')) {
+      if(!Modes.a11y || this.selectWrapper.classList.contains('hide')) {
         return;
       }
 
@@ -314,7 +316,12 @@ export default class CountryInputField extends InputField {
 
   public hidePicker = () => {
     if(this.hideTimeout !== undefined) return;
-    appNavigationController.removeByType('autocomplete-helper');
+    if(Modes.a11y) {
+      appNavigationController.removeByType('autocomplete-helper');
+      // At once, not when the fade is over: the Tab that closes the list moves on right after, and
+      // the list (a scroller Chrome makes focusable) would take the focus and then vanish under it.
+      this.selectWrapper.inert = true;
+    }
     this.input.setAttribute('aria-expanded', 'false');
     this.selectWrapper.classList.remove('active');
     this.hideTimeout = window.setTimeout(() => {

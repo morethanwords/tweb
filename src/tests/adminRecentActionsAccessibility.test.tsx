@@ -11,6 +11,7 @@ vi.mock('@lib/langPack', () => ({default: {format: (key: string) => key}}));
 
 import {ExpandableFilterGroup} from '@components/sidebarRight/tabs/adminRecentActions/filters/expandableFilterGroup';
 import {LogEntry} from '@components/sidebarRight/tabs/adminRecentActions/logEntry';
+import '@/tests/helpers/a11yLayer';
 
 let dispose: VoidFunction;
 afterEach(() => {

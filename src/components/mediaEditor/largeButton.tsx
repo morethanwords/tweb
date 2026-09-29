@@ -1,7 +1,7 @@
 import {JSX, splitProps} from 'solid-js';
-import RippleElement from '@components/rippleElement';
+import A11yButton from '@components/a11yButton';
 
-export type MediaEditorLargeButtonProps = JSX.ButtonHTMLAttributes<HTMLButtonElement> & {
+export type MediaEditorLargeButtonProps = JSX.HTMLAttributes<HTMLElement> & {
   active?: boolean;
   disabled?: boolean;
 };
@@ -9,10 +9,9 @@ export type MediaEditorLargeButtonProps = JSX.ButtonHTMLAttributes<HTMLButtonEle
 export default function LargeButton(inProps: MediaEditorLargeButtonProps) {
   const [props, rest] = splitProps(inProps, ['active', 'disabled', 'class', 'classList']);
   return (
-    <RippleElement
+    <A11yButton
       {...rest}
-      component="button"
-      type="button"
+      ripple
       disabled={props.disabled}
       aria-pressed={props.active}
       class="media-editor__large-button"

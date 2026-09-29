@@ -5,6 +5,7 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import swipe, {SwipeDirectiveArgs} from '@helpers/useSwipe'; swipe; // keep
 import useElementSize from '@hooks/useElementSize';
 import I18n, {i18n} from '@lib/langPack';
+import Modes from '@config/modes';
 
 import {IconTsx} from '@components/iconTsx';
 import ripple from '@components/ripple'; ripple; // keep
@@ -44,6 +45,7 @@ function handleNormalizedSliderKeyDown(event: KeyboardEvent, options: {
   step: number;
   onChange: (value: number) => void;
 }) {
+  if(!Modes.a11y) return;
   let value: number;
 
   switch(event.key) {
@@ -157,6 +159,7 @@ const VideoControls: Component<{}> = () => {
   });
 
   createEffect(() => {
+    if(!Modes.a11y) return;
     controlsContainer.inert = editorState.currentTab !== 'adjustments';
   });
 
@@ -336,6 +339,7 @@ const VideoControls: Component<{}> = () => {
               closeTooltip?.();
               if(mediaState.videoMuted) closeTooltip = showMutedTooltip(e.currentTarget).close;
             }}
+            tabIndex={Modes.a11y ? undefined : -1}
             aria-label={mediaState.videoMuted ? I18n.format('VoipUnmute', true) : I18n.format('Call.Mute', true)}
           >
             <IconTsx icon={mediaState.videoMuted ? 'volume_off_filled' : 'volume_up_filled'} aria-hidden={true} />
@@ -364,7 +368,7 @@ const VideoControls: Component<{}> = () => {
                 onChange: setVideoPositionFromKeyboard
               })}
               role="slider"
-              tabIndex={0}
+              tabIndex={Modes.a11y ? 0 : undefined}
               aria-label={I18n.format('MediaEditor.VideoPosition', true)}
               aria-orientation="horizontal"
               aria-valuemin={getSliderPercent(mediaState.videoCropStart)}
@@ -384,7 +388,7 @@ const VideoControls: Component<{}> = () => {
                 onChange: setCropStartFromKeyboard
               })}
               role="slider"
-              tabIndex={0}
+              tabIndex={Modes.a11y ? 0 : undefined}
               aria-label={I18n.format('MediaEditor.VideoCropStart', true)}
               aria-orientation="horizontal"
               aria-valuemin={getSliderPercent(Math.max(0, cropEnd() - maxLengthCap()))}
@@ -403,7 +407,7 @@ const VideoControls: Component<{}> = () => {
                 onChange: setCropEndFromKeyboard
               })}
               role="slider"
-              tabIndex={0}
+              tabIndex={Modes.a11y ? 0 : undefined}
               aria-label={I18n.format('MediaEditor.VideoCropEnd', true)}
               aria-orientation="horizontal"
               aria-valuemin={getSliderPercent(mediaState.videoCropStart + minLength())}
@@ -431,6 +435,7 @@ const VideoControls: Component<{}> = () => {
           onClick={() => {
             editorState.isPlaying = !editorState.isPlaying;
           }}
+          tabIndex={Modes.a11y ? undefined : -1}
           aria-label={I18n.format(editorState.isPlaying ? 'Pause' : 'Play', true)}
         >
           <span class={styles.PlayButtonInner} aria-hidden={true}> {/* <span> prevents duplicating the svg on hot reload */}
@@ -538,7 +543,7 @@ const ThumbnailTrack: Component<{
           }
         })}
         role="slider"
-        tabIndex={props.isDraggingSomething ? -1 : 0}
+        tabIndex={Modes.a11y ? (props.isDraggingSomething ? -1 : 0) : undefined}
         aria-disabled={props.isDraggingSomething}
         aria-label={I18n.format('MediaEditor.VideoCoverFrame', true)}
         aria-orientation="horizontal"

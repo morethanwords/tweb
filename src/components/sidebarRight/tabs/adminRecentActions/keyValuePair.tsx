@@ -1,5 +1,6 @@
 import {JSX, Show} from 'solid-js';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {ExportedChatInvite} from '@layer';
 import {i18n} from '@lib/langPack';
@@ -24,7 +25,7 @@ export const KeyValuePair = (props: {
         [styles.hoverable]: !!props.onClick
       }}
       role={props.onClick ? 'button' : undefined}
-      tabindex={props.onClick ? 0 : undefined}
+      tabindex={props.onClick && Modes.a11y ? 0 : undefined}
       onKeyDown={props.onClick ? buttonKeyDown : undefined}
       onClick={props.onClick}
     >

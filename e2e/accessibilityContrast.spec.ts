@@ -15,7 +15,7 @@ const readPalette = (page: Page) => page.locator('html').evaluate((element) => {
 
 for(const theme of ['day', 'night', 'light', 'tinted']) test(`contrast mode restores the original palette and leaves saved themes unchanged (${theme})`, async({page}) => {
   const errors = trackBrowserErrors(page);
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   const themePicker = page.getByRole('combobox', {name: 'Theme', exact: true});
   await themePicker.selectOption(theme);
   await expect(page.locator('html')).not.toHaveClass(/high-contrast/);
@@ -55,7 +55,7 @@ for(const theme of ['day', 'night', 'light', 'tinted']) test(`contrast mode rest
 });
 
 test('contrast changes follow the client into another document and back', async({page}) => {
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   const original = await readPalette(page);
   expect(await moveClient(page, true)).toBe(true);
   const otherRoot = page.frameLocator('#a11y-other-window').locator('html');

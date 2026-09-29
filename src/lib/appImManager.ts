@@ -21,6 +21,7 @@ import ChatDragAndDrop from '@components/chat/dragAndDrop';
 import {doubleRaf} from '@helpers/schedulers';
 import useHeavyAnimationCheck, {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
 import {AppPrivateSearchTab} from '@components/solidJsTabs/tabs';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
@@ -349,7 +350,7 @@ export class AppImManager extends EventListenerBase<{
     this.selectTab(APP_TABS.CHATLIST);
 
     const skipLink = document.getElementById('skip-to-content');
-    if(skipLink) attachSkipToContent(skipLink, this.columnEl);
+    if(skipLink && Modes.a11y) attachSkipToContent(skipLink, this.columnEl);
     this.setStaticLandmarkLabels();
     rootScope.addEventListener('language_change', this.setStaticLandmarkLabels);
 
@@ -1708,25 +1709,33 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private attachKeydownListener() {
+    const IGNORE_KEYS = new Set(['Meta', 'Control']);
     const onKeyDown = async(e: KeyboardEvent) => {
       const key = e.key;
       const isSelectionCollapsed = document.getSelection().isCollapsed;
       if(
-        shouldPreserveKeyboardFocus(e) ||
+        (Modes.a11y ? shouldPreserveKeyboardFocus(e) : IGNORE_KEYS.has(key)) ||
         overlayCounter.isOverlayActive ||
         !e.isTrusted // * ignore synthetic events
       ) return;
 
       const target = e.target as HTMLElement;
 
-      const targetIsInput = isTargetAnInput(target);
+      // Without the a11y layer, what counted as an input before it: any <input> but a checkbox or a
+      // radio. A seek bar (range) that took the focus on a click then keeps its keys, Enter included,
+      // instead of handing them to the composer, which would send the draft.
+      const targetIsInput = Modes.a11y ? isTargetAnInput(target) : !!target && (
+        target.tagName === 'INPUT' && !['checkbox', 'radio'].includes((target as HTMLInputElement).type) ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
 
       // if(target.tagName === 'INPUT') return;
 
       // this.log('onkeydown', e, document.activeElement);
 
       const chat = this.chat;
-      if(targetIsInput && target !== chat?.input?.messageInput) return;
+      if(Modes.a11y && targetIsInput && target !== chat?.input?.messageInput) return;
 
       // Hand keyboard focus to the bubbles scroll container so the browser scrolls it natively.
       // (overflow:auto + outline:none → focus is invisible.)
@@ -3294,6 +3303,7 @@ export class AppImManager extends EventListenerBase<{
   };
 
   private updateColumnAccessibility() {
+    if(!Modes.a11y) return;
     // On mobile these columns slide outside the viewport but stay mounted.
     // Match their keyboard/AT visibility to the selected screen, including PiP.
     appSidebarLeft.sidebarEl.inert = mediaSizes.isMobile && this.tabId !== APP_TABS.CHATLIST;

@@ -240,7 +240,7 @@
   // not know that: tabbing to a row down there scrolls it only just inside the
   // box, which parks it behind the footer with its focus ring out of sight.
   // This tells the scroll where its usable edge actually is.
-  &-container:has(> #{&}-footer-floating) .scrollable-y {
+  :where(.a11y) &-container:has(> #{&}-footer-floating) .scrollable-y {
     scroll-padding-bottom: var(--popup-footer-height);
   }
 

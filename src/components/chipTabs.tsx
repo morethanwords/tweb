@@ -10,6 +10,7 @@ import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleTabKeyDown} from '@helpers/dom/tabList';
+import Modes from '@config/modes';
 import filterAsync from '../helpers/array/filterAsync';
 
 interface ChipTabsContextValue {
@@ -35,7 +36,7 @@ export function ChipTab(props: {
       data-value={props.value}
       role="tab"
       aria-selected={selected()}
-      tabindex={selected() ? 0 : -1}
+      tabindex={Modes.a11y ? (selected() ? 0 : -1) : undefined}
     >
       {props.children}
     </div>

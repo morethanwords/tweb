@@ -1,5 +1,6 @@
 import Icon from '@components/icon';
 import Button from '@components/button';
+import Modes from '@config/modes';
 import StackedAvatars from '@components/stackedAvatars';
 import {wrapCallDuration} from '@components/wrappers/wrapDuration';
 import {formatTime} from '@helpers/date';
@@ -99,7 +100,13 @@ export default function wrapCallBubble(options: {
   const {action, isOut, mid, date, fromId, middleware, loadPromises} = options;
   const isConference = action._ === 'messageActionConferenceCall';
 
-  const element = Button('bubble-call', {noRipple: true});
+  let element: HTMLElement;
+  if(Modes.a11y) {
+    element = Button('bubble-call', {noRipple: true});
+  } else {
+    element = document.createElement('div');
+    element.classList.add('bubble-call');
+  }
   element.append(Icon(
     action.pFlags.video ? 'videocamera' : (isConference ? 'group' : 'phone'),
     'bubble-call-icon'

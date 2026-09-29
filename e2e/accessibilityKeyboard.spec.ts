@@ -2,7 +2,7 @@ import {expect} from '@playwright/test';
 import {test} from './workerContext';
 import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
-test.beforeEach(async({page}) => preparePopupSandbox(page));
+test.beforeEach(async({page}) => preparePopupSandbox(page, true, {a11y: true}));
 
 test('Enter on Cancel never triggers the confirmation action', async({page}) => {
   expect(await openStory(page, 'confirmation/generic')).toBeNull();

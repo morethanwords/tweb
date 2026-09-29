@@ -1,4 +1,4 @@
-import {Show, createSignal} from 'solid-js';
+import {JSX, Show, createSignal} from 'solid-js';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import rootScope from '@lib/rootScope';
@@ -19,6 +19,7 @@ import rtmpCallsController from '@lib/calls/rtmpCallsController';
 
 import '@components/rtmp/recordPopup.css';
 import {i18n} from '@lib/langPack';
+import Modes from '@config/modes';
 
 const cnPopup = (className = '') => `rtmp-record-popup${className}`;
 
@@ -55,6 +56,17 @@ interface RtmpRecordPopupContentProps {
 }
 
 const TITLE_MAX_LENGTH = 40
+
+// With `?a11y=1` each picture sits in a toggle button; without it the picture takes the click itself.
+function OrientationChoice(props: {pressed: boolean, onChoose: () => void, children: JSX.Element}) {
+  if(Modes.a11y) {
+    return <button type="button" aria-pressed={props.pressed} onClick={props.onChoose}>{props.children}</button>;
+  }
+
+  const img = props.children as HTMLElement;
+  img.addEventListener('click', props.onChoose);
+  return img;
+}
 
 const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
   const [name, setName] = createSignal('');
@@ -118,7 +130,7 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
           <Show when={recordVideo()}>
             <div class={cnPopup('-preview-wrap')}>
               <div class={cnPopup('-preview-images')} role="group" aria-label={i18n('Rtmp.RecordPopup.RecordVideoHint').textContent}>
-                <button type="button" aria-pressed={videoHorizontal()} onClick={() => setVideoHorizontal(true)}>
+                <OrientationChoice pressed={videoHorizontal()} onChoose={() => setVideoHorizontal(true)}>
                 <img
                   src={imgVideoHorizontal}
                   alt={i18n('Rtmp.RecordPopup.Horizontal').innerText}
@@ -128,8 +140,8 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
                     [cnPopup('-preview-img_active')]: videoHorizontal()
                   }}
                 />
-                </button>
-                <button type="button" aria-pressed={!videoHorizontal()} onClick={() => setVideoHorizontal(false)}>
+                </OrientationChoice>
+                <OrientationChoice pressed={!videoHorizontal()} onChoose={() => setVideoHorizontal(false)}>
                 <img
                   src={imgVideoVertical}
                   alt={i18n('Rtmp.RecordPopup.Vertical').innerText}
@@ -139,7 +151,7 @@ const RtmpRecordPopupContent = (props: RtmpRecordPopupContentProps) => {
                     [cnPopup('-preview-img_active')]: !videoHorizontal()
                   }}
                 />
-                </button>
+                </OrientationChoice>
               </div>
               <div class={cnPopup('-preview-title')}>
                 {i18n('Rtmp.RecordPopup.RecordVideoHint')}

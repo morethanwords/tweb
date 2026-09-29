@@ -3,6 +3,7 @@ import {Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import {keepMe} from '@helpers/keepMe';
 import ListenerSetter from '@helpers/listenerSetter';
 import ripple from '@components/ripple';
@@ -54,7 +55,7 @@ const InlineSelect: Component<{
 
     // Move focus to the currently-selected option so keyboard users can immediately
     // arrow/activate within the listbox and Escape closes it.
-    (selectOptionEl as HTMLElement).focus({preventScroll: true});
+    if(Modes.a11y) (selectOptionEl as HTMLElement).focus({preventScroll: true});
 
     const valueRect = valueEl.getBoundingClientRect();
     const selectRect = selectEl.getBoundingClientRect();
@@ -151,7 +152,7 @@ const InlineSelect: Component<{
                 props.onClose?.();
               }}
               onKeyDown={(e) => {
-                if(e.key === 'Escape') {
+                if(Modes.a11y && e.key === 'Escape') {
                   e.stopPropagation();
                   props.onClose?.();
                 }
@@ -169,7 +170,7 @@ const InlineSelect: Component<{
                           [styles.selected]: isSelected(option.value)
                         }}
                         role="option"
-                        tabindex="0"
+                        tabindex={Modes.a11y ? 0 : undefined}
                         aria-selected={isSelected(option.value)}
                         onClick={[props.onChange, option.value]}
                         onKeyDown={buttonKeyDown}

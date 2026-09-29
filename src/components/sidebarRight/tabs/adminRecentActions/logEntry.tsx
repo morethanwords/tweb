@@ -3,6 +3,7 @@ import styles from '@components/sidebarRight/tabs/adminRecentActions/logEntry.mo
 import {formatDate} from '@helpers/date';
 import I18n from '@lib/langPack';
 import {Dynamic} from 'solid-js/web';
+import Modes from '@config/modes';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {createSignal, JSX, Show} from 'solid-js';
 
@@ -33,9 +34,10 @@ export const LogEntry = (props: LogEntryProps) => {
       }}
     >
       <div class={styles.Header}>
+        {/* native buttons only with the keyboard layer: they keep their own line height and take the focus on click */}
         <Dynamic
-          component={props.onExpandedChange ? 'button' : 'div'}
-          type={props.onExpandedChange ? 'button' : undefined}
+          component={Modes.a11y && props.onExpandedChange ? 'button' : 'div'}
+          type={Modes.a11y && props.onExpandedChange ? 'button' : undefined}
           class={styles.Icon}
           aria-label={props.onExpandedChange ? I18n.format('AccDescr.LogEntryDetails', true) : undefined}
           aria-expanded={props.onExpandedChange ? !!props.expanded : undefined}
@@ -43,8 +45,8 @@ export const LogEntry = (props: LogEntryProps) => {
         <div class={styles.Group}>
           <div class={styles.PeerTitle}>
             <Dynamic
-              component={props.onPeerTitleClick ? 'button' : 'div'}
-              type={props.onPeerTitleClick ? 'button' : undefined}
+              component={Modes.a11y && props.onPeerTitleClick ? 'button' : 'div'}
+              type={Modes.a11y && props.onPeerTitleClick ? 'button' : undefined}
               class={`${styles.PeerTitleText} interactable`}
               onClick={props.onPeerTitleClick}
             >

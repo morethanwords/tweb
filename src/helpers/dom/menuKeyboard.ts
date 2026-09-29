@@ -1,3 +1,5 @@
+import Modes from '@config/modes';
+
 export function getEnabledMenuItems(menu: HTMLElement) {
   return Array.from(menu.querySelectorAll<HTMLElement>('.btn-menu-item'))
   .filter((item) => item.closest('.btn-menu') === menu)
@@ -12,7 +14,7 @@ export function getEnabledMenuItems(menu: HTMLElement) {
 
 /** The same activation path for popup menus and inline ButtonMenu consumers. */
 export function handleMenuKeyDown(event: KeyboardEvent, menu = event.currentTarget as HTMLElement) {
-  if(event.defaultPrevented || event.isComposing) return;
+  if(!Modes.a11y || event.defaultPrevented || event.isComposing) return;
   const items = getEnabledMenuItems(menu);
   const current = event.target as HTMLElement;
   const index = items.indexOf(current);

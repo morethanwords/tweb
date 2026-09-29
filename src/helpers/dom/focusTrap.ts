@@ -5,6 +5,7 @@
  */
 
 import {onAppWindowChange} from '@helpers/appWindow';
+import Modes from '@config/modes';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -139,6 +140,8 @@ export default function createFocusTrap(element: HTMLElement, isActive: () => bo
 
   const trap = {
     activate(restoreTo?: HTMLElement, initialFocus?: HTMLElement) {
+      // without the a11y layer nothing is trapped, focused or restored
+      if(!Modes.a11y) return;
       if(activeDocument) trap.deactivate(false);
       const doc = element.ownerDocument || document;
       token.restoreTo = restoreTo || doc.activeElement as HTMLElement;

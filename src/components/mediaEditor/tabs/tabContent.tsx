@@ -2,6 +2,7 @@ import {Accessor, createContext, createEffect, createSignal, JSX, onCleanup, onM
 
 import {doubleRaf} from '@helpers/schedulers';
 import Scrollable from '@components/scrollable';
+import Modes from '@config/modes';
 
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {delay} from '@components/mediaEditor/utils';
@@ -66,7 +67,7 @@ export default function TabContent(props: {
       element.classList[action]('media-editor__tab-content--' + modifier);
 
     cls(oldElement, 'add', 'exit');
-    oldElement.inert = true;
+    if(Modes.a11y) oldElement.inert = true;
     oldElement.setAttribute('aria-hidden', 'true');
     oldElement.removeAttribute('id');
 
@@ -113,7 +114,7 @@ export default function TabContent(props: {
         props.onContainer(el);
       }}
       class="media-editor__tab-content"
-      inert={!editorState.isReady}
+      inert={Modes.a11y && !editorState.isReady}
       aria-hidden={!editorState.isReady}
     >
       {initialElement}

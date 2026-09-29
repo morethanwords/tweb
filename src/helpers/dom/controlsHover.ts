@@ -3,6 +3,7 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import ListenerSetter from '@helpers/listenerSetter';
 import safeAssign from '@helpers/object/safeAssign';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import Modes from '@config/modes';
 
 export default class ControlsHover extends EventListenerBase<{
   toggleControls: (show: boolean) => void
@@ -33,12 +34,14 @@ export default class ControlsHover extends EventListenerBase<{
     safeAssign(this, options);
 
     const {listenerSetter, element} = this;
-    listenerSetter.add(element.ownerDocument)('focusin', () => {
-      if(this.hasKeyboardFocus()) this.showControls(false);
-    });
-    listenerSetter.add(element.ownerDocument)('focusout', () => {
-      if(element.classList.contains('show-controls')) this.hideControls(true);
-    });
+    if(Modes.a11y) {
+      listenerSetter.add(element.ownerDocument)('focusin', () => {
+        if(this.hasKeyboardFocus()) this.showControls(false);
+      });
+      listenerSetter.add(element.ownerDocument)('focusout', () => {
+        if(element.classList.contains('show-controls')) this.hideControls(true);
+      });
+    }
     listenerSetter.addCleanup(() => clearTimeout(this.hideControlsTimeout));
 
     if(IS_TOUCH_SUPPORTED) {
@@ -110,6 +113,7 @@ export default class ControlsHover extends EventListenerBase<{
   };
 
   private hasKeyboardFocus() {
+    if(!Modes.a11y) return false;
     const active = this.element.ownerDocument.activeElement as HTMLElement;
     if(!active?.matches(':focus-visible')) return false;
     const controls = Array.isArray(this.showOnLeaveToClassName) ? this.showOnLeaveToClassName : [this.showOnLeaveToClassName];

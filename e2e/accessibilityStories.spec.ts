@@ -4,7 +4,7 @@ import {preparePopupSandbox} from './popupSandbox.helpers';
 import {expectNoA11yViolations, moveClient, trackBrowserErrors} from './accessibility.helpers';
 
 async function prepareStories(page: Page, inOtherDocument = false) {
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   await page.evaluate(async() => {
     const load = (path: string) => import('/src/' + path);
     const [{storyItem, photo, SELF_PEER_ID, selfUser}, {seedMirror}, {getMockManagers}, {createStoriesViewerWithProvider}] = await Promise.all([

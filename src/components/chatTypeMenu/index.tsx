@@ -1,6 +1,7 @@
 import {createEffect, createMemo, createRenderEffect, onCleanup} from 'solid-js';
 import type {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import {i18n, LangPackKey} from '@lib/langPack';
+import Modes from '@config/modes';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
@@ -69,7 +70,7 @@ const ChatTypeMenu = defineSolidElement({
         [styles.hidden]: !!props.hidden
       }}
       role="button"
-      tabindex={props.hidden ? -1 : 0}
+      tabindex={Modes.a11y ? (props.hidden ? -1 : 0) : undefined}
     >{i18n(langKeyMap[selected()])}</span> as HTMLSpanElement;
 
     const buttonMenu = ButtonMenuToggle({

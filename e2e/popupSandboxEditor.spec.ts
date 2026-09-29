@@ -46,7 +46,8 @@ test('link popup validates, moves focus with Enter, submits and cancels through 
 test('media caption keyboard formatting preserves text and does not submit the popup', async({page}) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/?popups=1#newMedia');
+  // the toolbar's buttons pressed from the keyboard: the keyboard layer
+  await page.goto('/?popups=1&a11y=1#newMedia');
   await page.waitForFunction(() => !!window.popupSandbox, null, {timeout: 30_000});
   await page.evaluate(() => window.popupSandbox.ready());
   const popup = page.locator('.popup-new-media.active');

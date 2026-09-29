@@ -4,8 +4,9 @@ import ripple from '@components/ripple';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {attachHotClassName} from '@helpers/solid/classname';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
-import {createEffect, onCleanup, Show} from 'solid-js';
+import {createEffect, createSignal, onCleanup, Show} from 'solid-js';
 import I18n from '@lib/langPack';
+import Modes from '@config/modes';
 import styles from './attachMenuButton.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
@@ -36,8 +37,22 @@ const AttachMenuButton = defineSolidElement({
       onCleanup(() => props.element.classList.remove(styles.disabled));
     });
 
+    // The keyboard layer cancels from the whole button, where Enter and Space land; without it only
+    // the loader under the pointer does, as before the layer.
+    const [loadingContainer, setLoadingContainer] = createSignal<HTMLSpanElement>();
     createEffect(() => {
-      if(!props.isLoading) return;
+      if(Modes.a11y || !props.isLoading || !loadingContainer()) return;
+
+      const clean = attachClickEvent(loadingContainer(), (e) => {
+        e.stopPropagation();
+        props.onCancel?.();
+      });
+
+      onCleanup(clean);
+    });
+
+    createEffect(() => {
+      if(!Modes.a11y || !props.isLoading) return;
       const hasPopup = props.element.getAttribute('aria-haspopup');
       props.element.removeAttribute('aria-haspopup');
 
@@ -66,7 +81,7 @@ const AttachMenuButton = defineSolidElement({
           />
         </Show>
         <Show when={props.isLoading}>
-          <span class={styles.LoadingContainer}>
+          <span ref={setLoadingContainer} class={styles.LoadingContainer}>
             <IconTsx
               class={`${styles.Icon} ${styles.close} button-icon`}
               icon='close'

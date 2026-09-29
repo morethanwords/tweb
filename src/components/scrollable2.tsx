@@ -5,6 +5,7 @@ import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import classNames from '@helpers/string/classNames';
 import useHeavyAnimationCheck from '@hooks/useHeavyAnimationCheck';
+import Modes from '@config/modes';
 
 const SCROLL_THROTTLE = /* IS_ANDROID ? 200 :  */24;
 
@@ -342,7 +343,7 @@ export default function Scrollable(props: {
   let ref: HTMLDivElement, thumbRef: HTMLDivElement;
   return (
     <div
-      tabIndex={props.tabIndex}
+      tabIndex={Modes.a11y ? props.tabIndex : undefined}
       ref={(_ref) => {
         ref = _ref;
         (props.ref as any)?.(_ref);

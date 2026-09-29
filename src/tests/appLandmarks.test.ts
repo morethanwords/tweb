@@ -5,6 +5,7 @@
  */
 
 import {attachSkipToContent, setLandmarkLabels} from '@helpers/dom/appLandmarks';
+import '@/tests/helpers/a11yLayer';
 
 function build() {
   document.body.innerHTML = `

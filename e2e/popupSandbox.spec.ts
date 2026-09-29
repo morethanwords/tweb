@@ -1,6 +1,6 @@
 import {expect, Page} from '@playwright/test';
 import {trackBrowserErrors} from './accessibility.helpers';
-import {openStory, preparePopupSandbox, takeStoryPart} from './popupSandbox.helpers';
+import {closeStory, openStory, preparePopupSandbox, takeStoryPart} from './popupSandbox.helpers';
 import {test} from './workerContext';
 
 const SHOWN_TIMEOUT = 10_000;
@@ -183,21 +183,8 @@ for(let part = 0; part < PARTS; ++part) test(`every popup story opens and become
     // Teardown is deliberately outside the assertion window (errors reset at the top of the loop):
     // several popups model "cancelled" as a rejected promise, and closing one from a script rather
     // than through the caller's own flow leaves that rejection unhandled — the sandbox's doing.
-    await page.evaluate(() => window.popupSandbox.closePopups());
-    // A closed popup leaves the DOM in the same 250ms hide timeout that fires `closeAfterTimeout`,
-    // so once it is gone its teardown has run; a fixed 400ms overpaid that on every story. A
-    // surface (the sign-in cards, the in-app browser) gives no such signal and keeps the 400ms.
-    if(story.surface) {
-      await page.waitForTimeout(400);
-    } else {
-      try {
-        await expect.poll(
-          () => page.evaluate(() => !!document.querySelector('.popup')),
-          {timeout: SHOWN_TIMEOUT, intervals: [20]}
-        ).toBe(false);
-      } catch{
-        failed.push(`${story.id}: still in the DOM after closing`);
-      }
+    if(!(await closeStory(page, story, {timeout: SHOWN_TIMEOUT}))) {
+      failed.push(`${story.id}: still in the DOM after closing`);
     }
     if(renderErrors.length) {
       failed.push(`${story.id}: render error — ${renderErrors.join(' | ')}`);

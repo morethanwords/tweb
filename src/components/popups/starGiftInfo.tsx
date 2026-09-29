@@ -25,6 +25,7 @@ import {copyTextToClipboard} from '@helpers/clipboard';
 import {showSharingPicker2Popup} from '@components/popups/pickUser';
 import {I18nTsx} from '@helpers/solid/i18n';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import tsNow from '@helpers/tsNow';
 import {useAppState} from '@stores/appState';
 import transferStarGift from '@components/popups/transferStarGift';
@@ -95,7 +96,7 @@ export function AttributeValue(props: {name: string, rarity: StarGiftAttributeRa
         <span
           class="popup-star-gift-info-attribute-clickable"
           role="button"
-          tabindex={0}
+          tabindex={Modes.a11y ? 0 : undefined}
           onClick={props.onClick}
           onKeyDown={buttonKeyDown}
         >

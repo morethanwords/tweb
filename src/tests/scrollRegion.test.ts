@@ -5,6 +5,7 @@
  */
 
 import updateScrollRegionFocusable from '@helpers/dom/scrollRegion';
+import '@/tests/helpers/a11yLayer';
 
 function scroller(innerHTML: string) {
   const el = document.createElement('div');

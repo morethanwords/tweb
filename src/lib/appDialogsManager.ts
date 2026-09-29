@@ -22,6 +22,7 @@ import Button from '@components/button';
 import SetTransition from '@components/singleTransition';
 import {MyDraftMessage} from '@appManagers/appDraftsManager';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import PeerTitle, {changeTitleEmojiColor} from '@components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -2303,7 +2304,7 @@ export class AppDialogsManager {
       // guard that lives in that listener rather than in `onPress`, so the story
       // check has to be repeated here. `e.button` is 0 for a keyboard click and
       // `isDialogListAction` is already ruled out above.
-      if(e.detail === 0 && !setWillOpenStory(e)) {
+      if(Modes.a11y && e.detail === 0 && !setWillOpenStory(e)) {
         onPress(e);
       }
 

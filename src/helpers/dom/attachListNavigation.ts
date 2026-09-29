@@ -4,6 +4,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import isKeyboardControl from '@helpers/dom/isKeyboardControl';
+import Modes from '@config/modes';
 
 type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 const HANDLE_EVENT = 'keydown';
@@ -116,7 +117,7 @@ export default function attachListNavigation({
 
   let onKeyDown = (e: KeyboardEvent) => {
     if(e.defaultPrevented || e.isComposing || !getItems().length) return;
-    if(!focusable && isKeyboardControl(e.target as HTMLElement)) return;
+    if(!focusable && Modes.a11y && isKeyboardControl(e.target as HTMLElement)) return;
     if(focusable) {
       const focused = findUpAsChild(e.target as HTMLElement, list);
       if(!focused || !getItems().includes(focused)) return;
@@ -213,7 +214,7 @@ export default function attachListNavigation({
   if(waitForKeySet) {
     const _onKeyDown = onKeyDown;
     onKeyDown = (e) => {
-      if(e.defaultPrevented || isKeyboardControl(e.target as HTMLElement)) return;
+      if(e.defaultPrevented || Modes.a11y && isKeyboardControl(e.target as HTMLElement)) return;
       if(waitForKeySet.has(e.key)) {
         cancelEvent(e);
 
@@ -260,13 +261,17 @@ export function attachPickerGrid(list: HTMLElement, itemSelector: string, getLab
       controls[0];
     controls.forEach((item, index) => {
       if(item.tagName !== 'BUTTON') item.setAttribute('role', 'button');
-      item.tabIndex = item === current ? 0 : -1;
+      if(Modes.a11y) item.tabIndex = item === current ? 0 : -1;
       if(getLabel) item.setAttribute('aria-label', getLabel(item, index));
     });
     return current;
   };
   const observer = new MutationObserver(sync);
   observer.observe(list, {childList: true});
+  if(!Modes.a11y) { // the names only: no roving tab stop, no arrow keys
+    sync();
+    return () => observer.disconnect();
+  }
   // Separate, as `subtree` here would also report every node a lazy grid item loads into itself.
   const choiceObserver = new MutationObserver(sync);
   choiceObserver.observe(list, {subtree: true, attributeFilter: ['aria-pressed']});

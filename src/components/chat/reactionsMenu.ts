@@ -1,5 +1,6 @@
 import type {PeerAvailableReactions} from '@appManagers/appReactionsManager';
 import Button from '@components/button';
+import Modes from '@config/modes';
 import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_MOBILE, IS_SAFARI} from '@environment/userAgent';
@@ -528,9 +529,11 @@ export class ChatReactionsMenu {
       warmUpReactionEffect(availableReaction);
     }
 
+    // a native button only with the keyboard layer: it takes the focus on click
     const reactionDiv = Button(REACTION_CLASS_NAME, {
       noRipple: true,
-      ariaLabel: reaction._ === 'reactionPaid' ? 'StarsReactionTitle' : 'Reactions'
+      ariaLabel: reaction._ === 'reactionPaid' ? 'StarsReactionTitle' : 'Reactions',
+      asDiv: !Modes.a11y
     });
     if(availableReaction?.title || reaction._ === 'reactionEmoji') {
       reactionDiv.setAttribute('aria-label', availableReaction?.title || (reaction as Reaction.reactionEmoji).emoticon);

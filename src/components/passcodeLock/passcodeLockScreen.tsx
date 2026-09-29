@@ -5,6 +5,7 @@ import {getAppWindow} from '@helpers/appWindow';
 import focusInput from '@helpers/dom/focusInput';
 import createFocusTrap from '@helpers/dom/focusTrap';
 import {keepMe} from '@helpers/keepMe';
+import Modes from '@config/modes';
 import pause from '@helpers/schedulers/pause';
 import throttle from '@helpers/schedulers/throttle';
 import AccountController from '@lib/accounts/accountController';
@@ -90,14 +91,18 @@ const PasscodeLockScreen: Component<{
       props.onAnimationEnd?.();
     })();
 
+    const listenerDoc = Modes.a11y ? doc : getAppWindow().document;
     const listener = (e: KeyboardEvent) => {
-      if(e.defaultPrevented || store.isLogoutPopupOpen ||
+      if(!Modes.a11y) {
+        const activeDoc = getAppWindow().document; // active window (the PiP doc when popped out)
+        if(activeDoc.activeElement && activeDoc.activeElement.tagName === 'INPUT') return;
+      } else if(e.defaultPrevented || store.isLogoutPopupOpen ||
         e.target !== doc.body && e.target !== container) return;
       focusInput(passwordInputField.input, e);
     };
-    doc.addEventListener('keydown', listener);
+    listenerDoc.addEventListener('keydown', listener);
     onCleanup(() => {
-      doc.removeEventListener('keydown', listener);
+      listenerDoc.removeEventListener('keydown', listener);
     });
   });
 
@@ -207,12 +212,16 @@ const PasscodeLockScreen: Component<{
           {input}
           <Space amount="1rem" />
           <button
-            type='submit'
+            type={Modes.a11y ? 'submit' : 'button'}
+            onMouseDown={Modes.a11y ? undefined : () => {
+              onSubmit();
+            }}
             class={`btn-primary btn-color-primary btn-large ${styles.SubmitButton}`}
             disabled={!store.passcode}
           >
             {i18n('PasscodeLock.Proceed')}
           </button>
+          {!Modes.a11y && <button hidden aria-hidden="true" style={{visibility: 'hidden', height: '0', width: '0'}} type='submit' />}
         </form>
         <Space amount="1.625rem" />
         <div class={styles.Description}>

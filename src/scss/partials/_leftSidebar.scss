@@ -506,7 +506,10 @@
       } */
       &:not(.is-hidden) {
         transform: translateZ(0);
-        visibility: visible;
+
+        :where(.a11y) & {
+          visibility: visible;
+        }
       }
     }
 
@@ -1104,7 +1107,7 @@
       // is what separates "focused" from "selected", and it reads against any
       // wallpaper because it is drawn in the surface colour rather than in
       // another tint of the border's own.
-      &:focus-visible {
+      :where(.a11y) &:focus-visible {
         outline: none;
 
         &:after {

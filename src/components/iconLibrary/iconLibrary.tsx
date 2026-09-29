@@ -4,6 +4,7 @@ import Icons from '@/icons';
 
 import Scrollable from '@components/scrollable2';
 import {IconTsx} from '@components/iconTsx';
+import Modes from '@config/modes';
 
 import styles from '@components/iconLibrary/iconLibrary.module.scss';
 
@@ -51,9 +52,13 @@ const IconLibrary: Component<{}> = () => {
 
 const IconItem: Component<{
   icon: Icon;
-  onMouseEnter: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
-  onClick: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
+  onMouseEnter: JSX.EventHandlerUnion<HTMLElement, MouseEvent>;
+  onClick: JSX.EventHandlerUnion<HTMLElement, MouseEvent>;
 }> = (props) => {
+  if(!Modes.a11y) {
+    return <IconTsx class={/* @once */ styles.Icon} icon={/* @once */ props.icon} onMouseEnter={/* @once */ props.onMouseEnter} onClick={/* @once */ props.onClick} />;
+  }
+
   return (
     <button
       type="button"

@@ -1,4 +1,5 @@
 import {handleMenuKeyDown} from '@helpers/dom/menuKeyboard';
+import Modes from '@config/modes';
 import flatten from '@helpers/array/flatten';
 import contextMenuController from '@helpers/contextMenuController';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -117,7 +118,7 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   // so these are not tab-reachable until the menu is actually open.
   if(onClick || options.inner) {
     el.setAttribute('role', 'menuitem');
-    el.tabIndex = 0;
+    if(Modes.a11y) el.tabIndex = 0;
   }
 
   if(IS_MOBILE) {
@@ -320,7 +321,58 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
 
 
   const add = listenerSetter ? listenerSetter.add(el) : el.addEventListener.bind(el);
-  add('keydown', handleMenuKeyDown);
+  if(Modes.a11y) {
+    add('keydown', handleMenuKeyDown);
+    return el;
+  }
+
+  // Without the a11y layer: the ordinary tab model — plain action rows are tab
+  // stops activated by Enter/Space, native checkbox/radio controls own their focus.
+  buttons.forEach(({element, onClick, checkboxField}) => {
+    if(!onClick || checkboxField || !element.classList.contains('btn-menu-item')) return;
+    element.tabIndex = 0;
+  });
+
+  add('keydown', (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest<HTMLElement>('.btn-menu-item');
+    const button = item && buttons.find(({element}) => element === item);
+
+    const radioInput = button?.checkboxField?.input;
+    const radioStep = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 :
+      (e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0);
+    if(
+      target === radioInput &&
+      radioInput.type === 'radio' &&
+      radioStep &&
+      button.radioGroup &&
+      button.onClick
+    ) {
+      const group = buttons.filter((candidate) =>
+        candidate.radioGroup === button.radioGroup &&
+        candidate.checkboxField?.input.type === 'radio' &&
+        candidate.checkboxField.input.name === radioInput.name &&
+        candidate.onClick
+      );
+      const index = group.indexOf(button);
+      const next = group[(index + radioStep + group.length) % group.length];
+      if(next && next !== button) {
+        cancelEvent(e);
+        next.checkboxField.input.focus();
+        simulateClickEvent(next.element);
+      }
+      return;
+    }
+
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+
+    const isActionRow = target === item && !!button?.onClick && !button.checkboxField;
+    const isNativeChoice = target === button?.checkboxField?.input && !!button.onClick;
+    if(!isActionRow && !isNativeChoice) return;
+
+    cancelEvent(e);
+    simulateClickEvent(item);
+  });
 
   return el;
 }

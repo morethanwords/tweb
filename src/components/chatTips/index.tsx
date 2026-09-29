@@ -2,6 +2,7 @@ import {Component, createEffect, createSignal, createUniqueId, For, onCleanup, S
 import {Dynamic, Portal, render} from 'solid-js/web';
 
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import Modes from '@config/modes';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import {useMediaSizes} from '@helpers/mediaSizes';
 import classNames from '@helpers/string/classNames';
@@ -193,13 +194,13 @@ function ChatTipsDeck() {
           <div class={styles.stage}>
             <For each={TIPS}>{(Tip, i) => (
               // A waiting card is only faded, so `inert` is what takes it out of the tab order
-              // and the accessibility tree.
+              // and the accessibility tree — with the keyboard layer: it blocks pointer clicks too.
               <div
                 class={classNames(styles.slot, i() === index() && styles.slotActive)}
                 style={{'--tip-slide': offsetOf(i())}}
                 role="group"
                 aria-labelledby={titleIds[i()]}
-                inert={i() !== index()}
+                inert={Modes.a11y && i() !== index()}
               >
                 <TipSlotProvider value={{ready: () => onTipReady(i()), titleId: titleIds[i()]}}>
                   <Dynamic component={Tip} />

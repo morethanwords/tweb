@@ -46,7 +46,7 @@ test.describe('keyboard focus is visible across the signed-in client', () => {
     // the shared worker is the one thing a preview pane cannot load; a
     // dedicated worker runs the same code
     const reset = async() => {
-      await page.goto('/?noSharedWorker=1');
+      await page.goto('/?noSharedWorker=1&a11y=1');
       await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0,
         null, {timeout: 180_000});
       await page.waitForTimeout(2500);

@@ -10,9 +10,9 @@ declare global {
 }
 
 // The complete field (RichMessageInput) with the real popups: what the keyboard does with layer
-// 229's buttons and with a quote's fold switch.
+// 229's buttons and with a quote's fold switch — the keyboard layer, so `?a11y=1`.
 async function open(page: Page, content: JSONContent[]) {
-  await page.goto('/?popups=1');
+  await page.goto('/?popups=1&a11y=1');
   await page.waitForFunction(() => !!window.popupSandbox);
   await page.evaluate(() => window.popupSandbox.ready());
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();

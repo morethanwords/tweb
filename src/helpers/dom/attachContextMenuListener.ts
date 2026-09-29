@@ -4,6 +4,7 @@ import contextMenuController from '@helpers/contextMenuController';
 import ListenerSetter, {ListenerOptions} from '@helpers/listenerSetter';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {TOUCH_HOLD_DURATION} from '@helpers/dom/touchHold';
+import Modes from '@config/modes';
 
 let _cancelContextMenuOpening = false, _cancelContextMenuOpeningTimeout = 0;
 export function cancelContextMenuOpening() {
@@ -33,7 +34,7 @@ export function attachContextMenuListener({
   const add = listenerSetter ? listenerSetter.add(element) : element.addEventListener.bind(element);
   const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, element) : element.removeEventListener.bind(element);
 
-  add('keydown', (event: KeyboardEvent) => {
+  if(Modes.a11y) add('keydown', (event: KeyboardEvent) => {
     if(event.defaultPrevented || event.repeat ||
       event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
     const target = event.target as HTMLElement;
@@ -54,7 +55,7 @@ export function attachContextMenuListener({
   if((IS_APPLE && IS_TOUCH_SUPPORTED) || listenerOptions) {
     // The keyboard path above also exists on touch-capable devices. Their
     // long-press listener must not swallow the synthetic contextmenu event.
-    add('contextmenu', (event: MouseEvent) => {
+    if(Modes.a11y) add('contextmenu', (event: MouseEvent) => {
       if(!event.isTrusted && event.button === 0) callback(event);
     }, listenerOptions);
     let timeout: number;

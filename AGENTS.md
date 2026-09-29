@@ -35,7 +35,7 @@ pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 
-Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default).
+Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default).
 
 ### Preview
 
@@ -410,6 +410,22 @@ import {Message, Chat, User, InputPeer} from '@layer';
 implementation, and review.** Apply the requirements below to the affected flow
 before calling the feature complete.
 
+**The layer is off by default and on with `?a11y=1` (`Modes.a11y`)** until it
+settles. With the flag off the client must look and behave as it did before the
+layer; with it on, as described below. So every addition that someone without
+assistive technology can notice goes behind `Modes.a11y`, read at call or render
+time: tab stops, `.focus()` and focus restoration, focus traps, key handlers and
+key routing, `inert`, element swaps to `<button>`, reduced motion, and focus
+rings (scope CSS with `:where(.a11y)` / `:global(:where(.a11y))`, which keeps
+specificity). ARIA names, roles and `.sr-only` text stay on either way. The shared
+helpers (`createFocusTrap`, `buttonKeyDown`, `ensureButtonSemantics`,
+`attachTabList`, `attachPickerGrid`, `handleMenuKeyDown`,
+`updateScrollRegionFocusable`, `attachClickEvent`'s keyboard click) already check
+the flag, and a control that becomes a native `<button>` only with the layer is
+an `A11yButton` (`@components/a11yButton`; imperatively `Button(..., {asDiv:
+!Modes.a11y})`). The a11y and focus suites open their pages with `?a11y=1`, and a
+unit test of the layer imports `@/tests/helpers/a11yLayer`.
+
 - **Start with native semantics.** Use buttons for actions, links for navigation,
   and native form controls where possible. Preserve label/control associations;
   never nest interactive controls. Expose names, values, errors, and states
@@ -488,7 +504,7 @@ pnpm test:popups   # every sandbox story opens and becomes visible, composer pop
 pnpm test:popups:full  # the same in Firefox and WebKit too (~3 min)
 pnpm test:a11y     # Axe matrix, keyboard interop, contrast, media editor, stories (~2 min)
 pnpm test:a11y:full  # the same, with the story sweep in all four themes (~4 min; always on CI)
-pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens
+pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens (~50 s)
 pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE_URL)
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
 ```
@@ -506,7 +522,10 @@ picks themes, `A11Y_STORIES=a,b` picks stories, `A11Y_WORKERS` / `A11Y_STORY_PAR
 tune the split, and `--project=chromium` drops the other engines (~70 s).
 `test:popups` works the same way: parallel, the story sweep split into parts
 (`POPUPS_WORKERS` / `POPUP_STORY_PARTS`), Chromium unless `POPUPS_ALL_ENGINES=1`
-(`test:popups:full`, implied on CI).
+(`test:popups:full`, implied on CI). So does `test:focus`, on the popup suite's
+server and port (`playwright.focus.config.ts`, so the two run one after the
+other): a part per worker but one, which the sign-in sweep takes
+(`FOCUS_WORKERS` / `FOCUS_STORY_PARTS`, `FOCUS_STORIES=a,b` picks stories).
 Playwright suites run on `vite.e2e.config.ts` — the dev server without hot
 reload, so an edit made while a suite runs no longer reloads the page under it.
 
@@ -516,8 +535,10 @@ photographs each control holding focus and again a moment after focus is
 dropped, and a pair of frames that do not differ is a control with no visible
 indicator. Reading computed styles instead does not work — a ring can live on a
 pseudo-element or a sibling, and an outline on an `opacity: 0` overlay is
-painted and invisible. Findings come with cropped before/after screenshots, so
-judge them by eye rather than trusting the heuristic. The signed-in half needs
+painted and invisible. It waits for nothing by the clock: each stop runs the
+transitions it set off to their end and waits for the control to hold still.
+Findings come with cropped before/after screenshots, so judge them by eye
+rather than trusting the heuristic. The signed-in half needs
 an authorized preview:
 
 ```bash

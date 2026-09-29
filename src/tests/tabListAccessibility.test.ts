@@ -1,5 +1,6 @@
 import {afterEach, expect, it} from 'vitest';
 import attachTabList from '@helpers/dom/tabList';
+import '@/tests/helpers/a11yLayer';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {

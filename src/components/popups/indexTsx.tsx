@@ -22,6 +22,8 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
 import noop from '@helpers/noop';
+import blurActiveElement from '@helpers/dom/blurActiveElement';
+import Modes from '@config/modes';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 import isKeyboardControl from '@helpers/dom/isKeyboardControl';
 import updateScrollRegionFocusable from '@helpers/dom/scrollRegion';
@@ -186,7 +188,7 @@ const PopupElement = (props: {
     setShown(true);
     const navItem: NavigationItem = {
       type: 'popup',
-      noBlurOnPop: true,
+      noBlurOnPop: Modes.a11y,
       onPop: () => {
         if(isConfirmationNeededOnClose) {
           const result = isConfirmationNeededOnClose();
@@ -203,7 +205,8 @@ const PopupElement = (props: {
     setNavigationItem(navItem);
     appNavigationController.pushItem(navItem);
 
-    if(!withoutOverlay) previouslyFocusedEl?.blur?.();
+    if(!Modes.a11y) blurActiveElement();
+    else if(!withoutOverlay) previouslyFocusedEl?.blur?.();
 
     if(!withoutOverlay) {
       overlayCounter.isOverlayActive = true;
@@ -226,7 +229,7 @@ const PopupElement = (props: {
           container.setAttribute('aria-labelledby', titleEl.id);
         }
 
-        if(!withoutOverlay) {
+        if(!withoutOverlay && Modes.a11y) {
           focusTrap = createFocusTrap(
             container,
             () => PopupElement.POPUPS[PopupElement.POPUPS.length - 1] === value
@@ -247,8 +250,8 @@ const PopupElement = (props: {
         // Native buttons and composite controls own Enter themselves. The popup
         // shortcut is for submitting from an input, never for overriding Cancel,
         // a link, a combobox selection or a menu action.
-        if(isKeyboardControl(target) || target.closest('[role="combobox"][aria-expanded="true"]') ||
-          !confirmShortcutIsSendShortcut && (target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        if(Modes.a11y && (isKeyboardControl(target) || target.closest('[role="combobox"][aria-expanded="true"]') ||
+          !confirmShortcutIsSendShortcut && (target.tagName === 'TEXTAREA' || target.isContentEditable))) {
           return;
         }
 
@@ -450,7 +453,7 @@ const PopupElement = (props: {
             }}
             role="dialog"
             aria-modal={withoutOverlay ? undefined : 'true'}
-            tabindex={-1}
+            tabindex={Modes.a11y ? -1 : undefined}
             class={classNames(
               'popup-container z-depth-1',
               props.containerClass,
@@ -600,7 +603,7 @@ PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
   };
 
   onMount(() => {
-    if(!scrollElement) return;
+    if(!scrollElement || !Modes.a11y) return; // nothing to decide without the a11y layer
     decideFocusability();
     const observer = new MutationObserver(decideFocusability);
     observer.observe(scrollElement, {childList: true, subtree: true});

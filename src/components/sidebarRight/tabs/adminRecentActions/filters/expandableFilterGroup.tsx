@@ -5,6 +5,10 @@ import styles from '@components/sidebarRight/tabs/adminRecentActions/filters/exp
 import {keepMe} from '@helpers/keepMe';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {Accessor, createMemo, createSignal, createUniqueId, For, JSX, Show} from 'solid-js';
+import {Dynamic} from 'solid-js/web';
+import Modes from '@config/modes';
+import A11yButton from '@components/a11yButton';
+import classNames from '@helpers/string/classNames';
 
 keepMe(ripple);
 
@@ -28,28 +32,39 @@ export const ExpandableFilterGroup = (props: ExpandableFilterGroupProps) => {
 
   const isMainChecked = createMemo(() => props.items.every(item => item.checked()));
 
+  // The checkboxes are real controls only with the keyboard layer. Without it the rows take the
+  // clicks and the checkboxes just show the state, as they did before the layer.
+  const checkboxClass = Modes.a11y ? styles.RowCheckbox : classNames(styles.RowCheckbox, styles.RowCheckboxPassive);
+
   return (
     <>
       <div class={`${styles.Row} hover-effect rp`} use:ripple onClick={() => setIsExpanded(!isExpanded())}>
         <div
           class={styles.RowCheckboxWrapper}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if(!Modes.a11y) props.onMainCheckboxClick();
+          }}
         >
           <CheckboxFieldTsx
-            class={styles.RowCheckbox}
+            class={checkboxClass}
             checked={isMainChecked()}
-            onChange={props.onMainCheckboxClick}
+            onChange={Modes.a11y ? props.onMainCheckboxClick : undefined}
             ref={(field) => field.input.setAttribute('aria-labelledby', mainLabelId)}
           />
+          {!Modes.a11y && <div class={styles.RowCheckboxClickArea} />}
         </div>
         <div class={styles.RowSeparator} />
-        <button type="button" class={styles.RowLabel} aria-expanded={isExpanded()}>
+        <A11yButton
+          class={styles.RowLabel}
+          aria-expanded={isExpanded()}
+        >
           <span id={mainLabelId}>{props.mainLabel}</span>
           <span class={styles.Count}>
             {props.checkedCount}/{props.items.length}
             <IconTsx class={styles.CountArrow} classList={{[styles.toggled]: isExpanded()}} icon='arrowhead' />
           </span>
-        </button>
+        </A11yButton>
       </div>
 
       <HeightTransition>
@@ -62,19 +77,24 @@ export const ExpandableFilterGroup = (props: ExpandableFilterGroupProps) => {
                 <div
                   class={`${styles.Row} hover-effect rp`}
                   use:ripple
+                  onClick={Modes.a11y ? undefined : item.onClick}
                 >
                   <div class={styles.RowOffset} />
                   <div class={styles.RowCheckboxWrapper}>
                     <CheckboxFieldTsx
-                      class={styles.RowCheckbox}
+                      class={checkboxClass}
                       checked={item.checked()}
-                      onChange={item.onClick}
+                      onChange={Modes.a11y ? item.onClick : undefined}
                       ref={(field) => field.input.id = inputId}
                     />
                   </div>
-                  <label for={inputId} class={styles.RowLabel}>
+                  <Dynamic
+                    component={Modes.a11y ? 'label' : 'div'}
+                    for={Modes.a11y ? inputId : undefined}
+                    class={styles.RowLabel}
+                  >
                     {item.label}
-                  </label>
+                  </Dynamic>
                 </div>
                 );
               }}

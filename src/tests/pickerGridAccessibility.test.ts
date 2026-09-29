@@ -1,5 +1,6 @@
 import {afterEach, expect, it, vi} from 'vitest';
 import {attachPickerGrid} from '@helpers/dom/attachListNavigation';
+import '@/tests/helpers/a11yLayer';
 
 let dispose: () => void;
 afterEach(() => {

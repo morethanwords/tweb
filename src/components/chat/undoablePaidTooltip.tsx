@@ -8,6 +8,7 @@ import {animate} from '@helpers/animation';
 
 import {AnimatedCounter} from '@components/animatedCounter';
 import showChatToast from '@components/chat/chatToast';
+import A11yButton from '@components/a11yButton';
 
 
 type LangKeys = {
@@ -82,9 +83,10 @@ export default function showUndoablePaidTooltip(props: {
       class: classNames('paid-reaction-tooltip', props.wider && 'paid-reaction-tooltip--a-little-wider'),
       title: title.element,
       textElement: subtitle.element,
+      // a native button only with the keyboard layer: it takes the focus on click and keeps its own line height
       rightElement: (
-        <button
-          type="button"
+        <A11yButton
+          as="span"
           class="tooltip-undo"
           aria-label={I18n.format('Undo', true)}
           onClick={() => void props.onUndo()}
@@ -105,7 +107,7 @@ export default function showUndoablePaidTooltip(props: {
               {countdown.container}
             </span>
           </span>
-        </button>
+        </A11yButton>
       ),
       icon: 'star'
     });

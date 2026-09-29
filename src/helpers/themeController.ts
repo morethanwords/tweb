@@ -9,6 +9,7 @@ import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
 import {SETTINGS_INIT} from '@config/state';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import customProperties from '@helpers/dom/customProperties';
 import {TelegramWebViewTheme} from '@types';
 import windowSize from '@helpers/windowSize';
@@ -321,6 +322,11 @@ export class ThemeController {
     }
   }
 
+  // Increase Contrast is part of the a11y layer: its row, and a value stored earlier, count only with it on
+  private isHighContrast() {
+    return Modes.a11y && !!useAppSettings()[0].increaseContrast;
+  }
+
   public _setTheme(silent?: boolean) {
     const _log = log.bindPrefix('setTheme');
     _log(`set colors, silent=${silent}`);
@@ -329,7 +335,7 @@ export class ThemeController {
     colorScheme?.setAttribute('content', isNight ? 'dark' : 'light');
 
     document.documentElement.classList.toggle('night', isNight);
-    document.documentElement.classList.toggle('high-contrast', !!useAppSettings()[0].increaseContrast);
+    document.documentElement.classList.toggle('high-contrast', this.isHighContrast());
     this.setThemeColor();
     const theme = this.getTheme();
     this.applyTheme(theme);
@@ -573,7 +579,7 @@ export class ThemeController {
     const appColor = appColorMap[name];
     const resolvedName: AppTheme['name'] = themeName ?? (isNight ? 'night' : 'day');
     mixColor ??= hexToRgb(colorMap[resolvedName]['surface-color']);
-    const {increaseContrast} = useAppSettings()[0];
+    const increaseContrast = this.isHighContrast();
     if(increaseContrast) {
       if(name === 'message-out-background-color' && isNight) hex = ensureTextContrast(hex, [255, 255, 255]);
       if(name === 'message-out-primary-color') {

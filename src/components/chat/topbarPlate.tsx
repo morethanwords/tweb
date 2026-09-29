@@ -31,6 +31,7 @@ import Button from '@components/buttonTsx';
 import RippleElement from '@components/rippleElement';
 import I18n from '@lib/langPack';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 
 const BASE = 'pinned-container';
 
@@ -101,12 +102,13 @@ TopbarPlate.Content = (props: {
   disabled?: boolean
 }) => {
   const modifier = useModifier();
-  const clickable = props.clickable ?? useContext(PlateBodyContext);
+  // a native button only with the keyboard layer: it takes the focus on click and brings the button's text styling
+  const clickable = Modes.a11y && (props.clickable ?? useContext(PlateBodyContext));
   return (
     <RippleElement
       component={clickable ? 'button' : 'div'}
       type={clickable ? 'button' : undefined}
-      disabled={props.disabled}
+      disabled={Modes.a11y ? props.disabled : undefined}
       noRipple={!props.ripple}
       class={classNames(baseCls('content'), modCls(modifier, 'content'), props.class)}
     >
@@ -179,7 +181,7 @@ TopbarPlate.ActionButton = (props: {
       ref={props.ref as Ref<HTMLAnchorElement>}
       class={className()}
       role="button"
-      tabindex={0}
+      tabindex={Modes.a11y ? 0 : undefined}
       onKeyDown={buttonKeyDown}
       onClick={props.onClick}
     >

@@ -1,5 +1,6 @@
 import {expect, it, vi} from 'vitest';
 import buttonKeyDown, {linkKeyDown} from '@helpers/solid/buttonKeyDown';
+import '@/tests/helpers/a11yLayer';
 
 function press(element: HTMLElement, key: string) {
   const event = new KeyboardEvent('keydown', {key, cancelable: true});

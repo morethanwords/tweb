@@ -7,11 +7,12 @@ import ripple from '@components/ripple';
 
 import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
 import {processHistoryItem} from '@components/mediaEditor/utils';
+import A11yButton from '@components/a11yButton';
 
 export default function Topbar(props: {onClose: () => void; onFinish: () => void}) {
   const {canFinish, mediaState, editorState} = useMediaEditorContext();
 
-  let doneButton: HTMLButtonElement;
+  let doneButton: HTMLElement;
 
 
   function processHistory(history: HistoryItem[], otherHistory: HistoryItem[]) {
@@ -62,9 +63,8 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
         <ButtonIconTsx disabled={!mediaState.history.length} onClick={onUndo} icon="undo" aria-label={I18n.format('Undo', true)} />
         <ButtonIconTsx disabled={!mediaState.redoHistory.length} onClick={onRedo} icon="redo" aria-label={I18n.format('KeyboardShortcuts.Action.Redo', true)} />
       </div>
-      <button
-        type="button"
-        ref={doneButton}
+      <A11yButton
+        ref={(el: HTMLElement) => doneButton = el}
         class="media-editor__topbar-done"
         classList={{
           'media-editor__topbar-done--disabled': !canFinish()
@@ -76,7 +76,7 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
         }}
       >
         {i18n('Done')}
-      </button>
+      </A11yButton>
     </div>
   );
 }

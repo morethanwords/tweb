@@ -7,6 +7,7 @@ import {Birthday} from '@layer';
 import {getMonths, getDaysPerMonthForYear, numberOfDaysEachMonth} from '@helpers/date';
 import InputField from '@components/inputField';
 import I18n from '@lib/langPack';
+import A11yButton from '@components/a11yButton';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {createButtonMenuSelect} from '@components/buttonMenuSelect';
 import {IconTsx} from '@components/iconTsx';
@@ -255,14 +256,14 @@ export default async function showBirthdayPopup(props: {
               <I18nTsx
                     key={isContactsOnly ? 'BirthdayPopup.OnlyContacts' : 'BirthdayPopup.Choose'}
                 args={[
-                  <button
-                    type="button"
+                  <A11yButton
+                    as="a"
                     class={styles.privacyInfoLink}
                     onClick={openPrivacySettings}
                   >
                     <I18nTsx key={isContactsOnly ? 'BirthdayPopup.OnlyContactsLink' : 'BirthdayPopup.ChooseLink'} />
                     <IconTsx icon="next" />
-                  </button>
+                  </A11yButton>
                 ]} />
             </div>
           </Show>

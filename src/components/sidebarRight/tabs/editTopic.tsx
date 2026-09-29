@@ -1,5 +1,6 @@
 import {Component, createSignal} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import Modes from '@config/modes';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {makeMediaSize} from '@helpers/mediaSize';
 import copy from '@helpers/object/copy';
@@ -146,7 +147,7 @@ const EditTopic: Component = () => {
       iconDiv.classList.add('edit-topic-icon-container');
       if(!threadId) {
         iconDiv.setAttribute('role', 'button');
-        iconDiv.tabIndex = 0;
+        if(Modes.a11y) iconDiv.tabIndex = 0;
         iconDiv.setAttribute('aria-label', I18n.format('AccDescr.ChangeTopicColor', true));
       }
 

@@ -18,6 +18,7 @@ import {i18n, LangPackKey} from '@lib/langPack';
 import calcImageInBox from '@helpers/calcImageInBox';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
+import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import getGifDuration from '@helpers/getGifDuration';
@@ -892,7 +893,7 @@ export default function showNewMediaPopup(
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if(shouldPreserveKeyboardFocus(e)) return;
+    if(Modes.a11y && shouldPreserveKeyboardFocus(e)) return;
     const target = e.target as HTMLElement;
     const {input} = messageInputField;
     if(target !== input) {
@@ -1561,11 +1562,14 @@ export default function showNewMediaPopup(
         const canEditVideo = await supportsVideoEncoding() && file.size <= MAX_EDITABLE_VIDEO_SIZE;
         if(activeActionsMenu !== actions || context.destroyed) return;
 
-        let equalizeIcon: HTMLButtonElement;
+        // real buttons only with the a11y layer, the icons they were before without it
+        let equalizeIcon: HTMLElement;
         if(!willAttach.stars && getFileMimeType(file) !== 'image/gif' && (!isVideo || canEditVideo)) {
           import('../mediaEditor'); // prefetch
 
-          equalizeIcon = ButtonElement(itemCls, {icon: 'equalizer', ariaLabel: 'Edit', noRipple: true});
+          equalizeIcon = Modes.a11y ?
+            ButtonElement(itemCls, {icon: 'equalizer', ariaLabel: 'Edit', noRipple: true}) :
+            Icon('equalizer', itemCls);
           equalizeIcon.addEventListener('click', async() => {
             hideActiveActionsMenu();
             MarkupTooltip.getInstance().hide();
@@ -1607,9 +1611,14 @@ export default function showNewMediaPopup(
           });
         }
 
-        let spoilerToggle: HTMLButtonElement;
+        let spoilerToggle: HTMLElement;
         if(!willAttach.stars) {
-          spoilerToggle = ButtonElement(`${itemCls} spoiler-toggle`, {ariaLabel: 'EnablePhotoSpoiler', noRipple: true});
+          if(Modes.a11y) {
+            spoilerToggle = ButtonElement(`${itemCls} spoiler-toggle`, {ariaLabel: 'EnablePhotoSpoiler', noRipple: true});
+          } else {
+            spoilerToggle = document.createElement('span');
+            spoilerToggle.classList.add(itemCls, 'spoiler-toggle');
+          }
           spoilerToggle.setAttribute('aria-pressed', String(!!params.mediaSpoiler));
           if(params.mediaSpoiler) spoilerToggle.dataset.toggled = 'true';
           spoilerToggle.append(Icon('mediaspoiler', 'spoiler-on'), Icon('mediaspoileroff', 'spoiler-off'));
@@ -1621,14 +1630,22 @@ export default function showNewMediaPopup(
           });
         }
 
-        const deleteIcon = ButtonElement(itemCls, {icon: 'delete', ariaLabel: 'Delete', noRipple: true});
+        const deleteIcon = Modes.a11y ?
+          ButtonElement(itemCls, {icon: 'delete', ariaLabel: 'Delete', noRipple: true}) :
+          Icon('delete', itemCls);
         deleteIcon.addEventListener('click', () => removeFile(params));
 
         const resultPromise = params?.editResult?.getResult();
-        let cancelBtn: HTMLButtonElement;
+        let cancelBtn: HTMLElement;
         if(resultPromise instanceof Promise) {
           actions.classList.add('popup-item-media-action-menu-cancel');
-          cancelBtn = ButtonElement('popup-item-media-action-menu-cancel-btn', {text: 'Cancel', noRipple: true});
+          if(Modes.a11y) {
+            cancelBtn = ButtonElement('popup-item-media-action-menu-cancel-btn', {text: 'Cancel', noRipple: true});
+          } else {
+            cancelBtn = document.createElement('div');
+            cancelBtn.append(i18n('Cancel'));
+            cancelBtn.classList.add('popup-item-media-action-menu-cancel-btn');
+          }
           cancelBtn.addEventListener('click', () => {
             params?.editResult.cancel?.();
           });
@@ -1669,38 +1686,40 @@ export default function showNewMediaPopup(
 
       // The hover toolbar is also available through the shared menu, so keyboard
       // users get the same actions and focus handling as every other popup menu.
-      const moreButton = ButtonElement('btn-icon popup-item-media-more', {icon: 'more', ariaLabel: 'AccDescr.MediaActions', noRipple: true});
-      moreButton.disabled = !canShowActions;
-      const menuButtons: (ButtonMenuItemOptionsVerifiable & {checked?: boolean})[] = [];
-      createContextMenu({
-        listenTo: moreButton,
-        listenForClick: true,
-        middleware: params.middlewareHelper.get(),
-        buttons: [],
-        position: (_, menu) => positionMenuTrigger(moreButton, menu, 'top-right'),
-        filterButtons: async() => {
-          await showActions(true);
-          const actions = activeActionsMenu;
-          if(!actions || activeActionsMenuItemDiv !== itemDiv) return [];
-          actions.inert = true;
-          actions.style.opacity = '0';
-          menuButtons.splice(0, menuButtons.length, ...(Array.from(actions.children) as HTMLButtonElement[]).map((element) => ({
-            regularText: element.getAttribute('aria-label') || element.textContent,
-            checked: element.hasAttribute('aria-pressed') ? element.getAttribute('aria-pressed') === 'true' : undefined,
-            onClick: () => element.click()
-          })));
-          return menuButtons;
-        },
-        onOpenAfter: () => {
-          menuButtons.forEach(({element, checked}) => {
-            if(checked === undefined) return;
-            element.setAttribute('role', 'menuitemcheckbox');
-            element.setAttribute('aria-checked', String(checked));
-          });
-        },
-        onClose: () => { hideActiveActionsMenu(); }
-      });
-      itemDiv.append(moreButton);
+      if(Modes.a11y) {
+        const moreButton = ButtonElement('btn-icon popup-item-media-more', {icon: 'more', ariaLabel: 'AccDescr.MediaActions', noRipple: true});
+        moreButton.disabled = !canShowActions;
+        const menuButtons: (ButtonMenuItemOptionsVerifiable & {checked?: boolean})[] = [];
+        createContextMenu({
+          listenTo: moreButton,
+          listenForClick: true,
+          middleware: params.middlewareHelper.get(),
+          buttons: [],
+          position: (_, menu) => positionMenuTrigger(moreButton, menu, 'top-right'),
+          filterButtons: async() => {
+            await showActions(true);
+            const actions = activeActionsMenu;
+            if(!actions || activeActionsMenuItemDiv !== itemDiv) return [];
+            actions.inert = true;
+            actions.style.opacity = '0';
+            menuButtons.splice(0, menuButtons.length, ...(Array.from(actions.children) as HTMLButtonElement[]).map((element) => ({
+              regularText: element.getAttribute('aria-label') || element.textContent,
+              checked: element.hasAttribute('aria-pressed') ? element.getAttribute('aria-pressed') === 'true' : undefined,
+              onClick: () => element.click()
+            })));
+            return menuButtons;
+          },
+          onOpenAfter: () => {
+            menuButtons.forEach(({element, checked}) => {
+              if(checked === undefined) return;
+              element.setAttribute('role', 'menuitemcheckbox');
+              element.setAttribute('aria-checked', String(checked));
+            });
+          },
+          onClose: () => { hideActiveActionsMenu(); }
+        });
+        itemDiv.append(moreButton);
+      }
 
       itemDiv.addEventListener('pointermove', showActions);
       itemDiv.addEventListener('pointerup', showActions);

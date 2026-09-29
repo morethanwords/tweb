@@ -1,4 +1,5 @@
 import labelControl from '@helpers/dom/labelControl';
+import Modes from '@config/modes';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {AppPeersManager, IsPeerType} from '@appManagers/appPeersManager';
@@ -398,7 +399,7 @@ export default class AppSelectPeers {
     const hadScrollable = !!this.scrollable;
     this.scrollable ||= new Scrollable();
     this.scrollable.container.classList.add('selector-scrollable');
-    this.scrollable.container.tabIndex = 0;
+    if(Modes.a11y) this.scrollable.container.tabIndex = 0;
 
     this.container.append(this.scrollable.container);
 

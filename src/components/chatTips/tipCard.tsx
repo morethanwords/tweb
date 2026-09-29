@@ -6,7 +6,7 @@ import type {AppSidebarLeft} from '@components/sidebarLeft';
 import type {SliderSuperTabConstructable} from '@components/sliderTab';
 
 import {IconTsx} from '@components/iconTsx';
-import RippleElement from '@components/rippleElement';
+import A11yButton from '@components/a11yButton';
 
 import styles from '@components/chatTips/chatTips.module.scss';
 
@@ -79,23 +79,23 @@ export default function TipCard(props: {
         class={styles.buttons}
         role={props.buttons.length > 2 ? 'toolbar' : 'group'}
         aria-labelledby={slot?.titleId}
-        ref={(el) => onCleanup(attachPickerGrid(el, 'button'))}
+        ref={(el) => onCleanup(attachPickerGrid(el, `.${styles.button}`))}
       >
         {/* `Index`, not `For`: the cards rebuild the whole array whenever the selection moves, and
             `For` would key those fresh objects by reference and recreate every button — killing
             the ripple of the one just clicked. By position the element stays and only updates.
-            Toggle buttons: `aria-pressed` says which one is on. */}
+            Toggle buttons: `aria-pressed` says which one is on. Native buttons only with the
+            keyboard layer — they take the focus on click. */}
         <Index each={props.buttons}>{(button) => (
-          <RippleElement
-            component="button"
-            type="button"
+          <A11yButton
+            ripple
             class={classNames(styles.button, button().selected && styles.buttonSelected)}
             aria-pressed={button().selected}
             onClick={(e: MouseEvent) => button().onClick(e)}
           >
             <IconTsx icon={button().icon} class={styles.buttonIcon} />
             <span class={styles.buttonText}>{button().text}</span>
-          </RippleElement>
+          </A11yButton>
         )}</Index>
       </div>
       <div class={styles.content}>

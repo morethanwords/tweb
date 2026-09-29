@@ -19,6 +19,7 @@ import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import formatNumber from '@helpers/number/formatNumber';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import I18n from '@lib/langPack';
 
 export function StarGiftBubble(props: {
@@ -179,7 +180,7 @@ export function UniqueStarGiftWebPageBox(props: {
     <div
       class={/* @once */ styles.webPageBox}
       role="button"
-      tabindex={0}
+      tabindex={Modes.a11y ? 0 : undefined}
       aria-label={/* @once */ I18n.format('ActionGiftPremiumView', true)}
       onClick={(evt) => simulateClickEvent(evt.target.closest('.webpage-quote'))}
       onKeyDown={buttonKeyDown}

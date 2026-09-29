@@ -67,6 +67,9 @@ describe('attachClickEventRef', () => {
   it('handles pointer mousedown once and preserves keyboard clicks where touch is supported', async() => {
     vi.resetModules();
     vi.doMock('@environment/touchSupport', () => ({default: true}));
+    // the keyboard click (detail 0) belongs to the a11y layer, off unless ?a11y=1
+    const {default: Modes} = await import('@config/modes');
+    Modes.a11y = true;
 
     const {attachClickEvent: attachTouch} = await import('@helpers/dom/clickEvent');
     const {default: attachTouchRef} = await import('@helpers/solid/attachClickEventRef');

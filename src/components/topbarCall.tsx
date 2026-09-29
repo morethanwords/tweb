@@ -1,6 +1,7 @@
 import {createSignal, Show} from 'solid-js';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import I18n from '@lib/langPack';
+import Modes from '@config/modes';
 import ListenerSetter from '@helpers/listenerSetter';
 import replaceContent from '@helpers/dom/replaceContent';
 import throttle from '@helpers/schedulers/throttle';
@@ -253,7 +254,7 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     ));
 
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
-    plate.container.inert = isClosed;
+    if(Modes.a11y) plate.container.inert = isClosed;
     plate.container.setAttribute('aria-hidden', String(isClosed));
     if((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
       SetTransition({
@@ -489,7 +490,7 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     )
   });
 
-  plate.container.inert = !instance();
+  if(Modes.a11y) plate.container.inert = !instance();
   plate.container.setAttribute('aria-hidden', String(!instance()));
 
   return {

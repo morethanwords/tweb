@@ -24,6 +24,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 
 const TEST_COUNT = 0;
 const ITEM_MARGIN = 0;
@@ -208,7 +209,7 @@ function _StoriesList(props: {
           })()
         }}
         role="button"
-        tabindex={0}
+        tabindex={Modes.a11y ? 0 : undefined}
         aria-label={ariaLabel()}
         onKeyDown={buttonKeyDown}
         onClick={onClick}

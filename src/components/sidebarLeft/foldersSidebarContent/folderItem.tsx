@@ -1,5 +1,6 @@
 import {createComputed, createEffect, createMemo, createSignal, Show} from 'solid-js';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import {keepMe} from '@helpers/keepMe';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
@@ -68,7 +69,7 @@ export default function FolderItem(props: FolderItemProps) {
         'folders-sidebar__folder-item--selected': props.selected
       }}
       role="button"
-      tabindex="0"
+      tabindex={Modes.a11y ? 0 : undefined}
       aria-label={props['aria-label']}
       aria-pressed={props.selected ? 'true' : undefined}
       {...(props.id !== undefined ?

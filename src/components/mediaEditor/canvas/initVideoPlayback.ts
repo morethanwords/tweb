@@ -5,6 +5,7 @@ import {SetVideoTimeFlags, useMediaEditorContext} from '@components/mediaEditor/
 import {bindActiveWindowListener} from '@helpers/appWindow';
 import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import isTargetAnInput from '@helpers/dom/isTargetAnInput';
+import Modes from '@config/modes';
 
 
 type Args = {
@@ -50,13 +51,24 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
     const listener = (event: KeyboardEvent) => {
       const el = (event.target as HTMLElement);
 
-      if(event.code === 'Space' && !event.repeat && !shouldPreserveKeyboardFocus(event) && !isTargetAnInput(el)) {
+      const canToggle = Modes.a11y ?
+        !event.repeat && !shouldPreserveKeyboardFocus(event) && !isTargetAnInput(el) :
+        !el.isContentEditable;
+      if(event.code === 'Space' && canToggle) {
         event.preventDefault(); // stop page from scrolling, idk if needed
         editorState.isPlaying = !editorState.isPlaying;
       }
     };
 
-    const detach = bindActiveWindowListener((win) => win.document, 'keydown', listener);
+    let detach: () => void;
+    if(Modes.a11y) {
+      detach = bindActiveWindowListener((win) => win.document, 'keydown', listener);
+    } else {
+      // The video's own document so Space-to-play/pause works in a Document PiP window too.
+      const doc = video.ownerDocument;
+      doc.addEventListener('keydown', listener);
+      detach = () => doc.removeEventListener('keydown', listener);
+    }
 
     onCleanup(() => {
       editorState.isPlaying = false;

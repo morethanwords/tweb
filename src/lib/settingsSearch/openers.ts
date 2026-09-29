@@ -34,6 +34,14 @@ export const NON_NAVIGABLE_SECTIONS = new Set([
   'AppChangeLoginEmailTab'
 ]);
 
+/**
+ * Rows a tab renders only with the a11y layer (`?a11y=1`). The extractor indexes them either way;
+ * without the layer their results would open a screen that does not have them.
+ */
+export const A11Y_ONLY_ENTRIES = new Set([
+  'AppGeneralSettingsTab:GeneralSettings.IncreaseContrast'
+]);
+
 type SectionOpener = (slider: SidebarSlider, middleware?: Middleware) => Promise<SliderSuperTab> | SliderSuperTab;
 
 const getConstructor = (sectionId: string) => {

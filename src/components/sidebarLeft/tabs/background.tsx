@@ -3,6 +3,7 @@ import {render} from 'solid-js/web';
 import {averageColor, averageColorFromCanvas} from '@helpers/averageColor';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import Modes from '@config/modes';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import markGridCornerItem, {GRID_CORNER_CLASSES} from '@helpers/dom/markGridCornerItem';
 import highlightingColor from '@helpers/highlightingColor';
@@ -357,7 +358,7 @@ const ChatBackground = () => {
       // control with a name so keyboard / screen-reader users can pick a wallpaper. Here and not
       // in the static builder: the theme picker nests the same element inside its own tiles.
       container.setAttribute('role', 'button');
-      container.setAttribute('tabindex', '0');
+      if(Modes.a11y) container.setAttribute('tabindex', '0');
       container.setAttribute('aria-label', I18n.format('ChatBackground', true));
       media.classList.add('grid-item-media');
       solidRoots.push(dispose);
@@ -557,7 +558,7 @@ const ChatBackground = () => {
     attachClickEvent(grid, onGridClick, {listenerSetter});
     // Enter/Space on a focused wallpaper tile selects it (tiles are role="button" <div>s
     // picked via the delegated grid click above).
-    listenerSetter.add(grid)('keydown', (e: KeyboardEvent) => {
+    if(Modes.a11y) listenerSetter.add(grid)('keydown', (e: KeyboardEvent) => {
       if(e.key !== 'Enter' && e.key !== ' ') return;
       const target = findUpClassName(e.target, 'grid-item') as HTMLElement;
       if(!target) return;

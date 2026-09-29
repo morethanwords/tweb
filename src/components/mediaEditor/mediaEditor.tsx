@@ -10,6 +10,7 @@ import Toolbar from '@components/mediaEditor/toolbar';
 import {MediaType} from '@components/mediaEditor/types';
 import {delay} from '@components/mediaEditor/utils';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
+import Modes from '@config/modes';
 import overlayCounter from '@helpers/overlayCounter';
 import {doubleRaf} from '@helpers/schedulers';
 import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
@@ -72,6 +73,7 @@ export function MediaEditor(props: MediaEditorProps) {
       overlay.classList.add('media-editor__overlay--hidden');
       overlay.setAttribute('aria-hidden', 'true');
       await doubleRaf();
+      if(!Modes.a11y) overlay.focus();
 
       if(isClosing || isDestroyed) return;
 
@@ -83,7 +85,7 @@ export function MediaEditor(props: MediaEditorProps) {
 
     const navigationItem: NavigationItem = {
       type: 'popup',
-      noBlurOnPop: true,
+      noBlurOnPop: Modes.a11y,
       onPop: () => handleClose()
     };
     appNavigationController.pushItem(navigationItem);
@@ -148,7 +150,7 @@ export function MediaEditor(props: MediaEditorProps) {
         aria-modal="true"
         aria-busy={!editorState.isReady}
         aria-label={I18n.format('Edit', true)}
-        tabindex={-1}
+        tabindex={Modes.a11y ? -1 : undefined}
       >
         <div class="media-editor__container">
           {(() => {

@@ -218,6 +218,10 @@
     @include respond-to(no-floating-left-sidebar) {
       html:has(#column-left.is-collapsed) & {
         display: flex;
+      }
+
+      // a11y: `.btn-corner` is hidden until it is slid in
+      html:where(.a11y):has(#column-left.is-collapsed) & {
         visibility: visible;
       }
     }

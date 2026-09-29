@@ -83,7 +83,9 @@
 }
 
 .previewButton {
-  color: inherit;
+  :global(:where(.a11y)) & {
+    color: inherit;
+  }
 
   :global(.high-contrast) & {
     color: var(--link-color);

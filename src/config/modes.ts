@@ -44,7 +44,12 @@ const Modes = {
   // bound to the stored permanent one (auth.bindTempAuthKey), replaced once it
   // expires or the server forgets it. Off by default; ?pfs=1 turns it on (the
   // worker sees it too — makeWorkerURL forwards query params).
-  pfs: location.search.indexOf('pfs=1') > 0
+  pfs: location.search.indexOf('pfs=1') > 0,
+  // The keyboard and screen-reader layer: focus traps, roving tab stops, focus
+  // rings, key routing, inert off-screen columns, pinch zoom. Off by default
+  // until it settles; ?a11y=1 turns it on. ARIA names and roles stay either way,
+  // since nobody without assistive technology can tell they are there.
+  a11y: location.search.indexOf('a11y=1') > 0
 };
 
 if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {

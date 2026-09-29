@@ -10,6 +10,7 @@ import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import I18n, {i18n} from '@lib/langPack';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import {formatFullSentTime} from '@helpers/date';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
@@ -512,7 +513,7 @@ function StoriesGrid(props: {
         'data-timestamp': (storyItem as StoryItem.storyItem).date,
         'class': 'grid-item search-super-item',
         'role': 'button',
-        'tabindex': 0,
+        'tabindex': Modes.a11y ? 0 : undefined,
         'aria-label': `${I18n.format('OpenStory', true)}, ${formatFullSentTime((storyItem as StoryItem.storyItem).date).textContent}`,
         'onKeyDown': buttonKeyDown,
         'onClick': () => {

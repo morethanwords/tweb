@@ -22,6 +22,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import showTooltip from '@components/tooltip';
 import {usePeer} from '@stores/peers';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 
 let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
 export function SimilarPeer(props: {
@@ -120,7 +121,7 @@ export function SimilarPeer(props: {
     <div
       class={classNames('similar-channels-channel', props.isLast && 'is-last', !displayBadge() && 'no-badge')}
       role="button"
-      tabindex={0}
+      tabindex={Modes.a11y ? 0 : undefined}
       onKeyDown={buttonKeyDown}
       ref={props.ref}
     >

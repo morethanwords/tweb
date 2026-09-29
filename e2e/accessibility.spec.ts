@@ -16,14 +16,14 @@ test.describe(() => {
   test.use({freshContext: true});
 
   test('public app screen has no automatically detectable accessibility violations with increased contrast', async({page}) => {
-    await page.goto('/');
+    await page.goto('/?a11y=1');
     await waitForAuthScreen(page);
     await setIncreasedContrast(page, true);
     await expectNoA11yViolations(page);
   });
 
   test('phone login screen has a page heading and no automatically detectable accessibility violations with increased contrast', async({page}) => {
-    await page.goto('/');
+    await page.goto('/?a11y=1');
     await waitForAuthScreen(page);
 
     await page.getByRole('button', {name: /log in by phone number/i}).click();
@@ -46,7 +46,7 @@ const PARTS = Number(process.env.A11Y_STORY_PARTS) || 8;
 
 for(const theme of THEMES) for(let part = 0; part < PARTS; ++part) test(`popup stories expose named dialogs and accessible controls (${theme}, increased contrast, part ${part + 1}/${PARTS})`, async({page}, testInfo) => {
   test.setTimeout(5 * 60_000);
-  await preparePopupSandbox(page);
+  await preparePopupSandbox(page, true, {a11y: true});
   await setIncreasedContrast(page, true);
   await page.getByRole('combobox', {name: 'Theme', exact: true}).selectOption(theme);
   const allStories = await page.evaluate(() => window.popupSandbox.list());

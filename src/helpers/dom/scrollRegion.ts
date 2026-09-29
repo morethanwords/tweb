@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import Modes from '@config/modes';
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -25,7 +27,7 @@ const FOCUSABLE_SELECTOR = [
  * it is named, so assistive technology can say what is being scrolled.
  */
 export default function updateScrollRegionFocusable(container: HTMLElement, label?: string) {
-  if(!container) {
+  if(!container || !Modes.a11y) {
     return;
   }
 

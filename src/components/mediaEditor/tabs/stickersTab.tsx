@@ -19,6 +19,7 @@ import {delay} from '@components/mediaEditor/utils';
 
 import {TabContentContext} from '@components/mediaEditor/tabs/tabContent';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import A11yButton from '@components/a11yButton';
 
 export default function StickersTab() {
   const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
@@ -67,7 +68,7 @@ export default function StickersTab() {
   }
 
   function StickerSetThumb(props: {set: StickerSet.stickerSet}) {
-    let renderContainer: HTMLButtonElement;
+    let renderContainer: HTMLElement;
 
 
     onMount(() => {
@@ -90,9 +91,8 @@ export default function StickersTab() {
     const isActive = () => String(props.set.id) === activeSet();
 
     return (
-      <button
-        type="button"
-        ref={renderContainer}
+      <A11yButton
+        ref={(el: HTMLElement) => renderContainer = el}
         class="media-editor__stickers-set-thumb"
         classList={{
           'media-editor__stickers-set-thumb--active': isActive()
@@ -105,7 +105,7 @@ export default function StickersTab() {
   }
 
   function Sticker(props: {doc: Document.document}) {
-    let container: HTMLButtonElement;
+    let container: HTMLElement;
 
     onMount(() => {
       stickerRenderer.renderSticker(props.doc, container);
@@ -142,9 +142,8 @@ export default function StickersTab() {
     const label = () => props.doc.stickerEmojiRaw || I18n.format('AttachSticker', true);
 
     return (
-      <button
-        type="button"
-        ref={container}
+      <A11yButton
+        ref={(el: HTMLElement) => container = el}
         class="media-editor__stickers-grid-item"
         aria-label={label()}
         onClick={onClick}
@@ -211,8 +210,7 @@ export default function StickersTab() {
         aria-label={I18n.format('MediaEditor.StickerSets', true)}
       >
         <Show when={recentStickers()?.length}>
-          <button
-            type="button"
+          <A11yButton
             class="media-editor__stickers-recent-button"
             classList={{
               'media-editor__stickers-recent-button--active': activeSet() === 'recent'
@@ -222,7 +220,7 @@ export default function StickersTab() {
             onClick={() => onStickerSetThumbClick('recent')}
           >
             <IconTsx icon="recent" aria-hidden={true} />
-          </button>
+          </A11yButton>
         </Show>
         <For each={stickerSets()?.sets}>{(set) => <StickerSetThumb set={set} />}</For>
       </div>

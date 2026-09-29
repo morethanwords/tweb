@@ -12,6 +12,7 @@ import {AppManagers} from '@lib/managers';
 import safePlay from '@helpers/dom/safePlay';
 import Icon from '@components/icon';
 import Button from '@components/button';
+import Modes from '@config/modes';
 
 const className = 'group-call-participant-video';
 
@@ -30,7 +31,8 @@ export default class GroupCallParticipantVideoElement {
   private isPinned: boolean;
 
   constructor(private managers: AppManagers, private instance: GroupCallInstance, public source: GroupCallOutputSource) {
-    this.container = Button(className + '-container', {noRipple: true});
+    // a native button only with the keyboard layer: it takes the focus on click
+    this.container = Button(className + '-container', {noRipple: true, asDiv: !Modes.a11y});
     this.updateAriaLabel();
 
     this.info = document.createElement('div');

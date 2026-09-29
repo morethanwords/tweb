@@ -51,7 +51,6 @@ $btn-menu-z-index: 4;
 .btn-corner {
   --offset: 1.25rem;
   --translateY: calc(54px + var(--offset));
-  visibility: hidden;
   position: absolute !important;
   bottom: var(--offset);
   inset-inline-end: var(--offset);
@@ -73,13 +72,21 @@ $btn-menu-z-index: 4;
   justify-content: center;
   padding: 0 !important;
 
+  // a11y: a corner button slid out of view is no tab stop
+  :where(.a11y) & {
+    visibility: hidden;
+  }
+
   @include hover() {
     background-color: var(--dark-primary-color);
   }
 
   &.is-visible {
     --translateY: 0;
-    visibility: visible;
+
+    :where(.a11y) & {
+      visibility: visible;
+    }
   }
 
   body.animation-level-0 & {
@@ -1244,8 +1251,13 @@ $btn-menu-z-index: 4;
 }
 
 .btn-color-primary {
-  background: var(--primary-button-color, var(--primary-color));
+  background: var(--primary-color);
   color: #fff;
+
+  // the contrast-checked fill, with the a11y layer (Increase Contrast is part of it)
+  :where(.a11y) & {
+    background: var(--primary-button-color, var(--primary-color));
+  }
 
   /* .c-ripple__circle {
     background-color: var(--light-primary-color);

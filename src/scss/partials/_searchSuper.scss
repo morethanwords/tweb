@@ -44,7 +44,10 @@
 
       .search-super-nav-scrollable {
         opacity: 0 !important;
-        visibility: hidden;
+
+        :where(.a11y) & {
+          visibility: hidden;
+        }
       }
 
       .search-super-selection-container {
@@ -369,9 +372,12 @@
   &-tabs-scrollable {
     .search-super-nav-scrollable {
       opacity: 1;
-      visibility: visible;
       height: var(--scrollable-size);
       max-height: var(--scrollable-size);
+
+      :where(.a11y) & {
+        visibility: visible;
+      }
     }
 
     .search-super-nav-scrollable,
@@ -383,20 +389,29 @@
     
     .search-super-selection-container {
       pointer-events: none;
-      visibility: hidden;
+
+      :where(.a11y) & {
+        visibility: hidden;
+      }
     }
 
     &.is-selecting {
       &.forwards {
         .search-super-nav-scrollable {
           opacity: 0;
-          visibility: hidden;
+
+          :where(.a11y) & {
+            visibility: hidden;
+          }
         }
 
         .search-super-selection-container {
           opacity: 1;
           pointer-events: all;
-          visibility: visible;
+
+          :where(.a11y) & {
+            visibility: visible;
+          }
         }
       }
     }

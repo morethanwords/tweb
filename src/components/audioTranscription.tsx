@@ -10,6 +10,7 @@ import {IconTsx} from '@components/iconTsx';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import showPremiumPopup from '@components/popups/premium';
+import A11yButton from '@components/a11yButton';
 
 
 /**
@@ -133,8 +134,7 @@ function TranscribeButton(props: {
   onCleanup(() => mounted?.remove());
 
   return (
-    <button
-      type="button"
+    <A11yButton
       class="audio-to-text-button"
       aria-label={I18n.format(hasText() ? 'AccDescr.ToggleTranscription' : 'AccDescr.TranscribeAudio', true)}
       aria-expanded={hasText() ? props.state.expanded : undefined}
@@ -145,7 +145,7 @@ function TranscribeButton(props: {
     >
       <IconTsx icon={hasText() && props.state.expanded ? 'up' : 'transcribe'} />
       <TranscribeLoader active={props.state.status === 'loading' || props.state.pending} />
-    </button>
+    </A11yButton>
   );
 }
 

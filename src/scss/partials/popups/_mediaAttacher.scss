@@ -279,10 +279,6 @@
 }
 
 .popup-item-media-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: inherit;
   position: relative;
   cursor: pointer;
   pointer-events: initial !important;
@@ -297,12 +293,20 @@
 
   transition: .2s;
 
+  // a11y: the actions are native buttons with the layer on
+  :where(.a11y) & {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+  }
+
   &:hover {
     color: #ffffff;
   }
 }
 
-.popup-item-media-more {
+:where(.a11y) .popup-item-media-more {
   position: absolute;
   top: .25rem;
   inset-inline-end: .25rem;

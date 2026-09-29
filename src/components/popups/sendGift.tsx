@@ -66,6 +66,7 @@ import {createProfileGiftsStore, StarGiftsProfileActions, StarGiftsProfileStore}
 import transferStarGift from '@components/popups/transferStarGift';
 import {unwrap} from 'solid-js/store';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 
 import styles from '@components/popups/sendGift.module.scss';
 import Animated from '@helpers/solid/animations';
@@ -133,7 +134,7 @@ function GiftOptionsPage(props: {
         <For each={props.premiumOptions}>
           {(option) => {
             return (
-              <div class={styles.premiumOption} role="button" tabindex={0} onClick={() => props.onGiftChosen(option)} onKeyDown={buttonKeyDown}>
+              <div class={styles.premiumOption} role="button" tabindex={Modes.a11y ? 0 : undefined} onClick={() => props.onGiftChosen(option)} onKeyDown={buttonKeyDown}>
                 <LottieAnimation
                   lottieLoader={lottieLoader}
                   class={styles.premiumOptionSticker}
@@ -540,7 +541,7 @@ function ResaleOptionsPage(props: {
             <div
               class={`${styles.resaleFilterChip} ${styles.resaleFilterChipSort} btn-menu-toggle`}
               role="button"
-              tabindex={0}
+              tabindex={Modes.a11y ? 0 : undefined}
               aria-haspopup="menu"
               aria-expanded={sortPopupVisible()}
               ref={(el) => {
@@ -614,7 +615,7 @@ function ResaleOptionsPage(props: {
               <div
                 class={styles.resaleFilterChip}
                 role="button"
-                tabindex={0}
+                tabindex={Modes.a11y ? 0 : undefined}
                 aria-haspopup="menu"
                 aria-expanded={modelPopupVisible()}
                 onKeyDown={buttonKeyDown}
@@ -664,7 +665,7 @@ function ResaleOptionsPage(props: {
               <div
                 class={styles.resaleFilterChip}
                 role="button"
-                tabindex={0}
+                tabindex={Modes.a11y ? 0 : undefined}
                 aria-haspopup="menu"
                 aria-expanded={backdropPopupVisible()}
                 onKeyDown={buttonKeyDown}
@@ -715,7 +716,7 @@ function ResaleOptionsPage(props: {
               <div
                 class={styles.resaleFilterChip}
                 role="button"
-                tabindex={0}
+                tabindex={Modes.a11y ? 0 : undefined}
                 aria-haspopup="menu"
                 aria-expanded={patternPopupVisible()}
                 onKeyDown={buttonKeyDown}

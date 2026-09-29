@@ -3,6 +3,7 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import I18n, {LangPackKey} from '@lib/langPack';
+import Modes from '@config/modes';
 import {createEffect, createSignal, untrack} from 'solid-js';
 
 
@@ -44,7 +45,7 @@ export default function Tabs() {
           aria-label={I18n.format(item.label, true)}
           aria-controls={editorState.currentTab === item.key ? getMediaEditorTabPanelId(item.key) : undefined}
           aria-selected={editorState.currentTab === item.key}
-          tabIndex={editorState.currentTab === item.key ? 0 : -1}
+          tabIndex={Modes.a11y ? (editorState.currentTab === item.key ? 0 : -1) : undefined}
           onClick={() => onTabClick(item.key)}
         />
       </div>

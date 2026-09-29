@@ -101,7 +101,16 @@
 .Date {
   font-size: 13px;
   line-height: 1;
-  color: var(--secondary-text-color);
+  /* color: var(--secondary-text-color); */
+  opacity: 0.4;
+  font-weight: 200;
+
+  // enough contrast with the keyboard layer; `inherit` and `1` are what the declarations left unset gave
+  :global(:where(.a11y)) & {
+    opacity: 1;
+    font-weight: inherit;
+    color: var(--secondary-text-color);
+  }
 }
 
 .ExpandableContent {

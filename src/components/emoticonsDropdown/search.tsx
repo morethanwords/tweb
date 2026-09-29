@@ -7,6 +7,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import {EmojiGroup} from '@layer';
 import {AppEmojiManager} from '@appManagers/appEmojiManager';
 import I18n, {LangPackKey} from '@lib/langPack';
+import Modes from '@config/modes';
 import rootScope from '@lib/rootScope';
 import InputSearch from '@components/inputSearch';
 import Scrollable from '@components/scrollable2';
@@ -51,7 +52,7 @@ function addSearchCategories(props: {
         classList={{active: selected() === group}}
         title={group.title}
         role="button"
-        tabindex={0}
+        tabindex={Modes.a11y ? 0 : undefined}
         aria-label={group.title}
         aria-pressed={selected() === group}
         onClick={[onEmojiGroupClick, group]}

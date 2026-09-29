@@ -21,6 +21,7 @@ import {StackedAvatarsTsx} from '@components/stackedAvatars';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 
 export function UnknownUserBubble(props: {
   peerId: PeerId,
@@ -92,7 +93,7 @@ export function UnknownUserBubble(props: {
               <div
                 class={/* @once */ styles.commonChats}
                 role="button"
-                tabindex={0}
+                tabindex={Modes.a11y ? 0 : undefined}
                 aria-label={I18n.format('UnknownUserSharedGroups', true)}
                 onClick={() => {
                   appSidebarRight.toggleSidebar(true);

@@ -1,4 +1,5 @@
 import {JSX, Show, createSignal, onCleanup, onMount} from 'solid-js';
+import {Dynamic} from 'solid-js/web';
 
 import Button from '@components/buttonTsx';
 import CodeInputFieldCompat from '@components/codeInputField';
@@ -26,6 +27,7 @@ import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import ctx from '@environment/ctx';
+import Modes from '@config/modes';
 
 import AuthCard from '@/pages/AuthCard';
 import AuthCardError from '@/pages/AuthCardError';
@@ -105,14 +107,15 @@ export default function AuthCodeCard(props: {spec: Spec}) {
 
   /* ---------- header pieces (mutated imperatively in applySentCode) ---------- */
 
-  const phoneEl = document.createElement('span');
+  // without `?a11y=1` the number stays an h4, which is what gives it the global heading size
+  const phoneEl = document.createElement(Modes.a11y ? 'span' : 'h4');
   phoneEl.classList.add(styles.phone);
 
   const editButton = document.createElement('span');
   editButton.classList.add(styles.phoneEdit);
   editButton.setAttribute('role', 'button');
   editButton.setAttribute('aria-label', I18n.format('Edit', true));
-  editButton.tabIndex = 0;
+  if(Modes.a11y) editButton.tabIndex = 0;
   editButton.append(Icon('edit'));
   attachClickEvent(editButton, () => navigate({name: 'signIn'}));
 
@@ -583,11 +586,12 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       header={
         <MediaHeader>
           <MediaHeader.Sticker element={stickerHost} size={stickerSize}/>
-          <MediaHeader.Title tag="h1">
-            <span class={styles.phoneWrapper}>
+          {/* the heading only with `?a11y=1`: without it the number is an h4 of its own */}
+          <MediaHeader.Title tag={Modes.a11y ? 'h1' : undefined}>
+            <Dynamic component={Modes.a11y ? 'span' : 'div'} class={styles.phoneWrapper}>
               {phoneEl}
               {editButton}
-            </span>
+            </Dynamic>
           </MediaHeader.Title>
           <MediaHeader.Subtitle class="secondary">{sentTypeContent()}</MediaHeader.Subtitle>
         </MediaHeader>

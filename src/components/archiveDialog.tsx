@@ -1,4 +1,5 @@
 import lastItem from '@helpers/array/lastItem';
+import Modes from '@config/modes';
 import {linkKeyDown} from '@helpers/solid/buttonKeyDown';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
@@ -57,7 +58,7 @@ const ArchiveDialog = defineSolidElement({
     // which is what the list's own handler reads as a keyboard activation — the
     // archive still opens down the one path every row uses.
     props.element.setAttribute('role', 'link');
-    props.element.tabIndex = 0;
+    if(Modes.a11y) props.element.tabIndex = 0;
     const onKeyDown = (e: KeyboardEvent) => linkKeyDown(e, props.element);
     props.element.addEventListener('keydown', onKeyDown);
     onCleanup(() => props.element.removeEventListener('keydown', onKeyDown));

@@ -1,6 +1,7 @@
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type Chat from '@components/chat/chat';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import Modes from '@config/modes';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
@@ -264,7 +265,7 @@ export default class ChatContextMenu {
         callback: (e) => {
           // A hardware keyboard on a touch-capable device uses the same
           // synthetic contextmenu path as desktop, without a touchend to wait for.
-          if(e.type === 'contextmenu' && !e.isTrusted) {
+          if(Modes.a11y && e.type === 'contextmenu' && !e.isTrusted) {
             if(!this.chat.selection.isSelecting) this.onContextMenu(e);
             return;
           }
@@ -608,7 +609,7 @@ export default class ChatContextMenu {
         setTimeout(() => {
           destroy();
         }, 300);
-      }, (e.target as HTMLElement).closest<HTMLElement>('[tabindex], button, a[href]') || bubble);
+      }, Modes.a11y ? (e.target as HTMLElement).closest<HTMLElement>('[tabindex], button, a[href]') || bubble : undefined);
 
       reactionsCallbacks?.onAfterInit();
     };

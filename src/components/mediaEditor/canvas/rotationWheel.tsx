@@ -9,7 +9,8 @@ import {lerp} from '@helpers/lerp';
 import clamp from '@helpers/number/clamp';
 import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 import I18n from '@lib/langPack';
-import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
+import Modes from '@config/modes';
+import {batch, createEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
 
 
@@ -285,18 +286,20 @@ export default function RotationWheel() {
       <div class="media-editor__rotation-wheel-value" aria-hidden={true}>
         <div class="media-editor__rotation-wheel-value-number">{value()}</div>
       </div>
-      <input
-        type="range"
-        class="media-editor__rotation-wheel-input"
-        min={-TOTAL_DEGREES_SIDE}
-        max={TOTAL_DEGREES_SIDE}
-        step={1}
-        disabled={editorState.isMoving}
-        value={Number(value())}
-        aria-label={I18n.format('MediaEditor.FineRotation', true)}
-        aria-valuetext={`${value()}°`}
-        onInput={(event) => setFineRotation(event.currentTarget.valueAsNumber)}
-      />
+      <Show when={Modes.a11y}>
+        <input
+          type="range"
+          class="media-editor__rotation-wheel-input"
+          min={-TOTAL_DEGREES_SIDE}
+          max={TOTAL_DEGREES_SIDE}
+          step={1}
+          disabled={editorState.isMoving}
+          value={Number(value())}
+          aria-label={I18n.format('MediaEditor.FineRotation', true)}
+          aria-valuetext={`${value()}°`}
+          onInput={(event) => setFineRotation(event.currentTarget.valueAsNumber)}
+        />
+      </Show>
       <ArrowUp />
       <ButtonIconTsx
         onClick={flipImage}

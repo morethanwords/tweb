@@ -4,6 +4,7 @@ import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
 import ListenerSetter from '@helpers/listenerSetter';
 import attachTabList from '@helpers/dom/tabList';
+import Modes from '@config/modes';
 import classNames from '@helpers/string/classNames';
 import {Accessor, JSX, For, onCleanup, onMount, createContext, Ref, untrack} from 'solid-js';
 
@@ -69,7 +70,7 @@ Tabs.MenuTab = (props: {
       }}
       class={classNames('menu-horizontal-div-item', props.class)}
       role="tab"
-      tabindex={-1}
+      tabindex={Modes.a11y ? -1 : undefined}
       id={props.id}
       aria-controls={props.controls}
     >

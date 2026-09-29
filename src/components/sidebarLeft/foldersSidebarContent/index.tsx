@@ -2,6 +2,7 @@ import {Accessor, createEffect, createSelector, createSignal, For, onCleanup, on
 import {createStore} from 'solid-js/store';
 import {render} from 'solid-js/web';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import createFolderContextMenu from '@helpers/dom/createFolderContextMenu';
 import {keepMe} from '@helpers/keepMe';
 import {Middleware} from '@helpers/middleware';
@@ -185,7 +186,7 @@ export function FoldersSidebarContent(props: {
             use:ripple
             class="folders-sidebar__add-folders-button"
             role="button"
-            tabindex="0"
+            tabindex={Modes.a11y ? 0 : undefined}
             onClick={() => contextMenu.openSettingsForFilter(selectedFolderId())}
             onKeyDown={buttonKeyDown}
             style={{

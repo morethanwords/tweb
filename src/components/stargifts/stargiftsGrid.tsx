@@ -26,6 +26,8 @@ import {toastNew} from '@components/toast';
 import transferStarGift from '@components/popups/transferStarGift';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {StaticCheckbox} from '@components/staticCheckbox';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import Modes from '@config/modes';
 import tsNow from '@helpers/tsNow';
 import {openStarGiftWear} from '@components/popups/starGiftWear';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
@@ -200,20 +202,26 @@ function StarGiftGridItem(props: {
       }}
       role={props.hasSelection ? 'checkbox' : 'button'}
       aria-checked={props.hasSelection ? !!props.selected : undefined}
-      tabindex={0}
+      tabindex={Modes.a11y ? 0 : undefined}
       aria-label={ariaLabel()}
       onClick={props.onClick}
       onKeyDown={buttonKeyDown}
       ref={containerRef}
     >
-      {props.hasSelection && (
+      {props.hasSelection && (Modes.a11y ? (
         <StaticCheckbox
           round
           aria-hidden="true"
           class={/* @once */ styles.checkbox}
           checked={props.selected}
         />
-      )}
+      ) : (
+        <CheckboxFieldTsx
+          round
+          class={/* @once */ styles.checkbox}
+          checked={props.selected}
+        />
+      ))}
 
       {isPremium() && (
         <div class={/* @once */ styles.itemPremiumBackground} />

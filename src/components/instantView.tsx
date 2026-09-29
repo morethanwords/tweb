@@ -55,6 +55,7 @@ import ScrollSaver from '@helpers/scrollSaver';
 import windowSize from '@helpers/windowSize';
 import {Message} from '@layer';
 import {NULL_PEER_ID} from '@appManagers/constants';
+import Modes from '@config/modes';
 import prepareAlbum from '@components/prepareAlbum';
 import type AppMediaViewer from '@components/mediaViewer';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -949,14 +950,16 @@ function createMediaSpoilerAttacher(
     }).then((mediaSpoiler) => {
       if(!mediaSpoiler || !middleware()) return;
       spoiler = mediaSpoiler;
-      mediaSpoiler.tabIndex = 0;
       mediaSpoiler.setAttribute('role', 'button');
       mediaSpoiler.setAttribute('aria-label', 'Spoiler');
       const reveal = (event: Event) => onMediaSpoilerClick({mediaSpoiler, event});
       mediaSpoiler.addEventListener('click', reveal);
-      mediaSpoiler.addEventListener('keydown', (event) => {
-        if(event.key === 'Enter' || event.key === ' ') reveal(event);
-      });
+      if(Modes.a11y) {
+        mediaSpoiler.tabIndex = 0;
+        mediaSpoiler.addEventListener('keydown', (event) => {
+          if(event.key === 'Enter' || event.key === ' ') reveal(event);
+        });
+      }
       current.container.append(mediaSpoiler);
     }).catch(() => {});
   });
@@ -2049,7 +2052,7 @@ function wireInlinePageButtons(context: InstantViewContextValue, fragment: Docum
     }
 
     // a link button carries its link inside: the link takes the focus and opens itself
-    if(button.type._ !== 'inlineButtonTypeUrl') {
+    if(Modes.a11y && button.type._ !== 'inlineButtonTypeUrl') {
       element.tabIndex = 0;
     }
 

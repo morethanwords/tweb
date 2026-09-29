@@ -1,6 +1,7 @@
 import {afterEach, expect, it} from 'vitest';
 import createFocusTrap, {FOCUS_TRAP_ATTACHED_ATTRIBUTE, getFocusableElements} from '@helpers/dom/focusTrap';
 import {setAppWindow} from '@helpers/appWindow';
+import '@/tests/helpers/a11yLayer';
 
 const mounted: HTMLElement[] = [];
 

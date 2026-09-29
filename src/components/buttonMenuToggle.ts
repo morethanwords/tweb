@@ -19,6 +19,7 @@ import {getFullScreenElement} from '@helpers/dom/fullScreen';
 import I18n from '@lib/langPack';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import Modes from '@config/modes';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -128,6 +129,17 @@ export default function ButtonMenuToggle({
   positionPadding?: MenuPositionPadding
 }) {
   const resolvedButtonOptions = buttonOptions ? {...buttonOptions} : {};
+  // Without the a11y layer a toggle given button options is a <div>, as it was
+  // before the layer; `ariaLabel` alone does not count, callers added it for
+  // the layer only, and an explicit `asDiv` wins.
+  if(
+    !Modes.a11y &&
+    buttonOptions &&
+    buttonOptions.asDiv === undefined &&
+    Object.keys(buttonOptions).some((key) => key !== 'ariaLabel')
+  ) {
+    resolvedButtonOptions.asDiv = true;
+  }
   if(!container && !resolvedButtonOptions.ariaLabel) {
     resolvedButtonOptions.ariaLabel = 'MultiAccount.More';
   }

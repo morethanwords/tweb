@@ -1,7 +1,10 @@
-.rtmp-data-row {
+:where(.a11y) .rtmp-data-row {
   width: 100%;
   color: inherit;
   text-align: inherit;
+}
+
+.rtmp-data-row {
   display: flex;
   flex-direction: row;
   gap: 16px;

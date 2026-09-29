@@ -1,5 +1,6 @@
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import Modes from '@config/modes';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
@@ -86,7 +87,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       // Collapsed means `height: 0` with the overflow clipped, which hides the
       // nested rows from sight but leaves their checkboxes in the tab order and
       // in the accessibility tree — Tab would stop on a control drawn nowhere.
-      accordion.toggleAttribute('inert', !expanded);
+      if(Modes.a11y) accordion.toggleAttribute('inert', !expanded);
       rightContent?.setAttribute('aria-expanded', '' + expanded);
       this.onExpand?.(info as K);
     };
@@ -258,7 +259,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       const container = accordion = document.createElement('div');
       container.classList.add('accordion');
       // starts collapsed — see setAccordionExpanded
-      container.toggleAttribute('inert', true);
+      if(Modes.a11y) container.toggleAttribute('inert', true);
       if(rightContent) {
         container.id ||= `accordion-panel-${++nextAccordionId}`;
         rightContent.setAttribute('aria-controls', container.id);

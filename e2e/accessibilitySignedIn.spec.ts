@@ -63,7 +63,7 @@ test.describe('the signed-in client has no detectable accessibility violations',
     // two passes, one placeholder row and then the real ones a few seconds
     // later, and a scan that lands in between passes on an empty list. An
     // earlier version of this test did exactly that and reported it as clean.
-    await page.goto('/?noSharedWorker=1');
+    await page.goto('/?noSharedWorker=1&a11y=1');
     await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 5,
       null, {timeout: 180_000});
     await page.waitForTimeout(3000);
@@ -114,7 +114,7 @@ test.describe('the signed-in client has no detectable accessibility violations',
     await scan('profile', '#column-right');
 
     // Settings: the one screen tree behind the main menu.
-    await page.goto('/?noSharedWorker=1');
+    await page.goto('/?noSharedWorker=1&a11y=1');
     await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0,
       null, {timeout: 180_000});
     await clickVisible(page, '#column-left .btn-menu-toggle');

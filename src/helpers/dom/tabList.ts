@@ -1,10 +1,12 @@
+import Modes from '@config/modes';
+
 function getTabs(menu: HTMLElement) {
   return Array.from(menu.querySelectorAll<HTMLElement>('[role="tab"]'))
   .filter((tab) => tab.closest('[role="tablist"]') === menu);
 }
 
 export function handleTabKeyDown(event: KeyboardEvent) {
-  if(event.defaultPrevented || event.isComposing) return;
+  if(!Modes.a11y || event.defaultPrevented || event.isComposing) return;
   const current = event.target as HTMLElement;
   const menu = event.currentTarget as HTMLElement;
   if(current.getAttribute('role') !== 'tab' || current.closest('[role="tablist"]') !== menu) return;
@@ -67,11 +69,11 @@ export default function attachTabList(menu: HTMLElement, content?: HTMLElement) 
         tabs.forEach((tab) => {
           const active = tab === selected;
           tab.setAttribute('aria-selected', String(active));
-          tab.tabIndex = active ? 0 : -1;
+          if(Modes.a11y) tab.tabIndex = active ? 0 : -1; // roles only without the a11y layer
           const panelId = tab.getAttribute('aria-controls');
           const panel = panelId && state.content?.children.namedItem(panelId) as HTMLElement;
           if(panel) {
-            panel.inert = !active;
+            if(Modes.a11y) panel.inert = !active;
             panel.setAttribute('aria-hidden', String(!active));
           }
         });

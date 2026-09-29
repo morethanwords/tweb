@@ -45,6 +45,7 @@ vi.mock('@components/checkboxField', () => ({
 import {ButtonMenuSync} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
 import ListenerSetter from '@helpers/listenerSetter';
+import '@/tests/helpers/a11yLayer';
 
 function pressKey(element: HTMLElement, key: string) {
   const event = new KeyboardEvent('keydown', {bubbles: true, cancelable: true, key});

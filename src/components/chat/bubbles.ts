@@ -3170,7 +3170,8 @@ export default class ChatBubbles {
       return;
     }
 
-    hoverReaction = this.hoverReaction = Button('bubble-hover-reaction', {noRipple: true, ariaLabel: 'DoubleTapSetting'});
+    // A native button only with the keyboard layer: it brings the browser's button box and takes the focus on click.
+    hoverReaction = this.hoverReaction = Button('bubble-hover-reaction', {noRipple: true, ariaLabel: 'DoubleTapSetting', asDiv: !Modes.a11y});
     const middlewareHelper = hoverReaction.middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get(() => this.hoverReaction === hoverReaction);
 
@@ -4794,7 +4795,7 @@ export default class ChatBubbles {
     // where the arrows scroll the conversation rather than reaching the composer
     // (see `shouldPreserveKeyboardFocus`). A stop with no role and no name
     // announces nothing when it is reached, so it carries both.
-    this.scrollable.container.tabIndex = 0;
+    if(Modes.a11y) this.scrollable.container.tabIndex = 0;
     this.scrollable.container.setAttribute('role', 'region');
     this.scrollable.container.setAttribute('aria-label', I18n.format('AccDescr.MessageHistory', true));
     this.setLoaded('top', false, false);
@@ -7283,7 +7284,8 @@ export default class ChatBubbles {
       // const groupedId = (message as Message.message).grouped_id;
       newBubble = document.createElement('div');
       if(isMessage(message)) {
-        newBubble.tabIndex = 0;
+        // a click on a focusable bubble takes the focus, and restoring it scrolls the chat
+        if(Modes.a11y) newBubble.tabIndex = 0;
         newBubble.setAttribute('role', 'article');
       }
       newBubble.middlewareHelper = middlewareHelper;
@@ -9053,7 +9055,7 @@ export default class ChatBubbles {
         forward.classList.add('bubble-beside-button', 'with-hover', 'forward');
         forward.setAttribute('role', 'button');
         forward.setAttribute('aria-label', I18n.format('Forward', true));
-        forward.tabIndex = 0;
+        if(Modes.a11y) forward.tabIndex = 0;
         forward.append(Icon('forward_filled'));
         bubbleContainer.append(forward);
         bubble.classList.add('with-beside-button');
@@ -9092,7 +9094,7 @@ export default class ChatBubbles {
       btn.classList.add('bubble-beside-button', 'summarize');
       btn.setAttribute('role', 'button');
       btn.setAttribute('aria-label', I18n.format('Summary.Title', true));
-      btn.tabIndex = 0;
+      if(Modes.a11y) btn.tabIndex = 0;
       if(hasBesideButton) btn.classList.add('bubble-beside-button--not-last');
       else container.classList.add('is-last-button');
       const size = 38;
@@ -10091,7 +10093,7 @@ export default class ChatBubbles {
           contactDiv.classList.add('contact');
           contactDiv.dataset.peerId = '' + contact.user_id;
           contactDiv.setAttribute('role', 'button');
-          contactDiv.tabIndex = 0;
+          if(Modes.a11y) contactDiv.tabIndex = 0;
 
           noAttachmentDivNeeded = true;
 
@@ -10685,7 +10687,7 @@ export default class ChatBubbles {
         hideButton = buttons;
         hideButton.setAttribute('role', 'button');
         hideButton.setAttribute('aria-label', I18n.format('HideAd', true));
-        hideButton.tabIndex = 0;
+        if(Modes.a11y) hideButton.tabIndex = 0;
         hideButton.append(Icon('close'));
         buttons.classList.add('bubble-sponsored-hide');
       }
@@ -11033,7 +11035,7 @@ export default class ChatBubbles {
       goto.classList.add('bubble-beside-button', 'with-hover', 'goto-original');
       goto.setAttribute('role', 'button');
       goto.setAttribute('aria-label', I18n.format('Message.Context.Goto', true));
-      goto.tabIndex = 0;
+      if(Modes.a11y) goto.tabIndex = 0;
       goto.append(Icon('arrow_next'));
       bubbleContainer.append(goto);
       bubble.dataset.savedFrom = savedFrom;

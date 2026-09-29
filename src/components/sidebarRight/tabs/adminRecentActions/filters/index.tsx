@@ -1,6 +1,7 @@
 import {batch, createComputed, createEffect, on, onCleanup, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {IS_MOBILE} from '@environment/userAgent';
+import Modes from '@config/modes';
 import createFocusTrap from '@helpers/dom/focusTrap';
 import track from '@helpers/solid/track';
 import I18n from '@lib/langPack';
@@ -59,7 +60,7 @@ export const Filters = (props: FiltersProps) => {
   }));
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if(e.key === 'Escape') {
+    if(Modes.a11y && e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
       props.onClose?.();
