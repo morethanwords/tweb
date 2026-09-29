@@ -1676,7 +1676,7 @@ export default class AppStoriesManager extends AppManager {
         };
         if(peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);
         else this.appChatsManager.saveApiChats([newPeer as Chat.channel]);
-        this.appNotificationsManager.toggleStoriesMute(peerId, hidden, true);
+        this.appNotificationsManager.toggleStoriesMute(peerId, hidden || undefined, true);
       }
     });
   }
@@ -1796,7 +1796,7 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    if(await this.appNotificationsManager.getPeerStoriesMuted(peerId)) {
+    if(await this.appNotificationsManager.isPeerStoriesMuted(peerId)) {
       return;
     }
 

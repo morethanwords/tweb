@@ -1512,14 +1512,11 @@ export class AppCommunitiesManager extends AppManager {
 
   public muteCommunity(communityId: ChatId, muteUntil: number) {
     const currentState = this.assertCommunityDataCurrent(communityId);
-    return this.appNotificationsManager.updateNotifySettings(
+    return this.appNotificationsManager.editNotifySettings(
       this.appPeersManager.getInputNotifyPeerById({
         peerId: currentState.communityId.toPeerId(true)
       }),
-      {
-        _: 'inputPeerNotifySettings',
-        mute_until: muteUntil
-      }
+      {mute_until: muteUntil}
     );
   }
 

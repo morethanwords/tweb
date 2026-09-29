@@ -1133,6 +1133,10 @@ export class AppUsersManager extends AppManager {
 
         return topPeers;
       });
+    }).catch((err) => {
+      // * don't keep a failure for the whole session, the next caller asks again
+      delete this.getTopPeersPromises[type];
+      throw err;
     });
   }
 

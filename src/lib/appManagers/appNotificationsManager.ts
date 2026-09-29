@@ -22,6 +22,7 @@ import type {
   NotificationBuildStoryReactionTaskPayload,
   NotificationBuildTaskPayload
 } from '@lib/apiManagerProxy';
+import type {MyTopPeer} from '@appManagers/appUsersManager';
 
 /** what a notification's builder provides — the routing fields are filled in by the router */
 type NotificationBuildPayload =
@@ -80,9 +81,15 @@ export class AppNotificationsManager extends AppManager {
     let obj: any = this.peerSettings[key as MyNotifyPeer];
 
     let peerId: PeerId;
+    let threadId: number;
     let communityId: ChatId;
-    if(peer._ === 'inputNotifyPeer') {
-      peerId = key = this.appPeersManager.getPeerId(peer.peer);
+    if(peer._ === 'inputNotifyPeer' || peer._ === 'inputNotifyForumTopic') {
+      peerId = this.appPeersManager.getPeerId(peer.peer);
+      if(peer._ === 'inputNotifyForumTopic') {
+        threadId = this.getTopicThreadId(peer);
+      }
+
+      key = this.getPeerKey(peerId, threadId);
       obj = obj[key];
     } else if(peer._ === 'inputNotifyCommunity') {
       communityId = key = (peer.community as InputChannel.inputChannel).channel_id;
@@ -94,7 +101,7 @@ export class AppNotificationsManager extends AppManager {
     }
 
     const container: any = peerId ?
-      this.peerSettings.notifyPeer :
+      this.peerSettings[threadId ? 'notifyForumTopic' : 'notifyPeer'] :
       communityId ?
         this.peerSettings.notifyCommunity :
         this.peerSettings;
@@ -104,6 +111,7 @@ export class AppNotificationsManager extends AppManager {
         key,
         peerId,
         communityId,
+        threadId,
         settings
       });
 
@@ -157,6 +165,35 @@ export class AppNotificationsManager extends AppManager {
     }).then(() => {
       this.generateLocalNotifySettingsUpdate(peer, settings);
     });
+  }
+
+  /**
+   * Changes some of a peer's, a topic's or a Community's own settings. `account.updateNotifySettings`
+   * replaces every field, so the rest travel along — its own, never the global ones it inherits.
+   * An `undefined` value drops the field
+   */
+  public async editNotifySettings(
+    peer: InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyForumTopic | InputNotifyPeer.inputNotifyCommunity,
+    edit: Partial<Omit<InputPeerNotifySettings, '_'>>,
+    local?: boolean
+  ) {
+    const current = await this.getNotifySettings(peer);
+    const settings: InputPeerNotifySettings = {
+      ...current,
+      _: 'inputPeerNotifySettings',
+      // * sounds come back per platform, and this client's one is the `other` one (as in tdesktop)
+      sound: current.other_sound,
+      stories_sound: current.stories_other_sound
+    };
+
+    for(const key in edit) {
+      const value = edit[key as keyof typeof edit];
+      if(value === undefined) delete settings[key as keyof typeof edit];
+      else (settings as any)[key] = value;
+    }
+
+    if(local) this.generateLocalNotifySettingsUpdate(peer, settings);
+    else return this.updateNotifySettings(peer, settings);
   }
 
   // public getNotifyExceptions() {
@@ -282,6 +319,13 @@ export class AppNotificationsManager extends AppManager {
     const timeout = Math.min(1800e3, (closestMuteUntil - timestamp) * 1000);
     this.checkMuteUntilTimeout = ctx.setTimeout(this.checkMuteUntil, timeout);
   };
+
+  /**
+   * The local thread id a topic's settings are kept under
+   */
+  public getTopicThreadId(peer: InputNotifyPeer.inputNotifyForumTopic | NotifyPeer.notifyForumTopic) {
+    return this.appMessagesIdsManager.generateMessageId(peer.top_msg_id, (peer.peer as Peer.peerChannel).channel_id);
+  }
 
   public getPeerKey(peerId: PeerId, threadId?: number) {
     return peerId + (threadId ? '_' + threadId : '');
@@ -410,38 +454,39 @@ export class AppNotificationsManager extends AppManager {
     return isMuted;
   }
 
-  public isPeerStoriesMuted(peerId: PeerId) {
-    const notifySettings = this.getPeerLocalSettings({peerId});
-    return !!notifySettings?.stories_muted;
-  }
-
-  public toggleStoriesMute(peerId: PeerId, mute: boolean, local?: boolean) {
-    const notifySettings = this.getPeerLocalSettings({peerId});
-    const inputNotifyPeer: InputNotifyPeer = {
-      _: 'inputNotifyPeer',
-      peer: this.appPeersManager.getInputPeerById(peerId)
-    };
-
-    const inputPeerNotifySettings: InputPeerNotifySettings = {
-      ...notifySettings,
-      _: 'inputPeerNotifySettings'
-    };
-
-    if(mute) inputPeerNotifySettings.stories_muted = true;
-    else delete inputPeerNotifySettings.stories_muted;
-
-    if(!local) this.updateNotifySettings(inputNotifyPeer, inputPeerNotifySettings);
-    else this.generateLocalNotifySettingsUpdate(inputNotifyPeer, inputPeerNotifySettings);
-  }
-
-  // * isPeerStoriesMuted reads the cache synchronously; warm it up first so a
-  // * not-yet-loaded peer doesn't read as unmuted
-  public async getPeerStoriesMuted(peerId: PeerId) {
-    await Promise.all([
-      this.getNotifyPeerTypeSettings(),
+  /**
+   * Resolved the way iOS and Android do it: the peer's own choice (then its Community's, as for
+   * messages), then the private chats one (the only global stories setting, whatever the peer is).
+   * With none set, the server default ("Important Stories"), only the top 5 correspondents notify
+   */
+  public async isPeerStoriesMuted(peerId: PeerId) {
+    const [usersSettings, peerSettings] = await Promise.all([
+      this.getNotifySettings({_: 'inputNotifyUsers'}),
       this.getNotifySettings({_: 'inputNotifyPeer', peer: this.appPeersManager.getInputPeerById(peerId)})
     ]);
-    return this.isPeerStoriesMuted(peerId);
+
+    const communityId = this.getLinkedCommunityId(peerId);
+    const communitySettings = communityId ? this.peerSettings.notifyCommunity[communityId] : undefined;
+    const muted = peerSettings?.stories_muted ??
+      (communitySettings instanceof Promise ? undefined : communitySettings?.stories_muted) ??
+      usersSettings?.stories_muted;
+    if(muted !== undefined) {
+      return muted;
+    }
+
+    const topPeers = await this.appUsersManager.getTopPeers('correspondents').catch((): MyTopPeer[] => []);
+    return !topPeers.slice(0, 5).some((topPeer) => topPeer.id === peerId);
+  }
+
+  /**
+   * `muted: undefined` hands the choice back to the default, as the server does when the peer's
+   * stories are shown again
+   */
+  public toggleStoriesMute(peerId: PeerId, muted: boolean | undefined, local?: boolean) {
+    return this.editNotifySettings({
+      _: 'inputNotifyPeer',
+      peer: this.appPeersManager.getInputPeerById(peerId)
+    }, {stories_muted: muted}, local);
   }
 
   // * picks the single tab that should render a local notification for this peer,
@@ -509,7 +554,7 @@ export class AppNotificationsManager extends AppManager {
     const peerId = isPeerType && this.appPeersManager.getPeerId(peer.peer);
     const communityId = isCommunity ? peer.community_id : undefined;
     const key = !isPeerType && !isCommunity ? peer._ : undefined;
-    const threadId = isTopic ? this.appMessagesIdsManager.generateMessageId(peer.top_msg_id, (peer.peer as Peer.peerChannel).channel_id) : undefined;
+    const threadId = isTopic ? this.getTopicThreadId(peer) : undefined;
     this.savePeerSettings({
       key,
       peerId,
