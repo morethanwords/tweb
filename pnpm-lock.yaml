@@ -32,6 +32,9 @@ overrides:
   '@tiptap/pm': 3.28.0
   '@tiptap/starter-kit': 3.28.0
 
+patchedDependencies:
+  temml: fe44cf845de8eafde1ff19dbd2f89a7efbf8aa67519b278247acae631bbd0176
+
 importers:
 
   .:
@@ -77,7 +80,7 @@ importers:
         version: 3.28.0
       temml:
         specifier: ^0.13.3
-        version: 0.13.3
+        version: 0.13.3(patch_hash=fe44cf845de8eafde1ff19dbd2f89a7efbf8aa67519b278247acae631bbd0176)
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.11.3
@@ -7021,7 +7024,7 @@ snapshots:
 
   symbol-tree@3.2.4: {}
 
-  temml@0.13.3: {}
+  temml@0.13.3(patch_hash=fe44cf845de8eafde1ff19dbd2f89a7efbf8aa67519b278247acae631bbd0176): {}
 
   tinybench@2.9.0: {}
 

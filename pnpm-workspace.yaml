@@ -68,3 +68,12 @@ minimumReleaseAgeExclude:
   - '@oxlint/binding-win32-arm64-msvc@1.75.0'
   - '@oxlint/binding-win32-ia32-msvc@1.75.0'
   - '@oxlint/binding-win32-x64-msvc@1.75.0'
+
+# Temml charges the tokens a macro expansion emits against `maxExpandTokens` and the
+# MathML nodes a render builds against `maxNodes`, so a `\def\x{…}` used a thousand
+# times or a dozen nested `\cancelto`s cannot turn 2 KB of message into a tab-freezing
+# formula — see src/components/instantViewMath.tsx. Upstreamed as ronkok/Temml#139; until
+# a release carries it, a temml upgrade means re-applying the patch (`pnpm patch temml`),
+# and src/tests/instantViewMathBudget.test.ts checks the shipped build for it.
+patchedDependencies:
+  temml: patches/temml.patch

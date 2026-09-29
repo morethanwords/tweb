@@ -10,6 +10,7 @@ import {getMiddleware, Middleware} from '@helpers/middleware';
 import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
 import styles from '@components/instantViewStyles';
 import loadTemml from '@helpers/math/loadTemml';
+import {fastRaf} from '@helpers/schedulers';
 import {TextWithEntities} from '@layer';
 import {updateGraphemeOffsets} from '@lib/richTextProcessor/graphemes';
 import createMessageTextRevealLeafBinding from '@components/chat/bubbleParts/solidMessageText/revealLeafBinding';
@@ -38,20 +39,93 @@ function namespaceLabelIds(element: HTMLElement) {
   referencing.forEach((node) => node.setAttribute('href', '#' + prefix + node.getAttribute('href').slice(1)));
 }
 
-// Render LaTeX `source` into `element` as MathML. Shows the raw source until Temml loads and as a
-// fallback if the library fails to load or the source doesn't parse (matches WebA's behaviour).
+// A formula's source is bounded by the message limit (32 KB); what it turns into is not. Temml's
+// `maxExpand` counts macro expansions, not their size, so `\def\x{…200 chars…}` used 999 times
+// grew 2 KB of message into 200k tokens, and one `\def\x#1{#1#1…}` fed a long argument does the
+// same in a single expansion; a dozen nested `\cancelto`s build their body 2^12 times without any
+// macro at all. The MathML is worse still: Chrome appends `<mi>` siblings in quadratic time, so
+// 100k of them held the main thread for 14 s and left the tab at "Page Unresponsive" every time
+// the chat opened. patches/temml.patch adds two budgets, both enforced while the work happens
+// rather than after it: every token an expansion emits is charged against `maxExpandTokens`,
+// and every MathML node the builder creates against `maxNodes`. A formula over either falls back
+// to its source, like one that does not parse. 4k nodes is three times the largest formula
+// anyone writes (a 12×12 matrix of fractions is 1.2k) and costs ~50 ms to build and lay out.
+export const MAX_FORMULA_EXPANDED_TOKENS = 100_000;
+export const MAX_FORMULA_NODES = 4_000;
+
+// Typesetting is synchronous and its cost is the size of the result: in Chrome, layout is ~10 µs
+// per MathML node whatever the tree's shape, on top of the build. A message can hold dozens of
+// formulas at the node budget, and a chat opens with dozens of messages, so that work must not
+// all land in the frame the chat opens in. Formulas are typeset through a queue with a per-frame
+// allowance: while a frame has allowance left they typeset right away — an ordinary screen of
+// messages fits in one frame and looks as before — and once it is spent the rest keep showing
+// their source until the next frame. The chat is interactive from the first frame however much
+// math it carries, and no frame does more than the allowance plus one formula.
+const FRAME_NODE_ALLOWANCE = 2_000;
+let frameNodes = 0;
+let frameArmed = false;
+const waiting: Array<() => number> = [];
+
+function armFrame() {
+  if(frameArmed) return;
+  frameArmed = true;
+  fastRaf(() => {
+    frameArmed = false;
+    frameNodes = 0;
+    try {
+      while(waiting.length && frameNodes < FRAME_NODE_ALLOWANCE) {
+        frameNodes += waiting.shift()();
+      }
+    } finally {
+      if(waiting.length) armFrame();
+    }
+  });
+}
+
+// Runs `typeset` (which returns the number of nodes it added) right away if the current frame
+// has allowance left — synchronously, so the common case costs no extra tick — and otherwise
+// in a later frame, returning a promise for when it has run.
+function typesetWithinFrameAllowance(typeset: () => number): void | Promise<void> {
+  if(frameNodes < FRAME_NODE_ALLOWANCE) {
+    frameNodes += typeset();
+    armFrame();
+    return;
+  }
+
+  return new Promise<void>((resolve) => {
+    waiting.push(() => {
+      try {
+        return typeset();
+      } finally {
+        resolve();
+      }
+    });
+    armFrame();
+  });
+}
+
+// Render LaTeX `source` into `element` as MathML. Shows the raw source until Temml loads and its
+// turn comes, and as a fallback if the library fails to load, the source doesn't parse (matches
+// WebA's behaviour) or the formula is over budget.
 export function renderLatexInto(element: HTMLElement, source: string, isBlock: boolean, middleware?: Middleware) {
   element.textContent = source;
-  return loadTemml().then((temml) => {
-    if(middleware && !middleware()) return;
+  return loadTemml().then((temml) => typesetWithinFrameAllowance(() => {
+    if(middleware && !middleware()) return 0;
     try {
       element.textContent = '';
-      temml.render(source, element, {displayMode: isBlock, throwOnError: true});
+      temml.render(source, element, {
+        displayMode: isBlock,
+        throwOnError: true,
+        maxExpandTokens: MAX_FORMULA_EXPANDED_TOKENS,
+        maxNodes: MAX_FORMULA_NODES
+      });
       namespaceLabelIds(element);
+      return element.getElementsByTagName('*').length;
     } catch{
       element.textContent = source;
+      return 0;
     }
-  }, () => {
+  }), () => {
     if(middleware && !middleware()) return;
     element.textContent = source;
   });

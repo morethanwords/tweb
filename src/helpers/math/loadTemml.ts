@@ -6,8 +6,15 @@
 
 import temmlUrl from 'temml/dist/temml.min.js?url';
 
-export type TemmlRender = (source: string, element: HTMLElement, options?: {displayMode?: boolean, throwOnError?: boolean}) => void;
-export type Temml = {render: TemmlRender};
+export type TemmlOptions = {
+  displayMode?: boolean,
+  throwOnError?: boolean,
+  // added by patches/temml.patch: the tokens macro expansions may emit, and the MathML nodes
+  // the builder may create, in one render
+  maxExpandTokens?: number,
+  maxNodes?: number
+};
+export type Temml = {render: (source: string, element: HTMLElement, options?: TemmlOptions) => void};
 
 let temmlPromise: Promise<Temml> | undefined;
 
