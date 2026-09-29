@@ -1,5 +1,8 @@
 // import { MOUNT_CLASS_TO } from "@config/debug";
 import type {ArgumentTypes, SuperReturnType} from '@types';
+import {logger} from '@lib/logger';
+
+const log = logger('EVENTS');
 
 // class EventSystem {
 //   wm: WeakMap<any, Record<any, Set<any>>> = new WeakMap();
@@ -162,6 +165,10 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
         if(results) {
           throw err;
         }
+
+        // * the other listeners still run, but the error must not vanish: an update
+        // * handler that dies halfway leaves whatever it was changing half-applied
+        log.error('listener error', name, err);
       }
     }
 

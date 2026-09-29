@@ -13535,6 +13535,17 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    // * a result that is not the bottom end still extends the bottom-end slice upward when it
+    // * overlaps its top (insertSlice unshifts the newer mids), so the stored top has to follow
+    const first = historyStorage.history?.first;
+    if(!inputFilter && first?.isEnd(SliceEnd.Bottom) && first[0] > historyStorage.maxId) {
+      historyStorage._maxId = first[0];
+
+      if(!options.previewOnly) {
+        this.reloadConversation(peerId);
+      }
+    }
+
     // * load grouped missing messages (only once per recursion)
     if(!inputFilter && !recursion) {
       const firstMessage = messages[0] as Message.message;
