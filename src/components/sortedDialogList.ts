@@ -24,6 +24,16 @@ export default class SortedDialogList {
   public virtualFilterId: PeerId;
   public monoforumParentPeerId: PeerId;
 
+  /**
+   * Whether this is the chat list of a folder (any folder - All, a custom one, the archive), as
+   * opposed to the topics of a forum, the threads of a monoforum or the saved dialogs. Not
+   * `indexKey === 'index_0'`: that is All alone, and a row of any other folder never got the
+   * unread badge on its avatar when the list narrowed under a forum
+   */
+  public get isMainList() {
+    return !this.virtualFilterId && !this.monoforumParentPeerId;
+  }
+
   private virtualList: ReturnType<typeof createDeferredSortedVirtualList<SortedDialogListItem>>;
   private totalCount = 0;
   private totalCountOffset = 0;
@@ -184,7 +194,7 @@ export default class SortedDialogList {
       loadPromises,
       isBatch: true,
       threadId: (this.virtualFilterId && key !== this.virtualFilterId) || rootScope.myId === this.virtualFilterId ? key : undefined,
-      isMainList: this.indexKey === 'index_0',
+      isMainList: this.isMainList,
       controlled: true,
       monoforumParentPeerId: key !== this.monoforumParentPeerId ? this.monoforumParentPeerId : undefined,
       asAllChats: this.getAsAllChats(key),
@@ -221,10 +231,7 @@ export default class SortedDialogList {
     options.autoDeletePeriod = autoDeletePeriod;
 
     const dialogElement = this.appDialogsManager.addListDialog(options);
-    if(
-      !this.virtualFilterId &&
-      !this.monoforumParentPeerId
-    ) {
+    if(this.isMainList) {
       attachCommunityChildBadge(dialogElement, key);
     }
 
@@ -240,8 +247,7 @@ export default class SortedDialogList {
     if(
       key instanceof CustomPinnedDialog ||
       key instanceof CustomSortedDialog ||
-      this.virtualFilterId ||
-      this.monoforumParentPeerId
+      !this.isMainList
     ) return;
 
     const dialog = await this.managers.dialogsStorage.getDialogOnly(key);
