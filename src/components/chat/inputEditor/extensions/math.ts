@@ -38,7 +38,7 @@ function createMathNodeView(
     const source = `${node.attrs.source || ''}`;
     dom.dataset.source = source;
     dom.setAttribute('aria-label', source ? `Formula: ${source}` : 'Empty formula');
-    renderLatexInto(latex, source, !inline);
+    renderLatexInto(latex, source, !inline, undefined, true);
   };
   render();
   const destroyMathTooltip = attachChatInputMathTooltip({

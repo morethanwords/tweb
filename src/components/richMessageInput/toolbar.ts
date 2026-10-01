@@ -173,7 +173,7 @@ export default class EditorToolbar {
       content.classList.add('popup-rich-math-preview-content');
       preview.replaceChildren(content);
       content.classList.toggle('is-empty', !source);
-      renderLatexInto(content, source || mathSample, separateLineField.checked);
+      renderLatexInto(content, source || mathSample, separateLineField.checked, undefined, true);
     };
     inputField.input.addEventListener('input', renderPreview);
     separateLineField.input.addEventListener('change', renderPreview);

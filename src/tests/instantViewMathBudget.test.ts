@@ -3,6 +3,7 @@ import {createRequire} from 'node:module';
 import {afterAll, afterEach, beforeAll, describe, expect, test, vi} from 'vitest';
 import {MAX_FORMULA_EXPANDED_TOKENS, MAX_FORMULA_NODES, renderLatexInto} from '@components/instantViewMath';
 import type {Temml} from '@helpers/math/loadTemml';
+import {getMiddleware} from '@helpers/middleware';
 
 // The Node build carries the same patch as the script the app loads (patches/temml.patch), so
 // the library-level budget is exercised on real Temml; the app loads its copy via a <script>
@@ -116,24 +117,56 @@ describe('formula budgets', () => {
     expect(element.childElementCount).toBe(0);
   });
 
+  // ~1k nodes, in groups of 100 so that the build itself stays cheap
+  const thousandNodes = '\\def\\x{{' + 'a'.repeat(100) + '}}' + '\\x'.repeat(10);
+  const mount = () => {
+    const element = document.createElement('span');
+    document.body.append(element);
+    return element;
+  };
+  // every typeset arms a frame that resets the allowance, so one frame leaves it full whatever
+  // the tests before did
+  const freshFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
   test('formulas beyond a frame\'s allowance wait for the next frame', async() => {
-    // ~1k nodes each, in groups of 100 so that the build itself stays cheap
-    const source = '\\def\\x{{' + 'a'.repeat(100) + '}}' + '\\x'.repeat(10);
-    const elements = Array.from({length: 6}, () => {
-      const element = document.createElement('span');
-      document.body.append(element);
-      return element;
-    });
+    await freshFrame();
+    const elements = Array.from({length: 6}, mount);
     const typeset = () => elements.filter((element) => element.querySelector('math')).length;
 
-    const done = Promise.all(elements.map((element) => renderLatexInto(element, source, true)));
+    const done = Promise.all(elements.map((element) => renderLatexInto(element, thousandNodes, true)));
     await Promise.resolve();
     // the first ones fill the frame's allowance of 2k nodes, the rest still show their source
     expect(typeset()).toBe(2);
-    expect(elements[5].textContent).toBe(source);
+    expect(elements[5].textContent).toBe(thousandNodes);
 
     await done;
     expect(typeset()).toBe(6);
+  });
+
+  test('a formula deferred to a later frame leaves a destroyed generation alone', async() => {
+    await freshFrame();
+    renderLatexInto(mount(), thousandNodes, true);
+    renderLatexInto(mount(), thousandNodes, true);
+    const middleware = getMiddleware();
+    const element = mount();
+    const ready = renderLatexInto(element, thousandNodes, true, middleware.get());
+    await Promise.resolve();
+    expect(element.querySelector('math')).toBeNull();
+
+    middleware.destroy();
+    await ready;
+    expect(element.textContent).toBe(thousandNodes);
+    expect(element.childElementCount).toBe(0);
+  });
+
+  test('the composer\'s formula is typeset at once whatever the frame has left', async() => {
+    await freshFrame();
+    renderLatexInto(mount(), thousandNodes, true);
+    renderLatexInto(mount(), thousandNodes, true);
+    const element = mount();
+    renderLatexInto(element, 'x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}', true, undefined, true);
+    await Promise.resolve();
+    expect(element.querySelector('math')).toBeTruthy();
   });
 
   test('a formula within both budgets is typeset', async() => {

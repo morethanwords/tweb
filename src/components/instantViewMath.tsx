@@ -77,16 +77,20 @@ function armFrame() {
         frameNodes += waiting.shift()();
       }
     } finally {
-      if(waiting.length) armFrame();
+      // a spent allowance needs one more frame to reset it, or the next formula to arrive —
+      // seconds later, with nothing queued — would wait a frame and flash its source
+      if(waiting.length || frameNodes >= FRAME_NODE_ALLOWANCE) armFrame();
     }
   });
 }
 
 // Runs `typeset` (which returns the number of nodes it added) right away if the current frame
 // has allowance left — synchronously, so the common case costs no extra tick — and otherwise
-// in a later frame, returning a promise for when it has run.
-function typesetWithinFrameAllowance(typeset: () => number): void | Promise<void> {
-  if(frameNodes < FRAME_NODE_ALLOWANCE) {
+// in a later frame, returning a promise for when it has run. `immediate` typesets now whatever
+// the frame has left: the composer's own formula is one user-driven formula at a time, bounded
+// by the node budget, and must not wait behind the backlog of the chat under it.
+function typesetWithinFrameAllowance(typeset: () => number, immediate?: boolean): void | Promise<void> {
+  if(immediate || frameNodes < FRAME_NODE_ALLOWANCE) {
     frameNodes += typeset();
     armFrame();
     return;
@@ -106,8 +110,15 @@ function typesetWithinFrameAllowance(typeset: () => number): void | Promise<void
 
 // Render LaTeX `source` into `element` as MathML. Shows the raw source until Temml loads and its
 // turn comes, and as a fallback if the library fails to load, the source doesn't parse (matches
-// WebA's behaviour) or the formula is over budget.
-export function renderLatexInto(element: HTMLElement, source: string, isBlock: boolean, middleware?: Middleware) {
+// WebA's behaviour) or the formula is over budget. `immediate` is for the composer: see
+// `typesetWithinFrameAllowance`.
+export function renderLatexInto(
+  element: HTMLElement,
+  source: string,
+  isBlock: boolean,
+  middleware?: Middleware,
+  immediate?: boolean
+) {
   element.textContent = source;
   return loadTemml().then((temml) => typesetWithinFrameAllowance(() => {
     if(middleware && !middleware()) return 0;
@@ -125,7 +136,7 @@ export function renderLatexInto(element: HTMLElement, source: string, isBlock: b
       element.textContent = source;
       return 0;
     }
-  }), () => {
+  }, immediate), () => {
     if(middleware && !middleware()) return;
     element.textContent = source;
   });
