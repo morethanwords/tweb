@@ -69,10 +69,60 @@ function moveFiles(outPath) {
   fs.writeFileSync(stylesOutPath + 'variables.scss', variablesText);
 
   const fontsPath = outPath + 'fonts/';
+  // use glyf bboxes instead of full-em
+  padTgicoGlyphBBoxes(fontsPath);
   const files = fs.readdirSync(fontsPath);
   files.forEach(fileName => {
     fs.cpSync(fontsPath + fileName, path.join(__dirname, '../../../public/assets/fonts/' + fileName));
   });
+}
+
+function padTgicoGlyphBBoxes(fontsPath) {
+  const {spawnSync} = require('child_process');
+  const py = `
+from fontTools.ttLib import TTFont
+from pathlib import Path
+import sys
+fonts = Path(sys.argv[1])
+ttf = fonts / 'tgico.ttf'
+woff = fonts / 'tgico.woff'
+em = 1024
+font = TTFont(str(ttf))
+n = 0
+for name in font.getGlyphOrder():
+    g = font['glyf'][name]
+    if getattr(g, 'numberOfContours', 0) <= 0:
+        continue
+    new = (0, 0, max(int(g.xMax), 0), em)
+    if (g.xMin, g.yMin, g.xMax, g.yMax) != new:
+        g.xMin, g.yMin, g.xMax, g.yMax = new
+        n += 1
+xs, ys = [], []
+for name in font.getGlyphOrder():
+    g = font['glyf'][name]
+    if getattr(g, 'numberOfContours', 0) > 0:
+        xs += [g.xMin, g.xMax]; ys += [g.yMin, g.yMax]
+if xs:
+    font['head'].xMin, font['head'].xMax = min(xs), max(xs)
+    font['head'].yMin, font['head'].yMax = min(ys), max(ys)
+font.recalcBBoxes = False
+font.save(str(ttf))
+if woff.is_file():
+    w = TTFont(str(ttf))
+    w.flavor = 'woff'
+    w.recalcBBoxes = False
+    w.save(str(woff))
+check = TTFont(str(ttf))
+assert len(check['hmtx'].metrics) == check['maxp'].numGlyphs
+print('[tgico] padded', n, 'glyph header bboxes to full em')
+`;
+  const result = spawnSync('python3', ['-c', py, fontsPath], {encoding: 'utf8'});
+  if(result.status !== 0) {
+    console.error(result.stdout || '');
+    console.error(result.stderr || '');
+    throw new Error('padTgicoGlyphBBoxes failed (python3 and fonttools are required)');
+  }
+  if(result.stdout) console.log(result.stdout.trimEnd());
 }
 
 // moveFiles();
