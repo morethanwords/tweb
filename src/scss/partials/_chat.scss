@@ -294,6 +294,8 @@
   }
 
   &-ai-editor-button {
+    --padding-vertical: .25rem;
+	  --padding-horizontal: .25rem;
     position: absolute;
     top: var(--padding-vertical);
     inset-inline-end: var(--padding-horizontal);
