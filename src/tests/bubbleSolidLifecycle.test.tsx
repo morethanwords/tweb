@@ -1,42 +1,10 @@
+import {loadChatBubbles, LOAD_CHAT_BUBBLES_TIMEOUT} from '@/tests/helpers/chatBubbles';
 import type {Message, PeerSettings} from '@layer';
 import '@helpers/peerIdPolyfill';
 import {getMiddleware} from '@helpers/middleware';
 import {render} from 'solid-js/web';
 import ejectBubble from '@components/chat/bubbles/ejectBubble';
 import {markMessageLinkEntity} from '@lib/richTextProcessor/filterDisabledEntities';
-
-const moduleMocks = vi.hoisted(() => {
-  const noop = vi.fn();
-  return {
-    apiManagerProxy: new Proxy({}, {get: () => noop}),
-    sidebarLeft: new Proxy({}, {get: () => noop}),
-    sidebarRight: new Proxy({}, {get: () => noop}),
-    rootScope: {
-      myId: 0,
-      premium: false,
-      managers: new Proxy({}, {get: () => ({})}),
-      addEventListener: noop,
-      removeEventListener: noop,
-      dispatchEvent: noop,
-      dispatchEventSingle: noop
-    }
-  };
-});
-
-vi.mock('@lib/apiManagerProxy', () => ({default: moduleMocks.apiManagerProxy}));
-vi.mock('@components/sidebarLeft', () => ({default: moduleMocks.sidebarLeft}));
-vi.mock('@components/sidebarRight', () => ({default: moduleMocks.sidebarRight}));
-vi.mock('@lib/rootScope', () => ({default: moduleMocks.rootScope}));
-vi.mock('@stores/contentSettings', () => ({
-  default: () => ({
-    sensitiveEnabled: () => false,
-    sensitiveCanChange: () => false,
-    needAgeVerification: () => false,
-    ageVerified: () => false,
-    ignoreRestrictionReasons: (): string[] => []
-  })
-}));
-vi.mock('@stores/stars', () => ({default: () => () => 0}));
 
 let ChatBubbles: typeof import('@components/chat/bubbles').default;
 let BubbleGroups: typeof import('@components/chat/bubbleGroups').default;
@@ -49,25 +17,8 @@ let setBubbleHiddenLinksPending: typeof import('@components/chat/bubbles').setBu
 let shouldForceHideNonContactLinkTest: typeof import('@components/chat/bubbles').shouldForceHideNonContactLinkTest;
 
 beforeAll(async() => {
-  class IntersectionObserverMock {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  class WorkerMock {
-    addEventListener() {}
-    removeEventListener() {}
-    postMessage() {}
-    start() {}
-    terminate() {}
-  }
-
-  vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);
-  vi.stubGlobal('Worker', WorkerMock);
-  vi.stubGlobal('matchMedia', () => ({matches: false, addEventListener() {}, removeEventListener() {}}));
-  vi.stubGlobal('CSS', {supports: () => false, escape: (value: string) => value});
-  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/webp;base64,');
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  const loaded = await loadChatBubbles();
+  BubbleGroups = loaded.BubbleGroups;
   ({
     default: ChatBubbles,
     cancelPendingHiddenLinksEvent,
@@ -77,11 +28,8 @@ beforeAll(async() => {
     retainMessageLinkPolicyOnCleanup,
     setBubbleHiddenLinksPending,
     shouldForceHideNonContactLinkTest
-  } = await import('@components/chat/bubbles'));
-  BubbleGroups = (await import('@components/chat/bubbleGroups')).default;
-  // Importing the whole bubbles graph costs far more than the default hook
-  // budget once the rest of the suite is competing for the same CPU.
-}, 60_000);
+  } = loaded.bubbles);
+}, LOAD_CHAT_BUBBLES_TIMEOUT);
 
 afterEach(() => {
   document.body.replaceChildren();

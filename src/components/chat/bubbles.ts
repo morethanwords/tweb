@@ -5805,19 +5805,29 @@ export default class ChatBubbles {
     }
   }
 
-  private tryToForceStartParam(middleware: () => boolean) {
-    // start bot instantly if have messages
-    const startParam = this.chat.input.startParam;
-    if(startParam === undefined) {
+  // * settles the bot START button once the history has loaded, like iOS and Android: shown only
+  // * for a chat that turned out empty, and never a /start sent on the user's behalf, while a start
+  // * parameter from a link goes out at once when the chat already has messages. A link to the
+  // * chat that is already open (`startAtOnce`) starts it even when it is empty, as every official
+  // * client does — but not a blocked bot (tdesktop): START unblocks it on a tap
+  private settleBotStart(middleware: () => boolean, startAtOnce?: boolean) {
+    if(!this.chat.isBot) {
       return;
     }
 
+    const startParam = this.chat.input.startParam;
     this.chat.isStartButtonNeeded().then((isNeeded) => {
-      if(!middleware() || isNeeded || this.chat.input.startParam !== startParam) {
+      if(!middleware() || this.chat.input.startParam !== startParam) {
         return;
       }
 
-      this.chat.input.startBot();
+      if(startParam === undefined || startParam === BOT_START_PARAM) {
+        this.chat.input.setStartParam(isNeeded ? BOT_START_PARAM : undefined);
+      } else if(!isNeeded || (startAtOnce && !this.chat.isUserBlocked)) {
+        this.chat.input.startBot();
+      } else { // * the parameter waits for a tap on START, which an empty history only now asks for
+        this.chat.input.center(true);
+      }
     });
   }
 
@@ -5936,6 +5946,9 @@ export default class ChatBubbles {
       }
     }
 
+    // * a start parameter from a link to the bot chat that is already open (`reload` re-renders
+    // * the same chat for an in-chat search and leaves the input alone)
+    const startsBotFromLink = samePeer && sameSearch && !!startParam;
     if(startParam === undefined && await m(this.chat.isStartButtonNeeded())) {
       startParam = BOT_START_PARAM;
     }
@@ -5943,6 +5956,12 @@ export default class ChatBubbles {
     if(samePeer && sameSearch) {
       if(stack && lastMsgFullMid !== EMPTY_FULL_MID && stack.peerId === peerId) {
         this.followStack.push(makeFullMid(stack.peerId, stack.mid));
+      }
+
+      // * the input is not rebuilt for the same chat, so a start parameter has to reach it here —
+      // * also when there is no bubble to land on (an empty chat is rendered again below)
+      if(startParam !== undefined) {
+        this.chat.input.setStartParam(startParam);
       }
 
       const mounted = await m(this.getMountedBubble(lastMsgFullMid));
@@ -5978,8 +5997,7 @@ export default class ChatBubbles {
         }
 
         if(startParam !== undefined) {
-          this.chat.input.setStartParam(startParam);
-          this.tryToForceStartParam(middleware);
+          this.settleBotStart(middleware, startsBotFromLink);
         }
 
         if(options.mediaTimestamp) {
@@ -6343,7 +6361,7 @@ export default class ChatBubbles {
           });
         }
 
-        this.tryToForceStartParam(middleware);
+        this.settleBotStart(middleware, startsBotFromLink);
 
         // if(cached) {
         // this.onRenderScrollSet();

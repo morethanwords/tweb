@@ -1366,7 +1366,9 @@ export default class Chat extends EventListenerBase<{
         return false;
       }
 
-      return (!dialog && !historyStorage.history.length) || isUserBlocked;
+      // * only a history the server has answered as empty (`count` stays null until then):
+      // * no START while it is still loading, the way iOS and Android do it
+      return (!dialog && !historyStorage.history.length && historyStorage.count === 0) || isUserBlocked;
     });
   }
 
