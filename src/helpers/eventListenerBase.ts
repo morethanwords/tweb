@@ -55,7 +55,9 @@ export type EventListenerListeners = Record<string, Function>;
  * Should add listener callback only once
  */
 
-type ListenerObject<T> = {callback: T, options: boolean | AddEventListenerOptions};
+type ListenerObject<T> = {callback: T, options: boolean | AddEventListenerOptions, id: number};
+
+let lastListenerId = 0;
 
 // type EventLitenerCallback<T> = (data: T) =>
 // export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
@@ -80,7 +82,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
   }
 
   public addEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
-    const listenerObject: ListenerObject<Listeners[T]> = {callback, options};
+    const listenerObject: ListenerObject<Listeners[T]> = {callback, options, id: ++lastListenerId};
     (this.listeners[name] ??= new Set()).add(listenerObject); // ! add before because if you don't, you won't be able to delete it from callback
 
     if(this.listenerResults.hasOwnProperty(name)) {
@@ -155,7 +157,15 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
     const results: Array<SuperReturnType<Listeners[typeof name]>> = collectResults && [];
 
     const listeners = this.listeners[name];
+    // * the set is iterated live, so a listener removed by an earlier one is skipped, but one added
+    // * meanwhile waits for the next dispatch, as on a DOM EventTarget: a listener that re-subscribes
+    // * from its own callback would be visited again and again, freezing the tab
+    const lastId = lastListenerId;
     for(const listener of listeners || []) {
+      if(listener.id > lastId) {
+        continue;
+      }
+
       try {
         const result = this.invokeListenerCallback(name, listener, ...args);
         if(results) {
