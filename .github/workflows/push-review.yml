@@ -11,6 +11,8 @@ name: Review pushed commits
 on:
   push:
     branches: [master]
+  # Re-run by hand (reviews the last commit of the chosen branch).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,7 +29,7 @@ jobs:
       - name: Write the pushed range out as plain files
         env:
           BEFORE: ${{ github.event.before }}
-          AFTER: ${{ github.event.after }}
+          AFTER: ${{ github.event.after || github.sha }}
           REPO: ${{ github.repository }}
         run: |
           git clone --quiet --filter=blob:none --no-checkout "https://github.com/$REPO.git" "$RUNNER_TEMP/repo"
@@ -78,10 +80,15 @@ jobs:
             Answer "clean" when nothing above stands out, otherwise "suspicious" with each
             finding naming the file and what is wrong. Be concrete and short.
         run: |
-          claude -p "$PROMPT" --output-format json --json-schema "$SCHEMA" \
+          if ! claude -p "$PROMPT" --output-format json --json-schema "$SCHEMA" \
             --permission-mode dontAsk --allowedTools Read \
             --disallowedTools Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Agent \
-            --max-turns 40 > "$RUNNER_TEMP/review.json"
+            --max-turns 40 > "$RUNNER_TEMP/review.json"; then
+            # Only the error fields: on failure .result is Claude Code's own message (auth, limits).
+            jq -r '"claude failed: is_error=\(.is_error) subtype=\(.subtype) result=\(.result // "" | .[0:300])"' \
+              "$RUNNER_TEMP/review.json" 2>/dev/null || echo "claude failed with no JSON output"
+            exit 1
+          fi
           echo "result=$(jq -c '.structured_output // empty' "$RUNNER_TEMP/review.json")" >> "$GITHUB_OUTPUT"
 
       - name: Report
@@ -90,7 +97,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RESULT: ${{ steps.review.outputs.result }}
           REPO: ${{ github.repository }}
-          AFTER: ${{ github.event.after }}
+          AFTER: ${{ github.event.after || github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           verdict=$(printf '%s' "$RESULT" | jq -r '.verdict // empty' 2>/dev/null || true)
