@@ -4,19 +4,24 @@ name: Review pushed commits
 # so an injection that steered the pusher cannot steer the review. Claude Code runs headless in a
 # directory holding nothing but the pushed range written out as plain files (no checkout: no
 # CLAUDE.md, skills or settings from the pushed tree reach it), with Read as its only tool and no
-# GitHub token. Its verdict comes back as structured output; this workflow, not Claude, opens an
-# issue when the verdict is not clean or the review did not finish. claude-code-action is not used:
-# it rejects push events.
+# GitHub token. Its verdict comes back as structured output, stays in files on the runner (never in
+# logs, step outputs or env, which public runs print), and this workflow, not Claude, sends it to the
+# maintainer in a private Telegram message when it is not clean or the review did not finish.
+# claude-code-action is not used: it rejects push events.
 
 on:
   push:
     branches: [master]
   # Re-run by hand (reviews the last commit of the chosen branch).
   workflow_dispatch:
+    inputs:
+      notify_clean:
+        description: Send the Telegram message even for a clean verdict (to test the bot)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: push-review-${{ github.sha }}
@@ -84,33 +89,41 @@ jobs:
             --permission-mode dontAsk --allowedTools Read \
             --disallowedTools Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Agent \
             --max-turns 40 > "$RUNNER_TEMP/review.json"; then
-            # Only the error fields: on failure .result is Claude Code's own message (auth, limits).
-            jq -r '"claude failed: is_error=\(.is_error) subtype=\(.subtype) result=\(.result // "" | .[0:300])"' \
-              "$RUNNER_TEMP/review.json" 2>/dev/null || echo "claude failed with no JSON output"
+            echo "claude failed; the reason goes to the private message"
             exit 1
           fi
-          echo "result=$(jq -c '.structured_output // empty' "$RUNNER_TEMP/review.json")" >> "$GITHUB_OUTPUT"
+          jq -c '.structured_output // empty' "$RUNNER_TEMP/review.json" > "$RUNNER_TEMP/verdict.json"
 
-      - name: Report
+      - name: Notify
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RESULT: ${{ steps.review.outputs.result }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NOTIFY_CLEAN: ${{ inputs.notify_clean || false }}
           REPO: ${{ github.repository }}
           AFTER: ${{ github.event.after || github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          verdict=$(printf '%s' "$RESULT" | jq -r '.verdict // empty' 2>/dev/null || true)
-          echo "### Push review of ${AFTER:0:9}: ${verdict:-no verdict}" >> "$GITHUB_STEP_SUMMARY"
-          [ "$verdict" = clean ] && exit 0
-          body="$RUNNER_TEMP/issue.md"
-          if [ "$verdict" = suspicious ]; then
-            title="Push review: suspicious changes in ${AFTER:0:9}"
-            { printf '%s\n\n' "$(printf '%s' "$RESULT" | jq -r '.summary')"
-              printf '%s' "$RESULT" | jq -r '.findings[] | "- `\(.file)`: \(.concern)"'
-              printf '\nCommit: %s\nRun: %s\n' "$AFTER" "$RUN_URL"; } > "$body"
-          else
-            title="Push review did not finish for ${AFTER:0:9}"
-            printf 'The automated review of %s returned no verdict. Check the push by hand.\n\nRun: %s\n' "$AFTER" "$RUN_URL" > "$body"
-          fi
-          gh issue create --repo "$REPO" --title "$title" --body-file "$body"
+          v="$RUNNER_TEMP/verdict.json"
+          verdict=$(jq -r '.verdict // empty' "$v" 2>/dev/null || true)
+          if [ "$verdict" = clean ] && [ "$NOTIFY_CLEAN" != true ]; then echo "review finished"; exit 0; fi
+          msg="$RUNNER_TEMP/message.txt"
+          commit="https://github.com/$REPO/commit/$AFTER"
+          case "$verdict" in
+            clean)
+              { printf '✅ tweb push %s: clean\n\n' "${AFTER:0:9}"; jq -r '.summary' "$v"
+                printf '\n%s\n' "$commit"; } > "$msg" ;;
+            suspicious)
+              { printf '⚠️ tweb push %s looks suspicious\n\n' "${AFTER:0:9}"; jq -r '.summary' "$v"; echo
+                jq -r '.findings[] | "• \(.file): \(.concern)"' "$v"
+                printf '\n%s\nRun: %s\n' "$commit" "$RUN_URL"; } > "$msg" ;;
+            *)
+              { printf '❓ tweb push %s: the review did not finish, check the push by hand.\n\n' "${AFTER:0:9}"
+                jq -r '"Claude Code: " + (.result // "no result" | .[0:300])' "$RUNNER_TEMP/review.json" 2>/dev/null \
+                  || echo "Claude Code produced no output."
+                printf '\n%s\nRun: %s\n' "$commit" "$RUN_URL"; } > "$msg" ;;
+          esac
+          python3 -c 'import sys; print(open(sys.argv[1]).read()[:3900])' "$msg" > "$msg.cut"
+          curl -sS --fail -o /dev/null -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text@$msg.cut" -d disable_web_page_preview=true
+          echo "review finished"
