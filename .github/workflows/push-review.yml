@@ -4,21 +4,16 @@ name: Review pushed commits
 # so an injection that steered the pusher cannot steer the review. Claude Code runs headless in a
 # directory holding nothing but the pushed range written out as plain files (no checkout: no
 # CLAUDE.md, skills or settings from the pushed tree reach it), with Read as its only tool and no
-# GitHub token. Its verdict comes back as structured output, stays in files on the runner (never in
-# logs, step outputs or env, which public runs print), and this workflow, not Claude, sends it to the
-# maintainer in a private Telegram message when it is not clean or the review did not finish.
-# claude-code-action is not used: it rejects push events.
+# GitHub token. The maintainer follows it in a private Telegram message: posted when the review
+# starts, edited with the verdict when it ends. The verdict stays in files on the runner, never in
+# logs, step outputs or env, which public runs print. claude-code-action is not used: it rejects
+# push events.
 
 on:
   push:
     branches: [master]
   # Re-run by hand (reviews the last commit of the chosen branch).
   workflow_dispatch:
-    inputs:
-      notify_clean:
-        description: Send the Telegram message even for a clean verdict (to test the bot)
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -30,12 +25,14 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      REPO: ${{ github.repository }}
+      AFTER: ${{ github.event.after || github.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Write the pushed range out as plain files
         env:
           BEFORE: ${{ github.event.before }}
-          AFTER: ${{ github.event.after || github.sha }}
-          REPO: ${{ github.repository }}
         run: |
           git clone --quiet --filter=blob:none --no-checkout "https://github.com/$REPO.git" "$RUNNER_TEMP/repo"
           cd "$RUNNER_TEMP/repo"
@@ -45,7 +42,45 @@ jobs:
           git log --format='commit %H%nAuthor: %an <%ae>%n%n%B' "$BEFORE..$AFTER" > "$out/commits.txt"
           git diff --stat=200 "$BEFORE" "$AFTER" > "$out/stat.txt"
           git diff "$BEFORE" "$AFTER" > "$out/changes.diff"
+          git log -1 --format=%s "$AFTER" > "$RUNNER_TEMP/subject.txt"
+          git rev-list --count "$BEFORE..$AFTER" > "$RUNNER_TEMP/count.txt"
           wc -l "$out"/*
+
+      - name: Prepare the Telegram helpers
+        run: |
+          cat > "$RUNNER_TEMP/tg.sh" <<'SH'
+          # Shared by the Telegram steps. A message is: first line, commit title, short hash, body,
+          # and the commit link last. Responses go to a file: the public run log must not show text.
+          tg_compose() { # $1 = first line, $2 = body file (may be empty)
+            local count more=""
+            count=$(cat "$RUNNER_TEMP/count.txt" 2>/dev/null || echo 1)
+            if [ "$count" -gt 1 ] 2>/dev/null; then more=" (+$((count - 1)) earlier in this push)"; fi
+            printf '%s\n\n%s\n%s%s\n' "$1" "$(cat "$RUNNER_TEMP/subject.txt" 2>/dev/null || echo '(unknown commit)')" "${AFTER:0:9}" "$more"
+            if [ -s "$2" ]; then
+              printf '\n'
+              python3 -c 'import sys; print(open(sys.argv[1]).read().strip()[:3500])' "$2"
+            fi
+            printf '\n%s\n' "https://github.com/$REPO/commit/$AFTER"
+          }
+          tg_call() { # $1 = method, $2 = message file, then extra curl arguments
+            local method=$1 file=$2
+            shift 2
+            curl -sS --fail -o "$RUNNER_TEMP/tg-response.json" -X POST "https://api.telegram.org/bot$TG_TOKEN/$method" \
+              --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text@$file" -d disable_web_page_preview=true "$@"
+          }
+          SH
+
+      - name: Tell Telegram the review started
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          . "$RUNNER_TEMP/tg.sh"
+          : > "$RUNNER_TEMP/no-body.txt"
+          tg_compose '🔎 Reviewing a push to tweb…' "$RUNNER_TEMP/no-body.txt" > "$RUNNER_TEMP/start.txt"
+          tg_call sendMessage "$RUNNER_TEMP/start.txt"
+          jq -r '.result.message_id // empty' "$RUNNER_TEMP/tg-response.json" > "$RUNNER_TEMP/message-id.txt"
 
       - name: Install Claude Code
         run: |
@@ -53,7 +88,6 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Review
-        id: review
         continue-on-error: true
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -94,36 +128,37 @@ jobs:
           fi
           jq -c '.structured_output // empty' "$RUNNER_TEMP/review.json" > "$RUNNER_TEMP/verdict.json"
 
-      - name: Notify
+      - name: Tell Telegram the result
         if: always()
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
-          NOTIFY_CLEAN: ${{ inputs.notify_clean || false }}
-          REPO: ${{ github.repository }}
-          AFTER: ${{ github.event.after || github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          . "$RUNNER_TEMP/tg.sh"
           v="$RUNNER_TEMP/verdict.json"
+          body="$RUNNER_TEMP/body.txt"
           verdict=$(jq -r '.verdict // empty' "$v" 2>/dev/null || true)
-          if [ "$verdict" = clean ] && [ "$NOTIFY_CLEAN" != true ]; then echo "review finished"; exit 0; fi
-          msg="$RUNNER_TEMP/message.txt"
-          commit="https://github.com/$REPO/commit/$AFTER"
           case "$verdict" in
             clean)
-              { printf '✅ tweb push %s: clean\n\n' "${AFTER:0:9}"; jq -r '.summary' "$v"
-                printf '\n%s\n' "$commit"; } > "$msg" ;;
+              head='✅ Push review: clean'
+              jq -r '.summary' "$v" > "$body" ;;
             suspicious)
-              { printf '⚠️ tweb push %s looks suspicious\n\n' "${AFTER:0:9}"; jq -r '.summary' "$v"; echo
-                jq -r '.findings[] | "• \(.file): \(.concern)"' "$v"
-                printf '\n%s\nRun: %s\n' "$commit" "$RUN_URL"; } > "$msg" ;;
+              head='⚠️ Push review: suspicious'
+              { jq -r '.summary' "$v"; echo
+                jq -r '.findings[] | "• \(.file): \(.concern)"' "$v"; echo
+                echo "Run: $RUN_URL"; } > "$body" ;;
             *)
-              { printf '❓ tweb push %s: the review did not finish, check the push by hand.\n\n' "${AFTER:0:9}"
-                jq -r '"Claude Code: " + (.result // "no result" | .[0:300])' "$RUNNER_TEMP/review.json" 2>/dev/null \
+              head='❓ Push review did not finish, check the push by hand'
+              { jq -r '"Claude Code: " + (.result // "no result" | .[0:300])' "$RUNNER_TEMP/review.json" 2>/dev/null \
                   || echo "Claude Code produced no output."
-                printf '\n%s\nRun: %s\n' "$commit" "$RUN_URL"; } > "$msg" ;;
+                echo; echo "Run: $RUN_URL"; } > "$body" ;;
           esac
-          python3 -c 'import sys; print(open(sys.argv[1]).read()[:3900])' "$msg" > "$msg.cut"
-          curl -sS --fail -o /dev/null -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
-            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text@$msg.cut" -d disable_web_page_preview=true
-          echo "review finished"
+          tg_compose "$head" "$body" > "$RUNNER_TEMP/result.txt"
+          # Edit the "reviewing" message; post a new one if it was never sent or cannot be edited.
+          id=$(cat "$RUNNER_TEMP/message-id.txt" 2>/dev/null || true)
+          if [ -n "$id" ] && tg_call editMessageText "$RUNNER_TEMP/result.txt" -d "message_id=$id"; then
+            echo "review finished; edited the start message"
+          else
+            tg_call sendMessage "$RUNNER_TEMP/result.txt"
+            echo "review finished; posted the result as a new message"
+          fi
