@@ -12,7 +12,7 @@
  *   bash scripts/start-preview.sh [--id <id>] [--port <port>] [--remint] [--hmr]
  */
 
-import {mergeConfig} from 'vite';
+import {loadEnv, mergeConfig} from 'vite';
 import {existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, unlinkSync} from 'fs';
 import {basename, dirname, join, normalize, resolve} from 'path';
 import {spawn, ChildProcess} from 'child_process';
@@ -34,6 +34,13 @@ const cacheKey = basename(seedPath).replace(/\.json$/, '');
 // that has to be answered without HMR. Keyed by preview id, like the seed.
 const staticDir = process.env.TWEB_PREVIEW_STATIC_DIR ||
   resolve(__dirname, 'tmp/preview-dist', cacheKey);
+
+// Where a remote request that says nothing (no ?static=) lands: the built
+// bundle by default, or — with TWEB_PREVIEW_REMOTE=dev in the environment or in
+// this checkout's .env.local — the dev server with HMR, for a checkout that is
+// only ever reached through the proxy. ?static=1 still gets the bundle.
+const remoteGetsDev = (process.env.TWEB_PREVIEW_REMOTE ??
+  loadEnv('development', __dirname, 'TWEB_PREVIEW_').TWEB_PREVIEW_REMOTE) === 'dev';
 
 // Hashed names can be pinned forever; the service worker never (a new build has
 // to be able to take over), the entry document never, and public/assets — 38 MB
@@ -148,7 +155,7 @@ const stopBuilder = () => builder?.kill();
 // client responds to the reconnect by reloading the page out from under whatever
 // was being tested.
 // ?static=1 forces the bundle from localhost too, ?static=0 forces the dev
-// server for a remote request.
+// server for a remote request; TWEB_PREVIEW_REMOTE=dev makes that the default.
 function staticForRemotePlugin() {
   const enabled = !!process.env.TWEB_PREVIEW_STATIC_DIR;
 
@@ -206,7 +213,7 @@ function staticForRemotePlugin() {
         const viaProxy = req.headers.host === 'localhost';
 
         if(path === '/' || path === '/index.html') {
-          if(forced !== '1' && (forced === '0' || !viaProxy)) return next();
+          if(forced !== '1' && (forced === '0' || !viaProxy || remoteGetsDev)) return next();
           startBuilder();
           pruneSupersededBuilds();
           // Not just existsSync: rolldown writes index.html in place, so a build

@@ -33,6 +33,8 @@
 #
 #   ?static=1     force the built bundle from localhost too (to check it).
 #   ?static=0     force the dev server for a remote request (to debug the split).
+#   TWEB_PREVIEW_REMOTE=dev (env, or .env.local of the checkout): remote requests
+#                 get the dev server too, ?static=1 still gets the bundle.
 #   --static      serve ONLY the built bundle, no dev server at all.
 #   --watch       --static plus a rebuild watcher.
 #
@@ -119,7 +121,7 @@ if [ ! -f "$SEED" ]; then
   # `verify-deps-before-run` off for the same reason as the vite run below: in a worktree
   # node_modules is a symlink and pnpm's pre-run check aborts on it without a TTY.
   TG_API_TEST=1 TG_API_PROD_DC=1 TG_API_SEED="$MASTER_SEED" PREVIEW_SEED_OUT="$SEED" \
-    pnpm --config.verify-deps-before-run=false test src/tests/api/previewAuth || true
+    pnpm --config.verify-deps-before-run=false test --run src/tests/api/previewAuth || true
   rmdir "$LOCK" 2>/dev/null || true
   trap - EXIT
   if [ ! -f "$SEED" ]; then echo "[start-preview] mint failed — $SEED not produced" >&2; exit 1; fi
@@ -153,7 +155,7 @@ VITE=(env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER"
 if [ "$HMR" = 1 ]; then
   # TWEB_PREVIEW_STATIC_DIR switches on the plugin that answers remote (and
   # ?static=1) requests from a built bundle, building it lazily into this dir.
-  echo "[start-preview] hot reload on localhost; remote requests get a built bundle (?static=1 to force it here)"
+  echo "[start-preview] hot reload on localhost; remote requests get a built bundle unless TWEB_PREVIEW_REMOTE=dev (?static=1 forces it, ?static=0 skips it)"
   exec env TWEB_PREVIEW_STATIC_DIR="$REPO/tmp/preview-dist/$ID" \
     "${VITE[@]}" --host 127.0.0.1 --port "$PORT" --strictPort
 fi
