@@ -2788,7 +2788,6 @@ export default class AppSearchSuper {
       this.setMediaCounters({photos, videos});
     }
 
-    let firstMediaTab: SearchSuperMediaTab;
     let count = 0;
     mediaTabs.forEach((mediaTab) => {
       const counter = counters.find((c) => c.filter._ === mediaTab.inputFilter);
@@ -2800,7 +2799,6 @@ export default class AppSearchSuper {
       this.setCounter(mediaTab.type, counter.count);
 
       if(counter.count) {
-        firstMediaTab ??= mediaTab;
         ++count;
       }
     });
@@ -2841,22 +2839,8 @@ export default class AppSearchSuper {
     this.setCounter('gifts', giftsCount);
 
     if(canViewStories) {
-      firstMediaTab = storiesTab;
-
       const newTitle = i18n(peerId.isUser() ? 'Stories' : 'ProfileStories');
       storiesTab.menuTabName.replaceWith(storiesTab.menuTabName = newTitle);
-    }
-
-    if(canViewMembers) {
-      firstMediaTab = membersTab;
-    }
-
-    if(canViewSavedDialogs) {
-      firstMediaTab = savedDialogsTab;
-    }
-
-    if(showGiftsTab && !firstMediaTab) {
-      firstMediaTab = giftsTab;
     }
 
     if(maybePinnedGifts) {
@@ -2865,10 +2849,8 @@ export default class AppSearchSuper {
 
     const mainMediaTabType = getMediaTypeForProfileTab(profileTabsData.mainTab);
     this.setMainMediaTab(mainMediaTabType);
-    const mainMediaTab = this.mediaTabs.find((mediaTab) => mediaTab.type === mainMediaTabType);
-    if(mainMediaTab && !mainMediaTab.menuTab.classList.contains('hide')) {
-      firstMediaTab = mainMediaTab;
-    }
+    // * open on the first visible tab, the main one leading (tdesktop, Android)
+    const firstMediaTab = this.getFirstVisibleMediaTab();
 
     this.toggleContainerHidden(!firstMediaTab);
     if(firstMediaTab) {

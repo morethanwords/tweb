@@ -562,9 +562,9 @@ const SharedMedia: Component = () => {
   const c: [SearchSuperMediaTab['type'], LangPackKey][] = [
     ['savedDialogs', 'SavedDialogsTabCount'],
     ['stories', 'StoriesCount'],
+    ['gifts', 'StarGiftsCount'],
     ['members', 'Members'],
     ['media', 'MediaFiles'],
-    ['gifts', 'StarGiftsCount'],
     ['saved', 'SavedMessagesCount'],
     ['files', 'Files'],
     ['links', 'Links'],
@@ -730,15 +730,15 @@ const SharedMedia: Component = () => {
       name: 'Stories',
       type: 'stories'
     }, {
+      name: 'SharedMedia.Gifts',
+      type: 'gifts'
+    }, {
       name: 'PeerMedia.Members',
       type: 'members'
     }, {
       inputFilter: 'inputMessagesFilterPhotoVideo',
       name: 'SharedMediaTab2',
       type: 'media'
-    }, {
-      name: 'SharedMedia.Gifts',
-      type: 'gifts'
     }, {
       inputFilter: 'inputMessagesFilterEmpty',
       name: 'SharedMedia.Saved',
