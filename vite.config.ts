@@ -91,7 +91,15 @@ const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
   fs: {
-    allow: [...SERVER_FS_ALLOW]
+    allow: [...SERVER_FS_ALLOW],
+    // Vite's defaults plus tmp/: it holds auth seeds and other credentials, and bundles that boot
+    // already authorized, while a dev server behind a proxy answers any path under the root. The dep
+    // caches some configs keep in tmp/ must stay servable, and a deny pattern can't be negated —
+    // hence the extglob.
+    deny: [
+      '.env', '.env.*', '*.{crt,pem,key,p12,pfx,cer,der}', '.npmrc', '.yarnrc.yml', '**/.git/**',
+      '**/tmp/*', '**/tmp/!(vite-preview-cache|vite-e2e-cache)/**'
+    ]
   },
   watch: {
     // NB: anchor on rootDir. A worktree checkout's own path contains
