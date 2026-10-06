@@ -141,7 +141,8 @@ export class AppDownloadManager {
     const deferred: CancellablePromise<Awaited<T>> = this.getNewDeferred<InputFile>(fileName);
     promise.then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
 
-    deferred.finally(() => {
+    // * a failed upload is the caller's to handle - a bare finally() would report it again as unhandled
+    deferred.catch(noop).finally(() => {
       this.clearDownload(fileName);
     });
 
