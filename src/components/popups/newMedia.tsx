@@ -536,7 +536,8 @@ export default function showNewMediaPopup(
         const [effect, setEffect] = createSignal<DocId>(wasDraft?.effect);
         effectAccessor = effect;
         setEffectAccessor = setEffect;
-        btnConfirm.append(SelectedEffect({effect: effectAccessor}) as HTMLElement);
+        const unmount = render(() => SelectedEffect({effect: effectAccessor}), btnConfirm);
+        chat.destroyMiddlewareHelper.onDestroy(unmount);
       });
 
       const sendMenu = new SendContextMenu({
