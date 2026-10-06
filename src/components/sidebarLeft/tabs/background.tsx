@@ -28,10 +28,8 @@ import {AppTheme, AppThemeSettings} from '@config/state';
 import {blendWallpaperForTinted} from '@config/themePresets';
 import themeController from '@helpers/themeController';
 import requestFile from '@helpers/files/requestFile';
-import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
-import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
-import scaleMediaElement from '@helpers/canvas/scaleMediaElement';
-import {MediaSize} from '@helpers/mediaSize';
+import prepareWallPaperImage from '@helpers/files/prepareWallPaperImage';
+import {toastNew} from '@components/toast';
 import {getColorsFromWallPaper} from '@helpers/color';
 import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -388,18 +386,12 @@ const ChatBackground = () => {
 
   const onUploadClick = () => {
     requestFile('image/x-png,image/png,image/jpeg').then(async(file) => {
-      if(file.name.endsWith('.png')) {
-        const img = document.createElement('img');
-        const url = URL.createObjectURL(file);
-        try {
-          await renderImageFromUrlPromise(img, url, false);
-          const mimeType = 'image/jpeg';
-          const {blob} = await scaleMediaElement({media: img, size: new MediaSize(img.naturalWidth, img.naturalHeight), mimeType});
-          file = new File([blob], file.name.replace(/\.png$/, '.jpg'), {type: mimeType});
-        } finally {
-          clearMediaElementSource(img);
-          URL.revokeObjectURL(url);
-        }
+      try {
+        file = await prepareWallPaperImage(file);
+      } catch(err) {
+        console.error('wallpaper upload: cannot prepare the image', err);
+        toastNew({langPackKey: 'Error.AnError'});
+        return;
       }
 
       const wallPaper = await rootScope.managers.appDocsManager.prepareWallPaperUpload(file);
@@ -438,8 +430,11 @@ const ChatBackground = () => {
         });
       };
       deferred.then(releaseUploadPreview, releaseUploadPreview);
-      deferred.catch(() => {
+      deferred.catch((error: ApiError) => {
         container.remove();
+        if(error?.type !== 'DOWNLOAD_CANCELED' && error?.type !== 'UPLOAD_CANCELED') {
+          toastNew({langPackKey: 'Error.AnError'});
+        }
       });
 
       const preloader = new ProgressivePreloader({

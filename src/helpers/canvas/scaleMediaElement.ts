@@ -9,6 +9,8 @@ export default async function scaleMediaElement<T extends {
   quality?: number,
   mimeType?: 'image/jpeg' | 'image/png',
   size?: MediaSize,
+  // * the part of `media` to draw, in its natural pixels; the whole of it when omitted
+  crop?: {x: number, y: number, width: number, height: number},
   toDataURL?: boolean
 }>(options: T): Promise<T['toDataURL'] extends true ? {url: string, size: MediaSize} : {blob: Blob, size: MediaSize}> {
   const canvas = document.createElement('canvas');
@@ -18,17 +20,16 @@ export default async function scaleMediaElement<T extends {
   canvas.height = size.height * dpr;
   const ctx = canvas.getContext('2d');
 
-  let source: CanvasImageSource;
-  if(IS_IMAGE_BITMAP_SUPPORTED) {
-    source = await createImageBitmap(options.media, {resizeWidth: size.width, resizeHeight: size.height});
+  const {crop} = options;
+  if(crop) {
+    // * not createImageBitmap's source rect: Chromium cuts the wrong part of an EXIF-rotated image
+    ctx.drawImage(options.media, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
+  } else if(IS_IMAGE_BITMAP_SUPPORTED) {
+    const source = await createImageBitmap(options.media, {resizeWidth: size.width, resizeHeight: size.height});
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+    source.close();
   } else {
-    source = options.media;
-  }
-
-  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-
-  if(IS_IMAGE_BITMAP_SUPPORTED) {
-    (source as ImageBitmap)?.close();
+    ctx.drawImage(options.media, 0, 0, canvas.width, canvas.height);
   }
 
   const mimeType = options.mimeType ?? 'image/jpeg';
