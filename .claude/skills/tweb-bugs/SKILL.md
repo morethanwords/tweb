@@ -110,7 +110,7 @@ For each requested platform:
 #### GitHub
 
 ```bash
-rtk gh api --paginate "repos/morethanwords/tweb/issues?state=open&per_page=100" > github/issues-raw-api.json
+gh api --paginate "repos/morethanwords/tweb/issues?state=open&per_page=100" > github/issues-raw-api.json
 ```
 
 Then normalize each issue to unified format:

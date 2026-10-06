@@ -582,11 +582,3 @@ for c in planner task refactor-popup-procedural; do
   ln -sfn "$(pwd)/.claude/commands/$c.md" ~/.codex/prompts/$c.md
 done
 ```
-
-<!-- rtk-instructions v2 -->
-## RTK — token-optimized commands
-
-Prefix every shell command with `rtk`, including each command inside `&&`
-chains: `rtk git add . && rtk git commit -m "msg"`. RTK applies a filter when it
-has one, otherwise passes through unchanged — so it is always safe.
-<!-- /rtk-instructions -->
