@@ -16,7 +16,7 @@
     {
       "name": "tweb-debug",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["scripts/start-preview.sh", "--no-worker", "--port", "9006"],
+      "runtimeArgs": ["scripts/start-preview.sh", "--no-worker", "--id", "debug", "--port", "9006"],
       "port": 9006
     },
     {

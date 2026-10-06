@@ -45,6 +45,21 @@ details: see the script header. `.claude/launch.json` wires it into Claude
 Code's preview pane; other agents run the script directly and open the printed
 URL with their own browser tooling.
 
+**One preview per checkout, shared through leases.** An agent runs
+`bash scripts/start-preview.sh --detach` (outside Claude Code's Bash sandbox —
+inside it the script refuses, since no other process or port is visible there).
+When a preview of the same checkout — so of the same branch — already runs in
+the same mode, it hands back that preview's URL instead of starting a second
+one; either way it returns once the preview answers. Use the URL it prints, even
+if it is not the port you asked for. The caller holds a lease on what it got —
+inside Claude Code the session does; an agent whose shell lives for one command
+sets `TWEB_PREVIEW_HOLDER=<its name>` — and `--stop` (on `--port`, or on
+everything you hold) drops yours and stops the server only when nobody else
+holds it; `--list` shows what runs and for whom.
+**Never stop a preview any other way** — not by pid, port, `pkill vite` or a tmux
+session: another session may be using it. A separate preview (another account,
+a clean origin) takes its own `--id`.
+
 ### Popup sandbox
 
 Every popup, opened by click with mock data and **no Telegram traffic**. Two ways in:
@@ -542,9 +557,9 @@ rather than trusting the heuristic. The signed-in half needs
 an authorized preview:
 
 ```bash
-bash scripts/start-preview.sh --port 9105
-PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm test:focus:app
-PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm test:a11y:app
+bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
+PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm test:focus:app
+PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm test:a11y:app
 ```
 
 ## Agents & shared tooling
@@ -565,7 +580,7 @@ integration only points at them:
 - **Tool-name mapping** — skill/command texts may name Claude Code tools.
   Substitute your agent's equivalent: "Agent tool" / "subagent" / `Explore`
   → spawn a sub-task or do the search inline; browser-pane `preview_start`
-  → run `bash scripts/start-preview.sh` and open the printed URL;
+  → run `bash scripts/start-preview.sh --detach` and open the printed URL;
   `AskUserQuestion` → ask in chat.
 - `.claude/launch.json` (preview servers) and `.claude/settings.local.json`
   (permissions) are Claude-Code-specific; the Codex counterpart is

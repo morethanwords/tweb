@@ -14,8 +14,8 @@ import {clickVisible, expectNoA11yViolations, trackBrowserErrors} from './access
  * Like the pixel sweeps it needs an authorized preview and skips without one
  * rather than reporting a clean run it never made:
  *
- *   bash scripts/start-preview.sh --port 9105
- *   PLAYWRIGHT_BASE_URL=http://localhost:9105 pnpm exec playwright test e2e/accessibilitySignedIn.spec.ts
+ *   bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
+ *   PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm exec playwright test e2e/accessibilitySignedIn.spec.ts
  */
 test.describe('the signed-in client has no detectable accessibility violations', () => {
   test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'needs an authorized preview (PLAYWRIGHT_BASE_URL)');
