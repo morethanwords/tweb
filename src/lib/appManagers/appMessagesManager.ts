@@ -2057,8 +2057,22 @@ export class AppMessagesManager extends AppManager {
 
     // a bot's keyboard or force-reply comes on ephemeral messages too (layer 229): it becomes the
     // chat's keyboard like any other (desktop adds them through the same `addNewItem`), and a
-    // press answers the bot privately, in reply to this message
-    if(this.mergeReplyKeyboard(this.getHistoryStorage(peerId), storedMessage)) {
+    // press answers the bot privately, in reply to this message. One sent to a topic is that
+    // topic's keyboard as well, and goes there now: loading the topic's history will not bring it
+    const historyStorages = [this.getHistoryStorage(peerId)];
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
+    const topicId = (isForum || isBotforum) && getMessageThreadId(storedMessage, {isForum, isBotforum});
+    if(topicId) {
+      historyStorages.push(this.getHistoryStorage(peerId, topicId));
+    }
+
+    let replyMarkupChanged = false;
+    for(const historyStorage of historyStorages) {
+      replyMarkupChanged = this.mergeReplyKeyboard(historyStorage, storedMessage) || replyMarkupChanged;
+    }
+
+    if(replyMarkupChanged) {
       this.rootScope.dispatchEvent('history_reply_markup', {peerId});
     }
 
@@ -2111,10 +2125,17 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    // the keyboard goes with the ephemeral message that brought it
-    const historyStorage = this.getHistoryStorage(peerId);
-    if(historyStorage.replyMarkup && deletedMids.has(historyStorage.replyMarkup.mid)) {
-      historyStorage.replyMarkup = undefined;
+    // the keyboard goes with the ephemeral message that brought it, from the chat and its topic
+    let replyMarkupChanged = false;
+    const historyStorages = [this.getHistoryStorage(peerId), ...Object.values(this.threadsStorage[peerId] || {})];
+    for(const historyStorage of historyStorages) {
+      if(historyStorage.replyMarkup && deletedMids.has(historyStorage.replyMarkup.mid)) {
+        historyStorage.replyMarkup = undefined;
+        replyMarkupChanged = true;
+      }
+    }
+
+    if(replyMarkupChanged) {
       this.rootScope.dispatchEvent('history_reply_markup', {peerId});
     }
 
