@@ -70,7 +70,7 @@ export function useAiEditorButton({
     const visible = available && canShowButton();
     target?.classList.toggle('has-ai-editor-button', visible);
     onCleanup(() => target?.classList.remove('has-ai-editor-button'));
-    if(!target || !field) return;
+    if(!target || !field || !visible) return;
 
     createAiEditorButton({
       context,
@@ -78,8 +78,7 @@ export function useAiEditorButton({
       inputField: field,
       onApply,
       class: className,
-      canSend,
-      hidden: !visible
+      canSend
     });
   });
 }
@@ -91,7 +90,6 @@ type CreateAiEditorButtonArgs = {
   onApply: (text: LocalTextWithEntities) => void;
   canSend: boolean;
   class?: string;
-  hidden?: boolean;
 };
 
 const createAiEditorButton = ({
@@ -100,8 +98,7 @@ const createAiEditorButton = ({
   appendTo,
   onApply,
   class: className,
-  canSend,
-  hidden
+  canSend
 }: CreateAiEditorButtonArgs) => {
   const {HotReloadGuard, rootScope, toastNew} = useHotReloadGuard();
 
@@ -253,7 +250,6 @@ const createAiEditorButton = ({
   const child = resolveFirst(() => button);
   const element = child() as HTMLElement;
 
-  element.hidden = !!hidden;
   appendTo.append(element);
 
   onCleanup(() => {

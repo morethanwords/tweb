@@ -1,7 +1,7 @@
 // @ts-check
 // Thanks to https://github.com/Yuyz0112/icomoon-cli
 
-const fs = require('fs-extra');
+const fs = require('fs');
 const path = require('path');
 const extract = require('extract-zip');
 const puppeteer = require('puppeteer');
@@ -143,8 +143,8 @@ async function pipeline(options = {}) {
     //   icons,
     //   names,
     // }, forceOverride);
-    await fs.remove(outputDir);
-    await fs.ensureDir(outputDir);
+    await fs.promises.rm(outputDir, { recursive: true, force: true });
+    await fs.promises.mkdir(outputDir, { recursive: true });
 
     const browser = await puppeteer.launch({headless: !visible});
     logger('Started a new chrome instance, going to load icomoon.io.');
@@ -175,7 +175,7 @@ async function pipeline(options = {}) {
       logger('Overlay is missed?');
     }
 
-    const selection = fs.readJSONSync(selectionPath);
+    const selection = JSON.parse(fs.readFileSync(absoluteSelectionPath, 'utf8'));
     /* if (selection.icons.length === 0) {
       logger('Selection icons is empty, going to create an empty set');
       await page.click(PAGE.MAIN_MENU_BUTTON);
@@ -326,11 +326,12 @@ async function pipeline(options = {}) {
     await page.close();
     await browser.close();
     // unzip stage
-    extract(zipPath, {dir: outputDir}, async(err) => {
+    extract(zipPath, {dir: outputDir}, (err) => {
       if(err) {
         throw err;
       }
-      await fs.remove(zipPath);
+      // native cleanup
+      fs.rmSync(zipPath, { force: true });
       logger(`Finished. The output directory is ${outputDir}.`);
       if(whenFinished) {
         whenFinished({outputDir});
