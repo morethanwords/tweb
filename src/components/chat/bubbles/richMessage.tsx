@@ -12,8 +12,9 @@ import {instantViewStyles as styles} from '@components/instantViewFormatting';
 import applyRichMessageChecklist from '@appManagers/utils/richMessage/toggleChecklist';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {isRichMessagePart, richMessageToPage} from '@lib/richMessage';
+import {isRichMessageFullWidth, isRichMessagePart, richMessageToPage} from '@lib/richMessage';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
 import type Chat from '@components/chat/chat';
 import {
   MessageTextLayoutEvent,
@@ -24,6 +25,19 @@ import {
 
 /** Hydrate a little before the bubble is on screen, so the swap is not visible. */
 const HYDRATION_ROOT_MARGIN = '200px';
+
+/**
+ * Whether a click landed inside a rich message's page. The page handles its own media, map and
+ * buttons, so the bubble's handlers must leave such a click alone.
+ */
+export function isRichMessageTarget(target: EventTarget) {
+  return !!findUpClassName(target, styles.RichMessage);
+}
+
+/** A press inside a button of the page — on its label's custom emoji too — is the button's alone. */
+export function isRichMessageButtonTarget(target: EventTarget) {
+  return !!findUpClassName(target, styles.PageButton);
+}
 
 export function RichMessageBubble(props: {
   message: ReactiveInstantViewValue<Message.message>,
@@ -230,7 +244,11 @@ export function RichMessageBubble(props: {
   };
 
   return (
-    <div ref={element} class={styles.RichMessageWrapper}>
+    <div
+      ref={element}
+      class={styles.RichMessageWrapper}
+      classList={{[styles.RichMessageWrapperFull]: isRichMessageFullWidth(displayedPage().blocks)}}
+    >
       <InstantViewBlocks
         webPageId={() => message().mid}
         page={displayedPage}

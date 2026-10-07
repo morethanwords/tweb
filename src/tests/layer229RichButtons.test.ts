@@ -62,7 +62,7 @@ describe('layer 229 buttons in rich text', () => {
       documents: []
     };
 
-    const summary = flattenRichMessageSummary(message, 0);
+    const summary = flattenRichMessageSummary(message);
     expect(summary.text).toBe('Tap Open\nOne Two');
     expect(summary.entities.some((entity) => entity._ === 'messageEntityRichButton')).toBe(false);
   });

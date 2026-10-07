@@ -179,6 +179,12 @@ vi.mock('@components/buttonMenuToggle', () => ({
 vi.mock('@environment/webpSupport', () => ({default: true}));
 
 vi.mock('@lib/richTextProcessor/wrapRichText', () => ({
+  // a button chip draws its label through it; the text is what these tests read
+  default: (text: string) => {
+    const fragment = document.createDocumentFragment();
+    fragment.append(text);
+    return fragment;
+  },
   ENTITY_ELEMENT_MAP: new WeakMap(),
   isCustomFillerNeededBySiblingNode: () => false
 }));

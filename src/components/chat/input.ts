@@ -111,6 +111,7 @@ import InputFieldAnimated from '@components/inputFieldAnimated';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import {STICKERS_POPUP_KIND} from '@components/popups/stickers';
 import PopupElementTsx from '@components/popups/indexTsx';
+import overlayCounter from '@helpers/overlayCounter';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapReply from '@components/wrappers/reply';
 import {getEmojiFromElement} from '@components/emoticonsDropdown/tabs/emoji';
@@ -3402,7 +3403,9 @@ export default class ChatInput {
 
     this.sendMessage();
     getAppWindow().document.addEventListener('keyup', () => {
-      focusInput(this.messageInput);
+      // the send may have opened a popup by now (a confirmation): focus pulled
+      // back under it would take the popup's next Enter and send again
+      if(!overlayCounter.isOverlayActive) focusInput(this.messageInput);
     }, {once: true});
   }
 

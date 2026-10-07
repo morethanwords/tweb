@@ -67,6 +67,20 @@ export type ChatInputEditorInputEvent = Event & {
   chatInputEditorUserInput?: true
 };
 
+export type ChatInputFormatting =
+  | 'bulletList'
+  | 'buttonRow'
+  | 'codeBlock'
+  | 'details'
+  | 'divider'
+  | 'footer'
+  | 'heading'
+  | 'inlineButton'
+  | 'math'
+  | 'orderedList'
+  | 'pullquote'
+  | 'taskList';
+
 export type ChatInputTableOptions = {
   columns?: number,
   rows?: number,
@@ -201,6 +215,14 @@ export interface ChatInputEditor {
   beginRichMediaUpload(options: ChatInputRichMediaUploadOptions): boolean;
   beginRichMediaUploads(options: ChatInputRichMediaUploadOptions[]): boolean;
   canInsertTable(options?: ChatInputTableOptions): boolean;
+  /**
+   * Whether a toolbar control would change anything at the selection. A table
+   * cell, a table title, a details summary and a pullquote hold text only, so
+   * the block controls have nothing to do there.
+   */
+  canApplyFormatting(type: ChatInputFormatting): boolean;
+  /** The same for the selection tooltip: a code block carries no marks. */
+  canApplyMarkup(type: MarkdownType): boolean;
   canMergeTableCells(): boolean;
   canRedo(): boolean;
   canSplitTableCell(): boolean;
@@ -272,6 +294,8 @@ export interface ChatInputEditor {
   replaceAllRichMessage(message: RichMessage): boolean;
   completeRichMediaUpload(uploadId: string, media: ChatInputRichMedia[]): boolean;
   removeRichMediaUpload(uploadId: string): boolean;
+  /** The user's cancel: removes the pending media as an edit Undo can revert. */
+  cancelRichMediaUpload(uploadId: string): boolean;
   replaceRichMediaItem(position: number, activeIndex: number, media: ChatInputRichMedia): boolean;
   replaceSelection(text: string, entities?: MessageEntity[]): boolean;
   replaceTextRange(from: number, to: number, text: string, entities?: MessageEntity[]): boolean;

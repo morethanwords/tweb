@@ -166,6 +166,17 @@ describe('rich-message editability', () => {
       _: 'pageBlockParagraph',
       text: {_: 'textAnchor', name: 'anchor', text: empty}
     }]))).toBe(true);
+    // the server wraps a paragraph holding an anchor in it, code, links and dates included: the
+    // anchor then loads as a marker, the text keeping its formatting
+    expect(canSafelyEditRichMessage(richMessage([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textAnchor', name: 'section', text: {_: 'textConcat', texts: [
+        text('Plain '),
+        {_: 'textFixed', text: text('code')},
+        {_: 'textUrl', text: text(' link'), url: 'https://telegram.org/', webpage_id: 0},
+        {_: 'textDate', pFlags: {short_date: true}, text: text(' date'), date: 1725120000}
+      ]}}
+    }]))).toBe(true);
   });
 
   test('accepts server-resolved links and output-only wrappers that safely unwrap', () => {

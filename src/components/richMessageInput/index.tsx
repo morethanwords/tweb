@@ -16,7 +16,8 @@ import {useAiEditorButton} from '@components/richMessageInput/ai';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {handleMarkdownShortcut} from '@helpers/dom/markdown';
-import isSendShortcutPressed, {isNewLineShortcutPressed} from '@helpers/dom/isSendShortcutPressed';
+import isSendShortcutPressed, {isNewLineShortcutPressed, leaveSendShortcut} from '@helpers/dom/isSendShortcutPressed';
+import {isUnderModalPopup} from '@components/popups/indexTsx';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -185,6 +186,12 @@ export class RichMessageInputController {
       onLinkEditor: (selection: Selection) => void this.toolbar?.insertLink(selection),
       onStateChange: () => this.toolbar?.update(),
       onKeyDown: (event: KeyboardEvent) => {
+        // Enter belongs to a popup over the field — neither a send nor a line
+        // here, but the popup's confirm (`leaveSendShortcut`)
+        if(event.key === 'Enter' && isUnderModalPopup(this.input)) {
+          leaveSendShortcut(event);
+          return true;
+        }
         if(!this.options.onSubmit || !isSendShortcutPressed(event)) return false;
         cancelEvent(event);
         this.options.onSubmit();
@@ -444,7 +451,6 @@ export class RichMessageInputController {
     this.layout.classList.toggle('is-message-input-expanded', expanded);
     this.row.classList.toggle('is-expanded', expanded);
     this.editor?.setExpanded(expanded);
-    this.expandButton.classList.toggle('active', expanded);
     this.expandButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     this.toolbar.history?.setAttribute('aria-hidden', expanded ? 'false' : 'true');
     this.toolbar.bottom?.setAttribute('aria-hidden', expanded ? 'false' : 'true');

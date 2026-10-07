@@ -1,7 +1,7 @@
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type {MyMessage} from '@appManagers/appMessagesManager';
-import type {MessageMedia, PageBlock, RichMessage} from '@layer';
+import type {MessageMedia} from '@layer';
 
 /**
  * Exact 18px preview glyphs that exist in tdesktop but are not in tweb's icon
@@ -11,10 +11,7 @@ import type {MessageMedia, PageBlock, RichMessage} from '@layer';
 export const MESSAGE_PREVIEW_ICON_FALLBACKS = {
   contact: 'person_filled',
   giveaway: 'gift',
-  invoice: 'card',
-  richMath: 'monospace',
-  richPullquote: 'quote',
-  richTable: 'list'
+  invoice: 'card'
 } satisfies Record<string, Icon>;
 
 export function getTodoItemReplyPreview(
@@ -31,46 +28,6 @@ export function getTodoItemReplyPreview(
     icon: completed ? 'checkboxon' as const : 'checkboxempty' as const,
     text: item.title
   };
-}
-
-function getRichBlockPreviewIcon(block: PageBlock): Icon | undefined {
-  switch(block._) {
-    case 'pageBlockList': {
-      return block.items.some((item) => item.pFlags.checkbox) ? 'checklist_done' : undefined;
-    }
-    case 'pageBlockOrderedList': {
-      return block.items.some((item) => item.pFlags.checkbox) ? 'checklist_done' : undefined;
-    }
-    case 'pageBlockBlockquote':
-    case 'pageBlockBlockquoteBlocks':
-      return 'quote';
-    case 'pageBlockPullquote':
-      return MESSAGE_PREVIEW_ICON_FALLBACKS.richPullquote;
-    case 'pageBlockPhoto':
-    case 'pageBlockVideo':
-    case 'pageBlockCollage':
-    case 'pageBlockSlideshow':
-      return 'attach';
-    case 'pageBlockAudio':
-      return 'music_filled';
-    case 'pageBlockMap':
-      return 'location';
-    case 'pageBlockMath':
-      return MESSAGE_PREVIEW_ICON_FALLBACKS.richMath;
-    case 'pageBlockTable':
-      return MESSAGE_PREVIEW_ICON_FALLBACKS.richTable;
-    case 'pageBlockCover':
-      return getRichBlockPreviewIcon(block.cover);
-  }
-}
-
-function getRichMessagePreviewIcon(richMessage?: RichMessage): Icon | undefined {
-  for(const block of richMessage?.blocks || []) {
-    const icon = getRichBlockPreviewIcon(block);
-    if(icon) {
-      return icon;
-    }
-  }
 }
 
 function getServiceMessagePreviewIcon(message: Extract<MyMessage, {_: 'messageService'}>): Icon | undefined {
@@ -133,6 +90,4 @@ export default function getMessagePreviewIcon(
     case 'messageMediaCall':
       return 'phone';
   }
-
-  return getRichMessagePreviewIcon(message.rich_message);
 }

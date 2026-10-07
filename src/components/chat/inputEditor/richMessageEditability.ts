@@ -106,10 +106,13 @@ function isEditableRichText(text: RichText, marks: ReadonlySet<RichTextMark> = n
     case 'textEmail':
     case 'textPhone':
       return !isEmptyRichText(text.text) && withMark(text, marks, 'url');
+    // a named target, not a link: around text the link mark can hold it loads as one (`#name`),
+    // around anything else as a marker at the text's start, the text keeping its own formatting
     case 'textAnchor':
       return !!text.name && (
         isEmptyRichText(text.text) ||
-        withMark(text, marks, 'url')
+        withMark(text, marks, 'url') ||
+        isEditableRichText(text.text, marks)
       );
     case 'textMentionName':
       return !isEmptyRichText(text.text) && withMark(text, marks, 'mentionName');
@@ -129,6 +132,31 @@ function isEditableRichText(text: RichText, marks: ReadonlySet<RichTextMark> = n
     case 'textBankCard':
       return isEditableRichText(text.text, marks);
   }
+}
+
+// the composer's marks, by the rich text each comes from
+const RICH_TEXT_MARKS_BY_TIPTAP_MARK: {[type: string]: RichTextMark} = {
+  bold: 'bold',
+  italic: 'italic',
+  underline: 'underline',
+  strike: 'strike',
+  code: 'fixed',
+  spoiler: 'spoiler',
+  subscript: 'subscript',
+  superscript: 'superscript',
+  highlight: 'marked',
+  link: 'url',
+  mentionName: 'mentionName',
+  formattedDate: 'date'
+};
+
+/**
+ * Whether an anchor's text loads under the link mark the composer keeps an anchor with text as,
+ * inside the marks around it (by their types): the loader and the editability check decide alike.
+ */
+export function canAnchorTextHoldLink(anchor: RichText.textAnchor, markTypes: string[] = []) {
+  const marks = new Set(markTypes.map((type) => RICH_TEXT_MARKS_BY_TIPTAP_MARK[type]).filter(Boolean));
+  return withMark(anchor, marks, 'url');
 }
 
 function isEditableListItem(item: PageListItem) {

@@ -130,6 +130,23 @@ describe('Tiptap chat input editor: Quotes', () => {
     expect(pasted.editor.getRichValue(true, false).value).toBe('Before\nQuote\nAfter');
   });
 
+  test('pastes a pullquote copied out of a rich message bubble as a pullquote', () => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    // what a selection of the bubble's page copies: its hashed classes plus the composer's markup
+    const html = `<div class="${instantViewStyles.Pullquote} quote-like" data-pullquote="">` +
+      `<div class="${instantViewStyles.PullquoteText} text-italic" data-pullquote-text=""><span>Pulled</span></div>` +
+      `<div class="${instantViewStyles.BlockquoteCaption} ${instantViewStyles.PullquoteAuthor} text-bold" data-pullquote-caption=""><span>Author</span></div>` +
+      '</div>';
+    expect(tiptap.view.pasteHTML(html, new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const pullquote = tiptap.state.doc.content.content.find((node) => node.type.name === 'pullquote');
+    expect(pullquote?.content.content.map((node) => [node.type.name, node.textContent])).toEqual([
+      ['pullquoteText', 'Pulled'],
+      ['pullquoteCaption', 'Author']
+    ]);
+  });
+
   test('migrates an old inline-quote hot-reload snapshot to block nodes', () => {
     const {editor} = mountEditor({
       doc: {
@@ -320,7 +337,10 @@ describe('Tiptap chat input editor: Quotes', () => {
 
   test('lifts a whole list item into a standalone quote block', () => {
     const {editor} = mountEditor();
-    editor.setTextWithEntities('- item');
+    editor.setDocument({type: 'doc', content: [{type: 'bulletList', content: [{
+      type: 'listItem',
+      content: [{type: 'paragraph', content: [{type: 'text', text: 'item'}]}]
+    }]}]});
     editor.restoreSelection({from: 3, to: 7}, false);
 
     expect(editor.applyMarkup({type: 'quote'})).toBe(true);

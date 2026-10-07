@@ -9,12 +9,15 @@ import {
   untrack,
   JSX
 } from 'solid-js';
-import SwipeHandler from '@components/swipeHandler';
+import type SwipeHandler from '@components/swipeHandler';
+import handleHorizontalSwipe from '@helpers/dom/handleHorizontalSwipe';
 import styles from '@components/slideshow.module.scss';
 import classNames from '@helpers/string/classNames';
 import {fastRaf} from '@helpers/schedulers';
+import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {IconTsx} from '@components/iconTsx';
+import Modes from '@config/modes';
 
 export type SlideshowProps<T> = {
   aspectRatio?: number;
@@ -30,8 +33,19 @@ export type SlideshowProps<T> = {
   onClick?: (index: number) => void;
 };
 
-const SCALE = 1;
 const TRANSLATE_TEMPLATE = 'translate({x}, 0)';
+// a press that moves less than this is a click (the item opens, a side pages) rather than a drag
+const DRAG_DEAD_ZONE = 6;
+// a drag pages once it went this part of the width, or was flicked faster than this (px/ms)
+const PAGE_DISTANCE = .2;
+const PAGE_VELOCITY = .4;
+const VELOCITY_WINDOW = 100;
+
+/** Whether a press is on a slideshow that pages: it takes horizontal swipes and clicks itself */
+export function isPagingSlideshowTarget(target: EventTarget) {
+  const slideshow = findUpClassName(target, styles.Slideshow);
+  return !!slideshow && !slideshow.classList.contains(styles.IsSingle);
+}
 
 export default function Slideshow<T>(props: SlideshowProps<T>) {
   let container: HTMLDivElement;
@@ -49,7 +63,9 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
 
   const selectIndex = (value: number) => {
     const nextIndex = clampIndex(value);
-    setIndex(nextIndex);
+    // * the key first: setting the index runs the effect that keeps the selected item across edits of
+    // * the items at once, and with the key of the item left it put the index back - every page went to
+    // * the one picked the time before
     if(props.items.length) {
       selectedKey = getItemKey(props.items[nextIndex]);
       hasSelectedKey = true;
@@ -57,60 +73,97 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
       selectedKey = undefined;
       hasSelectedKey = false;
     }
+    setIndex(nextIndex);
     return nextIndex;
   };
 
   const getCount = () => props.items.length;
 
-  let width = 0, x = 0, lastDiffX = 0, minX = 0;
+  const setTranslate = (value: string) => {
+    itemsContainer.style.transform = TRANSLATE_TEMPLATE.replace('{x}', value);
+  };
+
+  // * A drag moves the items with the pointer - or the fingers on a trackpad - by one item at most, and
+  // * pages when it went far enough or was flicked; otherwise the item it started on comes back
+  let width = 0, startIndex = 0, offset = 0, dragging = false;
+  let samples: {time: number, offset: number}[] = [];
+
+  // how fast the drag went in its last moments: one held still before the release threw nothing,
+  // however fast it got there (a pointer that stops sends no moves to say so)
+  const getVelocity = () => {
+    const last = samples[samples.length - 1];
+    if(!last || performance.now() - last.time > VELOCITY_WINDOW) return 0;
+    const first = samples.find((sample) => last.time - sample.time <= VELOCITY_WINDOW);
+    return last.time > first.time ? (last.offset - first.offset) / (last.time - first.time) : 0;
+  };
+
+  // * The click a drag ends with is the drag's. Taken before anything inside sees it: an item opens
+  // * itself on a click of its own (a photo its viewer), before the slideshow's handler would run
+  const onClickCapture = (e: MouseEvent) => {
+    if(isSwiping()) cancelEvent(e);
+  };
 
   onMount(() => {
-    swipeHandler = new SwipeHandler({
+    container.addEventListener('click', onClickCapture, true);
+    swipeHandler = handleHorizontalSwipe({
       element: container,
-      onSwipe: (xDiff, yDiff) => {
-        xDiff *= -1;
-
-        lastDiffX = xDiff;
-        let lastX = x + xDiff * -SCALE;
-        if(lastX > 0) lastX = 0;
-        else if(lastX < minX) lastX = minX;
-
-        itemsContainer.style.transform = TRANSLATE_TEMPLATE.replace('{x}', lastX + 'px');
-        return false;
-      },
+      wheelSwipe: true,
+      axisThreshold: DRAG_DEAD_ZONE,
       verifyTouchTarget: (e) => {
         if(getCount() <= 1) return false;
+        // a wheel pages only when swiped sideways: scrolling past it, zooming and a shift-scroll are not.
+        // Not `instanceof WheelEvent`: one from a Document PiP window is of that window's class
+        if(e.type === 'wheel') {
+          const wheel = e as any as WheelEvent;
+          return !wheel.ctrlKey && !wheel.metaKey && !wheel.shiftKey && Math.abs(wheel.deltaX) > Math.abs(wheel.deltaY);
+        }
+
         return true;
       },
       onFirstSwipe: () => {
-        const rect = itemsContainer.getBoundingClientRect();
-        width = rect.width;
-        minX = -width * (getCount() - 1);
-        x = rect.left - container.getBoundingClientRect().left;
+        width = container.getBoundingClientRect().width;
+        startIndex = index();
+        offset = 0;
+        dragging = false;
+        samples = [];
+      },
+      onSwipe: (xDiff) => {
+        const lastIndex = getCount() - 1;
+        offset = Math.max(startIndex === lastIndex ? 0 : -width, Math.min(startIndex === 0 ? 0 : width, -xDiff));
+        samples.push({time: performance.now(), offset});
+        if(samples.length > 20) samples.shift();
 
-        itemsContainer.style.transform = TRANSLATE_TEMPLATE.replace('{x}', x + 'px');
+        if(!dragging) {
+          if(Math.abs(xDiff) < DRAG_DEAD_ZONE) return;
+          dragging = true;
+          setIsSwiping(true);
+          setNoTransition(true);
+        }
 
-        setIsSwiping(true);
-        setNoTransition(true);
-        void itemsContainer.offsetLeft; // reflow
+        setTranslate(`${-startIndex * width + offset}px`);
       },
       onReset: () => {
-        const addIndex = Math.ceil(Math.abs(lastDiffX) / (width / SCALE)) * (lastDiffX >= 0 ? 1 : -1);
+        if(!dragging) return;
+        dragging = false;
+
+        const velocity = getVelocity();
+        const direction = Math.abs(offset) > width * PAGE_DISTANCE ? -Math.sign(offset) :
+          Math.abs(velocity) > PAGE_VELOCITY && Math.sign(velocity) === Math.sign(offset) ? -Math.sign(offset) :
+          0;
 
         setNoTransition(false);
         fastRaf(() => {
-          let newIndex = index() + addIndex;
-          if(newIndex < 0) newIndex = 0;
-          if(newIndex >= getCount()) newIndex = getCount() - 1;
-
-          setActiveIndex(newIndex);
-          setIsSwiping(false);
+          const newIndex = clampIndex(startIndex + direction);
+          if(newIndex === index()) applyIndex(newIndex); // * back to where it started
+          else setActiveIndex(newIndex);
+          setIsSwiping(false); // * after the click that ends a drag: that one is the drag's (handleClick)
         });
       }
     });
   });
 
   onCleanup(() => {
+    container.removeEventListener('click', onClickCapture, true);
     swipeHandler?.removeListeners();
   });
 
@@ -128,7 +181,6 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
       -1;
     if(nextIndex === -1) nextIndex = clampIndex(currentIndex);
 
-    if(nextIndex !== currentIndex) setIndex(nextIndex);
     if(keys.length) {
       selectedKey = keys[nextIndex];
       hasSelectedKey = true;
@@ -136,14 +188,16 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
       selectedKey = undefined;
       hasSelectedKey = false;
     }
+    if(nextIndex !== currentIndex) setIndex(nextIndex);
   });
 
-  createEffect(() => {
-    const i = index();
+  const applyIndex = (i: number) => {
     if(itemsContainer) {
-      itemsContainer.style.transform = TRANSLATE_TEMPLATE.replace('{x}', `${-i * 100}%`);
+      setTranslate(`${-i * 100}%`);
     }
-  });
+  };
+
+  createEffect(() => applyIndex(index()));
 
   const handleClick = (e: MouseEvent) => {
     if(isSwiping()) return;
@@ -202,16 +256,25 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
         ref={itemsContainer}
         class={styles.Items}
       >
-        <For each={props.items}>{(item, i) => (
-          <div class={styles.Item}>
-            {props.keepItemsMounted ?
-              untrack(() => props.children?.(item, i())) :
-              <Show when={Math.abs(i() - index()) < 5}>
-                {props.children?.(item, i())}
-              </Show>
-            }
-          </div>
-        )}</For>
+        <For each={props.items}>{(item, i) => {
+          // The items off to the sides are kept mounted for the paging, out of view: no part of
+          // what is read out, and no stops for Tab with the keyboard layer.
+          const away = () => i() !== index();
+          let element: HTMLDivElement;
+          if(Modes.a11y) createEffect(() => {
+            element.inert = away();
+          });
+          return (
+            <div ref={element} class={styles.Item} aria-hidden={away() ? 'true' : undefined}>
+              {props.keepItemsMounted ?
+                untrack(() => props.children?.(item, i())) :
+                <Show when={Math.abs(i() - index()) < 5}>
+                  {props.children?.(item, i())}
+                </Show>
+              }
+            </div>
+          );
+        }}</For>
       </div>
 
       <div class={styles.Dots}>

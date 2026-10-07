@@ -404,6 +404,41 @@ test('uses clickable round dots and contained media in slideshows', async({page}
   );
 });
 
+// In the composer the media around it is draggable once selected: the swipe has to stay the
+// slideshow's, or the browser takes the pointer over for a drag of the whole media.
+test('pages a slideshow by a drag, and puts a short drag back', async({page}) => {
+  expect(await page.evaluate(() => window.chatInputEditorHarness.insertTestPhotos([
+    '/assets/img/camomile.jpg',
+    '/assets/img/camomile.jpg?slide=2',
+    '/assets/img/camomile.jpg?slide=3'
+  ], true))).toBe(true);
+  const slideshow = page.locator('.chat-input-rich-media-slideshow');
+  const dots = slideshow.locator('button[class*="Dot"]');
+  const items = slideshow.locator('[class*="Items"]');
+  await expect(dots).toHaveCount(3);
+  const box = (await slideshow.boundingBox())!;
+  const offset = () => items.evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).m41);
+  const drag = async(distance: number, {hold = false} = {}) => {
+    const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + distance / 2, y, {steps: 4});
+    await page.mouse.move(x + distance, y, {steps: 4});
+    // a person holding still before letting go: the moves above are a flick's speed
+    if(hold) await page.waitForTimeout(250);
+    await page.mouse.up();
+  };
+
+  await drag(-24, {hold: true});
+  await expect(dots.first()).toHaveAttribute('aria-current', 'true');
+  await expect.poll(offset).toBeCloseTo(0, 0);
+
+  await drag(-box.width * .6);
+  await expect(dots.nth(1)).toHaveAttribute('aria-current', 'true');
+  const width = await items.evaluate((element) => element.getBoundingClientRect().width);
+  await expect.poll(offset).toBeCloseTo(-width, 0);
+});
+
 test('keeps complex collages within the shared media height', async({page}) => {
   expect(await page.evaluate(() => window.chatInputEditorHarness.insertTestPhotos([
     '/assets/img/camomile.jpg?collage=1',

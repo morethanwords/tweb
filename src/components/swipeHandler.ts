@@ -69,6 +69,8 @@ export type SwipeHandlerOptions = {
   setCursorTo?: HTMLElement,
   middleware?: Middleware,
   withDelay?: boolean,
+  // a two-finger trackpad swipe (wheel events) drags as a mouse drag does
+  wheelSwipe?: boolean,
   minZoom?: number,
   maxZoom?: number
 };
@@ -116,6 +118,7 @@ export default class SwipeHandler {
   private yAdded: number;
 
   private withDelay: boolean;
+  private wheelSwipe: boolean;
   private listenerSetter: ListenerSetter;
 
   private initialDistance: number;
@@ -160,7 +163,7 @@ export default class SwipeHandler {
       // The gesture-end listener (`mouseup`/`touchend`) is bound lazily in `handleStart` — see the
       // note there — not here, so its target document is resolved while the element is live.
 
-      if(this.onZoom || this.onDoubleClick) {
+      if(this.onZoom || this.onDoubleClick || this.wheelSwipe) {
         this.listenerSetter.add(this.element)('wheel', this.handleWheel, WHEEL_OPTIONS);
       }
     } else {
@@ -224,7 +227,7 @@ export default class SwipeHandler {
       this.isMouseDown =
       undefined;
 
-    if(this.onZoom) {
+    if(this.onZoom || this.wheelSwipe) {
       this.initialDistance = 0;
       this.initialTouchCenter = {
         x: windowSize.width / 2,

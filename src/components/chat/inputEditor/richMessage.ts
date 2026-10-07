@@ -37,6 +37,7 @@ import {
   richButtonStyle
 } from '@components/chat/inputEditor/richButtonModel';
 import {getPageButtonRowAlign} from '@components/wrappers/buttonTypes';
+import {canAnchorTextHoldLink} from '@components/chat/inputEditor/richMessageEditability';
 
 type RichMessageDocumentOptions = {
   draft?: boolean,
@@ -240,7 +241,7 @@ function inlineNodeToRichText(node: JSONContent): RichText {
   return applyRichTextMarks(text, node.marks);
 }
 
-function inlineContentToRichText(content: JSONContent[] = []): RichText {
+export function inlineContentToRichText(content: JSONContent[] = []): RichText {
   return concatRichText(content.map(inlineNodeToRichText));
 }
 
@@ -1041,6 +1042,14 @@ export function richTextToTiptapInlineContent(
     case 'textAnchor':
       if(text.text._ === 'textEmpty') {
         return [{type: 'inlineRichAnchor', attrs: {name: text.name}}];
+      }
+      // code, a link or a date cannot sit under the link mark: the anchor becomes the marker it is
+      // sent as, where its text starts — the server wraps a paragraph in a marked anchor itself
+      if(!canAnchorTextHoldLink(text, marks.map((mark) => mark.type))) {
+        return [
+          {type: 'inlineRichAnchor', attrs: {name: text.name}},
+          ...richTextToTiptapInlineContent(text.text, marks)
+        ];
       }
       return richTextToTiptapInlineContent(text.text, [...marks, {
         type: 'link',

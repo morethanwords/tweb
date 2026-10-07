@@ -7,6 +7,7 @@
   width: 100%;
   position: relative;
   cursor: pointer;
+  user-select: none; // a drag pages, it does not select
   background-color: var(--surface-color);
   z-index: 1;
   overflow: hidden;

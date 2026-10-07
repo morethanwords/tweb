@@ -1,20 +1,25 @@
 @use "../scss/variables.scss" as *;
 @use "../scss/mixins.scss" as *;
 
+// The same shades wherever a table is shown — the composer, a page, a bubble ($message-shade-color)
+$table-shade-color: $message-shade-color;
+$table-border-color: color-mix(in srgb, var(--message-status-color) 32%, var(--message-background-color));
+
 .wrapper {
   overflow-x: auto;
 }
 
+// Over the cells: a header cell is positioned and comes later, so its fill would cover the top edge.
 .border {
   position: absolute;
-  border: 1px solid var(--border-color);
+  z-index: 1;
+  border: 1px solid $table-border-color;
   border-radius: var(--table-border-radius, #{$border-radius});
   inset: 0;
   pointer-events: none;
 }
 
 .genericTable {
-  table-layout: var(--table-layout, auto);
   border-collapse: collapse;
   width: calc(100% - var(--padding-horizontal, 0px) * 2);
   @include rounded-font-size(var(--table-font-size, .8888em));
@@ -22,6 +27,8 @@
   margin-inline: var(--padding-horizontal);
   border-radius: var(--table-border-radius, #{$border-radius});
   position: relative;
+  // keeps the border's z-index to the table
+  isolation: isolate;
   overflow: hidden;
 
   &.bordered {
@@ -30,13 +37,13 @@
 
     .genericCell,
     .genericHeaderCell {
-      border: 1px solid var(--border-color);
+      border: 1px solid $table-border-color;
     }
   }
 }
 
 .genericTable.striped > tbody > .genericRow:nth-child(odd) {
-  background-color: var(--light-filled-secondary-text-color);
+  background-color: $table-shade-color;
 
   > .genericHeaderCell {
     background-color: transparent;
@@ -56,7 +63,6 @@
   position: relative;
   vertical-align: top;
   text-align: left;
-  border: 1px solid transparent;
 
   &.cellAlignCenter { text-align: center; }
   &.cellAlignRight { text-align: right; }
@@ -65,6 +71,6 @@
 }
 
 .genericHeaderCell {
-  background-color: var(--light-secondary-text-color);
+  background-color: $table-shade-color;
   font-weight: var(--font-weight-bold);
 }

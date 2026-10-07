@@ -25,7 +25,6 @@ import {appState, useAppConfig} from '@stores/appState';
 import {useCommunity, useCommunityFull} from '@stores/communities';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import usePeerTranslation from '@hooks/usePeerTranslation';
-import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
 import getWebFileLocation from '@helpers/getWebFileLocation';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -1143,7 +1142,7 @@ PeerProfile.BusinessHours = () => {
 
 PeerProfile.BusinessLocation = () => {
   const context = useContext(PeerProfileContext);
-  const {i18n, wrapPhoto, wrapEmojiText, confirmationPopup, toastNew} = useHotReloadGuard();
+  const {i18n, wrapPhoto, wrapEmojiText, confirmOpenGoogleMaps, toastNew} = useHotReloadGuard();
   const location = createMemo(() => (context.fullPeer as UserFull)?.business_location);
 
   const copyAddress = () => {
@@ -1158,14 +1157,7 @@ PeerProfile.BusinessLocation = () => {
       return;
     }
 
-    await confirmationPopup({
-      descriptionLangKey: 'Popup.OpenInGoogleMaps',
-      button: {
-        langKey: 'Open'
-      }
-    });
-
-    safeWindowOpen(makeGoogleMapsUrl(_location.geo_point as GeoPoint.geoPoint));
+    await confirmOpenGoogleMaps(_location.geo_point as GeoPoint.geoPoint);
   };
 
   return (

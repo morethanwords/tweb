@@ -7,6 +7,7 @@ import {getChatInputEditor} from '@components/chat/inputEditor/registry';
 import deferredPromise from '@helpers/cancellablePromise';
 import type {ChatInputRichMedia} from '@components/chat/inputEditor/types';
 import {setAppSettingsSilent} from '@stores/appSettings';
+import {isSendShortcutLeft} from '@helpers/dom/isSendShortcutPressed';
 import {readdirSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
@@ -80,6 +81,40 @@ test('two fields keep independent content, history and lifecycle', () => {
   second.field.editor.replaceSelection('!');
   expect(second.field.editor.undo()).toBe(true);
   expect(second.field.editor.getRichValue().value).toBe('Second');
+});
+
+// A send can open a popup (the rich-message Premium confirmation) while the
+// field keeps the focus: Enter is then the popup's, not another send.
+test.each(['enter', 'ctrlEnter'] as const)('leaves Enter to a modal popup over the field with %s sending', async(sendShortcut) => {
+  setAppSettingsSilent('sendShortcut', sendShortcut);
+  const {default: PopupElement} = await import('@components/popups/indexTsx');
+  const onSubmit = vi.fn();
+  const {field} = mount({onSubmit});
+  field.editor.setTextWithEntities('Hello');
+  const before = field.editor.getDocument();
+  const popup = document.createElement('div');
+  document.body.append(popup);
+  const context = {element: popup, withoutOverlay: false, destroyed: false};
+  PopupElement.POPUPS.push(context as unknown as typeof PopupElement.POPUPS[number]);
+  try {
+    for(const init of [{}, {ctrlKey: true}, {shiftKey: true}]) {
+      const event = new KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true, ...init});
+      field.input.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+      expect(isSendShortcutLeft(event)).toBe(true);
+    }
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(field.editor.getDocument()).toEqual(before);
+
+    // closed, it stays in the stack while it fades out, and holds the field no longer
+    context.destroyed = true;
+    field.input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', bubbles: true, cancelable: true, ctrlKey: sendShortcut === 'ctrlEnter'
+    }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+  } finally {
+    PopupElement.POPUPS.splice(PopupElement.POPUPS.indexOf(context as unknown as typeof PopupElement.POPUPS[number]), 1);
+  }
 });
 
 test('engine reload preserves the mounted field, selection and toolbar commands', async() => {

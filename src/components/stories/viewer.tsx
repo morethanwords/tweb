@@ -96,6 +96,7 @@ import {IconTsx} from '@components/iconTsx';
 import {Transition} from 'solid-transition-group';
 import {TransitionGroup} from '@helpers/solid/transitionGroup';
 import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
+import {askOpenGoogleMaps} from '@components/confirmOpenGoogleMaps';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import showTooltip from '@components/tooltip';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -641,14 +642,7 @@ const StoryMediaArea = (props: {
 
       hasPopup = true;
       cancelEvent(e);
-      try {
-        await confirmationPopup({
-          descriptionLangKey: 'Popup.OpenInGoogleMaps',
-          button: {
-            langKey: 'Open'
-          }
-        });
-      } catch(err) {
+      if(!await askOpenGoogleMaps()) {
         if(wasPlaying) {
           actions.play();
         }

@@ -10,7 +10,7 @@ import I18n, {i18n, LangPackKey, FormatterArguments} from '@lib/langPack';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {avatarNew} from '@components/avatarNew';
-import GeoPin from '@components/geoPin';
+import {createGeoPin} from '@components/geoPin';
 import wrapPhoto from '@components/wrappers/photo';
 
 export type GeoLiveUpdate = {
@@ -145,7 +145,7 @@ export default function wrapGeo({
 
       imageContainer.append(pin);
     } else {
-      imageContainer.append(GeoPin());
+      imageContainer.append(createGeoPin());
     }
 
     wrapPhoto({

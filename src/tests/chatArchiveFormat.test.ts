@@ -1,4 +1,5 @@
-import type {Message} from '@layer';
+import type {Message, RichMessage} from '@layer';
+import {flattenRichMessageContent} from '@lib/richMessage';
 import {
   ArchiveContext,
   PeerRef,
@@ -58,6 +59,38 @@ describe('chat archive format', () => {
     expect(archiveMessage(message({}), ctx).from.name).toBe('Alice');
     expect(archiveMessage(message({pFlags: {out: true}}), ctx).from.name).toBe('Me');
     expect(archiveMessage(message({from_id: {_: 'peerUser', user_id: 3}}), ctx).from).toEqual({key: 'user3', name: 'Bob', username: 'bob'});
+  });
+
+  test('reads the text of a rich message out of its blocks', () => {
+    const ctx = makeContext();
+    const richMessage: RichMessage = {
+      _: 'richMessage',
+      pFlags: {},
+      photos: [],
+      documents: [],
+      blocks: [
+        {_: 'pageBlockHeader', text: {_: 'textPlain', text: 'Sessions'}},
+        {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [
+          {_: 'textPlain', text: 'See '},
+          {_: 'textUrl', text: {_: 'textPlain', text: 'the spec'}, url: 'https://x.y', webpage_id: 0}
+        ]}},
+        {_: 'pageBlockList', items: [{_: 'pageListItemText', pFlags: {}, text: {_: 'textPlain', text: 'step one'}}]}
+      ]
+    };
+
+    // without a flattener (mark.sh, plain Node) the record has no text, as before
+    expect(archiveMessage(message({rich_message: richMessage}), ctx).text).toBeUndefined();
+
+    ctx.flattenRichMessage = (rich) => flattenRichMessageContent(rich);
+    const rich = archiveMessage(message({rich_message: richMessage}), ctx);
+    expect(rich.text).toBe('Sessions\nSee [the spec](https://x.y)\n- step one');
+
+    // a record archived empty before the archiver could read it takes the content on a re-read
+    const empty = markDone(archiveMessage(message({rich_message: richMessage}), {...ctx, flattenRichMessage: undefined}), 'spec read');
+    const filled = mergeArchivedMessage(empty, rich);
+    expect(filled.text).toBe(rich.text);
+    expect(filled.done.note).toBe('spec read');
+    expect(isDoneStale(filled)).toBe(false);
   });
 
   test('describes service messages and forum topics', () => {

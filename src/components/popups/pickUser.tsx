@@ -670,7 +670,8 @@ export async function showPickUser2Popup<T extends boolean = false>({
   limitCallback,
   titleLangKey,
   placeholder,
-  exceptSelf
+  exceptSelf,
+  excludePeerIds
 }: {
   peerType?: SelectSearchPeerType[],
   filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'],
@@ -680,7 +681,8 @@ export async function showPickUser2Popup<T extends boolean = false>({
   limit?: number,
   limitCallback?: () => void,
   titleLangKey?: LangPackKey,
-  exceptSelf?: boolean
+  exceptSelf?: boolean,
+  excludePeerIds?: PopupPickUserOptions['excludePeerIds']
 }) {
   return new Promise<T extends false ? PeerId : PeerId[]>((resolve, reject) => {
     let resolved = false;
@@ -705,6 +707,7 @@ export async function showPickUser2Popup<T extends boolean = false>({
       chatRightsActions,
       titleLangKey,
       exceptSelf,
+      excludePeerIds,
       onClose: () => {
         if(!resolved) {
           reject();

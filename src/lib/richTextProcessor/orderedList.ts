@@ -28,6 +28,21 @@ export function isDecimalOrderedListType(value: unknown) {
   return canonicalOrderedListType(value) === '1';
 }
 
+/**
+ * A list item written as text — what stands for a list where a message carries
+ * none: a rich list sent without formatting, a list pasted into a caption.
+ */
+export function formatListItemMarker({ordered, value, type, checkbox, checked}: {
+  ordered: boolean,
+  value?: number,
+  type?: unknown,
+  checkbox?: boolean,
+  checked?: boolean
+}) {
+  const marker = ordered ? `${formatOrderedListMarker(value, type)}. ` : '- ';
+  return checkbox ? `${marker}[${checked ? 'x' : ' '}] ` : marker;
+}
+
 /** The textual equivalent of the CSS counter style, including its decimal fallback. */
 export function formatOrderedListMarker(value: number, type?: unknown) {
   const htmlType = getOrderedListTypePresentation(type)?.htmlType;

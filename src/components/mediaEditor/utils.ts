@@ -100,8 +100,13 @@ export function traverseObjectDeep(obj: any) {
   else if(obj instanceof Object) Object.values(obj).forEach(val => traverseObjectDeep(val));
 }
 
-export function cleanupWebGl(gl: WebGLRenderingContext) {
-  gl.getExtension('WEBGL_lose_context')?.loseContext();
+/**
+ * Frees the context's GPU memory now rather than at collection. A canvas that got no context (no
+ * WebGL: a blocked GPU, a headless browser) has nothing to free; throwing here stopped the editor's
+ * cleanup halfway, and the editor could not be closed.
+ */
+export function cleanupWebGl(gl: WebGLRenderingContext | null) {
+  gl?.getExtension('WEBGL_lose_context')?.loseContext();
 }
 
 export const availableQualityHeights = [

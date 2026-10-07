@@ -10,8 +10,7 @@ import {chatInputPlaceholderAttributes} from '@components/chat/inputEditor/place
 import classNames from '@helpers/string/classNames';
 import I18n from '@lib/langPack';
 import {appendParagraphAfterFinalTopLevelBlock} from '@components/chat/inputEditor/extensions/blockEditing';
-
-const QUOTE_INPUT_REGEXP = /^\s*>\s$/;
+import {QUOTE_INPUT_REGEXP} from '@components/chat/inputEditor/blockMarkers';
 
 /**
  * Whether a rich message can carry this quote collapsed. Layer 229 gave `pageBlockBlockquote` a

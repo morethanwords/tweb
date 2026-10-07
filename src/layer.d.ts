@@ -5721,7 +5721,7 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityFormattedDate | MessageEntity.messageEntityDiffInsert | MessageEntity.messageEntityDiffReplace | MessageEntity.messageEntityDiffDelete | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp | MessageEntity.messageEntityImage | MessageEntity.messageEntitySubscript | MessageEntity.messageEntitySuperscript | MessageEntity.messageEntityAnchor | MessageEntity.messageEntityRichButton;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityFormattedDate | MessageEntity.messageEntityDiffInsert | MessageEntity.messageEntityDiffReplace | MessageEntity.messageEntityDiffDelete | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp | MessageEntity.messageEntityImage | MessageEntity.messageEntitySubscript | MessageEntity.messageEntitySuperscript | MessageEntity.messageEntityAnchor | MessageEntity.messageEntityRichButton | MessageEntity.messageEntityIcon;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
@@ -5962,6 +5962,13 @@ export namespace MessageEntity {
     offset?: number,
     length?: number,
     button?: RichText.textButton
+  };
+
+  export type messageEntityIcon = {
+    _: 'messageEntityIcon',
+    offset?: number,
+    length?: number,
+    icon?: Icon
   };
 }
 
@@ -19047,6 +19054,7 @@ export interface ConstructorDeclMap {
   'messageEntitySuperscript': MessageEntity.messageEntitySuperscript,
   'messageEntityAnchor': MessageEntity.messageEntityAnchor,
   'messageEntityRichButton': MessageEntity.messageEntityRichButton,
+  'messageEntityIcon': MessageEntity.messageEntityIcon,
 }
 
 export type InvokeAfterMsg = {

@@ -5,6 +5,23 @@ import {getIconContent} from '@components/icon';
 describe('Tiptap chat input editor: Math', () => {
   const {editors, mountEditor} = useChatInputEditorHarness();
 
+  test('pastes formulas copied out of a rich message bubble as formulas', () => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    // the bubble shows the rendered MathML; the source rides in the composer's own attributes
+    const html = '<p>Energy <span data-inline-math="" data-source="E=mc^2"><math><mi>E</mi></math></span></p>' +
+      '<div><span data-block-math="" data-source="\\frac{a}{b}"><math display="block"><mfrac><mi>a</mi><mi>b</mi></mfrac></math></span></div>';
+    expect(tiptap.view.pasteHTML(html, new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const sources: [string, string][] = [];
+    tiptap.state.doc.descendants((node) => {
+      if(node.type.name === 'inlineMath' || node.type.name === 'blockMath') {
+        sources.push([node.type.name, node.attrs.source]);
+      }
+    });
+    expect(sources).toEqual([['inlineMath', 'E=mc^2'], ['blockMath', '\\frac{a}{b}']]);
+  });
+
   test('preserves math NodeSelections and edits selected formulas in place', () => {
     const {editor} = mountEditor();
     const tiptap = (editor as TiptapEditorInternals).editor;

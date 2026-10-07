@@ -27,6 +27,7 @@ import Modes from '@config/modes';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import sessionStorage from '@lib/sessionStorage';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
+import isLastInputPointer from '@helpers/dom/inputModality';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonIcon from '@components/buttonIcon';
@@ -138,6 +139,8 @@ export class AppSidebarLeft extends SidebarSlider {
   private set isSearchActive(value: boolean) {
     useIsLeftSearchActive()[1](value);
   }
+  // Tabbed into from another control, rather than clicked or summoned by Escape — see the back button.
+  private searchEnteredWithKeyboard: boolean;
   private searchTriggerWhenCollapsed: HTMLElement;
 
   private updateBtn: HTMLElement;
@@ -229,6 +232,10 @@ export class AppSidebarLeft extends SidebarSlider {
 
     sidebarHeader.nextElementSibling.append(this.updateBtn);
 
+    // Ahead of the listener below: the first focus of an open search says how it was entered.
+    this.inputSearch.input.addEventListener('focus', (e) => {
+      this.searchEnteredWithKeyboard ??= !!e.relatedTarget && !isLastInputPointer();
+    });
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 
     this.archivedCount = createBadge('span', 24, 'gray');
@@ -1630,18 +1637,21 @@ export class AppSidebarLeft extends SidebarSlider {
 
       // Whatever held focus is on its way out: the back button itself is being
       // hidden, and closing with Escape blurs the search field without giving
-      // the focus to anything. Either way the keyboard would be left on the
-      // document with no place in the sidebar, and the next Escape would land
-      // back in the search field and reopen the search it just closed. Focus
-      // moves to the control that takes the back button's place instead — once
-      // that control is actually there, since the classes that reveal it are
-      // set by an effect a frame or more from now.
+      // the focus to anything. Someone who Tabbed in would be left on the
+      // document with no place in the sidebar, so the focus moves to the
+      // control that takes the back button's place — once that control is
+      // actually there, since the classes that reveal it are set by an effect
+      // a frame or more from now. A search that was clicked into, or summoned by
+      // Escape from nowhere, goes back to nowhere, as it always did: ringing the
+      // menu button there answers a keyboard walk nobody took.
+      const enteredWithKeyboard = this.searchEnteredWithKeyboard;
+      this.searchEnteredWithKeyboard = undefined;
       const claimed = (): boolean => {
         const focused = document.activeElement;
         return !!focused && focused !== document.body && focused !== this.backBtn &&
           focused !== this.inputSearch.input && !searchContainer.contains(focused);
       };
-      if(Modes.a11y && !claimed()) focusWhenSettled(this.toolsBtn, () => !claimed());
+      if(Modes.a11y && enteredWithKeyboard && !claimed()) focusWhenSettled(this.toolsBtn, () => !claimed());
 
       chatTypeMenu.props.selected = 'all';
     }, {listenerSetter: searchListenerSetter});
@@ -1664,6 +1674,8 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     const focusInput = () => {
+      // summoned (Escape, Ctrl+F, the collapsed trigger), not walked into
+      this.searchEnteredWithKeyboard ??= false;
       this.inputSearch.input.focus({preventScroll: true});
     };
 

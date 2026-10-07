@@ -88,6 +88,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   };
 
   let entities = content.entities;
+  let isRichPreview = content.isRichPreview;
   const applyRichMessageSummary = () => {
     const richMessage = (message as Message.message).rich_message;
     if(!richMessage) {
@@ -97,6 +98,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
     const summary = getMessageForReplyContent(message);
     options.text = summary.text;
     entities = summary.entities;
+    isRichPreview = summary.isRichPreview;
     return true;
   };
 
@@ -375,10 +377,12 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   if(isRestricted) {
     options.text = getRestrictionReason((message as Message.message).restriction_reason).text;
     entities = [];
+    isRichPreview = false;
   }
 
   if(options.text) {
-    options.text = limitSymbols(options.text, 100);
+    // a cut here would move no entity: the rich preview cuts itself, around its entities
+    if(!isRichPreview) options.text = limitSymbols(options.text, 100);
 
     entities ??= parseEntities(options.text);
 
@@ -422,7 +426,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           }),
           richTextOptions: someRichTextOptions,
           middleware: options.middleware,
-          onTextWithEntities: (textWithEntities) => {
+          onTextWithEntities: isRichPreview ? undefined : (textWithEntities) => {
             return {
               ...textWithEntities,
               text: limitSymbols(textWithEntities.text, 100)

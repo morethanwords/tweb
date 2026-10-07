@@ -16,6 +16,7 @@ import toggleStorages from '@helpers/toggleStorages';
 import appTabsManager from '@appManagers/appTabsManager';
 import callbackify from '@helpers/callbackify';
 import Modes from '@config/modes';
+import {IS_POPUP_SANDBOX} from '@config/debug';
 import {IS_WORKER} from '@helpers/context';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import commonStateStorage from '@lib/commonStateStorage';
@@ -61,7 +62,10 @@ port.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
 
-    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
+    // Probes the base DC every 10 s until a WebSocket opens. The popup sandbox runs on fixtures
+    // with no session (this worker's URL carries the page's `?popups=1`): nothing there may reach
+    // Telegram, and nothing needs a transport.
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports && !IS_POPUP_SANDBOX) {
       transportController.waitForWebSocket();
     }
   },

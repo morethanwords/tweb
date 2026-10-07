@@ -1,5 +1,7 @@
 import {Extension} from '@tiptap/core';
+import {DOMParser as ProseMirrorDOMParser, DOMSerializer, type Node as ProseMirrorNode, type Schema} from '@tiptap/pm/model';
 import {Plugin} from '@tiptap/pm/state';
+import {listItemMarkers} from '@components/chat/inputEditor/orderedList';
 
 function directListItems(list: HTMLOListElement | HTMLUListElement) {
   return Array.from(list.children).filter(
@@ -97,6 +99,89 @@ export function normalizeChatInputRichClipboardHTML(
   .forEach(normalizeChecklist);
   return template.innerHTML;
 }
+
+const LIST_NODE_NAMES = new Set(['bulletList', 'orderedList', 'taskList']);
+
+/**
+ * A list's lines as its plain text writes them (`tiptapToTelegram`): an item's first line behind
+ * its marker, indented by depth, and the item's other lines after it.
+ */
+function listAsLines(list: ProseMirrorNode, depth: number, serializer: DOMSerializer, ownerDocument: Document) {
+  const lines: HTMLParagraphElement[] = [];
+  const markers = listItemMarkers(list);
+  list.forEach((item, _offset, index) => {
+    let prefix = '  '.repeat(depth) + markers[index];
+    const addLines = (node: ProseMirrorNode) => {
+      if(LIST_NODE_NAMES.has(node.type.name)) {
+        lines.push(...listAsLines(node, depth + 1, serializer, ownerDocument));
+      } else if(node.isTextblock) {
+        const line = ownerDocument.createElement('p');
+        if(prefix) {
+          // the parser collapses leading spaces anywhere but in preformatted text
+          const marker = ownerDocument.createElement('span');
+          marker.style.whiteSpace = 'pre';
+          marker.textContent = prefix;
+          line.append(marker);
+          prefix = '';
+        }
+        line.append(serializer.serializeFragment(node.content, {document: ownerDocument}));
+        lines.push(line);
+      } else {
+        node.forEach(addLines);
+      }
+    };
+    item.forEach(addLines);
+  });
+  return lines;
+}
+
+/**
+ * A field without lists parses a pasted one into its bare lines. Its markers are part of what the
+ * reader sees, so the lines keep them. The list is read by the composer's own rules — a task list,
+ * a reversed or lettered one, checkboxes, the composer's clipboard — and written as it is sent.
+ */
+function pastedListsAsText(html: string, richSchema: Schema, ownerDocument: Document) {
+  const template = ownerDocument.createElement('template');
+  template.innerHTML = html;
+  const lists = template.content.querySelectorAll<HTMLOListElement | HTMLUListElement>('ol, ul');
+  if(!lists.length) return html;
+
+  lists.forEach(normalizeChecklist);
+  const parser = ProseMirrorDOMParser.fromSchema(richSchema);
+  const serializer = DOMSerializer.fromSchema(richSchema);
+  lists.forEach((list) => {
+    // an inner list goes with its outer one
+    if(list.parentElement?.closest('ol, ul')) return;
+    const wrapper = ownerDocument.createElement('div');
+    list.replaceWith(wrapper);
+    wrapper.append(list);
+    const lines: HTMLParagraphElement[] = [];
+    parser.parse(wrapper).forEach((node) => {
+      if(LIST_NODE_NAMES.has(node.type.name)) lines.push(...listAsLines(node, 0, serializer, ownerDocument));
+    });
+    wrapper.replaceWith(...lines);
+  });
+  return template.innerHTML;
+}
+
+export const ChatPlainListPaste = Extension.create<{richSchema: () => Schema}>({
+  name: 'chatPlainListPaste',
+
+  addOptions() {
+    return {richSchema: undefined};
+  },
+
+  addProseMirrorPlugins() {
+    const {richSchema} = this.options;
+    return [new Plugin({
+      props: {
+        transformPastedHTML: (html, view) => view.state.schema.nodes.listItem ?
+          html :
+          pastedListsAsText(html, richSchema(), view.dom.ownerDocument)
+      }
+    })];
+  }
+});
 
 export function createChatInputRichClipboardPlugin(ownerDocument: Document = document) {
   return new Plugin({

@@ -43,3 +43,8 @@ $tgico-font-path: $fonts-path;
 
 $header-height: 3.5rem;
 $menu-height: 3rem;
+
+// A message's shade: its secondary color (what a bubble's --secondary-text-color is) mixed into its
+// background — a table's header cell, a plain rich button. A bubble sets both to its own; the
+// composer reads the chat's, so it matches an incoming bubble.
+$message-shade-color: color-mix(in srgb, var(--message-status-color) 10%, var(--message-background-color));

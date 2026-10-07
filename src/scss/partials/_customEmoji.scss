@@ -1,3 +1,5 @@
+@use "../shared" as *;
+
 .custom-emoji {
   display: inline;
   position: relative;
@@ -43,6 +45,11 @@
     right: 0;
     bottom: 0;
     left: 0;
+
+    // CustomEmojiRendererElement.showsCommittedSize
+    &-committed-size {
+      @include offscreen-canvas-committed-size;
+    }
   }
 
   &-renderer {
@@ -53,6 +60,13 @@
     right: 0;
     bottom: 0;
     left: 0;
+
+    // a canvas shown at its committed size is larger than a box that just shrank, for a frame:
+    // nothing is drawn past the box, and the scroll it sits in does not grow for that frame. Only
+    // there: a canvas sized by hand may be meant to be wider than its box (the emoji helper's strip)
+    &-committed-size {
+      overflow: hidden;
+    }
   }
 
   &-placeholder {

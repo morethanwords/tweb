@@ -1,4 +1,5 @@
-import {expect, test} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './workerContext';
 
 test('subscription receipts show product, actual billing period and cancellation state', async({page}) => {
   const errors: string[] = [];
@@ -14,12 +15,12 @@ test('subscription receipts show product, actual billing period and cancellation
     await page.evaluate((id) => window.popupSandbox.open(`transaction/subscription-${id}`), id);
     const popup = page.locator('.popup-stars-pay.active');
     await expect(popup).toBeVisible();
-    await expect(popup.locator('.popup-stars-title')).toHaveText(`Subscription product ${id}`);
+    await expect(popup.locator('[data-popup-title]')).toHaveText(`Subscription product ${id}`);
     await expect(popup.locator('.popup-stars-pay-avatar .popup-stars-pay-item')).toHaveCount(1);
     await expect(popup.locator('table')).toContainText(state);
     if(id === 'minute' || id === 'five-minutes') {
-      await expect(popup.locator('.popup-stars-subtitle')).toContainText(id === 'minute' ? '1 minute' : '5 minutes');
-      await expect(popup.locator('.popup-stars-subtitle')).not.toContainText('month');
+      await expect(popup.locator('.popup-stars-intro > [class*="_subtitle_"]')).toContainText(id === 'minute' ? '1 minute' : '5 minutes');
+      await expect(popup.locator('.popup-stars-intro > [class*="_subtitle_"]')).not.toContainText('month');
     }
     if(id.includes('cancelled') || id === 'expired') await expect(popup.locator('table')).not.toContainText('Renews');
     if(id === 'bot-cancelled' || id === 'business-cancelled') {

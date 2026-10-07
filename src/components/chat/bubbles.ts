@@ -49,7 +49,7 @@ import reflowScrollableElement from '@helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
 import highlightText, {findTextRect, TextHighlightMatch} from '@helpers/dom/textHighlight';
 import whichChild from '@helpers/dom/whichChild';
-import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
+import {animateSingle, cancelAnimationByKey, getAnimationInstance} from '@helpers/animation';
 import assumeType from '@helpers/assumeType';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import windowSize from '@helpers/windowSize';
@@ -249,7 +249,8 @@ import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 import {richMessageToPage} from '@lib/richMessage';
-import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
+import {RichMessageBubble, isRichMessageButtonTarget, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
+import {isPagingSlideshowTarget} from '@components/slideshow';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
@@ -737,6 +738,7 @@ export default class ChatBubbles {
   private messageLinkPolicyStates = new Set<MessageLinkPolicyState>();
   private hiddenLinksPendingBubbles = new Set<HTMLElement>();
   private pendingSolidMessageBodyLayouts = new Set<SolidMessageBodyEntry>();
+  private laidOutSolidMessageBodies = new WeakSet<SolidMessageBodyEntry>();
   private solidMessageBodyLayoutFrame: {win: Window, id: number};
   private spoilerOverlayPromises = new WeakMap<HTMLElement, Promise<void>>();
 
@@ -1862,7 +1864,9 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'code-header-button') ||
           findUpClassName(e.target, 'reaction') ||
           findUpClassName(e.target, 'bubble-beside-button') ||
-          findUpClassName(e.target, 'poll-message-content')
+          findUpClassName(e.target, 'poll-message-content') ||
+          isPagingSlideshowTarget(e.target) || // * pages on every click
+          isRichMessageButtonTarget(e.target)
         ) {
           return;
         }
@@ -1907,7 +1911,8 @@ export default class ChatBubbles {
           if(!bubble ||
             bubble.classList.contains('service') ||
             bubble.classList.contains('is-sending') ||
-            !this.canReplyToBubble(bubble)) {
+            !this.canReplyToBubble(bubble) ||
+            isPagingSlideshowTarget(e.target)) { // * pages through its items instead
             return false;
           }
 
@@ -2145,7 +2150,8 @@ export default class ChatBubbles {
           this.chat.type === ChatType.Logs ||
           this.chat.selection.isSelecting ||
           !this.chat.input.canSendPlain() ||
-          childCanScrollX(e.target as HTMLElement)) {
+          childCanScrollX(e.target as HTMLElement) ||
+          isPagingSlideshowTarget(e.target)) { // * pages through its items instead
           axis = 'y'; // vertical / wrong-direction / not repliable — ignore for the rest of the gesture
           idle();
           return;
@@ -3720,7 +3726,9 @@ export default class ChatBubbles {
       return;
     }
 
-    const stickerEmojiEl = findUpAttribute(target, 'data-sticker-emoji');
+    const stickerEmojiEl = isRichMessageButtonTarget(target) ?
+      undefined :
+      findUpAttribute(target, 'data-sticker-emoji');
     if(
       stickerEmojiEl &&
       stickerEmojiEl.parentElement.querySelectorAll('[data-sticker-emoji]').length === 1 &&
@@ -4091,7 +4099,8 @@ export default class ChatBubbles {
     const bubble = findUpClassName(target, 'bubble');
     const documentDiv = findUpClassName(target, 'document-with-thumb');
 
-    if(this.chat.type === ChatType.Logs) return;
+    // a rich message's media is not the message's own: its page opens the viewer for it
+    if(this.chat.type === ChatType.Logs || isRichMessageTarget(target)) return;
 
     // Prevent recursive click event simulation
 
@@ -7723,12 +7732,21 @@ export default class ChatBubbles {
       this.solidMessageBodyLayoutFrame = undefined;
       const entries = Array.from(this.pendingSolidMessageBodyLayouts);
       this.pendingSolidMessageBodyLayouts.clear();
+      let grew = false;
       entries.forEach((entry) => {
         if(!this.isSolidMessageBodyRegistered(entry.bubble, entry)) return;
         if(hasMessageTextSpoilers(entry.controller.getSnapshot().message)) entry.ensureSpoilers?.();
         entry.updateSpoilers?.();
+        grew ||= this.laidOutSolidMessageBodies.has(entry);
+        this.laidOutSolidMessageBodies.add(entry);
       });
 
+      // Following is for a body that GROWS at the bottom — a streamed draft, late resources. A
+      // body's first layout is its bubble arriving, and whoever rendered it owns the scroll:
+      // renderNewMessage animates to the end, and a jump from here lands first and leaves that
+      // animation nothing to do, so every message of a burst snapped instead of gliding. Nor
+      // does it cut into a smooth scroll that is already on its way.
+      if(!grew || getAnimationInstance(container)) return;
       if(!this.scrolledDown || Date.now() < this.streamFollowInvalidatedUntil) return;
       if(container.scrollTop + container.clientHeight > container.scrollHeight - 120) {
         container.scrollTop = container.scrollHeight;

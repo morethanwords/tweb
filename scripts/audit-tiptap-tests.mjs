@@ -40,7 +40,7 @@ for(const file of paths.filter((file) => /\.(?:[cm]?[jt]sx?)$/.test(file))) {
   if(!isTest && !/\b(?:it|test|specify)\s*(?:\.|\()/.test(source)) continue;
   let ast;
   try {
-    // v3.28.0 edgeDetection.spec.ts contains invalid TS `as const[]`.
+    // The pinned edgeDetection.spec.ts contains invalid TS `as const[]`.
     // A same-length parse-only repair preserves original hashes/line offsets.
     ast = babel.parseSync(source.replace(/as const\[\]/g, 'as any[]  '), {
       configFile: false,

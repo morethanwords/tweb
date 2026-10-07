@@ -7,7 +7,7 @@
 
 import {mkdirSync, rmSync, writeFileSync} from 'fs';
 import {join} from 'path';
-import type {Chat, Message, MessageAction, MessageEntity, MessageMedia, Peer, TextWithEntities, User} from '@layer';
+import type {Chat, Message, MessageAction, MessageEntity, MessageMedia, Peer, RichMessage, TextWithEntities, User} from '@layer';
 
 export type PeerSpec =
   | {kind: 'self'}
@@ -66,7 +66,10 @@ export type ArchiveContext = {
   peers: Map<string, PeerRef>,
   // the chat being archived: sender of channel posts and of incoming private messages
   chat: PeerRef,
-  self: PeerRef
+  self: PeerRef,
+  // a rich message's blocks → text. The network half passes @lib/richMessage's flattener: this
+  // file cannot import it, mark.sh loads it in plain Node, where the path aliases do not resolve
+  flattenRichMessage?: (richMessage: RichMessage) => TextWithEntities
 };
 
 export function parsePeerSpec(input: string): PeerSpec {
@@ -324,7 +327,10 @@ export function archiveMessage(message: Message, ctx: ArchiveContext): ArchivedM
     return out;
   }
 
-  if(message.message) out.text = renderText(message.message, message.entities);
+  // a rich message carries its text in blocks, not in `message`
+  const rich = message.rich_message && ctx.flattenRichMessage?.(message.rich_message);
+  if(rich?.text) out.text = renderText(rich.text, rich.entities);
+  else if(message.message) out.text = renderText(message.message, message.entities);
   if(message.media) {
     const media = describeMedia(message.media);
     if(media) out.media = media;
@@ -361,12 +367,15 @@ export function archiveMessage(message: Message, ctx: ArchiveContext): ArchivedM
  * unless the message was edited since — the edit timestamp decides — so what was archived, and
  * any done mark on it, is not overwritten by a plain re-read; only the counters that move without
  * an edit (views, reactions, pinned) and the raw edit timestamp are taken from the fresh copy. An edited message takes the
- * fresh content and keeps its mark, which then reads as stale.
+ * fresh content and keeps its mark, which then reads as stale. So does a record stored empty that now
+ * reads with content — an older archiver could not read that kind of message — but its mark stays fresh.
  */
 export function mergeArchivedMessage(stored: ArchivedMessage, fresh: ArchivedMessage): ArchivedMessage {
   if(!stored) return fresh;
 
-  const merged: ArchivedMessage = editTsOf(stored) === editTsOf(fresh) ?
+  const hasContent = (message: ArchivedMessage) => !!(message.text || message.media || message.service);
+  const keep = editTsOf(stored) === editTsOf(fresh) && (hasContent(stored) || !hasContent(fresh));
+  const merged: ArchivedMessage = keep ?
     // editTs too: a record archived before it existed learns its exact value
     {...stored, views: fresh.views, reactions: fresh.reactions, pinned: fresh.pinned, editTs: fresh.editTs} :
     {...fresh, done: stored.done};

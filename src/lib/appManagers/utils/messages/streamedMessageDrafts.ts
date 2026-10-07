@@ -60,7 +60,7 @@ export function getStreamedMessageDraftKey({
 export function getStreamedMessageContentMatchText(content: StreamedMessageDraftContent) {
   return content.kind === 'text' ?
     content.text.text :
-    flattenRichMessageSummaryText(content.richMessage, 0);
+    flattenRichMessageSummaryText(content.richMessage);
 }
 
 export default class StreamedMessageDrafts {

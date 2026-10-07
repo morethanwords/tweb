@@ -4,6 +4,8 @@ import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {i18n} from '@lib/langPack';
 import InputField from '@components/inputField';
 import PopupElement, {createPopup, usePopupContext} from '@components/popups/indexTsx';
+import classNames from '@helpers/string/classNames';
+import styles from '@components/popups/createLink.module.scss';
 import type {CreateLinkPopupOptions} from '@components/popups/createLinkModel';
 
 export type CreateLinkPopupResult = {
@@ -60,11 +62,12 @@ export default function showCreateLinkPopup(
             field.select();
           });
         });
-        return <div class="popup-create-link-fields">{textInputField.container}{urlInputField.container}</div>;
+        return <div class={styles.fields}>{textInputField.container}{urlInputField.container}</div>;
       };
 
       return (
-        <PopupElement class="popup-create-link" closable onClose={() => {if(!settled) reject();}}>
+        // `popup-create-link` is what the e2e suite finds the box by; the look is the module's
+        <PopupElement class={classNames('popup-create-link', styles.popup)} closable onClose={() => {if(!settled) reject();}}>
           <PopupElement.Header>
             <PopupElement.CloseButton />
             <PopupElement.Title>{i18n(options.editing ? 'Chat.Input.Editor.Link.EditTitle' : 'Chat.Input.Editor.Link.Title')}</PopupElement.Title>

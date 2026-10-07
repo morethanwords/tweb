@@ -89,6 +89,34 @@ describe('Tiptap chat input editor: Tooltip', () => {
     ).hasFormattableSelection()).toBe(false);
   });
 
+  test('dims what the selected block cannot carry and enables it again elsewhere', async() => {
+    const {default: MarkupTooltip} = await vi.importActual<typeof import('@components/chat/markupTooltip')>(
+      '@components/chat/markupTooltip'
+    );
+    const {editor, input} = mountEditor();
+    editor.setDocument({type: 'doc', content: [
+      {type: 'codeBlock', content: [{type: 'text', text: 'code'}]},
+      {type: 'paragraph', content: [{type: 'text', text: 'text'}]}
+    ]});
+    const tooltip = new MarkupTooltip();
+    const internals = tooltip as unknown as {
+      buttons: Record<'bold' | 'quote', HTMLButtonElement>,
+      init: () => void,
+      input: HTMLElement
+    };
+    internals.input = input;
+    internals.init();
+
+    editor.restoreSelection({from: 1, to: 5}, false);
+    tooltip.setActiveMarkupButton();
+    expect(internals.buttons.bold.disabled).toBe(true);
+    expect(internals.buttons.quote.disabled).toBe(false);
+
+    editor.restoreSelection({from: 7, to: 11}, false);
+    tooltip.setActiveMarkupButton();
+    expect(internals.buttons.bold.disabled).toBe(false);
+  });
+
   test.each([
     {name: 'a paragraph boundary', value: 'a\nb', from: 2, to: 4, expected: false},
     {name: 'whitespace', value: ' \t\u00a0', from: 1, to: 4, expected: false},

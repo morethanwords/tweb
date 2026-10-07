@@ -257,6 +257,26 @@ describe('Tiptap chat input editor: Keyboard', () => {
     expect(inputField.placeholder.classList.contains('is-empty')).toBe(false);
   });
 
+  // A list is rich-only, as in the other clients; the marker still makes one
+  // while the field is collapsed.
+  test.each([
+    ['- ', 'pageBlockList'],
+    ['1. ', 'pageBlockOrderedList']
+  ] as const)('a list typed with %j into the collapsed field is sent as a rich message', async(marker, block) => {
+    const {editor, input} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    expect(input.closest('.is-message-input-expanded')).toBeNull();
+    editor.focusAtEnd(false);
+
+    expect(tiptap.commands.insertContent(marker, {applyInputRules: true})).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(tiptap.commands.insertContent('one')).toBe(true);
+
+    expect(editor.getMode()).toBe('rich');
+    expect(editor.getLegacyValueIfLossless()).toBeUndefined();
+    expect(editor.getRichMessage().input.blocks[0]._).toBe(block);
+  });
+
   test.each([
     ['bullet', 'bulletList', 'listItem', undefined],
     ['ordered', 'orderedList', 'listItem', undefined],
@@ -359,7 +379,10 @@ describe('Tiptap chat input editor: Keyboard', () => {
       }
     });
     editors.push(editor);
-    editor.setTextWithEntities('- first');
+    editor.setDocument({type: 'doc', content: [{type: 'bulletList', content: [{
+      type: 'listItem',
+      content: [{type: 'paragraph', content: [{type: 'text', text: 'first'}]}]
+    }]}]});
     editor.focusAtEnd();
 
     const pressEnter = (shiftKey = false) => input.dispatchEvent(new KeyboardEvent('keydown', {
@@ -388,7 +411,7 @@ describe('Tiptap chat input editor: Keyboard', () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 
-  test('keeps the first configured newline in a paragraph and splits on the second', () => {
+  test('keeps every configured newline in the paragraph, so an empty line stays in the text', () => {
     const input = document.createElement('div');
     input.className = 'input-message-input';
     document.body.append(input);
@@ -405,12 +428,13 @@ describe('Tiptap chat input editor: Keyboard', () => {
     editor.setTextWithEntities('first');
     editor.focusAtEnd();
 
-    input.dispatchEvent(new KeyboardEvent('keydown', {
+    const newLine = () => input.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
       key: 'Enter',
       shiftKey: true
     }));
+    newLine();
 
     const tiptap = (editor as TiptapEditorInternals).editor;
     expect(send).not.toHaveBeenCalled();
@@ -421,34 +445,22 @@ describe('Tiptap chat input editor: Keyboard', () => {
     ]);
     expect(editor.getRichValue(false, false).value).toBe('first\n');
 
-    input.dispatchEvent(new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Enter',
-      shiftKey: true
-    }));
+    // a second new line is an empty line of the same paragraph, not a paragraph boundary that the
+    // text would lose
+    newLine();
+    typeTextThroughEditorView(tiptap, 'second');
 
-    expect(logicalContent(tiptap).map((node) => node.type))
-    .toEqual(['paragraph', 'paragraph']);
+    expect(logicalContent(tiptap).map((node) => node.type)).toEqual(['paragraph']);
     expect(tiptap.getJSON().content?.[0].content).toEqual([
-      {type: 'text', text: 'first'}
+      {type: 'text', text: 'first'},
+      {type: 'hardBreak'},
+      {type: 'hardBreak'},
+      {type: 'text', text: 'second'}
     ]);
-
-    input.dispatchEvent(new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Enter',
-      shiftKey: true
-    }));
-
-    expect(logicalContent(tiptap).map((node) => node.type))
-    .toEqual(['paragraph', 'paragraph']);
-    expect(tiptap.getJSON().content?.[1].content).toEqual([
-      {type: 'hardBreak'}
-    ]);
+    expect(editor.getRichValue(false, false).value).toBe('first\n\nsecond');
   });
 
-  test('removes one configured newline when Backspace crosses a paragraph boundary', () => {
+  test('removes one newline per Backspace, a break or an empty line between paragraphs alike', () => {
     const input = document.createElement('div');
     input.className = 'input-message-input';
     document.body.append(input);
@@ -470,20 +482,55 @@ describe('Tiptap chat input editor: Keyboard', () => {
     press('Enter');
 
     const tiptap = (editor as TiptapEditorInternals).editor;
-    expect(logicalContent(tiptap).map((node) => node.type))
-    .toEqual(['paragraph', 'paragraph']);
-
+    expect(editor.getRichValue(false, false).value).toBe('first\n\n');
     press('Backspace');
-    expect(logicalContent(tiptap).map((node) => node.type)).toEqual(['paragraph']);
-    expect(tiptap.getJSON().content?.[0].content).toEqual([
+    expect(editor.getRichValue(false, false).value).toBe('first\n');
+    press('Backspace');
+    expect(editor.getRichValue(false, false).value).toBe('first');
+
+    // loaded text keeps its lines as paragraphs; the empty one goes the same way
+    editor.setTextWithEntities('first\n\nsecond');
+    expect(logicalContent(tiptap).map((node) => node.type)).toEqual(['paragraph', 'paragraph', 'paragraph']);
+    tiptap.commands.setTextSelection(tiptap.state.doc.child(0).nodeSize + 1);
+    press('Backspace');
+    expect(editor.getRichValue(false, false).value).toBe('first\nsecond');
+  });
+
+  test('makes a block of a marker typed at the start of a later line', () => {
+    const {editor, input} = mountEditor(undefined, {
+      isNewLineShortcutPressed: (event) => event.key === 'Enter' && event.shiftKey,
+      onKeyDown: () => false
+    });
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    editor.setTextWithEntities('first');
+    editor.focusAtEnd();
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+      shiftKey: true
+    }));
+
+    typeTextThroughEditorView(tiptap, '- item');
+
+    expect(logicalContent(tiptap).map((node) => node.type)).toEqual(['paragraph', 'bulletList']);
+    expect(logicalTopLevelText(tiptap)).toEqual(['first', 'item']);
+  });
+
+  test('leaves a marker typed in inline code on its line', () => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    editor.setDocument({type: 'doc', content: [{type: 'paragraph', content: [
       {type: 'text', text: 'first'},
-      {type: 'hardBreak'}
-    ]);
+      {type: 'hardBreak'},
+      {type: 'text', text: '-', marks: [{type: 'code'}]}
+    ]}]});
+    editor.focusAtEnd();
 
-    press('Backspace');
-    expect(tiptap.getJSON().content?.[0].content).toEqual([
-      {type: 'text', text: 'first'}
-    ]);
+    typeTextThroughEditorView(tiptap, ' ');
+
+    expect(logicalContent(tiptap).map((node) => node.type)).toEqual(['paragraph']);
+    expect(editor.getRichValue(false, false).value).toBe('first\n- ');
   });
 
   test('uses plain Enter for list items when Ctrl+Enter is the send shortcut', () => {

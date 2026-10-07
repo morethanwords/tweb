@@ -37,6 +37,7 @@ import {moveSelectionToDetailsSummaryOnClose} from '@components/chat/inputEditor
 import {moveSelectedTopLevelBlock, selectedStructuralTopLevelRange} from '@components/chat/inputEditor/extensions/blockStructure';
 import {wrapBareChatInputTables} from '@components/chat/inputEditor/extensions/tableNodes';
 import {markProseMirrorPaste} from '@components/chat/inputEditor/paste';
+import {startBlockMarkerLine} from '@components/chat/inputEditor/blockMarkers';
 import {
   getChatInputEditor,
   registerChatInputEditor
@@ -102,6 +103,7 @@ import type {
   ChatInputEditorSnapshot,
   ChatInputDetailsOptions,
   ChatInputFooterOptions,
+  ChatInputFormatting,
   ChatInputMapOptions,
   ChatInputMarkupState,
   ChatInputOpaqueRichBlock,
@@ -133,7 +135,7 @@ import {getReferencedRichMediaUploadIds, RichMediaPreviewHistoryLease} from '@co
 import {canonicalOrderedListType} from '@lib/richTextProcessor/orderedList';
 import {isCollapsibleQuote} from '@components/chat/inputEditor/extensions/quotes';
 import {createRichButtonNode} from '@components/chat/inputEditor/extensions/richButtons';
-import {BUTTON_ROW_NODE_NAME} from '@components/chat/inputEditor/richButtonModel';
+import {BUTTON_ROW_NODE_NAME, RICH_BUTTON_NODE_NAME} from '@components/chat/inputEditor/richButtonModel';
 
 const SILENT_EDITOR_UPDATE_META = 'chatInputEditorSilentUpdate';
 const TEST_DATA_QUERY_PARAM = 'fillChatInputEditorTestData';
@@ -1043,17 +1045,6 @@ function documentRequiresRichMode(
     } else if(name === 'blockquoteCaption' && node.content.size) {
       found = true;
       return false;
-    } else if(name === 'orderedList' && (node.attrs.reversed || node.attrs.type)) {
-      found = true;
-      return false;
-    } else if(name === 'listItem' && (
-      node.attrs.checkbox ||
-      node.attrs.checked !== null ||
-      node.attrs.type ||
-      node.attrs.value !== null
-    )) {
-      found = true;
-      return false;
     }
     if(node.marks.some((mark) => (
       !PLAIN_MESSAGE_MARK_NAMES.has(mark.type.name) ||
@@ -1250,6 +1241,71 @@ function canInsertBlockAtSelection(state: EditorState, nodeTypeName: string) {
     parent.canReplaceWith(index, index, nodeType) ||
     parent.canReplaceWith(index + 1, index + 1, nodeType)
   );
+}
+
+function canInsertInlineAtSelection(state: EditorState, nodeTypeName: string) {
+  const nodeType = state.schema.nodes[nodeTypeName];
+  const {$from, $to} = state.selection;
+  return !!nodeType && $from.sameParent($to) && $from.parent.inlineContent &&
+    $from.parent.canReplaceWith($from.index(), $to.index(), nodeType);
+}
+
+/**
+ * Whether a mark can go on the selection at all: whether a block it touches takes that mark (a
+ * code block takes none). The marks already on the text do not count — `applyMarkup` takes off the
+ * ones that would exclude it (inline code, a date, the opposite script).
+ */
+function selectionAllowsMark(state: EditorState, name: string) {
+  const type = state.schema.marks[name];
+  if(!type) return false;
+  const {$from, ranges, empty} = state.selection;
+  if(empty) return $from.parent.type.allowsMarkType(type);
+  return ranges.some((range) => {
+    let allows = false;
+    state.doc.nodesBetween(range.$from.pos, range.$to.pos, (node) => {
+      if(allows) return false;
+      if(!node.inlineContent) return;
+      allows = node.type.allowsMarkType(type);
+      return false;
+    });
+    return allows;
+  });
+}
+
+/** Whether all the selected text sits in header cells, which draw it bold already. */
+function isSelectionInHeaderCells(state: EditorState) {
+  const {from, to} = state.selection;
+  let textblocks = 0;
+  let inHeaders = true;
+  state.doc.nodesBetween(from, to, (node, position) => {
+    if(!inHeaders || !node.isTextblock) return inHeaders;
+    ++textblocks;
+    const $inside = state.doc.resolve(position + 1);
+    let header = false;
+    for(let depth = $inside.depth; depth > 0 && !header; --depth) {
+      header = $inside.node(depth).type.name === 'tableHeader';
+    }
+    inHeaders = header;
+    return false;
+  });
+  return inHeaders && textblocks > 0;
+}
+
+/**
+ * Where a block goes when it does not fit at the caret: after the innermost
+ * container that can be followed by it. Inserted at the caret, ProseMirror would
+ * fit it by splitting every container up to one that holds it — a table, a
+ * details or a pullquote torn in two around the new block.
+ */
+function blockInsertionPositionAfterContainer(state: EditorState, nodeTypeName: string) {
+  const nodeType = state.schema.nodes[nodeTypeName];
+  if(!nodeType) return;
+  const {$from} = state.selection;
+  for(let depth = $from.depth; depth > 0; --depth) {
+    const parent = $from.node(depth - 1);
+    const index = $from.index(depth - 1);
+    if(parent.canReplaceWith(index + 1, index + 1, nodeType)) return $from.after(depth);
+  }
 }
 
 function selectedTopLevelTextblocks(state: EditorState) {
@@ -1581,6 +1637,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
         transformCopied: transformCopiedContent,
         handleTextInput: (view, from, to, text) => {
           if(convertTypedChecklistMarker(view, from, to, text)) return true;
+          if(startBlockMarkerLine(view, from, to, text)) return true;
           if(!isEmptyFirstLineSpace(view.state, from, to, text)) return false;
 
           // handleTextInput can run after a mobile/IME DOM mutation. Updating
@@ -2665,6 +2722,39 @@ class TiptapChatInputEditor implements ChatInputEditor {
     });
   }
 
+  public canApplyFormatting(type: ChatInputFormatting) {
+    if(!this.editor.isEditable) return false;
+    const {state} = this.editor;
+    const can = this.editor.can();
+    switch(type) {
+      case 'bulletList': return can.toggleBulletList();
+      case 'orderedList': return can.toggleOrderedList();
+      case 'taskList': return can.toggleTaskList();
+      // Not `can().setNode`: without a dispatch Tiptap skips the `clearNodes`
+      // that lets the real command convert a list item.
+      case 'heading': return canInsertBlockAtSelection(state, 'heading');
+      case 'codeBlock': return !this.editor.isActive('codeBlock') && canInsertBlockAtSelection(state, 'codeBlock');
+      // Called without content, these convert the selected top-level lines.
+      case 'details':
+      case 'footer':
+      case 'pullquote': return selectedTopLevelTextblocks(state).length > 0;
+      case 'divider': return this.canPlaceStructuralBlock('richDivider');
+      case 'buttonRow': return this.canPlaceStructuralBlock(BUTTON_ROW_NODE_NAME);
+      case 'inlineButton': return canInsertInlineAtSelection(state, RICH_BUTTON_NODE_NAME);
+      case 'math': return !!this.getSelectedMath() ||
+        canInsertInlineAtSelection(state, 'inlineMath') ||
+        this.canUseSeparateLineMath();
+    }
+  }
+
+  public canApplyMarkup(type: MarkdownType) {
+    if(!this.editor.isEditable || !this.supportsMarkup(type)) return false;
+    if(type === 'quote') return canInsertBlockAtSelection(this.editor.state, 'blockquote');
+    // a header cell's text is bold already
+    if(type === 'bold' && isSelectionInHeaderCells(this.editor.state)) return false;
+    return selectionAllowsMark(this.editor.state, markupName(type));
+  }
+
   public undo() {
     return runHistoryCommandPreservingSelection(this.editor.view, undoNoScroll);
   }
@@ -2803,11 +2893,20 @@ class TiptapChatInputEditor implements ChatInputEditor {
     return result;
   }
 
-  private insertStructuralContent(
-    content: JSONContent | JSONContent[],
-    position?: number
-  ) {
-    position ??= richMediaSiblingInsertionPosition(this.editor.state);
+  private canPlaceStructuralBlock(nodeTypeName: string) {
+    const {state} = this.editor;
+    return richMediaSiblingInsertionPosition(state) !== undefined ||
+      canInsertBlockAtSelection(state, nodeTypeName);
+  }
+
+  private insertStructuralContent(content: JSONContent | JSONContent[]) {
+    const {state} = this.editor;
+    const type = (Array.isArray(content) ? content[0] : content)?.type;
+    const position = richMediaSiblingInsertionPosition(state) ?? (
+      !type || canInsertBlockAtSelection(state, type) ?
+        undefined :
+        blockInsertionPositionAfterContainer(state, type)
+    );
     const chain = this.editor.chain();
     const result = position === undefined ?
       chain.insertContent(content).scrollIntoView().run() :
@@ -3233,22 +3332,35 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public removeRichMediaUpload(uploadId: string) {
+    return this.dropRichMediaUpload(uploadId, false);
+  }
+
+  public cancelRichMediaUpload(uploadId: string) {
+    return this.dropRichMediaUpload(uploadId, true);
+  }
+
+  /**
+   * An upload the user cancelled is an edit of its own, which Undo brings back
+   * with its upload id, so the controller can start it again. One that lost its
+   * task is not: nothing could finish it, so it leaves no history behind.
+   */
+  private dropRichMediaUpload(uploadId: string, undoable: boolean) {
     const found = richMediaUploadNode(this.editor, uploadId);
     if(!found) return false;
     const {node, position} = found;
+    let transaction: Transaction;
     if(node.attrs.uploadAction) {
-      const transaction = this.editor.state.tr.setNodeMarkup(position, undefined, withoutRichMediaUpload(node.attrs));
-      transaction.setMeta(RICH_MEDIA_ACTION_SETTLED_META, uploadId);
-      transaction.setMeta('addToHistory', false);
+      transaction = this.editor.state.tr.setNodeMarkup(position, undefined, withoutRichMediaUpload(node.attrs));
+      if(!undoable) transaction.setMeta(RICH_MEDIA_ACTION_SETTLED_META, uploadId);
       preserveRichMediaSelection(transaction, this.editor.state.selection, position, position + node.nodeSize);
-      this.editor.view.dispatch(transaction);
     } else {
-      const transaction = this.editor.state.tr
+      transaction = this.editor.state.tr
       .delete(position, position + node.nodeSize)
       .scrollIntoView();
-      transaction.setMeta('addToHistory', false);
-      this.editor.view.dispatch(transaction);
     }
+    if(undoable) closeHistory(transaction);
+    else transaction.setMeta('addToHistory', false);
+    this.editor.view.dispatch(transaction);
     this.editor.view.focus();
     return true;
   }
@@ -3889,6 +4001,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
     href?: string,
     dateSuffix?: string
   }) {
+    // the shortcut too: the tooltip dims Bold there (`canApplyMarkup`)
+    if(type === 'bold' && isSelectionInHeaderCells(this.editor.state)) return false;
     if(type === 'quote') {
       const {$from, $to, empty} = this.editor.state.selection;
       if(!empty && $from.sameParent($to) &&

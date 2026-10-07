@@ -1,7 +1,7 @@
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {MyMessage} from '@appManagers/appMessagesManager';
 import type {DraftMessage, Message} from '@layer';
-import {flattenRichMessageSummary} from '@lib/richMessage';
+import getRichMessagePreview from '@components/wrappers/richMessagePreview';
 
 export default function getMessageForReplyContent(
   message: MyMessage | MyDraftMessage,
@@ -11,12 +11,14 @@ export default function getMessageForReplyContent(
   let entities = (message as Message.message).totalEntities ??
     (message as DraftMessage.draftMessage).entities;
 
+  // a rich message's preview is already one line of its own length (getRichMessagePreview)
   const richMessage = (message as Message.message | DraftMessage.draftMessage).rich_message;
-  if(explicitText === undefined && richMessage) {
-    const summary = flattenRichMessageSummary(richMessage);
-    text = summary.text;
-    entities = summary.entities;
+  const isRichPreview = explicitText === undefined && !!richMessage;
+  if(isRichPreview) {
+    const preview = getRichMessagePreview(richMessage);
+    text = preview.text;
+    entities = preview.entities;
   }
 
-  return {text, entities};
+  return {text, entities, isRichPreview};
 }

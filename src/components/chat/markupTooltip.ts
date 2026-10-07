@@ -1,4 +1,5 @@
 import ButtonIcon from '@components/buttonIcon';
+import toggleDisability from '@helpers/dom/toggleDisability';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {replaceButtonIcon} from '@components/button';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -10,6 +11,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
 import {getFormattedDateEntityByElement, MarkdownType} from '@helpers/dom/getRichElementValue';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
+import getRangeContentRect from '@helpers/dom/getRangeContentRect';
 import clamp from '@helpers/number/clamp';
 import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '@helpers/dom/markdown';
@@ -390,10 +392,14 @@ export default class MarkupTooltip {
 
   public setActiveMarkupButton() {
     const activeButtons = this.getActiveMarkupButton();
+    const editor = this.input && getChatInputEditor(this.input);
 
     for(const i in this.buttons) {
       const type = i as MarkupTooltipTypes;
       const button = this.buttons[type];
+      // what the selection's blocks cannot carry — marks in a code block, a
+      // quote in a table cell — stays visible but dimmed
+      toggleDisability(button, !!editor && !editor.canApplyMarkup(type));
       const isActive = activeButtons.includes(button);
       const wasActive = button.classList.contains('active');
       button.classList.toggle('active', isActive);
@@ -420,7 +426,7 @@ export default class MarkupTooltip {
     if(!rowsWrapper) return;
 
     const bodyRect = getOverlayRoot().getBoundingClientRect();
-    const selectionRect = range.getBoundingClientRect();
+    const selectionRect = getRangeContentRect(range);
     const inputRect = rowsWrapper.getBoundingClientRect();
     const sizesRect = this.scrollContainer.getBoundingClientRect();
 

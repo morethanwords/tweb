@@ -1346,6 +1346,24 @@
     "type": "MessageEntity"
   },
   {
+    "predicate": "messageEntityIcon",
+    "params": [
+      {
+        "name": "offset",
+        "type": "number"
+      },
+      {
+        "name": "length",
+        "type": "number"
+      },
+      {
+        "name": "icon",
+        "type": "Icon"
+      }
+    ],
+    "type": "MessageEntity"
+  },
+  {
     "predicate": "messageEntityCustomEmoji",
     "params": [
       {

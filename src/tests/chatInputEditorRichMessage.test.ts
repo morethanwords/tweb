@@ -761,6 +761,27 @@ describe('Tiptap rich-message conversion', () => {
     expect(JSON.parse(JSON.stringify(roundTrip.blocks))).toEqual([details]);
   });
 
+  test.each([
+    {},
+    {bordered: true},
+    {striped: true},
+    {compact: true},
+    {bordered: true, striped: true, compact: true}
+  ] as const)('keeps a table\'s flags %j through the composer and back', (pFlags) => {
+    const table: PageBlock.pageBlockTable = {
+      _: 'pageBlockTable',
+      pFlags: {...pFlags},
+      title: {_: 'textEmpty'},
+      rows: [{
+        _: 'pageTableRow',
+        cells: [{_: 'pageTableCell', pFlags: {}, text: {_: 'textPlain', text: 'cell'}}]
+      }]
+    };
+    const restored = richMessageToTiptap(outputMessage([table]));
+    const sent = findBlock(tiptapToRichMessage(restored).output.blocks, 'pageBlockTable');
+    expect(JSON.parse(JSON.stringify(sent.pFlags))).toEqual(pFlags);
+  });
+
   test('preserves table alignment and ordered and mixed checkbox list metadata', () => {
     const markedTitle: RichText = {
       _: 'textBold',

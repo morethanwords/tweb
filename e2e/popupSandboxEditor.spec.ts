@@ -188,3 +188,43 @@ test('an empty or explicitly disabled first selection does not poison the next f
   await selectAll('#qa-second');
   await expect(page.locator('.markup-tooltip')).toBeVisible();
 });
+
+// The tooltip is placed against the field it formats, so this is the complete field (RichMessageInput).
+test('the selection tooltip stands over the text of a Select All, not over the blocks it spans', async({page}) => {
+  await page.goto('/?popups=1');
+  await page.waitForFunction(() => !!window.popupSandbox);
+  await page.evaluate(() => window.popupSandbox.ready());
+  await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
+  await page.evaluate(async() => {
+    const path = '/e2e/fixtures/richMediaComposer.ts';
+    const {mountRichMediaComposerHarness} = await import(/* @vite-ignore */ path);
+    const paragraph = (text?: string) => ({type: 'paragraph', content: text ? [{type: 'text', text}] : undefined});
+    mountRichMediaComposerHarness().setDocument({type: 'doc', content: [paragraph('hello'), paragraph('world'), paragraph()]});
+  });
+  await page.getByText('world', {exact: true}).click();
+  await page.keyboard.press('ControlOrMeta+a');
+  const tooltip = page.locator('.markup-tooltip');
+  await expect(tooltip).toBeVisible();
+
+  // the text's own box, short at the start of a wide field
+  const text = await page.locator('.input-message-container').evaluate((field) => {
+    const rects = [...field.querySelectorAll('[data-chat-input-paragraph]')]
+    .filter((paragraph) => paragraph.firstChild?.nodeType === Node.TEXT_NODE)
+    .map((paragraph) => {
+      const range = document.createRange();
+      range.selectNodeContents(paragraph.firstChild!);
+      return range.getBoundingClientRect();
+    });
+    return {
+      left: Math.min(...rects.map(({left}) => left)),
+      right: Math.max(...rects.map(({right}) => right)),
+      field: field.getBoundingClientRect().left
+    };
+  });
+  const center = (text.left + text.right) / 2;
+  await expect.poll(async() => {
+    const box = (await tooltip.boundingBox())!;
+    // placed (it is kept within the field), then over the text
+    return box.x >= text.field - 1 && box.x <= center && center <= box.x + box.width;
+  }).toBe(true);
+});

@@ -3,7 +3,7 @@ import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import noop from '@helpers/noop';
 import pause from '@helpers/schedulers/pause';
 import {i18n} from '@lib/langPack';
-import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import {ButtonMenuItemOptionsVerifiable, isButtonMenuItemDisabled} from '@components/buttonMenu';
 import attachFloatingButtonMenu, {FloatingButtonMenuDirection} from '@components/floatingButtonMenu';
 import Icon from '@components/icon';
 
@@ -61,7 +61,7 @@ export default function createSubmenuTrigger<T = {}>({
       offset: [-5, -5],
       level: 2,
       triggerEvent: ['mouseenter', CLICK_EVENT_NAME],
-      canOpen: () => !isDisabled,
+      canOpen: () => !isDisabled && !isButtonMenuItemDisabled(menuBtnOptions.element),
       onClose: onClose
     });
     detachTriggerListeners = () => {

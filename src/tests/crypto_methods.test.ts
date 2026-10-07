@@ -146,28 +146,21 @@ test('rsa', () => {
   });
 });
 
-test('pbkdf2', () => {
-  /* const crypto = require('crypto');
-
-  Object.defineProperty(global.self, 'crypto', {
-    value: {
-      getRandomValues: arr => crypto.randomBytes(arr.length),
-    },
-  }); */
-
-  /* let buffer = new Uint8Array([
+// what SRP derives the 2FA password hash with (srp.ts), against Node's own implementation
+test('pbkdf2', async() => {
+  const {pbkdf2Sync} = await import('crypto');
+  const buffer = new Uint8Array([
     166, 101, 158, 215, 174, 249, 101, 150, 109, 155, 243,
     250, 221, 227, 251, 39, 34, 108, 230, 63, 198, 98, 9,
     95, 20, 66, 186, 1, 245, 240, 185, 238
   ]);
-
-  let salt = new Uint8Array([
+  const salt = new Uint8Array([
     40, 95, 205, 123, 107, 81, 255, 138, 0, 0, 0, 0, 0, 0, 0, 0
   ]);
+  const iterations = 100000;
 
-  let iterations = 100000; */
-
-
+  const hash = await cryptoWorker.invokeCrypto('pbkdf2', buffer, salt, iterations);
+  expect(hash).toEqual(Uint8Array.from(pbkdf2Sync(buffer, salt, iterations, 64, 'sha512')));
 });
 
 test('mod-pow', () => {

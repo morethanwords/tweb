@@ -1,6 +1,6 @@
 import {PageBlock, RichMessage, RichText} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
-import {flattenRichMessageContent, flattenRichMessageSummary, richMessageToPage} from '@lib/richMessage';
+import {flattenRichMessageContent, flattenRichMessageSummary, isRichMessageFullWidth, richMessageToPage} from '@lib/richMessage';
 
 const text = (value: string): RichText => ({_: 'textPlain', text: value});
 
@@ -331,31 +331,6 @@ describe('flattenRichMessageSummary', () => {
       length: summary.text.length
     });
   });
-
-  test('truncates without shifting entities when the text has leading whitespace', () => {
-    const summary = flattenRichMessageSummary(richMessage([
-      {
-        _: 'pageBlockParagraph',
-        text: {
-          _: 'textConcat',
-          texts: [
-            text(' '.repeat(3)),
-            {_: 'textBold', text: text('bold')},
-            text('x'.repeat(200))
-          ]
-        }
-      }
-    ]), 100);
-
-    // Leading spaces must NOT be trimmed (that would shift the bold entity); the bold stays at 3.
-    expect(summary.text.startsWith('   bold')).toBe(true);
-    expect(summary.text.length).toBe(103); // 100 chars + '...'
-    expect(summary.entities).toContainEqual({
-      _: 'messageEntityBold',
-      offset: 3,
-      length: 4
-    });
-  });
 });
 
 describe('layer 229 rich text', () => {
@@ -370,5 +345,41 @@ describe('layer 229 rich text', () => {
     expect(wrapped.text).toBe('Open now');
     // the inner formatting survives; only the button chrome is dropped
     expect(wrapped.entities.some((entity) => entity._ === 'messageEntityBold')).toBe(true);
+  });
+});
+
+describe('isRichMessageFullWidth', () => {
+  const paragraph: PageBlock = {_: 'pageBlockParagraph', text: text('a line')};
+  const table = {_: 'pageBlockTable', pFlags: {}, title: {_: 'textEmpty'}, rows: []} as PageBlock;
+  const buttonRow = {_: 'pageBlockButtonRow', pFlags: {}, buttons: []} as PageBlock;
+
+  test('text takes the width of its lines', () => {
+    expect(isRichMessageFullWidth([
+      paragraph,
+      {_: 'pageBlockHeading1', text: text('Heading')},
+      {_: 'pageBlockBlockquote', pFlags: {}, text: text('quote'), caption: {_: 'textEmpty'}},
+      {_: 'pageBlockPreformatted', text: text('code'), language: ''},
+      {_: 'pageBlockMath', source: 'x'},
+      {_: 'pageBlockDivider'}
+    ])).toBe(false);
+  });
+
+  test('a table, a row of buttons, details, a pullquote and media take the whole width', () => {
+    const blocks = [
+      table,
+      buttonRow,
+      {_: 'pageBlockDetails', pFlags: {}, blocks: [paragraph], title: text('More')},
+      {_: 'pageBlockPullquote', text: text('pull'), caption: {_: 'textEmpty'}},
+      {_: 'pageBlockPhoto', photo_id: '1', caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}}
+    ] as PageBlock[];
+    blocks.forEach((block) => expect(isRichMessageFullWidth([paragraph, block])).toBe(true));
+  });
+
+  test('a quote or a list is as wide as what is inside it', () => {
+    expect(isRichMessageFullWidth([{_: 'pageBlockBlockquoteBlocks', blocks: [paragraph], caption: {_: 'textEmpty'}}])).toBe(false);
+    expect(isRichMessageFullWidth([{_: 'pageBlockBlockquoteBlocks', blocks: [table], caption: {_: 'textEmpty'}}])).toBe(true);
+    expect(isRichMessageFullWidth([{_: 'pageBlockList', items: [{_: 'pageListItemText', pFlags: {}, text: text('item')}]} as PageBlock])).toBe(false);
+    expect(isRichMessageFullWidth([{_: 'pageBlockList', items: [{_: 'pageListItemBlocks', pFlags: {}, blocks: [buttonRow]}]} as PageBlock])).toBe(true);
+    expect(isRichMessageFullWidth([{_: 'pageBlockOrderedList', pFlags: {}, items: [{_: 'pageListOrderedItemBlocks', pFlags: {}, num: '1', blocks: [table]}]} as PageBlock])).toBe(true);
   });
 });

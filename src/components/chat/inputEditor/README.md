@@ -4,7 +4,7 @@ The complete field is the Solid component `src/components/richMessageInput`.
 It owns the editable DOM, toolbars, expansion, dialogs, editor lifecycle and
 media-upload controller. It can mount without a `ChatInput` instance.
 
-This directory contains its Tiptap 3.28.0 / ProseMirror engine and node views.
+This directory contains its Tiptap 3.31.3 / ProseMirror engine and node views.
 `ChatInputEditor` in `types.ts` is the engine API; `index.ts` implements commands,
 serialization and selection/history. The registry bridges the shared input
 helpers without replacing the mounted input element.
@@ -49,7 +49,8 @@ keep in mind when adding a field:
   maintain a second set of exclusions.
 - Paste is the only way arbitrary rich HTML reaches a plain field, and the schema
   is what keeps the result sendable: marks survive, a block degrades to its text,
-  an href outside the whitelist loses its link, and the mode never flips to rich.
+  a list to lines that keep its markers (`chatPlainListPaste`), an href outside
+  the whitelist loses its link, and the mode never flips to rich.
   `popupSandboxEditor` pins those cases on the media caption.
 
 Each of the shared input helpers answers from the editor when one is mounted and
@@ -143,12 +144,26 @@ from becoming a link while still admitting the relative hrefs upstream allowed;
 - The final empty paragraph is a technical placeholder. It is excluded from
   serialization. Enter inserts one newline; the configured send shortcut
   determines whether plain Enter or Shift+Enter edits the document.
+- A newline is a hard break inside the paragraph, the second one too. A
+  paragraph boundary is a line break to every app and to the text's plain form
+  (lines load as paragraphs, paragraphs join with one `\n`), so splitting on an
+  empty line would lose it. In a message both look the same: adjacent
+  paragraphs sit as lines and an empty one is an empty line (`.RichMessage` in
+  `instantView.module.scss`). A block marker (`- `, `1. `, `# `, `> `, `[ ] `)
+  typed at the start of a later line first moves that line into a paragraph of
+  its own, where the input rules see it (`blockMarkers.ts`).
 - Backspace after media enters its caption. An authored empty paragraph is
   removed; the technical final placeholder remains. Keyboard, `beforeinput`
   and the virtual keyboard must agree, including caret and Undo/Redo.
 - Plain-compatible text uses Telegram text/entities. Rich-only blocks and
   marks use the native rich-message representation. Mode changes preserve
   authored quotes, offsets and history.
+- A list is rich-only, as in the official clients: entities have no list, and
+  what the field shows as one must not leave as `1. ` text. The typed marker
+  still makes one in the collapsed field. The other way round, Telegram text
+  never becomes a list — a plain draft or a plain message being edited keeps
+  its `1. ` lines as text, and so does every plain field. A rich list sent
+  without formatting is written out with the same markers.
 - Tables have an explicit title/wrapper and preserve rectangular selections.
   Block movement respects container schemas and list numbering. A compact
   table is the table's `compact` attribute, sent as `pageBlockTable.compact`.
@@ -235,8 +250,8 @@ It requires `TG_RICH_MESSAGE_LIVE=1`, `TG_API_SEED` and `TG_API_SEED_B`
 ## Upstream audit
 
 The pinned Tiptap revision is
-`c5f4b576eb2d521364bba524616e0702027987d3` (3.28.0). Its audit covers 206 test
-files, 1,586 declarations and 20 support files. Declarations inside parameter
+`35d2110ecb118a2d80f2b5823b7e4f629d948894` (3.31.3). Its audit covers 265 test
+files, 2,155 declarations and 20 support files. Declarations inside parameter
 loops are counted once; this is not a claim that upstream tests were executed.
 
 `pnpm-workspace.yaml` pins all Tiptap packages, including ones that arrive only
@@ -245,29 +260,42 @@ actually resolved from each installed package and its peers. When upgrading,
 update the direct dependencies, the shared override version and the upstream
 audit together; a new Tiptap dependency must also be covered by the overrides.
 
-`scripts/tiptap-audit/tiptap-3.28.0.json` stores a hash and default review per
+`scripts/tiptap-audit/tiptap-3.31.3.json` stores a hash and default review per
 file, with declaration-line exceptions where decisions differ. A whole-file
 hash pins test bodies, titles and parameter data, so they need not be copied
 into this repository. Reviews retain local evidence and distinguish:
 
 - `local`: an application-level behavioral adaptation (278 declarations);
-- `different-contract`: an explicit schema/API/behavior difference (561);
-- `dependency`: unchanged library internals, not a local test run (308);
-- `not-used`: absent packages, adapters or demo features (439).
+- `different-contract`: an explicit schema/API/behavior difference (560);
+- `dependency`: unchanged library internals, not a local test run (307);
+- `not-used`: absent packages, adapters or demo features (512);
+- `gap`: audited under 3.28.0, not re-reviewed after the upgrade (498).
+
+The gaps are the 3.28.0 → 3.31.3 delta. A declaration whose body is identical
+to the audited one keeps its decision; the 102 that changed or appeared inside
+audited files, and the declarations of the 50 files upstream added, are gaps.
+The exception is a package whose every audited file already resolved to one
+`not-used` decision — the React and Vue adapters, the AI toolkit and the
+collaboration caret keep it for files added inside them. 271 gaps sit in
+packages the editor installs (`core` 227, `extension-table`, `extension-list`,
+`extension-code-block`, `extension-hard-break`) plus the demos that drive them;
+the other 227 are in packages it does not install (`extension-link`,
+`markdown`, `extension-find-and-replace`, `extension-ruby-text`, …), where
+`not-used` is likely but was not asserted.
 
 Check a clean checkout of the pinned revision and regenerate the detailed
 inventory when investigating a particular upstream case:
 
 ```sh
-node scripts/audit-tiptap-tests.mjs /path/to/tiptap --check scripts/tiptap-audit/tiptap-3.28.0.json
+node scripts/audit-tiptap-tests.mjs /path/to/tiptap --check scripts/tiptap-audit/tiptap-3.31.3.json
 node scripts/audit-tiptap-tests.mjs /path/to/tiptap > /tmp/tiptap-inventory.json
 pnpm test --run scripts/tiptap-audit/manifest.test.mjs
 ```
 
 The check rejects source/fixture drift, unaccounted declarations, invalid
 overrides and missing local evidence. Update decisions explicitly on a Tiptap
-upgrade; do not treat a zero-gap audit as proof that all editor behavior is
-covered.
+upgrade; a `gap` records what an upgrade carried in without a decision, and no
+audit — zero-gap or not — is proof that all editor behavior is covered.
 
 ## Verification boundary
 

@@ -47,6 +47,29 @@ test('a button in the composer opens its box from the keyboard and gets the focu
   expect(await documentOf(page)).toEqual(before);
 });
 
+test('arrows walk a button\'s actions past Mention without opening the user picker', async({page}) => {
+  await open(page, [{type: 'paragraph', content: [
+    {type: 'richButton', attrs: {action: 'copy', copyText: 'TELEGRAM', label: [{type: 'text', text: 'Copy'}]}}
+  ]}]);
+  await page.getByRole('button', {name: 'Copy', exact: true}).focus();
+  await page.keyboard.press('Enter');
+  const box = page.locator('.popup-rich-button');
+  await expect(box).toBeVisible();
+  const popups = page.locator('.popup.active');
+  await expect(popups).toHaveCount(1);
+
+  await box.getByRole('radio', {name: 'Copy', exact: true}).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(box.getByRole('radio', {name: 'Mention', exact: true})).toBeChecked();
+  await page.keyboard.press('ArrowDown');
+  await expect(box.getByRole('radio', {name: 'Disabled', exact: true})).toBeChecked();
+  await expect(popups).toHaveCount(1);
+
+  // a click on it goes straight to the picker (on its row: the row's ripple lies over the label)
+  await box.locator('label', {has: page.getByText('Mention', {exact: true})}).click();
+  await expect(popups).toHaveCount(2);
+});
+
 test('a long quote folds from the keyboard with its switch', async({page}) => {
   const lines = ['One', 'Two', 'Three', 'Four', 'Five'];
   await open(page, [{

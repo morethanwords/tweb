@@ -24,6 +24,8 @@ import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
 import PopupElementTsx from '@components/popups/indexTsx';
+import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import PopupSandboxPanel from './sandbox';
 import {installSandboxEnvironment, getLiveManagers, getMockManagers, useLiveManagers, useMockManagers} from './environment';
 import {isLiveSession} from './bootstrapState';
@@ -107,10 +109,12 @@ export async function openStory(story: PopupStory) {
 
   setActiveId(story.id);
   // The hash is what brings the story back after a reload — and the sandbox reloads on every edit
-  // (see `watchForEdits`). `replaceState` rather than assigning: no history entry, no `hashchange`.
+  // (see `watchForEdits`). It is the navigation controller's to keep, as the app's own hash is: a
+  // closed popup takes its history entry back, and that entry still holds the story the popup was
+  // opened in — the controller puts the current one back, which a bare `replaceState` it does not
+  // know about would not get.
   if(ownsLocationHash) {
-    const hash = '#' + encodeURIComponent(story.id);
-    if(location.hash !== hash) history.replaceState(null, '', hash);
+    appNavigationController.overrideHash('#' + encodeURIComponent(story.id));
   }
 
   const teardown = await story.open(ctx);
@@ -214,15 +218,40 @@ export function startPopupSandbox() {
 
     // Deep-link straight into a story: ?popups=1#deleteMessages/private. Editing the hash on an
     // open sandbox switches stories too — a same-document hash change never reloads the page.
-    const openFromHash = () => {
+    // A history step lands on whatever story its entry was made in: Back, and the navigation
+    // controller taking back a closed popup's entry — which happens a moment after the next story
+    // has opened, and would put the previous one back over it. Only a hash that is typed switches
+    // stories; the controller restores the current one after its own steps (`overrideHash` above).
+    // Where each pending step lands: other navigations (the next popup's own entry) can come
+    // between a step and its `hashchange`.
+    const traversals: string[] = [];
+    const onNavigate = (event: NavigateEvent) => {
+      // a step to the entry it is on already changes no hash: no `hashchange` comes for it
+      if(event.navigationType !== 'traverse' || event.destination.url === location.href) return;
+      const url = event.destination.url;
+      traversals.push(url);
+      // nor for one the controller cancels (a step forward), once every listener has had it
+      queueMicrotask(() => {
+        if(event.defaultPrevented) indexOfAndSplice(traversals, url);
+      });
+    };
+    const openFromHash = (event?: HashChangeEvent) => {
+      const traversal = event ? traversals.indexOf(event.newURL) : -1;
+      if(traversal !== -1) {
+        traversals.splice(0, traversal + 1);
+        return;
+      }
+
       const story = getStory(decodeURIComponent(location.hash.slice(1)));
       // Closing nested menus can restore the current hash through browser
       // history. It must not reopen the same story the user is closing.
       return story && story.id !== activeId() && openStory(story);
     };
 
+    if(USE_NAVIGATION_API) navigation.addEventListener('navigate', onNavigate);
     window.addEventListener('hashchange', openFromHash);
     closePanel = () => {
+      if(USE_NAVIGATION_API) navigation.removeEventListener('navigate', onNavigate);
       window.removeEventListener('hashchange', openFromHash);
       ownsLocationHash = false;
       close();

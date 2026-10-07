@@ -1,11 +1,13 @@
 import {render} from 'solid-js/web';
 import {createSignal} from 'solid-js';
-import {Message, Page, RichMessage, RichText} from '@layer';
+import {Message, Page, PageButton, PageCaption, RichMessage, RichText} from '@layer';
 import {InstantViewBlocks} from '@components/instantView';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
-import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
+import Modes from '@config/modes';
+import {RichMessageBubble, isRichMessageTarget} from '@components/chat/bubbles/richMessage';
 import {
   getMaximumHeightMediaSize,
+  getPageButtonClasses,
   instantViewStyles
 } from '@components/instantViewFormatting';
 
@@ -27,6 +29,9 @@ const mocks = vi.hoisted(() => ({
     refCallbacks: [],
     onClick: mocks.pageButtonClick
   })),
+  documentProps: vi.fn((_props: any) => {}),
+  // what each custom emoji renderer was asked to paint, by the colour it paints in
+  customEmojiRendererAdds: vi.fn((_textColor: string, _docIds: string[]) => {}),
   wrapMediaSpoiler: vi.fn(async(_options: any) => {
     const element = document.createElement('div');
     element.className = 'media-spoiler-container';
@@ -73,6 +78,7 @@ vi.hoisted(() => {
 vi.mock('@lib/solidjs/hotReloadGuard', () => ({
   useHotReloadGuard: () => ({
     i18n: (key: string) => key,
+    I18n: {format: (key: string) => key},
     rootScope: {
       managers: {
         appMessagesManager: {
@@ -107,13 +113,23 @@ vi.mock('@lib/solidjs/hotReloadGuard', () => ({
       props.ref?.(element);
       queueMicrotask(() => props.onResult?.());
       return element;
+    },
+    DocumentTsx: (props: any) => {
+      mocks.documentProps(props);
+      return document.createElement('div');
     }
   })
 }));
 
 vi.mock('@lib/customEmoji/renderer', () => ({
   CustomEmojiRendererElement: {
-    create: () => document.createElement('div')
+    create: (options: {textColor?: string}) => Object.assign(document.createElement('div'), {
+      textColor: () => options?.textColor,
+      add: ({addCustomEmojis}: {addCustomEmojis: Map<string, unknown>}) => {
+        mocks.customEmojiRendererAdds(options?.textColor, [...addCustomEmojis.keys()]);
+        return Promise.resolve();
+      }
+    })
   }
 }));
 
@@ -352,6 +368,7 @@ describe('Instant View rich rendering', () => {
   afterEach(() => {
     dispose?.();
     document.body.replaceChildren();
+    Modes.a11y = false;
   });
 
   test('chooses the media producing the tallest slideshow viewport', () => {
@@ -529,6 +546,118 @@ describe('Instant View rich rendering', () => {
     expect(author?.textContent).toBe('Author');
     expect(author?.classList.contains(instantViewStyles.BlockquoteCaption)).toBe(true);
     expect(author?.classList.contains('text-bold')).toBe(true);
+    // the composer's own markup, so a pullquote copied out of a bubble pastes back as one
+    expect(pullquote?.hasAttribute('data-pullquote')).toBe(true);
+    expect(quote?.hasAttribute('data-pullquote-text')).toBe(true);
+    expect(author?.hasAttribute('data-pullquote-caption')).toBe(true);
+  });
+
+  test('keeps the source of every formula in the composer\'s markup', async() => {
+    dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={0}
+        page={page([
+          {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [text('Energy '), {_: 'textMath', source: 'E=mc^2'}]}},
+          {_: 'pageBlockMath', source: '\\frac{a}{b}'}
+        ])}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+
+    const block = container.querySelector<HTMLElement>('[data-block-math]');
+    expect(block?.dataset.source).toBe('\\frac{a}{b}');
+    await vi.waitFor(() => expect(container.querySelector<HTMLElement>('[data-inline-math]')?.dataset.source).toBe('E=mc^2'));
+  });
+
+  test('plays an audio of a rich message from that message, in a slot of its own', () => {
+    const audio = {_: 'document', id: 7, type: 'audio', attributes: []} as any;
+    const file = {_: 'document', id: 8, type: undefined as string, attributes: []} as any;
+    const otherAudio = {_: 'document', id: 9, type: 'audio', attributes: []} as any;
+    const caption = (): PageCaption => ({_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}});
+    const blocks: Page.page['blocks'] = [
+      {_: 'pageBlockAudio', audio_id: 7, caption: caption()},
+      {_: 'pageBlockDocument', document_id: 8, caption: caption()},
+      {_: 'pageBlockAudio', audio_id: 9, caption: caption()}
+    ];
+    const richMessage = {_: 'message', mid: 42, peerId: 10, pFlags: {}} as any as Message.message;
+    dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={0}
+        page={{...page(blocks), documents: [audio, file, otherAudio]}}
+        message={richMessage}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+
+    const [audioProps, fileProps, otherAudioProps] = mocks.documentProps.mock.calls.map(([props]) => props);
+    // the player's plate then leads back to the bubble, and two audios of it do not share a player
+    for(const [props, doc] of [[audioProps, audio], [otherAudioProps, otherAudio]]) {
+      expect(props.message).toBe(richMessage);
+      expect(props.doc).toBe(doc);
+      expect(props.slot).toBeGreaterThan(0);
+    }
+    expect(otherAudioProps.slot).not.toBe(audioProps.slot);
+    // a file downloads from a stand-in: the message's own sending state is not the file's
+    expect(fileProps.message).not.toBe(richMessage);
+    expect(fileProps.message.media.document).toBe(file);
+    expect(fileProps.slot).toBeUndefined();
+    // a piece of the message, with no hover of its own, as a message's own audio is
+    expect(audioProps.clickable).toBe(false);
+    expect(fileProps.clickable).toBe(false);
+  });
+
+  test('draws an empty paragraph of a message as an empty line, and leaves a page\'s alone', () => {
+    const blocks: Page.page['blocks'] = [
+      {_: 'pageBlockParagraph', text: {_: 'textPlain', text: 'first'}},
+      {_: 'pageBlockParagraph', text: {_: 'textEmpty'}},
+      {_: 'pageBlockParagraph', text: {_: 'textPlain', text: 'second'}}
+    ];
+    const emptyParagraph = () => container.querySelectorAll('p')[1];
+
+    dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={0}
+        page={page(blocks)}
+        message={{_: 'message', mid: 42, peerId: 10, pFlags: {}} as any as Message.message}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+    expect(emptyParagraph().querySelector('br')).not.toBeNull();
+    expect(container.querySelectorAll('p')[0].querySelector('br')).toBeNull();
+
+    dispose();
+    dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={0}
+        page={page(blocks)}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+    expect(emptyParagraph().querySelector('br')).toBeNull();
+  });
+
+  test('gives a document row its hover on a page opened on its own', () => {
+    const audio = {_: 'document', id: 7, type: 'audio', attributes: []} as any;
+    dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={0}
+        page={{
+          ...page([
+            {_: 'pageBlockAudio', audio_id: 7, caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}}
+          ]),
+          documents: [audio]
+        }}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+
+    const calls = mocks.documentProps.mock.calls;
+    expect(calls[calls.length - 1][0].clickable).toBe(true);
   });
 
   test('attaches the existing media spoiler to rich photos and videos', async() => {
@@ -570,6 +699,33 @@ describe('Instant View rich rendering', () => {
     await vi.waitFor(() => expect(mocks.wrapMediaSpoiler).toHaveBeenCalledTimes(2));
     expect(mocks.wrapMediaSpoiler.mock.calls.map(([options]) => options.media.id)).toEqual([1, 2]);
     expect(container.querySelectorAll('.media-spoiler-container')).toHaveLength(2);
+  });
+
+  test('makes a photo or a video that opens the viewer a keyboard button', () => {
+    Modes.a11y = true; // the keyboard and screen-reader layer, off unless ?a11y=1
+    dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={0}
+        page={{
+          ...page([
+            {_: 'pageBlockPhoto', pFlags: {}, photo_id: 1, caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}},
+            {_: 'pageBlockVideo', pFlags: {}, video_id: 2, caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}}
+          ]),
+          photos: [{_: 'photo', id: 1, sizes: []} as any],
+          documents: [{_: 'document', id: 2, thumbs: []} as any]
+        }}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+
+    const [photo, video] = Array.from(container.querySelectorAll<HTMLElement>('[role="button"]'));
+    expect([photo.tabIndex, photo.getAttribute('aria-label')]).toEqual([0, 'AttachPhoto']);
+    expect([video.tabIndex, video.getAttribute('aria-label')]).toEqual([0, 'AttachVideo']);
+    const click = vi.fn();
+    photo.addEventListener('click', click);
+    photo.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+    expect(click).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -632,6 +788,97 @@ describe('Instant View buttons (layer 229)', () => {
     expect((press as HTMLButtonElement).disabled).toBe(true);
   });
 
+  test('a button with no text draws no pill', () => {
+    renderBlocks([{
+      _: 'pageBlockButtonRow',
+      pFlags: {},
+      buttons: [
+        {_: 'pageButton', text: {_: 'textEmpty'}, type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}},
+        {_: 'pageButton', text: text(' '), type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}},
+        {_: 'pageButton', text: text('Site'), type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}}
+      ]
+    }]);
+
+    const [empty, blank, site] = Array.from(container.querySelector(`.${instantViewStyles.PageButtonRow}`).children);
+    expect(empty.classList.contains(instantViewStyles.PageButtonEmpty)).toBe(true);
+    expect(blank.classList.contains(instantViewStyles.PageButtonEmpty)).toBe(true);
+    expect(site.classList.contains(instantViewStyles.PageButtonEmpty)).toBe(false);
+  });
+
+  test('a coloured button inside the text paints its custom emoji in its own colour', async() => {
+    const crown: RichText = {_: 'textCustomEmoji', document_id: '7', alt: '👑'};
+    renderBlocks([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textConcat', texts: [
+        {_: 'textCustomEmoji', document_id: '5', alt: '🙂'},
+        text(' '),
+        {
+          _: 'textButton',
+          text: {_: 'textConcat', texts: [crown, text(' Play')]},
+          type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'},
+          style: {_: 'richButtonStyle', pFlags: {bg_primary: true}}
+        }
+      ]}
+    }]);
+    await flush();
+
+    // the text's emoji stay with the page, the button's go to a canvas in the button, white
+    expect(mocks.customEmojiRendererAdds).toHaveBeenCalledWith('primary-text-color', ['5']);
+    expect(mocks.customEmojiRendererAdds).toHaveBeenCalledWith('white', ['7']);
+    const button = container.querySelector<HTMLElement>('[data-rich-button]');
+    expect(button.querySelector(':scope > div:not(.c-ripple)')).not.toBeNull();
+  });
+
+  test('a block draws its custom emoji on a canvas of its own, laid over it', async() => {
+    renderBlocks([
+      {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [text('Go '), {_: 'textCustomEmoji', document_id: '5', alt: '🙂'}]}},
+      {_: 'pageBlockParagraph', text: text('Plain')}
+    ]);
+    await flush();
+
+    // the canvas moves with the block when what is above it opens (a details), the page's would not
+    const [withEmoji, plain] = Array.from(container.querySelectorAll<HTMLElement>(`.${instantViewStyles.Paragraph}`));
+    expect(withEmoji.classList.contains(instantViewStyles.EmojiCanvasHost)).toBe(true);
+    expect(withEmoji.firstElementChild?.tagName).toBe('DIV');
+    expect(plain.classList.contains(instantViewStyles.EmojiCanvasHost)).toBe(false);
+    expect(mocks.customEmojiRendererAdds).toHaveBeenCalledWith('primary-text-color', ['5']);
+  });
+
+  test('a button the bot turns on in an edit is turned on', async() => {
+    const row = (type: PageButton['type']): RichMessage.richMessage => ({
+      _: 'richMessage',
+      pFlags: {},
+      blocks: [{_: 'pageBlockButtonRow', pFlags: {}, buttons: [{_: 'pageButton', text: text('Undo'), type}]}],
+      photos: [],
+      documents: []
+    });
+    const [displayed, setDisplayed] = createSignal<RichMessage>(row({_: 'inlineButtonTypeDisabled'}));
+    dispose = render(() => (
+      <RichMessageBubble
+        message={{peerId: 10 as PeerId, mid: 42} as Message.message}
+        chat={{peerId: 10 as PeerId} as any}
+        richMessage={displayed}
+        page={() => page(displayed().blocks)}
+      />
+    ), container);
+
+    const button = container.querySelector<HTMLButtonElement>(`.${instantViewStyles.PageButton}`);
+    expect(button.disabled).toBe(true);
+
+    // the row and the button stay - only what the button is changes
+    setDisplayed(row({_: 'inlineButtonTypeCallback', pFlags: {}, data: new Uint8Array([1])}));
+    await vi.waitFor(() => expect(container.querySelector<HTMLButtonElement>(`.${instantViewStyles.PageButton}`).disabled).toBe(false));
+    expect(container.querySelector(`.${instantViewStyles.PageButton}`).classList.contains(instantViewStyles.PageButtonDisabled)).toBe(false);
+  });
+
+  test('a label of nothing but custom emoji is no text either', () => {
+    const emoji: RichText = {_: 'textCustomEmoji', document_id: '1', alt: '♟'};
+    const isEmpty = (label: RichText) => getPageButtonClasses(undefined, label).includes(instantViewStyles.PageButtonEmpty);
+    expect(isEmpty(emoji)).toBe(true);
+    expect(isEmpty({_: 'textConcat', texts: [emoji, text(' '), emoji]})).toBe(true);
+    expect(isEmpty({_: 'textConcat', texts: [emoji, text(' New Game')]})).toBe(false);
+  });
+
   test('a button inside the text is drawn in place and acts on click', async() => {
     const copy: RichText.textButton = {
       _: 'textButton',
@@ -658,6 +905,26 @@ describe('Instant View buttons (layer 229)', () => {
     expect(mocks.pageButtonClick).toHaveBeenCalledTimes(1);
   });
 
+  test('a link button inside the text opens its link from a press beside the label', async() => {
+    renderBlocks([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textButton', text: text('Site'), type: {_: 'inlineButtonTypeUrl', url: 'https://telegram.org'}}
+    }]);
+
+    const button = container.querySelector<HTMLElement>('[data-rich-button]');
+    const link = button.querySelector('a');
+    // the app's handler for a masked link (its inline onclick) is not there in a test
+    link.removeAttribute('onclick');
+    const opened = vi.fn((e: Event) => e.preventDefault());
+    link.addEventListener('click', opened);
+
+    // the padding and the ripple over the label are the button's own, not the link's
+    simulateClickEvent(button);
+    await flush();
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(mocks.getRichPageButtonHandler).not.toHaveBeenCalled();
+  });
+
   test('inside a message a callback button answers through that message', async() => {
     const chat = {peerId: 1};
     const message = {_: 'message', mid: 5, peerId: 1} as Message.message;
@@ -673,6 +940,22 @@ describe('Instant View buttons (layer 229)', () => {
     await flush();
     expect(mocks.getRichPageButtonHandler).toHaveBeenCalledWith(expect.objectContaining({chat, message}));
     expect(mocks.pageButtonClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Rich message clicks', () => {
+  test('tells the bubble which clicks belong to the page', () => {
+    const page = document.createElement('div');
+    page.className = instantViewStyles.RichMessage;
+    const photo = document.createElement('img');
+    page.append(photo);
+    const outside = document.createElement('img');
+    document.body.append(page, outside);
+
+    // the bubble's media viewer must leave the page's own photo to the page
+    expect(isRichMessageTarget(photo)).toBe(true);
+    expect(isRichMessageTarget(outside)).toBe(false);
+    document.body.replaceChildren();
   });
 });
 

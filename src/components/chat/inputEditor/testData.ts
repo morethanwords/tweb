@@ -29,6 +29,19 @@ const richButtonAttrs = (button: Omit<ChatInputRichButton, 'text'>, label: strin
   richButtonAttributes(button, [text(label)])
 );
 
+const inlineButton = (button: Omit<ChatInputRichButton, 'text'>, label: string): JSONContent => ({
+  type: RICH_BUTTON_NODE_NAME,
+  attrs: richButtonAttrs(button, label)
+});
+
+const buttonRow = (
+  align: 'left' | 'center' | 'right' | null,
+  buttons: Parameters<typeof richButtonAttrs>[]
+): JSONContent => ({
+  type: BUTTON_ROW_NODE_NAME,
+  attrs: {align, buttons: buttons.map((args) => richButtonAttrs(...args))}
+});
+
 const listItem = (
   value: string,
   attrs?: Record<string, unknown>
@@ -286,20 +299,42 @@ export function createChatInputEditorTestData({
         },
         content: [text('Map caption')]
       },
+      // every look a button can have: inside the text, a row's (with its type's corner icon), each
+      // colour, the link style, each alignment, a label too long for its button
       {
         type: 'paragraph',
-        content: [text('Buttons: '), {
-          type: RICH_BUTTON_NODE_NAME,
-          attrs: richButtonAttrs({action: 'url', url: 'https://telegram.org', color: 'primary'}, 'Open')
-        }]
+        content: [
+          text('Buttons: '),
+          inlineButton({action: 'url', url: 'https://telegram.org', color: 'primary'}, 'Open'),
+          text(' '),
+          inlineButton({action: 'copy', copyText: 'Telegram'}, 'Copy'),
+          text(' '),
+          inlineButton({action: 'url', url: 'https://telegram.org/blog', color: 'success'}, 'Blog'),
+          text(' '),
+          inlineButton({action: 'disabled', color: 'danger'}, 'Soon'),
+          text(' and a '),
+          inlineButton({action: 'url', url: 'https://core.telegram.org', link: true}, 'link button'),
+          text(' in the text.')
+        ]
       },
-      {
-        type: BUTTON_ROW_NODE_NAME,
-        attrs: {align: 'center', buttons: [
-          richButtonAttrs({action: 'copy', copyText: 'Telegram'}, 'Copy'),
-          richButtonAttrs({action: 'disabled', color: 'danger'}, 'Soon')
-        ]}
-      },
+      buttonRow(null, [
+        [{action: 'url', url: 'https://telegram.org'}, 'Open link'],
+        [{action: 'copy', copyText: 'Telegram'}, 'Copy text']
+      ]),
+      buttonRow(null, [
+        [{action: 'url', url: 'https://telegram.org/apps', color: 'primary'}, 'Primary'],
+        [{action: 'copy', copyText: 'Success', color: 'success'}, 'Success'],
+        [{action: 'disabled', color: 'danger'}, 'Danger']
+      ]),
+      buttonRow(null, [
+        [{action: 'url', url: 'https://telegram.org/faq'}, 'A label much too long to fit its button, even in the widest composer, so its end is cut off with an ellipsis']
+      ]),
+      buttonRow('left', [[{action: 'url', url: 'https://telegram.org'}, 'Left']]),
+      buttonRow('center', [
+        [{action: 'copy', copyText: 'Telegram'}, 'Copy'],
+        [{action: 'disabled', color: 'danger'}, 'Soon']
+      ]),
+      buttonRow('right', [[{action: 'disabled'}, 'Right']]),
       {type: 'richFooter', content: [text('Footer')]},
       {
         type: 'richAnchor',

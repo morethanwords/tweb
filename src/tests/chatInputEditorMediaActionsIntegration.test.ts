@@ -2,6 +2,7 @@ import {useChatInputEditorHarness, TiptapEditorInternals} from '@/tests/helpers/
 import {AllSelection, NodeSelection} from '@tiptap/pm/state';
 import slideshowStyles from '@components/slideshow.module.scss';
 import {INSTANT_VIEW_MEDIA_MAX_HEIGHT, instantViewStyles} from '@components/instantViewFormatting';
+import {ALBUM_ITEM_SPACING} from '@components/prepareAlbum';
 import type {Document, PageBlock, Photo} from '@layer';
 import I18n from '@lib/langPack';
 import {resizeObserverInstances} from '@/tests/mocks/resizeObserver';
@@ -294,7 +295,7 @@ describe('Tiptap chat input editor: MediaActions', () => {
         value >= 0
       ));
     };
-    expect(getGap()).toBeCloseTo(2, 5);
+    expect(getGap()).toBeCloseTo(ALBUM_ITEM_SPACING, 5);
 
     const media = input.querySelector<HTMLElement>('.chat-input-rich-media')!;
     const resizeObserver = resizeObserverInstances.find((observer) => (
@@ -306,7 +307,7 @@ describe('Tiptap chat input editor: MediaActions', () => {
       target: media
     } as unknown as ResizeObserverEntry], resizeObserver! as unknown as ResizeObserver);
     expect(parseFloat(canvas.style.getPropertyValue('--width'))).toBe(640);
-    expect(getGap()).toBeCloseTo(2, 5);
+    expect(getGap()).toBeCloseTo(ALBUM_ITEM_SPACING, 5);
   });
 
   test('replaces only the active slideshow item and prunes its old resource', () => {

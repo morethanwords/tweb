@@ -1,17 +1,26 @@
-import {createEffect, createSignal, For, Show} from 'solid-js';
+import {createEffect, createSignal, For, onCleanup, Show} from 'solid-js';
 import normalizeLinkUrl from '@helpers/string/normalizeLinkUrl';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import InputField from '@components/inputField';
 import PopupElement, {createPopup, usePopupContext} from '@components/popups/indexTsx';
-import {ChipTab, ChipTabs} from '@components/chipTabs';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import RadioFormTsx from '@components/radioFormTsx';
 import Row from '@components/rowTsx';
-import {PeerTitleTsx} from '@components/peerTitleTsx';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import isLastInputPointer from '@helpers/dom/inputModality';
+import Section from '@components/section';
+import appDialogsManager from '@lib/appDialogsManager';
+import {SERVICE_PEER_ID} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import {getMiddleware} from '@helpers/middleware';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import getUserStatusString from '@components/wrappers/getUserStatusString';
 import {showPickUser2Popup} from '@components/popups/pickUser';
-import {getPageButtonClasses} from '@components/instantViewFormatting';
+import {getPageButtonClasses, getPageButtonRowClasses} from '@components/instantViewFormatting';
+import styles from '@components/popups/richButton.module.scss';
 import type {
   ChatInputRichButton,
   ChatInputRichButtonAction,
@@ -34,18 +43,54 @@ export type RichButtonPopupResult =
 const ACTIONS: [ChatInputRichButtonAction, LangPackKey][] = [
   ['url', 'Chat.Input.Editor.Button.ActionUrl'],
   ['copy', 'Chat.Input.Editor.Button.ActionCopy'],
-  ['userProfile', 'Chat.Input.Editor.Button.ActionProfile'],
+  ['userProfile', 'Chat.Input.Editor.Button.ActionMention'],
   ['disabled', 'Chat.Input.Editor.Button.ActionDisabled']
 ];
 
-const COLORS: [ChatInputRichButtonColor | '', LangPackKey][] = [
-  ['', 'Chat.Input.Editor.Button.StyleDefault'],
-  ['primary', 'Chat.Input.Editor.Button.StylePrimary'],
-  ['success', 'Chat.Input.Editor.Button.StyleSuccess'],
-  ['danger', 'Chat.Input.Editor.Button.StyleDanger']
+// two rows of two: four of them side by side would not fit their labels in the box
+const COLOR_ROWS: [ChatInputRichButtonColor | '', LangPackKey][][] = [
+  [
+    ['', 'Chat.Input.Editor.Button.StyleDefault'],
+    ['primary', 'Chat.Input.Editor.Button.StylePrimary']
+  ],
+  [
+    ['success', 'Chat.Input.Editor.Button.StyleSuccess'],
+    ['danger', 'Chat.Input.Editor.Button.StyleDanger']
+  ]
 ];
 
-let captionIdSeed = 0;
+/**
+ * The user a mention button opens, drawn as the picker drew them — avatar, name, status — and
+ * pressed to choose another.
+ */
+function MentionedUser(props: {userId: UserId, onClick: () => void}) {
+  const list = appDialogsManager.createChatList();
+
+  createEffect(() => {
+    const peerId = props.userId.toPeerId(false);
+    const middlewareHelper = getMiddleware();
+    onCleanup(() => middlewareHelper.destroy());
+    const middleware = middlewareHelper.get();
+    list.replaceChildren();
+    const {dom} = appDialogsManager.addDialogNew({
+      peerId,
+      container: list,
+      rippleEnabled: true,
+      avatarSize: 'abitbigger',
+      // the button opens this person's profile, even when it is one's own
+      meAsSaved: false,
+      wrapOptions: {middleware}
+    });
+    // a row of a list elsewhere, a link with nowhere to go here: a button that picks another user
+    ensureButtonSemantics(dom.listEl);
+    attachClickEvent(dom.listEl, props.onClick);
+    void rootScope.managers.appUsersManager.getUser(props.userId).then((user) => {
+      if(middleware()) dom.lastMessageSpan.replaceChildren(getUserStatusString(user));
+    });
+  });
+
+  return list;
+}
 
 /**
  * Makes or edits a button of layer 229 in the composer: its text, what it does and how it looks,
@@ -106,22 +151,33 @@ export default function showRichButtonPopup(
         }
       };
 
-      const chooseUser = async() => {
+      // `fallback` is the action to go back to when the picker is closed without a user
+      const chooseUser = async(fallback?: ChatInputRichButtonAction) => {
         try {
+          // one's contacts, as desktop offers them: not oneself, a bot or Telegram's service account
           const peerId = await showPickUser2Popup({
-            peerType: ['dialogs', 'contacts'],
-            filterPeerTypeBy: ['isRegularUser', 'isBot'],
+            peerType: ['contacts'],
+            filterPeerTypeBy: ['isRegularUser'],
+            exceptSelf: true,
+            excludePeerIds: new Set([SERVICE_PEER_ID]),
             titleLangKey: 'Chat.Input.Editor.Button.ChooseUser',
             placeholder: 'Search'
           });
           setUserId(peerId.toUserId());
           setNoUser(false);
-        } catch{}
+        } catch{
+          if(fallback && !userId()) setAction(fallback);
+        }
       };
 
-      // the captions name the choices under them
-      const actionCaptionId = `popup-rich-button-action-${++captionIdSeed}`;
-      const styleCaptionId = `popup-rich-button-style-${captionIdSeed}`;
+      // A mention is nothing without its user, so clicking it goes straight to the picker. Arrows
+      // select every action they pass: from the keyboard the "Choose User" row leads there instead,
+      // or each step over Mention would open a popup.
+      const changeAction = (value: ChatInputRichButtonAction) => {
+        const previous = action();
+        setAction(value);
+        if(value === 'userProfile' && isLastInputPointer()) void chooseUser(previous);
+      };
 
       const Fields = () => {
         const popup = usePopupContext();
@@ -135,65 +191,84 @@ export default function showRichButtonPopup(
           });
         });
 
+        // sections without names: what each holds speaks for itself, and the groups are named for
+        // assistive tech instead
         return (
-          <div class="popup-rich-button-fields">
-            {textInputField.container}
-            <div id={actionCaptionId} class="popup-rich-button-caption"><I18nTsx key="Chat.Input.Editor.Button.Action" /></div>
-            <ChipTabs
-              ref={(element) => element.setAttribute('aria-labelledby', actionCaptionId)}
-              view="secondary"
-              // the popup is still scaling in on the first frame: place the marker once it is shown
-              needIntersectionObserver
-              value={action()}
-              onChange={(value) => void setAction(value as ChatInputRichButtonAction)}
-            >
-              <For each={ACTIONS}>
-                {([value, langKey]) => <ChipTab value={value}><I18nTsx key={langKey} /></ChipTab>}
-              </For>
-            </ChipTabs>
-            <Show when={action() === 'url'}>{urlInputField.container}</Show>
-            <Show when={action() === 'copy'}>{copyInputField.container}</Show>
-            <Show when={action() === 'userProfile'}>
-              <Row clickable={chooseUser}>
-                <Row.Icon icon="user" />
-                <Row.Title>
-                  <Show when={userId()} fallback={<I18nTsx key="Chat.Input.Editor.Button.ChooseUser" />}>
-                    <PeerTitleTsx peerId={userId().toPeerId(false)} />
-                  </Show>
-                </Row.Title>
-                <Show when={noUser()}>
-                  <Row.Subtitle><span class="danger" role="alert"><I18nTsx key="Chat.Input.Editor.Button.NoUser" /></span></Row.Subtitle>
+          <>
+            <Section noDelimiter>
+              {textInputField.container}
+            </Section>
+            <Section>
+              <div
+                class={styles.styles}
+                role="group"
+                aria-label={I18n.format('Chat.Input.Editor.Button.Style', true)}
+              >
+                <For each={COLOR_ROWS}>
+                  {(row) => (
+                    <div class={classNames(...getPageButtonRowClasses())}>
+                      <For each={row}>
+                        {([value, langKey]) => (
+                          <button
+                            type="button"
+                            class={classNames(
+                              ...getPageButtonClasses(value || undefined),
+                              color() === value && styles.styleActive
+                            )}
+                            aria-pressed={color() === value}
+                            onClick={() => setColor(value)}
+                          >
+                            <I18nTsx key={langKey} />
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Section>
+            <Section>
+              <div role="radiogroup" aria-label={I18n.format('Chat.Input.Editor.Button.Action', true)}>
+                <RadioFormTsx
+                  values={ACTIONS.map(([value, langPackKey]) => ({value, langPackKey}))}
+                  selected={action()}
+                  onChange={changeAction}
+                />
+              </div>
+              <Show when={action() === 'url'}>
+                <div class={styles.result}>{urlInputField.container}</div>
+              </Show>
+              <Show when={action() === 'copy'}>
+                <div class={styles.result}>{copyInputField.container}</div>
+              </Show>
+              <Show when={action() === 'userProfile'}>
+                <Show
+                  when={userId()}
+                  fallback={
+                    <Row clickable={() => void chooseUser()}>
+                      <Row.Icon icon="user" />
+                      <Row.Title><I18nTsx key="Chat.Input.Editor.Button.ChooseUser" /></Row.Title>
+                      <Show when={noUser()}>
+                        <Row.Subtitle><span class="danger" role="alert"><I18nTsx key="Chat.Input.Editor.Button.NoUser" /></span></Row.Subtitle>
+                      </Show>
+                    </Row>
+                  }
+                >
+                  {(userId) => <MentionedUser userId={userId()} onClick={() => void chooseUser()} />}
                 </Show>
-              </Row>
-            </Show>
-            <div id={styleCaptionId} class="popup-rich-button-caption"><I18nTsx key="Chat.Input.Editor.Button.Style" /></div>
-            <div class="popup-rich-button-styles" role="group" aria-labelledby={styleCaptionId}>
-              <For each={COLORS}>
-                {([value, langKey]) => (
-                  <button
-                    type="button"
-                    class={classNames(
-                      ...getPageButtonClasses(value || undefined),
-                      'popup-rich-button-style',
-                      color() === value && 'is-active'
-                    )}
-                    aria-pressed={color() === value}
-                    onClick={() => setColor(value)}
-                  >
-                    <I18nTsx key={langKey} />
-                  </button>
-                )}
-              </For>
-            </div>
+              </Show>
+            </Section>
             <Show when={options.canChooseLine}>
-              <Row>
-                <Row.CheckboxFieldToggle>
-                  <CheckboxFieldTsx toggle checked={separateLine()} onChange={setSeparateLine} />
-                </Row.CheckboxFieldToggle>
-                <Row.Title><I18nTsx key="Chat.Input.Editor.Button.SeparateLine" /></Row.Title>
-              </Row>
+              <Section>
+                <Row>
+                  <Row.CheckboxFieldToggle>
+                    <CheckboxFieldTsx toggle checked={separateLine()} onChange={setSeparateLine} />
+                  </Row.CheckboxFieldToggle>
+                  <Row.Title><I18nTsx key="Chat.Input.Editor.Button.SeparateLine" /></Row.Title>
+                </Row>
+              </Section>
             </Show>
-          </div>
+          </>
         );
       };
 
@@ -218,16 +293,19 @@ export default function showRichButtonPopup(
       };
 
       return (
-        <PopupElement class="popup-rich-button" closable onClose={() => {if(!settled) reject();}}>
+        // `popup-rich-button` is what the e2e suite finds the box by; the look is the module's
+        <PopupElement class={classNames('popup-rich-button', styles.popup)} closable onClose={() => {if(!settled) reject();}}>
           <PopupElement.Header>
             <PopupElement.CloseButton />
             <PopupElement.Title>
               {i18n(editing ? 'Chat.Input.Editor.Button.EditTitle' : 'Chat.Input.Editor.Button.CreateTitle')}
             </PopupElement.Title>
           </PopupElement.Header>
-          <PopupElement.Body>
-            <Fields />
-          </PopupElement.Body>
+          <PopupElement.Scrollable>
+            <PopupElement.Body>
+              <Fields />
+            </PopupElement.Body>
+          </PopupElement.Scrollable>
           <PopupElement.Footer>
             <PopupElement.FooterButton
               confirm

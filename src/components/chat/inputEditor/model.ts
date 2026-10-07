@@ -7,8 +7,7 @@ import {
   CHAT_TABLE_TITLE_NODE_NAME,
   CHAT_TABLE_WRAPPER_NODE_NAME
 } from '@components/chat/inputEditor/tableSchema';
-import {orderedListItemValues} from '@components/chat/inputEditor/orderedList';
-import {formatOrderedListMarker} from '@lib/richTextProcessor/orderedList';
+import {listItemMarkers} from '@components/chat/inputEditor/orderedList';
 import {getEffectiveCodeBlockLanguage} from '@components/chat/inputEditor/codeLanguage';
 
 type ProseMirrorNode = Editor['state']['doc'];
@@ -17,15 +16,6 @@ type ProseMirrorMark = ProseMirrorNode['marks'][number];
 type TextLine = {
   end: number,
   start: number
-};
-
-type ListLine = TextLine & {
-  checked: boolean,
-  checkbox: boolean,
-  contentStart: number,
-  depth: number,
-  number?: number,
-  type: 'bulletList' | 'orderedList' | 'taskList'
 };
 
 type TextPositionSegment = {
@@ -263,116 +253,13 @@ function paragraph(
   };
 }
 
-function parseListLine(text: string, line: TextLine): ListLine | undefined {
-  const value = text.slice(line.start, line.end);
-  const match = /^( *)(?:(- )|(\d+)\. )(?:\[([ xX])\](?: |$))?/.exec(value);
-  if(!match || match[1].length % 2) return;
-
-  const checkbox = match[4] !== undefined;
-  const type = match[2] ? checkbox ? 'taskList' : 'bulletList' : 'orderedList';
-  return {
-    ...line,
-    checked: checkbox && match[4].toLowerCase() === 'x',
-    checkbox,
-    contentStart: line.start + match[0].length,
-    depth: match[1].length / 2,
-    number: type === 'orderedList' ? Number(match[3]) : undefined,
-    type
-  };
-}
-
-function hasBlockedStart(line: TextLine, blockedStarts: Set<number>) {
-  for(const start of blockedStarts) {
-    if(start >= line.start && start <= line.end) return true;
-  }
-  return false;
-}
-
-function parseList(
-  text: string,
-  entities: MessageEntity[],
-  lines: TextLine[],
-  startIndex: number,
-  endIndex: number,
-  depth: number,
-  blockEntities: Set<MessageEntity>,
-  blockedStarts: Set<number>
-): {nextIndex: number, node: JSONContent} {
-  const first = parseListLine(text, lines[startIndex]);
-  const listType = first.type;
-  const start = first.number || 1;
-  const items: JSONContent[] = [];
-  let index = startIndex;
-
-  while(index < endIndex) {
-    const itemLine = parseListLine(text, lines[index]);
-    if(
-      !itemLine ||
-      hasBlockedStart(itemLine, blockedStarts) ||
-      itemLine.depth !== depth ||
-      itemLine.type !== listType ||
-      (listType === 'orderedList' && itemLine.number !== start + items.length)
-    ) {
-      break;
-    }
-
-    const item: JSONContent = {
-      type: listType === 'taskList' ? 'taskItem' : 'listItem',
-      attrs: listType === 'taskList' ? {checked: itemLine.checked} :
-        itemLine.checkbox ? {checkbox: true, checked: itemLine.checked} : undefined,
-      content: [paragraph(text, entities, {
-        start: itemLine.contentStart,
-        end: itemLine.end
-      }, blockEntities)]
-    };
-    ++index;
-
-    while(index < endIndex) {
-      const nestedLine = parseListLine(text, lines[index]);
-      if(
-        !nestedLine ||
-        hasBlockedStart(nestedLine, blockedStarts) ||
-        nestedLine.depth <= depth
-      ) {
-        break;
-      }
-      if(nestedLine.depth !== depth + 1) break;
-
-      const nested = parseList(
-        text,
-        entities,
-        lines,
-        index,
-        endIndex,
-        depth + 1,
-        blockEntities,
-        blockedStarts
-      );
-      item.content.push(nested.node);
-      index = nested.nextIndex;
-    }
-
-    items.push(item);
-  }
-
-  return {
-    nextIndex: index,
-    node: {
-      type: listType,
-      attrs: listType === 'orderedList' ? {start} : undefined,
-      content: items
-    }
-  };
-}
-
-function parseParagraphsAndLists(
+function parseParagraphs(
   text: string,
   entities: MessageEntity[],
   lines: TextLine[],
   startIndex: number,
   endIndex: number,
   blockEntities: Set<MessageEntity>,
-  blockedStarts: Set<number>,
   preformatted: MessageEntity.messageEntityPre[]
 ) {
   const content: JSONContent[] = [];
@@ -382,14 +269,6 @@ function parseParagraphsAndLists(
     if(pre) {
       content.push(...pre.content);
       index = pre.nextIndex + 1;
-      continue;
-    }
-
-    const listLine = parseListLine(text, lines[index]);
-    if(listLine?.depth === 0 && !hasBlockedStart(listLine, blockedStarts)) {
-      const list = parseList(text, entities, lines, index, endIndex, 0, blockEntities, blockedStarts);
-      content.push(list.node);
-      index = list.nextIndex;
       continue;
     }
 
@@ -530,7 +409,7 @@ export function normalizeBlockOnlyQuotes(document: JSONContent): JSONContent {
   };
 }
 
-/** Inline surfaces keep list-looking text literal and use hard breaks between lines. */
+/** Inline surfaces use hard breaks between lines. */
 export function telegramTextToTiptapInlineContent(text: string, sourceEntities: MessageEntity[] = []) {
   const entities = normalizeEntities(text, sourceEntities)
   .filter((entity) => entity._ !== 'messageEntityBlockquote')
@@ -543,6 +422,10 @@ export function telegramTextToTiptapInlineContent(text: string, sourceEntities: 
   ]);
 }
 
+/**
+ * Text with entities as a document. Lines that look like a list stay text: a
+ * list is rich-only, and a plain message reopened for editing must stay one.
+ */
 export function telegramTextToTiptap(text: string, sourceEntities: MessageEntity[] = []): JSONContent {
   const entities = normalizeEntities(text, sourceEntities);
   const lines = splitLines(text);
@@ -553,7 +436,6 @@ export function telegramTextToTiptap(text: string, sourceEntities: MessageEntity
     entity._ === 'messageEntityPre'
   )).sort((a, b) => a.offset - b.offset);
   const blockEntities = new Set<MessageEntity>([...blockquotes, ...preformatted]);
-  const blockedStarts = new Set([...blockquotes, ...preformatted].map((entity) => entity.offset));
   const content: JSONContent[] = [];
 
   for(let index = 0; index < lines.length; ++index) {
@@ -563,16 +445,13 @@ export function telegramTextToTiptap(text: string, sourceEntities: MessageEntity
       const end = entityEnd(quote);
       let nextIndex = index + 1;
       while(nextIndex < lines.length && lines[nextIndex].start < end) ++nextIndex;
-      const quoteBlockedStarts = new Set(blockedStarts);
-      quoteBlockedStarts.delete(quote.offset);
-      const quoteContent = parseParagraphsAndLists(
+      const quoteContent = parseParagraphs(
         text,
         entities,
         lines,
         index,
         nextIndex,
         blockEntities,
-        quoteBlockedStarts,
         preformatted
       );
       index = nextIndex - 1;
@@ -588,23 +467,6 @@ export function telegramTextToTiptap(text: string, sourceEntities: MessageEntity
     if(pre) {
       content.push(...pre.content);
       index = pre.nextIndex;
-      continue;
-    }
-
-    const listLine = parseListLine(text, line);
-    if(listLine?.depth === 0) {
-      const list = parseList(
-        text,
-        entities,
-        lines,
-        index,
-        lines.length,
-        0,
-        blockEntities,
-        blockedStarts
-      );
-      content.push(list.node);
-      index = list.nextIndex - 1;
       continue;
     }
 
@@ -748,15 +610,9 @@ export function tiptapToTelegram(
     const items: Array<{node: ProseMirrorNode, position: number}> = [];
     node.forEach((child, offset) => items.push({node: child, position: position + 1 + offset}));
 
-    const values = node.type.name === 'orderedList' ? [...orderedListItemValues(node)] : [];
+    const markers = listItemMarkers(node);
     items.forEach((item, index) => {
-      const listMarker = node.type.name === 'orderedList' ? `${formatOrderedListMarker(
-        values[index], item.node.attrs.type || node.attrs.type
-      )}. ` : '- ';
-      const checkbox = node.type.name === 'taskList' || item.node.attrs.checkbox;
-      const marker = checkbox ?
-        `${listMarker}[${item.node.attrs.checked ? 'x' : ' '}] ` :
-        listMarker;
+      const marker = markers[index];
       const firstPosition = firstTextPosition(item.node, item.position);
       append(`${'  '.repeat(depth)}${marker}`, firstPosition, firstPosition, 'separator');
       serializeContainer(item.node, item.position + 1, depth + 1);

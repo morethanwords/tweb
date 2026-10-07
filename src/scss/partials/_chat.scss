@@ -185,6 +185,7 @@
     .btn-send-icon-send {
       margin-inline-start: -3px;
       margin-bottom: -1px;
+      font-size: 1.375rem;
     }
 
 		&.send .btn-send-icon-send,
@@ -297,6 +298,12 @@
     position: absolute;
     top: var(--padding-vertical);
     inset-inline-end: var(--padding-horizontal);
+
+    // it stays mounted while the field is too short for it, and `.btn-icon`'s `display: flex`
+    // outranks the attribute — a caption's button then sat over the popup's Send and took its clicks
+    &[hidden] {
+      display: none;
+    }
 
     &__icon {
       pointer-events: none;

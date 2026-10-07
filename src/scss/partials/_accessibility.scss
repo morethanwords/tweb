@@ -46,6 +46,12 @@
   outline: none;
 }
 
+// The media viewer holds the focus only for its keys (arrows, Space, Escape): it is no control,
+// and a ring around the whole screen would point at nothing.
+:root:where(.a11y) .media-viewer-whole:focus-visible {
+  outline: none;
+}
+
 // Screen-reader-only content: exposed to the accessibility tree, visually
 // hidden. Used for skip links, live regions and supplementary labels.
 .sr-only {

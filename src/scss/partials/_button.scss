@@ -340,6 +340,12 @@ $btn-menu-z-index: 4;
       transform: scale(.96);
     }
 
+    &.is-disabled {
+      cursor: default !important;
+      pointer-events: none !important;
+      opacity: var(--disabled-opacity);
+    }
+
     &.is-loading {
       cursor: default !important;
       pointer-events: none !important;

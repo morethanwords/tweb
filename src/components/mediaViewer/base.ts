@@ -24,6 +24,9 @@ import {InputGroupCall, Message, MessageMedia, PhotoSize} from '@layer';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
+import isTargetAnInput from '@helpers/dom/isTargetAnInput';
+import {FOCUS_TRAP_ATTACHED_ATTRIBUTE} from '@helpers/dom/focusTrap';
+import Modes from '@config/modes';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import generatePathData from '@helpers/generatePathData';
@@ -277,6 +280,8 @@ export default class AppMediaViewerBase<
   protected managers: AppManagers;
   protected swipeHandler: SwipeHandler;
   protected closing: boolean;
+  /** The control that opened the viewer: it gets the focus back when the viewer closes. */
+  protected returnFocusTo: HTMLElement;
 
   protected lastTransform: Transform = this.transform;
   protected lastZoomCenter: {x: number, y: number} = this.transform;
@@ -1023,6 +1028,11 @@ export default class AppMediaViewerBase<
       this.wholeDiv.remove();
       this.toggleOverlay(false);
       this.middlewareHelper.destroy();
+      // only when the focus went with the viewer: an action may have sent it somewhere on purpose
+      const focused = this.returnFocusTo?.ownerDocument.activeElement;
+      if(this.returnFocusTo?.isConnected && (!focused || focused === this.returnFocusTo.ownerDocument.body)) {
+        this.returnFocusTo.focus({preventScroll: true});
+      }
     });
 
     return promise;
@@ -2464,6 +2474,15 @@ export default class AppMediaViewerBase<
 
       appNavigationController.pushItem(this.navigationItem);
 
+      // With the keyboard layer, a control that opened the viewer (a page's photo, say) hands the
+      // focus over and gets it back on close: left on it, Enter or Space would open the viewer again
+      // underneath. A text field keeps it, as before — focusing one again would raise a phone's
+      // keyboard.
+      const activeElement = Modes.a11y && getAppWindow().document.activeElement as HTMLElement;
+      this.returnFocusTo = activeElement && activeElement !== activeElement.ownerDocument.body && !isTargetAnInput(activeElement) ?
+        activeElement :
+        undefined;
+
       this.toggleOverlay(true);
       this.setGlobalListeners();
 
@@ -2473,6 +2492,14 @@ export default class AppMediaViewerBase<
       }
 
       this.toggleWholeActive(true);
+
+      // after it is shown: a hidden element cannot take the focus. A popup under the viewer (a
+      // paid media's) traps the focus, and leaves it to the viewer
+      if(this.returnFocusTo) {
+        this.wholeDiv.tabIndex = -1;
+        this.wholeDiv.setAttribute(FOCUS_TRAP_ATTACHED_ATTRIBUTE, '');
+        this.wholeDiv.focus({preventScroll: true});
+      }
     }
 
     const mover = this.content.mover;

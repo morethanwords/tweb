@@ -9,14 +9,16 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {
   applyInstantViewMediaSize,
   getMaximumHeightMediaSize,
+  getPageMediaBox,
+  getPageMediaSize,
   INSTANT_VIEW_MEDIA_MAX_HEIGHT,
   instantViewStyles
 } from '@components/instantViewFormatting';
-import prepareAlbum from '@components/prepareAlbum';
+import prepareAlbum, {ALBUM_ITEM_SPACING} from '@components/prepareAlbum';
 import ProgressivePreloader from '@components/preloader';
 import {observeResize} from '@components/resizeObserver';
 import SetTransition from '@components/singleTransition';
-import Slideshow from '@components/slideshow';
+import Slideshow, {isPagingSlideshowTarget} from '@components/slideshow';
 import wrapMediaSpoiler, {concealMediaSpoilerWithAnimation, toggleMediaSpoiler} from '@components/wrappers/mediaSpoiler';
 import {CHAT_INPUT_RICH_MEDIA_UPLOAD_UPDATE_EVENT, ChatInputRichMediaUploadUpdateEvent} from '@components/chat/inputEditor/events';
 import {
@@ -34,7 +36,6 @@ import {
   retainRichMediaPreviewUrl
 } from '@components/chat/inputEditor/mediaPreviewUrl';
 import {NULL_PEER_ID} from '@appManagers/constants';
-import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import contextMenuController from '@helpers/contextMenuController';
 import classNames from '@helpers/string/classNames';
 import toHHMMSS from '@helpers/string/toHHMMSS';
@@ -185,6 +186,17 @@ export const ChatRichMedia = Node.create({
       dom.className = 'chat-input-rich-media';
       dom.dataset.richMedia = '';
       if(node.attrs.uploadId) dom.dataset.uploadId = `${node.attrs.uploadId}`;
+      // A press on a slideshow that pages swipes through it. Selected, this node is draggable
+      // (ProseMirror makes a selected node with content so), and the browser turned the swipe into
+      // a drag of the whole media a few pixels in, which took the pointer from the slideshow for
+      // good: it stayed mid-swipe and dead to clicks.
+      let pressOnSlideshow = false;
+      nodeViewListenerSetter.add(dom)('pointerdown', (event) => {
+        pressOnSlideshow = isPagingSlideshowTarget(event.target);
+      }, {capture: true});
+      nodeViewListenerSetter.add(dom)('dragstart', (event) => {
+        if(pressOnSlideshow) event.preventDefault();
+      });
       preview.className = 'chat-input-rich-media-preview';
       preview.contentEditable = 'false';
       mediaCanvas.className = 'chat-input-rich-media-canvas';
@@ -1091,31 +1103,12 @@ export const ChatRichMedia = Node.create({
         ) {
           return {w: uploadWidth, h: uploadHeight};
         }
-        if(item?._ === 'pageBlockPhoto') {
-          const photo = (node.attrs.photos as Photo.photo[]).find((candidate) => (
-            String(candidate.id) === String(item.photo_id)
-          ));
-          const size = photo && choosePhotoSize(photo, 480, 480);
-          if(size && 'w' in size && 'h' in size && size.w > 0 && size.h > 0) {
-            return {w: size.w, h: size.h};
-          }
-        } else if(item?._ === 'pageBlockVideo') {
-          const document = (node.attrs.documents as Document.document[]).find((candidate) => (
-            String(candidate.id) === String(item.video_id)
-          ));
-          const sizedDocument = document as Document.document & {w?: number, h?: number};
-          const attribute = document?.attributes?.find((candidate) => (
-            candidate._ === 'documentAttributeVideo'
-          ));
-          const width = sizedDocument?.w || (
-            attribute?._ === 'documentAttributeVideo' ? attribute.w : 0
-          );
-          const height = sizedDocument?.h || (
-            attribute?._ === 'documentAttributeVideo' ? attribute.h : 0
-          );
-          if(width > 0 && height > 0) return {w: width, h: height};
-        }
-        return {w: 3, h: 2};
+        const media = item?._ === 'pageBlockPhoto' ?
+          (node.attrs.photos as Photo.photo[]).find((candidate) => String(candidate.id) === String(item.photo_id)) :
+          item?._ === 'pageBlockVideo' ?
+            (node.attrs.documents as Document.document[]).find((candidate) => String(candidate.id) === String(item.video_id)) :
+            undefined;
+        return getPageMediaSize(media);
       }
 
       function mediaEntryUploadItem(
@@ -1132,14 +1125,6 @@ export const ChatRichMedia = Node.create({
         uploadItems = liveUploadItems
       ) {
         return mediaItemSize(entry.item, mediaEntryUploadItem(entry, uploadItems));
-      }
-
-      function mediaViewport(size: {w: number, h: number}) {
-        const width = 480;
-        return {
-          height: Math.min(INSTANT_VIEW_MEDIA_MAX_HEIGHT, width * size.h / size.w),
-          width
-        };
       }
 
       function slideshowAspectRatio(
@@ -1287,7 +1272,7 @@ export const ChatRichMedia = Node.create({
           else container.append(video);
         } else if(photo) {
           const size = mediaItemSize(previewBlock);
-          const viewport = mediaViewport(size);
+          const viewport = getPageMediaBox(size);
           onSize?.(size);
           const middleware = middlewareHelper.get();
           void import('@components/wrappers/photo').then(async({default: wrapPhoto}): Promise<void> => {
@@ -1306,7 +1291,7 @@ export const ChatRichMedia = Node.create({
           }).catch((): void => {});
         } else if(videoDocument) {
           const size = mediaItemSize(previewBlock);
-          const viewport = mediaViewport(size);
+          const viewport = getPageMediaBox(size);
           onSize?.(size);
           const middleware = middlewareHelper.get();
           void import('@components/wrappers/video').then(async({default: wrapVideo}): Promise<void> => {
@@ -1621,7 +1606,7 @@ export const ChatRichMedia = Node.create({
               items: sizes,
               maxWidth: layoutWidth,
               minWidth: layoutWidth / 4,
-              spacing: 2,
+              spacing: ALBUM_ITEM_SPACING,
               maxHeight: INSTANT_VIEW_MEDIA_MAX_HEIGHT
             });
             mediaCanvas.style.setProperty('--width', `${result.width}px`);

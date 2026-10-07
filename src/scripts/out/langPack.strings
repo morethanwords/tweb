@@ -245,7 +245,7 @@
 "Chat.Input.Editor.Button.Action" = "Action";
 "Chat.Input.Editor.Button.ActionUrl" = "Link";
 "Chat.Input.Editor.Button.ActionCopy" = "Copy";
-"Chat.Input.Editor.Button.ActionProfile" = "Profile";
+"Chat.Input.Editor.Button.ActionMention" = "Mention";
 "Chat.Input.Editor.Button.ActionDisabled" = "Disabled";
 "Chat.Input.Editor.Button.CopyText" = "Text to copy";
 "Chat.Input.Editor.Button.ChooseUser" = "Choose User";
@@ -1470,10 +1470,17 @@
 "AttachLocation" = "Location";
 "AttachLiveLocation" = "Live Location";
 "AttachContact" = "Contact";
+"AttachDocument" = "File";
 "AttachSticker" = "Sticker";
 "AttachAudio" = "Voice message";
 "AttachRound" = "Video message";
 "AttachGame" = "Game";
+"Map" = "Map";
+"AccDescrCollage" = "Collage";
+"AccDescrIVSlideshow" = "Slideshow";
+"AccDescrIVTable" = "Table";
+"AccDescrIVFormula" = "Formula";
+"UnsupportedAttachment" = "Unsupported attachment";
 "Bot.Game.Play" = "PLAY";
 "Bot" = "bot";
 "ChannelMegaJoined" = "You joined this group";

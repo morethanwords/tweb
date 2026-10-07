@@ -12,6 +12,8 @@ import type {SendFileDetails, UploadedRichMessageMedia} from '@appManagers/appMe
 import {loadRichMediaPreview} from '@components/richMessageInput/mediaPreview';
 
 export type RichMediaUploadTaskItem = ChatInputRichMediaUploadItem & {
+  /** Bumped by every start and by a cancel, so a superseded run drops its result. */
+  attempt: number,
   file: File,
   /**
    * Owned by the `run` that started this item. The presented state is not a
@@ -41,7 +43,9 @@ type RichMediaUploadTask = {
   editor: ChatInputEditor,
   id: string,
   items: RichMediaUploadTaskItem[],
-  session: RichMediaUploadSession
+  session: RichMediaUploadSession,
+  /** Cancelled by the user, kept while Undo can bring the media back. */
+  stopped?: boolean
 };
 
 let richMediaUploadId = 0;
@@ -79,15 +83,10 @@ export default class RichMediaUploads {
   public handleAction(action: 'remove' | 'retry', uploadId: string) {
     const task = this.tasks.get(uploadId);
     if(!task) return;
-    if(action === 'remove') return this.cancel(task);
-    task.items.forEach((item) => {
-      if(item.uploaded || item.inFlight || item.state !== 'error') return;
-      item.progress = 0;
-      item.state = 'preparing';
-      item.uploadingFileName = undefined;
-    });
-    this.update(task);
-    void this.run(task);
+    if(action === 'remove') return this.stop(task);
+    this.restart(task, task.items.filter((item) => (
+      !item.uploaded && !item.inFlight && item.state === 'error'
+    )));
   }
 
   public clear() {
@@ -144,6 +143,44 @@ export default class RichMediaUploads {
     });
   }
 
+  private restart(task: RichMediaUploadTask, items: RichMediaUploadTaskItem[]) {
+    items.forEach((item) => {
+      item.progress = 0;
+      item.state = 'preparing';
+      item.uploadingFileName = undefined;
+    });
+    this.update(task);
+    void this.run(task);
+  }
+
+  /**
+   * The user's cancel. The transfer stops and the media leaves the document as
+   * an undoable edit; the task keeps its files for as long as history can bring
+   * the media back (`reconcile`), and starts over if it does.
+   */
+  private stop(task: RichMediaUploadTask) {
+    task.stopped = true;
+    task.items.forEach((item) => {
+      if(item.uploaded) return;
+      ++item.attempt;
+      item.inFlight = false;
+      if(!item.uploadingFileName) return;
+      this.uploadsByFileName.delete(item.uploadingFileName);
+      void task.session.cancel(item.uploadingFileName);
+      item.uploadingFileName = undefined;
+    });
+    task.editor.cancelRichMediaUpload(task.id);
+  }
+
+  private resume(task: RichMediaUploadTask) {
+    task.stopped = false;
+    if(!task.session.isCurrent()) {
+      this.cancel(task);
+      return;
+    }
+    this.restart(task, task.items.filter((item) => !item.uploaded));
+  }
+
   private cancel(task: RichMediaUploadTask, removeNode = true) {
     task.items.forEach((item) => {
       if(!item.uploadingFileName) return;
@@ -160,7 +197,7 @@ export default class RichMediaUploads {
     reconcileRichMediaUploads(editor, this.tasks, {
       cancel: (task, removeNode) => this.cancel(task, removeNode),
       complete: (task) => this.cleanup(task),
-      update: (task) => this.update(task)
+      update: (task) => task.stopped ? this.resume(task) : this.update(task)
     });
   }
 
@@ -168,13 +205,15 @@ export default class RichMediaUploads {
     task: RichMediaUploadTask,
     item: RichMediaUploadTaskItem
   ) {
+    const attempt = ++item.attempt;
+    const isCurrent = () => this.tasks.get(task.id) === task && item.attempt === attempt;
     item.inFlight = true;
     item.progress = 0;
     item.state = 'preparing';
     this.update(task);
     try {
       const sendFileDetails = await prepareRichMediaUpload(item.file);
-      if(this.tasks.get(task.id) !== task) return;
+      if(!isCurrent()) return;
       const uploadFile = sendFileDetails.file;
       if(!(uploadFile instanceof File) && !(uploadFile instanceof Blob)) {
         throw new Error('RICH_MESSAGE_MEDIA_FILE_REQUIRED');
@@ -189,22 +228,22 @@ export default class RichMediaUploads {
       this.uploadsByFileName.set(uploadingFileName, {item, task});
       this.update(task);
       const uploaded = await task.session.upload(sendFileDetails, uploadingFileName);
-      if(this.tasks.get(task.id) !== task) return;
+      if(!isCurrent()) return;
       item.uploaded = uploaded;
       this.uploadsByFileName.delete(uploadingFileName);
       item.progress = 1;
       item.state = 'ready';
       this.update(task);
     } catch(err) {
+      if(!isCurrent()) return;
       if(item.uploadingFileName) {
         this.uploadsByFileName.delete(item.uploadingFileName);
       }
-      if(this.tasks.get(task.id) !== task) return;
       console.error('rich message media upload error', err);
       item.state = 'error';
       this.update(task);
     } finally {
-      item.inFlight = false;
+      if(item.attempt === attempt) item.inFlight = false;
     }
   }
 
@@ -212,7 +251,7 @@ export default class RichMediaUploads {
     await Promise.all(task.items.filter((item) => (
       !item.uploaded && !item.inFlight
     )).map((item) => this.uploadItem(task, item)));
-    if(this.tasks.get(task.id) !== task) return;
+    if(this.tasks.get(task.id) !== task || task.stopped) return;
     if(task.items.some((item) => !item.uploaded)) {
       this.update(task);
       return;
@@ -277,6 +316,7 @@ export default class RichMediaUploads {
       const items = group.map((entry, index): RichMediaUploadTaskItem => {
         const preview = createRichMediaPreviewUrl(entry.file);
         return {
+          attempt: 0,
           file: entry.file,
           fileName: entry.file.name,
           fileSize: entry.file.size,

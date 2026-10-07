@@ -182,7 +182,7 @@ const createAiEditorButton = ({
       // blocks and marks. Create with AI is handled separately above because it has no source.
       const editorRichMessage = selectedRichMessage || editor?.getRichMessage();
       const popupText = editorRichMessage ?
-        flattenRichMessageSummary(editorRichMessage.output, 0) :
+        flattenRichMessageSummary(editorRichMessage.output) :
         {
           _: 'textWithEntities' as const,
           ...trimRichText(value, entities)
@@ -234,7 +234,7 @@ const createAiEditorButton = ({
               );
             }
             if(editor) return editor.replaceAllRichMessage(richMessage);
-            onApply?.(flattenRichMessageSummary(richMessage, 0));
+            onApply?.(flattenRichMessageSummary(richMessage));
           });
         },
         canSendWhenOnline: session.canSendWhenOnline,
@@ -243,7 +243,7 @@ const createAiEditorButton = ({
         onSendRichMessage: canSendResult ? (richMessage, options) => {
           if(!canApplyResult()) return false;
           const payload = tiptapToRichMessage(richMessageToTiptap(richMessage));
-          return sendResult(flattenRichMessageSummary(payload.output, 0), options, payload);
+          return sendResult(flattenRichMessageSummary(payload.output), options, payload);
         } : undefined,
         initialTones
       }, HotReloadGuard);

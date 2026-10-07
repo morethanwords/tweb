@@ -11,6 +11,7 @@ import PaidMessagesInterceptor from '@components/chat/paidMessagesInterceptor';
 import {pickLanguage} from '@components/chat/translation';
 import type CommunityLinkSection from '@components/communities/communityLinkSection';
 import confirmationPopup from '@components/confirmationPopup';
+import type confirmOpenGoogleMaps from '@components/confirmOpenGoogleMaps';
 import {default as createEmojiDropdownButton, useEmojiDropdown} from '@components/emojiDropdownButton';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';
@@ -109,6 +110,7 @@ export type SolidJSHotReloadGuardContextValue = {
   wrapGeo: typeof wrapGeo;
   wrapAdaptiveCustomEmoji: typeof wrapAdaptiveCustomEmoji;
   confirmationPopup: typeof confirmationPopup;
+  confirmOpenGoogleMaps: typeof confirmOpenGoogleMaps;
   PeerProfileAvatars: typeof PeerProfileAvatars;
   showStarsRatingPopup: typeof showStarsRatingPopup;
   toast: typeof toast;

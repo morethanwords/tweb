@@ -20,12 +20,14 @@ import {doubleRaf} from '@helpers/schedulers';
 import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
-import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
+import isSendShortcutPressed, {isSendShortcutLeft} from '@helpers/dom/isSendShortcutPressed';
 import noop from '@helpers/noop';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import Modes from '@config/modes';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 import isKeyboardControl from '@helpers/dom/isKeyboardControl';
+import isTargetAnInput from '@helpers/dom/isTargetAnInput';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import updateScrollRegionFocusable from '@helpers/dom/scrollRegion';
 
 export type PopupButton = {
@@ -51,6 +53,11 @@ export type PopupOptions = Partial<{
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
   btnConfirmOnEnter?: Accessor<HTMLElement>,
+  /**
+   * Where the focus goes on open instead of the first control (the close button). A text field
+   * takes the caret at its end, after whatever is already in it.
+   */
+  initialFocus?: Accessor<HTMLElement | undefined>,
   old: boolean
 }>;
 
@@ -236,13 +243,16 @@ const PopupElement = (props: {
             container,
             () => PopupElement.POPUPS[PopupElement.POPUPS.length - 1] === value
           );
-          focusTrap.activate(previouslyFocusedEl);
+          const initialFocus = props.initialFocus?.();
+          focusTrap.activate(previouslyFocusedEl, initialFocus);
+          if(initialFocus && isTargetAnInput(initialFocus)) placeCaretAtEnd(initialFocus);
         }
       }
 
       const handleKeydown = (e: KeyboardEvent) => {
         const btnConfirm = value.btnConfirmOnEnter;
-        if(e.defaultPrevented || e.isComposing || e.repeat || !btnConfirm ||
+        // closed already: its listener goes with its fade
+        if(destroyed() || (e.defaultPrevented && !isSendShortcutLeft(e)) || e.isComposing || e.repeat || !btnConfirm ||
            (btnConfirm as HTMLButtonElement).disabled ||
            PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== value) {
           return;
@@ -820,6 +830,20 @@ PopupElement.Buttons = (props: {
     </div>
   ));
 };
+
+/**
+ * Whether a modal popup is open over `element`: the top one has an overlay and
+ * does not hold it. The composer can still get the focus under one — given back
+ * after the key that sent the message — and the keys meant for the popup must
+ * not act on it. A popup on its way out, whose fade outlasts it, holds nothing.
+ */
+export function isUnderModalPopup(element: Element) {
+  let top: PopupContextValue;
+  for(let index = PopupElement.POPUPS.length - 1; index >= 0 && !top; --index) {
+    if(!PopupElement.POPUPS[index].destroyed) top = PopupElement.POPUPS[index];
+  }
+  return !!top && !top.withoutOverlay && !top.element?.contains(element);
+}
 
 PopupElement.getPopups = (popupKind: symbol) => {
   return PopupElement.POPUPS.filter((element) => {

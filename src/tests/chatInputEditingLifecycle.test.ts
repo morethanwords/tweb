@@ -332,3 +332,34 @@ test('keeps the submitted forwarding selection stable while preparation waits', 
     expect(sending.forwardMessages.mock.calls[0][0].mids).toEqual([11, 12]);
   } finally {sending.restore();}
 });
+
+// Enter typed outside the field sends from it and puts the focus back on keyup. A send that opened a
+// popup meanwhile (the rich-message Premium confirmation) keeps it: focus pulled back under the popup
+// took the popup's next Enter and sent again.
+test('a send from outside the field returns the focus to it unless it opened a popup', async() => {
+  const {default: overlayCounter} = await import('@helpers/overlayCounter');
+  const {setAppSettingsSilent} = await import('@stores/appSettings');
+  setAppSettingsSilent('sendShortcut', 'enter');
+  const messageInput = document.createElement('div');
+  messageInput.tabIndex = 0;
+  document.body.append(messageInput);
+  const passEnter = (opensPopup: boolean) => {
+    const host = {messageInput, sendMessage: vi.fn(() => {
+      if(opensPopup) overlayCounter.isOverlayActive = true;
+    })};
+    (document.activeElement as HTMLElement)?.blur?.();
+    ChatInput.prototype.passEventToInput.call(host, new KeyboardEvent('keydown', {key: 'Enter'}));
+    expect(host.sendMessage).toHaveBeenCalledOnce();
+    document.dispatchEvent(new KeyboardEvent('keyup', {key: 'Enter'}));
+  };
+  try {
+    passEnter(false);
+    expect(document.activeElement).toBe(messageInput);
+
+    passEnter(true);
+    expect(document.activeElement).not.toBe(messageInput);
+  } finally {
+    if(overlayCounter.isOverlayActive) overlayCounter.isOverlayActive = false;
+    messageInput.remove();
+  }
+});

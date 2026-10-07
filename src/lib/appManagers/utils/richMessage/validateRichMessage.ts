@@ -4,6 +4,7 @@ import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
 import {TLSerialization} from '@lib/mtproto/tl_utils';
 import emojiRegExp from '@vendor/emoji/regex';
 import {getOrderedListTypePresentation} from '@lib/richTextProcessor/orderedList';
+import measureTableGrid, {tableSpan} from '@lib/richTextProcessor/tableGrid';
 
 export type RichMessageLimits = {
   lengthLimit: number,
@@ -148,62 +149,6 @@ function tableColumnMeasurementLimit(maxTableColumns: number) {
   return maxTableColumns >= Number.MAX_SAFE_INTEGER ? Number.MAX_SAFE_INTEGER : maxTableColumns + 1;
 }
 
-type TableInterval = {start: number, end: number};
-
-function tableSpan(value?: number) {
-  if(value === undefined) return {valid: true, value: 1};
-  const valid = Number.isInteger(value) && value > 0 && value <= 0x7FFFFFFF;
-  return {
-    valid,
-    value: valid ? value : 1
-  };
-}
-
-function intervalOverlaps(interval: TableInterval, start: number, end: number) {
-  return interval.start < end && start < interval.end;
-}
-
-function firstFreeTableColumn(intervals: TableInterval[], start: number) {
-  let column = start;
-  for(const interval of intervals) {
-    if(interval.start > column) break;
-    if(interval.end > column) column = interval.end;
-  }
-  return column;
-}
-
-function measureTableLayout(rows: PageTableRow[], maxColumns: number) {
-  const occupancy = rows.map(() => [] as TableInterval[]);
-  let columns = 0;
-  let conflict = false;
-
-  for(let rowIndex = 0; rowIndex < rows.length; ++rowIndex) {
-    let column = 0;
-    for(const cell of rows[rowIndex].cells) {
-      column = firstFreeTableColumn(occupancy[rowIndex], column);
-      const colspan = tableSpan(cell.colspan);
-      const rowspan = tableSpan(cell.rowspan);
-      if(!colspan.valid || !rowspan.valid) conflict = true;
-
-      const end = Math.min(Number.MAX_SAFE_INTEGER, column + colspan.value);
-      const rowLimit = Math.min(rows.length, rowIndex + rowspan.value);
-      for(let occupiedRow = rowIndex; occupiedRow < rowLimit; ++occupiedRow) {
-        const intervals = occupancy[occupiedRow];
-        if(intervals.some((interval) => intervalOverlaps(interval, column, end))) {
-          conflict = true;
-        }
-        intervals.push({start: column, end});
-        intervals.sort((left, right) => left.start - right.start);
-      }
-
-      columns = Math.max(columns, Math.min(end, maxColumns));
-      column = end;
-    }
-  }
-
-  return {columns, conflict};
-}
-
 function addTableMetrics(
   rows: PageTableRow[],
   depth: number,
@@ -214,7 +159,7 @@ function addTableMetrics(
   rows.forEach((row) => row.cells.forEach((cell: PageTableCell) => {
     metrics.textLength += addRichTextMetrics(cell.text, depth + 1, metrics);
   }));
-  const layout = measureTableLayout(rows, maxColumns);
+  const layout = measureTableGrid(rows, maxColumns);
   metrics.maxTableColumns = Math.max(
     metrics.maxTableColumns,
     layout.columns

@@ -1,4 +1,4 @@
-import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuSync, setButtonMenuItemDisabled} from '@components/buttonMenu';
 import {createButtonMenuSelect} from '@components/buttonMenuSelect';
 import {toastNew} from '@components/toast';
 import ButtonIcon from '@components/buttonIcon';
@@ -16,9 +16,11 @@ import {createRoot} from 'solid-js';
 import {openCreateLinkPopupForEditor} from '@components/popups/createLinkForInput';
 import {getMiddleware} from '@helpers/middleware';
 import {ChatInputEditor} from '@components/chat/inputEditor';
+import type {ChatInputFormatting} from '@components/chat/inputEditor/types';
 import {isDecimalOrderedListType} from '@lib/richTextProcessor/orderedList';
 import {CodeLanguageAliases, CodeLanguageMap} from '@/codeLanguages';
 import {renderLatexInto} from '@components/instantViewMath';
+import mathStyles from '@components/richMessageInput/mathPopup.module.scss';
 import generatePremiumIcon from '@components/generatePremiumIcon';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import preserveEditorSelectionOnToolbarButton from '@components/chat/inputEditor/toolbarButton';
@@ -30,6 +32,7 @@ type MessageInputCodeLanguageOption = {
   searchText: string,
   value: string
 };
+const LIST_FORMATTING: ChatInputFormatting[] = ['orderedList', 'bulletList', 'taskList', 'details'];
 const MESSAGE_INPUT_MATH_SAMPLES = [
   'e^{i\\pi}=-1',
   'x^n+y^n=z^n',
@@ -54,6 +57,9 @@ export default class EditorToolbar {
   private undoButton: HTMLButtonElement;
   private redoButton: HTMLButtonElement;
   private tableButton: HTMLButtonElement;
+  private listButton: HTMLButtonElement;
+  private codeButton: HTMLButtonElement;
+  private mathButton: HTMLButtonElement;
   private languageElement: HTMLElement;
   private languageMenu: {close: () => void, open: (element: HTMLElement) => Promise<void>};
   private listenerSetter = new ListenerSetter();
@@ -110,6 +116,13 @@ export default class EditorToolbar {
     if(this.tableButton) {
       this.tableButton.disabled = !editor.canInsertTable();
     }
+    // A table cell or a code block takes only some of the formatting; the rest
+    // stays in place, dimmed, instead of doing nothing on a click.
+    if(this.listButton) {
+      this.listButton.disabled = !LIST_FORMATTING.some((type) => editor.canApplyFormatting(type));
+      this.codeButton.disabled = !editor.canApplyFormatting('codeBlock');
+      this.mathButton.disabled = !editor.canApplyFormatting('math');
+    }
   }
 
   public run(command: (editor: ChatInputEditor) => boolean) {
@@ -152,7 +165,7 @@ export default class EditorToolbar {
     }
     const separateLineField = new CheckboxField({checked: block});
     const separateLine = document.createElement('label');
-    separateLine.classList.add('popup-rich-math-separate-line');
+    separateLine.classList.add(mathStyles.separateLine);
     separateLine.append(
       i18n('Chat.Input.Editor.Math.SeparateLine'),
       separateLineField.label
@@ -160,19 +173,19 @@ export default class EditorToolbar {
     separateLine.hidden = !canSeparateLine;
 
     const previewSection = document.createElement('div');
-    previewSection.classList.add('popup-rich-math-preview-section');
+    previewSection.classList.add(mathStyles.previewSection);
     const previewLabel = document.createElement('div');
-    previewLabel.classList.add('popup-rich-math-preview-label');
+    previewLabel.classList.add(mathStyles.previewLabel);
     previewLabel.textContent = I18n.format('Chat.Input.Editor.Math.Result', true);
     const preview = document.createElement('div');
-    preview.classList.add('popup-rich-math-preview');
+    preview.classList.add(mathStyles.preview);
     previewSection.append(previewLabel, preview);
     const renderPreview = () => {
       const source = inputField.value.trim();
       const content = document.createElement('div');
-      content.classList.add('popup-rich-math-preview-content');
+      content.classList.add(mathStyles.previewContent);
       preview.replaceChildren(content);
-      content.classList.toggle('is-empty', !source);
+      content.classList.toggle(mathStyles.previewContentEmpty, !source);
       renderLatexInto(content, source || mathSample, separateLineField.checked, undefined, true);
     };
     inputField.input.addEventListener('input', renderPreview);
@@ -187,7 +200,8 @@ export default class EditorToolbar {
         inputField,
         content: [separateLine, previewSection],
         button: {langKey: selectedMath ? 'Save' : 'Create'},
-        className: 'popup-rich-math'
+        // `popup-rich-math` is what the e2e suite finds the box by; the look is the module's
+        className: `popup-rich-math ${mathStyles.popup}`
       });
     } catch{
       return;
@@ -263,8 +277,11 @@ export default class EditorToolbar {
     selection ||= editor.captureSelection();
     const {default: showRichButtonPopup} = await import('@components/popups/richButton');
     let result: Awaited<ReturnType<typeof showRichButtonPopup>>;
+    const inline = editor.canApplyFormatting('inlineButton');
+    const row = editor.canApplyFormatting('buttonRow');
+    if(!inline && !row) return;
     try {
-      result = await showRichButtonPopup({canChooseLine: true, separateLine: true});
+      result = await showRichButtonPopup({canChooseLine: inline && row, separateLine: row});
     } catch{
       return;
     }
@@ -393,7 +410,7 @@ export default class EditorToolbar {
       'plus',
       'Chat.Input.Editor.Toolbar.More'
     );
-    const listButton = this.createButton(
+    const listButton = this.listButton = this.createButton(
       'list_bulleted',
       'Chat.Input.Editor.Toolbar.Lists'
     );
@@ -405,11 +422,11 @@ export default class EditorToolbar {
       'link',
       'Chat.Input.Editor.Toolbar.Link'
     );
-    const codeButton = this.createButton(
+    const codeButton = this.codeButton = this.createButton(
       'monospace',
       'Chat.Input.Editor.Toolbar.Code'
     );
-    const mathButton = this.createButton(
+    const mathButton = this.mathButton = this.createButton(
       'formula',
       'Chat.Input.Editor.Toolbar.Math'
     );
@@ -446,44 +463,64 @@ export default class EditorToolbar {
       },
       createSubmenu: () => ButtonMenuSync({buttons: headingMenuButtons})
     });
+    // Each item with what tells whether it can act at the selection.
+    const plusMenuItems: [ButtonMenuItemOptions, (editor: ChatInputEditor) => boolean][] = [
+      [{
+        icon: 'text_block',
+        text: 'Chat.Input.Editor.Toolbar.BodyText',
+        onClick: () => runPlusCommand((editor) => editor.setBodyText())
+      }, () => true],
+      [headingSubmenuButton, (editor) => editor.canApplyFormatting('heading')],
+      [withPremiumIndicator({
+        icon: 'text_add',
+        text: 'Chat.Input.Editor.Toolbar.Footer',
+        onClick: () => runPlusCommand((editor) => editor.insertFooter())
+      }), (editor) => editor.canApplyFormatting('footer')],
+      [{
+        icon: 'quote_filled',
+        text: 'Quote',
+        onClick: () => runPlusCommand((editor) => editor.applyMarkup({type: 'quote'}))
+      }, (editor) => editor.canApplyMarkup('quote')],
+      [withPremiumIndicator({
+        icon: 'pull_quote',
+        text: 'Chat.Input.Editor.Toolbar.Pullquote',
+        onClick: () => runPlusCommand((editor) => editor.insertPullquote())
+      }), (editor) => editor.canApplyFormatting('pullquote')],
+      [withPremiumIndicator({
+        icon: 'toggle',
+        text: 'Chat.Input.Editor.Toolbar.Details',
+        onClick: () => runPlusCommand((editor) => editor.insertDetails())
+      }), (editor) => editor.canApplyFormatting('details')],
+      [withPremiumIndicator({
+        icon: 'slash',
+        text: 'Chat.Input.Editor.Toolbar.Divider',
+        onClick: () => runPlusCommand((editor) => editor.insertDivider())
+      }), (editor) => editor.canApplyFormatting('divider')],
+      [withPremiumIndicator({
+        icon: 'arrow_right_square',
+        text: 'Chat.Input.Editor.Toolbar.Button',
+        onClick: () => void this.insertRichButton(plusMenuSelection)
+      }), (editor) => editor.canApplyFormatting('inlineButton') || editor.canApplyFormatting('buttonRow')]
+    ];
+    const disableUnavailable = (items: [ButtonMenuItemOptions, (editor: ChatInputEditor) => boolean][]) => {
+      const editor = this.editor;
+      items.forEach(([item, can]) => setButtonMenuItemDisabled(item, !editor || !can(editor)));
+    };
     this.listenerSetter.add(plusButton)('mousedown', (event) => event.preventDefault());
     ButtonMenuToggle({
       container: plusButton,
       listenerSetter: this.listenerSetter,
       direction: 'top-right',
-      buttons: [{
-        icon: 'text_block',
-        text: 'Chat.Input.Editor.Toolbar.BodyText',
-        onClick: () => runPlusCommand((editor) => editor.setBodyText())
-      }, headingSubmenuButton, withPremiumIndicator({
-        icon: 'text_add',
-        text: 'Chat.Input.Editor.Toolbar.Footer',
-        onClick: () => runPlusCommand((editor) => editor.insertFooter())
-      }), {
-        icon: 'quote_filled',
-        text: 'Quote',
-        onClick: () => runPlusCommand((editor) => editor.applyMarkup({type: 'quote'}))
-      }, withPremiumIndicator({
-        icon: 'pull_quote',
-        text: 'Chat.Input.Editor.Toolbar.Pullquote',
-        onClick: () => runPlusCommand((editor) => editor.insertPullquote())
-      }), withPremiumIndicator({
-        icon: 'toggle',
-        text: 'Chat.Input.Editor.Toolbar.Details',
-        onClick: () => runPlusCommand((editor) => editor.insertDetails())
-      }), withPremiumIndicator({
-        icon: 'slash',
-        text: 'Chat.Input.Editor.Toolbar.Divider',
-        onClick: () => runPlusCommand((editor) => editor.insertDivider())
-      }), withPremiumIndicator({
-        icon: 'arrow_right_square',
-        text: 'Chat.Input.Editor.Toolbar.Button',
-        onClick: () => void this.insertRichButton(plusMenuSelection)
-      })],
+      buttons: plusMenuItems.map(([item]) => item),
       onOpenBefore: () => {
         plusMenuSelection = this.editor?.captureSelection();
+        // a menu reopened while it fades out is the same one, and gets no onOpen
+        disableUnavailable(plusMenuItems);
       },
-      onOpen: () => headingSubmenuButton.onOpen?.(),
+      onOpen: () => {
+        disableUnavailable(plusMenuItems);
+        headingSubmenuButton.onOpen?.();
+      },
       onClose: () => headingSubmenuButton.onClose?.()
     });
     attachClickEvent(tableButton, () => {
@@ -636,36 +673,49 @@ export default class EditorToolbar {
         }))
       })
     });
+    const canOrderList = (editor: ChatInputEditor) => editor.canApplyFormatting('orderedList');
+    const listMenuItems: [ButtonMenuItemOptions, (editor: ChatInputEditor) => boolean][] = [
+      [withPremiumIndicator({
+        icon: 'list_numbered',
+        text: 'Chat.Input.Editor.Toolbar.OrderedList',
+        onClick: () => runListCommand((editor) => editor.toggleOrderedList())
+      }), canOrderList],
+      [withPremiumIndicator({
+        icon: 'list_bulleted',
+        text: 'Chat.Input.Editor.Toolbar.BulletList',
+        onClick: () => runListCommand((editor) => editor.toggleBulletList())
+      }), (editor) => editor.canApplyFormatting('bulletList')],
+      [withPremiumIndicator({
+        icon: 'list_checked',
+        text: 'Chat.Input.Editor.Toolbar.Checklist',
+        onClick: () => runListCommand((editor) => editor.toggleTaskList())
+      }), (editor) => editor.canApplyFormatting('taskList')],
+      [withPremiumIndicator({
+        icon: 'toggle',
+        text: 'Chat.Input.Editor.Toolbar.Details',
+        onClick: () => runListCommand((editor) => editor.insertDetails())
+      }), (editor) => editor.canApplyFormatting('details')],
+      // Both styles make the list first when there is none.
+      [orderedListStyleSubmenu, canOrderList],
+      [orderedListItemStyleSubmenu, canOrderList],
+      [{
+        icon: 'flip',
+        text: 'Chat.Input.Editor.List.Reversed',
+        onClick: () => runListCommand((editor) => editor.toggleOrderedListReversed())
+      }, (editor) => !!editor.getOrderedListState()]
+    ];
     this.listenerSetter.add(listButton)('mousedown', (event) => event.preventDefault());
     ButtonMenuToggle({
       container: listButton,
       listenerSetter: this.listenerSetter,
       direction: 'top-right',
-      buttons: [{
-        icon: 'list_numbered',
-        text: 'Chat.Input.Editor.Toolbar.OrderedList',
-        onClick: () => runListCommand((editor) => editor.toggleOrderedList())
-      }, {
-        icon: 'list_bulleted',
-        text: 'Chat.Input.Editor.Toolbar.BulletList',
-        onClick: () => runListCommand((editor) => editor.toggleBulletList())
-      }, withPremiumIndicator({
-        icon: 'list_checked',
-        text: 'Chat.Input.Editor.Toolbar.Checklist',
-        onClick: () => runListCommand((editor) => editor.toggleTaskList())
-      }), withPremiumIndicator({
-        icon: 'toggle',
-        text: 'Chat.Input.Editor.Toolbar.Details',
-        onClick: () => runListCommand((editor) => editor.insertDetails())
-      }), orderedListStyleSubmenu, orderedListItemStyleSubmenu, {
-        icon: 'flip',
-        text: 'Chat.Input.Editor.List.Reversed',
-        onClick: () => runListCommand((editor) => editor.toggleOrderedListReversed())
-      }],
+      buttons: listMenuItems.map(([item]) => item),
       onOpenBefore: () => {
         listMenuSelection = this.editor?.captureSelection();
+        disableUnavailable(listMenuItems);
       },
       onOpen: () => {
+        disableUnavailable(listMenuItems);
         orderedListStyleSubmenu.onOpen?.();
         orderedListItemStyleSubmenu.onOpen?.();
       },

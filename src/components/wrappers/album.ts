@@ -9,7 +9,7 @@ import rootScope from '@lib/rootScope';
 import {AnimationItemGroup} from '@components/animationIntersector';
 import Chat from '@components/chat/chat';
 import LazyLoadQueue from '@components/lazyLoadQueue';
-import prepareAlbum from '@components/prepareAlbum';
+import prepareAlbum, {ALBUM_ITEM_SPACING} from '@components/prepareAlbum';
 import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
 import wrapPhoto from '@components/wrappers/photo';
 import wrapVideo from '@components/wrappers/video';
@@ -55,7 +55,7 @@ export default function wrapAlbum({messages, media, attachmentDiv, middleware, u
     items: items.map((i) => ({w: i.size.w, h: i.size.h})),
     maxWidth: mediaSizes.active.album.width,
     minWidth: 100,
-    spacing: 1,
+    spacing: ALBUM_ITEM_SPACING,
     forMedia: true,
     noGroupedItem: !messages
   });

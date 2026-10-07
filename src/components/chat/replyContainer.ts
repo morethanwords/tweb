@@ -19,6 +19,7 @@ import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {getTodoItemReplyPreview} from '@components/wrappers/messagePreviewIcon';
+import {getRichMessagePreviewMedia} from '@components/wrappers/richMessagePreview';
 
 const MEDIA_SIZE = 32;
 
@@ -60,7 +61,8 @@ export async function wrapReplyMedia({
 
   let messageMedia: MessageMedia | WebPage.webPage = storyItem?.media ||
     (message as Message.message)?.media ||
-    (replyHeader?._ === 'messageReplyHeader' && replyHeader.reply_media);
+    (replyHeader?._ === 'messageReplyHeader' && replyHeader.reply_media) ||
+    getRichMessagePreviewMedia((message as Message.message)?.rich_message);
 
   if(messageMedia?._ === 'messageMediaStory') {
     storyItem = messageMedia.story as StoryItem.storyItem;

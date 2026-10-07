@@ -99,10 +99,8 @@ export default class CustomEmojiElement extends HTMLElement {
 
     if(this.renderer) {
       const elements = this.renderer.customEmojis.get(this.docId);
-      if(elements?.delete(this) && !elements.size) {
-        this.renderer.customEmojis.delete(this.docId);
-        this.renderer.textColored.delete(elements);
-        this.renderer.playersSynced.delete(elements);
+      if(elements?.delete(this)) {
+        this.renderer.onElementCleared(this.docId, elements);
       }
 
       if(replaceChildren) {

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "commit": "c5f4b576eb2d521364bba524616e0702027987d3",
+  "commit": "35d2110ecb118a2d80f2b5823b7e4f629d948894",
   "files": [
     {
       "file": ".github/scripts/__tests__/resolve-publish-config.test.mjs",
@@ -49,6 +49,18 @@
       "sha256": "78033e08ac8c29d945bc29ed6fd86f6591044b74c2c7632a8892c74cbd05a1d5",
       "declarations": 1,
       "review": "R004"
+    },
+    {
+      "file": "demos/src/Examples/DecorationComponents/index.spec.ts",
+      "sha256": "89ec485296ee632da72e1d537a300754f60efe91b370c3145ee8ed83aed8ba73",
+      "declarations": 7,
+      "review": "G001"
+    },
+    {
+      "file": "demos/src/Examples/Decorations/index.spec.ts",
+      "sha256": "fabc6435bfdbc0f92b6ecde3d1d0633806096e25f70f865d4f7d25b52dbe31e5",
+      "declarations": 4,
+      "review": "G001"
     },
     {
       "file": "demos/src/Examples/Default/index.spec.ts",
@@ -222,9 +234,16 @@
     },
     {
       "file": "demos/src/Extensions/ListKeymap/index.spec.ts",
-      "sha256": "4d337e36098330d3f736cac1bd23e6ee900fbf70957f6146a5609c05bdd49d7b",
-      "declarations": 3,
-      "review": "R026"
+      "sha256": "cc4505090d1bf9bffc13a61a536a5c04716fa55dde7d694124254b42c5c7b302",
+      "declarations": 12,
+      "review": "G001",
+      "overrides": {
+        "R026": [
+          60,
+          70,
+          84
+        ]
+      }
     },
     {
       "file": "demos/src/Extensions/Selection/index.spec.ts",
@@ -281,6 +300,18 @@
       "review": "R004"
     },
     {
+      "file": "demos/src/GuideNodeViews/ReactComponentContent/index.spec.ts",
+      "sha256": "9ed2beaa9943004896536cf36d79583367a53c26e4f06e78452617fd8948136f",
+      "declarations": 1,
+      "review": "G001"
+    },
+    {
+      "file": "demos/src/GuideNodeViews/VueComponentContent/index.spec.ts",
+      "sha256": "4f1f4ddf9b13806e28663025e02b185f5983a3f5b27408e72e368bf851583c3e",
+      "declarations": 1,
+      "review": "G001"
+    },
+    {
       "file": "demos/src/Marks/Bold/index.spec.ts",
       "sha256": "59349016f604e26566e36b434958bc04c05f1a6b104df9846289e3398c0fb03f",
       "declarations": 8,
@@ -306,20 +337,31 @@
     },
     {
       "file": "demos/src/Marks/Link/index.spec.ts",
-      "sha256": "2dd8598a9920885f3352d7d41ce385e9a6088dca0988260951a8160e479c6fb2",
-      "declarations": 12,
+      "sha256": "a661fa83029e273aa74938d700f010643a203a4dc5771995b73827c39d5c7a62",
+      "declarations": 15,
       "review": "R036",
       "overrides": {
         "R034": [
           37,
           74,
-          132
+          162
         ],
         "R035": [
           48,
           61
+        ],
+        "G001": [
+          131,
+          141,
+          151
         ]
       }
+    },
+    {
+      "file": "demos/src/Marks/RubyText/index.spec.ts",
+      "sha256": "d501ff0e4f9e33bd7c903ad030cab315d8d7f9756a93090f405b36b7ace96dd2",
+      "declarations": 3,
+      "review": "G001"
     },
     {
       "file": "demos/src/Marks/Strike/index.spec.ts",
@@ -345,8 +387,8 @@
     },
     {
       "file": "demos/src/Nodes/Blockquote/index.spec.ts",
-      "sha256": "f9e5f5029efea2c55a2a17929047d8b12673c7b563dfe449c2c6c14b5c17fa1e",
-      "declarations": 11,
+      "sha256": "9ae962d0da7528fd320efd43f5016e1dd62d2fb5494ff83e29509ccf9f7c59eb",
+      "declarations": 12,
       "review": "R043",
       "overrides": {
         "R039": [
@@ -363,6 +405,9 @@
         ],
         "R042": [
           76
+        ],
+        "G001": [
+          148
         ]
       }
     },
@@ -469,20 +514,26 @@
       "review": "R018"
     },
     {
+      "file": "packages/ai-toolkit/__tests__/streaming-reveal.spec.ts",
+      "sha256": "6ee5c613c3f89755a85582b320fc245e34449ab2a92e2b5d403263999fa83123",
+      "declarations": 22,
+      "review": "R056"
+    },
+    {
       "file": "packages/ai-toolkit/src/server-ai-toolkit.spec.ts",
-      "sha256": "84fa3a65eea26829b88cd5a7c2dc14cd94e77841de4cab9b1d893c94ee329e95",
+      "sha256": "9337e40917cad94bfa8e8a670385849b523fbcf5de8a5c6659d9c1ee17592898",
       "declarations": 3,
       "review": "R056"
     },
     {
       "file": "packages/core/__tests__/attrsEqual.spec.ts",
-      "sha256": "27523c916f5057d1a553ddc49e2e553f27d3b53f826785afa9d39ea6158f313a",
+      "sha256": "7d6412b1dbd483f63f87ddc55e900372a0132b54856f2980ae79583d453769a5",
       "declarations": 12,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/can.spec.ts",
-      "sha256": "f4d1ad4fedd252d7254ac2d89f8fd69651829120527cbda96b672db560a83dc5",
+      "sha256": "922d8bc0f9357c9c16711e9972119aa1a16efb6a8a4a0cb1a622f50f1547b675",
       "declarations": 14,
       "review": "R058",
       "overrides": {
@@ -494,58 +545,90 @@
     },
     {
       "file": "packages/core/__tests__/clipboardTextSerializer.spec.ts",
-      "sha256": "4ac24242e1e4441b26fe089e240db55b310cdbf31b208a34f57de80451c15068",
+      "sha256": "c5d99a5079c57837af018fee203461b4fe91a7dac8a8b04c81845c94417e43c5",
       "declarations": 3,
       "review": "R060"
     },
     {
       "file": "packages/core/__tests__/createNodeFromContent.spec.ts",
-      "sha256": "97223aa2776fc5af88c56ae4221ed4f2dbb7cec2c4176a1340387bc43841c75c",
-      "declarations": 12,
-      "review": "R061"
+      "sha256": "3a06450e37d3c2c32340dd0c71d7df918e4aea567881b90582900225ee6b9b39",
+      "declarations": 13,
+      "review": "R061",
+      "overrides": {
+        "G001": [
+          316
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/createWidgetDecoration.spec.ts",
+      "sha256": "657eb229eb4db0a26a9d963439a88bd7c43a50844aad1801fbbbce3cfc632243",
+      "declarations": 10,
+      "review": "G001"
     },
     {
       "file": "packages/core/__tests__/cut.spec.ts",
-      "sha256": "f1651e57830091b070134b645f9fabd1e7503027a7598a9b076c0c7e9f327259",
+      "sha256": "264e6f5edd0ca7cfe4d80834e9e0bf69c276203253d128721ec6eff4d6b63ebe",
       "declarations": 2,
       "review": "R062"
     },
     {
+      "file": "packages/core/__tests__/decorationApplyScope.spec.ts",
+      "sha256": "3094a0032d15ffcfb19f4b1a135efe7435b2af1daf47f86ae9e1aee64e849088",
+      "declarations": 8,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/__tests__/decorations.spec.ts",
+      "sha256": "1c6258130d501487eb244f6344d3d19596dcbfe53a8a2a9ed492afea6d28700a",
+      "declarations": 37,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/delete.spec.ts",
-      "sha256": "02ee54ce154892715e12b2a6d135a55587886ae6324c157f4411e9a050cb2906",
-      "declarations": 7,
+      "sha256": "5f4a46cbb35e0112d17739400ec5de0a5076dfca6c6edffc3b145c57683e411f",
+      "declarations": 8,
       "review": "R063",
       "overrides": {
         "R064": [
-          77
+          78
         ],
         "R065": [
-          92,
-          105
+          93,
+          106
+        ],
+        "G001": [
+          147
         ]
       }
     },
     {
       "file": "packages/core/__tests__/dispatchTransaction.spec.ts",
-      "sha256": "4a74768d0519cfe430de32c68ccb33393469c33b7defc58c0cf2d1af04768b9f",
+      "sha256": "2031678f22fa7b4e8967912cec8569debb53592fe0a0b8cfda32bb3cd021c3b3",
       "declarations": 5,
       "review": "R057"
     },
     {
+      "file": "packages/core/__tests__/duplicatedProseMirrorModel.spec.ts",
+      "sha256": "68287fa9c50d22f84f383f5b4d75b0a57cc856c7b12587ec0905e7c507e6c4bb",
+      "declarations": 9,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/editorProps.spec.ts",
-      "sha256": "9467ddd45d8ebe966e821bc9638525cc54f88db656b22fa2c643bdaa6ba955eb",
+      "sha256": "7e05b23922ae334876bb474e0c882a181acbada8a13a255cf44ca17e753a884d",
       "declarations": 2,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/extendExtensions.spec.ts",
-      "sha256": "3bf34806d270963274df3422b3bed9080a13021a3407fb15f56d793b57bb964c",
+      "sha256": "1df2252e53f593646d7206c430e2ba4c13b3aa895f3b0dd3c7705b3a93b405e0",
       "declarations": 19,
       "review": "R066"
     },
     {
       "file": "packages/core/__tests__/extendMarkRange.spec.ts",
-      "sha256": "3caf8dbfb4f2291cbb2bc45e749cde492e62412d219e067918a5a2cd21c2f9a3",
+      "sha256": "be898398ae62f95d082523e50f0ddf331a9710fde248cc1b2c6c6a6fd7782dce",
       "declarations": 7,
       "review": "R067",
       "overrides": {
@@ -557,73 +640,91 @@
     },
     {
       "file": "packages/core/__tests__/extensionOptions.spec.ts",
-      "sha256": "356b729f2ec8c5c45ca73e8c677a4ece6ab94b8c0d11b8bb00e53851ace4a859",
+      "sha256": "a335c8a62f0a3133c1b7815345b730311b1dd769a95be3622fd65b6166e2ccd9",
       "declarations": 9,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/extensionStorage.spec.ts",
-      "sha256": "4a01a5b77596851e837a1e60de609df6a52ff8dc8a5fee3565a8edb04e34076d",
+      "sha256": "06418eb33d50a8dd0ef56896cc53492dfc02117587acdce2ec29eda2e06b33ba",
       "declarations": 8,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/fromString.spec.ts",
-      "sha256": "cac4081cf2dbc13a5f275568a8c7350fbc45220907e8303f5dfaff4a18c2a092",
+      "sha256": "d2fedb25eab14dc8475907f7044ffe818d9d2a21fd50cd895db9f5e173210a07",
       "declarations": 8,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/generateHTML.spec.ts",
-      "sha256": "09b45c0757ff4d6dbdd12f88340407b1892569c88bdf44b85a5169c4986409a5",
+      "sha256": "b065b3d6e79a1db19c01f9d2fbb8dc3e949fb2d1c401c427153879ae3dd06e63",
       "declarations": 1,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/generateJSON.spec.ts",
-      "sha256": "86716b6e434c85c8f23eb5d38785ef7f5abb78fae0df97c7ea42c3bc85d70fc6",
+      "sha256": "a6ad211a0cbb3a21a49da6762584abc8e0f9683267c1517ae96084699651a940",
       "declarations": 1,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/generateText.spec.ts",
-      "sha256": "182f45f739151b8850a981c771ae43824772002cefac0e2c542a90fc273d54d0",
+      "sha256": "3b58abaf74a5b7104f7356e73ac5ceea5afff8e3c2fb025d99017d64e0cd2600",
       "declarations": 1,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/getAttributesFromExtensions.spec.ts",
-      "sha256": "c9d514024ae4c4eb9aefdcdefaf26d792a6ab0a5757133ee2a686982eda0498d",
+      "sha256": "a0783463a08e240d96d134d368d95befdb88ca55acbefef78a0296306459a940",
       "declarations": 14,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/getContent.spec.ts",
-      "sha256": "775469c52b4c9318710bb8424a79f819924d0f152d0ac9baa3f0eea71ac3fce0",
+      "sha256": "16949e96638f7092faba6efbf4c66383a906ce329480bbbfe51565c1d0de0fa0",
       "declarations": 2,
       "review": "R069"
     },
     {
       "file": "packages/core/__tests__/getMarkRange.spec.ts",
-      "sha256": "d8b87f5eadb3a491b40d3ed095418ede445215779cec7f0d727a633982df5d83",
+      "sha256": "bbb4c282d4599f03c02244ecd7c709ffbcdf0fcaec57825e07ea75d540b0834b",
       "declarations": 8,
       "review": "R070"
     },
     {
+      "file": "packages/core/__tests__/getPreviousBlockSibling.spec.ts",
+      "sha256": "df25b1355a22bf296352e6de2b69bc86f97c6bae50a9a0b1604e8c9ca80a58ef",
+      "declarations": 4,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/getStyleProperty.spec.ts",
-      "sha256": "45724c85d44d33b382f7121c4b8454a5a72af323331feadddc16067bc9cc7293",
+      "sha256": "74fc5bae2f01e574171a730fc446f3286ea725d546f372ebf43e38bd330c16bc",
       "declarations": 7,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/getTextContentFromNodes.spec.ts",
-      "sha256": "84baf42fe96e90138ef9243d75eba213a3f631f8377c6d08e333c4dd0e8589f3",
+      "sha256": "06cb208911c8dd523c0cf7910ae1f1b547af6a12d5e1de145582cd53cc98ce44",
       "declarations": 1,
       "review": "R057"
     },
     {
+      "file": "packages/core/__tests__/highlight-decorations.spec.ts",
+      "sha256": "6819ef8ac0c958ae3ee3ce4c420926d4be615f11bf18aa21217d4ee89c420d7a",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/__tests__/ignoreMutation.spec.ts",
+      "sha256": "767ed4aea816057c5747df7720f93b635a2178da65d73f3e6444a05d3349eb7e",
+      "declarations": 5,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/insertContent.spec.ts",
-      "sha256": "10f5524a2ac95411ba2e00f4e532fbfa68a923fc3f94f3ad8a6085213a49a122",
+      "sha256": "9b787045a96194592911935ac2b81f6093da9234c6f46633a9983f7eb67e7884",
       "declarations": 20,
       "review": "R073",
       "overrides": {
@@ -648,199 +749,403 @@
     },
     {
       "file": "packages/core/__tests__/insertContentAt.spec.ts",
-      "sha256": "0c844185c7c0ef8551fd04a4fab3bee754b7a95202563b7c603d080db17b4fdc",
+      "sha256": "5b3085d8b20b2547d0dd40109147a29a1a8f13aeaf2a7854cfa06b2ab90efc21",
       "declarations": 5,
       "review": "R075"
     },
     {
+      "file": "packages/core/__tests__/insertDefaultBlock.spec.ts",
+      "sha256": "3745e2211ea6446097ab43768da7d5041d675863aeb177aca429e3e12e1c97fb",
+      "declarations": 15,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/isActive.spec.ts",
-      "sha256": "dbf31addeb77dc33236818b6fbb7577eb71cb3661a0d1e85205107b2b09d156e",
+      "sha256": "1f9255ce02619fa79960e78d486d35ca684a1c575390c0d8ac61e7f387a15c26",
       "declarations": 8,
       "review": "R076"
     },
     {
       "file": "packages/core/__tests__/isNodeEmpty.spec.ts",
-      "sha256": "5d2981696ac3118d9f50cc02ee01a769fc46d44e4a33dcf0476b92e7d167e868",
+      "sha256": "cd0d6ed0abdc56b2e4163fe3033a7d6084bf8962bb762ee072ec0e78c61b6b02",
       "declarations": 21,
       "review": "R077"
     },
     {
       "file": "packages/core/__tests__/isNodeViewSelected.spec.ts",
-      "sha256": "cae6d0c8d5308e2dcb8e70302ef91bed3228cb45e418f066e101008128857a49",
+      "sha256": "50d534e18f2c341e604a759337ae5af67a6bd5a5a90609871b98d4e09dfa7683",
       "declarations": 8,
       "review": "R078"
     },
     {
+      "file": "packages/core/__tests__/jsx-runtime.spec.ts",
+      "sha256": "9d0aad35e57dfd085dc48a20c8a13b66ba246e1d75061dd49b1ef72fc3df2298",
+      "declarations": 35,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/markPasteRule.spec.ts",
-      "sha256": "fdce6402764cfc0509ead257827f0ab06d228c501b1d9c93f0d457142b983ef3",
+      "sha256": "77be28b4c0d6880595d8307c21b3607ee0a60f5d3a0ea5d2d83f75bc2910a547",
       "declarations": 2,
       "review": "R079"
     },
     {
       "file": "packages/core/__tests__/marksEqual.spec.ts",
-      "sha256": "8761de1be3055ec3c44f56200ebbad545e77e166174e9e943a8a2e34b10cd62c",
+      "sha256": "18cd92a2d92d689ed6385cec58779c2ab463e492a2498936ac8ce0c2f810aca8",
       "declarations": 16,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/mergeAttributes.spec.ts",
-      "sha256": "698ea333a9c5d95242b1a0a535a924b8e317d12fed10ce9f28f55ca49435f016",
-      "declarations": 15,
-      "review": "R057"
+      "sha256": "1875e6dbb0bd1be810f8c49a5dc4d8512c5781093c8c80e12a3be502c566946b",
+      "declarations": 16,
+      "review": "R057",
+      "overrides": {
+        "G001": [
+          69
+        ]
+      }
     },
     {
       "file": "packages/core/__tests__/mergeDeep.spec.ts",
-      "sha256": "00d76d4240479ec50552959f441a464462e18d2568ea29bba149c8e8d0d78657",
+      "sha256": "7bc302838f42f844682ec8d29edb47e9d9420c734f2515ac09959f3326897517",
       "declarations": 5,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/nodePos.spec.ts",
-      "sha256": "2bed83e0152a70f0fcb6ae7052a24f78a864c6760f13ce77e1b7a1a6b7758282",
-      "declarations": 38,
-      "review": "R057"
+      "sha256": "17c5b4555d0b858e0e85caf14c74258d67bea19cf5214607ffeb0fc4888e929e",
+      "declarations": 48,
+      "review": "R057",
+      "overrides": {
+        "G001": [
+          584,
+          595,
+          604,
+          613,
+          624,
+          635,
+          645,
+          655,
+          664,
+          674
+        ]
+      }
+    },
+    {
+      "file": "packages/core/__tests__/nodeViewGetPos.spec.ts",
+      "sha256": "355fdc5b0984c81cc2dd061664addfab13fa62d7e61b5e245e3c4f87333578fc",
+      "declarations": 2,
+      "review": "G001"
     },
     {
       "file": "packages/core/__tests__/onContentError.spec.ts",
-      "sha256": "f1ff6ae6413da3f46565e8f18fa3f5ef01f730e243a3958ceaa65a552e6d71ce",
-      "declarations": 6,
+      "sha256": "59f53780e0be3ed2f69580ad4e17b81d7dc73b55cd616a117de8b64523cb213a",
+      "declarations": 9,
       "review": "R080",
       "overrides": {
         "R081": [
           128,
           170
+        ],
+        "G001": [
+          212,
+          263,
+          276
         ]
       }
     },
     {
       "file": "packages/core/__tests__/parseAttributes.spec.ts",
-      "sha256": "1d33c1a396a582c3754d0587a447e901a7dad6de2f4b399421f1e21141db3008",
-      "declarations": 10,
-      "review": "R057"
+      "sha256": "189f0d902427e31922e515a553c4dd98c651d5cec656c5ba51c51666f19cae45",
+      "declarations": 13,
+      "review": "R057",
+      "overrides": {
+        "G001": [
+          22,
+          26,
+          32
+        ]
+      }
     },
     {
       "file": "packages/core/__tests__/pluginOrder.spec.ts",
-      "sha256": "30ec6d2a2193a410e03ea139968835a530ad206eaff7fe0c8ac6ef1788d9ddbb",
+      "sha256": "6455549c33fa9908dfb34aa001a3bc787d08ff6050276cd689fbfb06c85b76fb",
       "declarations": 1,
       "review": "R082"
     },
     {
+      "file": "packages/core/__tests__/renderNestedMarkdownContent.spec.ts",
+      "sha256": "777498790f01546e8730fc6f050fefab4a55face67724955c44133ca2f8a3eb6",
+      "declarations": 4,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/__tests__/requiredAttributes.spec.ts",
-      "sha256": "8be7af2cd9564da57de31c831fd8557a8e09efce60ec5eff4e2340ccb528a9ac",
+      "sha256": "5a7d0c781a46ba31a7e1f5137ff59f56b437fd0a6eca1f8125cc60970da03b24",
       "declarations": 5,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/resizableNodeView.spec.ts",
-      "sha256": "e9e60a02b14760a1433e1d2d01830b5332d80895101d34187753637d0d2b3091",
+      "sha256": "02b600aaecf1e624387f0f2af3971f88c0bb4a2a74cc72a5122edeb4590874bd",
       "declarations": 2,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/setContent.spec.ts",
-      "sha256": "62e5b201aced989699a1e515eba5e04169b5bbaa5fab6d0a679eb2ea2af8cfc6",
+      "sha256": "8596fbf301896bccf85e0968848f3cbfe5bc5b177e44971565f35fe6fe098137",
       "declarations": 21,
       "review": "R083"
     },
     {
       "file": "packages/core/__tests__/tabindex.spec.ts",
-      "sha256": "87bb902f3c94c8b5ad1bcb7ff087e4bb41b9a0c2d9e611751987d9336eba5835",
+      "sha256": "fc69eee2141de80af36e2c0dcdae9b14ab9c3ff377e508065fb90619ea977b3b",
       "declarations": 5,
       "review": "R084"
     },
     {
       "file": "packages/core/__tests__/transformPastedHTML.spec.ts",
-      "sha256": "077f05deec468ab9b390fd706b60a48ac4149ed01d8e18499fd31710819d99c0",
+      "sha256": "daf26c0c7b79cc78bbebce180eb5dd6a1254300133fda321725121d7293378f5",
       "declarations": 9,
       "review": "R057"
     },
     {
       "file": "packages/core/__tests__/unmounted.spec.ts",
-      "sha256": "309d11c3ea52dee869c0bbf2c6941d1f2989379b722da79becd0ec65c8f01ef3",
+      "sha256": "77a3cdd8b6cbe78334d5a41eda461df15766a73f1e3bf0190b6e75cb45b91e0a",
       "declarations": 14,
       "review": "R085"
     },
     {
       "file": "packages/core/__tests__/unsetAllMarks.spec.ts",
-      "sha256": "058563d76aaba7edb54250af8a0211163efc7a4d0d1def5d4ceeb550ed55bd56",
+      "sha256": "44c62c6661aa9cc721a1d2565ec626cb414e0752018b94e8f9fcd937c8590153",
       "declarations": 7,
       "review": "R086"
     },
     {
+      "file": "packages/core/__tests__/warnOnDuplicatedProseMirrorModel.spec.ts",
+      "sha256": "ead990a1dd469cd490741fb9cb47ca2bfe35b9d08b89634b36a7d24965351d57",
+      "declarations": 1,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/__tests__/warnOnDuplicatedProseMirrorModelSplit.spec.ts",
+      "sha256": "2f5feac8469b3e6429df6090ba88b4f9bf6a36814bdf3a186ddf4c5e9ef505f2",
+      "declarations": 1,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/__tests__/Editor.spec.ts",
+      "sha256": "12159a9a236ce4c486df80b407e3e93fc088d0ca8748f0eeec02c2c15ee72f5b",
+      "declarations": 3,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/src/__tests__/htmlEntities.test.ts",
-      "sha256": "4de084a6ea2be62c93d236b2a076b6dff00500b7d7d6a0fc962742d3d1ad2662",
+      "sha256": "72894a11cd0acc35bd795ba16435f0d7e1d6ad861e2bd5f1f789a78275cb2998",
       "declarations": 11,
       "review": "R057"
     },
     {
+      "file": "packages/core/src/__tests__/inputRuleInlineAtoms.test.ts",
+      "sha256": "29737ca10884ce909049811899b401a8b275f0e35334ea144a6431ea9bc5aa32",
+      "declarations": 7,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/__tests__/isAndroid.test.ts",
+      "sha256": "1b9958c24b2f17c91e83954be3e605630c3fa05a3cf964760993dab7a81031ec",
+      "declarations": 3,
+      "review": "G001"
+    },
+    {
       "file": "packages/core/src/__tests__/rewriteUnknownContent.test.ts",
-      "sha256": "0aa6a197cc20057408ab22d6e870433076c9bd703ae55811f408c7f959635cd2",
+      "sha256": "2804424f77624eeeed5ebee989fe7a487662a99e687270cd4bd3418292d72f39",
       "declarations": 3,
       "review": "R057"
     },
     {
       "file": "packages/core/src/__tests__/transformPastedHTML.test.ts",
-      "sha256": "9266867460f1c05842e919a41be9033b8ec5ee748bc5b284bc4e7bf28c7b63cd",
+      "sha256": "e20d7abf1742a29502e13cdd7546fa8c01913ebfc0f1f712ada8bc178d1b0fb4",
       "declarations": 20,
       "review": "R057"
     },
     {
+      "file": "packages/core/src/decorations/__tests__/DecorationManager.test.ts",
+      "sha256": "db382a240c7d8004fa9ff1fc455ef407db253ae19f541266ad311b477b0605f4",
+      "declarations": 20,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/decorations/helpers/__tests__/getRebuildRanges.test.ts",
+      "sha256": "ae36c4b393bb1912df7e953d5bacfed2da2d6f51baf2420267120830030565c5",
+      "declarations": 11,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/getChangedRanges.test.ts",
+      "sha256": "bd1413c4ccea0dc7e96eb68a7b366684becfe38c7eb4a3673dc513c317496720",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorAddMarkStep.test.ts",
+      "sha256": "04f742ab9b4922c99bbfea3e6bfa461ed7478932e1e81c15325fd76066156a43",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorAddNodeMarkStep.test.ts",
+      "sha256": "5fb9df4f15a9151157bf6eb596bdf9e71ce5bd9d4aee1c2edd3275cb2e6d42be",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorAttrStep.test.ts",
+      "sha256": "e6e5eaa9ef70a275188526a8998d10eedcc98d3ef158a98b0a2fdc4e5d0e90a6",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorCellSelection.test.ts",
+      "sha256": "f537d63bb0e4e5ba19f76986dde95e00a0d950d49c253d4b20b43596507ac12a",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorDocAttrStep.test.ts",
+      "sha256": "acd7cf0b25c06d4087988a6084ee8a820f3a1766b2e482d4d0dab8241ff87243",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorFragment.test.ts",
+      "sha256": "4ea6c94d4398e4569b0945fb5be9ce9162a5e249b16fe50c6977a49f839d8f44",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorNodeSelection.test.ts",
+      "sha256": "9cbcc28115040ac7703f51ba958b2224426a5f73ccffa6c6ac24678591017f9f",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorRemoveMarkStep.test.ts",
+      "sha256": "bbd9e1685179f9a98c44669c8d9cbc955c51c06c8a2e366347dd73cc85508c59",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorRemoveNodeMarkStep.test.ts",
+      "sha256": "a2001a172598c89077e2a3ef95a39e353899a21d9263e02eb7d8b5f40ddbe172",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorReplaceAroundStep.test.ts",
+      "sha256": "19f38d5ca5a9f6302a69e9bc71c0519b482ccb9ee2b2cc1e36dbdb11fb6f9870",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorReplaceStep.test.ts",
+      "sha256": "d69a7bd17dc1ef5a2400257f8c15fc029a9c76dca4c9affb060d5e84adbb99e4",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorSlice.test.ts",
+      "sha256": "577f1b69f0ee3da0bdc9df95da68ff4f82440528dcc8acca6a67a26d7a994353",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorStep.test.ts",
+      "sha256": "221fcb736c53068463c5c2aaba22869f43e3c2fadb98e812a4bd059ec3e3cdc0",
+      "declarations": 3,
+      "review": "G001"
+    },
+    {
+      "file": "packages/core/src/helpers/__tests__/isProseMirrorStepResult.test.ts",
+      "sha256": "069ba6f643ed8aecc4bb0829c1bc5bf1bf5a7f519f7efacad1da4a071e5a712b",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
       "file": "packages/extension-audio/__tests__/audio.spec.ts",
-      "sha256": "dc3e75edc8c710cadac1c837fe09293869cf6fc5a99b16a757ce8433e467f250",
+      "sha256": "67ee4ec23bdced432f3187c6a80f57786a6b50304182d8a7cc22f0847b0b2db5",
       "declarations": 8,
       "review": "R087"
     },
     {
       "file": "packages/extension-blockquote/__tests__/handleBackspace.spec.ts",
-      "sha256": "0ed857f4236adeb84fd5779fc99337032023b2cae25535eb9e06ce9e7c576b6e",
+      "sha256": "8a8dbc2646692a7d728b98d8d9d35b6d5f282ab6551d933bf71a100e077a020c",
       "declarations": 1,
       "review": "R088"
     },
     {
       "file": "packages/extension-bold/__tests__/bold.spec.ts",
-      "sha256": "dcf5dd9f671e49d23ed72ec9aee9053537d129ae35f4e803d4e66eb77790d796",
+      "sha256": "a672ed0f0aba48c69dc6aeaf93762c322ac61f80a40f583e24439a29e318702f",
       "declarations": 4,
       "review": "R089"
     },
     {
       "file": "packages/extension-bubble-menu/__tests__/bubble-menu-plugin.spec.ts",
-      "sha256": "3d87da7c04050292e204e5957e7d537a9392184c3f8e0e01056284400f1c9af9",
+      "sha256": "23de528800329b26382d1a2cb08aa35d52d0bfc326c02fb3669fbae977d4c54e",
       "declarations": 9,
       "review": "R025"
     },
     {
       "file": "packages/extension-code-block-lowlight/__tests__/codeBlockLowlight.spec.ts",
-      "sha256": "362e88a7dd5ed8900031fa4439928616405b7841efe3be77dceb28d081a0d9b3",
+      "sha256": "83a19b84e772ccbed3c39a07177b7b2a6626fca2d5e4e05f2a775d1415fe8c4c",
       "declarations": 1,
       "review": "R090"
     },
     {
+      "file": "packages/extension-code-block/__tests__/code-block.spec.ts",
+      "sha256": "9e6af0011c223af9bf401a1e9fec39ba096ad61e98ca84fc18694a11895493df",
+      "declarations": 5,
+      "review": "G001"
+    },
+    {
       "file": "packages/extension-code/__tests__/code.spec.ts",
-      "sha256": "12c306c90c8ba4037266569fe2553c0c20df0f6cb21cb14c7f4df146b999c703",
+      "sha256": "ad8b2ed86006dcb7e33e233acb8bf1b9b5ad236166f4287c1f055723e2ca050d",
       "declarations": 19,
       "review": "R032"
     },
     {
       "file": "packages/extension-collaboration-caret/__tests__/collaboration-caret.spec.ts",
-      "sha256": "fa30ebf4314876584caa391f45899d7872e79b8666f4e3fd1099f8652558428f",
+      "sha256": "670f75157e15f56dc41534625c4078b7faf9e07cb4b8802ff7b5fa53d6f8ea7d",
+      "declarations": 5,
+      "review": "R002"
+    },
+    {
+      "file": "packages/extension-collaboration-caret/__tests__/isValidColor.spec.ts",
+      "sha256": "c12462006d8a2f7425dcd93b6e6b5efb86ff5c545a029d42fea5ff09865e539a",
       "declarations": 5,
       "review": "R002"
     },
     {
       "file": "packages/extension-collaboration/__tests__/filterInvalidContent.spec.ts",
-      "sha256": "ba694fbcccc05846f9f1a4491cd790e77e146b2afd8b32abf88afe637e175d0e",
-      "declarations": 5,
-      "review": "R002"
+      "sha256": "bb3dc0e3e214aa9c982e404cdc631fa86f931ef4b56fc4ef8cf37edc29af6be8",
+      "declarations": 6,
+      "review": "R002",
+      "overrides": {
+        "G002": [
+          156
+        ]
+      }
     },
     {
       "file": "packages/extension-collaboration/__tests__/memoryLeak.spec.ts",
-      "sha256": "53dd8b932dca062dca1729b64c288e65f128d153798d38be1432bb34697be745",
+      "sha256": "082ce0ec2427d32e6aef58bdde1708665f3e0b65ad53d3d39b58de9c628a1cab",
       "declarations": 2,
       "review": "R002"
     },
     {
       "file": "packages/extension-details/__tests__/details-commands.spec.ts",
-      "sha256": "31a390ec509d4220b4b3948b9e1b2836847c6d593f3b5cc87d9c30b01bbb0bb0",
+      "sha256": "aeb18b618af14d10a3174be6e99e170013eaf7f06fd12f4dfbf9ae8827de5f5e",
       "declarations": 3,
       "review": "R092",
       "overrides": {
@@ -851,7 +1156,7 @@
     },
     {
       "file": "packages/extension-details/__tests__/details.spec.ts",
-      "sha256": "ae6cf4ef2ed8fc5eb55f1bc51e18f6c3014d96c311dde66e7bd8196da34c3ef4",
+      "sha256": "f4c070dc28d46aae527048acb5a0ae1f5c11430d7acf85d77dc5a0ee8a227542",
       "declarations": 5,
       "review": "R094",
       "overrides": {
@@ -865,123 +1170,141 @@
       }
     },
     {
+      "file": "packages/extension-drag-handle-react/src/DragHandle.registration.spec.ts",
+      "sha256": "831903e772573b40d5224b21e71be292721568a956c148a5aea1934746e1c2d6",
+      "declarations": 2,
+      "review": "R004"
+    },
+    {
       "file": "packages/extension-drag-handle-react/src/DragHandle.spec.ts",
-      "sha256": "b48ffaa1c47dea05a654d3e664d88998500b497032f9318f5c1985de146fdf5a",
+      "sha256": "52edbef9c778ca04be39ac324ad1980ed466ee3f5cd9f4623818548ba3c76f5a",
       "declarations": 2,
       "review": "R004"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/cloneElement.spec.ts",
-      "sha256": "6675085d132591780a180e5726f5c7553eb254a83f14471874496782986d0819",
+      "sha256": "34c2f3577a0ae8a7e65c2ccb96ae9eac2da8f0338c8244ffa60cb2338346c7c7",
       "declarations": 4,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/defaultRules.spec.ts",
-      "sha256": "652dcfe93fd97b07b5c36ff8af4c9e5c5d26eeac9f7d1c14aa6b50738faa8bd5",
+      "sha256": "f27be4a5efa314c9dbce7735ce0b9addf3232fdc286e64fcca739c6bb590259c",
       "declarations": 32,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/drag-handle.spec.ts",
-      "sha256": "f04c5c110c3b9f5463782a42aa22642c917e65393ef2d07e2d6474d92ad176c4",
+      "sha256": "59ea248ae9e56eb614c0efde5e8468c8c5d6a72eb22c593f67bdb17cb543faab",
       "declarations": 7,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/dragHandler.spec.ts",
-      "sha256": "a82eb851b963537ed9da993017725ee79b3fbe1dfc99a62943136cc82b3f4ea8",
+      "sha256": "c6675bd1a2ebd2b785b365c10798454767b3c2be7bea305f7021450a90303496",
       "declarations": 7,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/edgeDetection.spec.ts",
-      "sha256": "51b94e5bcf6564784894ea3543affb2753ed4c830e71b19e4b5c8f2177e3d727",
+      "sha256": "a35d63d41e4dd7b9f1dbcbaa85306e9b5e071a9982cc2a1be4b0d64ce0ccca32",
       "declarations": 30,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/findBestDragTarget.spec.ts",
-      "sha256": "ad976ec704103d994ee0971e895a227abe3838a170a6797ef3dfb20d8f1a80a8",
+      "sha256": "33340d42a99a9dfce656f441933b5e037ecbfad383e5732bbcb294a96e8dcde5",
       "declarations": 11,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/findNextElementFromCursor.spec.ts",
-      "sha256": "b8cc83340f60cf3d5b3751c45272822b4ae72ad2a198887bc7c42bbca626e234",
+      "sha256": "6741f3438f1442ecf4ec7cacde08e880fe7329c0663f7578287cc8ed9b1dc7fd",
       "declarations": 6,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/getDraggedBlockDir.spec.ts",
-      "sha256": "239f3920b29fa384b8a30f5f80034307299e65994c9a6b222694e4fbc71d2cde",
+      "sha256": "683a0113abc7b88652c047313f712517d36d9e83b5353e19a6d791031921b2dd",
       "declarations": 10,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/nodeRangeDrop.spec.ts",
-      "sha256": "170f272c730c2dd93d861ed6b843b4db52e2ce7706b4895ac1f90a15b684f65b",
+      "sha256": "4eec665c9177931fb5b5af4b9a08c8a89dcec8821bd83b5af40c37636f1ec0e4",
       "declarations": 11,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/normalizeOptions.spec.ts",
-      "sha256": "fe22d20114682ab0877718091523904e1f373e12349a0d9cc5c393df413bb373",
+      "sha256": "7df9126fe6c6a2eba4ebad67f7b238c53b0163a63c5c0e0fb935e813b53a21d8",
       "declarations": 12,
       "review": "R096"
     },
     {
       "file": "packages/extension-drag-handle/__tests__/scoring.spec.ts",
-      "sha256": "a9b586175287a7a104b08932f56c0b4a109fd5e2c935f7b33aceca292539d014",
+      "sha256": "6cb7c1b4e0ebd2c1aa76ae72459554630f9e52630a4cc0c6b4c36ee4cbafc783",
       "declarations": 12,
       "review": "R096"
     },
     {
       "file": "packages/extension-emoji/__tests__/emoji.spec.ts",
-      "sha256": "cfaf90fefbecd04bb20dcbb3d05e35670915975edc25ccd66c387f5d09a80ab9",
+      "sha256": "077202f16ec3841bad1e5b6b5acfd603ad168db8aa2e4ebaafcccfc3d65dbf4f",
       "declarations": 4,
       "review": "R046"
     },
     {
       "file": "packages/extension-emoji/__tests__/insert-emoji.spec.ts",
-      "sha256": "159b74accf071a94819e10fc95ab77f03ced3caa234cd7a057e34a8efcfba921",
+      "sha256": "f99ca263a404ac883ca6b3d8cd55550bcdcafc3fbedfdc0f48c945c623f06607",
       "declarations": 2,
       "review": "R046"
     },
     {
       "file": "packages/extension-file-handler/__tests__/fileHandler.spec.ts",
-      "sha256": "34465381608b7d503cf8aeeea0c306b002915d8cdf76994da913bdeb14b84219",
+      "sha256": "0939ac034f9f89b87f4f9b3dad670fb082539137b7d5e1c34c54fce43f9ea34e",
       "declarations": 13,
       "review": "R097"
     },
     {
+      "file": "packages/extension-find-and-replace/__tests__/find-and-replace.spec.ts",
+      "sha256": "ffade1c8760360f8c6f58ae00e30f70ed8c40b6ba4bc55237481c9b0fa518367",
+      "declarations": 42,
+      "review": "G002"
+    },
+    {
       "file": "packages/extension-floating-menu/__tests__/floating-menu-plugin.spec.ts",
-      "sha256": "7496b78b5fe8998ee69db1560e19f3f60cab9b6f5f22037eb982bf20f8226ad5",
+      "sha256": "d074ea17f421d446a0b2aada49298fea59f3bd5ee392af00eb03299151f70797",
       "declarations": 9,
       "review": "R025"
     },
     {
+      "file": "packages/extension-hard-break/__tests__/hard-break.spec.ts",
+      "sha256": "6c98414917eb6b82496e12c9e57ff5c720b412377caecd8a4a6ceb16ab46ea8c",
+      "declarations": 3,
+      "review": "G001"
+    },
+    {
       "file": "packages/extension-horizontal-rule/__tests__/horizontalRule.spec.ts",
-      "sha256": "5735d4c3a8bfb7b60bfc8d973900293ac8f879b7d3865e9ea279c6489c2b21a3",
+      "sha256": "35dcfd8611712b4139901a87557ebc05065f112141f71059b9ce44a8e84f5419",
       "declarations": 1,
       "review": "R052"
     },
     {
       "file": "packages/extension-image/__tests__/image.spec.ts",
-      "sha256": "b5c4aae281c8e4e46b41accc4c848f83e453a7de11a11b6c5e048812cd976112",
-      "declarations": 6,
-      "review": "R087"
+      "sha256": "79e6601368aaac137119ac61a8d37bb7109228f3e33b02c1cbda8c9d2f239be2",
+      "declarations": 16,
+      "review": "G002"
     },
     {
       "file": "packages/extension-invisible-characters/__tests__/invisible-characters.spec.ts",
-      "sha256": "4a10e9b3a2d3ee6ce455c13ceb32108556207cd3e5907a481d12e56f9d279eba",
+      "sha256": "7068980c27eb36a5948d62fbda81ee05d9587ef96d851159b8a5b4493730f7e0",
       "declarations": 1,
       "review": "R022"
     },
     {
       "file": "packages/extension-link/__tests__/link.spec.ts",
-      "sha256": "3a4228dd2c2960e47e3a8f4cd8bf83f1f11368008db06ebac35989396a9c01f7",
-      "declarations": 14,
+      "sha256": "12162a18252f1de3e687f794e100afc5b1da22372b137051e3327bc9ddc95b02",
+      "declarations": 15,
       "review": "R098",
       "overrides": {
         "R099": [
@@ -990,27 +1313,42 @@
         ],
         "R100": [
           304,
-          355,
-          394,
-          421
+          397,
+          436,
+          463
+        ],
+        "G002": [
+          354
         ]
       }
     },
     {
+      "file": "packages/extension-link/__tests__/markdownLink.spec.ts",
+      "sha256": "13c420e00ff0fff12399973fb51f5b3121c795a398589af42277276924fd193e",
+      "declarations": 44,
+      "review": "G002"
+    },
+    {
       "file": "packages/extension-list/__tests__/listItemDelete.spec.ts",
-      "sha256": "b9a5da8ad6d9ee5753f3649351b2dd0052343b03ba64fd8d4f2546163c34f5eb",
+      "sha256": "d345c338bad63fdd0f66ac7d1f0713b4754c5fb0f2d2250dc4c0fde6508c2f5a",
       "declarations": 5,
       "review": "R101"
     },
     {
       "file": "packages/extension-list/__tests__/listItemMarkdown.spec.ts",
-      "sha256": "054a979c791c5bbc0037eb6bf2288e2d0185fb3db3e35f173ac83f0f8d07b6e5",
+      "sha256": "4bbab6f43f2536822dee75ead3cf9dc5990121d9bfee6442db5dcc442d2da9a5",
       "declarations": 1,
       "review": "R102"
     },
     {
+      "file": "packages/extension-list/__tests__/listKeymapTab.spec.ts",
+      "sha256": "62c59b01c7a68cdb543364ae071ccacb41422def6e6724dc06b11705d8d88118",
+      "declarations": 2,
+      "review": "G001"
+    },
+    {
       "file": "packages/extension-list/__tests__/orderedListPhoneNumber.spec.ts",
-      "sha256": "822c61d82eda5e5f03fd9cceb3aea472b395872ed9ae4d1ab182044bf50f0dcd",
+      "sha256": "0b993bf003c0226fb2880c1bb6d6013cf7d09515896dec1389912c524f809ef1",
       "declarations": 5,
       "review": "R102",
       "overrides": {
@@ -1022,7 +1360,7 @@
     },
     {
       "file": "packages/extension-list/__tests__/orderedListType.spec.ts",
-      "sha256": "3927dbf1ee4f3735fd944a6614052406628eef5be77c70b16c1e000314b2d7d7",
+      "sha256": "c248bc15660b5067ae2f0092ff227d23143140732b5a3f3d4d2fc9a134e5dd40",
       "declarations": 74,
       "review": "R104",
       "overrides": {
@@ -1061,25 +1399,35 @@
     },
     {
       "file": "packages/extension-list/__tests__/taskItem.spec.ts",
-      "sha256": "e37df55d7b309bad84a0f4434b2f859b8f64b1f2bda0aa28668660ef81df44b4",
-      "declarations": 15,
+      "sha256": "640abbc00f2bf2b7e887d51d2dccde38ec2a16b8e2004cd8df71b82034a6b684",
+      "declarations": 23,
       "review": "R108",
       "overrides": {
-        "R109": [
+        "G001": [
+          17,
+          50,
+          78,
+          117,
+          156,
           197,
-          243
+          222,
+          239
+        ],
+        "R109": [
+          435,
+          481
         ],
         "R110": [
-          432,
-          464,
-          492,
-          521
+          670,
+          702,
+          730,
+          759
         ]
       }
     },
     {
       "file": "packages/extension-mathematics/__tests__/blockMath.spec.ts",
-      "sha256": "9fab9f53d7a5ae44299163b1d556257cb4c1e08e77eba86c660bd7cf7278e3f8",
+      "sha256": "82bc10597d623c417bbbc2e3cae553154743952d327d246fe4f22bc97771e554",
       "declarations": 5,
       "review": "R111",
       "overrides": {
@@ -1091,43 +1439,55 @@
     },
     {
       "file": "packages/extension-mathematics/__tests__/inlineMath.spec.ts",
-      "sha256": "faffa5722c8e8e6542e49b784f62dc4eebbf011ea79ab437a099938b31cbf2e2",
+      "sha256": "c7dccab72fa5061c45ebd93956496bbc03b3364bb46fe62106206b738fef82a3",
       "declarations": 2,
       "review": "R111"
     },
     {
+      "file": "packages/extension-mention/__tests__/mentionMarkdown.spec.ts",
+      "sha256": "010757326aad0a9dc0eea3897cdc9a1943406af773f3442ff4d54f4327c3c0b0",
+      "declarations": 3,
+      "review": "G002"
+    },
+    {
       "file": "packages/extension-node-range/__tests__/NodeRangeSelection.spec.ts",
-      "sha256": "8daf6d1e150b707b288fc8cf2882b782c8242b51fe009791bb7ba689263f2c4e",
+      "sha256": "bcd3a8de9f9a2b313a6e8378cee071bb7e52df42f5a4a1d9a52715ce57af4385",
       "declarations": 5,
       "review": "R096"
     },
     {
       "file": "packages/extension-node-range/__tests__/getSelectionRanges.spec.ts",
-      "sha256": "4d883e7325b68b6fd154e5952e80c111eb770d02ab5d2cec1c01159cafba12da",
+      "sha256": "397950251f685e6cfda8e1bd9454feaaaf937aba2210457cb49bcb4fc93a0549",
       "declarations": 4,
       "review": "R096"
     },
     {
+      "file": "packages/extension-ruby-text/__tests__/ruby-text.spec.ts",
+      "sha256": "48cb45762e600d48614660f74162e2ae188f9ce7c1019cb830a106d033bf5e1b",
+      "declarations": 27,
+      "review": "G002"
+    },
+    {
       "file": "packages/extension-subscript/__tests__/subscript.spec.ts",
-      "sha256": "d8e15c2ecfa6e548a3dcb8b88631586d1e2f96abd3275832a35ac94fb5ccad61",
+      "sha256": "82288814618b309f68d78cb254d95fc7276c798e00a3a92c10eaee7e19371b3a",
       "declarations": 4,
       "review": "R113"
     },
     {
       "file": "packages/extension-superscript/__tests__/superscript.spec.ts",
-      "sha256": "f0cb75f8807fa284aaf4ab2fd612de2fdbce17c14c8854b77201d805b74df1c7",
+      "sha256": "3a1f6d10fd97ee855373998a4a25acb0d6b79f060cc1a0cdcd08698e9cd86811",
       "declarations": 4,
       "review": "R113"
     },
     {
       "file": "packages/extension-table-of-contents/__tests__/generate-toc-ids.spec.ts",
-      "sha256": "28fdc2e22c038fa903cf68aaafdfdb2985feaeae1880072418c1fa25fb272953",
+      "sha256": "6654b5f66fd19aba3f7a3b427b043d8da41bfe77bb8c65ae0400f4a5b7e343a9",
       "declarations": 10,
       "review": "R022"
     },
     {
       "file": "packages/extension-table/__tests__/colgroupUpdate.spec.ts",
-      "sha256": "835a652d58faf6a9973b7ed831e80ba342ef4285e1372c3df9b9d3df686bcab5",
+      "sha256": "303b2faab76dc5cb07866011703ed9a5088e278a438933a10b2135eaee3893a4",
       "declarations": 9,
       "review": "R114",
       "overrides": {
@@ -1138,149 +1498,196 @@
     },
     {
       "file": "packages/extension-table/__tests__/deleteSelection.spec.ts",
-      "sha256": "4405129cef877343ecca672c88b7f66d5070ef30b595aae073594fd743f3eb93",
+      "sha256": "65c0db3032b6caea008c2232f8538b9083f4a3803a04b84a88e6862d07be7d82",
       "declarations": 1,
       "review": "R116"
     },
     {
       "file": "packages/extension-table/__tests__/tableCell.spec.ts",
-      "sha256": "09efe3c77eefb25ad41e1a93ffe291a58012ec939a359a05df9079c62ad1ddef",
+      "sha256": "a6183ef1961581e3377d43ce7b85d6d79ab5d2728173b1e3401b1e32ceaf9aef",
       "declarations": 5,
       "review": "R117"
     },
     {
+      "file": "packages/extension-table/__tests__/tableCellEmptyContent.spec.ts",
+      "sha256": "d320c3e0714af98fc67540fb40149750dadcec38f56fb507432e9ad03221db4f",
+      "declarations": 12,
+      "review": "G001"
+    },
+    {
       "file": "packages/extension-table/__tests__/tableClipboard.spec.ts",
-      "sha256": "d95e45a23c69631df30262ffc30c7d7a133432b16535c88454b2d0b09a5a7de3",
+      "sha256": "fc3d95212bf3e115808db67d49494f8fd06c77e44e697fafc2f6a1afbf60af22",
       "declarations": 3,
       "review": "R116"
     },
     {
       "file": "packages/extension-table/__tests__/tableCommands.spec.ts",
-      "sha256": "8a6ed56603f306ce8fdb1029f216b62a083f48b3f8e51a46e7b5c9426a2c17e2",
-      "declarations": 18,
+      "sha256": "932f01c564a4f66c08b56b47fb33f6a7c5bed236deb78e2ff2cf86d44ce47d36",
+      "declarations": 22,
       "review": "R118",
       "overrides": {
+        "G001": [
+          86,
+          107,
+          128,
+          156
+        ],
         "R119": [
-          94,
-          99,
-          104
+          204,
+          209,
+          214
         ],
         "R120": [
-          150
+          260
         ]
       }
     },
     {
       "file": "packages/extension-table/__tests__/tableHTMLAttributes.spec.ts",
-      "sha256": "580f8acee83415e1cc839a1518559162d0cde987dd1dc8016500f004bc1c2245",
+      "sha256": "2137fce2da11cb15e62eaa6896d64ce0309a37a9bbd19e0f2302b5ad6b5fb523",
       "declarations": 2,
       "review": "R121"
     },
     {
       "file": "packages/extension-table/__tests__/tableHeader.spec.ts",
-      "sha256": "afdab390886147be1a1648f68300ea50d5b7134974b5f57d348cee71f651cf88",
+      "sha256": "40547fa233ec2790bcb636c53f32c2f667e3ada561775b2e3b6d199883c88b2a",
       "declarations": 4,
       "review": "R117"
     },
     {
       "file": "packages/extension-table/__tests__/tableMarkdown.spec.ts",
-      "sha256": "58cf4c59c4d14685b9c9c6cf389a4d8fc0d0b3b5e4b656ead468567b9bb11eb1",
-      "declarations": 12,
-      "review": "R102"
+      "sha256": "75b441b3a51ccdc64e812ef6bab5b7f57e5e17b4fb1e8bcc0ed0082eb1261416",
+      "declarations": 22,
+      "review": "R102",
+      "overrides": {
+        "G001": [
+          197,
+          216,
+          236,
+          251,
+          265,
+          278,
+          282,
+          286,
+          290,
+          296
+        ]
+      }
     },
     {
       "file": "packages/extension-text-style/__tests__/background-color-commands.spec.ts",
-      "sha256": "abbb0241b4941a35a7123c8e4676fd7ea414721cc0147cbcc17b37538b39f204",
+      "sha256": "f62638a30662044a9efb559b536bdc46e71a0f810362753b746c955fad6f90e6",
       "declarations": 3,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/background-color.spec.ts",
-      "sha256": "995ee8c3f823715945e74db4648cbdc224c14dc3faa0952ee2183945a39d1fef",
+      "sha256": "4da7f9e12b05f43bcd8d7abd33a2ef09712fcc3238c3bc1cd60dab884c0bf6d0",
       "declarations": 3,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/color-commands.spec.ts",
-      "sha256": "4898d80961528f3ec29802ddaa0a80e72f39d87166ac50fe5c327c3472f942cd",
+      "sha256": "95e355f42de0f6a7b8bc7a526b048a12bb5d1ef8acbf2f1901366dfb5d80d35d",
       "declarations": 3,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/color.spec.ts",
-      "sha256": "51f853ba561c7b4a84fbf386ed55ae7055ba894320fb0cea4099b4315245cfb6",
+      "sha256": "2dc8bfcf92841b5f69cd75d40c0853b34ac324cab935680d3bb298395ae39e58",
       "declarations": 3,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/font-family-commands.spec.ts",
-      "sha256": "f9f4765679ff0a1e170c56215e4a0ba349d28fd139d8c779e0ca7a2a6302467c",
+      "sha256": "cb5f81c8f233bb8670182efba362a409e3dac59ddf57aee58144b41bbd4dec95",
       "declarations": 5,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/font-family.spec.ts",
-      "sha256": "07816e03a45c4c20ae514e97604a69496c683fefd188ff1c96ba3771d373fc82",
+      "sha256": "a558cb139e496025b61ae74ace30c8a63b8eb65e49a4785c294f91dd922a87da",
       "declarations": 9,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/font-size-commands.spec.ts",
-      "sha256": "8c942662121be0e09992cd29d4b36803230fe838b63b332b4cddc79f31e5f448",
-      "declarations": 2,
-      "review": "R022"
+      "sha256": "8f0f2f2845bf066c032bc1b26ff54f95df8490bb495b03b7ff37afbdc6417f55",
+      "declarations": 4,
+      "review": "R022",
+      "overrides": {
+        "G002": [
+          64,
+          75
+        ]
+      }
     },
     {
       "file": "packages/extension-text-style/__tests__/font-size.spec.ts",
-      "sha256": "c014100e2fe6b5680ef55eedc857952ff70fae551311f84058ad8cc6378b77ac",
+      "sha256": "dd81c4bacc381825c0ae3aeebe849c3e01de1acbda31fb019ccf7e9a67748b07",
       "declarations": 3,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/line-height-commands.spec.ts",
-      "sha256": "39d645beddae7ae00b4b1cf5a4e5ebaccace80ba4bb93a9178969ded5f25d37b",
+      "sha256": "50e67a58b7b45dee1b01d1ad092b2c2a76d4e966e4f529585f267f4e30c10e9a",
       "declarations": 2,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/line-height.spec.ts",
-      "sha256": "79c4dccab0ac57261e0a1a6b39ad3ca9d6c34b3d7b25675e880434bde1f22456",
+      "sha256": "1f3aeffd2d4757d0535c938123a318f5ba44175ad5aa7c2e7b4d6b47385f1a4a",
       "declarations": 3,
       "review": "R022"
     },
     {
       "file": "packages/extension-text-style/__tests__/text-style-merge.spec.ts",
-      "sha256": "d748b89102873d3a7025869b7d65f0bb2dcbc02531cf09c7549b3481fafed9f8",
+      "sha256": "d08f40927b5daf30b3d5c48da22ee5b13e2295ebb4c305c6a7d11a58c4655715",
       "declarations": 5,
       "review": "R022"
     },
     {
       "file": "packages/extension-twitch/__tests__/twitch.spec.ts",
-      "sha256": "79ce571c307f3ad5f63639bdf0238f04044ba8431bf881b755ce4ff75c928d6d",
+      "sha256": "731cb5765d27042fbb10f39096816015d90fbc8665897c9f6377e9c286af9aba",
       "declarations": 19,
       "review": "R022"
     },
     {
       "file": "packages/extension-unique-id/__tests__/unique-id-collab.spec.ts",
-      "sha256": "5e2df6a8aa73c8c9f1993f9892c74d2dc17b06d48de7a298030ebb5c42fe3d5a",
+      "sha256": "bb4767d22b934622ad39be0c807dfe5e88b3ee81f27de634efe6dd30cff03f45",
       "declarations": 6,
       "review": "R002"
     },
     {
       "file": "packages/extension-unique-id/__tests__/unique-id.spec.ts",
-      "sha256": "b10ebf7db8d9e46a69d6a48966eb811d48951d6807d3a5753ffeba58960c4652",
+      "sha256": "b7ab4aa9c4437609eb7f2b61f99127f2f2baa79fc0568f1255b7c63754dc6b87",
       "declarations": 3,
       "review": "R002"
     },
     {
       "file": "packages/extension-youtube/__tests__/youtube.spec.ts",
-      "sha256": "1596453436b54642cf1c2f2930733ce21963441c3b656bcd5f35e2302fa01afb",
-      "declarations": 17,
-      "review": "R022"
+      "sha256": "cfcb52c6241be9eac4882f008f93ba4dcfc160d63d23ffee2162201a4d4561d0",
+      "declarations": 28,
+      "review": "R022",
+      "overrides": {
+        "G002": [
+          88,
+          97,
+          107,
+          118,
+          129,
+          147,
+          456,
+          460,
+          464,
+          468,
+          480
+        ]
+      }
     },
     {
       "file": "packages/extensions/__tests__/placeholder.spec.ts",
-      "sha256": "7055fbed85f4ccb677229adfd54ed013122985da88ed1b801264edbaeb7c0ec6",
+      "sha256": "b75b0ba52340671312e3644510fa57962358cd1cb8e7a301c990d605ce8c8a33",
       "declarations": 33,
       "review": "R123",
       "overrides": {
@@ -1325,109 +1732,134 @@
     },
     {
       "file": "packages/extensions/__tests__/selection.spec.ts",
-      "sha256": "687c083ce6495e7e0232d650fd3e2589175c50ee8d141c27996db304d800b8a0",
+      "sha256": "75560fd27ce641cc250d0d5fe41e1fb4c7cb6d70baa049fba510272a95c6242c",
       "declarations": 3,
       "review": "R027"
     },
     {
       "file": "packages/extensions/__tests__/trailing-node.spec.ts",
-      "sha256": "b9fbd8a8974686d16655027929fdeb081e8c74f39cf6be74e51961e1fc3ffd9c",
+      "sha256": "5db4a927b4019c51d528afd94b09a0a9dfd557f7c931001914e443919c1acb2f",
       "declarations": 3,
       "review": "R131"
     },
     {
       "file": "packages/html/__tests__/generateHTML.spec.ts",
-      "sha256": "a68234c25cd0e3acb1cd42ba4e3ddd74dc9abebe21d54dd6a05523588067ef0a",
+      "sha256": "2a5f4cf7b33bd8687bd6eb96f48c9b59da8f8bb968f45c850d636e46edf2155a",
       "declarations": 3,
       "review": "R057"
     },
     {
       "file": "packages/html/__tests__/generateJSON.spec.ts",
-      "sha256": "0b1dfd24bbd103e1277a492666872bd67adc5f84f26a75603c059f66fc8537a3",
+      "sha256": "21c0692f498025e7b9664d03104d7bc6e4de641a3097bda54e24277fff08a87f",
       "declarations": 3,
       "review": "R057"
     },
     {
       "file": "packages/html/__tests__/server-with-jsdom.spec.ts",
-      "sha256": "5f5e899085a41524d25e3e7ef6c083159b7c96181b4e6d68a00678fdadc36276",
+      "sha256": "3a9fd8e5df2dd6e8652b418d18360f626de598245920d5a0c473c1fcc48b0bfc",
       "declarations": 3,
       "review": "R057"
     },
     {
+      "file": "packages/markdown/__tests__/block-token-blank-line.spec.ts",
+      "sha256": "696727b722acd516844d81a80335624d9ad58c01737d79e35385346d5d65202b",
+      "declarations": 6,
+      "review": "G002"
+    },
+    {
       "file": "packages/markdown/__tests__/conversion.spec.ts",
-      "sha256": "e49a2b7e423c561639af5705b9fd6c8e221a0e090c07ac16353d68f20b58f53b",
+      "sha256": "fa37ded55129511572fd8d39be7894c9eb37c6baac5bc7d6601d845f66faf9f9",
       "declarations": 52,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/empty-content.spec.ts",
-      "sha256": "a66e08a57d1a20f5979f6772611e0b71ccf309f83786edb88e322f2378e64a62",
+      "sha256": "1aaaf842b4d6b71babf4be639605a8f88fd69deb0ee49293df14e217867d2280",
       "declarations": 5,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/extensions/blockquote.spec.ts",
-      "sha256": "beb2867959cfa7f0c2c63113f951e548315ad5de9cea74104155b56026896d08",
+      "sha256": "5411a25d36536d963910b7a4b8b283464678f2eefd09eb205830f82becba45e6",
       "declarations": 9,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/htmlTagDetection.spec.ts",
-      "sha256": "61b244a35e4cb0d7aff4f15b4c61b6f5c02f1256b0842d2763ebbc4188225ad3",
+      "sha256": "47d057b8e7d7bdba3ea35d572d5b50f99033167e0f13c2696ec66a228808a3f9",
       "declarations": 13,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/inline-marks-punctuation.spec.ts",
-      "sha256": "6d33088b5953229815e3709d2435a0aea01ef7c92bb47b966731fd3bfb7d15d5",
+      "sha256": "c2c770d98ff74f6a156ff24eca0bda1257f76cf6767c85f43fe0865ec342008d",
       "declarations": 14,
       "review": "R102"
     },
     {
+      "file": "packages/markdown/__tests__/list-indentation.spec.ts",
+      "sha256": "dfff1aa2c5888f1e7c12a19488eddc0ae42b605de5a443894d9ad67505d5c299",
+      "declarations": 6,
+      "review": "G002"
+    },
+    {
       "file": "packages/markdown/__tests__/manager.spec.ts",
-      "sha256": "96f0cc65d32e137f5bf026ab47e702e624e0c3a582a3c708978719f9f0b71000",
+      "sha256": "928bc8b9504a220ff5ed3894b12d0776f475f9ac805389a14067115baa2f950a",
       "declarations": 32,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/mixed-html.spec.ts",
-      "sha256": "c46567a6ae83804980afd7f0deb2739a9ce33f991491c7880dab5af9dbe61ac0",
-      "declarations": 3,
-      "review": "R102"
+      "sha256": "215da9b4c254dd2025b837868c538bbc2b17c257953fe7672fcd818ecd1b8207",
+      "declarations": 8,
+      "review": "G002",
+      "overrides": {
+        "R102": [
+          22,
+          43,
+          58
+        ]
+      }
     },
     {
       "file": "packages/markdown/__tests__/nested-text-style-marks.spec.ts",
-      "sha256": "2cee59248c4c2145d1147c826f2f0d70df94190348a0b7a823a9dd7de9a47725",
+      "sha256": "522eac8e563a06c9d903b6d90650054b8128e41b5369f4b5a637bb0dd5435499",
       "declarations": 1,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/ordered-list-lazy-continuation.spec.ts",
-      "sha256": "51fdaf2f18294a0a6fb9ac57131d84ab4b07d83b1bdcbd515d0f5e7258aa0716",
-      "declarations": 15,
-      "review": "R102"
+      "sha256": "fd7919b708c4274326ba8fd3a2d4529a547b56b63af092ad1eba86ed023bd23f",
+      "declarations": 17,
+      "review": "R102",
+      "overrides": {
+        "G002": [
+          359,
+          370
+        ]
+      }
     },
     {
       "file": "packages/markdown/__tests__/overlapping-marks.spec.ts",
-      "sha256": "12598d0a857d3efa0d15ef675ac074c5506e56c14037c6306492f4e29858ec44",
+      "sha256": "a64f0878028a97ee78b0c52c9f573d0a0dede26358a232b09094816eb1c5b8ac",
       "declarations": 16,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/paragraph.spec.ts",
-      "sha256": "7479cfaabc763ae870130377e5ec23296c47f010ee13c84854f7d95d23b0f076",
+      "sha256": "b86453140b2109a0b1dfa4671e3613918a379e855a081bd8aba511b463037f39",
       "declarations": 12,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/server-side-parsing.spec.ts",
-      "sha256": "10cf11697189e96be435d4e217d6ed413b5da39fd813377b2b417544a9f0ea6d",
+      "sha256": "395a125055d67fd3d47abfb9f1b821ea204099144843b502dbea5ce50e4a22b0",
       "declarations": 8,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/task-list-nested-siblings.spec.ts",
-      "sha256": "fe32756ad1192f77f82d6a0cde234aca4327f52fbc53307c5439dd810c212e99",
+      "sha256": "3a385ce0424944130a46566fa5768d887189b7a12e308198263b95360a7f2410",
       "declarations": 7,
       "review": "R132",
       "overrides": {
@@ -1438,91 +1870,165 @@
     },
     {
       "file": "packages/markdown/__tests__/unknown-html-tags.spec.ts",
-      "sha256": "aa38fc23b6cdc89d1346910ff72caa67fb286d0c78006ed0c591a7b1e6aff070",
+      "sha256": "3a8a25f417f33e8ae122e3e1f9d8eb0bd5917a065db511314a22a60359bc3e74",
       "declarations": 7,
       "review": "R102"
     },
     {
       "file": "packages/markdown/__tests__/utilities.spec.ts",
-      "sha256": "663b635f1af9fa2a1610939015f3b8cea0a9ad23ee5087af3a44a897c0b28fca",
-      "declarations": 19,
-      "review": "R102"
+      "sha256": "de61045032918bb022a2482e79a40eaef8e15605cb3d8af8a17491764e0f595d",
+      "declarations": 23,
+      "review": "R102",
+      "overrides": {
+        "G002": [
+          123,
+          135,
+          221,
+          355,
+          444
+        ]
+      }
+    },
+    {
+      "file": "packages/markdown/__tests__/whitespace-only-marked-text.spec.ts",
+      "sha256": "1fe9a89e2bede65a605af692d49995fe92c7af71e9e970ff38580996ad824e52",
+      "declarations": 12,
+      "review": "G002"
     },
     {
       "file": "packages/react/src/EditorContent.spec.ts",
-      "sha256": "f676c23f770da71f583d92c0b8e0c34cdd70ad745cee4ac18ef7c2dc5cc98c9d",
+      "sha256": "90f40174f4f86f58e70fd0b5ea673db323da51c65d66be58aa5403166c36ed82",
       "declarations": 1,
       "review": "R004"
     },
     {
+      "file": "packages/react/src/ReactNodeViewRenderer.spec.ts",
+      "sha256": "ed9e3935e45ccfcf592fa96299806c0a8fe013992cdda9f786fb2660f7ce76b1",
+      "declarations": 13,
+      "review": "R004"
+    },
+    {
+      "file": "packages/react/src/ReactWidgetRenderer.spec.ts",
+      "sha256": "013f7f9fa9729d49bd986e68ede2a17d46d859453209564f673a6ea4b91fd8f4",
+      "declarations": 10,
+      "review": "R004"
+    },
+    {
+      "file": "packages/react/src/captureDOMSelection.spec.ts",
+      "sha256": "ee50e4bc9efb5b3f86af22ec1cea45961122dcc0d1e1d0a15091932b0dcabb51",
+      "declarations": 3,
+      "review": "R004"
+    },
+    {
       "file": "packages/react/src/menus/BubbleMenu.spec.ts",
-      "sha256": "1985f9acd85325f9c73d18dbfba9c2db3d717266e6ddabcea5c22c01e20e1381",
+      "sha256": "70663c162cdf8c1c556d6575d50d1e2af40e18fc7ecdbb703788f4402c9c67c2",
       "declarations": 2,
       "review": "R004"
     },
     {
       "file": "packages/react/src/menus/FloatingMenu.spec.ts",
-      "sha256": "c3c97eee056f785002c0355103b00e0cbd22a04755d0d714174ad629778c60d8",
+      "sha256": "9d5664c3948701b8ddd6d1d089625a1b4c7d60a4570ab3d81dfa281f48650ac3",
       "declarations": 2,
       "review": "R004"
     },
     {
       "file": "packages/react/src/use-client.spec.ts",
-      "sha256": "d4e2c3db1a642276358d27f138b7f7f35e4c3a02368d8525d7573ec143f36f7e",
+      "sha256": "fca7bd58e5c590497b4e3ddb3bc7772dd1faf810394323c7f0659fb95b7767d5",
       "declarations": 1,
       "review": "R004"
     },
     {
+      "file": "packages/react/src/useEditorState.spec.ts",
+      "sha256": "d6759a67d1a53a501adc229dd937adef962b474ecf2d663f7553cfe5d00c9f5a",
+      "declarations": 4,
+      "review": "R004"
+    },
+    {
       "file": "packages/static-renderer/__tests__/json-string.spec.ts",
-      "sha256": "fd5ab89aa63b4fc793bc3a3ecdb04fe02ab894e4ff32d944ffa0a489b7add818",
+      "sha256": "0d8c66568d04606ca1f29f03b879326cd2accd70f3d5a390d9f5293c94a677c7",
       "declarations": 22,
       "review": "R057"
     },
     {
       "file": "packages/static-renderer/__tests__/md-string.spec.ts",
-      "sha256": "45b6bfbbe5614fd16357ff0235ce2791dcc42836078ee5d69672d18e0ed85749",
-      "declarations": 8,
-      "review": "R057"
+      "sha256": "e500b5b5083d8b10735cd172013782d3aaa512b351b33e1deb76370806127ebc",
+      "declarations": 9,
+      "review": "R057",
+      "overrides": {
+        "G002": [
+          262
+        ]
+      }
     },
     {
       "file": "packages/static-renderer/__tests__/pm-unhandled-types.spec.ts",
-      "sha256": "89139e9e3b51917ca09e08bbbc53ca5d621c1f414d12805b8f33e79c4c9af2e9",
+      "sha256": "11901650706ec20df9e8fe0be2539d34fa8368346913b525f3a8a9db36141089",
       "declarations": 14,
       "review": "R057"
     },
     {
       "file": "packages/static-renderer/__tests__/react-string.spec.ts",
-      "sha256": "d9eadfee81cf8dfe9587c43a905f1e88aa5ae92bdb06404d68e4a11ad6a85007",
+      "sha256": "e49cb49b0562e267789bae25e04e3816b54be3b767af20b34c4e9f6433373c85",
       "declarations": 5,
-      "review": "R057"
+      "review": "R057",
+      "overrides": {
+        "G002": [
+          13
+        ]
+      }
     },
     {
       "file": "packages/suggestion/src/__tests__/suggestion.test.ts",
-      "sha256": "f5d00554c50c809728e73aa2cf5ea99a38021967eaa8a3732895197ac8c2c3f5",
+      "sha256": "e28b48f14fe5ecbd8b430a94de9c3c51ffbb3d60ed2cb2ca5df02bf847adf4ea",
       "declarations": 34,
       "review": "R020"
     },
     {
+      "file": "packages/vue-2/__tests__/VueWidgetRenderer.spec.ts",
+      "sha256": "3d8901603b18b0717c18a0eae450feed91f81842c79a6cfd32fa1a971992a025",
+      "declarations": 10,
+      "review": "G002"
+    },
+    {
       "file": "packages/vue-3/__tests__/VueMarkViewRenderer.spec.ts",
-      "sha256": "7ce6b291445027af48789bd0fc7f01069ffd29a27d7ec5737a050f851389dd78",
+      "sha256": "7cc72494e89e1b19f575035375a8f345e8e4b8779eb72f8e8cddf09a78580940",
       "declarations": 3,
       "review": "R004"
     },
     {
       "file": "packages/vue-3/__tests__/VueNodeViewRenderer.spec.ts",
-      "sha256": "8ad0dd4172fb4bc303bbc89dff607317ded6c989b4b270dc50e6ad066efa8dd1",
-      "declarations": 5,
-      "review": "R004"
+      "sha256": "ed880d7760d796159629c42fc2d48d2b4a0e6d7b58c62a4661d2a753e6e3c058",
+      "declarations": 7,
+      "review": "R004",
+      "overrides": {
+        "G002": [
+          148,
+          165,
+          176
+        ]
+      }
     },
     {
       "file": "packages/vue-3/__tests__/VueRenderer.spec.ts",
-      "sha256": "8c9a988949abaf61965cac9c4d0b50c58afb770d653bf72116b0cc188704d728",
+      "sha256": "e615d949b78c12b82625e14b7236b765a9906c1ce5b9b45fa514397c4f8aed96",
       "declarations": 7,
       "review": "R004"
     },
     {
+      "file": "packages/vue-3/__tests__/VueWidgetRenderer.spec.ts",
+      "sha256": "b757dcbbe479c2c752989e00af7725cd48b5ed362006dbd4f3de451cf56e3a55",
+      "declarations": 15,
+      "review": "R004"
+    },
+    {
+      "file": "packages/vue-3/__tests__/undeclaredWidgetProps.spec.ts",
+      "sha256": "c34fdf1322dde7d2d87c8f8a3ad2136ce69360e6ab9a46312a6f09d1dd9e4369",
+      "declarations": 6,
+      "review": "R004"
+    },
+    {
       "file": "packages/vue-3/__tests__/useEditor.spec.ts",
-      "sha256": "f01af0226fa6515c33844639211b99772bf2289fccf3bd4467d86f6699bc4f75",
+      "sha256": "9a4c367780a8499fd64aa69d3154e4c5832c59c91afdeb99d605ffb8a5809531",
       "declarations": 1,
       "review": "R004"
     }
@@ -1530,7 +2036,7 @@
   "support": [
     {
       "file": "demos/test/helpers.ts",
-      "sha256": "70423a953246d6494d5b767166df6210d6c9f6de85372f9dc0a2ac900b362763"
+      "sha256": "c988b5633d0d865d0a1a758ac67d39961dae39e1829c89e7dbba74f1a80b08c9"
     },
     {
       "file": "packages/markdown/__tests__/conversion-files/bullet-list-numeric-punctuation.ts",
@@ -1558,7 +2064,7 @@
     },
     {
       "file": "packages/markdown/__tests__/conversion-files/index.ts",
-      "sha256": "f0b709ec4e120272670b54c33b41b58834abfd37c63c1a820bf76a439ceab438"
+      "sha256": "d7b134de390653d9976074ce940a41128ad0307d320126963bfa0760478d0d4e"
     },
     {
       "file": "packages/markdown/__tests__/conversion-files/link-with-title.ts",
@@ -1581,12 +2087,16 @@
       "sha256": "4a72428954d3fa94d142e7bf969f1b7ade30489be0c0bda871ddf5fb1b1aa459"
     },
     {
+      "file": "packages/markdown/__tests__/conversion-files/ordered-list-wide-marker.ts",
+      "sha256": "fe2486576c34ee428a35c0d3604f359347991016db9d6205899029da223393a4"
+    },
+    {
       "file": "packages/markdown/__tests__/conversion-files/ordered-list-with-bullet-list.ts",
-      "sha256": "b5473348ac81814b7f21ca12cdfeef3e7802839419b6fb14d6c965305a6500cc"
+      "sha256": "a65e47dc5cdeb57e5042266f4780377a8ce760dccb56fb25867c3851c975dc01"
     },
     {
       "file": "packages/markdown/__tests__/conversion-files/ordered-list.ts",
-      "sha256": "e8168fb45a553d78cbb5315f78a61b51129078f1c53fafc05d8f8ed81a97b29d"
+      "sha256": "fb24b7abe335e80ebbf5b3b90f1aa79733eee5d9c284b36b6cac692c7879c495"
     },
     {
       "file": "packages/markdown/__tests__/conversion-files/soft-break-marks.ts",
@@ -1602,11 +2112,7 @@
     },
     {
       "file": "playwright.config.ts",
-      "sha256": "bcf527afc72fb6475fd4df332b39feda8d7decf5c5131fc64561055badab3675"
-    },
-    {
-      "file": "vitest.config.ts",
-      "sha256": "4619a43a4d0ac749475deff13f48297c1377c811fa4f7131c128e849b8ce4ff4"
+      "sha256": "ac4f90a93aab90a2af685ac27ae494301907756b325b1e9d37c1b7e154165d19"
     }
   ],
   "reviews": {
@@ -1616,7 +2122,7 @@
       "evidence": [
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -1626,7 +2132,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -1634,7 +2140,7 @@
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -1644,7 +2150,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -1654,7 +2160,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -1662,7 +2168,7 @@
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -1672,7 +2178,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -1718,7 +2224,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/tests/chatInputEditorEngineCoverage.test.ts",
@@ -1733,10 +2239,6 @@
         {
           "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
           "test": "inserts one newline from the terminal placeholder with shiftKey=%s"
-        },
-        {
-          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
-          "test": "keeps the first configured newline in a paragraph and splits on the second"
         }
       ]
     },
@@ -1833,10 +2335,6 @@
         {
           "file": "src/tests/chatInputEditorTooltipIntegration.test.ts",
           "test": "checks formattable text when MarkupTooltip selects $name"
-        },
-        {
-          "file": "src/tests/chatInputEditorTooltipIntegration.test.ts",
-          "test": "checks native MarkupTooltip text for $value"
         }
       ]
     },
@@ -1860,11 +2358,11 @@
     },
     "R019": {
       "status": "different-contract",
-      "reason": "First configured Enter inserts a hardBreak, second splits a paragraph. This is Telegram send/newline behavior.",
+      "reason": "The configured newline stays inside the paragraph instead of splitting it, and plain Enter is Telegram's send shortcut.",
       "evidence": [
         {
           "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
-          "test": "keeps the first configured newline in a paragraph and splits on the second"
+          "test": "keeps every configured newline in the paragraph, so an empty line stays in the text"
         }
       ]
     },
@@ -1874,7 +2372,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -1882,7 +2380,7 @@
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -1906,7 +2404,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -1914,7 +2412,7 @@
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -1944,7 +2442,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/tests/markupTooltipLayout.test.ts",
@@ -2152,11 +2650,11 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -2166,7 +2664,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -2381,10 +2879,6 @@
         {
           "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
           "test": "HTML paste preserves semantic text and marks: $html"
-        },
-        {
-          "file": "src/tests/chatInputEditorKeyboardIntegration.test.ts",
-          "test": "keeps the first configured newline in a paragraph and splits on the second"
         }
       ]
     },
@@ -2442,7 +2936,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -2490,7 +2984,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
@@ -2498,7 +2992,7 @@
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -2508,11 +3002,11 @@
       "evidence": [
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -2612,11 +3106,11 @@
       "evidence": [
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -2626,11 +3120,11 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     },
@@ -2678,7 +3172,7 @@
       "evidence": [
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         },
         {
           "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
@@ -2788,7 +3282,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/components/chat/inputEditor/model.ts",
@@ -2938,7 +3432,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -2948,7 +3442,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/tests/chatInputEditor.test.ts",
@@ -2994,7 +3488,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         },
         {
           "file": "src/tests/chatInputEditorMediaCaptionsIntegration.test.ts",
@@ -3008,11 +3502,11 @@
       "evidence": [
         {
           "file": "package.json",
-          "symbol": "\"@tiptap/core\": \"3.28.0\""
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -3180,7 +3674,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -3190,7 +3684,7 @@
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -3238,7 +3732,7 @@
     },
     "R104": {
       "status": "different-contract",
-      "reason": "Upstream Markdown marker tokenizer/formatter/paste-detector helpers are not the Telegram text/entity API. Canonical numeric list lines and HTML styles are handled separately.",
+      "reason": "Upstream Markdown marker tokenizer/formatter/paste-detector helpers are not the Telegram text/entity API. A list is rich-only: list-looking Telegram text stays literal paragraphs, and HTML styles are handled separately.",
       "evidence": [
         {
           "file": "src/components/chat/inputEditor/model.ts",
@@ -3246,7 +3740,7 @@
         },
         {
           "file": "src/tests/chatInputEditorModel.test.ts",
-          "test": "round-trips bullet, ordered, and nested lists with entity offsets after markers"
+          "test": "keeps list-looking lines as text with their entities"
         }
       ]
     },
@@ -3440,7 +3934,7 @@
         },
         {
           "file": "src/components/chat/inputEditor/extensions.ts",
-          "symbol": "TIPTAP_STARTER_KIT"
+          "symbol": "TIPTAP_BASE_EXTENSIONS"
         }
       ]
     },
@@ -3622,11 +4116,39 @@
     },
     "R132": {
       "status": "local",
-      "reason": "Nested checkbox/plain sibling order and literal canonical Telegram list roundtrip are now tested explicitly, including deep nesting.",
+      "reason": "Nested checkbox/plain list markers in Telegram text stay literal lines in their order, including deep nesting: a list is rich-only, so the text round-trips exactly.",
       "evidence": [
         {
           "file": "src/tests/chatInputEditorUpstreamContracts.test.ts",
-          "test": "preserves every nested mixed task/bullet sibling: %s"
+          "test": "Telegram text preserves literal syntax without CommonMark parsing: %s"
+        }
+      ]
+    },
+    "G001": {
+      "status": "gap",
+      "reason": "Declaration added or changed upstream between 3.28.0 and 3.31.3 in a package the editor installs. The 3.28.0 decision cannot speak for it and no local review has replaced it yet.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/README.md",
+          "symbol": "Upstream audit"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
+        }
+      ]
+    },
+    "G002": {
+      "status": "gap",
+      "reason": "Declaration added or changed upstream between 3.28.0 and 3.31.3 in a package the editor does not install. Very likely not-used, but carried as an unreviewed delta rather than assumed.",
+      "evidence": [
+        {
+          "file": "src/components/chat/inputEditor/README.md",
+          "symbol": "Upstream audit"
+        },
+        {
+          "file": "package.json",
+          "symbol": "\"@tiptap/core\": \"3.31.3\""
         }
       ]
     }

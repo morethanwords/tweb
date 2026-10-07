@@ -52,13 +52,19 @@ async function setCaret(
   expect(await page.evaluate(({edge, index}) => (
     window.chatInputEditorHarness.setCaretInTextblock(index, edge)
   ), {edge, index: blockIndex(descriptors, value)})).toBe(true);
+  // a key pressed while the caret is still being applied moves or extends from where it was
+  await settleNativeSelection(page);
 }
 
+const isApplePlatform = (page: Page) => page.evaluate(() => /Mac|iPhone|iPad|iPod/.test(navigator.platform));
+
 async function platformShortcut(page: Page, key: string) {
-  const modifier = await page.evaluate(() => (
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? 'Meta' : 'Control'
-  ));
-  return `${modifier}+${key}`;
+  return `${await isApplePlatform(page) ? 'Meta' : 'Control'}+${key}`;
+}
+
+/** A word at a time: Option on Apple platforms, Control elsewhere. */
+async function wordShortcut(page: Page, key: string) {
+  return `${await isApplePlatform(page) ? 'Alt' : 'Control'}+${key}`;
 }
 
 test.beforeEach(async({page}) => {
@@ -654,7 +660,7 @@ test('keeps native word navigation distinct from character navigation', async({p
   const descriptors = await blocks(page);
   const block = descriptors[blockIndex(descriptors, 'one two three')];
   await setCaret(page, descriptors, 'one two three', 'end');
-  await page.keyboard.press('Alt+ArrowLeft');
+  await page.keyboard.press(await wordShortcut(page, 'ArrowLeft'));
   await settleNativeSelection(page);
   const selection = await page.evaluate(() => window.chatInputEditorHarness.selection());
   expect(selection.type).toBe('text');
@@ -670,7 +676,7 @@ test('keeps a paragraph after Option+Backspace empties its only word', async({pa
     await setDocument(page, {type: 'doc', content});
     const descriptors = await blocks(page);
     await setCaret(page, descriptors, 'Word', 'end');
-    await page.keyboard.press('Alt+Backspace');
+    await page.keyboard.press(await wordShortcut(page, 'Backspace'));
     await settleNativeSelection(page);
 
     const selection = await page.evaluate(() => window.chatInputEditorHarness.selection());
@@ -699,7 +705,7 @@ test('keeps a promoted trailing paragraph after Option+Backspace empties it', as
   expect((await page.evaluate(() => window.chatInputEditorHarness.document())).content)
   .toHaveLength(2);
 
-  await page.keyboard.press('Alt+Backspace');
+  await page.keyboard.press(await wordShortcut(page, 'Backspace'));
   await settleNativeSelection(page);
   const selection = await page.evaluate(() => window.chatInputEditorHarness.selection());
   expect(selection.type).toBe('text');
@@ -711,12 +717,13 @@ test('keeps a promoted trailing paragraph after Option+Backspace empties it', as
   expect(document.content?.[0].content?.[0].text).toBe('Before');
   expect(document.content?.[1]).toEqual({type: 'paragraph'});
 
+  // an authored empty paragraph is removed with its boundary: no line is left behind (README)
   await page.keyboard.press('Backspace');
   await settleNativeSelection(page);
   expect((await page.evaluate(() => window.chatInputEditorHarness.document())).content)
   .toHaveLength(1);
   expect(await page.evaluate(() => window.chatInputEditorHarness.nodePositions('hardBreak')))
-  .toHaveLength(1);
+  .toHaveLength(0);
 
   await page.keyboard.press(await platformShortcut(page, 'Z'));
   await settleNativeSelection(page);
@@ -819,7 +826,7 @@ test('keeps an emptied textblock inside every structural container', async({page
     await setDocument(page, document);
     const descriptors = await blocks(page);
     await setCaret(page, descriptors, 'Word', 'end');
-    await page.keyboard.press('Alt+Backspace');
+    await page.keyboard.press(await wordShortcut(page, 'Backspace'));
     await settleNativeSelection(page);
     const selection = await page.evaluate(() => window.chatInputEditorHarness.selection());
     expect(selection.type, container).toBe('text');
@@ -837,7 +844,7 @@ test('keeps an emptied textblock inside every structural container', async({page
   });
   const descriptors = await blocks(page);
   await setCaret(page, descriptors, 'BeforeWord', 'end');
-  await page.keyboard.press('Alt+Backspace');
+  await page.keyboard.press(await wordShortcut(page, 'Backspace'));
   await settleNativeSelection(page);
   const selection = await page.evaluate(() => window.chatInputEditorHarness.selection());
   expect(selection.text).toBe('Before');

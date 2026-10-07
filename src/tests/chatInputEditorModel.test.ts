@@ -239,7 +239,7 @@ describe('chat input editor Telegram entity model', () => {
     }
   });
 
-  test('keeps a pre block from a later auto-detected list item lossless', () => {
+  test('keeps a pre block inside a list-looking line lossless', () => {
     const text = '- first\n- before code after';
     const source: MessageEntity[] = [{
       _: 'messageEntityPre',
@@ -252,7 +252,7 @@ describe('chat input editor Telegram entity model', () => {
     const serialized = tiptapToTelegram(editor.state.doc);
 
     expect(document.content?.map((node) => node.type)).toEqual([
-      'bulletList',
+      'paragraph',
       'paragraph',
       'codeBlock',
       'paragraph'
@@ -410,7 +410,9 @@ describe('chat input editor Telegram entity model', () => {
     });
   });
 
-  test('round-trips bullet, ordered, and nested lists with entity offsets after markers', () => {
+  // A list is rich-only: text that looks like one is a plain message, and has to
+  // stay one when it is loaded back for editing.
+  test('keeps list-looking lines as text with their entities', () => {
     const text = [
       'intro',
       '- alpha',
@@ -419,109 +421,23 @@ describe('chat input editor Telegram entity model', () => {
       '10. ten',
       '- parent',
       '  - child',
-      '- next',
+      '- [ ] pending',
+      '- [X] done',
+      '3. [ ] ordered task',
       'outro'
     ].join('\n');
-    const boldOffset = text.indexOf('bold');
     const source: MessageEntity[] = [{
       _: 'messageEntityBold',
-      offset: boldOffset,
+      offset: text.indexOf('bold'),
       length: 'bold'.length
     }];
     const editor = makeEditor(text, source);
     const document = editor.getJSON();
     const serialized = tiptapToTelegram(editor.state.doc);
 
-    expect(document.content?.map((node) => node.type)).toEqual([
-      'paragraph',
-      'bulletList',
-      'orderedList',
-      'bulletList',
-      'paragraph'
-    ]);
-    expect(document.content?.[2].attrs).toMatchObject({start: 9});
-    expect(collectNodes(document.content?.[3] as JSONContent).filter((node) => node.type === 'bulletList'))
-    .toHaveLength(2);
+    expect(new Set(document.content?.map((node) => node.type))).toEqual(new Set(['paragraph']));
     expect(serialized.text).toBe(text);
     expect(serialized.entities).toEqual(source);
-  });
-
-  test('parses unchecked and case-insensitive checked task markers as one task list', () => {
-    const text = [
-      '- [ ] pending',
-      '- [x] done',
-      '- [X] also done'
-    ].join('\n');
-    const boldOffset = text.indexOf('pending');
-    const source: MessageEntity[] = [{
-      _: 'messageEntityBold',
-      offset: boldOffset,
-      length: 'pending'.length
-    }];
-    const editor = makeEditor(text, source);
-    const document = editor.getJSON() as JSONContent;
-    const list = document.content?.[0];
-    const serialized = tiptapToTelegram(editor.state.doc);
-
-    expect(document.content?.map((node) => node.type)).toEqual(['taskList']);
-    expect(list?.content?.map((node) => ({
-      attrs: node.attrs,
-      text: node.content?.[0].content?.[0]?.text,
-      type: node.type
-    }))).toEqual([
-      {attrs: {checked: false}, text: 'pending', type: 'taskItem'},
-      {attrs: {checked: true}, text: 'done', type: 'taskItem'},
-      {attrs: {checked: true}, text: 'also done', type: 'taskItem'}
-    ]);
-    expect(serialized.text).toBe(text.replace('[X]', '[x]'));
-    expect(serialized.entities).toEqual(source);
-  });
-
-  test('keeps ordered checkbox items in one ordered list with item attributes', () => {
-    const text = [
-      '3. [ ] pending',
-      '4. plain',
-      '5. [X] done'
-    ].join('\n');
-    const editor = makeEditor(text);
-    const list = (editor.getJSON() as JSONContent).content?.[0];
-
-    expect((editor.getJSON() as JSONContent).content?.map((node) => node.type)).toEqual(['orderedList']);
-    expect(list?.attrs).toMatchObject({start: 3});
-    expect(list?.content?.map((node) => ({
-      checkbox: node.attrs?.checkbox,
-      checked: node.attrs?.checked
-    }))).toEqual([
-      {checkbox: true, checked: false},
-      {checkbox: null, checked: null},
-      {checkbox: true, checked: true}
-    ]);
-    expect(tiptapToTelegram(editor.state.doc).text).toBe(text.replace('[X]', '[x]'));
-  });
-
-  test('keeps nested task items and separates consecutive marker groups', () => {
-    const text = [
-      '- [ ] parent',
-      '  - [x] child',
-      '  - [ ] child two',
-      '- [X] next',
-      '- bullet',
-      '- [ ] final'
-    ].join('\n');
-    const editor = makeEditor(text);
-    const document = editor.getJSON() as JSONContent;
-
-    expect(document.content?.map((node) => node.type)).toEqual([
-      'taskList',
-      'bulletList',
-      'taskList'
-    ]);
-    expect(collectNodes(document).filter((node) => node.type === 'taskList')).toHaveLength(3);
-    expect(document.content?.[0].content?.[0].content?.map((node) => node.type)).toEqual([
-      'paragraph',
-      'taskList'
-    ]);
-    expect(tiptapToTelegram(editor.state.doc).text).toBe(text.replace('[X]', '[x]'));
   });
 
   test('serializes checkbox attributes in mixed bullet and ordered lists', () => {

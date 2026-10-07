@@ -11,6 +11,8 @@
  * its `vi.mock`s only reach the modules loaded after it.
  */
 
+import {stubBrowserGlobals} from '@/tests/helpers/browserGlobals';
+
 const moduleMocks = vi.hoisted(() => {
   const noop = vi.fn();
   return {
@@ -52,25 +54,7 @@ vi.mock('@stores/stars', () => ({default: () => () => 0}));
 export const LOAD_CHAT_BUBBLES_TIMEOUT = 60_000;
 
 export async function loadChatBubbles() {
-  class IntersectionObserverMock {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  class WorkerMock {
-    addEventListener() {}
-    removeEventListener() {}
-    postMessage() {}
-    start() {}
-    terminate() {}
-  }
-
-  vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);
-  vi.stubGlobal('Worker', WorkerMock);
-  vi.stubGlobal('matchMedia', () => ({matches: false, addEventListener() {}, removeEventListener() {}}));
-  vi.stubGlobal('CSS', {supports: () => false, escape: (value: string) => value});
-  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/webp;base64,');
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  stubBrowserGlobals();
 
   const bubbles = await import('@components/chat/bubbles');
   const bubbleGroups = await import('@components/chat/bubbleGroups');

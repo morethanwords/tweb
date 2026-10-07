@@ -435,6 +435,25 @@ describe('Tiptap chat input editor: UploadRendering', () => {
     expect(editor.getDocument()).toEqual(before);
   });
 
+  test.each([undefined, 'add', 'replace'] as const)('brings a cancelled %s upload back through Undo', (action) => {
+    const {editor, before, tiptap, uploadId} = mountPendingUpload(action);
+    // typed right before the cancel: still its own step
+    tiptap.view.dispatch(tiptap.state.tr.insertText('x', tiptap.state.doc.content.size - 1));
+    const pending = editor.getDocument();
+
+    expect(editor.cancelRichMediaUpload(uploadId)).toBe(true);
+    expect(editor.getPendingRichMediaUploadIds()).toEqual([]);
+    expect(editor.getReferencedRichMediaUploadIds()).toContain(uploadId);
+    if(action) expect(editor.getDocument().content?.[0].attrs?.block).toEqual(before.content?.[0].attrs?.block);
+
+    expect(editor.undo()).toBe(true);
+    expect(editor.getPendingRichMediaUploadIds()).toEqual([uploadId]);
+    expect(editor.getDocument()).toEqual(pending);
+
+    expect(editor.redo()).toBe(true);
+    expect(editor.getPendingRichMediaUploadIds()).toEqual([]);
+  });
+
   test('does not restore an orphaned pending-media upload through Undo', () => {
     const {editor} = mountEditor();
     const uploadId = 'upload-cancelled';

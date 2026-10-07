@@ -136,7 +136,7 @@ test('upload error offers retry and remove without losing another media item', a
   await page.evaluate(() => window.richMediaComposerHarness.destroy());
 });
 
-test('cancel from the upload control ignores a late upload result', async({page}) => {
+test('cancel from the upload control ignores a late upload result and Undo starts the upload over', async({page}) => {
   await open(page);
   const before = (await page.evaluate(() => window.richMediaComposerHarness.state())).document;
   await pick(page, 'Choose media');
@@ -144,11 +144,21 @@ test('cancel from the upload control ignores a late upload result', async({page}
   await page.getByRole('progressbar').click();
   await expect(page.locator('[data-upload-id]')).toHaveCount(0);
   await page.evaluate(() => window.richMediaComposerHarness.finish(0));
-  await expect.poll(async() => (await page.evaluate(() => window.richMediaComposerHarness.state())).tasks).toBe(0);
-  const state = await page.evaluate(() => window.richMediaComposerHarness.state());
+  let state = await page.evaluate(() => window.richMediaComposerHarness.state());
   expect(state.document).toEqual(before);
   expect(state.cancelRequests).toBe(1);
   expect(state.sends).toBe(0);
+  // kept for Undo
+  expect(state.tasks).toBe(1);
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.locator('[data-upload-id]')).toHaveCount(1);
+  await expect.poll(async() => (await page.evaluate(() => window.richMediaComposerHarness.state())).uploads).toBe(2);
+  await page.evaluate(() => window.richMediaComposerHarness.finish(1));
+  await expect(page.locator('[data-upload-id]')).toHaveCount(0);
+  state = await page.evaluate(() => window.richMediaComposerHarness.state());
+  expect(state.tasks).toBe(0);
+  expect(JSON.stringify(state.document)).toContain('9101');
   await page.evaluate(() => window.richMediaComposerHarness.destroy());
 });
 

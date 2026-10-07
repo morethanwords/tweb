@@ -1,4 +1,5 @@
-import {expect, Locator, test} from '@playwright/test';
+import {expect, Locator} from '@playwright/test';
+import {test} from './workerContext';
 
 test.beforeEach(async({page}) => {
   await page.goto('/?popups=1');
@@ -29,7 +30,8 @@ test('saves the draft and discards subsequent cancelled changes', async({page}) 
 });
 
 test('opens the existing contact picker and keeps an empty audience private', async({page}) => {
-  const settings = page.locator('.popup').filter({has: page.locator('[role="radiogroup"]')});
+  // the open one: a reopened popup's predecessor stays in the DOM while it fades out
+  const settings = page.locator('.popup.active').filter({has: page.locator('[role="radiogroup"]')});
   await settings.locator('label.row').filter({hasText: /^Selected Contacts/}).click();
   const picker = page.locator('.popup-forward.active');
   await expect(picker).toBeVisible();
@@ -190,7 +192,7 @@ for(const {target, canEdit} of [
       expect(errors).toEqual([]);
       return;
     }
-    await page.getByText('Story Settings', {exact: true}).last().click();
+    await page.locator('.btn-menu.active [role="menuitem"]').filter({hasText: 'Story Settings'}).click();
     if(target === 'self') {
       await expect(popup.getByRole('radio', {name: 'Everyone', exact: true})).toBeChecked();
     } else {
@@ -203,7 +205,7 @@ for(const {target, canEdit} of [
       await popup.getByRole('button', {name: 'SAVE SETTINGS'}).click();
       await expect(popup).toHaveCount(0);
       await viewer.locator('.btn-menu-toggle').click();
-      await page.getByText('Story Settings', {exact: true}).last().click();
+      await page.locator('.btn-menu.active [role="menuitem"]').filter({hasText: 'Story Settings'}).click();
       await expect(popup.getByRole('checkbox', {name: title})).not.toBeChecked();
     }
     expect(errors).toEqual([]);

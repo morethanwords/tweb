@@ -1,4 +1,5 @@
-import {expect, test} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './workerContext';
 import Icons from '../src/icons';
 import {createTransactionFixtures} from '../src/components/popupSandbox/transactionFixtures';
 
@@ -65,11 +66,11 @@ test('all Stars and Gram receipts show the operation, exact amount, status and t
       await page.evaluate((id) => window.popupSandbox.open('transaction/' + id), id);
       const popup = page.locator('.popup-stars-pay.active');
       await expect(popup).toBeVisible({timeout: 15_000});
-      const title = popup.locator('.popup-stars-title');
+      const title = popup.locator('[data-popup-title]');
       await expect(title).not.toBeEmpty();
       const expectedTitle = titles[id.split('/')[1]];
       if(expectedTitle) await expect(title).toHaveText(expectedTitle);
-      const amount = popup.locator('.popup-stars-pay-padding > .popup-stars-pay-amount');
+      const amount = popup.locator('.popup-stars-intro > .popup-stars-pay-amount');
       await expect(amount).toContainText(amountText(transaction));
       await expect(amount.locator('.tgico')).toHaveCount(transaction.amount._ === 'starsTonAmount' ? 1 : 0);
       if(transaction.id) await expect(popup.locator('table')).toContainText(transaction.id);
@@ -174,7 +175,7 @@ test('mobile Gram receipt and history fit the viewport without truncating int64 
   await page.evaluate(() => window.popupSandbox.open('transaction/stars/int64-gram'));
   const receipt = page.locator('.popup-stars-pay.active');
   await expect(receipt).toBeVisible();
-  await expect(receipt.locator('.popup-stars-pay-padding > .popup-stars-pay-amount')).toContainText('+9223372036.854775807');
+  await expect(receipt.locator('.popup-stars-intro > .popup-stars-pay-amount')).toContainText('+9223372036.854775807');
   const overflow = async() => page.locator('.popup.active .popup-container, .popup.active table, .popup.active .row').evaluateAll((elements) => elements.filter((element) => {
     const node = element as HTMLElement;
     return node.clientWidth > 0 && node.scrollWidth > node.clientWidth + 1;
@@ -208,8 +209,8 @@ test('bot subscription and one-nanogram invoice receipts render their amounts', 
   await expect(popup).toHaveCount(0);
   await page.evaluate(() => window.popupSandbox.open('transaction/gram-nano-receipt'));
   await expect(popup).toBeVisible();
-  await expect(popup.locator('.popup-stars-pay-padding > .popup-stars-pay-amount')).toContainText('-0.000000001');
-  await expect(popup.locator('.popup-stars-pay-padding > .popup-stars-pay-amount .tgico')).toHaveCount(1);
+  await expect(popup.locator('.popup-stars-intro > .popup-stars-pay-amount')).toContainText('-0.000000001');
+  await expect(popup.locator('.popup-stars-intro > .popup-stars-pay-amount .tgico')).toHaveCount(1);
   await expect(popup.locator('table')).toContainText('sandbox-one-nanogram');
   expect(errors).toEqual([]);
 });

@@ -8,16 +8,17 @@
  * detected after the fact. One source, two uses: a node added to the composer
  * has to be classified here once, and both the mode check and the plain field
  * follow.
+ *
+ * A list is not here: entities have no list, and what a field shows as one must
+ * not leave as `1. ` text. The official clients send a list as a rich message
+ * too, and keep list-looking text literal where a message carries entities only.
  */
 export const PLAIN_MESSAGE_NODE_NAMES = new Set([
   'blockquote',
   'blockquoteCaption',
-  'bulletList',
   'codeBlock',
   'customEmoji',
   'hardBreak',
-  'listItem',
-  'orderedList',
   'paragraph',
   'text'
 ]);
@@ -37,18 +38,16 @@ export const PLAIN_MESSAGE_MARK_NAMES = new Set([
 
 /**
  * Schemaless extensions the plain field keeps. Plugins carry no node to classify
- * them by, so they are listed: everything driving rich blocks, tables, media
- * uploads or block reordering is left out, and what remains is caret, list and
- * custom-emoji behaviour plus history.
+ * them by, so they are listed: everything driving lists, rich blocks, tables,
+ * media uploads or block reordering is left out, and what remains is caret and
+ * custom-emoji behaviour, pasted lists kept as text, plus history.
  */
 const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
   'chatCustomEmojiText',
   'chatEmptyDocumentSelection',
   'chatInlineAtomNavigation',
   'chatInputPlaceholders',
-  'chatListBackspace',
-  'chatListBehavior',
-  'chatListKeymap',
+  'chatPlainListPaste',
   'chatRichMessageAttributes',
   'undoRedo'
 ]);
@@ -62,17 +61,8 @@ const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
 const BLOCK_STRUCTURE_NODE_NAMES = new Set([
   'blockquote',
   'blockquoteCaption',
-  'bulletList',
   'codeBlock',
-  'hardBreak',
-  'listItem',
-  'orderedList'
-]);
-
-const BLOCK_STRUCTURE_PLUGIN_NAMES = new Set([
-  'chatListBackspace',
-  'chatListBehavior',
-  'chatListKeymap'
+  'hardBreak'
 ]);
 
 type ClassifiableExtension = {
@@ -91,7 +81,5 @@ export default function isPlainMessageExtension(extension: ClassifiableExtension
 
 export function isSingleLineMessageExtension(extension: ClassifiableExtension) {
   if(!isPlainMessageExtension(extension)) return false;
-  return extension.type === 'node' ?
-    !BLOCK_STRUCTURE_NODE_NAMES.has(extension.name) :
-    !BLOCK_STRUCTURE_PLUGIN_NAMES.has(extension.name);
+  return extension.type !== 'node' || !BLOCK_STRUCTURE_NODE_NAMES.has(extension.name);
 }

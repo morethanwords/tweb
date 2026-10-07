@@ -1,6 +1,5 @@
 import {Node, mergeAttributes, textblockTypeInputRule} from '@tiptap/core';
 import {TextSelection} from '@tiptap/pm/state';
-import {canSplit} from '@tiptap/pm/transform';
 import {closeHistory} from '@tiptap/pm/history';
 import {
   InstantViewHeadingLevel,
@@ -8,12 +7,11 @@ import {
   instantViewStyles
 } from '@components/instantViewFormatting';
 import {isTrailingPlaceholderNode} from '@components/chat/inputEditor/model';
-import {joinParagraphAtPlainQuoteBoundary, restoreTopLevelParagraphBoundaryAsHardBreak} from '@components/chat/inputEditor/paragraphCommands';
+import {joinParagraphAtPlainQuoteBoundary} from '@components/chat/inputEditor/paragraphCommands';
 import {chatInputPlaceholderAttributes} from '@components/chat/inputEditor/placeholders';
+import {HEADING_INPUT_REGEXP} from '@components/chat/inputEditor/blockMarkers';
 import classNames from '@helpers/string/classNames';
 import I18n from '@lib/langPack';
-
-const HEADING_INPUT_REGEXP = /^(#{1,6})\s$/;
 
 export const ChatHeading = Node.create({
   name: 'heading',
@@ -112,10 +110,7 @@ export const ChatParagraph = Node.create({
     return {
       Backspace: () => {
         const {state, view} = this.editor;
-        return deletePreviousHardBreak() || joinParagraphAtPlainQuoteBoundary(state, (transaction) => view.dispatch(transaction)) || restoreTopLevelParagraphBoundaryAsHardBreak(
-          state,
-          (transaction) => view.dispatch(transaction)
-        );
+        return deletePreviousHardBreak() || joinParagraphAtPlainQuoteBoundary(state, (transaction) => view.dispatch(transaction));
       },
       Delete: () => joinParagraphAtPlainQuoteBoundary(this.editor.state, (transaction) => this.editor.view.dispatch(transaction), 1),
       Enter: () => {
@@ -141,11 +136,10 @@ export const ChatParagraph = Node.create({
           return $from.depth === 1 ? setHardBreak() : false;
         }
 
+        // a second line break at the end of a quote that ends the message leaves the quote
         const hardBreak = state.schema.nodes.hardBreak;
         const previous = $from.nodeBefore;
-        if(!hardBreak || previous?.type !== hardBreak) {
-          return setHardBreak();
-        }
+        const afterLineBreak = !!hardBreak && previous?.type === hardBreak;
 
         let quoteDepth = -1;
         for(let depth = $from.depth - 1; depth > 0; --depth) {
@@ -154,7 +148,7 @@ export const ChatParagraph = Node.create({
             break;
           }
         }
-        if(quoteDepth === 1 && $from.parentOffset === $from.parent.content.size) {
+        if(afterLineBreak && quoteDepth === 1 && $from.parentOffset === $from.parent.content.size) {
           const quote = $from.node(quoteDepth);
           const caption = quote.lastChild?.type.name === 'blockquoteCaption';
           const bodyCount = quote.childCount - (caption ? 1 : 0);
@@ -178,14 +172,9 @@ export const ChatParagraph = Node.create({
           }
         }
 
-        const transaction = closeHistory(state.tr).delete(
-          $from.pos - previous.nodeSize,
-          $from.pos
-        );
-        const splitPosition = transaction.selection.from;
-        if(!canSplit(transaction.doc, splitPosition)) return false;
-        view.dispatch(transaction.split(splitPosition).scrollIntoView());
-        return true;
+        // A second new line is an empty line, not a new paragraph: a paragraph boundary is only a
+        // line break to every app (and to this text's plain form), so a split would lose it.
+        return setHardBreak();
       }
     };
   }

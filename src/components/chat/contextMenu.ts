@@ -2037,7 +2037,7 @@ export default class ChatContextMenu {
 
     return prepareTextWithEntitiesForCopying(messages.map((message) => {
       if(message.rich_message) {
-        const {text, entities} = flattenRichMessageSummary(message.rich_message, 0);
+        const {text, entities} = flattenRichMessageSummary(message.rich_message);
         return {text, entities};
       }
 

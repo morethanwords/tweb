@@ -522,6 +522,7 @@ pnpm test:a11y:full  # the same, with the story sweep in all four themes (~4 min
 pnpm test:focus    # keyboard focus is VISIBLE — sandbox stories + the sign-in screens (~50 s)
 pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE_URL)
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
+pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT_BASE_URL)
 ```
 
 `test:a11y` runs against a plain unauthenticated server, so everything past the

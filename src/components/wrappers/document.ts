@@ -38,6 +38,7 @@ import {Middleware} from '@helpers/middleware';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {openMarkdownInstantView} from '@components/markdownInstantView';
+import isPlayableDocument from '@appManagers/utils/docs/isPlayableDocument';
 
 rootScope.addEventListener('document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
@@ -119,7 +120,7 @@ export default async function wrapDocument({
 
   const doc = docOverride ?? (((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument);
   uploadingFileName ??= message?.uploadingFileName?.[0];
-  if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
+  if(isPlayableDocument(doc)) {
     return createAudioElement({
       message,
       middleware,

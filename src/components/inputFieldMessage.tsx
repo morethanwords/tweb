@@ -37,6 +37,8 @@ type InputFieldMessageProps = {
   btnProps?: Parameters<typeof Button>[0],
   stars?: Accessor<number>,
   ai?: AiEditorContext,
+  /** The popup sends on the send shortcut (`confirmShortcutIsSendShortcut`), so it breaks no line here. */
+  sendOnShortcut?: boolean,
 };
 
 const InputFieldMessage = (props: InputFieldMessageProps) => {
@@ -144,7 +146,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
   inputField.label?.classList.add(additionalClass + '-limit');
 
   // A caption or a forward comment travels as text plus entities.
-  const editor = attachPlainMessageEditor(inputField.input);
+  const editor = attachPlainMessageEditor(inputField.input, {leaveSendShortcut: props.sendOnShortcut});
 
   if(props.listenerSetter) {
     if(props.onScroll) {

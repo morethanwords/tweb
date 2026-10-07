@@ -90,6 +90,25 @@ export function setButtonMenuItemLoading(
   }
 }
 
+/**
+ * An item that cannot act where the menu was opened stays in place, dimmed and
+ * inert, rather than disappearing: what the menu holds does not jump around.
+ */
+export function setButtonMenuItemDisabled(
+  options: ButtonMenuItemOptions,
+  disabled: boolean,
+  element = options.element
+) {
+  if(!element) return;
+  element.classList.toggle('is-disabled', disabled);
+  if(disabled) element.setAttribute('aria-disabled', 'true');
+  else element.removeAttribute('aria-disabled');
+}
+
+export function isButtonMenuItemDisabled(element: HTMLElement) {
+  return element.classList.contains('is-disabled');
+}
+
 export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
 
@@ -191,6 +210,8 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   // * cancel mobile keyboard close
   onClick && attachClickEvent(el, /* CLICK_EVENT_NAME !== 'click' || keepOpen ? */ /* async */(e) => {
     cancelEvent(e);
+    // pointer events are off, but a key press still clicks
+    if(isButtonMenuItemDisabled(el)) return;
 
     const menu = findUpClassName(e.target, 'btn-menu');
     if(menu && !menu.classList.contains('active')) {

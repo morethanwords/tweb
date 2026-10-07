@@ -1,7 +1,8 @@
 import ButtonIcon from '@components/buttonIcon';
-import GeoPin from '@components/geoPin';
+import {createGeoPin} from '@components/geoPin';
 import InputField from '@components/inputField';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import styles from '@components/popups/richMessageLocation.module.scss';
 import ListenerSetter from '@helpers/listenerSetter';
 import {onCleanup} from 'solid-js';
 import type {ChatInputMapOptions} from '@components/chat/inputEditor/types';
@@ -69,9 +70,10 @@ class RichMessageLocationContent {
     if(caption.address) this.addressInputField.setValueSilently(caption.address);
 
     const picker = document.createElement('div');
-    picker.classList.add('popup-rich-map-picker');
+    picker.classList.add(styles.picker);
     this.mapPreview = document.createElement('div');
-    this.mapPreview.classList.add('popup-rich-map-preview');
+    // `popup-rich-map-preview` is what the e2e suite drags and keys the map by
+    this.mapPreview.classList.add('popup-rich-map-preview', styles.preview);
     this.mapPreview.tabIndex = 0;
     this.mapPreview.style.aspectRatio = `${this.mapWidth} / ${this.mapHeight}`;
     this.mapPreview.setAttribute('role', 'application');
@@ -80,15 +82,15 @@ class RichMessageLocationContent {
       I18n.format('Chat.Input.Editor.Map.Picker', true)
     );
     this.mapImage = document.createElement('div');
-    this.mapImage.classList.add('popup-rich-map-image');
-    const pin = GeoPin();
-    pin.classList.add('popup-rich-map-pin');
+    this.mapImage.classList.add(styles.image);
+    const pin = createGeoPin();
+    pin.classList.add(styles.pin);
     this.coordinates = document.createElement('div');
-    this.coordinates.classList.add('popup-rich-map-coordinates');
+    this.coordinates.classList.add(styles.coordinates);
     this.mapPreview.append(this.mapImage, pin, this.coordinates);
 
     const zoomControls = document.createElement('div');
-    zoomControls.classList.add('popup-rich-map-zoom-controls');
+    zoomControls.classList.add(styles.zoomControls);
     const zoomIn = ButtonIcon('zoomin', {noRipple: true});
     const zoomOut = ButtonIcon('zoomout', {noRipple: true});
     zoomIn.setAttribute('aria-label', I18n.format('KeyboardShortcuts.Action.ZoomIn', true));
@@ -99,12 +101,12 @@ class RichMessageLocationContent {
     currentLocation.classList.add(
       'btn-primary',
       'btn-color-primary',
-      'popup-rich-map-current-location'
+      styles.currentLocation
     );
     currentLocation.append(i18n('Chat.Input.Editor.Map.UseCurrentLocation'));
 
     const fields = document.createElement('div');
-    fields.classList.add('popup-rich-map-fields');
+    fields.classList.add(styles.fields);
     fields.append(
       this.titleInputField.container,
       this.addressInputField.container
@@ -186,7 +188,7 @@ class RichMessageLocationContent {
         y: event.clientY
       };
       this.mapPreview.setPointerCapture(event.pointerId);
-      this.mapPreview.classList.add('is-dragging');
+      this.mapPreview.classList.add(styles.previewDragging);
     });
     this.listenerSetter.add(this.mapPreview)('pointermove', (event) => {
       if(!pointer || pointer.id !== event.pointerId) return;
@@ -204,7 +206,7 @@ class RichMessageLocationContent {
       const deltaY = dragged ? -dragY : event.clientY - rect.top - rect.height / 2;
       pointer = undefined;
       this.mapImage.style.transform = '';
-      this.mapPreview.classList.remove('is-dragging');
+      this.mapPreview.classList.remove(styles.previewDragging);
       this.setCenter(panRichMessageMapCenter(
         {latitude: this.latitude, longitude: this.longitude},
         deltaX,
@@ -217,7 +219,7 @@ class RichMessageLocationContent {
       if(!pointer || pointer.id !== event.pointerId) return;
       pointer = undefined;
       this.mapImage.style.transform = '';
-      this.mapPreview.classList.remove('is-dragging');
+      this.mapPreview.classList.remove(styles.previewDragging);
     });
     this.listenerSetter.add(this.mapPreview)('keydown', (event) => {
       const step = event.shiftKey ? 80 : 32;
@@ -261,7 +263,7 @@ class RichMessageLocationContent {
     this.previewMiddleware.clean();
     this.mapImage.replaceChildren();
     const image = document.createElement('div');
-    image.classList.add('popup-rich-map-photo');
+    image.classList.add(styles.photo);
     this.mapImage.append(image);
     const geo: GeoPoint.geoPoint = {
       _: 'geoPoint',
@@ -306,7 +308,8 @@ export default function showRichMessageLocationPicker(
       const content = new RichMessageLocationContent(options);
       onCleanup(() => content.destroy());
       return (
-        <PopupElement class="popup-rich-map" closable onClose={() => {
+        // `popup-rich-map` is what the e2e suite finds the box by; the look is the module's
+        <PopupElement class={`popup-rich-map ${styles.popup}`} closable onClose={() => {
           content.destroy();
           if(!settled) reject();
         }}>

@@ -1,5 +1,7 @@
 import '@/tests/mocks/chatInputEditorNodes';
 import attachPlainMessageEditor from '@components/chat/inputEditor/plainField';
+import {isSendShortcutLeft} from '@helpers/dom/isSendShortcutPressed';
+import {setAppSettingsSilent} from '@stores/appSettings';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import InputField from '@components/inputField';
 import draftTextWithEntities from '@lib/richTextProcessor/draftTextWithEntities';
@@ -7,6 +9,7 @@ import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import type {DraftMessage, MessageEntity} from '@layer';
 import type {Editor} from '@tiptap/core';
 import {Fragment, Slice} from '@tiptap/pm/model';
+import {useChatInputEditorHarness, type TiptapEditorInternals} from '@/tests/helpers/chatInputEditorHarness';
 
 vi.mock('@environment/webpSupport', () => ({default: true}));
 vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
@@ -19,11 +22,15 @@ vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
  */
 describe('plain message field', () => {
   const mounted: Array<{destroy(): void}> = [];
+  const {mountEditor} = useChatInputEditorHarness();
 
-  const mountField = (options: ConstructorParameters<typeof InputField>[0] = {}) => {
+  const mountField = (
+    options: ConstructorParameters<typeof InputField>[0] = {},
+    editorOptions?: Parameters<typeof attachPlainMessageEditor>[1]
+  ) => {
     const inputField = new InputField({withLinebreaks: true, ...options});
     document.body.append(inputField.container);
-    const editor = attachPlainMessageEditor(inputField.input);
+    const editor = attachPlainMessageEditor(inputField.input, editorOptions);
     mounted.push({destroy: () => {
       editor.destroy();
       inputField.container.remove();
@@ -210,5 +217,107 @@ describe('plain message field', () => {
     })).toBe(false);
     expect(editor.getMode()).toBe('plain');
     expect(editor.getLegacyValueIfLossless()).toBeTruthy();
+  });
+
+  // A list is rich-only: what a caption shows as list markers is its text.
+  test('keeps a typed list marker as text', async() => {
+    const {editor, inputField} = mountField();
+    const {editor: tiptap} = editor as unknown as {editor: Editor};
+    expect(tiptap.schema.nodes.orderedList).toBeUndefined();
+    editor.focusAtEnd();
+
+    tiptap.commands.insertContent('1. ', {applyInputRules: true});
+    await new Promise((resolve) => setTimeout(resolve));
+    tiptap.commands.insertContent('one');
+
+    expect(tiptap.getJSON().content?.[0].type).toBe('paragraph');
+    expect(getRichValueWithCaret(inputField.input, true, false).value).toBe('1. one');
+  });
+
+  test('keeps the markers of a pasted list', () => {
+    const {editor, inputField} = mountField();
+    const {editor: tiptap} = editor as unknown as {editor: Editor};
+    tiptap.view.pasteHTML(
+      '<ol start="3" type="a"><li><p>three</p><ul><li>nested</li></ul></li>' +
+      '<li><input type="checkbox" checked>done</li></ol><p>after</p>',
+      new Event('paste', {cancelable: true}) as ClipboardEvent
+    );
+
+    expect(getRichValueWithCaret(inputField.input, true, false).value).toBe('c. three\n  - nested\nd. [x] done\nafter');
+    expect(editor.getMode()).toBe('plain');
+  });
+
+  test('keeps the markers of a list copied out of the composer, as the list is sent', () => {
+    const paragraph = (text: string, marks?: {type: string}[]) => ({type: 'paragraph', content: [{type: 'text', text, marks}]});
+    const {editor: composer} = mountEditor();
+    composer.setDocument({type: 'doc', content: [
+      {type: 'taskList', content: [
+        {type: 'taskItem', attrs: {checked: true}, content: [paragraph('done')]},
+        {type: 'taskItem', attrs: {checked: false}, content: [paragraph('todo')]}
+      ]},
+      {type: 'orderedList', attrs: {start: 3, reversed: true}, content: [
+        {type: 'listItem', content: [paragraph('three')]},
+        {type: 'listItem', content: [paragraph('two')]}
+      ]},
+      {type: 'bulletList', content: [
+        {type: 'listItem', attrs: {checkbox: true, checked: true}, content: [paragraph('boxed', [{type: 'bold'}])]},
+        {type: 'listItem', content: [paragraph('first'), paragraph('second')]}
+      ]}
+    ]});
+    const tiptap = (composer as TiptapEditorInternals).editor;
+    tiptap.commands.selectAll();
+    const {dom} = tiptap.view.serializeForClipboard(tiptap.state.selection.content());
+
+    const {editor, inputField} = mountField();
+    const {editor: caption} = editor as unknown as {editor: Editor};
+    caption.view.pasteHTML(dom.innerHTML, new Event('paste', {cancelable: true}) as ClipboardEvent);
+
+    const value = getRichValueWithCaret(inputField.input, true, false);
+    expect(value.value).toBe('- [x] done\n- [ ] todo\n3. three\n2. two\n- [x] boxed\n- first\nsecond');
+    // what the composer sends for the same lists
+    expect(value.value).toBe(composer.getRichValue(true, false).value);
+    expect(value.entities).toContainEqual(expect.objectContaining({_: 'messageEntityBold', offset: value.value.indexOf('boxed'), length: 5}));
+  });
+
+  // The media popup sends its caption on the send shortcut, from its own Enter handler — the field
+  // only has to keep the shortcut out of the text and say so, since stopping it prevents the default.
+  describe('a caption whose popup sends on the send shortcut', () => {
+    beforeEach(() => setAppSettingsSilent('sendShortcut', 'enter'));
+
+    const pressEnter = (input: HTMLElement, init: KeyboardEventInit = {}) => {
+      const event = new KeyboardEvent('keydown', {bubbles: true, cancelable: true, key: 'Enter', ...init});
+      input.dispatchEvent(event);
+      return event;
+    };
+
+    test('breaks no line on it and leaves it to the popup', () => {
+      const {editor, inputField} = mountField({}, {leaveSendShortcut: true});
+      editor.setTextWithEntities('caption');
+      editor.focusAtEnd();
+
+      const event = pressEnter(inputField.input);
+      expect(isSendShortcutLeft(event)).toBe(true);
+      expect(editor.getRichValue(false).value).toBe('caption');
+    });
+
+    test('still breaks the line on the new-line shortcut', () => {
+      const {editor, inputField} = mountField({}, {leaveSendShortcut: true});
+      editor.setTextWithEntities('caption');
+      editor.focusAtEnd();
+
+      const event = pressEnter(inputField.input, {shiftKey: true});
+      expect(isSendShortcutLeft(event)).toBe(false);
+      expect(editor.getRichValue(false).value).toBe('caption\n');
+    });
+
+    test('keeps Enter for the text in a field whose popup does not send on it', () => {
+      const {editor, inputField} = mountField();
+      editor.setTextWithEntities('description');
+      editor.focusAtEnd();
+
+      const event = pressEnter(inputField.input);
+      expect(isSendShortcutLeft(event)).toBe(false);
+      expect(editor.getRichValue(false).value).toBe('description\n');
+    });
   });
 });

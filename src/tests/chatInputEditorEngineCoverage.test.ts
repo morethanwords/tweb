@@ -4,6 +4,7 @@ import '@/tests/mocks/chatInputEditorEngineUi';
 import {mountChatInputEditor} from '@/tests/helpers/chatInputEditor';
 import type {ChatInputEditor} from '@components/chat/inputEditor/types';
 import type {PageBlock, Photo, RichMessage, RichText} from '@layer';
+import canSafelyEditRichMessage from '@components/chat/inputEditor/richMessageEditability';
 import type wrapPhoto from '@components/wrappers/photo';
 
 const photoRenderMocks = vi.hoisted(() => ({
@@ -452,6 +453,54 @@ describe('chat input editor rich engine coverage', () => {
     const movedMap = editor.getRichMessage().input.blocks[2] as PageBlock.inputPageBlockMap;
     expect(movedMap.geo._).toBe('inputGeoPoint');
     expect((movedMap.geo as {accuracy_radius?: number}).accuracy_radius).toBeUndefined();
+  });
+
+  test('loads an anchor around text the link mark cannot hold as a marker before that text', () => {
+    const date: RichText = {_: 'textDate', pFlags: {short_date: true}, text: {_: 'textPlain', text: 'date'}, date: 1725120000};
+    const blocks: PageBlock[] = [{
+      _: 'pageBlockParagraph',
+      text: {
+        _: 'textAnchor',
+        name: 'section',
+        text: {_: 'textConcat', texts: [{_: 'textPlain', text: 'On '}, date]}
+      }
+    }];
+    const {editor} = mountEditor();
+
+    expect(editor.setRichMessage(richMessage(blocks))).toBe(true);
+    const paragraph = editor.getDocument().content?.[0];
+    expect(paragraph?.content?.[0]).toEqual({type: 'inlineRichAnchor', attrs: {name: 'section'}});
+    expect(paragraph?.content?.some((node) => node.marks?.some((mark) => mark.type === 'link'))).toBe(false);
+    expect(paragraph?.content?.find((node) => node.text === 'date')?.marks).toContainEqual(
+      expect.objectContaining({type: 'formattedDate'})
+    );
+    // sent the way the composer sends any anchor: a marker where its text starts
+    expect(editor.getRichMessage().output.blocks).toEqual([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textConcat', texts: [
+        {_: 'textAnchor', text: {_: 'textEmpty'}, name: 'section'},
+        {_: 'textPlain', text: 'On '},
+        date
+      ]}
+    }]);
+  });
+
+  // the editability check lets these through: the loader has to decide the same, inside the marks
+  // around the anchor, or the link mark it would add conflicts with them and the document is invalid
+  test.each([
+    ['code', (anchor: RichText): RichText => ({_: 'textFixed', text: anchor})],
+    ['a link', (anchor: RichText): RichText => ({_: 'textUrl', text: anchor, url: 'https://example.com', webpage_id: 0})],
+    ['another anchor', (anchor: RichText): RichText => ({_: 'textAnchor', name: 'outer', text: {_: 'textConcat', texts: [{_: 'textPlain', text: 'See '}, anchor]}})]
+  ])('loads an anchor inside %s as a marker', (_name, wrap) => {
+    const rich = richMessage([{
+      _: 'pageBlockParagraph',
+      text: wrap({_: 'textAnchor', name: 'inner', text: {_: 'textPlain', text: 'here'}})
+    }]);
+    const {editor} = mountEditor();
+
+    expect(canSafelyEditRichMessage(rich)).toBe(true);
+    expect(editor.setRichMessage(rich)).toBe(true);
+    expect(editor.getDocument().content?.[0]?.content).toContainEqual({type: 'inlineRichAnchor', attrs: {name: 'inner'}});
   });
 
   test('preserves quote captions and both visible and empty rich anchors', () => {

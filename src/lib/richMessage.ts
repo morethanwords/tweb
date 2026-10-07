@@ -29,41 +29,89 @@ export function isRichMessagePart(richMessage: RichMessage) {
   return !!richMessage.pFlags?.part;
 }
 
-export function flattenRichMessageSummary(richMessage?: RichMessage, maxLength = 100): Summary {
-  return flattenRichMessage(richMessage, maxLength, true);
+export function flattenRichMessageSummary(richMessage?: RichMessage): Summary {
+  return flattenRichMessage(richMessage, true);
 }
 
 /** Real rich-message text only, without UI fallback labels such as Photo or Unsupported. */
-export function flattenRichMessageContent(richMessage?: RichMessage, maxLength = 0): Summary {
-  return flattenRichMessage(richMessage, maxLength, false);
+export function flattenRichMessageContent(richMessage?: RichMessage): Summary {
+  return flattenRichMessage(richMessage, false);
 }
 
-function flattenRichMessage(richMessage: RichMessage, maxLength: number, includeFallbacks: boolean): Summary {
-  if(!richMessage) {
-    return emptySummary();
-  }
-
+// A preview cut to a length is getRichMessagePreview's (wrappers/richMessagePreview).
+function flattenRichMessage(richMessage: RichMessage, includeFallbacks: boolean): Summary {
   const summary = emptySummary();
-  appendBlocks(summary, richMessage.blocks || [], '', includeFallbacks);
-
-  if(maxLength && summary.text.length > maxLength) {
-    // Hard-truncate to maxLength. Don't use limitSymbols() here: it trims *leading* whitespace,
-    // which would shift every entity offset out of alignment (and its soft +10 slack means it
-    // wouldn't actually cut at maxLength). trimEnd() only can't move earlier offsets. Clamp entities
-    // to the cut boundary (before the ellipsis) so none spills over.
-    const truncated = summary.text.slice(0, maxLength).trimEnd();
-    summary.text = truncated + '...';
-    summary.entities = summary.entities.filter((entity) => entity.offset < truncated.length);
-    for(const entity of summary.entities) {
-      entity.length = Math.min(entity.length, truncated.length - entity.offset);
-    }
-  }
-
+  if(richMessage) appendBlocks(summary, richMessage.blocks || [], '', includeFallbacks);
   return summary;
 }
 
-export function flattenRichMessageSummaryText(richMessage?: RichMessage, maxLength?: number) {
-  return flattenRichMessageSummary(richMessage, maxLength).text;
+export function flattenRichMessageSummaryText(richMessage?: RichMessage) {
+  return flattenRichMessageSummary(richMessage).text;
+}
+
+// a revision of a rich message is never changed in place, so its answer can be kept
+const spoilersCache: WeakMap<RichMessage, boolean> = new WeakMap();
+
+/** Whether a rich message hides any of its text behind a spoiler. */
+export function hasRichMessageSpoilers(richMessage?: RichMessage) {
+  if(!richMessage) return false;
+  let hasSpoilers = spoilersCache.get(richMessage);
+  if(hasSpoilers === undefined) {
+    hasSpoilers = flattenRichMessageContent(richMessage).entities.some((entity) => entity._ === 'messageEntitySpoiler');
+    spoilersCache.set(richMessage, hasSpoilers);
+  }
+
+  return hasSpoilers;
+}
+
+/**
+ * Whether a rich message is as wide as a message gets, the way tdesktop lays one out: text takes the
+ * width of its longest line, but a table (stretched over the width), a row of buttons, details, a
+ * pullquote and media take all of it, and a quote or a list as much as what is inside. So a message
+ * with one of them keeps its width whatever its text is - a bot editing it in place does not resize it.
+ */
+export function isRichMessageFullWidth(blocks: PageBlock[]): boolean {
+  return blocks.some(isFullWidthBlock);
+}
+
+function isFullWidthBlock(block: PageBlock): boolean {
+  switch(block._) {
+    case 'pageBlockTitle':
+    case 'pageBlockSubtitle':
+    case 'pageBlockAuthorDate':
+    case 'pageBlockHeader':
+    case 'pageBlockSubheader':
+    case 'pageBlockParagraph':
+    case 'pageBlockPreformatted':
+    case 'pageBlockFooter':
+    case 'pageBlockKicker':
+    case 'pageBlockHeading1':
+    case 'pageBlockHeading2':
+    case 'pageBlockHeading3':
+    case 'pageBlockHeading4':
+    case 'pageBlockHeading5':
+    case 'pageBlockHeading6':
+    case 'pageBlockThinking':
+    case 'pageBlockMath':
+    case 'pageBlockBlockquote':
+    case 'pageBlockDivider':
+    case 'pageBlockAnchor':
+      return false;
+    case 'pageBlockBlockquoteBlocks':
+      return isRichMessageFullWidth(block.blocks);
+    case 'pageBlockList':
+      return block.items.some((item) => item._ === 'pageListItemBlocks' && isRichMessageFullWidth(item.blocks));
+    case 'pageBlockOrderedList':
+      return block.items.some((item) => item._ === 'pageListOrderedItemBlocks' && isRichMessageFullWidth(item.blocks));
+    default:
+      return true;
+  }
+}
+
+/** The number an ordered list shows for its item, the one it carries or the one its place gives. */
+export function getOrderedListItemNumber(block: PageBlock.pageBlockOrderedList, index: number) {
+  const start = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
+  return block.items[index].num || `${block.pFlags.reversed ? start - index : start + index}`;
 }
 
 function emptySummary(): Summary {
@@ -123,9 +171,7 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '', includeFal
       break;
     case 'pageBlockOrderedList':
       block.items.forEach((item, index) => {
-        const start = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
-        const num = item.num || `${block.pFlags.reversed ? start - index : start + index}`;
-        const itemPrefix = `${prefix}${num}. `;
+        const itemPrefix = `${prefix}${getOrderedListItemNumber(block, index)}. `;
         if(item._ === 'pageListOrderedItemText') {
           appendRichTextLine(summary, item.text, itemPrefix);
         } else {
@@ -237,7 +283,7 @@ function appendRichTextLine(summary: Summary, richText: RichText, prefix = '') {
 // wrapTelegramRichText carries inline math (`textMath`) as an opaque `\x02<base64>\x02` marker for the
 // IV's Temml renderer. Summaries are plain text, so decode markers back to the raw LaTeX source and
 // shift any following entities by the length delta so their offsets stay aligned.
-function wrapSummaryRichText(richText: RichText): TextWithEntities {
+export function wrapSummaryRichText(richText: RichText): TextWithEntities {
   const textWithEntities = wrapTelegramRichText(richText);
   // a summary is text: an inline button is only its label there
   textWithEntities.entities = textWithEntities.entities?.filter((entity) => entity._ !== 'messageEntityRichButton');

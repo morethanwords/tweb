@@ -7,7 +7,8 @@ import {Strike} from '@tiptap/extension-strike';
 import {Text} from '@tiptap/extension-text';
 import {Underline} from '@tiptap/extension-underline';
 import {UndoRedo} from '@tiptap/extensions';
-import type {AnyExtension} from '@tiptap/core';
+import {getSchema, type AnyExtension} from '@tiptap/core';
+import type {Schema} from '@tiptap/pm/model';
 import isPlainMessageExtension, {isSingleLineMessageExtension} from '@components/chat/inputEditor/plainSchema';
 import classNames from '@helpers/string/classNames';
 import {instantViewStyles} from '@components/instantViewFormatting';
@@ -16,7 +17,7 @@ import ChatRichMediaUploadHistory from '@components/chat/inputEditor/mediaUpload
 import {ChatListBehavior, ChatListKeymap} from '@components/chat/inputEditor/listExtension';
 import {ChatInputPlaceholders} from '@components/chat/inputEditor/placeholders';
 import {ChatTableClipboard} from '@components/chat/inputEditor/tableClipboard';
-import {ChatInputRichClipboard} from '@components/chat/inputEditor/richClipboard';
+import {ChatInputRichClipboard, ChatPlainListPaste} from '@components/chat/inputEditor/richClipboard';
 import {ChatHeading, ChatParagraph} from '@components/chat/inputEditor/extensions/textBlocks';
 import {
   ChatBlockquote,
@@ -100,7 +101,10 @@ export const TIPTAP_BASE_EXTENSIONS = [
   Underline
 ];
 
-export const CHAT_INPUT_EXTENSIONS = [
+// what a list pasted into a field without lists is read with (ChatPlainListPaste)
+let richSchema: Schema;
+
+export const CHAT_INPUT_EXTENSIONS: AnyExtension[] = [
   ChatHeading,
   ChatParagraph,
   ChatBlockquote,
@@ -125,6 +129,7 @@ export const CHAT_INPUT_EXTENSIONS = [
   ChatTableNavigation,
   ChatRichMessageAttributes,
   ChatInputRichClipboard,
+  ChatPlainListPaste.configure({richSchema: () => richSchema ??= getSchema([...TIPTAP_BASE_EXTENSIONS, ...CHAT_INPUT_EXTENSIONS])}),
   ChatTableClipboard,
   ChatListBackspace,
   ChatListKeymap,

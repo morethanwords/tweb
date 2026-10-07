@@ -1,0 +1,38 @@
+// a confirmation box (`popup-peer`) takes its content's width between its own bounds; this one is
+// as wide as its preview needs
+.popup:global(.popup-peer) {
+  --popup-min-width: 25rem;
+}
+
+.separateLine,
+.previewSection {
+  margin-block-start: 1rem;
+}
+
+.previewLabel {
+  color: var(--secondary-text-color);
+  font-size: .875rem;
+  margin-block-end: .5rem;
+}
+
+.preview {
+  background-color: var(--light-filled-secondary-text-color);
+  border-radius: .75rem;
+  min-height: 6rem;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.previewContent {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 4rem;
+  min-width: max-content;
+}
+
+// the sample shown before anything is typed
+.previewContentEmpty {
+  color: var(--secondary-text-color);
+  min-width: 100%;
+}

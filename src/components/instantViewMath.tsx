@@ -255,11 +255,16 @@ export function Latex(props: {
   onCleanup(() => {
     generation.destroy();
   });
+  // the source rides along in the composer's own attributes, so a copied formula pastes back as
+  // a formula rather than as the rendered MathML
   return (
     <span
       ref={ref!}
       class={classNames(styles.Latex, props.isBlock && styles.LatexBlock)}
       data-source-revision={renderedSourceRevision()}
+      data-block-math={props.isBlock ? '' : undefined}
+      data-inline-math={props.isBlock ? undefined : ''}
+      data-source={props.source}
     />
   );
 }
@@ -300,6 +305,9 @@ export function hydrateInlineMath(
       const span = document.createElement('span');
       span.className = styles.LatexInline;
       const source = decodeInlineMath(m[1]);
+      // the composer's markup for an inline formula: see `Latex`
+      span.dataset.inlineMath = '';
+      span.dataset.source = source;
       if(typeset) work.push(renderLatexInto(span, source, false, middleware));
       else span.textContent = source;
       pieces.append(span);

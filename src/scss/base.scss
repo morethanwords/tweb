@@ -283,6 +283,11 @@
 
   --gc-right-column-width: 26.25rem;
 
+  // a message's secondary color, at the root as well as on .chat: message content shown outside a
+  // chat (an Instant View page) is shaded with it too, so it looks the same there. The .chat one
+  // stays, for a chat's own theme (see the var() note below)
+  --message-status-color: var(--secondary-text-color);
+
   // * Day theme end
 }
 
@@ -323,6 +328,7 @@
   --lottie-vector-fill: var(--light-secondary-text-color);
   --limit-line-empty-background: var(--light-filled-secondary-text-color);
   --old-input-background-color: var(--background-color);
+  --message-status-color: var(--secondary-color);
 
   // * Night theme end
 }

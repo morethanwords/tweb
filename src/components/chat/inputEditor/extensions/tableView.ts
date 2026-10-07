@@ -1907,6 +1907,9 @@ class ChatTableView extends TableView {
     if(node.attrs.striped) this.table.dataset.striped = 'true';
     else delete this.table.dataset.striped;
     this.dom.classList.toggle(instantViewStyles.TableCompact, !!node.attrs.compact);
+    // what its columns share the width by (instantView `Table`); TableView ignores the table's own
+    // attribute changes
+    this.table.style.setProperty('--table-columns', String(TableMap.get(node).width));
   }
 
   public update(node: ProseMirrorNode) {

@@ -17,6 +17,7 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import calcImageInBox from '@helpers/calcImageInBox';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -465,6 +466,7 @@ export default function showNewMediaPopup(
           messageInputField = inputField;
         },
         btnConfirm,
+        sendOnShortcut: true,
         ai: chat.input.getAiEditorContext()
       });
 
@@ -2382,6 +2384,10 @@ export default function showNewMediaPopup(
       confirmShortcutIsSendShortcut
       animationGroup={animationGroup}
       btnConfirmOnEnter={() => btnConfirm}
+      // The caption, as in tdesktop's send box: typing lands there anyway, and Enter sends from it —
+      // from the close button, the first control, it closed the popup instead. Not on touch, where
+      // focusing a field raises the keyboard over the media.
+      initialFocus={() => IS_TOUCH_SUPPORTED ? undefined : messageInputField?.input}
       show={show()}
       containerProps={{ref: (element) => containerEl = element}}
       onClose={() => {

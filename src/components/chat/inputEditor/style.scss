@@ -299,6 +299,27 @@
       min-height: 1em;
     }
 
+    // A column grows for what cannot wrap in it (instantView `Table`), and an empty cell's
+    // placeholder is not content: as text, in a column narrower than the label, the first
+    // keystroke would make the columns jump. Out of the flow it lines up with the text, and the
+    // trailing break holds the line the label no longer does.
+    [data-table-cell-placeholder] {
+      position: relative;
+
+      > .chat-input-context-placeholder-label {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      > .ProseMirror-trailingBreak {
+        display: inline;
+      }
+    }
+
     &-active-cell-frame {
       border: 2px solid var(--primary-color);
       border-radius: .125rem;
@@ -426,15 +447,14 @@
     display: none;
   }
 
-  .chat-input-context-placeholder-empty::after {
+  // a centered placeholder is a label instead (placeholderLabelDecoration), which leaves the
+  // element's own ::after alone: the pullquote draws its closing quote mark there. `:where` keeps
+  // the specificity, so a block's own placeholder color (the blockquote's) still wins
+  .chat-input-context-placeholder-empty:where(:not(.chat-input-context-placeholder-centered))::after {
     color: var(--secondary-text-color);
     content: attr(data-placeholder);
     opacity: .65;
     pointer-events: none;
-  }
-
-  .chat-input-context-placeholder-centered::after {
-    content: none;
   }
 
   .chat-input-context-placeholder-label {
@@ -685,8 +705,6 @@
 
   // layer 229's buttons: drawn as they will be sent, a click opens their box
   .chat-input-rich-button {
-    user-select: none;
-
     &.ProseMirror-selectednode {
       outline: 2px solid var(--primary-color);
       outline-offset: 1px;
@@ -702,17 +720,20 @@
     display: flex;
     align-items: center;
     gap: .25rem;
+    // the row's space is the line's, as on a page, so two rows share it rather than add it up
+    margin-block: var(--page-button-row-spacing);
 
     &.ProseMirror-selectednode .chat-input-button-row-buttons {
       outline: 2px solid var(--primary-color);
       outline-offset: 2px;
-      border-radius: calc(.75rem * var(--iv-scale));
+      border-radius: var(--page-button-border-radius);
     }
   }
 
   .chat-input-button-row-buttons {
     flex: 1 1 auto;
     min-width: 0;
+    margin-block: 0;
   }
 
   .chat-input-button-row-menu {

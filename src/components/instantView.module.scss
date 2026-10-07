@@ -9,10 +9,28 @@
   --margin-horizontal: calc(var(--padding-horizontal) * -1);
   --paddings: 1;
   --iv-font-size: calc(var(--font-size-16) * var(--iv-scale));
+  // between the buttons of a row, and above and below the row (two rows share it)
+  --page-button-row-spacing: calc(.5rem * var(--iv-scale));
   font-family: var(--font-regular);
   user-select: text;
   white-space: pre-wrap;
   @include rounded-font-size(var(--iv-font-size));
+  // a custom emoji is as large as the text it stands in (a quote's, a heading's, a button's), not
+  // as the message's own text
+  --custom-emoji-size: calc(1em + 4px);
+  // the custom emoji are drawn on one canvas over the whole text (its first child): it has to lie
+  // over the blocks after it that paint a fill of their own (a header cell, a button), and stay
+  // under what the message lays over the text (the spoiler overlay)
+  isolation: isolate;
+
+  > :global(.custom-emoji-renderer) {
+    z-index: 1;
+  }
+
+  // a bubble keeps its text closer to the edges than a page or the composer does
+  :global(.bubble) & {
+    --padding-horizontal: .5rem;
+  }
 
   // a link button is a link too, but it paints itself (.PageButton)
   a:not(:global(.rich-button-link)) {
@@ -88,7 +106,17 @@
 
 .RichMessageWrapper {
   white-space: normal;
-  margin: -4px -8px -5px; // * the opposite to `_chatBubble .message`
+  margin: -4px -8px 0; // * the opposite to `_chatBubble .message`'s top and sides
+
+  // a message as wide as a message gets (isRichMessageFullWidth): this asks for more width than there
+  // is, and the bubble stops at its own limit
+  &Full::before {
+    content: '';
+    display: block;
+    width: 100vw;
+    max-width: 100%;
+    height: 0;
+  }
 }
 
 .RichMessageMore {
@@ -224,6 +252,17 @@
 
 .Blocks > .Paragraph {
   padding-block: calc(.375rem * var(--iv-scale));
+}
+
+// In a message — a bubble or the composer — a paragraph is a line of its text, as every app draws
+// one: two in a row sit as lines do, an empty one is an empty line, and the spacing around the other
+// blocks stays. A page keeps its paragraphs apart.
+.RichMessage > .Blocks,
+.RichMessage.Blocks {
+  > .Paragraph:not(.Thinking) + .Paragraph:not(.Thinking) {
+    padding-top: 0;
+    margin-top: calc(-.375rem * var(--iv-scale));
+  }
 }
 
 // wraps the app-standard `.code` block (see pageBlockPreformatted) in the IV horizontal gutter
@@ -479,7 +518,7 @@
     &::before,
     &::after {
       color: var(--primary-color);
-      content: $tgico-quote;
+      content: $tgico-quote_filled;
       display: block;
       font-family: '#{$tgico-font-family}' !important;
       font-size: 1em;
@@ -547,10 +586,11 @@
 
 .Media {
   position: relative;
-  aspect-ratio: var(--aspect-ratio);
+  // the media's own box: a frame (.MediaFrame) goes around it rather than eating into it
+  aspect-ratio: auto var(--aspect-ratio);
   width: 100% !important;
   height: auto !important;
-  max-height: var(--iv-media-max-height);
+  max-height: calc(var(--iv-media-max-height) + 2 * var(--media-frame-width, 0px));
 
   :global(.media-photo),
   :global(.media-video) {
@@ -558,6 +598,25 @@
     max-width: 100%;
   }
 
+}
+
+// a photo or a video opens in the media viewer
+.MediaViewable {
+  cursor: pointer;
+}
+
+// A media box of its own (not an album's or a slideshow's item). In a bubble it sits in a frame of
+// the bubble's color, as a message's photo or video does (.bubble.photo .attachment).
+.MediaFrame {
+  :global(.bubble) & {
+    --media-frame-width: 1px;
+    border: var(--media-frame-width) solid var(--message-background-color);
+  }
+
+  // two in a row share the line between them, as an album's items do
+  :global(.bubble) & + & {
+    margin-top: -1px;
+  }
 }
 
 .Embed {
@@ -670,22 +729,43 @@
   border-radius: var(--table-border-radius);
   padding-block: calc(.5rem * var(--iv-scale));
 
-  // pageBlockTable.compact (layer 229) — the same table with tighter cells
+  // Every column gets an equal share of the width, declared on its cells, so the columns stay put
+  // whatever is typed into them. A word, a number or a link longer than its cell breaks inside it
+  // (`anywhere`: the table sizes its columns by it, while `break-word` would still widen one). The
+  // layout is still the browser's own (`auto`): a column grows only for what cannot break at all —
+  // a formula (MathML does not wrap) — and the others share what is left. `--table-columns` comes
+  // from the renderer (GenericTable, the composer's TableView); without it the declaration is
+  // dropped and the columns size by content.
+  td,
+  th {
+    width: calc(100% / var(--table-columns));
+    overflow-wrap: anywhere;
+  }
+
+  // pageBlockTable.compact (layer 229) — half the cells' padding (tdesktop halves the vertical
+  // one; its horizontal one is already half of ours), and no minimum width or height to eat
+  // that up
   &Compact {
+    --table-cell-min-height: auto;
+    --table-cell-min-width: 0;
+
     td,
     th {
-      padding: 0.25em 0.4em;
+      padding:
+        calc(var(--table-cell-padding-block) / 2)
+        calc(var(--table-cell-padding-inline) / 2);
     }
   }
 
+  // a table that cannot fit — a long formula, more columns than their minimum width leaves room
+  // for — scrolls sideways
   &Wrapper {
-    --table-layout: fixed;
     --table-border-radius: 10px;
     --table-cell-min-height: calc(36em / 14);
     --table-cell-min-width: calc(4rem * var(--iv-scale));
-    --table-cell-padding:
-      calc(.625rem * var(--iv-scale))
-      calc(.75rem * var(--iv-scale));
+    --table-cell-padding-block: calc(.625rem * var(--iv-scale));
+    --table-cell-padding-inline: calc(.75rem * var(--iv-scale));
+    --table-cell-padding: var(--table-cell-padding-block) var(--table-cell-padding-inline);
     --table-font-size: .875em;
   }
 
@@ -706,9 +786,11 @@
 // (textButton). A stretched row shares its width evenly; an aligned one keeps each button to its
 // label.
 .PageButtonRow {
+  // the buttons' rounding, which the composer's outline around a selected row follows
+  --page-button-border-radius: 1000px;
   display: flex;
-  gap: calc(.5rem * var(--iv-scale));
-  margin-block: calc(.5rem * var(--iv-scale));
+  gap: var(--page-button-row-spacing);
+  margin-block: var(--page-button-row-spacing);
 
   &Left,
   &Center,
@@ -734,17 +816,20 @@
   // the tint lets the page show through; a host on another background names what to mix it over
   --page-button-background: color-mix(in srgb, var(--page-button-color) 12%, var(--page-button-backdrop, transparent));
   --page-button-hover-background: color-mix(in srgb, var(--page-button-color) 20%, var(--page-button-backdrop, transparent));
+  // a press ripples in the button's own colour, its text's: a filled button ripples white
+  --ripple-color: color-mix(in srgb, var(--page-button-color) 20%, transparent);
 
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: calc(.25rem * var(--iv-scale));
   flex: var(--page-button-flex, 1 1 0);
   min-width: 0;
-  min-height: calc(2.25rem * var(--iv-scale));
-  padding: calc(.5rem * var(--iv-scale)) calc(1.25rem * var(--iv-scale));
+  min-height: calc(2.5rem * var(--iv-scale));
+  padding: calc(.375rem * var(--iv-scale)) calc(1.25rem * var(--iv-scale));
   border: 0;
-  border-radius: calc(.75rem * var(--iv-scale));
+  border-radius: var(--page-button-border-radius);
   font: inherit;
   font-weight: var(--font-weight-bold);
   color: var(--page-button-color);
@@ -752,33 +837,55 @@
   text-align: center;
   text-decoration: none !important;
   cursor: pointer;
+  user-select: none;
   transition: background-color .2s;
 
   @include hover() {
     background-color: var(--page-button-hover-background);
   }
 
+  // what the button shows takes no press of its own: a label or an emoji laid over the ripple
+  // would catch it, and the ripple would not run
+  > :not(:global(.c-ripple)) {
+    pointer-events: none;
+  }
+
   &Label {
+    position: relative;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  // the label's own custom emoji canvas, in the button's colour, over the button's fill: in the
+  // label of a row's button, in the button itself inside the text
+  > :global(.custom-emoji-renderer),
+  &Label > :global(.custom-emoji-renderer) {
+    z-index: 1;
+  }
+
+  // in the corner, inside the pill's rounding
   &Icon {
     position: absolute;
-    top: .25rem;
-    inset-inline-end: .25rem;
+    top: .375rem;
+    inset-inline-end: .375rem;
     font-size: .875rem;
+  }
+
+  // the corner icon takes room on both sides, so the label stays centered and clear of it
+  &WithIcon {
+    padding-inline: calc(1.5rem * var(--iv-scale));
   }
 
   &IconLink {
     transform: rotate(-45deg);
   }
 
-  &-primary,
-  &-success,
-  &-danger {
+  // primary fills the button; success and danger are the plain look (the colour over a tint of
+  // it) in their own colour
+  &-primary {
+    --page-button-solid: var(--primary-color);
     --page-button-color: #fff;
     --page-button-background: var(--page-button-solid);
     --page-button-hover-background: color-mix(in srgb, var(--page-button-solid) 88%, #000);
@@ -791,43 +898,81 @@
     }
   }
 
-  &-primary {
-    --page-button-solid: var(--primary-color);
+  // in an incoming message (and the composer, drawn as one) a plain button is shaded the way a
+  // table's header cell is, rather than tinted: the text's own colour, the neutral ripple
+  &-default {
+    :global(.bubble.is-in) &,
+    .RichMessage.Blocks & {
+      --page-button-color: var(--primary-text-color);
+      --page-button-background: #{$message-shade-color};
+      --page-button-hover-background: color-mix(in srgb, var(--message-status-color) 16%, var(--message-background-color));
+      --ripple-color: var(--original-ripple-color);
+    }
   }
 
   &-success {
-    --page-button-solid: var(--green-color);
+    --page-button-color: var(--green-color);
   }
 
   &-danger {
-    --page-button-solid: var(--danger-color);
+    --page-button-color: var(--danger-color);
   }
 
-  // the link an inline link button carries
+  // the link an inline link button carries: pointed at as a link is (its menu's Copy Link, a middle
+  // click, the address on hover) - the ripple gives way to it, as to any link in a button
   :global(.rich-button-link) {
     color: inherit;
   }
 
-  // an inline button inside the text flows with it
-  &Inline {
-    display: inline;
-    padding: .0625em .375em;
-    border-radius: .375em;
-    min-height: 0;
-    box-decoration-break: clone;
+  > :global(.rich-button-link) {
+    pointer-events: auto;
   }
 
-  &Link {
-    --page-button-background: transparent;
-    --page-button-hover-background: var(--light-filled-primary-color);
-    padding-inline: 0;
-    font-weight: inherit;
+  // a date in the label is part of it: the button's colour (the date's own link colour vanishes on
+  // a filled button), and pressing it presses the button rather than opening the date's menu
+  :global(.formatted-date) {
+    color: inherit;
+    text-decoration: none;
+    cursor: inherit;
+  }
+
+  // an inline button sits in the line of the text as one piece
+  &Inline {
+    display: inline-flex;
+    gap: calc(.125rem * var(--iv-scale));
+    min-height: calc(1.125rem * var(--iv-scale));
+    padding: 0 calc(.375rem * var(--iv-scale));
+    border-radius: calc(.625rem * var(--iv-scale));
+    font-size: calc(.875rem * var(--iv-scale));
+    line-height: 1;
   }
 
   &Disabled {
     opacity: .5;
     cursor: default;
     pointer-events: none;
+  }
+}
+
+// a button with no text keeps its place and what it does, but paints no fill and no ripple
+.PageButton.PageButtonEmpty {
+  background-color: transparent;
+
+  @include hover() {
+    background-color: transparent;
+  }
+
+  > :global(.c-ripple) {
+    display: none;
+  }
+}
+
+// a block that draws its custom emoji on a canvas of its own (BlockEmojiCanvas), laid over it
+.EmojiCanvasHost {
+  position: relative;
+
+  > :global(.custom-emoji-renderer) {
+    z-index: 1;
   }
 }
 
@@ -1006,6 +1151,11 @@
 }
 
 .Collage {
+  // prepareAlbum rounds the outer corners by these; in a bubble they would be the bubble's own
+  --border-start-start-radius: 0px;
+  --border-start-end-radius: 0px;
+  --border-end-start-radius: 0px;
+  --border-end-end-radius: 0px;
   position: relative;
   overflow: hidden;
 
@@ -1035,12 +1185,17 @@
     width: 100%;
   }
 
+  // the media's own shape (the frame's --aspect-ratio), as large as the box allows: the media
+  // viewer opens from this rect, so it has to be the picture and not the whole box
   > :global(.media-container-aspecter) {
-    height: 100% !important;
+    aspect-ratio: var(--aspect-ratio);
+    height: auto !important;
     inset: 0;
     margin: auto;
+    max-height: 100%;
+    max-width: 100%;
     position: absolute;
-    width: 100% !important;
+    width: auto !important;
     z-index: 1;
 
     :global(.media-photo),
