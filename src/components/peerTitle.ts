@@ -12,6 +12,8 @@ import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import type {AsAllChatsType} from '@lib/appDialogsManager';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
+import buildURLHash from '@helpers/buildURLHash';
+import Modes from '@config/modes';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -28,7 +30,12 @@ export type PeerTitleOptions = {
   meAsNotes?: boolean,
   iconsColor?: string,
   asAllChats?: AsAllChatsType,
-  wrapOptions?: WrapSomethingOptions
+  wrapOptions?: WrapSomethingOptions,
+  /**
+   * A name that opens its peer on click (a sender's in a message): an `<a href="#<peerId>">`, as a
+   * mention of the peer in a message is — the route opens the peer. Read once, by the constructor.
+   */
+  link?: boolean
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -62,17 +69,31 @@ rootScope.addEventListener('botforum_pending_topic_created', ({peerId, tempId, n
 export default class PeerTitle {
   public element: HTMLElement;
   public options: PeerTitleOptions;
+  /** the first render, started by the constructor */
+  public ready: Promise<void>;
   private hasInner: boolean;
 
   constructor(options?: PeerTitleOptions) {
-    this.element = document.createElement('span');
+    this.element = document.createElement(options?.link ? 'a' : 'span');
     this.element.classList.add('peer-title');
     setDirection(this.element);
+    if(options?.link) {
+      // * a stop of its own only for the keyboard layer, and not dragged off as a link: a name
+      if(!Modes.a11y) this.element.tabIndex = -1;
+      this.element.draggable = false;
+      // * whoever shows the name opens the peer (onBubblesClick — on mousedown on a touch device, so
+      // * the click comes after): only a Ctrl or Cmd click follows the href, into a new tab
+      this.element.addEventListener('click', (e) => {
+        if(!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+        }
+      });
+    }
 
     this.options = {};
 
     if(options) {
-      this.update(options);
+      this.ready = this.update(options);
     }
 
     weakMap.set(this.element, this);
@@ -116,6 +137,14 @@ export default class PeerTitle {
     }
 
     this.options.peerId ??= NULL_PEER_ID;
+    if(this.element.tagName === 'A') {
+      const peerId = this.options.peerId;
+      if(peerId === NULL_PEER_ID || peerId === HIDDEN_PEER_ID) {
+        this.element.removeAttribute('href');
+      } else {
+        (this.element as HTMLAnchorElement).href = buildURLHash('' + peerId);
+      }
+    }
 
     let hasInner: boolean;
     let {peerId, threadId} = this.options;

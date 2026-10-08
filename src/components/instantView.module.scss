@@ -840,7 +840,8 @@
   user-select: none;
   transition: background-color .2s;
 
-  @include hover() {
+  // global: in a module `hover()` hashes `.no-touch` too, and the rule never matched
+  @include hover-global() {
     background-color: var(--page-button-hover-background);
   }
 
@@ -958,7 +959,7 @@
 .PageButton.PageButtonEmpty {
   background-color: transparent;
 
-  @include hover() {
+  @include hover-global() {
     background-color: transparent;
   }
 

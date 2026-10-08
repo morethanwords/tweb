@@ -18,6 +18,71 @@ declare module 'solid-js' {
   }
 }
 
+/**
+ * One wave of a ripple in `container` (a `.c-ripple`), grown from where the press began. Returns
+ * what ends it: the wave fades out once the press is over, but not before it has half grown.
+ * `isStale` drops a wave a newer press has overtaken before it was drawn.
+ */
+export function startRippleWave(
+  container: HTMLElement,
+  clientX: number,
+  clientY: number,
+  {isStale, onEnd}: {isStale?: () => boolean, onEnd?: () => void} = {}
+) {
+  const startTime = Date.now();
+  const circle = document.createElement('div');
+  const duration = +(container.ownerDocument.defaultView || window).getComputedStyle(container).getPropertyValue('--ripple-duration').replace('s', '') * 1000;
+
+  fastRaf(() => {
+    if(isStale?.()) {
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    circle.classList.add('c-ripple__circle');
+
+    const clickX = clientX - rect.left;
+    const clickY = clientY - rect.top;
+
+    const radius = Math.sqrt((Math.abs(clickY - rect.height / 2) + rect.height / 2) ** 2 + (Math.abs(clickX - rect.width / 2) + rect.width / 2) ** 2);
+    const size = radius;
+
+    // center of circle
+    const x = clickX - size / 2;
+    const y = clickY - size / 2;
+
+    circle.style.width = circle.style.height = size + 'px';
+    circle.style.left = x + 'px';
+    circle.style.top = y + 'px';
+    circle.style.opacity = '0';
+
+    container.append(circle);
+
+    void circle.offsetWidth; // force reflow
+    circle.style.opacity = '';
+  });
+
+  return () => {
+    const elapsedTime = Date.now() - startTime;
+    const cb = () => {
+      sequentialDom.mutate(() => {
+        circle.remove();
+      });
+
+      onEnd?.();
+    };
+    if(elapsedTime < duration) {
+      const delay = Math.max(duration - elapsedTime, duration / 2);
+      setTimeout(() => circle.classList.add('hiding'), Math.max(delay - duration / 2, 0));
+
+      setTimeout(cb, delay);
+    } else {
+      circle.classList.add('hiding');
+      setTimeout(cb, duration / 2);
+    }
+  };
+}
+
 let rippleClickId = 0;
 function _ripple(
   elem: HTMLElement,
@@ -45,44 +110,11 @@ function _ripple(
   }
 
   let handler: () => void, lastHandler: typeof handler;
-  // let animationEndPromise: Promise<number>;
   const drawRipple = (clientX: number, clientY: number) => {
-    const startTime = Date.now();
-    const circle = document.createElement('div');
-
     const clickId = rippleClickId++;
 
-    // console.log('ripple drawRipple');
-
-    // const auto = elem.classList.contains('row-sortable') && !elem.classList.contains('cant-sort');
-    const auto = false;
-    const duration = (auto ? .3 : +(r.ownerDocument.defaultView || window).getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '')) * 1000;
-    // console.log('ripple duration', duration);
-
     const _handler = handler = lastHandler = () => {
-    // handler = () => animationEndPromise.then((duration) => {
-      // console.log('ripple animation was:', duration);
-
-      // const duration = isSquare || mediaSizes.isMobile ? 200 : 700;
-      // return;
-      const elapsedTime = Date.now() - startTime;
-      const cb = () => {
-        // console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
-        sequentialDom.mutate(() => {
-          circle.remove();
-        });
-
-        onEnd?.(clickId);
-      };
-      if(elapsedTime < duration) {
-        const delay = Math.max(duration - elapsedTime, duration / 2);
-        setTimeout(() => circle.classList.add('hiding'), Math.max(delay - duration / 2, 0));
-
-        setTimeout(cb, delay);
-      } else {
-        circle.classList.add('hiding');
-        setTimeout(cb, duration / 2);
-      }
+      release();
 
       if(!IS_TOUCH_SUPPORTED) {
         // Same window the listeners were attached to (the element's own — the Document PiP window
@@ -95,76 +127,13 @@ function _ripple(
       handler = null;
       touchStartFired = false;
     };
-    // });
 
     callback?.(clickId);
 
-    /* callback().then((bad) => {
-      if(bad) {
-        span.remove();
-        return;
-      } */
-
-    // console.log('ripple after promise', Date.now() - startTime);
-    // console.log('ripple tooSlow:', tooSlow);
-    /* if(tooSlow) {
-        span.remove();
-        return;
-      } */
-
-    fastRaf(() => {
-      if(lastHandler !== _handler) {
-        return;
-      }
-
-      const rect = r.getBoundingClientRect();
-      circle.classList.add('c-ripple__circle');
-
-      const clickX = clientX - rect.left;
-      const clickY = clientY - rect.top;
-
-      const radius = Math.sqrt((Math.abs(clickY - rect.height / 2) + rect.height / 2) ** 2 + (Math.abs(clickX - rect.width / 2) + rect.width / 2) ** 2);
-      const size = radius;
-
-      // center of circle
-      const x = clickX - size / 2;
-      const y = clickY - size / 2;
-
-      // console.log('ripple click', offsetFromCenter, size, clickX, clickY);
-
-      circle.style.width = circle.style.height = size + 'px';
-      circle.style.left = x + 'px';
-      circle.style.top = y + 'px';
-      circle.style.opacity = '0';
-
-      // нижний код выполняется с задержкой
-      /* animationEndPromise = new Promise((resolve) => {
-          span.addEventListener('animationend', () => {
-            // 713 -> 700
-            resolve(((Date.now() - startTime) / 100 | 0) * 100);
-          }, {once: true});
-        }); */
-
-      // нижний код не всегда включает анимацию ПРИ КЛИКЕ НА ТАЧПАД БЕЗ ТАПТИК ЭНЖИНА
-      /* span.style.display = 'none';
-        r.append(span);
-        duration = +window.getComputedStyle(span).getPropertyValue('animation-duration').replace('s', '') * 1000;
-        span.style.display = ''; */
-
-      r.append(circle);
-
-      void circle.offsetWidth; // force reflow
-      circle.style.opacity = '';
-
-      if(auto) {
-        // window.addEventListener('mousemove', handler, {once: true, passive: true});
-        _handler();
-      }
-
-      // r.classList.add('active');
-      // handler();
+    const release = startRippleWave(r, clientX, clientY, {
+      isStale: () => lastHandler !== _handler,
+      onEnd: () => onEnd?.(clickId)
     });
-    // });
   };
 
   const isRippleUnneeded = (e: Event) => {

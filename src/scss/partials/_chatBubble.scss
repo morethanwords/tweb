@@ -1128,6 +1128,7 @@
     .floating-part {
       --primary-color: #fff;
       --primary-color-rgb: 255, 255, 255;
+      --link-plate-color: #{$link-plate-service-color};
       --ripple-color: rgba(var(--primary-color-rgb), .1);
       // padding: .375rem .5rem;
       border-radius: .25rem;
@@ -1957,13 +1958,24 @@
     font-size: var(--messages-secondary-text-size);
     line-height: calc(var(--messages-secondary-text-size) + .25rem);
     max-width: 100%;
-    overflow: hidden;
+    // cut off for the ellipsis, but not the ripple of a held name, whose plate reaches past its text
+    // (helpers/dom/linkPress.ts); `clip` makes no formatting context of its own, `flow-root` does
+    display: flow-root;
+    overflow: clip;
+    overflow-clip-margin: $link-plate-bleed;
     text-overflow: ellipsis;
     user-select: none;
 
     .badge-fake {
       display: inline-block;
       vertical-align: text-bottom;
+    }
+
+    // a name with icons is a flex row: it hugs them as a plain name hugs its text, so that what is
+    // pressed (the ripple of helpers/dom/linkPress.ts) and clicked is the name, not the whole line
+    > .peer-title.with-icons,
+    .name-first-line > .peer-title.with-icons {
+      width: fit-content;
     }
   }
 
@@ -1987,6 +1999,8 @@
     // align-items: center;
     max-width: inherit;
     overflow: inherit;
+    // the margin `.name` clips with (it is not inherited by itself)
+    overflow-clip-margin: inherit;
 
     &-topic {
       > .bubble-name-rank,
@@ -2259,7 +2273,7 @@
 
   .name-with-reply {
     .name {
-      display: block;
+      display: flow-root;
       padding: 0 !important;
       margin: 0;
 
@@ -3282,6 +3296,7 @@
 
 .bubble.service, .bubble.has-fake-service {
   .service-msg {
+    --link-plate-color: #{$link-plate-service-color};
     color: #fff;
     //background-color: rgba(0, 0, 0, .24);
     background-color: var(--message-highlighting-color);

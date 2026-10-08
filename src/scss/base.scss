@@ -499,6 +499,11 @@ a {
   color: var(--link-color);
 }
 
+// a name that is a link (PeerTitle `link`) keeps the colour of where it is, as a name does
+a.peer-title {
+  color: inherit;
+}
+
 .link-color {
   color: var(--link-color);
 }

@@ -52,6 +52,7 @@ import sessionStorage from '@lib/sessionStorage';
 import replaceChildrenPolyfill from '@helpers/dom/replaceChildrenPolyfill';
 import listenForWindowPrint from '@helpers/dom/windowPrint';
 import cancelImageEvents from '@helpers/dom/cancelImageEvents';
+import listenForLinkPress from '@helpers/dom/linkPress';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from '@layer';
@@ -433,6 +434,7 @@ if(import.meta.env.DEV) {
   setWorkerProxy; // * just to import
   listenForWindowPrint();
   cancelImageEvents();
+  listenForLinkPress();
   setRootClasses();
 
   // ?popups=1 — the popup sandbox: every popup, opened by click with mock data and no session.

@@ -210,7 +210,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
     const managers = rootScope.managers;
 
     const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
-      return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId});
+      // a name in a service message opens its peer on click (onBubblesClick): a link to it
+      return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId, link: !noLinks});
     };
 
     const wrapTruncatedText = (text: string, entities: MessageEntity[] | undefined, maxLength: number) => {

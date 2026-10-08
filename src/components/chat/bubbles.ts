@@ -272,6 +272,7 @@ import {
 } from '@components/chat/bubbleParts/solidMessageShell';
 import useReducedMotion from '@stores/reducedMotion';
 import wheelDeltaToPixels from '@helpers/dom/wheelDeltaToPixels';
+import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -3800,6 +3801,12 @@ export default class ChatBubbles {
       findUpAttribute(target, 'data-saved-from') ||
       findUpAttribute(target, 'data-follow');
     if(nameDiv && nameDiv !== bubble) {
+      // * a name or a mention is a link to its peer: with Ctrl or Cmd held, the browser opens it in a
+      // * new tab (PeerTitle `link` lets that click through)
+      if(nameDiv.tagName === 'A' && (nameDiv as HTMLAnchorElement).href && ((e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey)) {
+        return;
+      }
+
       target = nameDiv || target;
       const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || target.dataset.key || target.dataset.follow/*  || (target as AvatarElement).peerId */;
       const savedFrom = target.dataset.savedFrom as FullMid;
@@ -10730,6 +10737,8 @@ export default class ChatBubbles {
         titleVia = document.createElement('span');
         titleVia.innerText = '@' + (await this.managers.appPeersManager.getPeerUsername(message.viaBotId));
         titleVia.classList.add('peer-title');
+        // * starts a draft to the bot on click (onBubblesClick): no link, but pressed as one
+        titleVia.setAttribute(TEXT_LINK_ATTRIBUTE, '');
       }
 
       let isForward = !!(storyFromPeerId || fwdFromId || fwdFrom) && !showNameForVerificationCodes;
@@ -10740,6 +10749,8 @@ export default class ChatBubbles {
       if(isHidden && !fwdFromId) {
         title = document.createElement('span');
         title.classList.add('peer-title');
+        // * a hidden account: no link, a click tells it is hidden (onBubblesClick)
+        title.setAttribute(TEXT_LINK_ATTRIBUTE, '');
         setInnerHTML(title, wrapEmojiText(fwdFrom.from_name || fwdFromName));
         bubble.classList.add('hidden-profile');
       } else {
@@ -10798,7 +10809,8 @@ export default class ChatBubbles {
 
         nameDiv = document.createElement('div');
         const titlePeerId = storyFromPeerId || fwdFromId;
-        title.dataset.peerId = '' + titlePeerId;
+        // * a hidden account has none: NULL_PEER_ID, whose click tells it is hidden
+        title.dataset.peerId = '' + (titlePeerId || NULL_PEER_ID);
 
         if(
           (isRegularSaved || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) &&
@@ -10858,6 +10870,8 @@ export default class ChatBubbles {
               title.classList.add('peer-title');
               title.style.color = 'var(--message-primary-color)';
               title.dataset.peerId = '' + NULL_PEER_ID;
+              // * a hidden account: no link, a click tells it is hidden (onBubblesClick)
+              title.setAttribute(TEXT_LINK_ATTRIBUTE, '');
               title.append(wrapEmojiText(fwdFromName));
             } else {
               const peerId = getPeerId(fwdFrom.saved_from_id);
@@ -10923,7 +10937,7 @@ export default class ChatBubbles {
           nameDiv.append(' ');
         }
 
-        const visitorTitle = new PeerTitle({peerId: guestChatViaFromId, onlyFirstName: true, wrapOptions}).element;
+        const visitorTitle = new PeerTitle({peerId: guestChatViaFromId, onlyFirstName: true, link: true, wrapOptions}).element;
         const span = document.createElement('span');
         span.classList.add('is-guest-chat-for');
         span.append(i18n('GuestChatFor'), ' ', visitorTitle);
@@ -11577,9 +11591,11 @@ export default class ChatBubbles {
     }
 
     return {
+      // * a name in a message opens its peer on click (onBubblesClick)
       element: new PeerTitle({
         peerId,
         withPremiumIcon: !isForward,
+        link: true,
         wrapOptions: {
           ...wrapOptions,
           textColor: textColorProperty
@@ -13783,8 +13799,8 @@ export default class ChatBubbles {
       isOut,
       makePeerTitle: promises ?
         (peerId) => {
-          const peerTitle = new PeerTitle;
-          promises.push(peerTitle.update({peerId}));
+          const peerTitle = new PeerTitle({peerId, link: true});
+          promises.push(peerTitle.ready);
           return peerTitle.element;
         } :
         () => document.createElement('span'),

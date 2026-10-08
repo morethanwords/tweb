@@ -1,0 +1,37 @@
+@use "../shared" as *;
+
+// A held text link (helpers/dom/linkPress.ts). Its own box is left as it is — padding there would
+// re-wrap a balanced caption under the finger — and its press's ripple, mounted for the press and
+// gone with its wave, is laid over it and cut to a plate around each of its lines.
+.is-link-rippling {
+  position: relative;
+  // the plates' rounding, which the ripple inherits (as Safari makes every `.c-ripple` do)
+  border-radius: $link-plate-radius;
+}
+
+.link-press-ripple {
+  // in the link's own colour, unless the place it is in names another (a service message)
+  --ripple-color: var(--link-plate-color, #{$link-plate-color});
+  // the plates: this much past each line of the link, as round as the link says (both read from
+  // here by linkPress.ts)
+  padding: .0625em $link-plate-bleed;
+  border-radius: inherit;
+  box-sizing: border-box;
+  inset: auto;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+// the wave in the ripple's colour, whatever the link sits in (`.primary`, a poll and others colour
+// every `.c-ripple__circle` inside them)
+.c-ripple.link-press-ripple > .c-ripple__circle {
+  background-color: var(--ripple-color);
+}
+
+// no ripple runs without animations: the link is simply tinted while it is held
+.is-link-pressed:not(.is-link-rippling) {
+  border-radius: $link-plate-radius;
+  background-color: var(--link-plate-color, #{$link-plate-color});
+}

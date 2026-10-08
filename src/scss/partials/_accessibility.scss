@@ -66,8 +66,9 @@
   border: 0;
 }
 
+// a name is a link too (PeerTitle `link`), but it is drawn as a name everywhere
 .high-contrast .anchor-url,
-.high-contrast .i18n a {
+.high-contrast .i18n a:not(.peer-title) {
   text-decoration: underline;
 }
 
