@@ -15,7 +15,8 @@
 import {loadEnv, mergeConfig} from 'vite';
 import {existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, unlinkSync} from 'fs';
 import {basename, dirname, join, normalize, resolve} from 'path';
-import {spawn, ChildProcess} from 'child_process';
+import {execFileSync, spawn, ChildProcess} from 'child_process';
+import {connect} from 'net';
 import express from 'express';
 import baseConfig from './vite.config';
 
@@ -241,6 +242,150 @@ function staticForRemotePlugin() {
   };
 }
 
+// Every preview start-preview.sh starts is registered in tmp/previews/ of the
+// MAIN checkout, shared by all worktrees, so any preview can list them all. Each
+// is named by its checkout's tmp/preview-label (`start-preview.sh --label`):
+// a word or two about the task. scripts/preview-switcher.js puts that name at
+// the head of the tab title and in a badge that lists the rest; /_previews is
+// the same list as a page of its own, /_previews.json as data.
+const mainCheckout = (() => {
+  try {
+    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {cwd: __dirname, encoding: 'utf8'});
+    return dirname(resolve(__dirname, commonDir.trim()));
+  } catch{
+    return __dirname;
+  }
+})();
+const previewRegistry = join(mainCheckout, 'tmp/previews');
+const switcherScript = resolve(__dirname, 'scripts/preview-switcher.js');
+
+function readFirstLine(path: string) {
+  try {
+    return readFileSync(path, 'utf8').split('\n')[0].trim();
+  } catch{
+    return '';
+  }
+}
+
+// The registry's meta files: KEY=value lines.
+function readKeyValues(path: string) {
+  const values: Record<string, string> = {};
+  for(const line of readFileSync(path, 'utf8').split('\n')) {
+    const i = line.indexOf('=');
+    if(i > 0) values[line.slice(0, i)] = line.slice(i + 1);
+  }
+  return values;
+}
+
+// What a checkout serves: its branch, or the commit a detached HEAD sits on.
+function branchOf(repo: string) {
+  try {
+    let gitDir = join(repo, '.git');
+    // a worktree's .git is a file that points at its git dir
+    if(statSync(gitDir).isFile()) {
+      gitDir = resolve(repo, readFileSync(gitDir, 'utf8').replace(/^gitdir:/, '').trim());
+    }
+    const head = readFileSync(join(gitDir, 'HEAD'), 'utf8').trim();
+    return head.startsWith('ref: refs/heads/') ? head.slice('ref: refs/heads/'.length) : head.slice(0, 9);
+  } catch{
+    return '';
+  }
+}
+
+function processAlive(pid: number) {
+  // kill(0) would signal our own process group, and answer for it
+  if(!(pid > 0)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch(e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+function portAnswers(port: number) {
+  return new Promise<boolean>((settle) => {
+    const socket = connect({host: '127.0.0.1', port});
+    const done = (answers: boolean) => {
+      socket.destroy();
+      settle(answers);
+    };
+    socket.setTimeout(500, () => done(false));
+    socket.once('connect', () => done(true));
+    socket.once('error', () => done(false));
+  });
+}
+
+async function listPreviews() {
+  let ports: string[];
+  try {
+    ports = readdirSync(previewRegistry).filter((name) => /^\d+$/.test(name));
+  } catch{
+    return [];
+  }
+
+  const previews = ports.sort((a, b) => +a - +b).map((port) => {
+    try {
+      const meta = readKeyValues(join(previewRegistry, port, 'meta'));
+      // start-preview.sh forgets a dead preview only on its next run
+      if(!processAlive(+meta.PID)) return;
+      return {
+        port: +port,
+        label: readFirstLine(join(meta.REPO, 'tmp/preview-label')),
+        checkout: meta.REPO === mainCheckout ? '' : basename(meta.REPO),
+        branch: branchOf(meta.REPO)
+      };
+    } catch{
+      // an entry start-preview.sh is still writing, or has just removed
+    }
+  }).filter(Boolean);
+
+  const up = await Promise.all(previews.map((preview) => portAnswers(preview.port)));
+  return previews.map((preview, i) => ({...preview, up: up[i]}));
+}
+
+function previewSwitcherPlugin() {
+  const middleware = (req: any, res: any, next: any) => {
+    const path = (req.url || '').split('?')[0];
+    if(path === '/_previews.json') {
+      listPreviews().then((previews) => {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        // the port the request came in on is the preview that answers it
+        res.end(JSON.stringify({current: req.socket.localPort, previews}));
+      }, next);
+      return;
+    }
+
+    if(path === '/_previews') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end('<!doctype html><html lang="en"><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1"><title>Previews</title>' +
+        `<body style="margin:0;font-family:system-ui,-apple-system,sans-serif"><script>${readFileSync(switcherScript, 'utf8')}</script></body></html>`);
+      return;
+    }
+
+    next();
+  };
+
+  return {
+    name: 'preview-switcher',
+    configureServer(server: any) {
+      server.middlewares.use(middleware);
+    },
+    configurePreviewServer(server: any) {
+      server.middlewares.use(middleware);
+    },
+    transformIndexHtml(html: string) {
+      return {
+        html,
+        tags: [{tag: 'script', injectTo: 'body', children: readFileSync(switcherScript, 'utf8')}]
+      };
+    }
+  };
+}
+
 export default mergeConfig(baseConfig as any, {
   cacheDir: resolve(__dirname, 'tmp/vite-preview-cache', cacheKey),
   build: {
@@ -272,7 +417,7 @@ export default mergeConfig(baseConfig as any, {
         next();
       });
     }
-  }, staticForRemotePlugin(), {
+  }, previewSwitcherPlugin(), staticForRemotePlugin(), {
     name: 'preview-auth-seed',
     transformIndexHtml(html: string) {
       return {

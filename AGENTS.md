@@ -60,6 +60,14 @@ holds it; `--list` shows what runs and for whom.
 session: another session may be using it. A separate preview (another account,
 a clean origin) takes its own `--id`.
 
+**Name it by the task.** Pass `--label '<a word or two>'` saying what the
+checkout works on — not the branch name, in the language you talk to the user
+in. Several previews run at once, and the label is how the user tells them
+apart: the tab title starts with it, and a badge in the preview's bottom-left
+corner lists every running preview by label, as does `/_previews` on any of
+them. The label belongs to the checkout (`tmp/preview-label`) and outlives a
+restart; pass it again to rename.
+
 ### Popup sandbox
 
 Every popup, opened by click with mock data and **no Telegram traffic**. Two ways in:

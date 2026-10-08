@@ -36,8 +36,8 @@
 # from the Telegram service chat — two concurrent mints would collide.
 #
 # Usage (run from anywhere — the script cd's to the repo root itself):
-#   bash scripts/start-preview.sh [--detach] [--id <id>] [--port <port>] [--remint]
-#                                 [--no-worker] [--static | --watch]
+#   bash scripts/start-preview.sh [--detach] [--label <words>] [--id <id>] [--port <port>]
+#                                 [--remint] [--no-worker] [--static | --watch]
 #   bash scripts/start-preview.sh --list
 #   bash scripts/start-preview.sh --stop [--port <port>] [--force]
 #
@@ -68,8 +68,13 @@
 #                 window of tmux's default server when tmux is installed
 #                 (`tmux -L default attach -t preview-<port>`); its log is
 #                 tmp/previews/<port>.log of the main checkout.
-#   --list        the registered previews: URL, checkout, branch, id, mode, and
-#                 who holds each.
+#   --label       one or two words naming what this checkout works on, kept in
+#                 its tmp/preview-label; given again, it renames. The preview's
+#                 tab title starts with it, and a badge in the corner of every
+#                 preview lists all running previews by it — as does the page
+#                 /_previews of any of them (scripts/preview-switcher.js).
+#   --list        the registered previews: URL, label, checkout, branch, id,
+#                 mode, and who holds each.
 #   --stop        drop your lease — on --port, or on every preview you hold —
 #                 and stop each preview nobody else holds. --force stops it
 #                 whoever holds it: a human's call, never an agent's.
@@ -101,11 +106,12 @@ REPO="$(pwd -P)"
 say() { echo "[start-preview] $*"; }
 die() { echo "[start-preview] $*" >&2; exit 1; }
 
-ACTION=start; DETACH=0; SERVE=0; FORCE=0
+ACTION=start; DETACH=0; SERVE=0; FORCE=0; LABEL_GIVEN=0
 ID=""; PORT=""; REMINT=0; NO_WORKER=0; WATCH=0; ASK_HMR=0; ASK_STATIC=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --id) ID="${2:?}"; shift 2;;
+    --label) LABEL="${2?--label takes one or two words}"; LABEL_GIVEN=1; shift 2;;
     --port) PORT="${2:?}"; shift 2;;
     --remint) REMINT=1; shift;;
     --no-worker) NO_WORKER=1; shift;;
@@ -313,10 +319,11 @@ holders() {
   return 0
 }
 describe() {
-  local d=$1 repo branch
+  local d=$1 repo branch label
   repo=$(kv "$d/meta" REPO)
   branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')
-  printf '%s' "http://localhost:$(kv "$d/meta" PORT)  $repo ($branch)  id=$(kv "$d/meta" ID)  $(kv "$d/meta" MODE)"
+  label=$(head -1 "$repo/tmp/preview-label" 2>/dev/null || true)
+  printf '%s' "http://localhost:$(kv "$d/meta" PORT)  ${label:+[$label]  }$repo ($branch)  id=$(kv "$d/meta" ID)  $(kv "$d/meta" MODE)"
   [ "$(kv "$d/meta" NO_WORKER)" = 1 ] && printf ' no-worker'
   printf '  since %s' "$(kv "$d/meta" STARTED)"
   port_open "$(kv "$d/meta" PORT)" || printf '  [starting]'
@@ -489,6 +496,15 @@ if [ "$ACTION" = stop ]; then
 fi
 
 # --- start: reuse, or register a new one --------------------------------------
+# The label belongs to the checkout, not to a server: it outlives a restart.
+if [ "$LABEL_GIVEN" = 1 ]; then
+  LABEL=$(printf '%s' "$LABEL" | tr -s '[:space:]' ' ' | sed 's/^ //;s/ $//')
+  [ "$(printf '%s' "$LABEL" | wc -w)" -le 2 ] || die "--label is a word or two about the task, not '$LABEL'"
+  mkdir -p "$REPO/tmp"
+  if [ -n "$LABEL" ]; then printf '%s\n' "$LABEL" >"$REPO/tmp/preview-label"
+  else rm -f "$REPO/tmp/preview-label"; fi
+fi
+
 LOG_FILE=""
 SEED="$REPO/tmp/preview-sessions/$ID.json"
 
