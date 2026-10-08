@@ -1,25 +1,51 @@
-import {JSX, Ref} from 'solid-js';
+import {Accessor, For, JSX, Ref, Show} from 'solid-js';
 import {getDirection} from '@helpers/dom/setInnerHTML';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
 import {Ripple} from '@components/rippleTsx';
+import A11yButton from '@components/a11yButton';
 import {Dynamic} from 'solid-js/web';
 
 const className = 'webpage';
 
-function WebPageFooter(props: {
+// * The footer's button split into buttons of their own, each with its own action (a shared
+// * contact's MESSAGE | ADD) — where the caption stands for the whole box (INSTANT VIEW), these do not
+export type WebPageFooterButton = {
   content: JSX.Element,
+  ref?: (el: HTMLElement) => void,
+  visible?: Accessor<boolean>
+};
+
+function WebPageFooter(props: {
+  content?: JSX.Element,
+  buttons?: WebPageFooterButton[],
   link?: boolean,
   text?: boolean,
   ref?: (el: HTMLElement) => void
 }) {
-  return props?.content && (
+  return (props?.content || props?.buttons) && (
     <div
       dir={getDirection()}
-      class={classNames(`${className}-footer`, props.link && 'is-link', props.text && 'is-text', !props.text && 'is-button')}
+      class={classNames(
+        `${className}-footer`,
+        props.link && 'is-link',
+        props.text && 'is-text',
+        !props.text && 'is-button',
+        props.buttons && 'is-split'
+      )}
       ref={props.ref}
     >
-      {props.content}
+      {props.buttons ? (
+        <For each={props.buttons}>
+          {(button) => (
+            <Show when={button.visible?.() ?? true}>
+              <A11yButton ripple class={`${className}-footer-button`} ref={button.ref}>
+                {button.content}
+              </A11yButton>
+            </Show>
+          )}
+        </For>
+      ) : props.content}
       {props.link && <IconTsx icon="arrow_next" class={`${className}-footer-icon`} />}
     </div>
   );
@@ -96,7 +122,10 @@ export default function WebPageBox(props: {
   title?: Parameters<typeof WebPageTitle>[0],
   text?: Parameters<typeof WebPageText>[0]['children'],
   media?: Parameters<typeof WebPageMedia>[0],
+  // * a round picture at the inline start, with the name, title and text beside it (a contact's avatar)
+  thumb?: JSX.Element,
   ref?: (el: HTMLAnchorElement) => void,
+  class?: string,
   minContent?: boolean,
   clickable?: boolean
 }) {
@@ -104,13 +133,23 @@ export default function WebPageBox(props: {
   const siteName = WebPageName(props.name);
   const titleDiv = WebPageTitle(props.title);
   const previewResizer = WebPageMedia(props.media);
+  const texts = (
+    <>
+      {siteName}
+      {titleDiv}
+      {props.text && <WebPageText>{props.text}</WebPageText>}
+    </>
+  );
 
   const contentDiv = (
     <div class={classNames(`${className}-content`, props.media?.hasDocument && 'has-document', props.minContent && 'min-content')}>
       {props.media?.position === 'top' && previewResizer}
-      {siteName}
-      {titleDiv}
-      {props.text && <WebPageText>{props.text}</WebPageText>}
+      {props.thumb ? (
+        <div class={`${className}-with-thumb`}>
+          <div class={`${className}-thumb`}>{props.thumb}</div>
+          <div class={`${className}-with-thumb-texts`}>{texts}</div>
+        </div>
+      ) : texts}
       {props.media?.position === 'bottom' && previewResizer}
       {viewButton}
     </div>
@@ -129,10 +168,12 @@ export default function WebPageBox(props: {
 
   const ret = (
     <Dynamic
-      component={props.clickable ? 'a' : 'div'}
+      // * a link may hold no other controls, so a box with buttons of its own is a plain element
+      component={props.clickable && !props.footer?.buttons ? 'a' : 'div'}
       ref={props.ref}
       class={classNames(
         className,
+        props.class,
         'quote-like',
         props.clickable && 'quote-like-hoverable',
         props.media?.photoSize && `has-${props.media.photoSize}-photo`

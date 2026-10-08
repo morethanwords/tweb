@@ -92,7 +92,7 @@ import {MESSAGE_LINK_ENTITY_SELECTOR} from '@lib/richTextProcessor/filterDisable
 import wrapMessageActionTextNew from '@components/wrappers/messageActionTextNew';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
-import {getPeerColorIndexByPeer} from '@appManagers/utils/peers/getPeerColorById';
+import {getFakeUserIdForJustName, getPeerColorIndexById, getPeerColorIndexByPeer} from '@appManagers/utils/peers/getPeerColorById';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {AppManagers} from '@lib/managers';
 import idleController from '@helpers/idleController';
@@ -126,7 +126,6 @@ import {BatchProcessor} from '@helpers/sortedList';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
-import {copyTextToClipboard} from '@helpers/clipboard';
 import liteMode from '@helpers/liteMode';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
@@ -180,7 +179,11 @@ import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/n
 import wrapGeo from '@components/wrappers/geo';
 import safePlay from '@helpers/dom/safePlay';
 import flatten from '@helpers/array/flatten';
-import WebPageBox from '@components/wrappers/webPage';
+import WebPageBox, {WebPageFooterButton} from '@components/wrappers/webPage';
+import {makeContactPhoneFormatter} from '@components/wrappers/formatUserPhone';
+import parseVcard, {isVcardPhoneType} from '@helpers/parseVcard';
+import showContactDetailsPopup, {copyFormattedPhone} from '@components/popups/contactDetails';
+import showCreateContactPopup from '@components/popups/createContact';
 import wrapPeerColorPattern from '@components/wrappers/peerColorPattern';
 import showTooltip from '@components/tooltip';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
@@ -417,7 +420,8 @@ export function cancelPendingHiddenLinksEvent(event: Event) {
   const guardedBubble = target.closest(
     `[${HIDDEN_LINKS_PENDING_ATTRIBUTE}], [${HIDDEN_LINKS_FALLBACK_ATTRIBUTE}]`
   );
-  const navigationTarget = target.closest(`${MESSAGE_LINK_ENTITY_SELECTOR}, .webpage`);
+  // a shared contact is a web-page box too, but no link: it stays usable where links are held back
+  const navigationTarget = target.closest(`${MESSAGE_LINK_ENTITY_SELECTOR}, .webpage:not(.is-contact)`);
   if(!guardedBubble || !navigationTarget || !guardedBubble.contains(navigationTarget)) {
     return false;
   }
@@ -1859,7 +1863,7 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'attachment') ||
           findUpClassName(e.target, 'audio') ||
           findUpClassName(e.target, 'document') ||
-          findUpClassName(e.target, 'contact') ||
+          findUpClassName(e.target, 'is-contact') ||
           findUpClassName(e.target, 'time') ||
           findUpClassName(e.target, 'code-header-button') ||
           findUpClassName(e.target, 'reaction') ||
@@ -3600,24 +3604,6 @@ export default class ChatBubbles {
 
       // this.chatSelection.toggleByBubble(bubble);
       this.chat.selection.toggleByElement(findUpClassName(target, 'grouped-item') || bubble);
-      return;
-    }
-
-    const contactDiv: HTMLElement = findUpClassName(target, 'contact');
-    if(contactDiv) {
-      const peerId = contactDiv.dataset.peerId.toPeerId();
-      if(peerId) {
-        this.chat.appImManager.setInnerPeer({
-          ...additionalSetPeerProps,
-          peerId
-        });
-      } else {
-        const phone = contactDiv.querySelector<HTMLElement>('.contact-number');
-        copyTextToClipboard(phone.innerText.replace(/\s/g, ''));
-        toastNew({langPackKey: 'PhoneCopied'});
-        cancelEvent(e);
-      }
-
       return;
     }
 
@@ -7203,7 +7189,10 @@ export default class ChatBubbles {
       (window as any)[callback](targetAnchor, event);
     }
 
-    const webPageCallback = this.webPageClickCallbacks.get(webPageContainer);
+    // * a footer button has an action of its own (a shared contact's MESSAGE / ADD)
+    const footerButton = target?.closest<HTMLElement>('.webpage-footer-button');
+    const webPageCallback = (footerButton && this.webPageClickCallbacks.get(footerButton)) ||
+      this.webPageClickCallbacks.get(webPageContainer);
     webPageCallback?.(event);
     return true;
   }
@@ -10124,55 +10113,16 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaContact': {
-          const contact = context.messageMedia;
-          const contactDiv = document.createElement('div');
-          contactDiv.classList.add('contact');
-          contactDiv.dataset.peerId = '' + contact.user_id;
-          contactDiv.setAttribute('role', 'button');
-          if(Modes.a11y) contactDiv.tabIndex = 0;
-
           noAttachmentDivNeeded = true;
-
-          const contactDetails = document.createElement('div');
-          contactDetails.className = 'contact-details';
-          const contactNameDiv = document.createElement('div');
-          contactNameDiv.className = 'contact-name';
-          const fullName = [
-            contact.first_name,
-            contact.last_name
-          ].filter(Boolean).join(' ');
-          contactDiv.setAttribute('aria-label', I18n.format(contact.user_id ? 'AccDescr.OpenContact' : 'AccDescr.CopyContactPhone', true, [fullName || contact.phone_number]));
-          contactNameDiv.append(
-            fullName.trim() ? wrapEmojiText(fullName) : i18n('AttachContact')
-          );
-
-          const contactNumberDiv = document.createElement('div');
-          contactNumberDiv.className = 'contact-number';
-          let contactNumberText = 'Unknown phone number';
-          if(contact.phone_number) {
-            // group the number under the viewer's country when it carries no explicit
-            // country code, prefixing '+' only when a country code is actually present
-            const {formatted, code} = formatPhoneNumber(contact.phone_number, {defaultCountryCode: this.myCountryCode});
-            contactNumberText = (code ? '+' : '') + formatted;
-          }
-          contactNumberDiv.textContent = contactNumberText;
-
-          contactDiv.append(contactDetails);
-          contactDetails.append(contactNameDiv, contactNumberDiv);
-
-          const avatarElem = avatarNew({
-            middleware,
-            size: 54,
-            lazyLoadQueue: this.lazyLoadQueue,
-            peerId: contact.user_id.toPeerId(),
-            peerTitle: contact.user_id ? undefined : (fullName.trim() ? fullName : I18n.format('AttachContact', true)[0])
-          });
-
-          contactDiv.prepend(avatarElem.node);
-
           context.mediaRequiresMessageDiv = true;
-          bubble.classList.add('contact-message');
-          messageDiv.append(contactDiv);
+          bubble.classList.add('has-webpage', 'contact-message');
+          this.renderSharedContact({
+            contact: context.messageMedia,
+            isOut,
+            messageDiv,
+            timeSpan,
+            middleware
+          });
 
           break;
         }
@@ -11384,6 +11334,157 @@ export default class ChatBubbles {
 
       return container;
     }
+  }
+
+  /**
+   * A shared contact, drawn as tdesktop draws it (history/view/media/history_view_contact.cpp):
+   * a web-page box in the contact's colour holding the avatar, the name and the phone, with what
+   * can be done about the contact as the box's footer buttons — MESSAGE and, for someone not yet
+   * in the contacts, ADD; VIEW CONTACT for someone who is not on Telegram but brought a vCard.
+   */
+  private renderSharedContact({
+    contact,
+    isOut,
+    messageDiv,
+    timeSpan,
+    middleware
+  }: {
+    contact: MessageMedia.messageMediaContact,
+    isOut: boolean,
+    messageDiv: HTMLElement,
+    timeSpan: HTMLElement,
+    middleware: Middleware
+  }) {
+    const {user_id: userId, phone_number: phone} = contact;
+    const peer = userId ? apiManagerProxy.getUser(userId) : undefined;
+    const user = peer?._ === 'user' ? peer : undefined;
+    const fullName = [contact.first_name, contact.last_name].filter(Boolean).join(' ').trim();
+    // * someone not on Telegram has no colour of their own, so it comes from their name
+    const colorPeerId = (userId || getFakeUserIdForJustName(fullName)).toPeerId();
+    const vcardItems = parseVcard(contact.vcard);
+    const formatContactPhone = makeContactPhoneFormatter([user?.phone, userId && phone], this.myCountryCode);
+    const ownPhone = user?.phone || phone;
+    const phoneText = ownPhone ? formatContactPhone(ownPhone) : undefined;
+
+    // * Under the name, as iOS lists them (ChatMessageContactBubbleContentNode): every phone of the
+    // * vCard, else the message's own, then the emails and the organization — five lines at most.
+    // * A card with no name goes by its organization
+    const organization = vcardItems.find((item) => item.type === 'organization')?.value;
+    const displayName = fullName || organization;
+    const vcardPhones = vcardItems.filter((item) => isVcardPhoneType(item.type)).map((item) => formatContactPhone(item.value));
+    const infoLines = [
+      ...(vcardPhones.length ? vcardPhones : phoneText ? [phoneText] : []),
+      ...vcardItems.filter((item) => item.type === 'email').map((item) => item.value),
+      ...(organization && organization !== displayName ? [organization] : [])
+    ].slice(0, 5);
+
+    const openChat = (e: MouseEvent) => {
+      this.chat.appImManager.setInnerPeer({
+        stack: this.chat.appImManager.getStackFromElement(e.target as HTMLElement),
+        peerId: userId.toPeerId()
+      });
+    };
+    const showDetails = () => showContactDetailsPopup(vcardItems, formatContactPhone);
+    const addContact = () => showCreateContactPopup({
+      firstName: contact.first_name,
+      lastName: contact.last_name,
+      phone
+    });
+    const copyPhone = () => copyFormattedPhone(phoneText);
+
+    // * The box itself shows the vCard when there is one, as tdesktop's does; otherwise it opens
+    // * the chat, or copies the phone of someone who is not on Telegram
+    const mainCallback = vcardItems.length ? showDetails : user ? openChat : phone ? copyPhone : undefined;
+    const mainLabel = I18n.format(
+      vcardItems.length ? 'AccDescr.ContactDetails' : user ? 'AccDescr.OpenContact' : 'AccDescr.CopyContactPhone',
+      true,
+      [displayName || phoneText || '']
+    );
+
+    const footerButton = (
+      langKey: LangPackKey,
+      callback: (e: MouseEvent) => void,
+      visible?: () => boolean
+    ): WebPageFooterButton => ({
+      content: i18n(langKey),
+      ref: (element) => this.webPageClickCallbacks.set(element, callback),
+      visible
+    });
+
+    let footer: Parameters<typeof WebPageBox>[0]['footer'];
+    if(user) {
+      const buttons = [footerButton('SharedContactMessage', openChat)];
+      if(!user.pFlags.self) {
+        // * ADD goes away once they are in the contacts, and comes back if they leave them
+        const [isContact, setIsContact] = createSignal(!!user.pFlags.contact);
+        const onContactsUpdate = (updatedUserId: UserId) => {
+          if(updatedUserId !== userId) return;
+          this.managers.appUsersManager.isContact(userId).then(setIsContact);
+        };
+        rootScope.addEventListener('contacts_update', onContactsUpdate);
+        middleware.onDestroy(() => rootScope.removeEventListener('contacts_update', onContactsUpdate));
+
+        buttons.push(footerButton('SharedContactAdd', addContact, () => !isContact()));
+      }
+
+      footer = {buttons};
+    } else if(vcardItems.length) {
+      // * VIEW CONTACT does what the box does, so it is the box's caption, as INSTANT VIEW is
+      footer = {content: i18n('ViewContact')};
+    }
+
+    const avatar = avatarNew({
+      middleware,
+      size: 42,
+      lazyLoadQueue: this.lazyLoadQueue,
+      peerId: user ? colorPeerId : undefined,
+      peerTitle: user ? undefined : displayName || I18n.format('AttachContact', true),
+      peerTitleColorId: colorPeerId
+    });
+
+    createRoot((dispose) => {
+      middleware.onDestroy(dispose);
+      WebPageBox({
+        name: {content: displayName ? wrapEmojiText(displayName) : i18n('AttachContact')},
+        text: infoLines.join('\n'),
+        thumb: avatar.node,
+        footer,
+        clickable: !!mainCallback,
+        class: 'is-contact',
+        ref: (box) => {
+          if(timeSpan) timeSpan.before(box);
+          else messageDiv.append(box);
+          // * with no text, the box always heads the message: the margin a link preview gets above its text
+          messageDiv.classList.add('mt-bigger');
+
+          if(mainCallback) {
+            this.webPageClickCallbacks.set(box, mainCallback);
+            // * the row of avatar and text is the control for the box's own action: the footer
+            // * buttons sit beside it, not inside it
+            const main = box.querySelector<HTMLElement>('.webpage-with-thumb');
+            main.setAttribute('role', 'button');
+            main.setAttribute('aria-label', mainLabel);
+            if(Modes.a11y) main.tabIndex = 0;
+          }
+
+          // * in the contact's colour, an outgoing one in the bubble's own with the contact's stripes
+          setPeerColorToElement({
+            peerId: colorPeerId,
+            element: box,
+            colorAsOut: isOut,
+            color: user ? undefined : {_: 'peerColor', color: getPeerColorIndexById(colorPeerId)}
+          });
+
+          if(user) {
+            wrapPeerColorPattern({
+              peerId: colorPeerId,
+              container: box,
+              middleware
+            });
+          }
+        }
+      });
+    });
   }
 
   private wrapSomeSolid(func: () => JSX.Element, container: HTMLElement, middleware: Middleware) {

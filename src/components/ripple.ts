@@ -27,7 +27,9 @@ function _ripple(
   attachListenerTo = elem
 ) {
   // return;
-  if(elem.querySelector('.c-ripple')) return;
+  // * a ripple of its own only: a control inside with its own ripple (a web-page box's footer
+  // * button) is no reason for the box to go without one
+  if(elem.querySelector(':scope > .c-ripple')) return;
   elem.classList.add('rp');
 
   const r = document.createElement('div');

@@ -110,6 +110,14 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'createContact/shared',
+    title: 'New contact — from a shared contact',
+    open: async() => {
+      const {default: showCreateContactPopup} = await import('@components/popups/createContact');
+      showCreateContactPopup({firstName: 'Johnny', lastName: 'Appleseed', phone: '+1 555 010 0100'});
+    }
+  },
+  {
     id: 'createPoll',
     title: 'New poll',
     open: async(ctx) => {

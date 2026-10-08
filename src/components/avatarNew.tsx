@@ -18,7 +18,7 @@ import {
 import rootScope from '@lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '@appManagers/constants';
 import {Chat, ChatPhoto, PhotoSize, User, UserProfilePhoto} from '@layer';
-import {getPeerAvatarColorByPeer} from '@appManagers/utils/peers/getPeerColorById';
+import {getPeerAvatarColorById, getPeerAvatarColorByPeer} from '@appManagers/utils/peers/getPeerColorById';
 import getPeerPhoto from '@appManagers/utils/peers/getPeerPhoto';
 import wrapAbbreviation from '@lib/richTextProcessor/wrapAbbreviation';
 import getPeerInitials from '@components/wrappers/getPeerInitials';
@@ -420,6 +420,8 @@ export const AvatarNew = (props: {
   noFadeIn?: boolean,
   isSubscribed?: boolean,
   peerTitle?: string,
+  // * whose colour a `peerTitle` avatar takes — someone known only by name has none of their own
+  peerTitleColorId?: PeerId,
   lazyLoadQueue?: LazyLoadQueue | false,
   wrapOptions?: WrapSomethingOptions,
   withStories?: boolean,
@@ -777,7 +779,7 @@ export const AvatarNew = (props: {
 
     const peer = props.peer ?? apiManagerProxy.getPeer(peerId);
     if(title) {
-      const color = getPeerAvatarColorByPeer(peer);
+      const color = getPeerAvatarColorByPeer(peer) ?? (props.peerTitleColorId ? getPeerAvatarColorById(props.peerTitleColorId) : undefined);
       const abbr = wrapAbbreviation(title);
       set({
         abbreviature: documentFragmentToNodes(abbr),

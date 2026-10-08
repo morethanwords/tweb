@@ -124,6 +124,30 @@ defineStories('Chat & moderation', [
     }
   },
   {
+    id: 'contactDetails',
+    title: 'Shared contact — vCard details',
+    open: async() => {
+      const [{default: showContactDetailsPopup}, {default: parseVcard}] = await Promise.all([
+        import('@components/popups/contactDetails'),
+        import('@helpers/parseVcard')
+      ]);
+      showContactDetailsPopup(parseVcard([
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        'N:Appleseed;Johnny;;;',
+        'ORG:Sandbox Inc.;',
+        'TEL;TYPE=CELL:+1 555 010 0100',
+        'TEL;TYPE=WORK:+1 555 010 0101',
+        'EMAIL;TYPE=INTERNET:johnny@example.com',
+        'ADR;TYPE=HOME:;;1 Infinite Loop;Cupertino;CA;95014;USA',
+        'URL:https://example.com',
+        'BDAY:1990-01-15',
+        'NOTE:Call after 10:30',
+        'END:VCARD'
+      ].join('\r\n')));
+    }
+  },
+  {
     id: 'myQrCode',
     title: 'My QR code',
     open: async(ctx) => {

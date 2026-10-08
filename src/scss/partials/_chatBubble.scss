@@ -1327,40 +1327,8 @@
     }
   }
 
-  &.contact-message,
   &.call-message {
     --min-content-width: 200px;
-  }
-
-  &.contact-message {
-    .contact {
-      display: flex;
-      padding: 2px 0;
-      cursor: pointer;
-      user-select: none;
-
-      &-avatar {
-        color: #fff;
-      }
-
-      &-details {
-        padding-left: 12px;
-        margin-top: 8px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      &-name {
-        font-size: 1rem;
-        font-weight: var(--font-weight-bold);
-      }
-
-      &-number {
-        font-size: 14px;
-        line-height: 1.4;
-        color: var(--message-status-color);
-      }
-    }
   }
 
   &.document-message {
@@ -1635,17 +1603,9 @@
     // }
   }
 
-  &.poll-message,
-  &.contact-message {
-    .time {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-    }
-  }
-
   &.poll-message {
     .time {
+      position: absolute;
       right: 8px;
       bottom: 5px;
     }
@@ -2684,6 +2644,11 @@
   color: var(--primary-text-color);
   display: block;
 
+  // * a shared contact is pressed, not read: never selected, as before it became a preview
+  &.is-contact {
+    user-select: none;
+  }
+
   & + .time {
     display: block;
     float: unset;
@@ -2901,18 +2866,97 @@
       @include text-overflow(false);
     }
 
+    // * The button reaches from the box's border line to its edge, past the content's padding, so a
+    // * press and its ripple take the whole width; the separator keeps to the text's width, as
+    // * tdesktop draws it (history_view_web_page.cpp, `inner.width()`). It is drawn inside the
+    // * padding, since the button's `overflow: hidden` would clip a border-box line
     &.is-button {
       margin-bottom: #{-$webpage-padding-vertical};
+      margin-inline: #{-$webpage-padding};
+      border-top: 0;
       line-height: $height;
       font-size: var(--messages-text-size);
       text-align: center;
       font-weight: var(--font-weight-bold);
       height: #{$height + $margin + $border};
-      padding: #{math.div($margin, 2)} .5rem 0;
+      padding: #{math.div($margin, 2) + $border} #{$webpage-padding + .5rem} 0;
       pointer-events: none;
-      width: 100%;
+      // * below a square thumbnail floating beside short text: a box that clips its overflow would
+      // * otherwise narrow itself to sit next to the float
+      clear: both;
+      @include text-overflow(true);
+
+      &:before {
+        content: "";
+        position: absolute;
+        top: 0;
+        inset-inline: $webpage-padding;
+        height: $border;
+        background-color: rgba(var(--primary-color-rgb, 0, 0, 0), .2);
+      }
+
+      // * where it stood before the button reached past the padding and lost its border
+      #{$parent}-footer-icon {
+        top: #{.125rem + $border};
+        right: #{$webpage-padding - .125rem};
+      }
+    }
+
+    // * The same button, split into buttons of their own (a shared contact's MESSAGE | ADD): each
+    // * takes the caption's padding, so the press and its ripple reach the line above. Columns of
+    // * `1fr` are as wide as the widest button, and make the box wide enough for all of them
+    &.is-split {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+      padding: #{$border} 0 0;
+    }
+
+    &-button {
+      padding: #{math.div($margin, 2)} .5rem 0;
+      pointer-events: auto;
+      cursor: pointer;
+      // * above the box's own ripple, which would take the press otherwise
+      position: relative;
+      z-index: 1;
+      // * a <button> with the a11y layer
+      border: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
       @include text-overflow(true);
     }
+  }
+
+  // * a round picture at the start, with the name and text beside it (a shared contact)
+  // * the picture keeps to the top, as tdesktop draws it, however many lines the text runs to
+  &-with-thumb {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+    padding: .125rem 0;
+
+    &-texts {
+      flex: 1 1 auto;
+      min-width: 0;
+
+      #{$parent}-name,
+      #{$parent}-text {
+        @include text-overflow(true);
+      }
+
+      // * a line each (a contact's phones, emails, organization), every one cut short on its own
+      #{$parent}-text {
+        white-space: pre;
+      }
+    }
+  }
+
+  // * the picture is part of the box's own control: a photo avatar would take the press for the
+  // * peer it shows, and open the chat where the box opens the vCard
+  &-thumb {
+    flex: 0 0 auto;
+    pointer-events: none;
   }
 }
 
@@ -3405,7 +3449,6 @@
   }
 
   .audio-subtitle,
-  .contact-number,
   .audio-time {
     color: var(--secondary-text-color) !important;
   }
