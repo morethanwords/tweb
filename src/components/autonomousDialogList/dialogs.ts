@@ -142,14 +142,24 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       }
 
       const peerId = userId.toPeerId();
-      const dom = this.getDialogDom(peerId);
-      if(!dom) {
+      const dialogElement = this.getDialogElement(peerId);
+      if(!dialogElement) {
         return;
+      }
+
+      // * the row offers its bot's main mini app only while the bot has one (setUnreadMessages)
+      if(
+        dialogElement.hasBotMainApp !== undefined &&
+        dialogElement.hasBotMainApp !== !!apiManagerProxy.getUser(userId)?.pFlags?.bot_has_main_app
+      ) {
+        this.managers.appMessagesManager.getDialogOnly(peerId).then((dialog) => {
+          if(dialog) this.appDialogsManager.setUnreadMessagesN({dialog, dialogElement});
+        });
       }
 
       const status = await this.managers.appUsersManager.getUserStatus(userId);
       const online = status?._ === 'userStatusOnline';
-      this.setOnlineStatus(dom.avatarEl.node, online);
+      this.setOnlineStatus(dialogElement.dom.avatarEl.node, online);
     });
 
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {

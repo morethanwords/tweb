@@ -1233,6 +1233,13 @@
       opacity: 0;
       pointer-events: none;
     }
+
+    // * the bot's button takes the pointer back from the row it sits in, and is a tab stop of its
+    // * own: it gives up both with the row, and is gone once the row has faded out
+    .dialog-subtitle-badge-bot-app {
+      visibility: hidden;
+      pointer-events: none;
+    }
   }
 
   .folders-tabs-scrollable {
@@ -1248,6 +1255,10 @@
       .sidebar-header__title {
         opacity: 1;
       }
+
+      .dialog-subtitle-badge-bot-app {
+        visibility: visible;
+      }
     }
 
     .folders-tabs-scrollable {
@@ -1262,6 +1273,11 @@
       .input-search,
       .sidebar-header__title {
         transition: opacity var(--transition-standard-in);
+      }
+
+      // * kept until the row has faded out - and back at once when it fades in again
+      .dialog-subtitle-badge-bot-app {
+        transition: visibility var(--transition-standard-in);
       }
     }
 

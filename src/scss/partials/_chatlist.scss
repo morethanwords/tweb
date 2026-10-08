@@ -219,6 +219,12 @@ ul.chatlist {
       }
     }
 
+    // * a press on the row selects it in that mode, and so would one on the bot's button - which
+    // * makes way: hidden rather than faded, so that it is neither a target nor a tab stop
+    &.has-select-checkbox .dialog-subtitle-badge-bot-app {
+      visibility: hidden;
+    }
+
     // * this one is deliberately no narrower than the row: `.dialog-subtitle-badge` carries its own
     // * transition while it animates (`dialog-badge-transition`), and that rule wins only while
     // * this one weighs the same - qualifying this with `.is-pinned` would outweigh it and take
@@ -400,9 +406,15 @@ ul.chatlist {
         .badge.unread,
         .mention,
         .dialog-subtitle-badge-reaction,
-        .dialog-subtitle-badge-pollvote {
+        .dialog-subtitle-badge-pollvote,
+        .dialog-subtitle-badge-bot-app {
           background-color: #fff !important;
           color: var(--primary-color);
+        }
+
+        // * its focus ring goes around it, on the accent of the row
+        .dialog-subtitle-badge-bot-app {
+          outline-color: #fff;
         }
 
         // .badge.avatar-badge {
@@ -702,6 +714,37 @@ ul.chatlist {
 
       &-pollvote {
         order: 5;
+      }
+
+      // * opens a bot's main mini app (DialogElement.createBotAppButton): the accent pill of the
+      // * official apps (its fill is `.btn-color-primary`'s), in the place of the unread badge it
+      // * is never shown with
+      &-bot-app {
+        --padding: .5rem;
+        order: 3;
+        border: none;
+        font-family: inherit;
+        cursor: pointer;
+        // * the row's contents leave the pointer to the row (`.row-row`), this one takes it back
+        pointer-events: auto;
+
+        // * the global ring is drawn inside, in the very colour this pill is filled with
+        :root:where(.a11y) &:focus-visible {
+          outline-offset: 2px;
+        }
+
+        @include hover() {
+          background-color: var(--dark-primary-color);
+        }
+      }
+
+      // * leaving its place to another one, out of the flow where it stood
+      // * (DialogElement.holdBadgesInPlace) - after the rules above, whose margins it drops
+      &.is-held-in-place {
+        position: absolute;
+        top: var(--held-top);
+        inset-inline-end: var(--held-inline-end);
+        margin: 0;
       }
     }
 

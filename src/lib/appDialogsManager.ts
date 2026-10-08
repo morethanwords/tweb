@@ -116,7 +116,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
-import {children, createRoot, untrack} from 'solid-js';
+import {children, createRoot, createUniqueId, untrack} from 'solid-js';
 import useFolders from '@stores/folders';
 import FoldersTabs from '@components/foldersTabs';
 import clamp from '@helpers/number/clamp';
@@ -153,6 +153,8 @@ export type DialogDom = {
   mentionsBadge?: HTMLElement,
   reactionsBadge?: HTMLElement,
   pollVotesBadge?: HTMLElement,
+  /** opens a bot's main mini app without opening the chat */
+  botAppButton?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLElement,
   listEl: HTMLElement,
@@ -266,6 +268,7 @@ export type DialogElementBadgeState = {
   mentions: boolean,
   reactions: boolean,
   pollVotes: boolean,
+  botApp?: boolean,
   transitionDuration?: number
 };
 
@@ -282,6 +285,8 @@ export interface DialogElement extends RowTsxController {}
 export class DialogElement {
   public dom: DialogDom;
   public isMainList: boolean;
+  /** what the row last saw of its bot's main mini app - `user_update` redraws it on a change */
+  public hasBotMainApp: boolean;
   public middlewareHelper: MiddlewareHelper;
   private peerTitle: PeerTitle;
   private lastBadgeState: DialogElementAppliedBadgeState;
@@ -574,11 +579,35 @@ export class DialogElement {
     this.dom.subtitleEl.append(badge);
   }
 
+  public createBotAppButton() {
+    if(this.dom.botAppButton) return;
+    const button = this.dom.botAppButton = Button(
+      `dialog-subtitle-badge badge badge-${BADGE_SIZE} btn-color-primary dialog-subtitle-badge-bot-app`,
+      {text: 'Open', noRipple: true, asDiv: !Modes.a11y}
+    );
+    // * every such button says "Open" - it is the bot's name that tells them apart
+    const {titleSpan} = this.dom;
+    titleSpan.id ||= createUniqueId();
+    button.setAttribute('aria-describedby', titleSpan.id);
+    // * the list opens the chat on a press anywhere in the row (setListClickListener), but not on this
+    button.dataset.dialogListAction = 'true';
+    button.addEventListener('click', (e) => {
+      cancelEvent(e); // * the row is a link
+      const peerId = this.dom.listEl.dataset.peerId.toPeerId();
+      // * turning the confirmation down rejects, and leaves nothing to do
+      appImManager.openWebApp({botId: peerId.toUserId(), main: true, peerId}).catch(noop);
+    });
+    this.dom.subtitleEl.append(button);
+  }
+
   public setBadgeState(options: DialogElementBadgeState) {
     const transitionDuration = options.transitionDuration || 0;
     this.setMuted(options.muted, transitionDuration);
 
     const previous = this.lastBadgeState;
+    const botApp = !!options.botApp;
+    // * the bot's button takes the pin's place instead of covering it, as the unread badge does
+    const pinned = options.pinned && !botApp;
 
     const mounted = {
       pinnedBadge: !!this.dom.pinnedBadge,
@@ -586,31 +615,54 @@ export class DialogElement {
       unreadAvatarBadge: !!this.dom.unreadAvatarBadge,
       mentionsBadge: !!this.dom.mentionsBadge,
       reactionsBadge: !!this.dom.reactionsBadge,
-      pollVotesBadge: !!this.dom.pollVotesBadge
+      pollVotesBadge: !!this.dom.pollVotesBadge,
+      botAppButton: !!this.dom.botAppButton
     };
+
+    const states: Array<[
+      Parameters<DialogElement['toggleBadgeByKey']>[0],
+      boolean
+    ]> = [
+      ['pinnedBadge', pinned],
+      ['unreadBadge', options.unread],
+      ['unreadAvatarBadge', options.unreadAvatar],
+      ['mentionsBadge', options.mentions],
+      ['reactionsBadge', options.reactions],
+      ['pollVotesBadge', options.pollVotes],
+      ['botAppButton', botApp]
+    ];
+
+    // * the bot's button and the badges of the subtitle take turns in one place, so whatever
+    // * leaves it to the other leaves from where it stands - measured before the newcomer is
+    // * appended and pushes it aside
+    if(transitionDuration && previous && previous.botAppButton !== botApp) {
+      this.holdBadgesInPlace(states
+      .filter(([key, visible]) => key !== 'unreadAvatarBadge' && !visible && previous[key] && this.dom[key])
+      .map(([key]) => this.dom[key]));
+    }
+
     // * the pinned rows of a list form the block that can be reordered within itself, and
     // * `Sortable` reads that block off the DOM - see attachPinnedDialogsReorder
     this.dom.listEl.classList.toggle(PINNED_DIALOG_CLASS_NAME, !!options.pinned);
 
-    if(options.pinned) {
-      this.createPinnedBadge();
-      this.createSortableIcon();
-    }
-
+    if(options.pinned) this.createSortableIcon();
+    if(pinned) this.createPinnedBadge();
     if(options.unread) this.createUnreadBadge();
     if(options.unreadAvatar) this.createUnreadAvatarBadge();
     if(options.mentions) this.createMentionsBadge();
     if(options.reactions) this.createReactionsBadge();
     if(options.pollVotes) this.createPollVotesBadge();
+    if(botApp) this.createBotAppButton();
 
     const subtitleBadgesLength = [
-      options.pinned,
+      pinned,
       options.unread,
       options.mentions,
       options.reactions,
-      options.pollVotes
+      options.pollVotes,
+      botApp
     ].filter(Boolean).length;
-    const hasOnlyPinnedBadge = options.pinned && subtitleBadgesLength === 1;
+    const hasOnlyPinnedBadge = pinned && subtitleBadgesLength === 1;
     // * `SetTransition` keeps `animating` on the element for the whole duration,
     // * and `.has-only-pinned-badge:not(.animating)` drops the subtitle's trailing
     // * margin while it is there. Replaying it for an unchanged state makes the
@@ -624,17 +676,6 @@ export class DialogElement {
       });
     }
 
-    const states: Array<[
-      Parameters<DialogElement['toggleBadgeByKey']>[0],
-      boolean
-    ]> = [
-      ['pinnedBadge', options.pinned],
-      ['unreadBadge', options.unread],
-      ['unreadAvatarBadge', options.unreadAvatar],
-      ['mentionsBadge', options.mentions],
-      ['reactionsBadge', options.reactions],
-      ['pollVotesBadge', options.pollVotes]
-    ];
     for(const [key, visible] of states) {
       if(!this.dom[key]) {
         continue;
@@ -668,20 +709,47 @@ export class DialogElement {
     }
 
     this.lastBadgeState = {
-      pinnedBadge: options.pinned,
+      pinnedBadge: pinned,
       unreadBadge: options.unread,
       unreadAvatarBadge: options.unreadAvatar,
       mentionsBadge: options.mentions,
       reactionsBadge: options.reactions,
       pollVotesBadge: options.pollVotes,
+      botAppButton: botApp,
       hasOnlyPinnedBadge,
       unreadText: options.unreadText,
       unreadAvatarText: options.unreadAvatarText
     };
   }
 
+  /**
+   * Lifts the leaving badges out of the subtitle's flow, each where it stands: the one coming
+   * in their place does not push them aside, and their going leaves no gap to snap shut
+   */
+  private holdBadgesInPlace(badges: HTMLElement[]) {
+    const row = this.subtitleRow;
+    if(!badges.length || !row.isConnected) {
+      return;
+    }
+
+    // * all measured before any is lifted, as lifting one moves the rest
+    const isRTL = I18n.getIsRTL();
+    const width = row.clientWidth;
+    const places = badges.map((badge) => ({
+      badge,
+      top: badge.offsetTop,
+      inlineEnd: isRTL ? badge.offsetLeft : width - badge.offsetLeft - badge.offsetWidth
+    }));
+
+    for(const {badge, top, inlineEnd} of places) {
+      badge.style.setProperty('--held-top', top + 'px');
+      badge.style.setProperty('--held-inline-end', inlineEnd + 'px');
+      badge.classList.add('is-held-in-place');
+    }
+  }
+
   public toggleBadgeByKey(
-    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'pinnedBadge'>,
+    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'pinnedBadge' | 'botAppButton'>,
     hasBadge: boolean,
     justCreated: boolean,
     batch?: boolean
@@ -691,6 +759,11 @@ export class DialogElement {
     // * keep it in sync — otherwise reading the last unread topic can't hide the avatar badge
     if(this.lastBadgeState) {
       this.lastBadgeState[key] = hasBadge;
+    }
+
+    // * called back before it was gone
+    if(hasBadge) {
+      this.dom[key].classList.remove('is-held-in-place');
     }
 
     SetTransition({
@@ -2779,6 +2852,15 @@ export class AppDialogsManager {
     });
     const hasReactionsBadge = isSaved ? false : !!dialog.unread_reactions_count;
     const hasPollVotesBadge = isSaved || isMonoforumThread ? false : !!(dialog as Dialog | ForumTopic).unread_poll_votes_count;
+    // * a bot's main mini app opens right from its row in the chat list, as in the official apps -
+    // * where the row has nothing unread to show in its place
+    dialogElement.hasBotMainApp = peerId.isUser() && !!apiManagerProxy.getUser(peerId.toUserId())?.pFlags?.bot_has_main_app;
+    const hasBotAppButton = !!dialogElement.isMainList &&
+      dialogElement.hasBotMainApp &&
+      !hasUnreadBadge &&
+      !hasMentionsBadge &&
+      !hasReactionsBadge &&
+      !hasPollVotesBadge;
     let unreadBadgeText: string;
     if(hasUnreadBadge) {
       // dom.unreadMessagesSpan.innerText = '' + (unreadCount ? formatNumber(unreadCount, 1) : ' ');
@@ -2796,6 +2878,7 @@ export class AppDialogsManager {
       mentions: hasMentionsBadge,
       reactions: hasReactionsBadge,
       pollVotes: hasPollVotesBadge,
+      botApp: hasBotAppButton,
       transitionDuration
     });
 
