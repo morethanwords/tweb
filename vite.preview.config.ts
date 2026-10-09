@@ -193,7 +193,10 @@ function staticForRemotePlugin() {
       cwd: __dirname,
       // KEEP_OUTDIR: a rebuild must not wipe the chunks a page loaded seconds
       // ago is still pulling.
-      env: {...process.env, TWEB_PREVIEW_KEEP_OUTDIR: '1'},
+      // NODE_ENV: the dev server has set it to development, and a build that
+      // inherits that ships Solid's dev runtime and starts vite.config.ts's own
+      // lang and SCSS-types watchers next to the dev server's.
+      env: {...process.env, NODE_ENV: 'production', TWEB_PREVIEW_KEEP_OUTDIR: '1'},
       stdio: ['ignore', log, log]
     });
     builder.on('exit', () => {
@@ -203,7 +206,7 @@ function staticForRemotePlugin() {
 
   const BUILDING = '<!doctype html><meta http-equiv="refresh" content="3">' +
     '<title>building…</title><body style="font:16px/1.5 system-ui;padding:2rem">' +
-    'Building this preview\'s bundle (~15 s). The page reloads itself.</body>';
+    'Building this preview\'s bundle (~20 s). The page reloads itself.</body>';
 
   return {
     name: 'preview-static-for-remote',
@@ -345,7 +348,9 @@ async function listPreviews() {
         port: +port,
         label: readFirstLine(join(meta.REPO, 'tmp/preview-label')),
         checkout: meta.REPO === mainCheckout ? '' : basename(meta.REPO),
-        branch: branchOf(meta.REPO)
+        branch: branchOf(meta.REPO),
+        // one checkout can run a preview per mode (--watch, --bundled, …) under the same label
+        mode: meta.MODE
       };
     } catch{
       // an entry start-preview.sh is still writing, or has just removed
@@ -420,6 +425,34 @@ export default mergeConfig(baseConfig as any, {
     'import.meta.env.VITE_TEST_DC': JSON.stringify(!!seed.isTest)
   },
   plugins: [{
+    // start-preview.sh --bundled runs the dev server with --experimentalBundle:
+    // Vite's Full Bundle Mode keeps a rolldown bundle in memory and serves that —
+    // ~35 requests for a signed-in boot instead of ~1700 modules — and an
+    // edit recompiles the one module and hot-patches it in. Rebuilding regroups
+    // modules, and the app's import cycles then ran in the wrong order: after the
+    // first edit the page died on `class ChatInviteLink extends InviteLink` with
+    // InviteLink still undefined. Strict order runs every module where its
+    // importer asked for it.
+    name: 'preview-bundled-dev',
+    apply: 'serve',
+    config(config: any) {
+      if(config.experimental?.bundledDev) {
+        return {build: {rolldownOptions: {output: {strictExecutionOrder: true}}}};
+      }
+    }
+  }, {
+    // The watched bundle (start-preview.sh --watch, and the one built for remote
+    // requests) is rebuilt on every edit, and source maps are half of each
+    // rebuild (~2 s of ~4). TWEB_PREVIEW_SOURCEMAP=0 drops them — and with them
+    // the way to symbolicate that bundle's logs (src/scripts/symbolicate-logs.js).
+    name: 'preview-watch-sourcemap',
+    apply: 'build',
+    config(config: any) {
+      if(config.build?.watch && process.env.TWEB_PREVIEW_SOURCEMAP === '0') {
+        return {build: {sourcemap: false}};
+      }
+    }
+  }, {
     // `vite preview` (start-preview.sh --static) answers every asset with
     // `Cache-Control: no-cache`, so a phone reloading over the network would
     // revalidate ~100 files one by one — each a round trip to this machine.

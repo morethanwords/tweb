@@ -40,7 +40,8 @@
       if(isCurrent) link.setAttribute('aria-current', 'page');
       else link.href = urlOf(preview.port, data.current);
       link.append(el('span', 'name', nameOf(preview)));
-      const details = [preview.checkout || preview.branch, `:${preview.port}`];
+      // the plain preview (dev server + bundle for remotes) goes unmarked
+      const details = [preview.checkout || preview.branch, preview.mode !== 'hmr' && preview.mode, `:${preview.port}`];
       if(!preview.up) details.push('starting');
       link.append(el('span', 'details', details.filter(Boolean).join(' · ')));
     }

@@ -1,16 +1,15 @@
 import {createRequire} from 'module';
-import path from 'path';
 
 const require = createRequire(import.meta.url);
 
 /**
  * Keeps `src/lib/settingsSearch/generated.ts` in step with the settings tabs it
- * is derived from: regenerated on every build and whenever a settings tab (or a
- * language string it may reference) changes during development.
+ * is derived from: generated when a build starts, and again whenever one of the
+ * files it was built from changes — in the dev server or under
+ * `vite build --watch`.
  */
-export default function settingsSearchPlugin(rootDir) {
+export default function settingsSearchPlugin() {
   const GENERATOR = '../src/scripts/generate_settings_search.js';
-  const {OUT_FILE} = require(GENERATOR);
 
   // Reloaded per run so editing the extractor itself takes effect without
   // restarting the dev server.
@@ -19,18 +18,18 @@ export default function settingsSearchPlugin(rootDir) {
     return require(GENERATOR).generate;
   };
 
-  const watched = [
-    path.join(rootDir, 'src', 'components', 'sidebarLeft'),
-    path.join(rootDir, 'src', 'components', 'sidebarRight'),
-    path.join(rootDir, 'src', 'components', 'solidJsTabs'),
-    path.join(rootDir, 'src', 'lang.ts'),
-    path.join(rootDir, 'src', 'scripts', 'generate_settings_search.js'),
-    path.join(rootDir, 'src', 'scripts', 'in', 'settings-links.csv')
-  ];
+  // The files the last run built the index from (the generator lists them): the
+  // tabs it followed, the strings, the link table, the extractor itself.
+  let inputs = new Set();
+  // `vite build --watch` starts a build on every edit, and parsing the tabs costs
+  // most of a second: only an edit to one of the inputs makes it worth it.
+  let stale = true;
 
   const run = () => {
     try {
-      const {sections, entries, changed} = loadGenerator()();
+      const {sections, entries, changed, inputs: read} = loadGenerator()();
+      inputs = new Set(read);
+      stale = false;
       if(changed) console.log(`[settings-search] ${sections.length} sections, ${entries.length} entries`);
     } catch(err) {
       console.error('[settings-search] failed to generate the index:', err.message);
@@ -43,10 +42,16 @@ export default function settingsSearchPlugin(rootDir) {
     name: 'tweb:settings-search-index',
     enforce: 'pre',
     buildStart() {
-      run();
+      if(stale) run();
+      // a watched build hears only of the files it watches, and the link table and
+      // the extractor are in no module graph
+      inputs.forEach((file) => this.addWatchFile(file));
+    },
+    watchChange(file) {
+      if(inputs.has(file)) stale = true;
     },
     handleHotUpdate({file}) {
-      if(file === OUT_FILE || !/\.(tsx?|js|csv)$/.test(file) || !watched.some((dir) => file.startsWith(dir))) {
+      if(!inputs.has(file)) {
         return;
       }
 

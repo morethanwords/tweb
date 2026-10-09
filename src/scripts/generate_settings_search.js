@@ -29,6 +29,10 @@ const LINKS_FILE = path.join(SRC, 'scripts/in/settings-links.csv');
 const OUT_FILE = path.join(SRC, 'lib/settingsSearch/generated.ts');
 const ROOT_TAB = 'AppSettingsTab';
 
+// Every file the index is built from — this script, the link table and each source it parses — so a
+// watcher knows when to build it again.
+const INPUTS = new Set([__filename, LINKS_FILE]);
+
 // Files a settings tab may pull rows from. Anything outside is a shared widget.
 const HELPER_ROOTS = [
   path.join(SRC, 'components/sidebarLeft'),
@@ -130,12 +134,15 @@ const I18N_CALLEES = new Set(['i18n', '_i18n', 'i18n_']);
 // parsing helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const parseFile = (file) => babel.parseSync(fs.readFileSync(file, 'utf8'), {
-  filename: file,
-  parserOpts: {plugins: ['jsx', ['typescript', {isTSX: true}], 'decorators-legacy'], sourceType: 'module'},
-  configFile: false,
-  babelrc: false
-});
+const parseFile = (file) => {
+  INPUTS.add(file);
+  return babel.parseSync(fs.readFileSync(file, 'utf8'), {
+    filename: file,
+    parserOpts: {plugins: ['jsx', ['typescript', {isTSX: true}], 'decorators-legacy'], sourceType: 'module'},
+    configFile: false,
+    babelrc: false
+  });
+};
 
 const walkNode = (node, visit) => {
   if(!node || typeof node !== 'object') return;
@@ -911,7 +918,7 @@ const generate = () => {
     fs.mkdirSync(path.dirname(OUT_FILE), {recursive: true});
     fs.writeFileSync(OUT_FILE, content, 'utf8');
   }
-  return {...data, changed: previous !== content};
+  return {...data, changed: previous !== content, inputs: [...INPUTS]};
 };
 
 module.exports = {generate, build, emit, OUT_FILE, PROCESSOR_PATHS};

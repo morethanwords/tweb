@@ -14,8 +14,13 @@
  *
  *    Detection needs no knowledge of the trigger: for every identifier sitting in
  *    such a default, ask the source map which source variable it came from, then
- *    check how that same variable is spelled everywhere else in the chunk. One
- *    dominant spelling plus a stray one in the default is the signature.
+ *    check how that same variable is spelled in the rest of the function holding
+ *    the default. A spelling of its own in the default is the signature. When
+ *    nothing else there mentions it, a name bound right next to the default (an
+ *    earlier parameter, a sibling in the same destructuring) has to stand for that
+ *    variable in the source; otherwise the functions further out decide, and last
+ *    the whole chunk. The search stays that close because one name in two
+ *    functions is two variables, which the minifier spells independently.
  *
  * 2. A lone surrogate in a folded string constant gets re-encoded as U+FFFD,
  *    which is what silently killed every astral emoji in the worker chunk. Any
@@ -32,8 +37,9 @@ import {parseAst} from 'vite';
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 const B64_INDEX = new Map([...B64].map((char, index) => [char, index]));
 
-function decodeMappings(mappings) {
-  const out = [];
+// * the segments of a source map that point into a source, in emitted order; nameIdx is undefined
+// * for a segment without a name
+function* decodeMappings(mappings) {
   let genLine = 1, srcIdx = 0, srcLine = 0, srcCol = 0, nameIdx = 0;
   for(const lineSegments of mappings.split(';')) {
     let genCol = 0;
@@ -58,134 +64,309 @@ function decodeMappings(mappings) {
         srcIdx += fields[1];
         srcLine += fields[2];
         srcCol += fields[3];
-      }
-
-      if(fields.length > 4) {
-        nameIdx += fields[4];
-        out.push({genLine, genCol, srcIdx, srcLine, srcCol, nameIdx});
+        if(fields.length > 4) nameIdx += fields[4];
+        yield {genLine, genCol, srcIdx, srcLine, srcCol, nameIdx: fields.length > 4 ? nameIdx : undefined};
       }
     }
 
     ++genLine;
   }
-
-  return out;
 }
 
 const IDENTIFIER_CHAR = /[A-Za-z0-9_$]/;
 
-function readIdentifierAt(line, column) {
-  if(line === undefined || !IDENTIFIER_CHAR.test(line[column] || '')) return;
-  if(column > 0 && line[column - 1] === '.') return; // * a property, not a reference
-  let end = column;
-  while(end < line.length && IDENTIFIER_CHAR.test(line[end])) ++end;
-  const token = line.slice(column, end);
+// * the identifier a reference spells from `offset` of `text` on, if one starts there
+function readIdentifierAt(text, offset) {
+  if(!IDENTIFIER_CHAR.test(text[offset] || '')) return;
+  if(offset > 0 && text[offset - 1] === '.') return; // * a property, not a reference
+  let end = offset;
+  while(end < text.length && IDENTIFIER_CHAR.test(text[end])) ++end;
+  const token = text.slice(offset, end);
   return /^[0-9]/.test(token) ? undefined : token;
 }
 
-const SKIPPED_KEYS = new Set(['start', 'end', 'loc', 'range', 'parent']);
+function getLineStarts(text) {
+  const lineStarts = [0];
+  for(let i = 0; i < text.length; ++i) {
+    if(text[i] === '\n') lineStarts.push(i + 1);
+  }
 
-function collectReferences(node, out) {
+  return lineStarts;
+}
+
+const SKIPPED_KEYS = new Set(['start', 'end', 'loc', 'range', 'parent']);
+const FUNCTION_TYPES = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
+
+function forEachChild(node, callback) {
+  for(const key in node) {
+    if(SKIPPED_KEYS.has(key)) continue;
+    const value = node[key];
+    if(Array.isArray(value)) value.forEach(callback);
+    else callback(value);
+  }
+}
+
+// * every identifier a pattern binds, with the property it was destructured from (`{caption: t}`)
+function forEachBinding(node, callback, key) {
+  if(!node) return;
+
+  switch(node.type) {
+    case 'Identifier':
+      callback(node, key);
+      return;
+    case 'AssignmentPattern':
+      forEachBinding(node.left, callback, key);
+      return;
+    case 'RestElement':
+      forEachBinding(node.argument, callback);
+      return;
+    case 'ArrayPattern':
+      node.elements.forEach((element) => forEachBinding(element, callback));
+      return;
+    case 'ObjectPattern':
+      for(const property of node.properties) {
+        if(property.type === 'RestElement') forEachBinding(property, callback);
+        else forEachBinding(property.value, callback, !property.computed && property.key.type === 'Identifier' ? property.key.name : undefined);
+      }
+      return;
+  }
+}
+
+// * what a function declares for itself: its name, parameters and variables
+function collectOwnNames(fn) {
+  const out = new Set();
+  const add = (identifier) => out.add(identifier.name);
+  if(fn.id) add(fn.id);
+  fn.params.forEach((param) => forEachBinding(param, add));
+  const visit = (node) => {
+    if(!node || typeof node.type !== 'string') return;
+    if(node.type === 'VariableDeclarator') forEachBinding(node.id, add);
+    else if(node.type === 'FunctionDeclaration' && node.id) add(node.id);
+    else if(node.type === 'CatchClause') forEachBinding(node.param, add);
+    forEachChild(node, visit);
+  };
+
+  visit(fn.body);
+  return out;
+}
+
+// * the names a parameter list or a destructuring binds, by name
+function collectSiblings(patterns) {
+  const out = new Map();
+  patterns.forEach((pattern) => forEachBinding(pattern, (identifier, key) => out.set(identifier.name, {identifier, key})));
+  return out;
+}
+
+function collectReferences(node, out, own = new Set()) {
   if(!node || typeof node.type !== 'string') return;
 
   switch(node.type) {
     case 'Identifier':
-      out.push(node);
+      if(!own.has(node.name)) out.push(node);
       return;
     case 'MemberExpression':
-      collectReferences(node.object, out);
-      if(node.computed) collectReferences(node.property, out);
+      collectReferences(node.object, out, own);
+      if(node.computed) collectReferences(node.property, out, own);
       return;
     case 'Property':
-      if(node.computed) collectReferences(node.key, out);
-      collectReferences(node.value, out);
+      if(node.computed) collectReferences(node.key, out, own);
+      collectReferences(node.value, out, own);
       return;
   }
 
-  for(const key in node) {
-    if(SKIPPED_KEYS.has(key)) continue;
-    const value = node[key];
-    if(Array.isArray(value)) value.forEach((child) => collectReferences(child, out));
-    else collectReferences(value, out);
+  // * a function written inside the default (`items.map((item) => …)`) reads its own names
+  // * from itself, not from around the default
+  if(FUNCTION_TYPES.has(node.type)) {
+    own = new Set([...own, ...collectOwnNames(node)]);
   }
+
+  forEachChild(node, (child) => collectReferences(child, out, own));
 }
 
-function collectDefaultScopes(ast) {
-  const out = [];
-  const visit = (node) => {
+// * every read inside a scope the minifier resolves separately from the surrounding function body —
+// * with the node holding it, the functions around it (innermost first) and the names bound next to
+// * it — and every function in source order, with the function it sits in
+function analyze(ast) {
+  const reads = [];
+  const functions = [];
+  const parents = new Map();
+  const stack = [];
+  const visit = (node, siblings) => {
     if(!node || typeof node.type !== 'string') return;
 
-    // * every scope the minifier resolves separately from the surrounding function body
-    if(node.type === 'AssignmentPattern') collectReferences(node.right, out);
-    else if(node.type === 'PropertyDefinition' && node.value) collectReferences(node.value, out);
-    else if(node.type === 'StaticBlock') collectReferences(node, out);
+    const value = node.type === 'AssignmentPattern' ? node.right :
+      node.type === 'PropertyDefinition' ? node.value :
+      node.type === 'StaticBlock' ? node :
+      undefined;
+    if(value) {
+      const references = [];
+      collectReferences(value, references);
+      const scopes = stack.toReversed();
+      for(const reference of references) reads.push({reference, holder: node, value, scopes, siblings});
+    }
 
-    for(const key in node) {
-      if(SKIPPED_KEYS.has(key)) continue;
-      const value = node[key];
-      if(Array.isArray(value)) value.forEach(visit);
-      else visit(value);
+    if(FUNCTION_TYPES.has(node.type)) {
+      parents.set(node, stack.at(-1));
+      functions.push(node);
+      stack.push(node);
+      const params = collectSiblings(node.params);
+      node.params.forEach((param) => visit(param, params));
+      visit(node.body);
+      stack.pop();
+    } else if(node.type === 'VariableDeclarator') {
+      visit(node.id, collectSiblings([node.id]));
+      visit(node.init);
+    } else {
+      forEachChild(node, (child) => visit(child, node.type === 'ClassBody' ? undefined : siblings));
     }
   };
 
   visit(ast);
-  return out;
+  return {reads, functions, parents};
 }
 
-function makeOffsetToPosition(code) {
-  const lineStarts = [0];
-  for(let i = 0; i < code.length; ++i) {
-    if(code[i] === '\n') lineStarts.push(i + 1);
-  }
-
-  return (offset) => {
-    let low = 0, high = lineStarts.length - 1;
-    while(low < high) {
-      const mid = (low + high + 1) >> 1;
-      if(lineStarts[mid] <= offset) low = mid;
-      else high = mid - 1;
-    }
-
-    return {line: low + 1, column: offset - lineStarts[low]};
-  };
-}
+const dominant = (counts) => [...counts].sort((a, b) => b[1] - a[1])[0];
 
 function checkChunk(dir, file) {
   const code = fs.readFileSync(path.join(dir, file), 'utf8');
-  const lines = code.split('\n');
   const map = JSON.parse(fs.readFileSync(path.join(dir, file + '.map'), 'utf8'));
+  const lineStarts = getLineStarts(code);
+  const {reads, functions, parents} = analyze(parseAst(code));
 
-  // * how every source variable is spelled in this chunk: source|name -> spelling -> count
-  const spellings = new Map();
-  // * genLine:genCol -> the source variable one emitted token came from
-  const byPosition = new Map();
-  for(const mapping of decodeMappings(map.mappings)) {
-    const name = map.names[mapping.nameIdx];
-    const source = map.sources[mapping.srcIdx];
+  // * the bindings next to a default, whose source name a mapping without a name may have to tell
+  const siblingOffsets = new Set();
+  for(const {siblings} of reads) siblings?.forEach(({identifier}) => siblingOffsets.add(identifier.start));
+
+  // * emitted offset -> the source variable a mangled token came from
+  const named = new Map();
+  // * emitted offset -> where in the source a binding next to a default came from
+  const siblingSegments = new Map();
+  // * source|name -> where it is spelled how: [{offset, token}], in emitted order
+  const occurrences = new Map();
+  for(const segment of decodeMappings(map.mappings)) {
+    const offset = lineStarts[segment.genLine - 1] + segment.genCol;
+    if(siblingOffsets.has(offset)) siblingSegments.set(offset, segment);
+    const name = map.names[segment.nameIdx];
+    const source = map.sources[segment.srcIdx];
     if(!name || source === undefined) continue;
-    const token = readIdentifierAt(lines[mapping.genLine - 1], mapping.genCol);
+    const token = readIdentifierAt(code, offset);
     if(!token || token === name) continue; // * not mangled: a property or a preserved name
-    byPosition.set(mapping.genLine + ':' + mapping.genCol, {source, name, line: mapping.srcLine + 1});
+    named.set(offset, {source, name, line: segment.srcLine + 1});
     const key = source + '|' + name;
-    let counts = spellings.get(key);
-    if(!counts) spellings.set(key, counts = new Map());
-    counts.set(token, (counts.get(token) || 0) + 1);
+    let list = occurrences.get(key);
+    if(!list) occurrences.set(key, list = []);
+    list.push({offset, token});
   }
 
-  const toPosition = makeOffsetToPosition(code);
-  const offenders = [];
-  for(const reference of collectDefaultScopes(parseAst(code))) {
-    const {line, column} = toPosition(reference.start);
-    const mapped = byPosition.get(line + ':' + column);
-    if(!mapped || mapped.name === reference.name) continue;
+  // * the source variable an emitted binding stands for: its name in the map, or else the
+  // * identifier at the source position it maps to
+  const sourceLineStarts = new Map();
+  const sourceNameAt = (offset) => {
+    if(named.has(offset)) return named.get(offset).name;
+    const segment = siblingSegments.get(offset);
+    const content = segment && map.sourcesContent?.[segment.srcIdx];
+    if(!content) return;
+    let starts = sourceLineStarts.get(segment.srcIdx);
+    if(!starts) sourceLineStarts.set(segment.srcIdx, starts = getLineStarts(content));
+    return readIdentifierAt(content, starts[segment.srcLine] + segment.srcCol);
+  };
 
-    const counts = [...spellings.get(mapped.source + '|' + mapped.name)].sort((a, b) => b[1] - a[1]);
-    const [dominant, dominantCount] = counts[0];
-    if(dominant === reference.name || dominantCount < 5) continue;
+  // * the innermost function an offset sits in
+  const functionAt = (offset) => {
+    let low = 0, high = functions.length - 1, found;
+    while(low <= high) {
+      const mid = (low + high) >> 1;
+      if(functions[mid].start <= offset) {
+        found = functions[mid];
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    while(found && offset >= found.end) found = parents.get(found);
+    return found;
+  };
+
+  // * a token that a function between it and `scope` binds for itself is that function's own
+  // * variable (`(item) => item.id` under a parameter also called item), not the one in `scope`
+  const ownNames = new Map();
+  const isShadowed = (offset, token, scope) => {
+    for(let fn = functionAt(offset); fn && fn !== scope; fn = parents.get(fn)) {
+      let names = ownNames.get(fn);
+      if(!names) ownNames.set(fn, names = collectOwnNames(fn));
+      if(names.has(token)) return true;
+    }
+
+    return false;
+  };
+
+  // * how a variable is spelled within `range` outside the default: spelling -> count
+  const spellingsWithin = (key, range, value, exact) => {
+    const counts = new Map();
+    for(const {offset, token} of occurrences.get(key)) {
+      if(offset < range.start || offset >= range.end || (offset >= value.start && offset < value.end)) continue;
+      if(exact && isShadowed(offset, token, range)) continue;
+      counts.set(token, (counts.get(token) || 0) + 1);
+    }
+
+    return counts;
+  };
+
+  // * the commonest spelling of a variable in the innermost of the scopes that mentions it
+  const spellingAround = (key, reference, value, scopes) => {
+    for(const scope of scopes) {
+      const counts = spellingsWithin(key, scope, value);
+      if(!counts.size) continue;
+      if(dominant(counts)[0] === reference.name) return dominant(counts);
+      // * before calling it a mismatch, leave out what nested functions bind for themselves
+      const exact = spellingsWithin(key, scope, value, true);
+      if(exact.size) return dominant(exact);
+    }
+  };
+
+  // * how a default spells a variable against how the code around it does — undefined when they agree
+  const disagreement = ({reference, holder, value, scopes, siblings}, mapped) => {
+    const key = mapped.source + '|' + mapped.name;
+    const [innermost, ...outer] = scopes;
+
+    // * the rest of the function holding the default
+    const inFunction = innermost && spellingAround(key, reference, value, [innermost]);
+    if(inFunction) {
+      return inFunction[0] !== reference.name ? `'${inFunction[0]}' ${inFunction[1]} time(s) in the same function` : undefined;
+    }
+
+    // * a name bound right next to the default must stand for that variable in the source — by the
+    // * map, or else by the property it was destructured from; with neither, it has to be bound
+    // * before the default, as only those are set by the time it runs
+    const sibling = siblings?.get(reference.name);
+    if(sibling) {
+      const bound = sourceNameAt(sibling.identifier.start) ?? sibling.key;
+      if(bound !== undefined ? bound === mapped.name : sibling.identifier.start < holder.start) return;
+      return bound !== undefined ? `'${reference.name}' is bound next to it as '${bound}'` : `'${reference.name}' is bound only after it`;
+    }
+
+    // * the functions further out, then the chunk
+    const around = spellingAround(key, reference, value, outer);
+    if(around) {
+      return around[0] !== reference.name ? `'${around[0]}' ${around[1]} time(s) in an enclosing function` : undefined;
+    }
+
+    const [chunkWide, count] = dominant(spellingsWithin(key, {start: 0, end: code.length}, value)) ?? [];
+    return chunkWide !== undefined && chunkWide !== reference.name && count >= 5 ? `'${chunkWide}' in ${count} other places` : undefined;
+  };
+
+  const offenders = [];
+  for(const read of reads) {
+    const mapped = named.get(read.reference.start);
+    if(!mapped || mapped.name === read.reference.name) continue;
+
+    const where = disagreement(read, mapped);
+    if(!where) continue;
 
     offenders.push(
-      `${file}: '${mapped.name}' (${mapped.source}:${mapped.line}) is '${reference.name}' in a default ` +
-      `value but '${dominant}' in ${dominantCount} other places — resolve the default in the body instead`
+      `${file}: '${mapped.name}' (${mapped.source}:${mapped.line}) is '${read.reference.name}' in a default ` +
+      `value but ${where} — resolve the default in the body instead`
     );
   }
 

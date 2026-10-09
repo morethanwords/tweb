@@ -37,7 +37,7 @@
 #
 # Usage (run from anywhere — the script cd's to the repo root itself):
 #   bash scripts/start-preview.sh [--detach] [--label <words>] [--id <id>] [--port <port>]
-#                                 [--remint] [--no-worker] [--static | --watch]
+#                                 [--remint] [--no-worker] [--static | --watch | --bundled]
 #   bash scripts/start-preview.sh --list
 #   bash scripts/start-preview.sh --stop [--port <port>] [--force]
 #
@@ -53,8 +53,10 @@
 #
 # The bundle is built LAZILY: nothing is built until the first remote (or
 # ?static=1) request arrives, so a desktop-only session pays nothing. That first
-# request gets a self-refreshing "building" page for ~15s; after that a watcher
-# keeps the bundle in step with your edits (~7s per rebuild).
+# request gets a self-refreshing "building" page for ~20s; after that a watcher
+# keeps the bundle in step with your edits (~4s per rebuild: the watcher keeps the
+# Babel and Sass results of unchanged files, scripts/watch-transform-cache.mjs;
+# TWEB_PREVIEW_SOURCEMAP=0 halves that by building no source maps).
 #
 #   ?static=1     force the built bundle from localhost too (to check it).
 #   ?static=0     force the dev server for a remote request (to debug the split).
@@ -63,6 +65,8 @@
 #                 requests get the dev server too, ?static=1 still gets the bundle.
 #   --static      serve ONLY the built bundle, no dev server at all.
 #   --watch       --static plus a rebuild watcher.
+#   --bundled     Vite's Full Bundle Mode (experimental) for everyone: the dev
+#                 server serves a bundle kept in memory, local and remote alike.
 #
 #   --detach      take the running preview, or start one in the background, and
 #                 return once it answers, printing its URL. The server runs in a
@@ -97,10 +101,17 @@
 #                 pipeline without needing ?noWorker=1 in the URL.
 #   --hmr         the default, spelled out (dev server + static for remotes).
 #   --static      serve only the built bundle — no dev server, no HMR anywhere.
-#   --watch       --static plus `vite build --watch`: every edit rebuilds (~7s)
+#   --watch       --static plus `vite build --watch`: every edit rebuilds (~4s)
 #                 and the phone picks it up on a manual refresh. Old hashed
 #                 chunks are kept so a page loaded mid-rebuild cannot 404.
 #                 Not compatible with --hmr (which needs no rebuild at all).
+#   --bundled     the dev server in Vite's Full Bundle Mode (experimental):
+#                 rolldown keeps the bundle in memory and serves it — a signed-in
+#                 boot is ~35 requests instead of ~1700 — and an edit recompiles
+#                 just that module and hot-patches it in (~0.1-1.5 s); a module
+#                 that cannot be patched reloads the page. No built bundle, so
+#                 ?static= does nothing here. A mode of its own: it runs beside
+#                 the plain preview of the same checkout (on another --id).
 #
 set -euo pipefail
 
@@ -111,7 +122,7 @@ say() { echo "[start-preview] $*"; }
 die() { echo "[start-preview] $*" >&2; exit 1; }
 
 ACTION=start; DETACH=0; SERVE=0; FORCE=0; LABEL_GIVEN=0
-ID=""; PORT=""; REMINT=0; NO_WORKER=0; WATCH=0; ASK_HMR=0; ASK_STATIC=0
+ID=""; PORT=""; REMINT=0; NO_WORKER=0; WATCH=0; ASK_HMR=0; ASK_STATIC=0; BUNDLED=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --id) ID="${2:?}"; shift 2;;
@@ -122,6 +133,7 @@ while [ $# -gt 0 ]; do
     --hmr) ASK_HMR=1; shift;;
     --static) ASK_STATIC=1; shift;;
     --watch) ASK_STATIC=1; WATCH=1; shift;;
+    --bundled) BUNDLED=1; shift;;
     --detach) DETACH=1; shift;;
     --list) ACTION=list; shift;;
     --stop) ACTION=stop; shift;;
@@ -145,10 +157,13 @@ if [ "$ASK_HMR" = 1 ] && [ "$ASK_STATIC" = 1 ]; then
   echo "[start-preview] the built bundle for anything remote." >&2
   exit 1
 fi
+if [ "$BUNDLED" = 1 ] && { [ "$ASK_HMR" = 1 ] || [ "$ASK_STATIC" = 1 ]; }; then
+  die "--bundled is a dev server of its own: it cannot be combined with --hmr/--static/--watch."
+fi
 # NB: not `[ ... ] && HMR=0` — under `set -e` a false test as the last command
 # of the list exits the script.
 if [ "$ASK_STATIC" = 1 ]; then HMR=0; else HMR=1; fi
-if [ "$HMR" = 1 ]; then MODE=hmr; elif [ "$WATCH" = 1 ]; then MODE=watch; else MODE=static; fi
+if [ "$BUNDLED" = 1 ]; then MODE=bundled; elif [ "$HMR" = 1 ]; then MODE=hmr; elif [ "$WATCH" = 1 ]; then MODE=watch; else MODE=static; fi
 
 sanitize() { printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'; }
 
@@ -378,6 +393,8 @@ adopt() {
   case "$(proc_args "$pid")" in
     *' preview '*) case "$rootargs" in *--watch*) mode=watch;; *) mode=static;; esac;;
   esac
+  # the --bundled run execs into vite, so only the flag it hands vite is left to see
+  case "$(proc_args "$pid")" in *--experimentalBundle*) mode=bundled;; esac
   case "$rootargs" in *--no-worker*) nw=1;; esac
   m=$(printf '%s\n' "$rootargs" | sed -n 's/.*TWEB_MASTER_SEED=\([^ ;|&]*\).*/\1/p')
   case "$m" in '') ;; /*) master=$m;; *) master="$MAIN/tmp/$m";; esac
@@ -595,7 +612,7 @@ else
     CMD+=(bash "$REPO/scripts/start-preview.sh" --serve --id "$ID" --port "$PORT")
     [ "$NO_WORKER" = 0 ] || CMD+=(--no-worker)
     [ "$REMINT" = 0 ] || CMD+=(--remint)
-    case "$MODE" in static) CMD+=(--static);; watch) CMD+=(--watch);; esac
+    case "$MODE" in static) CMD+=(--static);; watch) CMD+=(--watch);; bundled) CMD+=(--bundled);; esac
     TMUX_NAME=""; CHILD_PID=""
     if command -v tmux >/dev/null 2>&1; then
       # tmux's DEFAULT server, explicitly: a caller nested in another tmux server
@@ -678,7 +695,8 @@ if [ ! -f "$SEED" ]; then
   if [ ! -f "$SEED" ]; then echo "[start-preview] mint failed — $SEED not produced" >&2; exit 1; fi
 fi
 
-if [ "$HMR" = 1 ]; then MODE_TEXT="dev server + static for remotes";
+if [ "$BUNDLED" = 1 ]; then MODE_TEXT="dev server, full bundle mode";
+elif [ "$HMR" = 1 ]; then MODE_TEXT="dev server + static for remotes";
 elif [ "$WATCH" = 1 ]; then MODE_TEXT="static + watch";
 else MODE_TEXT="static"; fi
 echo "[start-preview] id=$ID  port=$PORT  seed=$SEED  no-worker=$NO_WORKER  mode=$MODE_TEXT"
@@ -694,6 +712,11 @@ echo "[start-preview] preview: http://localhost:$PORT"
 # Still loopback: not exposed to the LAN.
 VITE=(env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER"
       pnpm --config.verify-deps-before-run=false exec vite --config vite.preview.config.ts)
+
+if [ "$BUNDLED" = 1 ]; then
+  echo "[start-preview] full bundle mode: one in-memory bundle for local and remote requests, hot-patched on edit"
+  exec "${VITE[@]}" --experimentalBundle --host 127.0.0.1 --port "$PORT" --strictPort
+fi
 
 if [ "$HMR" = 1 ]; then
   # TWEB_PREVIEW_STATIC_DIR switches on the plugin that answers remote (and
