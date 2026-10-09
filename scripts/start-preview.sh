@@ -83,7 +83,10 @@
 #                 Default: the current worktree directory name. Without --id any
 #                 preview of this checkout on the same master seed is reused;
 #                 with it, only that id's — so a new id is how to get a separate
-#                 preview (another account, a clean origin).
+#                 preview (another account, a clean origin). An account on the
+#                 test DCs is a master seed with "isTest": 1 in it
+#                 (TWEB_MASTER_SEED=<it> ... --id <another>): it is minted there,
+#                 and its preview boots in test mode with no ?test=1 needed.
 #   --port        port for a new preview. Default: first free port from 9001
 #                 upward. With --detach a preview of this checkout running on
 #                 another port is still handed out (the script says so); a

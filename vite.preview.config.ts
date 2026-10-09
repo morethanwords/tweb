@@ -118,6 +118,12 @@ const seedScript = `(function(){
     var s = ${JSON.stringify(seed)};
     var dc = s.dcId;
     var fingerprint = s.authKeys[dc].key.slice(0, 8);
+    // the test-DC session is kept under keys of its own (LocalStorage's prefix in Modes.test)
+    var p = s.isTest ? 't_' : '';
+    var localStorage = {
+      getItem: function(key) { return window.localStorage.getItem(p + key); },
+      setItem: function(key, value) { window.localStorage.setItem(p + key, value); }
+    };
     if(localStorage.getItem('account1')) {
       console.log('[preview-auth] account1 already present — keeping existing session');
       return;
@@ -147,7 +153,7 @@ const seedScript = `(function(){
     localStorage.setItem('user_auth', JSON.stringify({date: Math.floor(Date.now() / 1000), id: s.userId, dcID: dc}));
     localStorage.setItem('auth_key_fingerprint', JSON.stringify(fingerprint));
     localStorage.setItem('server_time_offset', JSON.stringify(s.timeOffset || 0));
-    console.log('[preview-auth] seeded session for user', s.userId, 'on dc', dc);
+    console.log('[preview-auth] seeded session for user', s.userId, 'on', s.isTest ? 'test dc' : 'dc', dc);
   } catch(e) {
     console.error('[preview-auth] seed failed', e);
   }
@@ -406,9 +412,12 @@ export default mergeConfig(baseConfig as any, {
   // import wait. See src/helpers/dom/previewRaf.ts.
   // VITE_NO_WORKER is set by start-preview.sh --no-worker; Modes.noWorker reads
   // it so the debug launch entry doesn't need ?noWorker=1 in the URL.
+  // VITE_TEST_DC comes from the seed: an account on the test DCs boots in test mode (Modes.test),
+  // in the page and in its workers alike, without ?test=1 in every link.
   define: {
     'import.meta.env.VITE_PREVIEW': JSON.stringify(true),
-    'import.meta.env.VITE_NO_WORKER': JSON.stringify(process.env.TWEB_NO_WORKER === '1')
+    'import.meta.env.VITE_NO_WORKER': JSON.stringify(process.env.TWEB_NO_WORKER === '1'),
+    'import.meta.env.VITE_TEST_DC': JSON.stringify(!!seed.isTest)
   },
   plugins: [{
     // `vite preview` (start-preview.sh --static) answers every asset with
