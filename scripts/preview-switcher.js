@@ -2,7 +2,7 @@
 // page, and it is the whole of the /_previews page. It names the tab after the
 // task its checkout works on (`start-preview.sh --label`) and puts a badge in
 // the corner that lists every running preview: the registry behind
-// /_previews.json is shared by all checkouts, so any preview can reach the rest.
+// /_previews/list is shared by all checkouts, so any preview can reach the rest.
 (() => {
   // The Document PiP window is an iframe of the app. The app's own browser
   // suites run against previews too, and they must see the client as it ships.
@@ -22,7 +22,7 @@
 
   const nameOf = (preview) => preview.label || preview.checkout || preview.branch || `:${preview.port}`;
 
-  const load = () => fetch('/_previews.json', {cache: 'no-store'}).then((response) => response.json());
+  const load = () => fetch('/_previews/list', {cache: 'no-store'}).then((response) => response.json());
 
   const el = (tag, className, text) => {
     const element = document.createElement(tag);

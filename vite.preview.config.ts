@@ -13,7 +13,8 @@
  */
 
 import {loadEnv, mergeConfig} from 'vite';
-import {existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, unlinkSync} from 'fs';
+import {existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync} from 'fs';
+import {createHash} from 'crypto';
 import {basename, dirname, join, normalize, resolve} from 'path';
 import {execFileSync, spawn, ChildProcess} from 'child_process';
 import {connect} from 'net';
@@ -168,6 +169,138 @@ let builder: ChildProcess;
 let exitHandlersAttached = false;
 const stopBuilder = () => builder?.kill();
 
+// A watched bundle (the one built for remote requests, start-preview.sh --watch)
+// reloads itself once a newer build has landed. Each build is named by what it
+// holds — a hash of its file names and index.html, so a rebuild that changed
+// nothing changes no name — and stamped with when it was made; the name and the
+// stamp go into its index.html, and into preview-build.json after every file of
+// it is on disk. The page asks /_preview-build for the build to come, and the
+// server answers when there is one newer than the page's, or after 25 s: a long
+// poll, a request every half minute while nothing happens. There is no websocket
+// to lose when a phone puts the tab away, which is why this bundle exists; a
+// hidden tab asks nothing, and catches up with one reload once it is shown.
+// Neither path has an extension: the app's service worker caches every *.json
+// it sees, under each query separately. ?autoreload=0 turns it off for the tab
+// (a call, a draft — anything a reload would throw away).
+const BUILD_FILE = 'preview-build.json';
+const BUILD_PATH = '/_preview-build';
+const BUILD_WAIT_MS = 25 * 1000;
+
+type PreviewBuild = {id: string, time: number};
+
+const autoReloadScript = (build: PreviewBuild) => `(() => {
+  try {
+    const asked = new URLSearchParams(location.search).get('autoreload');
+    if(asked !== null) sessionStorage.setItem('preview-autoreload', asked);
+    if(sessionStorage.getItem('preview-autoreload') === '0') return;
+  } catch{}
+
+  const {id, time} = ${JSON.stringify(build)};
+  const shown = () => new Promise((resolve) => {
+    if(!document.hidden) return resolve();
+    document.addEventListener('visibilitychange', () => shown().then(resolve), {once: true});
+  });
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  (async() => {
+    for(;;) {
+      await shown();
+      try {
+        const response = await fetch('${BUILD_PATH}?id=' + id + '&time=' + time, {cache: 'no-store'});
+        if(!response.ok) throw new Error('HTTP ' + response.status);
+        const build = await response.json();
+        if(build && build.id !== id && build.time > time) {
+          await shown();
+          location.reload();
+          return;
+        }
+      } catch(err) {
+        console.warn('[preview] could not ask for the next build:', err);
+        await sleep(10 * 1000);
+      }
+    }
+  })();
+})();`;
+
+function readBuild(dir: string): PreviewBuild | undefined {
+  try {
+    return JSON.parse(readFileSync(join(dir, BUILD_FILE), 'utf8'));
+  } catch{
+    return undefined;
+  }
+}
+
+// GET /_preview-build?id=…&time=… — held until the bundle in `dir` is another,
+// newer build than that, or for BUILD_WAIT_MS; then the build it is at.
+function buildWaitMiddleware(dir: string) {
+  return (req: any, res: any, next: any) => {
+    const [path, search] = (req.url || '').split('?');
+    if(path !== BUILD_PATH) return next();
+
+    const params = new URLSearchParams(search || '');
+    const id = params.get('id');
+    const time = Number(params.get('time')) || 0;
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    const check = () => {
+      const build = readBuild(dir);
+      if(!(build && build.id !== id && build.time > time) && Date.now() - started < BUILD_WAIT_MS) {
+        timer = setTimeout(check, 500);
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(JSON.stringify(build || null));
+    };
+
+    // the response's close, not the request's: a request closes once its (empty) body is read
+    res.on('close', () => clearTimeout(timer));
+    check();
+  };
+}
+
+function previewAutoReloadPlugin() {
+  let watched = false;
+  let outDir: string;
+  let build: PreviewBuild;
+
+  return {
+    name: 'preview-auto-reload',
+    configResolved(config: any) {
+      watched = config.command === 'build' && !!config.build.watch;
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    generateBundle: {
+      // after vite:build-html has put index.html into the bundle
+      order: 'post' as const,
+      handler(_options: any, bundle: Record<string, any>) {
+        const html = bundle['index.html'];
+        if(!watched || html?.type !== 'asset') return;
+
+        const names = Object.keys(bundle).filter((name) => !name.endsWith('.html')).sort();
+        const id = createHash('sha1').update(names.join('\n')).update(String(html.source)).digest('hex').slice(0, 12);
+        build = {id, time: Date.now()};
+        html.source = String(html.source).replace('</head>', `<script>${autoReloadScript(build)}</script></head>`);
+      }
+    },
+    // after every file is written, so a page reloading on it finds all of them;
+    // through a rename, so a reader never sees half of it
+    writeBundle() {
+      if(!watched || !build) return;
+      const path = join(outDir, BUILD_FILE);
+      writeFileSync(path + '.tmp', JSON.stringify(build));
+      renameSync(path + '.tmp', path);
+    },
+    configureServer(server: any) {
+      // the bundle the dev server builds for remote requests (staticForRemotePlugin)
+      if(process.env.TWEB_PREVIEW_STATIC_DIR) server.middlewares.use(buildWaitMiddleware(staticDir));
+    },
+    configurePreviewServer(server: any) {
+      server.middlewares.use(buildWaitMiddleware(staticDir));
+    }
+  };
+}
+
 // The dev server gives HMR on localhost, but a request that arrived from
 // somewhere else — through whatever proxy fronts this preview — is answered from
 // a built bundle instead: unbundled dev modules mean 2047 requests for an
@@ -270,7 +403,8 @@ function staticForRemotePlugin() {
 // is named by its checkout's tmp/preview-label (`start-preview.sh --label`):
 // a word or two about the task. scripts/preview-switcher.js puts that name at
 // the head of the tab title and in a badge that lists the rest; /_previews is
-// the same list as a page of its own, /_previews.json as data.
+// the same list as a page of its own, /_previews/list as data (no extension: the
+// app's service worker would cache a *.json for good).
 const previewRegistry = join(mainCheckout, 'tmp/previews');
 const switcherScript = resolve(__dirname, 'scripts/preview-switcher.js');
 
@@ -364,7 +498,7 @@ async function listPreviews() {
 function previewSwitcherPlugin() {
   const middleware = (req: any, res: any, next: any) => {
     const path = (req.url || '').split('?')[0];
-    if(path === '/_previews.json') {
+    if(path === '/_previews/list') {
       listPreviews().then((previews) => {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
@@ -465,7 +599,7 @@ export default mergeConfig(baseConfig as any, {
         next();
       });
     }
-  }, previewSwitcherPlugin(), staticForRemotePlugin(), {
+  }, previewSwitcherPlugin(), staticForRemotePlugin(), previewAutoReloadPlugin(), {
     name: 'preview-auth-seed',
     transformIndexHtml(html: string) {
       return {

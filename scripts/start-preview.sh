@@ -56,7 +56,10 @@
 # request gets a self-refreshing "building" page for ~20s; after that a watcher
 # keeps the bundle in step with your edits (~4s per rebuild: the watcher keeps the
 # Babel and Sass results of unchanged files, scripts/watch-transform-cache.mjs;
-# TWEB_PREVIEW_SOURCEMAP=0 halves that by building no source maps).
+# TWEB_PREVIEW_SOURCEMAP=0 halves that by building no source maps), and an open
+# page reloads itself once a rebuild has landed (one that changed something) —
+# a backgrounded phone tab catches up when it comes back; ?autoreload=0 keeps a
+# tab as it is (a call, a draft).
 #
 #   ?static=1     force the built bundle from localhost too (to check it).
 #   ?static=0     force the dev server for a remote request (to debug the split).
@@ -102,7 +105,7 @@
 #   --hmr         the default, spelled out (dev server + static for remotes).
 #   --static      serve only the built bundle — no dev server, no HMR anywhere.
 #   --watch       --static plus `vite build --watch`: every edit rebuilds (~4s)
-#                 and the phone picks it up on a manual refresh. Old hashed
+#                 and an open page reloads itself once it lands. Old hashed
 #                 chunks are kept so a page loaded mid-rebuild cannot 404.
 #                 Not compatible with --hmr (which needs no rebuild at all).
 #   --bundled     the dev server in Vite's Full Bundle Mode (experimental):
@@ -751,7 +754,7 @@ if [ "$WATCH" = 1 ]; then
     if [ "$i" = 600 ]; then echo "[start-preview] build timed out — see $LOG" >&2; exit 1; fi
     sleep 1
   done
-  echo "[start-preview] first build done — rebuilds land automatically, refresh the page to pick one up"
+  echo "[start-preview] first build done — every rebuild reloads the open pages (?autoreload=0 keeps a tab as it is)"
 else
   echo "[start-preview] building -> $OUT"
   "${VITE[@]}" build --outDir "$OUT"
