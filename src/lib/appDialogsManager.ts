@@ -10,6 +10,8 @@ import DialogsSelection from '@components/dialogsSelection';
 import {PINNED_DIALOG_CLASS_NAME} from '@components/dialogsPinnedReorder';
 import type {DialogsSelectionBase} from '@components/dialogsSelectionBase';
 import DotRenderer from '@components/dotRenderer';
+import attachDialogFolderTags, {DialogFolderTags, DialogFolderTagsContext} from '@components/folderTags/dialogFolderTags';
+import {setChatListForumOpen, useChatListNarrow, useFolderTagsShown} from '@stores/folderTags';
 import {horizontalMenuObjArgs} from '@components/horizontalMenu';
 import Scrollable from '@components/scrollable';
 import {ScrollableContextValue} from '@components/scrollable2';
@@ -116,10 +118,11 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
-import {children, createRoot, createUniqueId, untrack} from 'solid-js';
+import {children, createEffect, createRoot, createUniqueId, on, untrack} from 'solid-js';
 import useFolders from '@stores/folders';
 import FoldersTabs from '@components/foldersTabs';
 import clamp from '@helpers/number/clamp';
+import debounce from '@helpers/schedulers/debounce';
 import confirmationPopup from '@components/confirmationPopup';
 import ListenerSetter from '@helpers/listenerSetter';
 import type {PopupPeerHandle} from '@components/popups/peer';
@@ -254,7 +257,9 @@ export type DialogElementOptions = {
   dontSetActive?: boolean,
   asAllChats?: AsAllChatsType,
   autoDeletePeriod?: number,
-  avatarElement?: HTMLElement
+  avatarElement?: HTMLElement,
+  /** the row is in a folder's chat list, and wears the tags of the other folders its chat is in */
+  folderTags?: DialogFolderTagsContext
 };
 
 export type DialogElementBadgeState = {
@@ -288,6 +293,7 @@ export class DialogElement {
   /** what the row last saw of its bot's main mini app - `user_update` redraws it on a change */
   public hasBotMainApp: boolean;
   public middlewareHelper: MiddlewareHelper;
+  public folderTags?: DialogFolderTags;
   private peerTitle: PeerTitle;
   private lastBadgeState: DialogElementAppliedBadgeState;
 
@@ -310,7 +316,8 @@ export class DialogElement {
     dontSetActive,
     asAllChats,
     autoDeletePeriod,
-    avatarElement
+    avatarElement,
+    folderTags
   }: DialogElementOptions) {
     const wrapMiddleware = wrapOptions?.middleware;
     this.middlewareHelper = wrapMiddleware ? wrapOptions.middleware.create() : (controlled ? getMiddleware() : undefined);
@@ -471,6 +478,15 @@ export class DialogElement {
       subtitleEl: this.subtitleRow,
       titleWrapOptions
     };
+
+    if(folderTags && this.middlewareHelper) {
+      this.folderTags = attachDialogFolderTags({
+        listEl: li,
+        after: this.subtitleRow,
+        context: folderTags,
+        middleware: this.middlewareHelper.get()
+      });
+    }
 
     // this will never happen for migrated legacy chat
     if(!autonomous) {
@@ -886,7 +902,7 @@ export class AppDialogsManager {
   private forumsTabs: Map<PeerId, ForumTab>;
   private forumsSlider: HTMLElement;
   private forumTabByPeerIdPromises = new Map<PeerId, Promise<void>>();
-  public forumTab: ForumTab;
+  private openForumTab: ForumTab;
   private forumNavigationItem: NavigationItem;
 
   public xd: AutonomousDialogList;
@@ -1181,19 +1197,59 @@ export class AppDialogsManager {
     return this.xd.sortedList.list;
   }
 
+  /** The forum open over the chat list - the list narrows under it (`isChatListNarrow`) */
+  public get forumTab() {
+    return this.openForumTab;
+  }
+
+  public set forumTab(forumTab: ForumTab) {
+    this.openForumTab = forumTab;
+    setChatListForumOpen(!!forumTab);
+  }
+
   /**
    * Whether the chat list is down to its avatars - a forum tab is open over it, or the sidebar is
-   * collapsed. The rows then carry their unread count on the avatar, and cannot be selected: they
-   * could not be told apart, nor open the lane a selected row makes for its checkbox.
+   * collapsed (`useChatListNarrow`). The rows then carry their unread count on the avatar, have no
+   * room for their folder tags, and cannot be selected: they could not be told apart, nor open the
+   * lane a selected row makes for its checkbox.
    */
   public isChatListNarrow() {
-    return !!this.forumTab || appSidebarLeft.isCollapsed();
+    return untrack(useChatListNarrow());
   }
 
   /** Ends a selection of chats that the list has narrowed under (see `isChatListNarrow`) */
   public onChatListNarrowChange() {
     if(this.selection.isSelecting && this.isChatListNarrow()) {
       this.selection.cancelSelection();
+    }
+  }
+
+  // * a reload of the folders updates them one by one
+  private scheduleFolderTagsRefresh = debounce(() => this.refreshFolderTags(), 0, false, true);
+
+  /** Hands every row with folder tags its dialog again, with the indexes the folders have now */
+  private refreshFolderTags() {
+    if(!untrack(useFolderTagsShown())) {
+      return;
+    }
+
+    const elementsByPeerId = new Map<PeerId, DialogElement[]>();
+    for(const filterId in this.xds) {
+      const sortedList = this.xds[filterId].sortedList;
+      if(!sortedList) continue;
+      for(const [peerId, element] of sortedList.getAllDialogElementsMap()) {
+        if(!element.folderTags) continue;
+        let elements = elementsByPeerId.get(peerId);
+        if(!elements) elementsByPeerId.set(peerId, elements = []);
+        elements.push(element);
+      }
+    }
+
+    for(const [peerId, elements] of elementsByPeerId) {
+      this.managers.appMessagesManager.getDialogOnly(peerId).then((dialog) => {
+        if(!dialog) return;
+        elements.forEach((element) => element.folderTags?.setDialog(dialog));
+      });
     }
   }
 
@@ -1292,6 +1348,20 @@ export class AppDialogsManager {
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
       }
+    });
+
+    // * the folders a chat is in are read off its dialog, which a row only gets anew with an update
+    // * of the chat: a folder that changes what it holds - or its place, which renames its index -
+    // * leaves every row with the tags of before
+    (['filter_update', 'filter_new', 'filter_delete', 'filter_order'] as const).forEach((type) => {
+      rootScope.addEventListener(type, this.scheduleFolderTagsRefresh);
+    });
+
+    createRoot(() => {
+      const shown = useFolderTagsShown();
+      createEffect(on(shown, (shown) => {
+        shown && this.scheduleFolderTagsRefresh();
+      }, {defer: true}));
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
@@ -2763,6 +2833,9 @@ export class AppDialogsManager {
       // this.log.error('setUnreadMessages no dom!', dialog);
       return;
     }
+
+    // * every update of the dialog comes through here, and with it the folders the chat is now in
+    dialogElement.folderTags?.setDialog(dialog);
 
     const isTopic = isForumTopic(dialog);
     const isSaved = isSavedDialog(dialog);

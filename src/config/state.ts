@@ -232,6 +232,8 @@ export type State = {
   }>,
   // filters?: FiltersStorage['filters'], // ! DEPRECATED
   filtersArr?: FiltersStorage['filtersArr'],
+  // * `messages.dialogFilters.tags_enabled` - undefined until the server has been asked
+  filtersTagsEnabled?: boolean,
   maxSeenMsgId: number,
   stateCreatedTime: number,
   recentEmoji: string[],

@@ -2904,6 +2904,8 @@
 "PremiumPreviewMessagePrivacyDescription" = "Limit messages from strangers or charge for incoming messages.";
 "PremiumPreviewTags" = "Tags for Messages";
 "PremiumPreviewTagsDescription2" = "Organize your Saved Messages with tags for quicker access.";
+"PremiumPreviewFolderTags" = "Tag Your Chats";
+"PremiumPreviewFolderTagsDescription" = "Display folder names for each chat in the chat list.";
 "MessageContainsReactionPack" = "This reaction is an emoji from %s pack.";
 "ShowAllReactions" = "Show All Reactions";
 "DeleteReaction" = "Delete Reaction";
@@ -4421,6 +4423,20 @@
 "FiltersView" = "Folders view";
 "FiltersOnLeft" = "Folders on the Left";
 "FiltersOnTop" = "Folders above chats";
+"FolderShowTags" = "Show Folder Tags";
+"FolderShowTagsInfo" = "Display folder names for each chat in the chat list.";
+"FolderShowTagsInfoPremium" = "Subscribe to **Telegram Premium** to display folder names for each chat in the chat list.";
+"FolderTagColor" = "Folder color in chat list";
+"FolderTagColorInfo" = "Choose a color for the tag of this folder.";
+"FolderTagNoColor" = "No Tag";
+"FolderTagNoColorPremium" = "Premium expired";
+"ColorRed" = "Red";
+"ColorOrange" = "Orange";
+"ColorViolet" = "Violet";
+"ColorGreen" = "Green";
+"ColorCyan" = "Cyan";
+"ColorBlue" = "Blue";
+"ColorPink" = "Pink";
 "ManageFilters" = "Manage Folders";
 "CtrlFSearchTip" = "Tip: Use **Ctrl+F** to open Search";
 "CreateANew" = "Create a New";
@@ -5201,6 +5217,7 @@
 "AuthSessions.RenameDevice" = "Rename current device";
 "AuthSessions.DeviceName" = "Device name";
 "ChatBackground.SearchKeywords" = "wallpaper, background, picture";
+"FolderShowTags.SearchKeywords" = "tags, labels, colors, folder names";
 "ColorTheme.SearchKeywords" = "theme, colour, accent, dark mode, night mode";
 "TextSize.SearchKeywords" = "font, text size, bigger, smaller";
 "LiteMode.EnableText.SearchKeywords" = "power saving, battery, animations, performance";

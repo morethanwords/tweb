@@ -20,6 +20,7 @@ tg://settings/devices/terminate-sessions,Chat List > Hamburger > Settings > Devi
 tg://settings/folders,Chat List > Hamburger > Settings > Chat Folders
 tg://settings/folders/create,Chat List > Hamburger > Settings > Chat Folders > Create FOlder
 tg://settings/folders/add-recommended,Chat List > Hamburger > Settings > Chat Folders > Recommended Folders > Add
+tg://settings/folders/show-tags,Chat List > Hamburger > Settings > Chat Folders > Show Folder Tags
 tg://settings/folders/tab-view,Chat List > Hamburger > Settings > Chat Folders > Folders View
 tg://settings/notifications,Chat LIst > Hamburger > Settings > Notifications and Sounds
 tg://settings/notifications/accounts,Chat LIst > Hamburger > Settings > Notifications and Sounds > All Accounts

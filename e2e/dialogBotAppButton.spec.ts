@@ -1,4 +1,5 @@
 import {expect, Page, test} from '@playwright/test';
+import {openChatList} from './chatList.helpers';
 
 /*
  * The "Open" button a chat-list row shows for a bot with a main mini app
@@ -26,17 +27,6 @@ const READ = {
   unread_reactions_count: 0,
   unread_poll_votes_count: 0
 };
-
-async function openChatList(page: Page, query = '') {
-  await page.goto('/' + query);
-  await page.waitForFunction(() => {
-    const w = window as any;
-    return w.appDialogsManager?.xd && w.apiManagerProxy && w.rootScope?.managers && w.appImManager &&
-      document.querySelectorAll('#column-left .chatlist-chat').length > 0;
-  }, null, {timeout: 180_000});
-  // * the list renders its rows in batches
-  await page.waitForTimeout(3000);
-}
 
 /** a bot with a main mini app among the rows the main list has rendered */
 function findBotRow(page: Page) {
@@ -171,7 +161,7 @@ test.describe('the main mini app button of a bot row', () => {
 
   test('is a named control of its own with the a11y layer', async({page}) => {
     test.setTimeout(5 * 60_000);
-    await openChatList(page, '?a11y=1');
+    await openChatList(page, {query: '?a11y=1'});
 
     const peerId = await findBotRow(page);
     test.skip(!peerId, 'no bot with a main mini app in the chat list of this account');

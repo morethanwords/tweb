@@ -1,0 +1,84 @@
+@use "../../scss/mixins/animationLevel" as *;
+
+// * the section stands between others as if it were one of them
+.wrapper {
+  display: contents;
+}
+
+.preview {
+  align-self: center;
+}
+
+.noTag {
+  align-self: center;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  color: var(--secondary-text-color);
+}
+
+// * eight circles across the row, as Desktop spreads them
+.colors {
+  display: flex;
+  justify-content: space-between;
+  padding: .375rem .875rem .5rem;
+}
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  cursor: pointer;
+
+  // * the ring the chosen colour gets, in its own colour (the option wears the colour's class)
+  &:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgb(var(--folder-tag-color-rgb, var(--secondary-text-color-rgb)));
+    opacity: 0;
+    transform: scale(.8);
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
+    }
+  }
+
+  // * the focus ring goes around the ring of the chosen colour, not over it
+  :global(:where(.a11y)) &:focus-visible {
+    outline-offset: .125rem;
+  }
+}
+
+.selected:before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.circle {
+  width: 1.75rem;
+  height: 1.75rem;
+
+  @include animation-level(2) {
+    transition: transform var(--transition-standard-in);
+  }
+
+  .selected > & {
+    transform: scale(.75);
+  }
+}
+
+.none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  color: #fff;
+  background-color: var(--secondary-text-color);
+}

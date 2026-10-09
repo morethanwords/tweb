@@ -88,6 +88,16 @@ $select-lane-shift: var(--select-lane-shift, #{1.5rem + .625rem});
   position: relative;
 }
 
+// * the third line of a row with folder tags - see `attachDialogFolderTags`
+.dialog-folder-tags {
+  order: 1;
+  display: flex;
+  gap: .25rem; // FOLDER_TAG_GAP
+  height: 1rem;
+  margin-top: .25rem;
+  overflow: hidden;
+}
+
 ul.chatlist {
   padding: 0 .5rem/*  .5rem */;
 
@@ -128,6 +138,21 @@ ul.chatlist {
       --select-lane-shift: #{1.5rem + .625rem + .25rem};
     }
 
+    // * a row with folder tags is a line taller (`DIALOG_WITH_FOLDER_TAGS_HEIGHT`), its tags under
+    // * the message. The avatar stays where it is in any other row, at the top, as on Desktop - and
+    // * with it everything that sits on its corners
+    &.has-folder-tags {
+      min-height: 5.125rem;
+
+      .dialog-avatar {
+        top: .5625rem;
+      }
+    }
+
+    &:not(.has-folder-tags) .dialog-folder-tags {
+      display: none;
+    }
+
     // * a row being selected (`DialogsSelectionBase`) wears its checkbox at its start, in a lane it
     // * opens for it, and it looks like the peer picker's too - so a selected row is marked by the
     // * checkbox alone. Only this checkbox: the picker's rows are `chatlist-chat` as well, and style
@@ -155,7 +180,8 @@ ul.chatlist {
     // * that one belongs to the reorder, which slides the rows by transform.
     &.has-select-checkbox:not(.is-leaving-selection) {
       .dialog-title,
-      .dialog-subtitle {
+      .dialog-subtitle,
+      .dialog-folder-tags {
         margin-inline-start: $select-lane-shift;
       }
 
@@ -198,7 +224,8 @@ ul.chatlist {
       @include animation-level(2) {
         .dialog-avatar,
         .dialog-title,
-        .dialog-subtitle {
+        .dialog-subtitle,
+        .dialog-folder-tags {
           animation: var(--checkbox-lane-animation) var(--transition-standard-in);
         }
       }
@@ -386,6 +413,12 @@ ul.chatlist {
           background-color: rgba(255, 255, 255, .2);
         }
 
+        // * a tag turns over as the badges do, white with the accent in it - Desktop's active tag
+        .folder-tag {
+          color: var(--primary-color);
+          background-color: #fff;
+        }
+
         .verified-icon {
           &-background {
             fill: #fff !important;
@@ -445,7 +478,8 @@ ul.chatlist {
   }
 
   .dialog-avatar,
-  .row-row {
+  .row-row,
+  .dialog-folder-tags {
     pointer-events: none;
     position: relative; // for z-index
   }

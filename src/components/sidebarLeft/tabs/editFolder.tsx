@@ -1,4 +1,4 @@
-import {Component} from 'solid-js';
+import {Component, createSignal, untrack} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import appDialogsManager from '@lib/appDialogsManager';
 import {LottieLoader} from '@lib/lottie/lottieLoader';
@@ -17,7 +17,7 @@ import filterAsync from '@helpers/array/filterAsync';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section, {appendSectionContent} from '@components/section';
 import {unwrapSolidElement} from '@helpers/solid/wrapSolidComponent';
-import {DialogFilter, ExportedChatlistInvite} from '@layer';
+import {DialogFilter, ExportedChatlistInvite, TextWithEntities} from '@layer';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
 import RowTsx from '@components/rowTsx';
@@ -38,6 +38,8 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import {mountSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import FolderTagColorSection, {getNewFolderTagColor} from '@components/folderTags/folderTagColorSection';
+import {getFolderTagColor, useFolderTagsShown} from '@stores/folderTags';
 
 type EditFolderButton = {
   icon: Icon,
@@ -51,7 +53,7 @@ type EditFolderFlags = {[k in 'contacts' | 'non_contacts' | 'groups' | 'broadcas
 const EditFolder: Component = () => {
   const [tab] = useSuperTab<typeof AppEditFolderTab>();
   const promiseCollector = usePromiseCollector();
-  const {HotReloadGuard, lottieLoader} = useHotReloadGuard();
+  const {HotReloadGuard, lottieLoader, showPremiumPopup} = useHotReloadGuard();
   const p = tab.payload;
 
   const flags: EditFolderFlags = {} as any;
@@ -62,6 +64,9 @@ const EditFolder: Component = () => {
   let loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
   let tempId = 0;
   let showMoreClicked: {[key in 'includePeerIds' | 'excludePeerIds']?: boolean} = {};
+  // * what the folder colour section shows: the folder's name, as it is being typed, and its colour
+  const [tagTitle, setTagTitle] = createSignal<TextWithEntities>();
+  const [tagColor, setTagColor] = createSignal<number>();
 
   const editCheckForChange = () => {
     if(type === 'edit') {
@@ -220,6 +225,12 @@ const EditFolder: Component = () => {
       filter = copy(_filter);
     } else {
       filter = _filter;
+    }
+
+    setTagTitle(filter.title);
+    setTagColor(getFolderTagColor(filter));
+
+    if(!firstTime) {
       onEditOpen();
       editCheckForChange();
     }
@@ -237,7 +248,10 @@ const EditFolder: Component = () => {
         exclude_peers: [],
         pinnedPeerIds: [],
         includePeerIds: [],
-        excludePeerIds: []
+        excludePeerIds: [],
+        // * a new folder is tagged from the start while the tags are on, as on Android and iOS -
+        // * otherwise it would be the one folder whose chats say nothing of it
+        ...(untrack(useFolderTagsShown()) ? {color: getNewFolderTagColor()} : {})
       }, true);
       type = 'create';
     } else {
@@ -308,6 +322,7 @@ const EditFolder: Component = () => {
     onInput: () => {
       const {value, entities} = getRichValueWithCaret(nameInputField.controls.inputField.input);
       filter.title = {_: 'textWithEntities', ...trimRichText(value || '', entities || [])};
+      setTagTitle(filter.title);
       editCheckForChange();
     }
   });
@@ -405,6 +420,24 @@ const EditFolder: Component = () => {
   }];
   const excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', excludePeerIdsButtons, flags, 'FilterExcludeInfo');
 
+  const tagColorSection = mountSolidComponent(() => (
+    <FolderTagColorSection
+      title={tagTitle}
+      color={tagColor}
+      onChange={(color) => {
+        if(color === undefined) {
+          delete filter.color;
+        } else {
+          filter.color = color;
+        }
+
+        setTagColor(color);
+        editCheckForChange();
+      }}
+      onLocked={() => showPremiumPopup({feature: 'folder_tags'})}
+    />
+  ), tab.middlewareHelper.get()).element;
+
   const inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
     icon: 'add',
     text: 'SharedFolder.CreateLink',
@@ -417,6 +450,7 @@ const EditFolder: Component = () => {
     inputSection,
     includePeerIds,
     excludePeerIds,
+    tagColorSection,
     inviteLinks
   );
 

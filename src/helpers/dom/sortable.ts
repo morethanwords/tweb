@@ -29,6 +29,33 @@ export type SortableSortContext = {
   to: number
 };
 
+/**
+ * Where an element dragged `yDiff` off its place in a run stands: how far it may go either way,
+ * and which of its siblings it has passed - each one once it is half-way past it. Off the heights
+ * of the run's elements, top to bottom, which do not have to be equal: a chat with folder tags is
+ * a line taller than one without.
+ */
+export function getSortableDragStep(heights: number[], idx: number, yDiff: number) {
+  let minY = 0, maxY = 0;
+  for(let i = 0; i < idx; ++i) minY -= heights[i];
+  for(let i = idx + 1; i < heights.length; ++i) maxY += heights[i];
+
+  yDiff = clamp(yDiff, minY, maxY);
+  const direction = yDiff >= 0 ? 1 : -1;
+  const distance = Math.abs(yDiff);
+  let count = 0, passedHeight = 0;
+  for(let i = idx + direction; i >= 0 && i < heights.length; i += direction) {
+    if(distance < passedHeight + heights[i] / 2) {
+      break;
+    }
+
+    passedHeight += heights[i];
+    ++count;
+  }
+
+  return {minY, maxY, yDiff, count, passedHeight};
+}
+
 export default class Sortable {
   private element: HTMLElement;
   private elementRect: DOMRect;
@@ -38,6 +65,8 @@ export default class Sortable {
   private siblings: HTMLElement[];
   private items: HTMLElement[];
   private moveDirection: number;
+  /** how tall the siblings the element has passed are together: where it lands, when dropped */
+  private passedHeight: number;
   private pickedUp: boolean;
   private pickUpY: number;
   private swipeHandler: SwipeHandler;
@@ -126,18 +155,18 @@ export default class Sortable {
     // * the drag is confined to the run, so a row can never be dragged out of it (past a
     // * `cant-sort` sibling, or out of the pinned block of a chat list) - and the reach is
     // * re-derived with the run, since it grows and shrinks under a virtualized list. It is
-    // * counted in rows off the element's own rect: the siblings carry the drag's own transforms
-    // * by now, so their rects no longer say where the run is
-    const height = this.elementRect.height;
-    this.minY = -idx * height;
-    this.maxY = (this.items.length - 1 - idx) * height;
+    // * counted off the rows' own heights rather than their rects: the siblings carry the drag's
+    // * own transforms by now, so their rects no longer say where the run is
+    const step = getSortableDragStep(this.items.map((item) => item.offsetHeight), idx, yDiff);
+    this.minY = step.minY;
+    this.maxY = step.maxY;
 
-    yDiff = clamp(yDiff, this.minY, this.maxY);
+    yDiff = step.yDiff;
     this.element.style.transform = `translateY(${yDiff}px)`;
     const toEnd = yDiff >= 0;
     this.moveDirection = toEnd ? 1 : -1;
-    const maxCount = toEnd ? this.items.length - 1 - idx : idx;
-    const count = Math.min(Math.round(Math.abs(yDiff) / this.elementRect.height), maxCount);
+    this.passedHeight = step.passedHeight;
+    const count = step.count;
     const lastSiblings = this.siblings;
     this.siblings = toEnd ?
       this.items.slice(idx + 1, idx + 1 + count) :
@@ -234,7 +263,7 @@ export default class Sortable {
     const element = this.element;
 
     this.element.classList.remove('no-transition');
-    this.element.style.transform = move ? `translateY(${move * this.elementRect.height}px)` : '';
+    this.element.style.transform = move ? `translateY(${this.moveDirection * this.passedHeight}px)` : '';
     this.swipeHandler.setCursor('');
 
     if(this.scrollable) {
@@ -281,6 +310,7 @@ export default class Sortable {
       this.elementRect =
       this.minY =
       this.maxY =
+      this.passedHeight =
       this.moveDirection =
       this.startScrollPos =
       this.addScrollPos =

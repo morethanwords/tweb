@@ -311,6 +311,13 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     titleLangKey: 'PremiumPreviewTags',
     subtitleLangKey: 'PremiumPreviewTagsDescription2'
   },
+  // * the server lists it among the business features, so it is reached by name (`showPremiumPopup`)
+  folder_tags: {
+    feature: 'folder_tags',
+    icon: 'premium_tags_filled',
+    titleLangKey: 'PremiumPreviewFolderTags',
+    subtitleLangKey: 'PremiumPreviewFolderTagsDescription'
+  },
   pm_noforwards: {
     feature: 'pm_noforwards',
     icon: 'sharingoff_filled',

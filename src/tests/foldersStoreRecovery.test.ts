@@ -1,4 +1,5 @@
 import type {MyDialogFilter} from '@lib/storages/filters';
+import makeDialogFilter from '@/tests/helpers/dialogFilter';
 
 const mocks = vi.hoisted(() => {
   type Listener = (payload: any) => unknown;
@@ -41,22 +42,6 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@lib/rootScope', () => ({default: mocks.rootScope}));
 
-function makeFilter(id: number, localId: number): MyDialogFilter {
-  return {
-    _: 'dialogFilter',
-    pFlags: {},
-    id,
-    title: {_: 'textWithEntities', text: `Folder ${id}`, entities: []},
-    pinned_peers: [],
-    include_peers: [],
-    exclude_peers: [],
-    pinnedPeerIds: [],
-    includePeerIds: [],
-    excludePeerIds: [],
-    localId
-  } as MyDialogFilter;
-}
-
 describe('folders store recovery', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -66,9 +51,9 @@ describe('folders store recovery', () => {
   });
 
   it('restores filters after state clear without reloading the tab', async() => {
-    const allChats = makeFilter(0, 0);
-    const firstFolder = makeFilter(2, 2);
-    const secondFolder = makeFilter(3, 3);
+    const allChats = makeDialogFilter(0, 0);
+    const firstFolder = makeDialogFilter(2, 2);
+    const secondFolder = makeDialogFilter(3, 3);
 
     for(const filter of [allChats, firstFolder, secondFolder]) {
       mocks.filters.set(filter.id, filter);

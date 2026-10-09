@@ -1,4 +1,4 @@
-import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor, untrack} from 'solid-js';
+import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor} from 'solid-js';
 
 import createAnimatedValue from '@helpers/solid/createAnimatedValue';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -63,12 +63,30 @@ const VerticalVirtualList: Component<{
 
   // * where every item starts, and where the last one ends: for a list of equal items it is their
   // * index times the height, as it always was
-  const getLayout = (): ItemsLayout => props.layout || createUniformLayout(props.itemHeight);
+  const uniformLayout = createMemo(() => createUniformLayout(props.itemHeight));
+  const getLayout = (): ItemsLayout => props.layout || uniformLayout();
 
+  // * once the update is through: the list takes its new height in a render effect, after this is
+  // * asked for, and a host scrolled further than the old height lets it would stop short
+  let pendingScrollShift = 0;
   const onScrollShift = (amount: number) => {
-    untrack(() => {
-      props.scrollableHost.scrollTop -= amount;
+    if(!amount) {
+      return;
+    }
+
+    if(!pendingScrollShift) queueMicrotask(() => {
+      if(pendingScrollShift) props.scrollableHost.scrollTop -= pendingScrollShift;
+      pendingScrollShift = 0;
     });
+
+    pendingScrollShift += amount;
+  };
+
+  let listEl: HTMLUListElement;
+  // * where the screen starts, in the list: the host can scroll something above the list too (the
+  // * chat list's stories), and a shift asked for in this task is not in it yet
+  const getVisibleTop = () => {
+    return props.scrollableHost.getBoundingClientRect().top - listEl.getBoundingClientRect().top - pendingScrollShift;
   };
 
   const shouldAnimate = useShouldAnimate({
@@ -76,6 +94,7 @@ const VerticalVirtualList: Component<{
     hostHeight,
     getLayout,
     scrollAmount,
+    getVisibleTop,
     onScrollShift
   });
 
@@ -124,7 +143,10 @@ const VerticalVirtualList: Component<{
   // listitems: a deliberate change, not an attribute.
   return (
     <ul
-      ref={props.ref}
+      ref={(el) => {
+        listEl = el;
+        if(typeof props.ref === 'function') props.ref(el);
+      }}
       class={props.class}
       role="presentation"
       style={{
@@ -154,6 +176,18 @@ function createUniformLayout(itemHeight: number): ItemsLayout {
   };
 }
 
+/** The first of the `length` items that reaches below `offset` - `length` when none does */
+export function findItemAtOffset(layout: ItemsLayout, length: number, offset: number) {
+  let low = 0, high = length;
+  while(low < high) {
+    const middle = (low + high) >> 1;
+    if(layout.top(middle + 1) <= offset) low = middle + 1;
+    else high = middle;
+  }
+
+  return low;
+}
+
 /** Lays out a list whose items differ in height, for `VerticalVirtualList`'s `layout` */
 export function createItemsLayout(list: any[], getItemHeight: (item: any) => number): ItemsLayout {
   const tops = new Array<number>(list.length + 1);
@@ -172,6 +206,8 @@ type UseShouldAnimateArgs = {
   scrollAmount: Accessor<number>;
   getLayout: Accessor<ItemsLayout>;
   hostHeight: Accessor<number>;
+  /** where the screen starts in the list, measured: unlike `scrollAmount`, nothing lags behind */
+  getVisibleTop: () => number;
 
   onScrollShift: (amount: number) => void;
 };
@@ -182,7 +218,7 @@ type UseShouldAnimateArgs = {
  * For example when a new chat appears on top, and we have some scroll, prevent all the chats from viewport
  * moving at the same time
  */
-function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, onScrollShift}: UseShouldAnimateArgs) {
+function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, getVisibleTop, onScrollShift}: UseShouldAnimateArgs) {
   const [shouldAnimate, setShouldAnimate] = createSignal(true);
 
   const isActuallyVisible = (layout: ItemsLayout, idx: number) => {
@@ -191,11 +227,31 @@ function useShouldAnimate({list, scrollAmount, hostHeight, getLayout, onScrollSh
       layout.top(idx) <= top + hostHeight();
   };
 
-  // * the layout the previous list was laid out with - an item that has not moved in the list can
-  // * still have moved on screen, when an item of another height went in above it
+  // * the same items, only some of another height now (a chat list's row got its folder tags, or the
+  // * list narrowed and they all lost theirs): the item at the top of the screen stays where it is, as
+  // * a browser anchors its scroll, or a row that grew above the screen would push what is on it down
+  const onHeightsChange = (length: number, layout: ItemsLayout) => {
+    const anchorIdx = findItemAtOffset(prevLayout, length, getVisibleTop());
+    const shift = anchorIdx < length ? prevLayout.top(anchorIdx) - layout.top(anchorIdx) : 0;
+    // * an item moved by the scroll must not slide to its place on top of it
+    setShouldAnimate(!shift);
+    onScrollShift(shift);
+  };
+
+  // * the layout the list was last laid out with, heights included - an item that has not moved in
+  // * the list can still have moved on screen, when an item of another height went in above it
   let prevLayout: ItemsLayout;
-  createComputed(on(list, (current, prev = []) => {
-    const layout = getLayout();
+  createComputed(on([list, getLayout], ([current, layout], prevInput) => {
+    const prev = prevInput?.[0] || [];
+    if(current === prev) {
+      if(prevLayout && layout !== prevLayout) {
+        onHeightsChange(current.length, layout);
+      }
+
+      prevLayout = layout;
+      return;
+    }
+
     const visiblePrev = prevLayout ? prev.filter((_, i) => isActuallyVisible(prevLayout, i)) : [];
     const visibleNow = current.filter((_, i) => isActuallyVisible(layout, i));
 

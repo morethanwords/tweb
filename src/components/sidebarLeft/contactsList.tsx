@@ -6,7 +6,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {AppManagers} from '@lib/managers';
 import sortContacts, {ContactsSortMode} from '@appManagers/utils/users/sortContacts';
-import VerticalVirtualList, {createItemsLayout, VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
+import VerticalVirtualList, {createItemsLayout, findItemAtOffset, VerticalVirtualListItemProps, VIRTUAL_LIST_ITEM_CLASS_NAME} from '@components/verticalVirtualList';
 import SectionIndex, {SectionIndexLetter} from '@components/sectionIndex';
 import {SectionName} from '@components/section';
 import type ContactsSelection from '@components/contactsSelection';
@@ -244,15 +244,8 @@ export default function ContactsList(props: {
 
     const itemsLayout = layout();
     const top = scrollTop(), bottom = top + viewportHeight();
-    // the first item that reaches into the screen
-    let low = 0, high = items.length;
-    while(low < high) {
-      const middle = (low + high) >> 1;
-      if(itemsLayout.top(middle + 1) <= top) low = middle + 1;
-      else high = middle;
-    }
-
-    for(let idx = low; idx < items.length && itemsLayout.top(idx) < bottom; ++idx) {
+    // from the first item that reaches into the screen
+    for(let idx = findItemAtOffset(itemsLayout, items.length, top); idx < items.length && itemsLayout.top(idx) < bottom; ++idx) {
       if(!isSection(items[idx])) {
         visible.add(sectionByIdx[idx]);
       }

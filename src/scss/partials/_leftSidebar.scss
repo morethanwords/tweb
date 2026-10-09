@@ -821,6 +821,25 @@
   .btn-control {
     margin-bottom: 1rem;
   }
+
+  // * a folder's colour, while the tags are shown, sits where the grip is until the grip shows up:
+  // * Android swaps the one for the other too. At once - the grip comes in on a transition of its
+  // * own, and one fading out under the other only muddles the two
+  .chat-folder-color {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 1.125rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .row-sortable {
+    @include hover() {
+      .chat-folder-color {
+        opacity: 0;
+      }
+    }
+  }
 }
 
 .two-step-verification {

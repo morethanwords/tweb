@@ -129,6 +129,11 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
     ]);
 
     const order = filterOrder(premiumPromo, appConfig.premium_promo_order);
+    // * a feature opened by name that the server puts elsewhere - folder tags are among the business
+    // * ones - still gets its slide, as Android's sheet for it shows it
+    if(options.feature && PREMIUM_FEATURES[options.feature] && !order.includes(options.feature)) {
+      order.push(options.feature);
+    }
 
     const isPremiumActive = rootScope.premium;
     props = {

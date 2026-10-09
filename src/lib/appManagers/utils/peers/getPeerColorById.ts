@@ -3,9 +3,9 @@ import clamp from '@helpers/number/clamp';
 import crc32 from '@helpers/number/crc32';
 import themeController from '@helpers/themeController';
 import {Chat, HelpPeerColorOption, HelpPeerColorSet, PeerColor, User} from '@layer';
+import {DialogColors} from '@appManagers/utils/peers/dialogColors';
 
-const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']],
-  DialogColors = ['red', 'orange', 'violet', 'green', 'cyan', 'blue', 'pink'] as const;
+const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']];
 
 const _DialogColorsFg = DialogColorsFg;
 
