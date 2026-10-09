@@ -23,6 +23,8 @@ export const DIALOG_WITH_FOLDER_TAGS_HEIGHT = 82;
  */
 const DIALOG_FOLDER_TAGS_INSET = 72 + 12;
 
+const NOTHING_FITTED: ReturnType<typeof fitFolderTags> = {visible: 0, more: 0};
+
 /** What a folder's chat list hands its rows for their tags */
 export type DialogFolderTagsContext = {
   /** the folder the list shows - its own tag is left out, the tab says it already */
@@ -74,9 +76,19 @@ export default function attachDialogFolderTags({
 
     const hasTags = createMemo(() => !!tags().length);
 
-    const fitted = createMemo(() => {
-      const widths = tags().map((filter) => measureFolderTag(filter.title));
+    // * every row of the list hears of its width changing, the whole list of them on every frame of a
+    // * resize: a row with no tags - most are - does not follow the width at all, and one whose tags
+    // * fit as they did tells nothing under it to run again
+    const fitted = createMemo<ReturnType<typeof fitFolderTags>>(() => {
+      const _tags = tags();
+      if(!_tags.length) {
+        return NOTHING_FITTED;
+      }
+
+      const widths = _tags.map((filter) => measureFolderTag(filter.title));
       return fitFolderTags(widths, context.width() - DIALOG_FOLDER_TAGS_INSET);
+    }, undefined, {
+      equals: (prev, next) => prev?.visible === next.visible && prev?.more === next.more
     });
 
     const visibleTags = createMemo(() => tags().slice(0, fitted().visible));
