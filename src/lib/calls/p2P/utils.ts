@@ -8,12 +8,16 @@
 import {Logger} from '@lib/logger';
 import {appSettings} from '@stores/appSettings';
 import getStream from '@lib/calls/helpers/getStream';
+import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
+import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
+import getScreenStream from '@lib/calls/helpers/getScreenStream';
 import {
   findSdpLineValue as findLineValue,
   getSdpDirection,
   getSdpPort,
   parseExtmaps,
   parseFingerprints,
+  parseFmtpParameters,
   parsePayloadTypes,
   parseSdpSections,
   parseSsrcGroups,
@@ -102,12 +106,26 @@ export function payloadTypeToConference(payloadType: P2PPayloadType): PayloadTyp
 
 // ===== Media-stream helpers =====
 
-export function getUserStream(streamType: StreamType, facing: VideoFacingModeEnum = 'user') {
+// The camera at 720p30 (the group-call constraints; native tgcalls captures
+// 1280×720 at 30 fps too), on the device picked in "Speakers and Camera".
+// `facingMode` only matters on mobile (front vs rear camera) — paired with an
+// explicit `deviceId: {exact: ...}` it can produce OverconstrainedError on
+// desktop where the chosen camera doesn't advertise a facingMode. Pick ONE:
+// prefer the explicit deviceId, fall back to facingMode.
+export function getP2pVideoConstraints(facing: VideoFacingModeEnum = 'user', deviceId?: string): MediaTrackConstraints {
+  const constraints = getVideoConstraints(deviceId);
+  if(!constraints.deviceId) {
+    constraints.facingMode = facing;
+  }
+
+  return constraints;
+}
+
+export function getUserStream(streamType: StreamType, facing: VideoFacingModeEnum = 'user'): Promise<MediaStream> {
   if(streamType === 'presentation') {
-    return (navigator.mediaDevices as any).getDisplayMedia({
-      audio: false,
-      video: true
-    });
+    // Capped at 1080p30 with a 'text' content hint, exactly as a group call
+    // shares its screen.
+    return getScreenStream(getScreenConstraints(true));
   }
 
   // Honour the device picked in the in-call settings popup / "Speakers and
@@ -125,16 +143,7 @@ export function getUserStream(streamType: StreamType, facing: VideoFacingModeEnu
     deviceId: audioId ? {exact: audioId} : undefined
   } : false;
 
-  // `facingMode` only matters on mobile (front vs rear camera) — paired with
-  // an explicit `deviceId: {exact: ...}` it can produce OverconstrainedError
-  // on desktop where the chosen camera doesn't advertise a facingMode. Pick
-  // ONE: prefer the explicit deviceId, fall back to facingMode.
-  const videoId = appSettings.callDevices?.cameraId;
-  const video = streamType === 'video' ? (
-    videoId ?
-      {deviceId: {exact: videoId}} :
-      {facingMode: facing}
-  ) : false;
+  const video = streamType === 'video' ? getP2pVideoConstraints(facing) : false;
 
   // Stale-deviceId recovery and incremental retry live inside `getStream`.
   return getStream({audio, video});
@@ -482,20 +491,134 @@ export function parseMediaContentMids(sdp: string, contents: P2PMediaContent[]) 
   return midsBySsrc;
 }
 
-export function filterRemoteVideoPayloadTypes(content: P2PMediaContent | undefined) {
-  const payloadTypes = content?.payloadTypes;
-  if(!payloadTypes?.length) {
+// ===== Video codec selection =====
+
+// What the browser can encode and decode, from RTCRtpSender/RTCRtpReceiver
+// .getCapabilities('video'). Kept as a plain shape so the selection is testable.
+export type VideoCodecCapability = {mimeType: string, sdpFmtpLine?: string};
+export type VideoCodecCapabilities = {
+  send: VideoCodecCapability[],
+  receive: VideoCodecCapability[]
+};
+
+export function getVideoCodecCapabilities(): VideoCodecCapabilities {
+  const get = (source: {getCapabilities?: (kind: string) => RTCRtpCapabilities | null} | undefined) => {
+    try {
+      return source?.getCapabilities?.('video')?.codecs || [];
+    } catch{
+      return [];
+    }
+  };
+
+  return {
+    send: get(typeof(RTCRtpSender) !== 'undefined' ? RTCRtpSender : undefined),
+    receive: get(typeof(RTCRtpReceiver) !== 'undefined' ? RTCRtpReceiver : undefined)
+  };
+}
+
+const RTX_CODEC = 'RTX';
+// Redundancy/FEC "codecs": never chosen as the media codec, kept alongside it
+// when both ends support them (webrtc's media engine advertises red + ulpfec,
+// and flexfec-03 behind a field trial — native tgcalls offers whatever its
+// engine lists, v2/ContentNegotiation.cpp copyCodecsFromChannelManager).
+const FEC_CODECS = new Set(['RED', 'ULPFEC', 'FLEXFEC-03']);
+
+// webrtc api/video_codecs/h264_profile_level_id.cc kProfilePatterns: the
+// profile is profile_idc plus a mask over the profile-iop constraint bits
+// (MSB first, 'x' = don't care). Two H.264 formats interoperate when their
+// profiles and packetization modes match; levels may differ (the peer and
+// the browser both set level-asymmetry-allowed).
+const H264_PROFILE_PATTERNS: [profileIdc: number, iopPattern: string, profile: string][] = [
+  [0x42, 'x1xx0000', 'constrained-baseline'],
+  [0x4D, '1xxx0000', 'constrained-baseline'],
+  [0x58, '11xx0000', 'constrained-baseline'],
+  [0x42, 'x0xx0000', 'baseline'],
+  [0x58, '10xx0000', 'baseline'],
+  [0x4D, '0x0x0000', 'main'],
+  [0x64, '00000000', 'high'],
+  [0x64, '00001100', 'constrained-high'],
+  [0xF4, '00000000', 'predictive-high-444']
+];
+
+export function getH264Profile(profileLevelId: string | undefined): string | undefined {
+  // No profile-level-id means Constrained Baseline (RFC 6184 / webrtc default).
+  const id = profileLevelId ?? '42e01f';
+  if(!/^[0-9a-f]{6}$/i.test(id)) {
     return undefined;
   }
 
-  const supportedCodecs = RTCRtpReceiver.getCapabilities('video')?.codecs || [];
-  const supportedNames = new Set(supportedCodecs.map((codec) => {
-    return codec.mimeType.split('/')[1]?.toUpperCase();
-  }).filter(Boolean));
+  const profileIdc = parseInt(id.slice(0, 2), 16);
+  const profileIop = parseInt(id.slice(2, 4), 16);
+  const pattern = H264_PROFILE_PATTERNS.find(([idc, iopPattern]) => {
+    return idc === profileIdc && [...iopPattern].every((bit, index) => {
+      return bit === 'x' || +bit === ((profileIop >> (7 - index)) & 1);
+    });
+  });
+
+  return pattern?.[2];
+}
+
+// Codec parameters keyed in lower case, so the browser's capabilities and the
+// peer's JSON compare whatever case either uses.
+function toLowerCaseParameters(parameters: Record<string, string | number> | undefined) {
+  const result: Record<string, string> = {};
+  Object.entries(parameters || {}).forEach(([key, value]) => {
+    result[key.toLowerCase()] = String(value);
+  });
+  return result;
+}
+
+function parseFmtpLine(line: string | undefined) {
+  return toLowerCaseParameters(parseFmtpParameters(line));
+}
+
+function getPayloadParameters(payloadType: P2PPayloadType) {
+  return toLowerCaseParameters(payloadType.parameters as Record<string, string | number>);
+}
+
+function getCapabilityName(capability: VideoCodecCapability) {
+  return capability.mimeType.split('/')[1]?.toUpperCase();
+}
+
+// The format-defining fmtp parameters per codec (webrtc IsSameCodecSpecific).
+function isSameVideoFormat(name: string, a: Record<string, string>, b: Record<string, string>) {
+  const same = (key: string, fallback: string) => (a[key] ?? fallback) === (b[key] ?? fallback);
+  switch(name) {
+    case 'H264': {
+      const profile = getH264Profile(a['profile-level-id']);
+      return !!profile && profile === getH264Profile(b['profile-level-id']) && same('packetization-mode', '0');
+    }
+    case 'VP9':
+      return same('profile-id', '0');
+    case 'AV1':
+      return same('profile', '0');
+    case 'H265':
+      return same('profile-id', '1') && same('tier-flag', '0');
+    default:
+      return true;
+  }
+}
+
+function isVideoFormatSupported(
+  name: string,
+  parameters: Record<string, string>,
+  capabilities: VideoCodecCapability[]
+) {
+  return capabilities.some((capability) => {
+    return getCapabilityName(capability) === name &&
+      isSameVideoFormat(name, parameters, parseFmtpLine(capability.sdpFmtpLine));
+  });
+}
+
+// The pre-2026-10 selection: VP8 (or else the first codec the browser can
+// decode) plus its RTX, nothing else. Still what a peer that offers no other
+// usable codec gets, byte for byte.
+function selectLegacyVideoPayloadTypes(payloadTypes: P2PPayloadType[], capabilities: VideoCodecCapabilities) {
+  const supportedNames = new Set(capabilities.receive.map(getCapabilityName).filter(Boolean));
   const preferredCodec = payloadTypes.find((payloadType) => {
     return payloadType.name.toUpperCase() === 'VP8' && supportedNames.has('VP8');
   }) || payloadTypes.find((payloadType) => {
-    return payloadType.name.toUpperCase() !== 'RTX' && supportedNames.has(payloadType.name.toUpperCase());
+    return payloadType.name.toUpperCase() !== RTX_CODEC && supportedNames.has(payloadType.name.toUpperCase());
   });
 
   if(!preferredCodec) {
@@ -504,11 +627,88 @@ export function filterRemoteVideoPayloadTypes(content: P2PMediaContent | undefin
 
   const result = [preferredCodec];
   const rtxPayload = payloadTypes.find((payloadType) => {
-    return payloadType.name.toUpperCase() === 'RTX' && Number(payloadType.parameters?.apt) === preferredCodec.id;
+    return payloadType.name.toUpperCase() === RTX_CODEC && Number(payloadType.parameters?.apt) === preferredCodec.id;
   });
   if(rtxPayload) {
     result.push(rtxPayload);
   }
+
+  return result;
+}
+
+/**
+ * The peer's video payload types this browser can both send and receive, for
+ * the remote description we build out of its NegotiateChannels.
+ *
+ * - Every codec the browser can encode AND decode is kept (H.264 matched by
+ *   profile and packetization-mode), in the peer's order — except that H.264
+ *   goes ahead of VP8 when both are usable: the order is the preference, the
+ *   browser sends the first codec of it, and native peers encode and decode
+ *   H.264 in hardware (v2/InstanceV2Impl.cpp: H.265, then H.264 first).
+ * - Each kept codec keeps its RTX; red/ulpfec/flexfec only when the peer lists
+ *   them and the browser supports them both ways.
+ * - `allowed`: on an answer, the payload types of our own offer — the peer can
+ *   only accept what we offered, anything else would fail setRemoteDescription.
+ * - When VP8 is the only usable codec, the result is what it always was.
+ */
+export function filterRemoteVideoPayloadTypes(
+  content: P2PMediaContent | undefined,
+  options: {
+    capabilities?: VideoCodecCapabilities,
+    allowed?: Pick<P2PPayloadType, 'id' | 'name'>[]
+  } = {}
+): P2PPayloadType[] | undefined {
+  let payloadTypes = content?.payloadTypes;
+  if(options.allowed && payloadTypes) {
+    payloadTypes = payloadTypes.filter((payloadType) => options.allowed.some((allowed) => {
+      return allowed.id === payloadType.id && allowed.name.toUpperCase() === payloadType.name.toUpperCase();
+    }));
+  }
+
+  if(!payloadTypes?.length) {
+    return undefined;
+  }
+
+  const capabilities = options.capabilities || getVideoCodecCapabilities();
+  const isSupported = (payloadType: P2PPayloadType) => {
+    const name = payloadType.name.toUpperCase();
+    const parameters = getPayloadParameters(payloadType);
+    return isVideoFormatSupported(name, parameters, capabilities.send) &&
+      isVideoFormatSupported(name, parameters, capabilities.receive);
+  };
+  const getRtx = (payloadType: P2PPayloadType) => payloadTypes.find((item) => {
+    return item.name.toUpperCase() === RTX_CODEC && Number(item.parameters?.apt) === payloadType.id;
+  });
+
+  const codecs = payloadTypes.filter((payloadType) => {
+    const name = payloadType.name.toUpperCase();
+    return name !== RTX_CODEC && !FEC_CODECS.has(name) && isSupported(payloadType);
+  });
+
+  if(!codecs.length || codecs.every((payloadType) => payloadType.name.toUpperCase() === 'VP8')) {
+    return selectLegacyVideoPayloadTypes(payloadTypes, capabilities);
+  }
+
+  const firstVp8Index = codecs.findIndex((payloadType) => payloadType.name.toUpperCase() === 'VP8');
+  if(firstVp8Index !== -1) {
+    const h264 = codecs.filter((payloadType, index) => index > firstVp8Index && payloadType.name.toUpperCase() === 'H264');
+    h264.forEach((payloadType) => codecs.splice(codecs.indexOf(payloadType), 1));
+    codecs.splice(firstVp8Index, 0, ...h264);
+  }
+
+  const canSendRtx = isSupported({id: 0, name: RTX_CODEC, clockrate: 90000});
+  const result: P2PPayloadType[] = [];
+  const pushWithRtx = (payloadType: P2PPayloadType) => {
+    result.push(payloadType);
+    const rtx = canSendRtx && getRtx(payloadType);
+    if(rtx) {
+      result.push(rtx);
+    }
+  };
+
+  codecs.forEach(pushWithRtx);
+  payloadTypes.filter((payloadType) => FEC_CODECS.has(payloadType.name.toUpperCase()) && isSupported(payloadType))
+  .forEach(pushWithRtx);
 
   return result;
 }

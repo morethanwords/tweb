@@ -1,9 +1,11 @@
 /*
  * Our own participant row in a legacy (SFU) group call.
  *
- * - A `left` self row (an admin removed us) was ignored: the call only ended
- *   once ICE timed out 15-30 s later, and an unmuted microphone kept feeding
- *   our SFU slot meanwhile while the popup still showed "unmuted".
+ * - A `left` self row (the server or an admin removed us) was ignored: the call
+ *   only ended once ICE timed out 15-30 s later, and an unmuted microphone kept
+ *   feeding our SFU slot meanwhile while the popup still showed "unmuted". Now
+ *   it asks the controller to rejoin (tdesktop applySelfUpdate), and fails
+ *   closed — microphone cut, call left — when nothing can rejoin it.
  * - An admin lifting our forced mute produced no cue at all — we stay muted
  *   (correct), but nothing told the user the microphone button worked again.
  */
@@ -66,7 +68,21 @@ describe('GroupCallInstance self participant row', () => {
     vi.restoreAllMocks();
   });
 
-  it('cuts the microphone synchronously and leaves when the server reports us as left', () => {
+  it('asks the controller to rejoin when the server reports our source as left', () => {
+    const {instance, audioTrack, hangUp} = makeInstance();
+    instances.push(instance);
+    const rejoin = vi.fn();
+    instance.addEventListener('rejoinRequired', rejoin);
+    instance.onParticipantUpdate(selfRow({can_self_unmute: true}));
+
+    instance.onParticipantUpdate(selfRow({left: true, can_self_unmute: true}));
+
+    expect(rejoin).toHaveBeenCalledWith('self-left');
+    expect(hangUp).not.toHaveBeenCalled();
+    expect(audioTrack.enabled).toBe(true);
+  });
+
+  it('cuts the microphone synchronously and leaves when nothing can rejoin it', () => {
     const {instance, audioTrack, hangUp} = makeInstance();
     instances.push(instance);
     instance.onParticipantUpdate(selfRow({can_self_unmute: true}));

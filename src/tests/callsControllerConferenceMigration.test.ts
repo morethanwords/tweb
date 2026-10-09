@@ -24,6 +24,8 @@ const mocks = vi.hoisted(() => {
     public stopPhoneCallCalls = 0;
     public confirmCall = vi.fn();
     public getEmojisFingerprint = vi.fn(() => ['unused']);
+    // No access hash known: nothing here is rated (see callsControllerRating.test.ts).
+    public getInputPhoneCall = vi.fn((): unknown => undefined);
 
     private listeners = new Map<string, Set<Listener>>();
 

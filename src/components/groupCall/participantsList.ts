@@ -42,7 +42,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
           const participant = await this.instance.getParticipantByPeerId(element.id);
           if(this.destroyed || this.generation !== generation || this.get(element.id) !== element) return;
 
-          const state = getGroupCallParticipantMutedState(participant);
+          const state = getGroupCallParticipantMutedState(participant, this.instance.isSpeaking?.(element.id));
           // On the e2e chain but absent from the SFU roster: has the call key,
           // isn't connected to the media. See conferenceMembership.ts.
           const withAccess = this.instance.isMemberWithAccess(element.id);
@@ -101,6 +101,15 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
     });
 
     this.list = appDialogsManager.createChatList(this.createChatListOptions);
+  }
+
+  // Speaking changes only a row's icon colour and status line: re-render it
+  // without re-sorting the list.
+  public refreshState(peerId: PeerId) {
+    const element = this.get(peerId);
+    if(element && !this.destroyed) {
+      this.onUpdate(element);
+    }
   }
 
   public destroy() {

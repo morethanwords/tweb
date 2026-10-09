@@ -1,0 +1,55 @@
+// What the 1-on-1 call panel says about the call's quality: the signal bars in front of the
+// duration, and the pills above the controls (weak network, the other side's microphone and
+// battery).
+
+// The bars ride the status line in front of the duration, as on Android (`VoIPTimerView`). Sized
+// in `em`, so they shrink with the line when a video pins it to the top.
+.subtitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  gap: .125em;
+  height: .75em;
+  margin-inline-end: .375em;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.bar {
+  width: .1875em;
+  border-radius: .0625em;
+  background-color: currentColor;
+  opacity: .4;
+
+  @for $i from 1 through 4 {
+    &:nth-child(#{$i}) {
+      height: $i * 25%;
+    }
+  }
+
+  &.isActive {
+    opacity: 1;
+  }
+}
+
+// A pill that is not shown gives up its room in the column it shares with the others.
+.notice:not(:global(.is-visible)) {
+  height: 0;
+  margin-top: 0;
+}
+
+// The battery tdesktop draws in its low-battery tooltip (`BatterySvg`, 29×13).
+.batteryIcon {
+  flex: 0 0 auto;
+  width: 1.8125rem;
+  height: .8125rem;
+  margin-inline-end: .5rem;
+}

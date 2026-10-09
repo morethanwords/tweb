@@ -233,6 +233,7 @@ export default class GroupCallParticipantsElement {
   private instanceGeneration = 0;
   private rowMutationGeneration = 0;
   private rowMutationGenerations = new Map<PeerId, number>();
+  private releaseSpeaking: () => void;
 
   constructor(options: {
     appendTo: HTMLElement,
@@ -278,6 +279,14 @@ export default class GroupCallParticipantsElement {
         this.updateParticipant(participant);
       }
     });
+
+    listenerSetter.add(instance)('speaking', ({peerId}) => {
+      if(!this.destroyed) {
+        this.sortedList.refreshState(peerId);
+      }
+    });
+    // Audio levels are only sampled while the list is on screen.
+    this.releaseSpeaking = instance.watchSpeaking?.();
 
     // Members that the e2e blockchain authorises but the SFU roster omits. They
     // hold the current call key, so they get a row like anyone else — see
@@ -423,6 +432,7 @@ export default class GroupCallParticipantsElement {
     if(this.destroyed) return;
     this.destroyed = true;
     ++this.instanceGeneration;
+    this.releaseSpeaking?.();
     this.rowMutationGenerations.clear();
     this.contextMenu.destroy();
     this.scrollable.destroy();

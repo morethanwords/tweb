@@ -1,4 +1,5 @@
 import forEachReverse from '@helpers/array/forEachReverse';
+import createSerializedQueue from '@helpers/createSerializedQueue';
 import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
 import {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
@@ -10,6 +11,12 @@ import processMediaSection from '@lib/calls/helpers/processMediaSection';
 import {getUnsafeConnectionDataReason} from '@lib/calls/helpers/sdpSafety';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import senderKind from '@lib/calls/helpers/senderKind';
+import {
+  applyVideoSendParameters,
+  getVideoSimulcastLayerCount,
+  SenderVideoConstraint,
+  VideoSendContent
+} from '@lib/calls/helpers/videoSendParameters';
 import {E2E_MAIN_CHANNEL_ID, E2E_SCREENCAST_CHANNEL_ID} from '@lib/calls/constants';
 import {ConferenceEntry} from '@lib/calls/localConferenceDescription';
 import SDP from '@lib/calls/sdp';
@@ -19,10 +26,22 @@ import {UpdateGroupCallConnectionData} from '@lib/calls/types';
 import {InputGroupCall} from '@layer';
 
 // The server decides how many video participants it announces, so what we ask
-// it to forward must not scale with that: the pinned tile at full quality, grid
-// tiles at medium, and no more than this many on stage at once (tgcalls
-// requests only the visible tiles, by tier).
-const MAX_ON_STAGE_VIDEO_ENDPOINTS = 16;
+// it to forward must not scale with that: no more than this many endpoints get
+// a non-zero constraint, the pinned one first.
+const MAX_REQUESTED_VIDEO_ENDPOINTS = 16;
+// Receive tiers, as Telegram iOS requests them (VideoChatParticipantsComponent):
+// the expanded/pinned video at full quality while every other tile shrinks to a
+// thumbnail, and medium for everyone when nothing is pinned. The pinned one is
+// the only endpoint "on stage", like tgcalls (maybeUpdateRemoteVideoConstraints
+// puts only full-quality channels there).
+const PINNED_VIDEO_MAX_HEIGHT = 720;
+const THUMBNAIL_VIDEO_MAX_HEIGHT = 180;
+const GRID_VIDEO_MAX_HEIGHT = 360;
+const MIN_VIDEO_HEIGHT = 180;
+// Coalesces a burst of pin/tile changes into one ReceiverVideoConstraints
+// message; the periodic resend stays as a safety net.
+const REMOTE_VIDEO_CONSTRAINTS_DEBOUNCE_MS = 100;
+const REMOTE_VIDEO_CONSTRAINTS_REFRESH_MS = 5000;
 
 export default class GroupCallConnectionInstance extends CallConnectionInstanceBase {
   private groupCall: GroupCallInstance;
@@ -70,8 +89,16 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
   };
 
   private updateConstraintsInterval: number;
+  private updateConstraintsTimeout: number;
   private negotiationRequested = false;
   private negotiationQueue: Promise<void>;
+  // The SFU's request for our outgoing camera height (SenderVideoConstraints).
+  private senderVideoConstraint = new SenderVideoConstraint(() => {
+    void this.updateVideoSendParameters();
+  });
+  // setParameters needs the result of the latest getParameters, so applying
+  // two configurations at once would make the second one fail.
+  private videoSendParametersQueue = createSerializedQueue();
 
   private managers: AppManagers;
   /** True once phone.joinGroupCall has accepted this media source server-side. */
@@ -160,6 +187,11 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       clearInterval(this.updateConstraintsInterval);
       this.updateConstraintsInterval = undefined;
     }
+
+    if(this.updateConstraintsTimeout) {
+      clearTimeout(this.updateConstraintsTimeout);
+      this.updateConstraintsTimeout = undefined;
+    }
   }
 
   public closeConnection() {
@@ -167,7 +199,59 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     // constraints timer, and pc.close() does not reliably fire it — the timer
     // kept ticking against a dead channel for the rest of the session.
     this.clearUpdateConstraintsInterval();
+    this.senderVideoConstraint.dispose();
     super.closeConnection();
+  }
+
+  protected onDataChannelMessage(message: Record<string, unknown>) {
+    if(message.colibriClass !== 'SenderVideoConstraints') {
+      return;
+    }
+
+    const idealHeight = (message.videoConstraints as {idealHeight?: unknown})?.idealHeight;
+    if(typeof idealHeight === 'number') {
+      this.log('SenderVideoConstraints', idealHeight);
+      this.senderVideoConstraint.request(idealHeight);
+    }
+  }
+
+  private get videoSendContent(): VideoSendContent {
+    return this.type === 'presentation' ? 'screencast' : 'camera';
+  }
+
+  /** How many simulcast layers this connection's video is offered with. */
+  public get simulcastLayers() {
+    return getVideoSimulcastLayerCount(this.videoSendContent, !!this.groupCall?.isConference);
+  }
+
+  private getVideoSender(): RTCRtpSender | undefined {
+    const entry = this.description?.findEntry((entry) => {
+      return entry.type === 'video' &&
+        (entry.direction === 'sendonly' || entry.direction === 'sendrecv') &&
+        !!entry.transceiver;
+    });
+    return entry?.transceiver.sender;
+  }
+
+  /**
+   * Bring the video sender's encodings in line with the layer table and the
+   * SFU's current request. Encodings only exist once the (munged) offer has
+   * been applied, so this runs after every negotiation and on each
+   * SenderVideoConstraints change; an unchanged sender is left alone.
+   */
+  public updateVideoSendParameters(): Promise<void> {
+    return this.videoSendParametersQueue.enqueue(async() => {
+      try {
+        const sender = this.getVideoSender();
+        if(!sender || this.connection?.signalingState === 'closed') {
+          return;
+        }
+
+        await applyVideoSendParameters(sender, this.videoSendContent, this.senderVideoConstraint.value);
+      } catch(err) {
+        this.log?.warn?.('setting video sender parameters failed', err);
+      }
+    });
   }
 
   // The SFU's answer is interpolated into the SDP handed to setRemoteDescription
@@ -429,7 +513,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
 
     const {sdp: localSdp, offer} = fixLocalOffer({
       offer: originalOffer,
-      data: description
+      data: description,
+      simulcastLayers: this.simulcastLayers
     });
 
     log('[sdp] setLocalDescription', offer.sdp);
@@ -511,6 +596,14 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       description.deleteEntry(entry);
     });
 
+    // The answer rejects these m-lines: their participants left or stopped the
+    // stream. Their playback elements go with them rather than lingering (one
+    // media player each) until hang-up — even if the answer below fails, as the
+    // entries are already gone from the description.
+    if(entriesToDelete.length) {
+      this.groupCall?.releaseRemovedEntries?.(entriesToDelete);
+    }
+
     log(`[sdp] setRemoteDescription signaling=${connection.signalingState} ice=${connection.iceConnectionState} gathering=${connection.iceGatheringState} connection=${connection.connectionState}`, answerDescription.sdp);
     await connection.setRemoteDescription(answerDescription);
 
@@ -534,28 +627,16 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
 
     if(this.updateConstraints) {
       void promise.then(() => {
-        this.maybeUpdateRemoteVideoConstraints();
         this.updateConstraints = false;
-      }, (): undefined => undefined).catch((err) => {
-        this.log.warn('updating remote video constraints after negotiation failed', err);
-      });
+        this.scheduleRemoteVideoConstraintsUpdate();
+      }, (): undefined => undefined);
     }
 
-    if(this.options.type === 'presentation') {
-      void promise.then(async() => {
-        const transceiver = this.connection.getTransceivers().find((transceiver) => {
-          return transceiver.sender?.track?.kind === 'video';
-        });
-        if(transceiver) {
-          await transceiver.sender.setParameters({
-            ...transceiver.sender.getParameters(),
-            degradationPreference: 'maintain-resolution'
-          });
-        }
-      }, (): undefined => undefined).catch((err) => {
-        this.log.warn('setting presentation sender parameters failed', err);
-      });
-    }
+    // The offer that was just applied may have created the simulcast encodings
+    // (first negotiation) or a camera/screen track may have been attached since
+    // the last one; either way the sender now has the encodings to configure.
+    // Screen sharing also gets its maintain-resolution preference here.
+    void promise.then(() => this.updateVideoSendParameters(), (): undefined => undefined);
 
     return promise;
   }
@@ -568,8 +649,25 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     this.options.e2eActivate = undefined;
   }
 
+  /**
+   * Send ReceiverVideoConstraints shortly — the pinned tile or the set of video
+   * tiles changed. Debounced so a burst of changes is one message; without
+   * this, a pin waited for the next periodic resend (up to 5 s) before the SFU
+   * started forwarding the 720p layer.
+   */
+  public scheduleRemoteVideoConstraintsUpdate() {
+    if(this.updateConstraintsTimeout) {
+      return;
+    }
+
+    this.updateConstraintsTimeout = window.setTimeout(() => {
+      this.updateConstraintsTimeout = undefined;
+      this.maybeUpdateRemoteVideoConstraints();
+    }, REMOTE_VIDEO_CONSTRAINTS_DEBOUNCE_MS);
+  }
+
   public maybeUpdateRemoteVideoConstraints() {
-    if(this.dataChannel.readyState !== 'open') {
+    if(this.dataChannel?.readyState !== 'open') {
       return;
     }
 
@@ -593,21 +691,34 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const videoEntries = this.description.entries.filter((entry) => {
       return entry.direction === 'recvonly' && entry.type === 'video';
     });
+    // Anything pinned — our own camera or screen included — takes the stage and
+    // moves every other tile to the thumbnail column.
+    const hasPinned = pinnedSource !== undefined;
     videoEntries.sort((a, b) => Number(b.source === pinnedSource) - Number(a.source === pinnedSource));
-    for(const entry of videoEntries.slice(0, MAX_ON_STAGE_VIDEO_ENDPOINTS)) {
+    for(const entry of videoEntries.slice(0, MAX_REQUESTED_VIDEO_ENDPOINTS)) {
       const {endpoint} = entry;
-      obj.onStageEndpoints.push(endpoint);
-      obj.constraints[endpoint] = entry.source === pinnedSource ?
-        {minHeight: 180, maxHeight: 720} :
-        {minHeight: 180, maxHeight: 360};
+      let maxHeight: number;
+      if(!hasPinned) {
+        maxHeight = GRID_VIDEO_MAX_HEIGHT;
+      } else if(entry.source === pinnedSource) {
+        maxHeight = PINNED_VIDEO_MAX_HEIGHT;
+        obj.onStageEndpoints.push(endpoint);
+      } else {
+        maxHeight = THUMBNAIL_VIDEO_MAX_HEIGHT;
+      }
+
+      obj.constraints[endpoint] = {minHeight: MIN_VIDEO_HEIGHT, maxHeight};
     }
 
     this.sendDataChannelData(obj);
 
-    if(!obj.onStageEndpoints.length) {
+    if(!Object.keys(obj.constraints).length) {
       this.clearUpdateConstraintsInterval();
     } else if(!this.updateConstraintsInterval) {
-      this.updateConstraintsInterval = window.setInterval(this.maybeUpdateRemoteVideoConstraints.bind(this), 5000);
+      this.updateConstraintsInterval = window.setInterval(
+        this.maybeUpdateRemoteVideoConstraints.bind(this),
+        REMOTE_VIDEO_CONSTRAINTS_REFRESH_MS
+      );
     }
   }
 

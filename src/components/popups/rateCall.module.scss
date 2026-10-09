@@ -1,0 +1,77 @@
+@use "../../scss/mixins" as *;
+
+.popup {
+  --popup-width: 26.25rem;
+  --popup-max-height: 100%;
+}
+
+.body {
+  padding: 0 .5rem .5rem;
+}
+
+.text {
+  margin: 0;
+  padding: 0 1rem;
+  text-align: center;
+  line-height: var(--line-height);
+}
+
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: .25rem;
+  padding: 1rem 0 .5rem;
+}
+
+// The input covers the whole star, so a click anywhere on it picks it; the star itself is the picture.
+.star {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.starInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.starIcon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+
+  @include animation-level-global(2) {
+    transition: fill var(--transition-standard-in);
+  }
+
+  .isFilled & {
+    fill: currentColor;
+  }
+}
+
+// The focused control is the invisible input, whose own ring would be painted invisible with it:
+// the ring goes on the star it stands for.
+:global(:where(.a11y)) .starInput:focus-visible + .starIcon {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+.problems {
+  margin-top: .5rem;
+}
+
+.comment {
+  margin: .75rem 1rem .25rem;
+}

@@ -1,4 +1,3 @@
-import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
 import StreamManager from '@lib/calls/streamManager';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
 import getStream from '@lib/calls/helpers/getStream';
@@ -21,7 +20,7 @@ export default async function createMainStreamManager(muted?: boolean, joinVideo
     video: joinVideo && getVideoConstraints()
   };
 
-  const streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS) as MainStreamManager;
+  const streamManager = new StreamManager() as MainStreamManager;
 
   try {
     const stream = await getStream(constraints, muted);

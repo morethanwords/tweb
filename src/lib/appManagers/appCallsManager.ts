@@ -262,6 +262,46 @@ export class AppCallsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
+  // ===== Call quality feedback =====
+  //
+  // These run after the call has ended, when `calls` no longer holds it (a
+  // discarded call is dropped from the map), so they take the input peer the
+  // CallInstance kept rather than resolving the id here.
+
+  // Short JSON stats log (the tgcalls v2 shape: `network` + `bitrate`). The
+  // server answers `false` when it wants the full log via `saveCallLog`.
+  public saveCallDebug(peer: InputPhoneCall, debug: string) {
+    this.log('saveCallDebug', peer.id, {bytes: debug.length});
+    return this.apiManager.invokeApi('phone.saveCallDebug', {
+      peer,
+      debug: {
+        _: 'dataJSON',
+        data: debug
+      }
+    });
+  }
+
+  public async saveCallLog(peer: InputPhoneCall, log: Blob) {
+    this.log('saveCallLog', peer.id, {bytes: log.size});
+    const file = await this.apiFileManager.upload({file: log, fileName: 'log.txt.gz'});
+    return this.apiManager.invokeApi('phone.saveCallLog', {
+      peer,
+      file
+    });
+  }
+
+  public async setCallRating(peer: InputPhoneCall, rating: number, comment: string, userInitiative?: boolean) {
+    this.log('setCallRating', peer.id, {rating, userInitiative});
+    const updates = await this.apiManager.invokeApi('phone.setCallRating', {
+      peer,
+      rating,
+      comment,
+      user_initiative: userInitiative
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
   // ===== TdE2E conference call MTProto methods =====
   //
   // Thin wrappers over the phone.* conference methods. They live here (vs. a

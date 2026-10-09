@@ -1,5 +1,3 @@
-export const GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX = 50;
-export const GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS = 100;
 export const GROUP_CALL_PARTICIPANTS_LOAD_LIMIT = 100;
 // Enough to name a few people in the conference join confirmation and still
 // know there are more — the same page size tdesktop asks for there
@@ -54,3 +52,6 @@ export const CALL_WAITING_RING_VOLUME = 0.3;
 // t.me/call/<slug>: the slug is an opaque token the server minted. Anything
 // outside this alphabet is a malformed link, not something to resolve.
 export const CONFERENCE_CALL_SLUG_REGEXP = /^[A-Za-z0-9_-]{1,64}$/;
+
+// Signal bars of a 1-on-1 call, as native tgcalls reports them (0..4).
+export const CALL_SIGNAL_BARS_COUNT = 4;

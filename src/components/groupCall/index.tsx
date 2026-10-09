@@ -53,16 +53,25 @@ import {
 } from '@components/groupCall/inviteParticipants';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
+  // Microphone open, not speaking right now.
   UNMUTED,
   MUTED,
   MUTED_FOR_ME,
   MUTED_BY_ADMIN,
-  HAND
+  HAND,
+  // Microphone open and actually speaking (audio level, GroupCallInstance
+  // `speaking`).
+  SPEAKING
 }
 
-export type GROUP_CALL_PARTICIPANT_CLEARED_MUTED_STATE = Exclude<GROUP_CALL_PARTICIPANT_MUTED_STATE, GROUP_CALL_PARTICIPANT_MUTED_STATE.MUTED_BY_ADMIN | GROUP_CALL_PARTICIPANT_MUTED_STATE.MUTED_FOR_ME>;
+export type GROUP_CALL_PARTICIPANT_CLEARED_MUTED_STATE = Exclude<
+  GROUP_CALL_PARTICIPANT_MUTED_STATE,
+  GROUP_CALL_PARTICIPANT_MUTED_STATE.MUTED_BY_ADMIN |
+  GROUP_CALL_PARTICIPANT_MUTED_STATE.MUTED_FOR_ME |
+  GROUP_CALL_PARTICIPANT_MUTED_STATE.SPEAKING
+>;
 
-export function getGroupCallParticipantMutedState(participant: GroupCallParticipant) {
+export function getGroupCallParticipantMutedState(participant: GroupCallParticipant, speaking?: boolean) {
   const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
   if(participant.pFlags.muted_by_you) {
     return states.MUTED_FOR_ME;
@@ -71,7 +80,7 @@ export function getGroupCallParticipantMutedState(participant: GroupCallParticip
   } else if(participant.pFlags.muted) {
     return participant.pFlags.can_self_unmute ? states.MUTED : states.MUTED_BY_ADMIN;
   } else {
-    return states.UNMUTED;
+    return speaking ? states.SPEAKING : states.UNMUTED;
   }
 }
 
@@ -81,6 +90,8 @@ export function clearMutedStateModifier(state: GROUP_CALL_PARTICIPANT_MUTED_STAT
     case states.MUTED_BY_ADMIN:
     case states.MUTED_FOR_ME:
       return states.MUTED;
+    case states.SPEAKING:
+      return states.UNMUTED;
     default:
       return state;
   }
@@ -90,7 +101,11 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
   const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
   let colorStr: 'blue' | 'green' | 'secondary' | 'red';
   switch(state) {
+    // An open microphone is blue until its owner speaks, then green — as in
+    // the native apps; green for every unmuted row said "speaking" to people
+    // who were silent.
     case states.HAND:
+    case states.UNMUTED:
       colorStr = 'blue';
       break;
     case states.MUTED:
@@ -98,7 +113,7 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
     case states.MUTED_BY_ADMIN:
       colorStr = state === states.MUTED ? 'secondary' : 'red';
       break;
-    case states.UNMUTED:
+    case states.SPEAKING:
       colorStr = 'green';
       break;
   }

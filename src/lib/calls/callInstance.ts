@@ -7,12 +7,13 @@
  * stopPhoneCall; `!this.p2p` means the engine has not been started / is stopped).
  */
 
-import {gzipSync} from 'fflate';
+import gzipCompress from '@helpers/gzipCompress';
+import updateSenderParameters, {preferScreencastResolution} from '@lib/calls/helpers/updateSenderParameters';
 import gzipUncompress from '@helpers/gzipUncompress';
 import ctx from '@environment/ctx';
 import assumeType from '@helpers/assumeType';
 import safeAssign from '@helpers/object/safeAssign';
-import {PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhoneConnection} from '@layer';
+import {InputPhoneCall, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhoneConnection} from '@layer';
 import {emojiFromCodePoints} from '@vendor/emoji';
 import type {CallId} from '@appManagers/appCallsManager';
 import type {AppManagers} from '@lib/managers';
@@ -25,7 +26,6 @@ import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import callsController from '@lib/calls/callsController';
 import CALL_STATE from '@lib/calls/callState';
 import {
-  GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS,
   P2P_MAX_PENDING_CANDIDATES,
   P2P_SIGNALING_MAX_INFLATED_BYTES,
   P2P_SIGNALING_MAX_QUEUED_PACKETS
@@ -35,6 +35,9 @@ import P2PEncryptor from '@lib/calls/p2P/p2PEncryptor';
 import ByteBuf from '@lib/calls/p2P/byteBuf';
 import {isSctpPacket, SctpSignaling} from '@lib/calls/p2P/sctpSignaling';
 import {black, silence} from '@lib/calls/p2P/fallbackMedia';
+import P2PConnectionRecovery, {P2PRecoveryTrigger} from '@lib/calls/p2P/connectionRecovery';
+import P2PCallStats, {P2PCallStatsReport} from '@lib/calls/p2P/callStats';
+import watchLowBattery from '@lib/calls/p2P/lowBattery';
 import {
   ActiveLocalMedia,
   buildIceServers,
@@ -45,6 +48,7 @@ import {
   getCandidateUfrag,
   getDefaultAudioPayloadTypes,
   getDefaultVideoPayloadTypes,
+  getP2pVideoConstraints,
   getRemoteDescriptionMids,
   getRemoteDescriptionUfrags,
   getStreamTrack,
@@ -83,6 +87,8 @@ import {CallMediaState, DiffieHellmanInfo, P2PMediaContent, P2PMessage} from '@l
 import {isSdpSafeContents, isSdpSafeSetup, isSdpSafeString} from '@lib/calls/helpers/sdpSafety';
 
 const ICE_CANDIDATE_POOL_SIZE = 10;
+// Native tgcalls' Opus ceiling for 1:1 calls (v2/InstanceV2Impl.cpp).
+const P2P_AUDIO_MAX_BITRATE = 32 * 1024;
 const DEFAULT_AUDIO_MID = '0';
 const DEFAULT_VIDEO_MID = '1';
 const DEFAULT_PRESENTATION_MID = '2';
@@ -130,6 +136,8 @@ type State = {
   pendingRemoteContentMids?: Record<string, string>;
   appliedRemoteExchangeId?: string;
   appliedRemoteExchangeIds: Set<string>;
+  // Our offers replaced before their answer came (supersedePendingLocalExchange).
+  supersededLocalExchangeIds: Set<string>;
   appliedRemoteUfrag?: string;
   isApplyingRemoteNegotiation?: boolean;
   handledRemoteExchangeIds: Set<string>;
@@ -164,6 +172,11 @@ type State = {
   facingMode?: VideoFacingModeEnum;
   exchangeId: number;
   lastLocalSetupKey?: string;
+  // Transport recovery (ICE restarts), telemetry, and the low-battery watch;
+  // all three are stopped by stopPhoneCall.
+  recovery: P2PConnectionRecovery;
+  stats: P2PCallStats;
+  stopWatchingBattery?: () => void;
 };
 
 // An update emitted by the P2P engine and routed back into the UI.
@@ -177,6 +190,8 @@ export default class CallInstance extends CallInstanceBase<{
   muted: (muted: boolean) => void,
   mediaState: (mediaState: CallMediaState) => void,
   acceptCallOverride: (accept: () => Promise<void>) => Promise<void>,
+  // Connection quality, 0..4 — native tgcalls' signal bars (see p2P/callStats).
+  signalBars: (bars: number) => void,
 }> {
   public dh: Partial<DiffieHellmanInfo.a & DiffieHellmanInfo.b>;
   public id: CallId;
@@ -211,9 +226,26 @@ export default class CallInstance extends CallInstanceBase<{
 
   public wasTryingToJoin: boolean;
 
+  // Connection quality of the running call, 0..4 (native tgcalls' signal
+  // bars); undefined until the first stats sample. Changes are dispatched as
+  // `signalBars`.
+  public signalBars: number | undefined;
+
   private managers: AppManagers;
   private hangUpTimeout: number;
   private hangUpStarted = false;
+
+  // phone.saveCallDebug / setCallRating need the call's access hash, which
+  // the final phoneCallDiscarded no longer carries — keep the last one seen.
+  private inputPhoneCall: InputPhoneCall.inputPhoneCall | undefined;
+  private isLowBattery = false;
+  // The state the engine last announced. ICE events re-derive the same
+  // CONNECTING over and over, and the controller re-arms its reconnect
+  // timeout on every CONNECTING it hears — so engine updates announce changes
+  // only.
+  private lastDispatchedState: CALL_STATE | undefined;
+  // The stopped engine's stats log, uploaded after the hang-up.
+  private callStatsReport: P2PCallStatsReport | undefined;
 
   private joined: boolean;
   private p2pConnectionState: RTCPeerConnectionState;
@@ -233,12 +265,17 @@ export default class CallInstance extends CallInstanceBase<{
   // P2P keeps its real local streams outside StreamManager, so device swaps
   // share the base class generation/queue but commit into the live p2p state.
   // Acquisitions may overlap; sender replacement is serialized per kind.
+  //
+  // A muted microphone stays in the sender (mute only disables it), so a
+  // microphone picked while muted is swapped in too — disabled, like the one
+  // it replaces. Only while there is no microphone at all (the placeholder
+  // before the first capture) is the choice left to that capture.
   private async replaceP2pInputDevice(
     kind: 'audio' | 'video',
     constraints: MediaStreamConstraints
   ): Promise<boolean> {
     const initialState = this.p2p;
-    if(!initialState || (kind === 'audio' ? this.isMuted : !this.isSharingVideo)) return true;
+    if(!initialState || (kind === 'audio' ? !this.hasLocalMicrophone() : !this.isSharingVideo)) return true;
 
     return this.runInputDeviceSwap({
       kind,
@@ -248,13 +285,12 @@ export default class CallInstance extends CallInstanceBase<{
       shouldAbandon: (site, generation) => {
         if(site === 'acquired') {
           if(this.p2p !== initialState || this.isClosing) return true;
-          if(!this.isMediaDeviceChangeCurrent(kind, generation) || (kind === 'audio' && this.isMuted)) return false;
+          if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
           return undefined;
         }
         if(site === 'queued') {
           if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
           if(this.p2p !== initialState || this.isClosing) return true;
-          if(kind === 'audio' && this.isMuted) return false;
           return undefined;
         }
         if(site === 'failed') {
@@ -289,13 +325,14 @@ export default class CallInstance extends CallInstanceBase<{
       // per spec — compensating would only double the churn.
       rollbackOnSwapFailure: false,
       getPendingAudioEnabled: () => !this.isMuted,
-      commit: (newStream) => {
+      commit: (newStream, newTrack) => {
         const state = initialState;
         const oldStream = kind === 'audio' ? state.streams.ownAudio : state.streams.ownVideo;
         const fallback = kind === 'audio' ? state.silence : state.blackVideo;
         stopStream(oldStream, fallback);
         if(kind === 'audio') {
           state.streams.ownAudio = newStream;
+          this.releaseOnTrackEnded('audio', newTrack);
         } else {
           state.streams.ownVideo = newStream;
           const inputElement = this.videoElements.get('input');
@@ -310,7 +347,7 @@ export default class CallInstance extends CallInstanceBase<{
 
   public setInputVideoDeviceId(deviceId: string): Promise<boolean> {
     return this.replaceP2pInputDevice('video', {
-      video: deviceId ? {deviceId: {exact: deviceId}} : true
+      video: getP2pVideoConstraints(this.p2p?.facingMode, deviceId)
     });
   }
 
@@ -351,7 +388,7 @@ export default class CallInstance extends CallInstanceBase<{
     this.decryptQueuePromise = Promise.resolve();
     this.dataChannelSignalingMessagePromise = Promise.resolve();
     this.videoElements = new Map();
-    this.streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
+    this.streamManager = new StreamManager();
 
     this.addEventListener('state', (state) => {
       this.log('state', CALL_STATE[state]);
@@ -367,10 +404,12 @@ export default class CallInstance extends CallInstanceBase<{
       return this._connectionState;
     }
 
+    // A failed transport is being recovered (p2P/connectionRecovery): the call
+    // reconnects until that gives up or the controller's reconnect timeout
+    // hangs up — both through hangUp, which overrides the state to CLOSED.
     switch(this.p2pConnectionState) {
       case 'connected':
         return CALL_STATE.CONNECTED;
-      case 'failed':
       case 'closed':
         return CALL_STATE.CLOSED;
       default:
@@ -464,7 +503,7 @@ export default class CallInstance extends CallInstanceBase<{
       '@type': 'MediaState',
       'type': 'input',
       'muted': this.isMuted,
-      'lowBattery': false,
+      'lowBattery': this.isLowBattery,
       'screencastState': this.isSharingScreen ? 'active' : 'inactive',
       'videoRotation': 0,
       'videoState': this.isSharingVideo ? 'active' : 'inactive'
@@ -520,12 +559,25 @@ export default class CallInstance extends CallInstanceBase<{
   public setPhoneCall(phoneCall: PhoneCall) {
     this.call = phoneCall;
 
+    // The placeholder of an outgoing call before phone.requestCall answers has
+    // a temporary id and no hash.
+    const accessHash = (phoneCall as PhoneCall.phoneCall).access_hash;
+    if(accessHash && accessHash !== '0') {
+      this.inputPhoneCall = {_: 'inputPhoneCall', id: phoneCall.id, access_hash: accessHash};
+    }
+
     const {id} = phoneCall;
     if(this.id !== id) {
       const prevId = this.id;
       this.id = id;
       this.dispatchEvent('id', id, prevId);
     }
+  }
+
+  // The call as phone.* methods address it — kept after phoneCallDiscarded,
+  // which has no access hash, for the post-call rating and debug log.
+  public getInputPhoneCall(): InputPhoneCall | undefined {
+    return this.inputPhoneCall;
   }
 
   public async acceptCall() {
@@ -709,7 +761,7 @@ export default class CallInstance extends CallInstanceBase<{
   public async sendCallSignalingData(data: P2PMessage) {
     const json = JSON.stringify(data);
     // 13.0.0 (v3): gzip the JSON payload inside the encrypted packet.
-    const gzipped = gzipSync(new TextEncoder().encode(json));
+    const gzipped = gzipCompress(new TextEncoder().encode(json));
     const {bytes} = await this.encryptor.encryptRawPacket(gzipped);
 
     this.log('sendCallSignalingData', this.id, json);
@@ -767,6 +819,13 @@ export default class CallInstance extends CallInstanceBase<{
   private onUpdate(update: Update) {
     switch(update['@type']) {
       case 'updatePhoneCallConnectionState': {
+        // hangUp owns the end of the call: a late engine event must not lift
+        // its CLOSED override.
+        if(this.hangUpStarted) {
+          break;
+        }
+
+        const previousConnectionState = this.p2pConnectionState;
         this.p2pConnectionState = update.connectionState;
         if(update.connectionState === 'connected' && this.connectedAt === undefined) {
           this.connectedAt = performance.now();
@@ -775,18 +834,16 @@ export default class CallInstance extends CallInstanceBase<{
         // a live engine state supersedes the EXCHANGING_KEYS override
         this._connectionState = undefined;
 
-        if(update.connectionState === 'failed') {
-          // hangUpStarted, rather than the derived CLOSED state, owns idempotency:
-          // a failed RTCPeerConnection makes connectionState CLOSED before we
-          // have sent phone.discardCall. Let hangUp capture hasVideo, stop every
-          // local track and publish the server discard as one transaction.
-          void this.hangUp('phoneCallDiscardReasonDisconnect').catch((err) => {
-            this.log.error('discard after P2P transport failure failed', err);
+        if(update.connectionState === 'failed' && previousConnectionState !== 'failed') {
+          // Not the end of the call any more: the recovery restarts ICE, and
+          // the call reads as CONNECTING (reconnecting) meanwhile.
+          this.log.warn('P2P transport failed, recovering', {
+            hasConnected: this.connectedAt !== undefined,
+            iceConnectionState: this.p2p?.connection.iceConnectionState
           });
-          break;
         }
 
-        this.dispatchEvent('state', this.connectionState);
+        this.dispatchStateIfChanged();
 
         if(update.connectionState === 'closed') {
           // A locally-closed transport may arrive after the call is already
@@ -845,7 +902,25 @@ export default class CallInstance extends CallInstanceBase<{
 
   public overrideConnectionState(state?: CALL_STATE) {
     this._connectionState = state;
-    this.dispatchEvent('state', this.connectionState);
+    this.dispatchState(this.connectionState);
+  }
+
+  private dispatchStateIfChanged() {
+    const connectionState = this.connectionState;
+    if(connectionState !== this.lastDispatchedState) {
+      this.dispatchState(connectionState);
+    }
+  }
+
+  private dispatchState(connectionState: CALL_STATE) {
+    this.lastDispatchedState = connectionState;
+    // Bars describe a live transport: a reconnect starts over from no value,
+    // rather than from the last reading of the path that just broke (the
+    // stats keep polling meanwhile, see createP2pStats).
+    if(connectionState !== CALL_STATE.CONNECTED) {
+      this.signalBars = undefined;
+    }
+    this.dispatchEvent('state', connectionState);
   }
 
   public get duration() {
@@ -876,6 +951,14 @@ export default class CallInstance extends CallInstanceBase<{
 
     const hasVideo = this.isSharingVideo || this.isSharingScreen;
 
+    const stats = this.p2p?.stats;
+    if(stats) {
+      stats.addEvent(`hang up: ${discardReason?._ ?? 'none'}${discardedByOtherParty ? ' (by the peer)' : ''}`);
+      if(discardReason?._ === 'phoneCallDiscardReasonDisconnect' && this.p2pConnectionState !== 'connected') {
+        stats.setFailed();
+      }
+    }
+
     this.overrideConnectionState(CALL_STATE.CLOSED);
 
     try {
@@ -884,9 +967,43 @@ export default class CallInstance extends CallInstanceBase<{
       this.log.error('stopPhoneCall error', err);
     }
 
-    if(discardReason && !discardedByOtherParty) {
-      await this.managers.appCallsManager.discardCall(this.id, this.duration, discardReason, hasVideo);
+    try {
+      if(discardReason && !discardedByOtherParty) {
+        await this.managers.appCallsManager.discardCall(this.id, this.duration, discardReason, hasVideo);
+      }
+    } finally {
+      this.uploadCallStats();
     }
+  }
+
+  // phone.saveCallDebug with the native stats log, and the gzipped full log
+  // when the server asks for it (`false`) — what Telegram iOS does after every
+  // call that got connected (OngoingCallContext.swift stop). Detached: the
+  // upload must never hold up or fail a hang-up.
+  private uploadCallStats() {
+    const report = this.callStatsReport;
+    this.callStatsReport = undefined;
+    const inputPhoneCall = this.inputPhoneCall;
+    if(!report || !inputPhoneCall || this.connectedAt === undefined) {
+      return;
+    }
+
+    void (async() => {
+      try {
+        const isEnough = await this.managers.appCallsManager.saveCallDebug(inputPhoneCall, report.json);
+        if(isEnough !== false) {
+          return;
+        }
+
+        const gzipped = gzipCompress(new TextEncoder().encode(report.text));
+        const blob = new Blob([gzipped.buffer.slice(gzipped.byteOffset, gzipped.byteOffset + gzipped.byteLength) as ArrayBuffer], {
+          type: 'application/gzip'
+        });
+        await this.managers.appCallsManager.saveCallLog(inputPhoneCall, blob);
+      } catch(err) {
+        this.log.warn('uploading the call debug log failed', err);
+      }
+    })();
   }
 
   private async processDecryptQueue() {
@@ -1104,9 +1221,32 @@ export default class CallInstance extends CallInstanceBase<{
     }
 
     const shouldEnable = value === undefined ? !track.enabled : value;
+    if(streamType === 'audio' && this.hasLocalMicrophone(track)) {
+      // Mute keeps the microphone capturing and in the sender and only stops
+      // sending it — native tgcalls disables the outgoing channel and keeps
+      // the device running (v2/InstanceV2Impl.cpp setIsMuted). Re-opening the
+      // device on every unmute clipped the first syllables and restarted echo
+      // cancellation and gain control cold. A picker swap still in flight
+      // follows the same flag.
+      if(shouldEnable === track.enabled) {
+        return;
+      }
+
+      track.enabled = shouldEnable;
+      this.pendingInputAudioTracks.forEach((pendingTrack) => {
+        pendingTrack.enabled = shouldEnable;
+      });
+      this.log(shouldEnable ? 'microphone unmuted' : 'microphone muted');
+      this.updateStreams();
+      this.sendLocalMediaState();
+      return;
+    }
+
     if(streamType === 'audio' && shouldEnable !== track.enabled) {
-      // A mute/unmute action supersedes any microphone picker transaction
-      // that acquired or installed a track from the previous capture state.
+      // Opening the microphone (the first time, or after the last one ended)
+      // and falling back to the placeholder change the capture itself: they
+      // supersede any picker transaction that acquired or installed a track
+      // from the previous capture state.
       this.beginMediaDeviceChange('audio');
     }
 
@@ -1134,11 +1274,7 @@ export default class CallInstance extends CallInstanceBase<{
             throw new Error(`Could not enable ${streamType}: call closed during media capture`);
           }
 
-          newTrack.onended = () => {
-            void this.toggleStream(streamType, false).catch((err) => {
-              this.log('track-ended toggle failed', {streamType, error: err});
-            });
-          };
+          this.releaseOnTrackEnded(streamType, newTrack);
 
           let transceiver = this.getTransceiver(streamType);
           const previousDirection = transceiver?.direction;
@@ -1167,6 +1303,10 @@ export default class CallInstance extends CallInstanceBase<{
             transceiver.direction = 'sendrecv';
           }
           this.setOwnStream(streamType, newStream);
+          if(streamType === 'audio') {
+            // A microphone that ended while muted is still registered.
+            stopStream(stream, initialState.silence);
+          }
 
           if(streamType === 'video' || streamType === 'presentation') {
             const enabledSender = this.getSender(streamType);
@@ -1214,6 +1354,8 @@ export default class CallInstance extends CallInstanceBase<{
 
         if(streamType === 'video') {
           this.p2p.facingMode = facingMode;
+        } else if(streamType === 'presentation') {
+          void this.applySenderParameters();
         }
       } else if(!shouldEnable && track.enabled) {
         if(streamType === 'audio') {
@@ -1275,6 +1417,49 @@ export default class CallInstance extends CallInstanceBase<{
     }
   }
 
+  // A microphone track (not the silent placeholder) that has not ended: it
+  // stays in the sender whether the call is muted or not.
+  private hasLocalMicrophone(track = getStreamTrack(this.p2p?.streams.ownAudio)) {
+    return !!track && track !== getStreamTrack(this.p2p?.silence) && track.readyState !== 'ended';
+  }
+
+  // A capture the browser ends on its own (device unplugged, permission
+  // revoked, sharing stopped from the browser's own UI) is turned off the
+  // regular way.
+  private releaseOnTrackEnded(streamType: StreamType, track: MediaStreamTrack) {
+    track.onended = () => {
+      void this.toggleStream(streamType, false).catch((err) => {
+        this.log('track-ended toggle failed', {streamType, error: err});
+      });
+    };
+  }
+
+  // Sender settings that SDP cannot carry, re-applied after each local
+  // description in case a sender was only just negotiated:
+  // * shared screens keep their resolution and give up frame rate under
+  //   congestion, so text stays legible — native sets MAINTAIN_RESOLUTION on
+  //   its screencast channel (v2/InstanceV2Impl.cpp OutgoingVideoChannel), and
+  //   the group-call presentation connection does the same;
+  // * the microphone is capped at native's 32 kbit/s Opus maximum
+  //   (v2/InstanceV2Impl.cpp `32 * 1024`): with transport-cc on the audio
+  //   m-line and no maxaveragebitrate, Chrome lets the bandwidth allocation
+  //   push Opus towards 510 kbit/s, taking the room video needs.
+  private async applySenderParameters() {
+    const senders = this.p2p?.senders;
+    const presentation = senders?.presentation;
+    await Promise.all([
+      presentation?.track?.enabled && updateSenderParameters(presentation, preferScreencastResolution),
+      updateSenderParameters(senders?.audio?.track ? senders.audio : undefined, (parameters) => {
+        const encoding = parameters.encodings?.[0];
+        if(!encoding || encoding.maxBitrate === P2P_AUDIO_MAX_BITRATE) return false;
+        encoding.maxBitrate = P2P_AUDIO_MAX_BITRATE;
+        return true;
+      })
+    ].map((promise) => Promise.resolve(promise).catch((err) => {
+      this.log.warn('setting sender parameters failed', err);
+    })));
+  }
+
   private async joinPhoneCall(
     connections: Connection[],
     shouldStartVideo: boolean,
@@ -1331,6 +1516,7 @@ export default class CallInstance extends CallInstanceBase<{
       handledRemoteExchangeIds: new Set<string>(),
       pendingCandidates: [],
       appliedRemoteExchangeIds: new Set<string>(),
+      supersededLocalExchangeIds: new Set<string>(),
       streams: {
         ownVideo: blackVideo,
         ownAudio: silentStream,
@@ -1353,8 +1539,19 @@ export default class CallInstance extends CallInstanceBase<{
       senders: {
         audio: audioTransceiver.sender
       },
-      exchangeId: Math.floor(Math.random() * 0xFFFFFFFF)
+      exchangeId: Math.floor(Math.random() * 0xFFFFFFFF),
+      recovery: this.createP2pRecovery(conn),
+      stats: this.createP2pStats(conn)
     };
+
+    this.p2p.recovery.start();
+    this.p2p.stats.start();
+    this.p2p.stats.addEvent(`start: ${isOutgoing ? 'outgoing' : 'incoming'}${shouldStartVideo ? ', video' : ''}, ${isP2p ? 'p2p allowed' : 'relay only'}`);
+    this.p2p.stopWatchingBattery = watchLowBattery((isLow) => {
+      this.isLowBattery = isLow;
+      this.log('battery is low', isLow);
+      this.sendLocalMediaState();
+    });
 
     // This element can be created while the constructor is still applying a
     // saved sink. Queue behind that transaction and read the committed id only
@@ -1392,10 +1589,14 @@ export default class CallInstance extends CallInstanceBase<{
         iceConnectionState: conn.iceConnectionState,
         signalingState: conn.signalingState
       });
+      this.p2p?.stats.addEvent(`connection ${conn.connectionState}`);
       this.onUpdate({
         '@type': 'updatePhoneCallConnectionState',
         'connectionState': conn.connectionState
       });
+      if(this.p2p?.connection === conn) {
+        this.p2p.recovery.setConnectionState(conn.connectionState, conn.iceConnectionState);
+      }
     };
 
     conn.ontrack = (event) => {
@@ -1413,24 +1614,11 @@ export default class CallInstance extends CallInstanceBase<{
         if(event.transceiver !== this.p2p.transceivers.audio) {
           this.p2p.transceivers.remoteAudio = event.transceiver;
         }
-        this.p2p.audio.srcObject = stream;
         this.p2p.audio.muted = false;
         this.p2p.audio.setAttribute('playsinline', 'true');
-        this.p2p.audio.play().catch((err) => {
-          this.log('audio playback failed', {
-            error: err instanceof Error ? err.message : String(err)
-          });
-        });
-        event.track.onunmute = () => {
-          if(!this.p2p) return;
-
-          this.p2p.audio.srcObject = stream;
-          this.p2p.audio.play().catch((err) => {
-            this.log('audio playback after unmute failed', {
-              error: err instanceof Error ? err.message : String(err)
-            });
-          });
-        };
+        // Same playback as a group call's remote audio: play now, again when
+        // the track resumes, and on the next gesture if autoplay refused.
+        this.playRemoteAudio(this.p2p.audio, stream, event.track);
         this.p2p.streams.audio = stream;
       } else if(
         event.transceiver === this.p2p.transceivers.remoteVideo || this.isRemoteContentTransceiver(event.transceiver, false)
@@ -1456,19 +1644,7 @@ export default class CallInstance extends CallInstanceBase<{
     };
 
     conn.oniceconnectionstatechange = () => {
-      if(conn.iceConnectionState === 'connected' || conn.iceConnectionState === 'completed') {
-        this.onUpdate({
-          '@type': 'updatePhoneCallConnectionState',
-          'connectionState': 'connected'
-        });
-      }
-      if(!this.p2p || !isOutgoing || conn.iceConnectionState !== 'failed') {
-        return;
-      }
-
-      this.log('ICE restart requested');
-      conn.restartIce();
-      void this.sendOffer();
+      this.onIceConnectionStateChange(conn);
     };
 
     conn.ondatachannel = (event) => {
@@ -1496,8 +1672,115 @@ export default class CallInstance extends CallInstanceBase<{
     }
   }
 
+  private onIceConnectionStateChange(connection: RTCPeerConnection) {
+    const p2p = this.p2p;
+    if(!p2p || p2p.connection !== connection) {
+      return;
+    }
+
+    const {iceConnectionState} = connection;
+    const isConnected = iceConnectionState === 'connected' || iceConnectionState === 'completed';
+    this.log('ICE connection state changed', {
+      iceConnectionState,
+      connectionState: connection.connectionState,
+      signalingState: connection.signalingState
+    });
+    p2p.stats.addEvent(`ice ${iceConnectionState}`);
+    p2p.stats.setConnected(isConnected);
+
+    if(isConnected) {
+      this.onUpdate({
+        '@type': 'updatePhoneCallConnectionState',
+        'connectionState': 'connected'
+      });
+    }
+
+    p2p.recovery.setIceConnectionState(iceConnectionState);
+  }
+
+  private createP2pRecovery(connection: RTCPeerConnection) {
+    return new P2PConnectionRecovery({
+      isOutgoing: this.isOutgoing,
+      log: this.log,
+      restart: (trigger) => this.restartP2pIce(connection, trigger),
+      giveUp: () => {
+        void this.hangUp('phoneCallDiscardReasonDisconnect').catch((err) => {
+          this.log.error('hang up after P2P transport failure failed', err);
+        });
+      },
+      onEvent: (event) => this.p2p?.stats.addEvent(event)
+    });
+  }
+
+  private createP2pStats(connection: RTCPeerConnection) {
+    return new P2PCallStats({
+      getStats: () => connection.getStats(),
+      hasVideo: () => this.isSharingVideo,
+      onSignalBars: (bars) => {
+        // A reading taken while reconnecting is the broken path's: it would be
+        // shown the moment the call reads connected again.
+        if(this.connectionState !== CALL_STATE.CONNECTED || bars === this.signalBars) {
+          return;
+        }
+
+        this.signalBars = bars;
+        this.dispatchEvent('signalBars', bars);
+      },
+      log: this.log
+    });
+  }
+
+  // One ICE restart for the recovery: the new local credentials go out in a
+  // new InitialSetup (sendLocalSetup sends one whenever the ufrag changes)
+  // followed by an offer. A tweb peer answers the offer; a native V2 peer takes
+  // the credentials straight from the InitialSetup (SetRemoteIceParameters) and
+  // answers the offer with unchanged ones of its own.
+  private restartP2pIce(connection: RTCPeerConnection, trigger: P2PRecoveryTrigger): boolean {
+    const p2p = this.p2p;
+    if(!p2p || p2p.connection !== connection || this.isClosing || connection.signalingState === 'closed') {
+      return true;
+    }
+
+    // Not over a negotiation in flight; and before the peer's InitialSetup
+    // there is nothing to restart against. Asked again shortly.
+    if(
+      p2p.isStarting ||
+      p2p.isMakingOffer ||
+      p2p.isApplyingRemoteNegotiation ||
+      connection.signalingState === 'have-remote-offer' ||
+      !p2p.remoteSetup
+    ) {
+      this.log('ICE restart postponed', {
+        trigger,
+        signalingState: connection.signalingState,
+        isMakingOffer: !!p2p.isMakingOffer,
+        isApplyingRemoteNegotiation: !!p2p.isApplyingRemoteNegotiation,
+        hasRemoteSetup: !!p2p.remoteSetup
+      });
+      return false;
+    }
+
+    this.log('restarting ICE', {
+      trigger,
+      iceConnectionState: connection.iceConnectionState,
+      connectionState: connection.connectionState,
+      signalingState: connection.signalingState
+    });
+    connection.restartIce();
+    void this.sendOffer();
+    return true;
+  }
+
   private stopPhoneCall() {
     if(!this.p2p) return;
+
+    // The engine fakes of older tests carry none of these.
+    this.p2p.recovery?.stop();
+    this.p2p.stopWatchingBattery?.();
+    if(this.p2p.stats) {
+      this.p2p.stats.stop();
+      this.callStatsReport = this.p2p.stats.getReport();
+    }
 
     stopStream(this.p2p.streams.ownVideo);
     stopStream(this.p2p.streams.ownPresentation);
@@ -1584,7 +1867,7 @@ export default class CallInstance extends CallInstanceBase<{
       '@type': 'MediaState',
       'videoRotation': 0,
       'muted': !ownAudioTrack?.enabled,
-      'lowBattery': false,
+      'lowBattery': this.isLowBattery,
       'videoState': ownVideoTrack?.enabled ? 'active' : 'inactive',
       'screencastState': ownPresentationTrack?.enabled ? 'active' : 'inactive'
     };
@@ -1625,6 +1908,7 @@ export default class CallInstance extends CallInstanceBase<{
 
     if(description.type === 'offer') {
       this.p2p.pendingLocalContentMids = parseMediaContentMids(description.sdp, contents);
+      this.supersedePendingLocalExchange(localExchangeId);
     }
     this.p2p.localCandidateExchangeId = localExchangeId;
     this.log('send local negotiation', {
@@ -1643,6 +1927,19 @@ export default class CallInstance extends CallInstanceBase<{
       'exchangeId': localExchangeId,
       contents
     }, 'sending local P2P negotiation failed');
+  }
+
+  // A new local offer replaces one still waiting for its answer (an ICE
+  // restart over an unanswered offer, say), or glare rolls ours back. Should
+  // that answer still come, it answers a description that is gone — and with
+  // another exchange pending it would be taken for an offer. It is ignored;
+  // the candidates the peer tags with it are judged by their ufrag alone.
+  private supersedePendingLocalExchange(exchangeId?: string) {
+    const previous = this.p2p?.pendingLocalExchangeId;
+    if(previous && previous !== exchangeId) {
+      this.log('local negotiation superseded', {exchangeId: previous, by: exchangeId});
+      this.p2p.supersededLocalExchangeIds?.add(previous);
+    }
   }
 
   private sendLocalMediaOffer() {
@@ -1697,6 +1994,7 @@ export default class CallInstance extends CallInstanceBase<{
       this.p2p.localCandidateExchangeId = exchangeId;
       await connection.setLocalDescription(offer);
       this.sendLocalDescription(connection.localDescription || undefined, exchangeId);
+      void this.applySenderParameters();
     } catch{
       this.log('create offer failed', {
         signalingState: connection.signalingState
@@ -1832,13 +2130,25 @@ export default class CallInstance extends CallInstanceBase<{
           'exchangeId': pendingRemoteNegotiation.exchangeId,
           contents
         }, 'sending P2P negotiation answer failed');
+        void this.applySenderParameters();
 
         if(this.shouldSendLocalOfferAfterRemoteAnswer()) {
+          // The callee of a video call starts its camera before the caller's
+          // offer arrives (joinPhoneCall), on a transceiver that offer has no
+          // section for: the answer cannot carry it, and re-announcing the
+          // answer's contents would leave the caller without our video. Only
+          // a fresh offer adds its m-line.
+          const shouldOffer = this.hasUnnegotiatedLocalMedia();
           this.log('send local media offer after remote answer', {
             exchangeId: pendingRemoteNegotiation.exchangeId,
+            createOffer: shouldOffer,
             transceivers: this.summarizeTransceivers()
           });
-          this.sendLocalMediaOffer();
+          if(shouldOffer) {
+            void this.sendOffer();
+          } else {
+            this.sendLocalMediaOffer();
+          }
         }
       }
 
@@ -1981,12 +2291,24 @@ export default class CallInstance extends CallInstanceBase<{
     this.updateStreams();
   }
 
+  // A camera or screen being sent on a transceiver no description has given a
+  // mid yet.
+  private hasUnnegotiatedLocalMedia() {
+    if(!this.p2p) {
+      return false;
+    }
+
+    const {transceivers, streams} = this.p2p;
+    return (!!transceivers.video && !transceivers.video.mid && !!getStreamTrack(streams.ownVideo)?.enabled) ||
+      (!!transceivers.presentation && !transceivers.presentation.mid && !!getStreamTrack(streams.ownPresentation)?.enabled);
+  }
+
   private shouldSendLocalOfferAfterRemoteAnswer() {
     if(!this.p2p || this.isOutgoing || this.p2p.pendingLocalExchangeId) {
       return false;
     }
 
-    return Boolean(getStreamTrack(this.p2p.streams.ownAudio)?.enabled ||
+    return Boolean(this.hasLocalMicrophone() ||
       getStreamTrack(this.p2p.streams.ownVideo)?.enabled ||
       getStreamTrack(this.p2p.streams.ownPresentation)?.enabled);
   }
@@ -1996,8 +2318,9 @@ export default class CallInstance extends CallInstanceBase<{
       return;
     }
 
+    // Muted or not: mute only disables the track, it stays the call's audio.
     const audioTrack = this.p2p.senders.audio.track;
-    if(!audioTrack?.enabled) {
+    if(!this.hasLocalMicrophone(audioTrack)) {
       return;
     }
 
@@ -2069,13 +2392,41 @@ export default class CallInstance extends CallInstanceBase<{
       audioPayloadTypes: audioContent?.payloadTypes?.map(payloadTypeToConference) ||
         localMediaParameters.audioPayloadTypes,
       audioExtensions: audioContent?.rtpExtensions || localMediaParameters.audioExtensions,
-      videoPayloadTypes: filterRemoteVideoPayloadTypes(videoPayloadSource)?.map(payloadTypeToConference) ||
-        localMediaParameters.videoPayloadTypes,
+      // Every video codec both ends can use, H.264 ahead of VP8; an answer can
+      // only hold what our offer had.
+      videoPayloadTypes: filterRemoteVideoPayloadTypes(videoPayloadSource, {
+        allowed: isAnswer && localOfferSdp ? localMediaParameters.videoPayloadTypes : undefined
+      })?.map(payloadTypeToConference) || localMediaParameters.videoPayloadTypes,
       videoExtensions: videoPayloadSource?.rtpExtensions || localMediaParameters.videoExtensions,
       sectionOrder: isAnswer ? this.getLocalOfferSections() : this.getEstablishedSections(),
       bundleMids: isAnswer && localOfferSdp ? parseBundleMids(localOfferSdp) : undefined,
-      shouldKeepRemoteReceiveSection: (section) => this.shouldKeepRemoteReceiveSection(section)
+      shouldKeepRemoteReceiveSection: (section) => this.shouldKeepRemoteReceiveSection(section),
+      getEstablishedRemoteSources: isAnswer ? this.getEstablishedRemoteSources() : undefined
     });
+  }
+
+  // The peer's outgoing sources per mid, from the remote description in force:
+  // what our next remote answer has to keep describing (see SDPBuilder.addP2p).
+  private getEstablishedRemoteSources() {
+    const sdp = this.p2p?.connection.remoteDescription?.sdp;
+    const sources = new Map<string, string[]>();
+    if(!sdp) {
+      return (): string[] | undefined => undefined;
+    }
+
+    parseSdpSections(sdp).forEach((section) => {
+      const direction = getSdpDirection(section);
+      if(!section.mid || getSdpPort(section) === 0 || (direction !== 'sendrecv' && direction !== 'sendonly')) {
+        return;
+      }
+
+      const lines = section.lines.filter((line) => line.startsWith('a=ssrc:') || line.startsWith('a=ssrc-group:'));
+      if(lines.length) {
+        sources.set(section.mid, lines);
+      }
+    });
+
+    return (mid: string) => sources.get(mid);
   }
 
   private getLocalOfferSections() {
@@ -2115,7 +2466,7 @@ export default class CallInstance extends CallInstanceBase<{
   private shouldAddLocalAudioOfferSection(entries: SsrcEntry[], mids: MediaMids) {
     const audioTrack = this.p2p?.transceivers.audio.sender.track;
     const sections = this.getEstablishedSections() || [];
-    return Boolean(audioTrack?.enabled) &&
+    return this.hasLocalMicrophone(audioTrack) &&
       !entries.some((entry) => entry.mid === mids.audio && !entry.isRemoved) &&
       !sections.some((section) => section.mid === mids.audio);
   }
@@ -2266,6 +2617,16 @@ export default class CallInstance extends CallInstanceBase<{
           break;
         }
 
+        // New credentials are the peer's ICE restart (its offer follows);
+        // the same ones again — native V2 re-sends its setup when ours
+        // changes — only replace an identical value.
+        const previousSetup = this.p2p.remoteSetup;
+        if(previousSetup && previousSetup.ufrag !== message.ufrag) {
+          this.log('peer restarted ICE', {ufrag: message.ufrag, previousUfrag: previousSetup.ufrag});
+          this.p2p.stats?.addEvent('peer restarted ICE');
+          this.p2p.recovery?.onRemoteRestart();
+        }
+
         this.p2p.remoteSetup = message;
         await this.applyRemoteNegotiation();
         break;
@@ -2286,6 +2647,12 @@ export default class CallInstance extends CallInstanceBase<{
           });
           return;
         }
+        if(this.p2p.supersededLocalExchangeIds?.has(message.exchangeId)) {
+          this.log('ignore answer to a superseded local negotiation', {
+            exchangeId: message.exchangeId
+          });
+          return;
+        }
         if(this.p2p.isApplyingRemoteNegotiation && this.p2p.pendingRemoteNegotiation?.exchangeId === message.exchangeId) {
           this.log('ignore in-flight duplicate remote negotiation', {
             exchangeId: message.exchangeId
@@ -2302,6 +2669,9 @@ export default class CallInstance extends CallInstanceBase<{
             return;
           }
 
+          // Glare: the caller wins, our offer is rolled back — and the answer
+          // the caller may still send to it, once it gets to it, is stale.
+          this.supersedePendingLocalExchange(message.exchangeId);
           this.p2p.pendingLocalExchangeId = undefined;
         }
 
@@ -2361,6 +2731,14 @@ export default class CallInstance extends CallInstanceBase<{
     if(candidateExchangeId) {
       if(this.p2p.appliedRemoteExchangeIds.has(candidateExchangeId)) {
         return isCurrentUfrag ? 'add' : 'drop';
+      }
+
+      // The peer's candidates for its answer to an offer we replaced: still
+      // its ICE session unless its credentials have moved on since. Ones that
+      // match the setup it sent last wait for the description carrying it.
+      if(this.p2p.supersededLocalExchangeIds?.has(candidateExchangeId)) {
+        if(isCurrentUfrag) return 'add';
+        return candidateUfrag && candidateUfrag === this.p2p.remoteSetup?.ufrag ? 'queue' : 'drop';
       }
 
       if(

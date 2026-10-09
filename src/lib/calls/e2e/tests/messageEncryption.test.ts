@@ -4,57 +4,15 @@
  */
 
 import {describe, it, expect} from 'vitest';
-import {bytesToHex, hexToBytes} from '../crypto';
+import {hexToBytes} from '../crypto';
 import {
   decryptData,
-  decryptHeader,
   encryptDataDeterministic,
   encryptHeader
 } from '../messageEncryption';
-import {MESSAGE_ENCRYPTION_VECTORS} from './vectors';
+import {describeMessageEncryptionVectors} from './messageEncryptionVectorSuite';
 
-// 32-byte plaintext header shared across all C++ TestVector entries
-// (see tdlib/tde2e/test/EncryptionTestVectors.h — `header` field).
-// TODO: extracted vectors.ts dropped this field per-entry; add it back when
-// extending vectors to non-uniform headers.
-const SHARED_TEST_HEADER_HEX = 'bd29703cf44551710ca14d091a6c98ee347931b2b8140faaaef2dbb40719df12';
-
-describe('MessageEncryption known-answer vectors', () => {
-  for(const vector of MESSAGE_ENCRYPTION_VECTORS) {
-    describe(vector.name, () => {
-      const payload = hexToBytes(vector.inputs.payload);
-      const secret = hexToBytes(vector.inputs.secret);
-      const extra = hexToBytes(vector.inputs.extra);
-      const expectedPayload = hexToBytes(vector.expected.encrypted_payload);
-      const expectedHeader = hexToBytes(vector.expected.encrypted_header);
-      const sharedHeader = hexToBytes(SHARED_TEST_HEADER_HEX);
-
-      it('encryptDataDeterministic matches expected ciphertext', async() => {
-        const {output} = await encryptDataDeterministic(payload, secret, extra);
-        expect(bytesToHex(output)).toBe(bytesToHex(expectedPayload));
-      });
-
-      it('encryptHeader matches expected ciphertext', async() => {
-        const {output} = await encryptDataDeterministic(payload, secret, extra);
-        const encryptedHeader = await encryptHeader(sharedHeader, output, secret);
-        expect(bytesToHex(encryptedHeader)).toBe(bytesToHex(expectedHeader));
-      });
-
-      it('decryptData round-trips back to the original payload', async() => {
-        const {output} = await encryptDataDeterministic(payload, secret, extra);
-        const {output: roundTrip} = await decryptData(output, secret, extra);
-        expect(bytesToHex(roundTrip)).toBe(bytesToHex(payload));
-      });
-
-      it('decryptHeader round-trips back to original header', async() => {
-        const {output} = await encryptDataDeterministic(payload, secret, extra);
-        const encryptedHeader = await encryptHeader(sharedHeader, output, secret);
-        const decryptedHeader = await decryptHeader(encryptedHeader, output, secret);
-        expect(bytesToHex(decryptedHeader)).toBe(bytesToHex(sharedHeader));
-      });
-    });
-  }
-});
+describeMessageEncryptionVectors('MessageEncryption known-answer vectors');
 
 describe('MessageEncryption negative paths', () => {
   it('decryptData rejects MAC tampering', async() => {

@@ -638,7 +638,7 @@ describe('P2P microphone device swap', () => {
     expect(newTrack.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('does not publish a microphone acquired after the P2P call was muted', async() => {
+  it('swaps in a microphone picked while muted, still muted', async() => {
     const oldTrack = makeTrack();
     const newTrack = makeTrack();
     const {instance, sender, state} = makeP2pInstance(oldTrack);
@@ -648,18 +648,22 @@ describe('P2P microphone device swap', () => {
     const change = instance.setInputAudioDeviceId('new-mic');
     await vi.waitFor(() => expect(mocks.getStream).toHaveBeenCalledTimes(1));
     await (instance as any).toggleStream('audio', false);
-    const fallbackTrack = state.silence.getAudioTracks()[0];
-    expect(sender.track).toBe(fallbackTrack);
+    // Mute only stops sending: the microphone stays in the sender.
+    expect(sender.track).toBe(oldTrack);
+    expect(oldTrack.enabled).toBe(false);
 
     acquisition.resolve(makeStream(newTrack));
-    await expect(change).resolves.toBe(false);
+    await expect(change).resolves.toBe(true);
 
-    expect(sender.track).toBe(fallbackTrack);
-    expect(state.streams.ownAudio).toBe(state.silence);
-    expect(newTrack.stop).toHaveBeenCalledTimes(1);
+    expect(sender.track).toBe(newTrack);
+    expect(newTrack.enabled).toBe(false);
+    expect(state.streams.ownAudio.getAudioTracks()[0]).toBe(newTrack);
+    expect(instance.isMuted).toBe(true);
+    expect(oldTrack.stop).toHaveBeenCalledTimes(1);
+    expect(newTrack.stop).not.toHaveBeenCalled();
   });
 
-  it('does not commit a P2P microphone replacement after a concurrent mute', async() => {
+  it('keeps a P2P microphone replacement muted after a concurrent mute', async() => {
     const oldTrack = makeTrack();
     const newTrack = makeTrack();
     const {instance, sender, state} = makeP2pInstance(oldTrack);
@@ -672,24 +676,55 @@ describe('P2P microphone device swap', () => {
 
     const change = instance.setInputAudioDeviceId('new-mic');
     await vi.waitFor(() => expect(sender.replaceTrack).toHaveBeenCalledWith(newTrack));
+    expect(newTrack.enabled).toBe(true);
 
     await (instance as any).toggleStream('audio', false);
-    const fallbackTrack = state.silence.getAudioTracks()[0];
-    expect(sender.track).toBe(fallbackTrack);
+    // Fail closed at once: the replacement already in the sender is muted too.
+    expect(newTrack.enabled).toBe(false);
+    expect(oldTrack.enabled).toBe(false);
 
     replacement.resolve();
-    await expect(change).resolves.toBe(false);
+    await expect(change).resolves.toBe(true);
 
-    expect(sender.track).toBe(fallbackTrack);
-    expect(state.streams.ownAudio).toBe(state.silence);
-    expect(newTrack.stop).toHaveBeenCalledTimes(1);
+    expect(sender.track).toBe(newTrack);
+    expect(newTrack.enabled).toBe(false);
+    expect(state.streams.ownAudio.getAudioTracks()[0]).toBe(newTrack);
+    expect(newTrack.stop).not.toHaveBeenCalled();
+  });
+
+  it('unmutes a microphone replacement still in flight together with the current one', async() => {
+    const oldTrack = makeTrack();
+    oldTrack.enabled = false;
+    const newTrack = makeTrack();
+    const {instance, sender} = makeP2pInstance(oldTrack);
+    const replacement = deferred<void>();
+    sender.replaceTrack.mockImplementationOnce(async(track) => {
+      sender.track = track;
+      return replacement.promise;
+    });
+    mocks.getStream.mockResolvedValue(makeStream(newTrack));
+
+    const change = instance.setInputAudioDeviceId('new-mic');
+    await vi.waitFor(() => expect(sender.replaceTrack).toHaveBeenCalledWith(newTrack));
+    expect(newTrack.enabled).toBe(false);
+
+    await (instance as any).toggleStream('audio', true);
+    expect(oldTrack.enabled).toBe(true);
+    expect(newTrack.enabled).toBe(true);
+
+    replacement.resolve();
+    await expect(change).resolves.toBe(true);
+    expect(newTrack.enabled).toBe(true);
+    expect(mocks.getUserStream).not.toHaveBeenCalled();
   });
 
   it('propagates an enable sender failure to the microphone UI action', async() => {
     const fallbackTrack = makeTrack();
     fallbackTrack.enabled = false;
     const newTrack = makeTrack();
-    const {instance, sender} = makeP2pInstance(fallbackTrack);
+    const {instance, sender, state} = makeP2pInstance(fallbackTrack);
+    // No microphone yet: the first capture replaces the silent placeholder.
+    state.silence = state.streams.ownAudio;
     const replacementError = new Error('audio sender rejected');
     sender.replaceTrack.mockRejectedValue(replacementError);
     mocks.getStream.mockResolvedValue(makeStream(newTrack));
@@ -703,7 +738,8 @@ describe('P2P microphone device swap', () => {
     const fallbackTrack = makeTrack();
     fallbackTrack.enabled = false;
     const newTrack = makeTrack();
-    const {instance, sender} = makeP2pInstance(fallbackTrack);
+    const {instance, sender, state} = makeP2pInstance(fallbackTrack);
+    state.silence = state.streams.ownAudio;
     const replacement = deferred<void>();
     sender.replaceTrack.mockReturnValueOnce(replacement.promise);
     mocks.getStream.mockResolvedValue(makeStream(newTrack));
@@ -718,19 +754,48 @@ describe('P2P microphone device swap', () => {
     expect(newTrack.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('propagates a mute fallback sender failure instead of reporting success', async() => {
+  it('mutes and unmutes the live microphone without re-capturing it', async() => {
     const oldTrack = makeTrack();
     const {instance, sender, state} = makeP2pInstance(oldTrack);
-    const replacementError = new Error('fallback sender rejected');
-    sender.replaceTrack.mockRejectedValue(replacementError);
 
-    await expect(instance.toggleMuted()).rejects.toBe(replacementError);
+    await instance.toggleMuted();
 
-    expect(sender.replaceTrack).toHaveBeenCalledWith(state.silence.getAudioTracks()[0]);
-    expect(oldTrack.stop).not.toHaveBeenCalled();
     expect(oldTrack.enabled).toBe(false);
+    expect(sender.track).toBe(oldTrack);
+    expect(state.streams.ownAudio.getAudioTracks()[0]).toBe(oldTrack);
     expect(instance.dispatchEvent).toHaveBeenCalledWith('muted', true);
     expect(instance.dispatchEvent).toHaveBeenCalledWith('mediaState', expect.objectContaining({muted: true}));
+    expect((instance as any).sendLocalMediaState).toHaveBeenCalledTimes(1);
+
+    await instance.toggleMuted();
+
+    expect(oldTrack.enabled).toBe(true);
+    expect(instance.dispatchEvent).toHaveBeenCalledWith('muted', false);
+    expect(sender.replaceTrack).not.toHaveBeenCalled();
+    expect(oldTrack.stop).not.toHaveBeenCalled();
+    expect(mocks.getUserStream).not.toHaveBeenCalled();
+    expect(mocks.getStream).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the placeholder when the microphone ends, and captures again on unmute', async() => {
+    const oldTrack = makeTrack();
+    const newTrack = makeTrack();
+    const {instance, sender, state} = makeP2pInstance(oldTrack);
+    mocks.getStream.mockResolvedValue(makeStream(newTrack));
+    (oldTrack as any).readyState = 'ended';
+
+    await (instance as any).toggleStream('audio', false);
+
+    const placeholderTrack = state.silence.getAudioTracks()[0];
+    expect(sender.track).toBe(placeholderTrack);
+    expect(state.streams.ownAudio).toBe(state.silence);
+    expect(instance.isMuted).toBe(true);
+
+    await (instance as any).toggleStream('audio', true);
+
+    expect(mocks.getUserStream).toHaveBeenCalledWith('audio', undefined);
+    expect(sender.track).toBe(newTrack);
+    expect(instance.isMuted).toBe(false);
   });
 });
 
@@ -763,7 +828,7 @@ describe('P2P transport failure cleanup', () => {
     wallClock.mockRestore();
   });
 
-  it('publishes the server discard after the derived state becomes closed', async() => {
+  it('keeps a failed transport reconnecting, and publishes the discard once it is given up', async() => {
     vi.stubGlobal('MediaStream', class {});
     const ownAudioTrack = makeTrack();
     const ownVideoTrack = makeTrack('video');
@@ -772,12 +837,16 @@ describe('P2P transport failure cleanup', () => {
     const discardCall = vi.fn().mockResolvedValue(undefined);
     const connection = {close: vi.fn()};
     const audioContext = {close: vi.fn().mockResolvedValue(undefined)};
+    const states: CALL_STATE[] = [];
     const instance = Object.assign(Object.create(CallInstance.prototype), {
       connectedAt: Date.now() - 1000,
       id: 'failed-call',
-      log: Object.assign(vi.fn(), {error: vi.fn()}),
+      log: Object.assign(vi.fn(), {error: vi.fn(), warn: vi.fn()}),
       managers: {appCallsManager: {discardCall}},
-      overrideConnectionState: vi.fn(),
+      dispatchEvent: vi.fn((type: string, state: CALL_STATE) => {
+        if(type === 'state') states.push(state);
+      }),
+      lastDispatchedState: CALL_STATE.CONNECTED,
       p2pConnectionState: 'connected',
       p2p: {
         audio: {srcObject: null},
@@ -793,22 +862,41 @@ describe('P2P transport failure cleanup', () => {
       }
     }) as CallInstance;
 
-    (instance as any).onUpdate({
-      '@type': 'updatePhoneCallConnectionState',
-      connectionState: 'failed'
-    });
+    for(const connectionState of ['disconnected', 'failed', 'connecting'] as const) {
+      (instance as any).onUpdate({
+        '@type': 'updatePhoneCallConnectionState',
+        connectionState
+      });
+    }
 
-    await vi.waitFor(() => expect(discardCall).toHaveBeenCalledTimes(1));
+    // Reconnecting, announced once: the controller arms its reconnect
+    // timeout on every CONNECTING it hears.
+    expect(instance.connectionState).toBe(CALL_STATE.CONNECTING);
+    expect(instance.isClosing).toBe(false);
+    expect(states).toEqual([CALL_STATE.CONNECTING]);
+    expect(discardCall).not.toHaveBeenCalled();
+    expect(connection.close).not.toHaveBeenCalled();
+
+    await instance.hangUp('phoneCallDiscardReasonDisconnect');
+
     expect(discardCall).toHaveBeenCalledWith(
       'failed-call',
       expect.any(Number),
       {_: 'phoneCallDiscardReasonDisconnect'},
       true
     );
+    expect(states).toEqual([CALL_STATE.CONNECTING, CALL_STATE.CLOSED]);
     expect(ownAudioTrack.stop).toHaveBeenCalledTimes(1);
     expect(ownVideoTrack.stop).toHaveBeenCalledTimes(1);
     expect(connection.close).toHaveBeenCalledTimes(1);
     expect((instance as any).p2p).toBeUndefined();
+
+    // A late engine event cannot reopen the closed call.
+    (instance as any).onUpdate({
+      '@type': 'updatePhoneCallConnectionState',
+      connectionState: 'connected'
+    });
+    expect(instance.connectionState).toBe(CALL_STATE.CLOSED);
   });
 });
 
@@ -1220,6 +1308,28 @@ describe('P2P exclusive video transactions', () => {
     expect(harness.state.isUpdatingExclusiveVideo).toBe(false);
     expect(newPresentationTrack.stop).toHaveBeenCalledTimes(1);
     expect(harness.activeVideoTrack.stop).not.toHaveBeenCalled();
+  });
+
+  it('keeps a shared screen\'s resolution under congestion', async() => {
+    const harness = makeHarness();
+    const newPresentationTrack = makeTrack('video');
+    const parameters = {encodings: [{active: true}], transactionId: 't1'};
+    const setParameters = vi.fn(async() => {});
+    Object.assign(harness.presentationSender, {getParameters: vi.fn(() => parameters), setParameters});
+    // The first share negotiates the section; that is not under test here.
+    const sendOffer = vi.fn(async() => {});
+    (harness.instance as any).sendOffer = sendOffer;
+    mocks.getUserStream.mockResolvedValueOnce(makeStream(newPresentationTrack));
+
+    await (harness.instance as any).toggleStream('presentation', true);
+
+    expect(mocks.getUserStream).toHaveBeenCalledWith('presentation', undefined);
+    expect(harness.presentationSender.track).toBe(newPresentationTrack);
+    expect(sendOffer).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(setParameters).toHaveBeenCalledWith({
+      ...parameters,
+      degradationPreference: 'maintain-resolution'
+    }));
   });
 
   it.each(['video', 'presentation'] as const)(

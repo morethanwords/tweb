@@ -40,7 +40,14 @@ import {
 import {VerificationChain, VerificationStateSnapshot} from './emoji';
 import {pruneGroupState} from './conferenceMembership';
 import createSerializedQueue from '@helpers/createSerializedQueue';
-import {decryptData, decryptHeader, encryptData, encryptHeader} from './messageEncryption';
+import {
+  decryptData,
+  decryptHeader,
+  decryptHeaderWithKey,
+  encryptData,
+  encryptHeaderWithKey,
+  importHeaderKey
+} from './messageEncryption';
 import {PrivateKey, PublicKey} from './keys';
 import {localToServer, serverToLocal, TLReader, TLWriter} from './tl';
 import {
@@ -83,6 +90,10 @@ function magicBytes(magic: number): Uint8Array {
   return w.finish();
 }
 
+// Every frame's MAC input and signed message start with these; never mutated.
+const MAGIC_CALL_PACKET_BYTES = magicBytes(MAGIC_CALL_PACKET);
+const MAGIC_CALL_PACKET_LARGE_MSG_ID_BYTES = magicBytes(MAGIC_CALL_PACKET_LARGE_MSG_ID);
+
 // ===== Active epoch =====
 //
 // One entry per blockchain block that introduced a (new or replayed) shared
@@ -100,6 +111,21 @@ export interface ActiveEpoch {
   // Snapshot of participants at this epoch — needed to verify Ed25519
   // signatures on packets that were encrypted with this epoch's key.
   participantKeysByUserId: Map<string, PublicKey>;
+  // `groupSharedKey`'s header key (importHeaderKey), filled in by
+  // epochHeaderKey on first use. Every frame sealed or opened under this epoch
+  // needs the same one, and it goes when the epoch does.
+  headerKey?: Promise<CryptoKey>;
+}
+
+function epochHeaderKey(epoch: ActiveEpoch): Promise<CryptoKey> {
+  if(!epoch.headerKey) {
+    const headerKey = epoch.headerKey = importHeaderKey(epoch.groupSharedKey);
+    // A failed derivation must not stick to the epoch: the next frame retries.
+    headerKey.catch(() => {
+      if(epoch.headerKey === headerKey) epoch.headerKey = undefined;
+    });
+  }
+  return epoch.headerKey;
 }
 
 // ===== Shared key derivation =====
@@ -198,48 +224,52 @@ export async function encryptPacket(opts: EncryptPacketOptions): Promise<Uint8Ar
 
   const unencryptedPrefix = opts.data.subarray(0, opts.unencryptedPrefixLength);
   const plaintext = opts.data.subarray(opts.unencryptedPrefixLength);
+  const epochsN = opts.epochs.length;
 
   // header_a = int32(epochs_n) || epoch_hash[0] || ... || epoch_hash[N-1]
-  const headerAWriter = new TLWriter();
-  headerAWriter.int32(opts.epochs.length);
-  for(const e of opts.epochs) headerAWriter.raw(e.epochHash);
-  const headerA = headerAWriter.finish();
+  const headerA = concatBytes(int32LeToBytes(epochsN), ...opts.epochs.map((e) => e.epochHash));
 
   // payload = LE_int32(channel_id) || LE_uint32(seqno) || plaintext
-  const payloadWriter = new TLWriter();
-  payloadWriter.int32(opts.channelId);
-  payloadWriter.uint32(opts.seqno);
-  payloadWriter.raw(plaintext);
-  const payload = payloadWriter.finish();
+  const payload = concatBytes(int32LeToBytes(opts.channelId), int32LeToBytes(opts.seqno), plaintext);
 
   // One-time secret: random per packet, encrypts the payload, then itself
   // encrypted per-epoch so receivers with any active epoch can recover it.
   const oneTimeSecret = opts.oneTimeSecret || randomBytes(32);
 
-  const extraData = concatBytes(magicBytes(MAGIC_CALL_PACKET), headerA, unencryptedPrefix);
+  const extraData = concatBytes(MAGIC_CALL_PACKET_BYTES, headerA, unencryptedPrefix);
   const {output: encryptedPayload, largeMsgId} = await encryptData(payload, oneTimeSecret, extraData);
 
   // Sign with our Ed25519 private — over (magic2 || large_msg_id), NOT over
   // the encrypted bytes (see notes/call.md gotcha #3).
-  const toSign = concatBytes(magicBytes(MAGIC_CALL_PACKET_LARGE_MSG_ID), largeMsgId);
-  const signature = opts.privateKey.sign(toSign);
+  const signature = opts.privateKey.sign(concatBytes(MAGIC_CALL_PACKET_LARGE_MSG_ID_BYTES, largeMsgId));
 
-  const encryptedPacket = concatBytes(encryptedPayload, signature);
+  // The wire layout (see the top of this file), written once into the buffer
+  // that is returned: unencrypted_prefix | header_a | header_b |
+  // encrypted_packet (= encrypted_payload || signature) | trailer.
+  const headerBOffset = unencryptedPrefix.length + headerA.length;
+  const packetOffset = headerBOffset + 32 * epochsN;
+  const packetEnd = packetOffset + encryptedPayload.length + signature.length;
+  const out = new Uint8Array(packetEnd + 4);
+  out.set(unencryptedPrefix);
+  out.set(headerA, unencryptedPrefix.length);
+  out.set(encryptedPayload, packetOffset);
+  out.set(signature, packetOffset + encryptedPayload.length);
+  // Trailer: 4-byte LE uint32 of unencrypted_prefix length.
+  out.set(int32LeToBytes(opts.unencryptedPrefixLength), packetEnd);
+  const encryptedPacket = out.subarray(packetOffset, packetEnd);
 
   // Per-epoch encrypted_header: encrypt the one-time secret with each
-  // epoch's group_shared_key. Receiver finds the matching epoch by hash.
-  const headerBParts: Uint8Array[] = [];
-  for(const epoch of opts.epochs) {
-    const enc = await encryptHeader(oneTimeSecret, encryptedPacket, epoch.groupSharedKey);
+  // epoch's group_shared_key. Receiver finds the matching epoch by hash. The
+  // slots do not depend on each other, so they are sealed concurrently.
+  const headerB = await Promise.all(opts.epochs.map(async(epoch) =>
+    encryptHeaderWithKey(oneTimeSecret, encryptedPacket, await epochHeaderKey(epoch))
+  ));
+  headerB.forEach((enc, i) => {
     if(enc.length !== 32) throw new Error(`encryptHeader produced ${enc.length} bytes, expected 32`);
-    headerBParts.push(enc);
-  }
-  const headerB = concatBytes(...headerBParts);
+    out.set(enc, headerBOffset + 32 * i);
+  });
 
-  // Trailer: 4-byte LE uint32 of unencrypted_prefix length.
-  const trailer = int32LeToBytes(opts.unencryptedPrefixLength);
-
-  return concatBytes(unencryptedPrefix, headerA, headerB, encryptedPacket, trailer);
+  return out;
 }
 
 // ===== Per-frame decrypt =====
@@ -620,7 +650,11 @@ export class E2eCall {
   // destroyed there. Poisons the call so nothing in flight can emit a frame
   // under a zeroed key.
   public destroy(): void {
-    for(const epoch of this.epochs) epoch.groupSharedKey.fill(0);
+    for(const epoch of this.epochs) {
+      epoch.groupSharedKey.fill(0);
+      // A CryptoKey cannot be wiped, only let go of.
+      epoch.headerKey = undefined;
+    }
     this.epochs = [];
     this.epochsToForget = [];
     this.verification?.destroy();
@@ -701,6 +735,11 @@ export class E2eCall {
       epochs: this.epochs.slice(),
       replayState: this.replayState
     });
+    // A frame in flight used to fail its MAC once destroy() had zeroed the
+    // epoch key under it; with the header key cached on the epoch it no
+    // longer would, so a call that died underneath us drops it here instead,
+    // like encrypt().
+    this.checkStatus();
     return decoded.data;
   }
 
@@ -1032,7 +1071,7 @@ export async function decryptPacket(opts: DecryptPacketOptions): Promise<Decrypt
     const epoch = opts.epochs.find((e) => constantTimeEqual(e.epochHash, epochHashes[i]));
     if(!epoch) continue;
     try {
-      oneTimeSecret = await decryptHeader(encryptedHeaders[i], encryptedPacket, epoch.groupSharedKey);
+      oneTimeSecret = await decryptHeaderWithKey(encryptedHeaders[i], encryptedPacket, await epochHeaderKey(epoch));
       chosenEpoch = epoch;
       break;
     } catch{
@@ -1048,7 +1087,7 @@ export async function decryptPacket(opts: DecryptPacketOptions): Promise<Decrypt
   const signature = encryptedPacket.subarray(encryptedPacket.length - 64);
 
   const extraData = concatBytes(
-    magicBytes(MAGIC_CALL_PACKET),
+    MAGIC_CALL_PACKET_BYTES,
     headerA,
     unencryptedPrefix
   );
@@ -1057,7 +1096,7 @@ export async function decryptPacket(opts: DecryptPacketOptions): Promise<Decrypt
   // Verify Ed25519 signature against the sender's public key.
   const senderPub = chosenEpoch.participantKeysByUserId.get(opts.fromUserId.toString());
   if(!senderPub) throw new Error(`decryptPacket: unknown sender user_id ${opts.fromUserId}`);
-  const toVerify = concatBytes(magicBytes(MAGIC_CALL_PACKET_LARGE_MSG_ID), largeMsgId);
+  const toVerify = concatBytes(MAGIC_CALL_PACKET_LARGE_MSG_ID_BYTES, largeMsgId);
   if(!ed25519Verify(senderPub.bytes, toVerify, signature)) {
     throw new Error('decryptPacket: signature verification failed');
   }

@@ -123,7 +123,11 @@ type CallStoryOptions = {
   /** Show the emoji fingerprint, as a call that got past the key exchange does. */
   fingerprint?: boolean,
   /** Give the call live audio, and a moving canvas for the two video tiles. */
-  media?: 'none' | 'audio' | 'video'
+  media?: 'none' | 'audio' | 'video',
+  /** Reception, 0..4, as the engine's stats would report it. */
+  signalBars?: number,
+  /** The other side says its battery is about to run out. */
+  remoteLowBattery?: boolean
 };
 
 /** A 1-on-1 call, freshly constructed: no signaling, no media, no server-side call behind it. */
@@ -155,17 +159,18 @@ async function openCall(options: CallStoryOptions) {
   if(options.fingerprint) seed.emojisFingerprint = FINGERPRINT;
   if(media) seed.p2p = {streams: media.streams};
   if(options.duration) instance.connectedAt = performance.now() - options.duration * 1000;
+  instance.signalBars = options.signalBars;
 
-  // The far side's camera is announced over the data channel, not inferred from the track.
-  if(options.media === 'video') {
+  // The far side's camera and battery are announced over the data channel, not inferred from the track.
+  if(options.media === 'video' || options.remoteLowBattery) {
     instance.setMediaState({
       '@type': 'MediaState',
       type: 'output',
       muted: false,
-      lowBattery: false,
+      lowBattery: !!options.remoteLowBattery,
       screencastState: 'inactive',
       videoRotation: 0,
-      videoState: 'active'
+      videoState: options.media === 'video' ? 'active' : 'inactive'
     });
   }
 
@@ -235,7 +240,36 @@ defineStories('Calls', [
       state: CALL_STATE.CONNECTED,
       duration: 125,
       fingerprint: true,
-      media: 'audio'
+      media: 'audio',
+      signalBars: 3
+    })
+  },
+  {
+    // No bars left: the warm palette and the weak-network pill, as on iOS.
+    id: 'call/activeWeakSignal',
+    title: 'In a call — weak network',
+    open: (ctx) => openCall({
+      peerId: ctx.peer('private'),
+      isOutgoing: true,
+      state: CALL_STATE.CONNECTED,
+      duration: 125,
+      fingerprint: true,
+      media: 'audio',
+      signalBars: 0
+    })
+  },
+  {
+    id: 'call/activeRemoteLowBattery',
+    title: 'In a call — their battery is low',
+    open: (ctx) => openCall({
+      peerId: ctx.peer('private'),
+      isOutgoing: true,
+      state: CALL_STATE.CONNECTED,
+      duration: 125,
+      fingerprint: true,
+      media: 'audio',
+      signalBars: 4,
+      remoteLowBattery: true
     })
   },
   {
@@ -248,7 +282,8 @@ defineStories('Calls', [
       state: CALL_STATE.CONNECTED,
       duration: 3725,
       fingerprint: true,
-      media: 'video'
+      media: 'video',
+      signalBars: 4
     })
   },
   {

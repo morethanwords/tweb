@@ -16,6 +16,7 @@
 import {appendAudioTrailer, stripAudioTrailer} from './audioTrailer';
 import {normalizeSsrc} from '@lib/calls/utils';
 import createSerializedQueue from '@helpers/createSerializedQueue';
+import noop from '@helpers/noop';
 import {E2eCall} from './call';
 import {ensureCryptoReady, randomBytes} from './crypto';
 import type {CallStatusSnapshot, HostRequest, HostResponse, WorkerEvent} from './encryptWorkerProtocol';
@@ -337,6 +338,8 @@ interface RTCEncodedFrameMetadata {
 
 interface RTCEncodedFrameLike {
   data: ArrayBuffer;
+  // RTCEncodedVideoFrame only: 'key' | 'delta' | 'empty'.
+  type?: string;
   getMetadata?: () => RTCEncodedFrameMetadata;
 }
 
@@ -344,9 +347,15 @@ function isEncodedFrame(value: unknown): value is RTCEncodedFrameLike {
   return !!value && typeof value === 'object' && 'data' in value;
 }
 
-// Copy a Uint8Array view's bytes into a fresh ArrayBuffer (so we never assign
-// a SharedArrayBuffer-backed view to `frame.data`, and never alias the input).
-function toFreshArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+// The ArrayBuffer to hand to `frame.data`: never SharedArrayBuffer-backed and
+// never aliasing the input. call.encrypt / call.decrypt return a buffer of
+// their own making that nothing else holds, so when the view spans all of it
+// the buffer is handed over as is; anything narrower (an audio frame with its
+// trailer stripped) is copied out.
+function toFrameData(bytes: Uint8Array): ArrayBuffer {
+  if(bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return bytes.buffer;
+  }
   const buf = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buf).set(bytes);
   return buf;
@@ -360,8 +369,11 @@ function toFreshArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 // H264's NAL-start-code-rewrite path is not implemented here.
 function vp8PlaintextPrefixLength(frame: Uint8Array): number {
   if(frame.length === 0) return 0;
-  const isKeyFrame = (frame[0] & 0x01) === 0; // VP8 payload header P bit: 0 = key frame
-  return Math.min(isKeyFrame ? 10 : 1, frame.length);
+  return Math.min(isVp8KeyFrame(frame) ? 10 : 1, frame.length);
+}
+
+function isVp8KeyFrame(frame: Uint8Array): boolean {
+  return frame.length > 0 && (frame[0] & 0x01) === 0; // VP8 payload header P bit: 0 = key frame
 }
 
 async function processSend(opts: TransformOptions, frame: RTCEncodedFrameLike): Promise<RTCEncodedFrameLike | undefined> {
@@ -383,7 +395,7 @@ async function processSend(opts: TransformOptions, frame: RTCEncodedFrameLike): 
       plain,
       unencryptedPrefixLength
     );
-    frame.data = toFreshArrayBuffer(encrypted);
+    frame.data = toFrameData(encrypted);
     return frame;
   } catch{
     return undefined;
@@ -415,7 +427,7 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
     if(kind === 'audio') {
       decrypted = stripAudioTrailer(decrypted);
     }
-    frame.data = toFreshArrayBuffer(decrypted);
+    frame.data = toFrameData(decrypted);
     // Recovered — let a later error on this SSRC report afresh.
     if(decryptErrFrames.size) decryptErrFrames.delete(normalizeSsrc(ssrc));
     return frame;
@@ -430,6 +442,69 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
   }
 }
 
+// A dropped video frame strands every frame that references it, and nothing
+// else asks the sender for a fresh keyframe — the picture would hold until the
+// encoder's next periodic one. So a video receive transform asks for one (an
+// RTCP PLI through the SFU) when it drops a frame, and keeps asking on the
+// authenticated delta frames that follow until a keyframe gets through: when
+// the drops were a stretch where nothing decrypted (frames ahead of the epoch
+// key at join), the keyframes asked for during it were dropped as well. Only
+// the request is new — the dropped frames stay dropped. Each request costs the
+// sender a keyframe for everyone (the SFU passes on every receiver's), so the
+// first comes at most once a second per transform and the gap doubles, up to
+// 10 s, while no keyframe gets through — a sender this receiver can never
+// decrypt (an epoch it cannot open) must not keep every viewer's stream busy
+// with keyframes for the rest of the call.
+const KEYFRAME_REQUEST_INTERVAL_MS = 1000;
+const KEYFRAME_REQUEST_MAX_INTERVAL_MS = 10000;
+
+interface KeyFrameRecovery {
+  onDropped(): void;
+  // Call before the frame is enqueued: the sink may detach its data.
+  onDelivered(frame: RTCEncodedFrameLike): void;
+}
+
+function createKeyFrameRecovery(transformer: {sendKeyFrameRequest?: () => Promise<void>}): KeyFrameRecovery | undefined {
+  // RTCRtpScriptTransformer.sendKeyFrameRequest() is receiver-only and not in
+  // every engine yet; without it the stream recovers as it did before.
+  if(typeof transformer.sendKeyFrameRequest !== 'function') return;
+  let awaitingKeyFrame = false;
+  let lastRequestAt = -Infinity;
+  let interval = KEYFRAME_REQUEST_INTERVAL_MS;
+  const request = () => {
+    if(!call) return;
+    const now = performance.now();
+    if(now - lastRequestAt < interval) return;
+    if(lastRequestAt !== -Infinity) {
+      interval = Math.min(interval * 2, KEYFRAME_REQUEST_MAX_INTERVAL_MS);
+    }
+    lastRequestAt = now;
+    // Rejects when the receiver has nothing to ask for yet (or any more) —
+    // there is nothing to recover then either.
+    Promise.resolve().then(() => transformer.sendKeyFrameRequest()).catch(noop);
+  };
+  return {
+    onDropped: () => {
+      awaitingKeyFrame = true;
+      request();
+    },
+    onDelivered: (frame) => {
+      if(!awaitingKeyFrame) return;
+      const isKeyFrame = typeof frame.type === 'string' ?
+        frame.type === 'key' :
+        isVp8KeyFrame(new Uint8Array(frame.data));
+      if(isKeyFrame) {
+        awaitingKeyFrame = false;
+        // Recovered: the next loss may ask at the first pace again.
+        lastRequestAt = -Infinity;
+        interval = KEYFRAME_REQUEST_INTERVAL_MS;
+      } else {
+        request();
+      }
+    }
+  };
+}
+
 // Always install `onrtctransform`. The feature-detection `'onrtctransform' in
 // self` guard was wrong: in Chrome the property only exists AFTER the event
 // type has been observed, so the guard silently skipped installation and
@@ -438,6 +513,9 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
   const transformer = event.transformer;
   const options = transformer.options as TransformOptions;
   const handler = options.direction === 'send' ? processSend : processRecv;
+  const keyFrameRecovery = options.direction === 'recv' && options.kind === 'video' ?
+    createKeyFrameRecovery(transformer) :
+    undefined;
 
   // Use the pipeThrough(TransformStream)→pipeTo pattern. Spec-recommended
   // for RTCRtpScriptTransform and used by W3C reference samples — Chrome's
@@ -453,11 +531,15 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
       try {
         const out = await handler(options, frame);
         if(out) {
+          keyFrameRecovery?.onDelivered(out);
           controller.enqueue(out);
+        } else {
+          // Drop the frame.
+          keyFrameRecovery?.onDropped();
         }
-        // else: drop frame
       } catch{
         // Fail closed: a transform error drops this frame.
+        keyFrameRecovery?.onDropped();
       }
     }
   });

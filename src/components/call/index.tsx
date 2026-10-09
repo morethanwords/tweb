@@ -26,11 +26,13 @@ import {MovableState} from '@components/movableElement';
 import PeerTitle from '@components/peerTitle';
 import StackedAvatars from '@components/stackedAvatars';
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
-import SetTransition from '@components/singleTransition';
 import makeButton, {setCallButtonBusy} from '@components/call/button';
 import CallDescriptionElement from '@components/call/description';
 import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
 import showCallSettingsPopup from '@components/call/settingsPopup';
+import createCallNotice, {CallNotice} from '@components/call/notice';
+import createCallSignalBars from '@components/call/signalBars';
+import qualityStyles from '@components/call/callQuality.module.scss';
 import {toastNew} from '@components/toast';
 import {createSignal, onCleanup, onMount, untrack, useContext} from 'solid-js';
 
@@ -100,7 +102,6 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
   // are reactive.
   let description: CallDescriptionElement;
   let emojisSubtitle: HTMLElement;
-  let partyMutedState: HTMLElement;
   let declineI18nElement: I18n.IntlElement;
   let muteI18nElement: I18n.IntlElement;
   let microphoneIcon: GroupCallMicrophoneIconMini;
@@ -325,6 +326,14 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
     const subtitle = document.createElement('div');
     subtitle.classList.add(className + '-subtitle');
 
+    // Reception, as the engine measures it (0..4), while the call is connected — undefined hides
+    // the bars, the way Android waits for its first count.
+    const [signalBars, setSignalBars] = createSignal<number>();
+    if(callInstance) {
+      subtitle.classList.add(qualityStyles.subtitle);
+      subtitle.append(createCallSignalBars(signalBars));
+    }
+
     description = new CallDescriptionElement(subtitle);
 
     emojisSubtitle = document.createElement('div');
@@ -436,23 +445,46 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       }
     }
 
+    // The pills above the controls. A weak link — iOS raises its banner once the quality drops to a
+    // fifth (`PrivateCallScreen`: `quality <= 0.2`), i.e. at no bars at all. Then what the other
+    // side's MediaState says about them: a closed microphone, and a battery about to run out
+    // (tdesktop `Panel::createRemoteLowBattery`, macOS `CallTooltipType.batteryLow`). They share one
+    // column, so two of them at once stack instead of overlapping.
     let partyStates: HTMLElement;
+    let weakNetworkNotice: CallNotice;
+    let mutedNotice: CallNotice;
+    let lowBatteryNotice: CallNotice;
     if(!inviteInstance) {
       partyStates = document.createElement('div');
       partyStates.classList.add(className + '-party-states');
 
-      partyMutedState = document.createElement('div');
-      partyMutedState.classList.add(className + '-party-state');
-      const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element]);
-      stateText.classList.add(className + '-party-state-text');
+      weakNetworkNotice = createCallNotice({text: () => i18n('VoipWeakNetwork')});
+
+      const peerName = () => new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element;
+
       const mutedIcon = new GroupCallMicrophoneIconMini(false, true, 36);
       mutedIcon.setState(false, false);
-      partyMutedState.append(
-        mutedIcon.container,
-        stateText
-      );
+      mutedNotice = createCallNotice({
+        text: () => i18n('VoipUserMicrophoneIsOff', [peerName()]),
+        icon: mutedIcon.container
+      });
 
-      partyStates.append(partyMutedState);
+      lowBatteryNotice = createCallNotice({
+        text: () => i18n('Call.Toast.LowBattery', [peerName()]),
+        icon: (
+          <svg class={qualityStyles.batteryIcon} viewBox="0 0 29 13" fill="none" aria-hidden="true">
+            <rect x="1.5" y=".5" width="24" height="12" rx="4" stroke="currentColor" />
+            <path d="M27 4.67v4c.8-.34 1.33-1.13 1.33-2s-.53-1.66-1.33-2z" fill="currentColor" />
+            <rect x="4.5" y="3.5" width="2" height="6" rx="1" fill="currentColor" />
+          </svg>
+        ) as SVGSVGElement
+      });
+
+      const notices = [weakNetworkNotice, mutedNotice, lowBatteryNotice];
+      partyStates.append(
+        ...notices.map((notice) => notice.element),
+        ...notices.map((notice) => notice.announcement)
+      );
     }
 
     const makeCallButton = makeButton.bind(null, className, listenerSetter);
@@ -547,6 +579,23 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
     secondButtonsRow.append(btnDecline, btnAccept);
 
+    // Reception drives the bars, the weak-network pill and the palette, as in iOS
+    // `PrivateCallScreen`: connecting (purple/blue) before the call is up, active (green/teal)
+    // while it is, and weak (warm orange/pink) when the bars drop to none. Only a connected call
+    // has a reception to speak of — a reconnecting one is back to "Connecting...".
+    const updateSignal = () => {
+      if(callInstance.isClosing) {
+        return;
+      }
+
+      const isConnected = callInstance.connectionState === CALL_STATE.CONNECTED;
+      const bars = isConnected ? callInstance.signalBars : undefined;
+      const isWeak = bars === 0;
+      setSignalBars(bars);
+      weakNetworkNotice.setVisible(isWeak);
+      setGradientState(isConnected ? (isWeak ? 'weak' : 'active') : 'connecting');
+    };
+
     const updateInstance = () => {
       const {connectionState} = instance;
       if(connectionState === CALL_STATE.CLOSED) {
@@ -575,12 +624,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
         return;
       }
 
-      // Drive the gradient palette — mirrors iOS PrivateCallScreen:
-      // - connecting (purple/blue) for any pre-connected state
-      // - active (green/teal) once both sides are talking
-      // The weak-signal palette (warm orange/pink) is defined in GRADIENT_COLORS
-      // for the day we surface a quality metric; not yet triggered.
-      setGradientState(connectionState === CALL_STATE.CONNECTED ? 'active' : 'connecting');
+      updateSignal();
 
       const isPendingIncoming = !instance.isOutgoing && connectionState === CALL_STATE.PENDING;
       declineI18nElement.compareAndUpdate({
@@ -612,13 +656,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       btnScreen.firstElementChild.classList.toggle('active', isSharingScreen);
 
       const outputState = callInstance.getMediaState('output');
-
-      SetTransition({
-        element: partyMutedState,
-        className: 'is-visible',
-        forwards: !!outputState?.muted,
-        duration: 300
-      });
+      mutedNotice.setVisible(!!outputState?.muted);
+      lowBatteryNotice.setVisible(!!outputState?.lowBattery);
 
       const oldContainers = {...videoContainers};
       ['input' as const, 'output' as const].forEach((type) => {
@@ -704,6 +743,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
     } else {
       listenerSetter.add(callInstance)('state', updateInstance);
       listenerSetter.add(callInstance)('mediaState', updateInstance);
+      listenerSetter.add(callInstance)('signalBars', updateSignal);
     }
 
     onMount(() => {

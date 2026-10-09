@@ -33,6 +33,8 @@ const mocks = vi.hoisted(() => {
     public hangUp = vi.fn(async() => {});
     public setHangUpTimeout = vi.fn();
     public clearHangUpTimeout = vi.fn();
+    // No access hash known: nothing here is rated (see callsControllerRating.test.ts).
+    public getInputPhoneCall = vi.fn((): unknown => undefined);
     private listeners = new Map<string, Set<Listener>>();
 
     constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId}) {

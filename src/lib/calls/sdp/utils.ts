@@ -41,19 +41,43 @@ export function parseSdpLine(str: string) {
   return new SDPLine(splitted[0] as any, splitted[1]);
 }
 
-export function addSimulcast(sdp: SDP) {
+/**
+ * Legacy (SSRC-group) simulcast: Chromium creates one encoding per `SIM`
+ * member when the munged offer is applied locally, lowest resolution first
+ * (default scaleResolutionDownBy 4/2/1 for three layers, 2/1 for two). The
+ * layer count is fixed from then on — setParameters cannot add or drop
+ * encodings, and every re-offer keeps the group — so it has to be chosen here,
+ * per connection (see getVideoSimulcastLayerCount). `layers <= 1` leaves the
+ * offer untouched.
+ */
+export function addSimulcast(sdp: SDP, layers = 3) {
+  if(layers <= 1) {
+    return false;
+  }
+
   let generator: UniqueNumberGenerator;
   sdp.media.forEach((section, idx) => {
     if(section.mediaType === 'video' && section.isSending && !section.attributes.get('ssrc-group').get('SIM').exists) {
+      const fid = section.attributes.get('ssrc-group').get('FID').value;
+      // Without an RTX pairing there is nothing to mirror per layer; leave the
+      // section single-layer rather than throwing on a browser that omits it.
+      if(!fid) {
+        return;
+      }
+
       if(!generator) {
         generator = new UniqueNumberGenerator(2, 4294967295);
       }
 
-      const originalSsrcs = section.attributes.get('ssrc-group').get('FID').value.split(' ');
+      const originalSsrcs = fid.split(' ');
       const lines = section.lines;
       originalSsrcs.forEach((ssrc) => generator.add(+ssrc)); // fix possible duplicates
-      const ssrcs = [originalSsrcs[0], generator.generate(), generator.generate()];
-      const ssrcs2 = [originalSsrcs[1], generator.generate(), generator.generate()];
+      const ssrcs = [originalSsrcs[0]];
+      const ssrcs2 = [originalSsrcs[1]];
+      for(let i = 1; i < layers; ++i) {
+        ssrcs.push('' + generator.generate());
+        ssrcs2.push('' + generator.generate());
+      }
 
       lines.push(parseSdpLine('a=ssrc-group:SIM ' + ssrcs.join(' ')));
 

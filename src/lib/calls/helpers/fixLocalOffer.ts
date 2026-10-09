@@ -9,16 +9,16 @@ import parseMediaSectionInfo from '@lib/calls/helpers/parseMediaSectionInfo';
 export default function fixLocalOffer(options: {
   offer: RTCSessionDescriptionInit,
   data: UpdateGroupCallConnectionData,
-  skipAddingMulticast?: boolean
+  // Simulcast layers of the sending video section (see
+  // getVideoSimulcastLayerCount); 1 sends a single stream.
+  simulcastLayers?: number
   // mids?: string[]
 }) {
   const {offer, data} = options;
   const sdp = parseSdp(offer.sdp);
   let hasMunged = false;
 
-  if(!options.skipAddingMulticast) {
-    hasMunged = addSimulcast(sdp) || hasMunged;
-  }
+  hasMunged = addSimulcast(sdp, options.simulcastLayers ?? 3) || hasMunged;
 
   // const bundleLine = parsedSdp.session.lines.find((line) => line.Ha?.key === 'group');
   // const bundleMids = bundleLine.value.split(' ').slice(1);

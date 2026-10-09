@@ -6,6 +6,11 @@
  *   encryptData / decryptData   — message payload, with random padding + AES-CBC.
  *   encryptHeader / decryptHeader — fixed 32-byte header, keyed off msg_id from a payload.
  *
+ * The header ops also come as `...WithKey`, taking the secret's header key
+ * from `importHeaderKey` instead of the secret: that key is a function of the
+ * secret alone, so a caller sealing every media frame under one call epoch
+ * derives it once per epoch instead of once per frame.
+ *
  * Test vectors at e2e/tests/vectors.ts test the deterministic-padding variant
  * (we don't have known-good random outputs, by definition).
  */
@@ -15,28 +20,41 @@ import {
   aesCbcEncrypt,
   concatBytes,
   constantTimeEqual,
-  hmacSha256,
+  hmacSign,
   hmacSha512,
+  importHmacKey,
   int32LeToBytes,
   randomBytes
 } from './crypto';
 
 const MIN_PADDING = 16;
-const KDF_LABEL_ENCRYPT_DATA = 'tde2e_encrypt_data';
-const KDF_LABEL_ENCRYPT_HEADER = 'tde2e_encrypt_header';
 
 const textEncoder = new TextEncoder();
+const KDF_LABEL_ENCRYPT_DATA = textEncoder.encode('tde2e_encrypt_data');
+const KDF_LABEL_ENCRYPT_HEADER = textEncoder.encode('tde2e_encrypt_header');
 
 // HMAC-SHA512(secret, UTF-8(label)) — 64 bytes. Label is a literal string,
 // no null terminator, no length prefix.
-function kdfExpand(secret: Uint8Array, label: string): Promise<Uint8Array> {
-  return hmacSha512(secret, textEncoder.encode(label));
+function kdfExpand(secret: Uint8Array, label: Uint8Array): Promise<Uint8Array> {
+  return hmacSha512(secret, label);
 }
 
 // Extract AES-256 key (32B) + IV (16B) from the first 48 bytes of a hash.
 function calcAesCbcStateFromHash(hash: Uint8Array): {key: Uint8Array; iv: Uint8Array} {
   if(hash.length < 48) throw new Error(`hash too short for AES-CBC state: ${hash.length}`);
   return {key: hash.subarray(0, 32), iv: hash.subarray(32, 48)};
+}
+
+// The two keys encrypt_data derives from its secret: encrypt_secret (keys the
+// AES state, HMAC-SHA512) and hmac_secret (the msg_id MAC, HMAC-SHA256). They
+// are independent of each other, so both imports go out at once.
+async function expandDataSecret(secret: Uint8Array): Promise<{encryptKey: CryptoKey; hmacKey: CryptoKey}> {
+  const largeSecret = await kdfExpand(secret, KDF_LABEL_ENCRYPT_DATA);
+  const [encryptKey, hmacKey] = await Promise.all([
+    importHmacKey(largeSecret.subarray(0, 32), 'SHA-512'),
+    importHmacKey(largeSecret.subarray(32, 64), 'SHA-256')
+  ]);
+  return {encryptKey, hmacKey};
 }
 
 // Random prefix; first byte holds total prefix length (16..31 typical).
@@ -63,22 +81,23 @@ async function encryptDataCore(
   secret: Uint8Array,
   extraData: Uint8Array
 ): Promise<{output: Uint8Array; largeMsgId: Uint8Array}> {
-  const padded = concatBytes(prefix, data); // 16-aligned
+  // tail = padded || extraData || LE_int32(extraData.length), where padded =
+  // prefix || data (16-aligned) is the AES input: one copy of the frame, not two.
+  const tail = concatBytes(prefix, data, extraData, int32LeToBytes(extraData.length));
+  const padded = tail.subarray(0, prefix.length + data.length);
 
-  const largeSecret = await kdfExpand(secret, KDF_LABEL_ENCRYPT_DATA);
-  const encryptSecret = largeSecret.subarray(0, 32);
-  const hmacSecret = largeSecret.subarray(32, 64);
-
-  // tail = padded || extraData || LE_int32(extraData.length)
-  const tail = concatBytes(padded, extraData, int32LeToBytes(extraData.length));
-  const largeMsgId = await hmacSha256(hmacSecret, tail);
+  const {encryptKey, hmacKey} = await expandDataSecret(secret);
+  const largeMsgId = await hmacSign(hmacKey, tail);
   const msgId = largeMsgId.subarray(0, 16);
 
-  const hash = await hmacSha512(encryptSecret, msgId);
+  const hash = await hmacSign(encryptKey, msgId);
   const {key, iv} = calcAesCbcStateFromHash(hash);
-  const encrypted = aesCbcEncrypt(key, iv, padded);
+  const encrypted = await aesCbcEncrypt(key, iv, padded);
 
-  return {output: concatBytes(msgId, encrypted), largeMsgId};
+  const output = new Uint8Array(16 + encrypted.length);
+  output.set(msgId);
+  output.set(encrypted, 16);
+  return {output, largeMsgId};
 }
 
 // Production encryption: random padding.
@@ -112,17 +131,15 @@ export async function decryptData(
   const msgId = encryptedData.subarray(0, 16);
   const ciphertext = encryptedData.subarray(16);
 
-  const largeSecret = await kdfExpand(secret, KDF_LABEL_ENCRYPT_DATA);
-  const encryptSecret = largeSecret.subarray(0, 32);
-  const hmacSecret = largeSecret.subarray(32, 64);
+  const {encryptKey, hmacKey} = await expandDataSecret(secret);
 
-  const hash = await hmacSha512(encryptSecret, msgId);
+  const hash = await hmacSign(encryptKey, msgId);
   const {key, iv} = calcAesCbcStateFromHash(hash);
-  const decrypted = aesCbcDecrypt(key, iv, ciphertext);
+  const decrypted = await aesCbcDecrypt(key, iv, ciphertext);
 
   // Verify MAC by recomputing it from the plaintext we just decrypted.
   const tail = concatBytes(decrypted, extraData, int32LeToBytes(extraData.length));
-  const expectedLargeMsgId = await hmacSha256(hmacSecret, tail);
+  const expectedLargeMsgId = await hmacSign(hmacKey, tail);
   const expectedMsgId = expectedLargeMsgId.subarray(0, 16);
 
   if(!constantTimeEqual(msgId, expectedMsgId)) {
@@ -137,21 +154,52 @@ export async function decryptData(
   return {output: decrypted.subarray(prefixSize), largeMsgId: expectedLargeMsgId};
 }
 
+// The header key of `secret`: encryption_key = kdf_expand(secret,
+// "tde2e_encrypt_header")[0:32], imported for the HMAC-SHA512 that derives each
+// header's AES state from a msg_id.
+export async function importHeaderKey(secret: Uint8Array): Promise<CryptoKey> {
+  const largeKey = await kdfExpand(secret, KDF_LABEL_ENCRYPT_HEADER);
+  return importHmacKey(largeKey.subarray(0, 32), 'SHA-512');
+}
+
+function checkHeaderArgs(header: Uint8Array, encryptedMessage: Uint8Array): void {
+  if(header.length !== 32) throw new Error(`header must be 32 bytes, got ${header.length}`);
+  if(encryptedMessage.length < 16) throw new Error('encrypted message too short for msg_id');
+}
+
+// AES-CBC state of the header sealed alongside `encryptedMessage`: keyed by
+// HMAC-SHA512(encryption_key, msg_id), msg_id being the message's first 16 bytes.
+async function headerAesState(headerKey: CryptoKey, encryptedMessage: Uint8Array): Promise<{key: Uint8Array; iv: Uint8Array}> {
+  return calcAesCbcStateFromHash(await hmacSign(headerKey, encryptedMessage.subarray(0, 16)));
+}
+
+export async function encryptHeaderWithKey(
+  header: Uint8Array,
+  encryptedMessage: Uint8Array,
+  headerKey: CryptoKey
+): Promise<Uint8Array> {
+  checkHeaderArgs(header, encryptedMessage);
+  const {key, iv} = await headerAesState(headerKey, encryptedMessage);
+  return aesCbcEncrypt(key, iv, header);
+}
+
+export async function decryptHeaderWithKey(
+  encryptedHeader: Uint8Array,
+  encryptedMessage: Uint8Array,
+  headerKey: CryptoKey
+): Promise<Uint8Array> {
+  checkHeaderArgs(encryptedHeader, encryptedMessage);
+  const {key, iv} = await headerAesState(headerKey, encryptedMessage);
+  return aesCbcDecrypt(key, iv, encryptedHeader);
+}
+
 export async function encryptHeader(
   header: Uint8Array,
   encryptedMessage: Uint8Array,
   secret: Uint8Array
 ): Promise<Uint8Array> {
-  if(header.length !== 32) throw new Error(`header must be 32 bytes, got ${header.length}`);
-  if(encryptedMessage.length < 16) throw new Error('encrypted message too short for msg_id');
-
-  const msgId = encryptedMessage.subarray(0, 16);
-  const largeKey = await kdfExpand(secret, KDF_LABEL_ENCRYPT_HEADER);
-  const encryptionKey = largeKey.subarray(0, 32);
-
-  const hash = await hmacSha512(encryptionKey, msgId);
-  const {key, iv} = calcAesCbcStateFromHash(hash);
-  return aesCbcEncrypt(key, iv, header);
+  checkHeaderArgs(header, encryptedMessage);
+  return encryptHeaderWithKey(header, encryptedMessage, await importHeaderKey(secret));
 }
 
 export async function decryptHeader(
@@ -159,16 +207,6 @@ export async function decryptHeader(
   encryptedMessage: Uint8Array,
   secret: Uint8Array
 ): Promise<Uint8Array> {
-  if(encryptedHeader.length !== 32) {
-    throw new Error(`header must be 32 bytes, got ${encryptedHeader.length}`);
-  }
-  if(encryptedMessage.length < 16) throw new Error('encrypted message too short for msg_id');
-
-  const msgId = encryptedMessage.subarray(0, 16);
-  const largeKey = await kdfExpand(secret, KDF_LABEL_ENCRYPT_HEADER);
-  const encryptionKey = largeKey.subarray(0, 32);
-
-  const hash = await hmacSha512(encryptionKey, msgId);
-  const {key, iv} = calcAesCbcStateFromHash(hash);
-  return aesCbcDecrypt(key, iv, encryptedHeader);
+  checkHeaderArgs(encryptedHeader, encryptedMessage);
+  return decryptHeaderWithKey(encryptedHeader, encryptedMessage, await importHeaderKey(secret));
 }

@@ -9,7 +9,7 @@ import bytesToHex from '@helpers/bytes/bytesToHex';
 import EventListenerBase from '@helpers/eventListenerBase';
 import noop from '@helpers/noop';
 import tsNow from '@helpers/tsNow';
-import {PhoneCall, PhoneCallProtocol} from '@layer';
+import {InputPhoneCall, PhoneCall, PhoneCallProtocol} from '@layer';
 import {CallId} from '@appManagers/appCallsManager';
 import {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
@@ -28,6 +28,21 @@ import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import {CALL_PROTOCOL_LIBRARY_VERSIONS} from '@lib/calls/p2P/getCallProtocol';
 import {CALL_REQUEST_TIMEOUT, CALL_WAITING_RING_VOLUME} from '@lib/calls/constants';
+
+/**
+ * How long a call that closed here waits for the server's own phoneCallDiscarded — the one that may
+ * ask for a rating. Hanging up ourselves closes the call before phone.discardCall answers.
+ */
+const ENDED_CALL_DISCARD_WAIT = 60e3;
+
+/** iOS gives the call screen half a second to go before it asks (`CallController.presentCallRating`). */
+const CALL_RATING_DELAY = 500;
+
+type EndedCall = {
+  instance: CallInstance,
+  inputPhoneCall: InputPhoneCall,
+  timeout: number
+};
 
 export class CallsController extends EventListenerBase<{
   instance: (details: {hasCurrent: boolean, instance: CallInstance}) => void,
@@ -50,6 +65,12 @@ export class CallsController extends EventListenerBase<{
   private sortedInstances: Array<CallInstance>;
   private tempId: number;
   private migratingCalls = new WeakSet<CallInstance>();
+  // Calls that connected and closed here, until the server's phoneCallDiscarded for them comes:
+  // a call we hang up ourselves leaves `instances` the moment it closes, and the discarded update
+  // that carries `need_rating` only arrives with the answer to phone.discardCall.
+  private endedCalls = new Map<CallId, EndedCall>();
+  // A call is offered for rating once, whatever repeats the flag.
+  private ratingRequested = new WeakSet<CallInstance>();
 
   public construct(managers: AppManagers) {
     this.managers = managers;
@@ -122,6 +143,9 @@ export class CallsController extends EventListenerBase<{
     // ignored, never a reason to hang up.
     switch(call._) {
       case 'phoneCallDiscarded': {
+        // Read before setPhoneCall: the discarded call carries no access hash, and a rating has to
+        // name the call it rates.
+        const inputPhoneCall = instance?.getInputPhoneCall();
         if(instance) {
           instance.setPhoneCall(call);
           // Server-initiated migration to a conference call: the 1-on-1
@@ -144,6 +168,11 @@ export class CallsController extends EventListenerBase<{
             break;
           }
           await instance.hangUp(call.reason, true);
+        }
+
+        const ended = this.takeEndedCall(call.id);
+        if(call.pFlags?.need_rating) {
+          this.requestCallRating(call, instance || ended?.instance, inputPhoneCall || ended?.inputPhoneCall);
         }
 
         break;
@@ -426,6 +455,7 @@ export class CallsController extends EventListenerBase<{
       if(state === CALL_STATE.CLOSED) {
         this.instances.delete(call.id);
         indexOfAndSplice(this.sortedInstances, call);
+        this.rememberEndedCall(call);
       } else {
         insertInDescendSortedArray(this.sortedInstances, call, 'sortIndex');
       }
@@ -504,6 +534,71 @@ export class CallsController extends EventListenerBase<{
     });
 
     return call;
+  }
+
+  private rememberEndedCall(instance: CallInstance) {
+    if(
+      instance.connectedAt === undefined ||
+      this.migratingCalls.has(instance) ||
+      this.ratingRequested.has(instance) ||
+      this.endedCalls.has(instance.id)
+    ) {
+      return;
+    }
+
+    const inputPhoneCall = instance.getInputPhoneCall();
+    if(!inputPhoneCall) {
+      return;
+    }
+
+    const callId = instance.id;
+    const timeout = window.setTimeout(() => {
+      if(this.endedCalls.get(callId)?.instance === instance) {
+        this.endedCalls.delete(callId);
+      }
+    }, ENDED_CALL_DISCARD_WAIT);
+    this.endedCalls.set(callId, {instance, inputPhoneCall, timeout});
+  }
+
+  private takeEndedCall(callId: CallId) {
+    const ended = this.endedCalls.get(callId);
+    if(ended) {
+      clearTimeout(ended.timeout);
+      this.endedCalls.delete(callId);
+    }
+
+    return ended;
+  }
+
+  /**
+   * The server marks some ended calls `need_rating`. As on iOS (`PresentationCall`: the prompt
+   * needs `callWasActive`), only a call that actually connected is offered, and only once; a
+   * handoff to a conference is no end of a call to rate.
+   */
+  private requestCallRating(
+    call: PhoneCall.phoneCallDiscarded,
+    instance: CallInstance | undefined,
+    inputPhoneCall: InputPhoneCall | undefined
+  ) {
+    if(
+      !instance ||
+      !inputPhoneCall ||
+      instance.connectedAt === undefined ||
+      this.migratingCalls.has(instance) ||
+      this.ratingRequested.has(instance)
+    ) {
+      return;
+    }
+
+    this.ratingRequested.add(instance);
+    const isVideo = !!call.pFlags?.video;
+    window.setTimeout(() => {
+      import('@components/popups/rateCall').then(({default: showRateCallPopup}) => {
+        showRateCallPopup({call: inputPhoneCall, isVideo});
+      }).catch((err) => {
+        this.log.error('call rating popup failed', err);
+      });
+    }, CALL_RATING_DELAY);
   }
 
   public async startCallInternal(userId: UserId, isVideo: boolean) {

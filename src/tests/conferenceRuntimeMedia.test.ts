@@ -452,6 +452,126 @@ describe('GroupCallInstance runtime media transactions', () => {
     expect(managers.appGroupCallsManager.leaveGroupCallPresentation).not.toHaveBeenCalled();
   });
 
+  describe('presentation across a main-connection rejoin', () => {
+    // The presentation is joined onto our participant; a main rejoin replaces
+    // that participant. Like tdesktop checkNextJoinAction, the presentation is
+    // rebuilt only after the main join — never concurrently with it.
+    function makePresentation(instance: GroupCallInstance) {
+      const track = new FakeTrack();
+      const streamManager = {
+        inputStream: {getVideoTracks: () => [track]},
+        stop: vi.fn()
+      };
+      const previous = {
+        streamManager,
+        joinAccepted: true,
+        acceptedCallInput: PRESENTATION_CALL,
+        closeConnectionAndStream: vi.fn()
+      } as any;
+      (instance.connections as any).presentation = previous;
+      const replacements: any[] = [];
+      const negotiations: Array<ReturnType<typeof deferred<void>>> = [];
+      vi.spyOn(instance, 'createConnectionInstance').mockImplementation(() => {
+        const connection = new EventTarget();
+        const negotiation = deferred<void>();
+        negotiations.push(negotiation);
+        const replacement = {
+          connection,
+          streamManager,
+          joinAccepted: true,
+          acceptedCallInput: PRESENTATION_CALL,
+          createPeerConnection: vi.fn(() => connection),
+          createDescription: vi.fn(),
+          appendInputStreamWithE2e: vi.fn(async() => {}),
+          negotiate: vi.fn(() => negotiation.promise),
+          requestNegotiation: vi.fn(async() => {}),
+          closeConnection: vi.fn(),
+          closeConnectionAndStream: vi.fn()
+        } as any;
+        replacements.push(replacement);
+        (instance.connections as any).presentation = replacement;
+        return replacement;
+      });
+      return {track, previous, replacements, negotiations};
+    }
+
+    it('defers self-recovery while the main connection rejoins, then rebuilds once', async() => {
+      const {instance} = makeReadyInstance();
+      instances.push(instance);
+      const {previous, replacements, negotiations} = makePresentation(instance);
+
+      instance.beginMainRejoin();
+      await instance.recoverPresentationConnection(previous);
+      expect(replacements).toHaveLength(0);
+
+      const finished = instance.finishMainRejoin(true);
+      await vi.waitFor(() => expect(replacements).toHaveLength(1));
+      negotiations[0].resolve();
+      await finished;
+      expect(instance.connections.presentation).toBe(replacements[0]);
+    });
+
+    it('waits for a recovery that raced the main rejoin and rebuilds it on the new join', async() => {
+      const {instance} = makeReadyInstance();
+      instances.push(instance);
+      const {replacements, negotiations, previous} = makePresentation(instance);
+
+      const early = instance.recoverPresentationConnection(previous);
+      await vi.waitFor(() => expect(replacements).toHaveLength(1));
+      instance.beginMainRejoin();
+      const finished = instance.finishMainRejoin(true);
+      // The early join may have landed on the participant the rejoin replaced.
+      negotiations[0].resolve();
+      await early;
+      await vi.waitFor(() => expect(replacements).toHaveLength(2));
+      negotiations[1].resolve();
+      await finished;
+      expect(instance.connections.presentation).toBe(replacements[1]);
+      expect(replacements[0].closeConnectionAndStream).toHaveBeenCalledWith(false);
+    });
+
+    it('keeps the screen capture when a main rejoin breaks a running recovery', async() => {
+      const {instance, managers} = makeReadyInstance();
+      instances.push(instance);
+      const {track, replacements, negotiations, previous} = makePresentation(instance);
+
+      const early = instance.recoverPresentationConnection(previous);
+      await vi.waitFor(() => expect(replacements).toHaveLength(1));
+      instance.beginMainRejoin();
+      negotiations[0].reject(new Error('GROUPCALL_JOIN_MISSING'));
+      // Deferred to the rebuild after the main join, not a failure.
+      await expect(early).resolves.toBeUndefined();
+
+      // Not torn down: same capture, same presentation slot, no leave.
+      expect(track.stop).not.toHaveBeenCalled();
+      expect(replacements[0].closeConnection).toHaveBeenCalledTimes(1);
+      expect(replacements[0].closeConnectionAndStream).not.toHaveBeenCalled();
+      expect(instance.connections.presentation).toBe(replacements[0]);
+      expect(managers.appGroupCallsManager.leaveGroupCallPresentation).not.toHaveBeenCalled();
+
+      const finished = instance.finishMainRejoin(true);
+      await vi.waitFor(() => expect(replacements).toHaveLength(2));
+      negotiations[1].resolve();
+      await finished;
+      expect(instance.connections.presentation).toBe(replacements[1]);
+      expect(track.stop).not.toHaveBeenCalled();
+    });
+
+    it('does not rebuild after a main rejoin that gave up', async() => {
+      const {instance} = makeReadyInstance();
+      instances.push(instance);
+      const {replacements, previous} = makePresentation(instance);
+
+      instance.beginMainRejoin();
+      await instance.finishMainRejoin(false);
+      expect(replacements).toHaveLength(0);
+
+      // Self-recovery works again once no rejoin is in flight.
+      void instance.recoverPresentationConnection(previous);
+      await vi.waitFor(() => expect(replacements).toHaveLength(1));
+    });
+  });
+
   it('recovers a current presentation whose transport fails and ignores stale transport events', async() => {
     const {instance} = makeReadyInstance();
     instances.push(instance);

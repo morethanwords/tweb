@@ -34,6 +34,12 @@ vi.mock('@lib/calls/e2e/encryptWorkerHost', () => {
   return {EncryptWorkerHost};
 });
 
+// The legacy join captures the microphone first; the roster test below only
+// needs a stand-in manager.
+vi.mock('@lib/calls/helpers/createMainStreamManager', () => ({
+  default: vi.fn(async() => ({stop: vi.fn()}))
+}));
+
 import groupCallsController from '@lib/calls/groupCallsController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import type {InputGroupCall, Updates} from '@layer';
@@ -303,7 +309,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
     (groupCallsController as any).log.warn = warn;
 
     try {
-      await expect(groupCallsController.joinGroupCall(1 as ChatId, 'call-id' as any, true, true))
+      await expect(groupCallsController.joinGroupCall(1 as ChatId, 'call-id' as any, true, false))
       .resolves.toBeUndefined();
       const rosterError = new Error('initial roster proxy failed');
       rejectRoster(rosterError);

@@ -48,6 +48,10 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
       }
     });
 
+    listenerSetter.add(this.instance)('speaking', ({peerId}) => {
+      this.participantsElements.get(peerId)?.forEach((element) => element.refreshSpeaking());
+    });
+
     listenerSetter.add(this.instance)('pinned', (source) => {
       this.participantsElements.forEach((map) => {
         map.forEach((element) => {

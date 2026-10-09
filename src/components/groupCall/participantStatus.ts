@@ -38,7 +38,9 @@ export default class GroupCallParticipantStatusElement {
     } else if(state === states.MUTED_FOR_ME) {
       element2 = i18n('VoiceChat.Status.MutedForYou');
       actionClassName = 'is-muted';
-    } else if(state === states.UNMUTED) {
+    } else if(state === states.SPEAKING) {
+      // Only while the audio level says so — an open microphone alone is
+      // "listening", like in the native apps.
       element2 = i18n('VoiceChat.Status.Speaking');
       actionClassName = 'is-speaking';
     } else if(state === states.HAND) {

@@ -127,6 +127,25 @@ describe('GroupCallConnectionInstance connection data validation', () => {
     expect(connection.setRemoteDescription).not.toHaveBeenCalled();
   });
 
+  it('hands the remote entries its answer rejects to the call, which frees their playback', async() => {
+    const {connection, description, instance} = makeInstance(JSON.stringify(answer()));
+    connection.iceConnectionState = 'connected';
+    const leftEntry = {mid: '1', type: 'audio', source: 500, shouldBeSkipped: () => true};
+    const keptEntry = {mid: '0', type: 'audio', source: 1, shouldBeSkipped: (): boolean => false};
+    description.getEntryByMid = vi.fn((mid: string) => mid === '1' ? leftEntry : keptEntry) as any;
+    joinMocks.fixLocalOffer.mockImplementation(({offer}) => ({
+      offer,
+      sdp: {media: [{mediaType: 'audio', isSending: true, mid: '0'}, {mediaType: 'audio', isSending: false, mid: '1'}], bundle: ['0', '1']}
+    }));
+    const releaseRemovedEntries = vi.fn();
+    (instance as any).groupCall.releaseRemovedEntries = releaseRemovedEntries;
+
+    await expect(instance.negotiate()).resolves.toBeUndefined();
+
+    expect(description.deleteEntry).toHaveBeenCalledWith(leftEntry);
+    expect(releaseRemovedEntries).toHaveBeenCalledWith([leftEntry]);
+  });
+
   it('rejects an answer that is not JSON at all', async() => {
     const {connection, instance} = makeInstance('{"transport":');
 

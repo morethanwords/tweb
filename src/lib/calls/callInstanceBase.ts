@@ -1,6 +1,7 @@
 import safePlay from '@helpers/dom/safePlay';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQueue';
+import WeakRefSet from '@helpers/weakRefSet';
 import {logger} from '@lib/logger';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
 import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
@@ -22,6 +23,17 @@ export type TryAddTrackOptions = {
 
 type MediaDeviceChangeKind = 'audio' | 'video' | 'output';
 
+/** How one remote participant is heard locally (element volume, 0..1). */
+export type OutputAudioState = {volume: number, muted: boolean};
+
+export const DEFAULT_OUTPUT_AUDIO_STATE: Readonly<OutputAudioState> = {volume: 1, muted: false};
+
+// Remote audio is played by one element per remote track, keyed by its source,
+// so a new participant never touches the element anyone else is heard through.
+export function getOutputAudioElementKey(source: string | number) {
+  return 'audio:' + source;
+}
+
 export default abstract class CallInstanceBase<E extends EventListenerListeners> extends EventListenerBase<E> {
   protected log: ReturnType<typeof logger>;
   protected outputDeviceId: string;
@@ -41,8 +53,21 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   protected player: HTMLElement;
   protected elements: Map<string, HTMLMediaElement>;
 
+  // Played inside the gesture that starts the call (fixSafariAudio). WebKit
+  // lifts its autoplay restriction per element, so a group call hands this
+  // element to its first remote audio track instead of creating a fresh one.
   protected audio: HTMLAudioElement;
-  // protected fixedSafariAudio: boolean;
+  // Remote audio elements whose play() the autoplay policy refused; retried on
+  // the next user gesture (Safari without an active capture, for example).
+  private playbackBlockedElements = new Set<HTMLMediaElement>();
+  private observedOutputAudioTracks = new WeakSet<MediaStreamTrack>();
+  // Where each remote audio track currently plays; read by the track's single
+  // `unmute` listener (see playRemoteAudio).
+  private remoteAudioTargets = new WeakMap<MediaStreamTrack, {element: HTMLMediaElement, stream: MediaStream}>();
+  // The on-screen tiles are clones of the per-source video elements (see
+  // cloneVideoElement); tracked so a new stream for the source reaches them
+  // wherever they are rendered, Document PiP included.
+  private videoClones = new Map<string, WeakRefSet<HTMLVideoElement>>();
 
   protected getStream: ReturnType<typeof getStreamCached>;
 
@@ -97,9 +122,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   public abstract get isClosing(): boolean;
 
   public fixSafariAudio() {
-    // if(this.fixedSafariAudio) return;
     safePlay(this.audio);
-    // this.fixedSafariAudio = true;
   }
 
   protected isInputTrackAvailable(track: MediaStreamTrack | undefined): boolean {
@@ -175,6 +198,8 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     this.pendingInputAudioTracks.forEach((track) => stopTrack(track));
     this.pendingInputAudioTracks.clear();
 
+    this.stopRetryingBlockedPlayback();
+    this.videoClones?.clear();
     this.player.textContent = '';
     this.player.remove();
     this.elements.clear();
@@ -212,74 +237,79 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
     const isOutput = type === 'output';
 
-    const {player, elements, streamManager} = this;
+    const {elements, streamManager} = this;
 
-    const tagName = track.kind as StreamItem['kind'];
-    const isVideo = tagName === 'video';
-
-    const elementEndpoint = isVideo ? source : tagName;
-    let element = elements.get(elementEndpoint);
-
-    if(isVideo) {
-      track.addEventListener('ended', () => {
-        this.log('[track] onended');
-        elements.delete(elementEndpoint);
-        // element.remove();
-      }, {once: true});
-    }
+    const isVideo = track.kind === 'video';
 
     if(isOutput) {
       streamManager.addTrack(stream, track, type);
     }
 
-    const useStream = isVideo ? stream : streamManager.outputStream;
+    if(!isVideo) {
+      // Our own microphone is never played back.
+      if(isOutput) {
+        this.attachOutputAudioTrack(stream, track, source);
+      }
+
+      return source;
+    }
+
+    const elementEndpoint = source;
+    let element = elements.get(elementEndpoint);
+
+    track.addEventListener('ended', () => {
+      this.log('[track] onended');
+      // A late `ended` of a replaced track must not drop the element that
+      // already shows its successor.
+      const current = elements.get(elementEndpoint);
+      if(current && current.srcObject !== stream) {
+        return;
+      }
+
+      elements.delete(elementEndpoint);
+      // element.remove();
+    }, {once: true});
+
+    const useStream = stream;
     if(!element) {
-      element = document.createElement(tagName);
+      element = document.createElement('video');
       element.autoplay = true;
       element.srcObject = useStream;
       element.volume = 1.0;
 
       this.applyCurrentOutputDeviceToElement(element);
 
-      if(!isVideo) {
-        player.appendChild(element);
-      } else {
-        element.setAttribute('playsinline', 'true');
-        element.muted = true;
-        // Mirror ONLY our own self-view (`type === 'input'`), never the remote
-        // participant's video (`type === 'output'`). This matches every video
-        // client (iOS/tgcalls, FaceTime, Zoom, …): the left/right flip is a
-        // local presentation convenience so you see yourself as in a mirror
-        // (pat your hair on the correct side). It is NOT a property of the
-        // stream — the pixels on the wire are always un-mirrored, so the other
-        // side sees us as in real life (text/gestures un-inverted). Mirroring
-        // their incoming feed too would flip any text they hold up and reverse
-        // their gestures relative to reality. tgcalls enforces this by only
-        // flipping frames from the local camera buffer (TGRTCCVPixelBuffer);
-        // decoded remote frames are never flipped.
-        //
-        // Exception: our own rear-facing camera (`facingMode === 'environment'`)
-        // stays un-mirrored — flipping it would invert any text or sign the
-        // user is pointing the camera at. shouldMirrorVideoTrack handles that.
-        if(type === 'input' && shouldMirrorVideoTrack(track)) {
-          element.classList.add('call-video-mirror');
-        }
+      element.setAttribute('playsinline', 'true');
+      element.muted = true;
+      // Mirror ONLY our own self-view (`type === 'input'`), never the remote
+      // participant's video (`type === 'output'`). This matches every video
+      // client (iOS/tgcalls, FaceTime, Zoom, …): the left/right flip is a
+      // local presentation convenience so you see yourself as in a mirror
+      // (pat your hair on the correct side). It is NOT a property of the
+      // stream — the pixels on the wire are always un-mirrored, so the other
+      // side sees us as in real life (text/gestures un-inverted). Mirroring
+      // their incoming feed too would flip any text they hold up and reverse
+      // their gestures relative to reality. tgcalls enforces this by only
+      // flipping frames from the local camera buffer (TGRTCCVPixelBuffer);
+      // decoded remote frames are never flipped.
+      //
+      // Exception: our own rear-facing camera (`facingMode === 'environment'`)
+      // stays un-mirrored — flipping it would invert any text or sign the
+      // user is pointing the camera at. shouldMirrorVideoTrack handles that.
+      if(type === 'input' && shouldMirrorVideoTrack(track)) {
+        element.classList.add('call-video-mirror');
       }
-      // audio.play();
 
       elements.set(elementEndpoint, element);
     } else {
-      // ! EVEN IF MEDIASTREAM IS THE SAME NEW TRACK WON'T PLAY WITHOUT REPLACING IT WHEN NEW PARTICIPANT IS ENTERING !
-      // if(element.srcObject !== useStream) {
       element.srcObject = useStream;
-      // }
     }
 
-    // The shared audio element is created and play()-primed before it has a
-    // source. Assigning srcObject afterwards does not reliably restart it,
-    // especially when a remote track appears muted and starts producing frames
-    // only after async negotiation/decryption. Always play after the source is
-    // installed, and retry once when that first track becomes live.
+    // A rebuilt connection delivers the same source on a new stream (into the
+    // old element or, if that one was released, a new one); the tiles on
+    // screen would keep showing the dead stream's last frame.
+    this.retargetVideoClones(elementEndpoint, useStream);
+
     safePlay(element);
     if(track.muted) {
       track.addEventListener('unmute', () => {
@@ -290,6 +320,214 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     }
 
     return source;
+  }
+
+  /**
+   * Play one remote audio track through its own element. Each element is
+   * created once per source and only ever (re)assigned its own track, so
+   * someone joining never interrupts anyone else — the previous single shared
+   * element had its srcObject reset for every new track, restarting playback
+   * for the whole call. Chromium mixes every element's WebRTC audio in one
+   * renderer, so the per-element cost is small, and per-element volume is what
+   * makes per-participant volume possible.
+   */
+  private attachOutputAudioTrack(stream: MediaStream | undefined, track: MediaStreamTrack, source: string) {
+    const key = getOutputAudioElementKey(source);
+    let element = this.elements.get(key);
+    if(!element) {
+      element = this.takePrimedAudioElement() ?? document.createElement('audio');
+      element.autoplay = true;
+      this.applyCurrentOutputDeviceToElement(element);
+      this.player.append(element);
+      this.elements.set(key, element);
+    }
+
+    this.applyOutputAudioState(element, source);
+    // Every remote source gets its own single-track stream from the SDP msid.
+    this.playRemoteAudio(element, stream ?? new MediaStream([track]), track);
+
+    if(!this.observedOutputAudioTracks.has(track)) {
+      this.observedOutputAudioTracks.add(track);
+      track.addEventListener('ended', () => {
+        this.releaseOutputAudio(source, track);
+      }, {once: true});
+    }
+  }
+
+  /**
+   * The element primed by fixSafariAudio, while no remote track has it yet.
+   * Moves it out of the plain `audio` slot so it is owned (and released) like
+   * any per-source element.
+   */
+  private takePrimedAudioElement(): HTMLAudioElement | undefined {
+    const {audio} = this;
+    if(!audio || this.elements.get('audio') !== audio) {
+      return;
+    }
+
+    this.elements.delete('audio');
+    return audio;
+  }
+
+  /**
+   * Stop playing a remote audio source and free its element (and the media
+   * player behind it — browsers cap those per page). Called when the source's
+   * track ends and when its participant leaves (the entry is removed from the
+   * SDP). With `track`, only if the element still plays that track: a late
+   * signal about a replaced track must not silence its successor.
+   */
+  protected releaseOutputAudio(source: string | number, track?: MediaStreamTrack): boolean {
+    const key = getOutputAudioElementKey(source);
+    const element = this.elements.get(key);
+    if(!element) {
+      return false;
+    }
+
+    if(track && !(element.srcObject as MediaStream)?.getTracks?.().includes(track)) {
+      return false;
+    }
+
+    this.playbackBlockedElements.delete(element);
+    element.srcObject = null;
+    element.remove();
+    this.elements.delete(key);
+    return true;
+  }
+
+  /**
+   * Play a remote audio stream through `element`: now, again whenever the
+   * track resumes producing frames (it can start muted until negotiation or
+   * decryption completes), and on the next user gesture if the autoplay policy
+   * refused. Shared by the group-call elements and the 1-on-1 call's one.
+   */
+  protected playRemoteAudio(element: HTMLMediaElement, stream: MediaStream, track: MediaStreamTrack) {
+    if(element.srcObject !== stream) {
+      element.srcObject = stream;
+    }
+
+    this.playOutputMedia(element);
+
+    const observed = this.remoteAudioTargets.has(track);
+    this.remoteAudioTargets.set(track, {element, stream});
+    if(!observed) {
+      track.addEventListener('unmute', () => {
+        const target = this.remoteAudioTargets?.get(track);
+        if(target && target.element.srcObject === target.stream) {
+          this.playOutputMedia(target.element);
+        }
+      });
+    }
+  }
+
+  /** Per-source playback state; group calls map it to the participant. */
+  protected getOutputAudioState(source: string): OutputAudioState {
+    return DEFAULT_OUTPUT_AUDIO_STATE;
+  }
+
+  protected applyOutputAudioState(element: HTMLMediaElement, source: string) {
+    const {volume, muted} = this.getOutputAudioState(source);
+    // An element cannot amplify: anything above 100% plays at 100%.
+    element.volume = Math.max(0, Math.min(1, volume));
+    element.muted = muted;
+  }
+
+  /** Re-apply the playback state of every remote audio element of `sources`. */
+  protected refreshOutputAudioState(sources: Iterable<number | string>) {
+    for(const source of sources) {
+      const element = this.elements.get(getOutputAudioElementKey(source));
+      if(element) {
+        this.applyOutputAudioState(element, '' + source);
+      }
+    }
+  }
+
+  private playOutputMedia(element: HTMLMediaElement) {
+    let promise: Promise<void> | undefined;
+    try {
+      promise = element.play();
+    } catch(err) {
+      this.log?.warn?.('playing remote audio failed', err);
+      return;
+    }
+
+    promise?.catch?.((err: unknown) => {
+      const name = (err as DOMException)?.name;
+      if(name === 'NotAllowedError') {
+        this.log?.warn?.('remote audio playback waits for a user gesture');
+        this.retryPlaybackOnGesture(element);
+      } else if(name !== 'AbortError') { // AbortError: superseded by a newer source
+        this.log?.warn?.('playing remote audio failed', err);
+      }
+    });
+  }
+
+  private retryPlaybackOnGesture(element: HTMLMediaElement) {
+    const wasEmpty = !this.playbackBlockedElements.size;
+    this.playbackBlockedElements.add(element);
+    if(wasEmpty) {
+      document.addEventListener('pointerdown', this.retryBlockedPlayback, true);
+      document.addEventListener('keydown', this.retryBlockedPlayback, true);
+    }
+  }
+
+  // Released elements leave the set (releaseOutputAudio); the 1-on-1 call's
+  // element is never attached to the document, so attachment is no criterion.
+  private retryBlockedPlayback = () => {
+    const elements = [...this.playbackBlockedElements];
+    this.stopRetryingBlockedPlayback();
+    elements.forEach((element) => this.playOutputMedia(element));
+  };
+
+  private stopRetryingBlockedPlayback() {
+    this.playbackBlockedElements?.clear();
+    document.removeEventListener('pointerdown', this.retryBlockedPlayback, true);
+    document.removeEventListener('keydown', this.retryBlockedPlayback, true);
+  }
+
+  /** A tile for `source`: a clone of its video element, kept in sync with it. */
+  protected cloneVideoElement(source: string, element: HTMLVideoElement): HTMLVideoElement {
+    const clone = element.cloneNode() as HTMLVideoElement;
+    clone.srcObject = element.srcObject;
+    let clones = this.videoClones.get(source);
+    if(!clones) {
+      this.videoClones.set(source, clones = new WeakRefSet());
+    }
+
+    clones.track(clone);
+    return clone;
+  }
+
+  private retargetVideoClones(source: string, stream: MediaStream) {
+    this.videoClones.get(source)?.forEachLive((clone) => {
+      if(clone.srcObject !== stream) {
+        clone.srcObject = stream;
+        safePlay(clone);
+      }
+    });
+  }
+
+  /**
+   * Free the video element of a remote source whose entry is gone (its
+   * participant stopped the video or left, or the connection was replaced):
+   * it holds a media player and would keep receiving the speaker selection
+   * until hang-up. With `track`, only if the element still shows it. Unless
+   * `keepTiles`, the source's tile registry goes too; a replaced connection
+   * keeps it so its next stream reaches the tiles still on screen.
+   */
+  protected releaseOutputVideo(source: string | number, track?: MediaStreamTrack, keepTiles?: boolean): boolean {
+    const key = '' + source;
+    const element = this.elements.get(key);
+    if(!element || (track && !(element.srcObject as MediaStream)?.getTracks?.().includes(track))) {
+      return false;
+    }
+
+    element.srcObject = null;
+    this.elements.delete(key);
+    if(!keepTiles) {
+      this.videoClones.delete(key);
+    }
+
+    return true;
   }
 
   public setMuted(muted?: boolean) {

@@ -29,6 +29,7 @@ export default class GroupCallParticipantVideoElement {
   private groupCallParticipantStatus: GroupCallParticipantStatusElement;
   private peerName: string;
   private isPinned: boolean;
+  private participant: GroupCallParticipant;
 
   constructor(private managers: AppManagers, private instance: GroupCallInstance, public source: GroupCallOutputSource) {
     // a native button only with the keyboard layer: it takes the focus on click
@@ -125,10 +126,18 @@ export default class GroupCallParticipantVideoElement {
   }
 
   public updateParticipant(participant: GroupCallParticipant) {
-    const state = getGroupCallParticipantMutedState(participant);
+    this.participant = participant;
+    const state = getGroupCallParticipantMutedState(participant, this.instance.isSpeaking(getPeerId(participant.peer)));
 
     this.groupCallParticipantMutedIcon.setState(state);
     this.groupCallParticipantStatus.setState(state, participant);
+  }
+
+  // The tile's status line follows the participant's actual speech.
+  public refreshSpeaking() {
+    if(this.participant) {
+      this.updateParticipant(this.participant);
+    }
   }
 
   public destroy() {
