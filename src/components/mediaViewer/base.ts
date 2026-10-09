@@ -27,7 +27,6 @@ import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import isTargetAnInput from '@helpers/dom/isTargetAnInput';
 import {FOCUS_TRAP_ATTACHED_ATTRIBUTE} from '@helpers/dom/focusTrap';
 import Modes from '@config/modes';
-import getVisibleRect from '@helpers/dom/getVisibleRect';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import generatePathData from '@helpers/generatePathData';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -67,13 +66,13 @@ import {MediaSize} from '@helpers/mediaSize';
 import {getRtmpStreamUrl} from '@lib/rtmp/url';
 import boxBlurCanvasRGB from '@vendor/fastBlur';
 import {i18n} from '@lib/langPack';
-import {getQualityFilesEntries} from '@lib/hls/createHlsVideoSource';
+import getQualityLevels, {playsOverHls} from '@lib/hls/getQualityLevels';
 import {snapQualityHeight} from '@lib/hls/snapQualityHeight';
 import {ButtonMenuItemWithAuxiliaryText} from '@lib/mediaPlayer/qualityLevelsSwitchButton';
 import formatBytes from '@helpers/formatBytes';
-import getMediaViewerClipPath from '@components/mediaViewer/clipPath';
-import getMediaViewerSnapshotSize from '@components/mediaViewer/snapshotSize';
-import shouldSnapshotImage from '@components/mediaViewer/shouldSnapshotImage';
+import {getMediaSourceClip} from '@components/mediaViewer/clipPath';
+import getEffectiveCornerRadii from '@components/mediaViewer/cornerRadii';
+import snapshotRenderedMedia, {copyRenderedImage, RenderedMedia} from '@components/mediaViewer/snapshotRenderedMedia';
 import getMediaViewerDocumentSize from '@components/mediaViewer/documentSize';
 import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
@@ -85,6 +84,7 @@ import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import {Storyboard, StoryboardFrame} from '@lib/mediaPlayer/preview';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
+import isVideoStalled from '@helpers/dom/isVideoStalled';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1338,26 +1338,13 @@ export default class AppMediaViewerBase<
     if(target === this.content.media) {
       needOpacity = true;
     } else if(!target.classList.contains('profile-avatars-avatar')) {
-      overflowElement = findUpClassName(realParent, 'scrollable');
-      let overflowRect: DOMRectMinified;
       // In chats, scrollable extends past the visible bubble area via negative inset-block,
-      // so clip the overflow rect to .bubbles-viewport (the actual visible region between
+      // so the source is measured against .bubbles-viewport (the actual visible region between
       // topbar and chat-input) when present.
-      const chatContainer = overflowElement && findUpClassName(realParent, 'chat');
-      const bubblesViewport = chatContainer?.querySelector(':scope > .bubbles-viewport') as HTMLElement;
-      if(bubblesViewport) {
-        const baseRect = overflowElement.getBoundingClientRect();
-        const viewportRect = bubblesViewport.getBoundingClientRect();
-        overflowRect = {
-          top: Math.max(baseRect.top, viewportRect.top),
-          right: Math.min(baseRect.right, viewportRect.right),
-          bottom: Math.min(baseRect.bottom, viewportRect.bottom),
-          left: Math.max(baseRect.left, viewportRect.left)
-        };
-      }
-      const visibleRect = overflowElement && getVisibleRect(realParent, overflowElement, true, rect, overflowRect);
+      const sourceClip = getMediaSourceClip(realParent, rect);
+      overflowElement = sourceClip.overflowElement;
 
-      if(closing && overflowElement && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
+      if(closing && overflowElement && !sourceClip.canCloseInto) {
         // On close, retarget to the centered media instead of flying toward an
         // off-screen / larger-than-viewport source. Retargeting keeps the mover where
         // it already is, so when the source is fully off-screen there's no motion — and
@@ -1367,17 +1354,13 @@ export default class AppMediaViewerBase<
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
         needOpacity = true;
-      } else if(overflowElement && !visibleRect) {
+      } else if(overflowElement && !sourceClip.visibleRect) {
         // Opening from a source that's off-screen — fade in via opacity.
         needOpacity = true;
-      } else if(visibleRect && (visibleRect.overflow.vertical || visibleRect.overflow.horizontal)) {
+      } else {
         // Reproduce only the clipping ancestor boundaries. The target's own edges
         // must stay open so the mover can grow out of its source rectangle.
-        viewportClipPath = getMediaViewerClipPath({
-          visibleRect,
-          viewportWidth: windowSize.width,
-          viewportHeight: windowSize.height
-        });
+        viewportClipPath = sourceClip.clipPath;
       }
     }
 
@@ -1461,7 +1444,7 @@ export default class AppMediaViewerBase<
     // (e.g. the rounded sharedMedia grid container) when the corresponding corner of
     // realParent coincides with the ancestor's corner — otherwise interior cells would
     // pick up the grid's outer rounding incorrectly.
-    const effectiveCornerRadii = this.computeEffectiveCornerRadii(realParent, rect, overflowElement);
+    const effectiveCornerRadii = getEffectiveCornerRadii(realParent, rect, overflowElement);
     // The mover is non-uniformly scaled (scaleX may differ from scaleY when the thumb's
     // aspect doesn't match the full media's — typical for sharedMedia square cells over
     // landscape photos). Express radii as elliptical X/Y per corner so the visible
@@ -1547,62 +1530,25 @@ export default class AppMediaViewerBase<
     });
 
     if(!closing) {
-      let mediaElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement;
+      let mediaElement: RenderedMedia;
 
-      const selector = 'video, img, .canvas-thumbnail';
-      const queryFrom = target.matches(selector) ? target.parentElement : target;
-      const elements = Array.from(queryFrom.querySelectorAll(selector)) as Array<HTMLImageElement | HTMLVideoElement | HTMLCanvasElement>;
-      if(elements.length) {
-        const snapshotSource = elements.pop();
-        target = snapshotSource;
-        // A rendered image can reuse the browser's already-decoded resource, so canvas
-        // snapshots are reserved for video/canvas frames (and the blurred live-stream
-        // background) plus images whose blob URL the worker already dropped — see
-        // shouldSnapshotImage. Their backing store is bounded to the displayed size:
-        // the old intrinsic-size copy synchronously allocated and painted
-        // multi-megapixel canvases immediately before the very first transition.
-        if(
-          this.live ||
-          !(snapshotSource instanceof HTMLImageElement) ||
-          shouldSnapshotImage(snapshotSource)
-        ) {
-          const sourceWidth = snapshotSource instanceof HTMLImageElement ? snapshotSource.naturalWidth :
-            snapshotSource instanceof HTMLVideoElement ? snapshotSource.videoWidth : snapshotSource.width;
-          const sourceHeight = snapshotSource instanceof HTMLImageElement ? snapshotSource.naturalHeight :
-            snapshotSource instanceof HTMLVideoElement ? snapshotSource.videoHeight : snapshotSource.height;
-          const snapshotSize = getMediaViewerSnapshotSize({
-            width: rect.width,
-            height: rect.height,
-            sourceWidth,
-            sourceHeight,
-            devicePixelRatio: this.live ? 1 : window.devicePixelRatio
-          });
-          const canvas = document.createElement('canvas');
-          canvas.width = snapshotSize.width;
-          canvas.height = snapshotSize.height;
-          canvas.className = 'canvas-thumbnail thumbnail media-photo';
-          const context = canvas.getContext('2d');
-          if(context) {
-            try {
-              context.drawImage(snapshotSource, 0, 0, canvas.width, canvas.height);
-              if(this.live) {
-                boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 8, 2);
-              }
-              target = canvas;
-            } catch{
-              // Keep the rendered source as a fallback when the browser cannot copy
-              // a not-yet-ready video frame or a protected canvas.
-            }
-          }
-        }
+      // The live stream's background is the stream frame blurred, so it is always copied
+      const snapshot = snapshotRenderedMedia(target, {
+        width: rect.width,
+        height: rect.height,
+        devicePixelRatio: this.live ? 1 : window.devicePixelRatio,
+        alwaysCopy: this.live,
+        processCanvas: this.live ? (context, canvas) => boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 8, 2) : undefined
+      });
+      if(snapshot) {
+        target = snapshot;
       }
 
       // Pick a concrete media element before the avatar-container fallback.
       // findUpAvatar(<img>) is truthy too, but querying inside that <img> yields
       // no snapshot and leaves the whole opening transition visually empty.
       if(target instanceof HTMLImageElement) {
-        mediaElement = new Image();
-        mediaElement.src = target.currentSrc || target.src;
+        mediaElement = copyRenderedImage(target);
       } else if(target instanceof HTMLVideoElement) {
         mediaElement = createVideo({middleware: mover.middlewareHelper.get()});
         mediaElement.src = target.src;
@@ -1610,8 +1556,7 @@ export default class AppMediaViewerBase<
         const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
         const image = images.pop();
         if(image) {
-          mediaElement = new Image();
-          mediaElement.src = image.currentSrc || image.src;
+          mediaElement = copyRenderedImage(image);
           mover.append(mediaElement);
         } else {
           const el = target.querySelector('.avatar[data-color]');
@@ -2091,56 +2036,6 @@ export default class AppMediaViewerBase<
     });
   }
 
-  // Walk up from element collecting per-corner radii (tl, tr, br, bl) in viewport px.
-  // For each clipping ancestor (overflow != visible) with non-zero border-radius, inherit
-  // the ancestor's corner radius only when element's corresponding corner coincides with
-  // the ancestor's — so interior items in a rounded container don't pick up the outer
-  // rounding, but a corner item does.
-  protected computeEffectiveCornerRadii(
-    element: HTMLElement,
-    elementRect: DOMRectMinified,
-    clippingBoundary?: HTMLElement
-  ): [number, number, number, number] {
-    const TOLERANCE = 1.5; // sub-pixel + grid-gap slack
-    const radii: [number, number, number, number] = [0, 0, 0, 0];
-
-    const elementStyle = window.getComputedStyle(element);
-    radii[0] = parseFloat(elementStyle.borderTopLeftRadius) || 0;
-    radii[1] = parseFloat(elementStyle.borderTopRightRadius) || 0;
-    radii[2] = parseFloat(elementStyle.borderBottomRightRadius) || 0;
-    radii[3] = parseFloat(elementStyle.borderBottomLeftRadius) || 0;
-
-    let ancestor = element.parentElement;
-    let depth = 0;
-    while(ancestor && ancestor !== document.body && depth++ < 12) {
-      const aStyle = window.getComputedStyle(ancestor);
-      if(aStyle.overflow !== 'visible') {
-        const aTL = parseFloat(aStyle.borderTopLeftRadius) || 0;
-        const aTR = parseFloat(aStyle.borderTopRightRadius) || 0;
-        const aBR = parseFloat(aStyle.borderBottomRightRadius) || 0;
-        const aBL = parseFloat(aStyle.borderBottomLeftRadius) || 0;
-
-        if(aTL || aTR || aBR || aBL) {
-          const aRect = ancestor.getBoundingClientRect();
-          const sameLeft = Math.abs(elementRect.left - aRect.left) < TOLERANCE;
-          const sameRight = Math.abs(elementRect.right - aRect.right) < TOLERANCE;
-          const sameTop = Math.abs(elementRect.top - aRect.top) < TOLERANCE;
-          const sameBottom = Math.abs(elementRect.bottom - aRect.bottom) < TOLERANCE;
-
-          if(aTL && sameLeft && sameTop) radii[0] = Math.max(radii[0], aTL);
-          if(aTR && sameRight && sameTop) radii[1] = Math.max(radii[1], aTR);
-          if(aBR && sameRight && sameBottom) radii[2] = Math.max(radii[2], aBR);
-          if(aBL && sameLeft && sameBottom) radii[3] = Math.max(radii[3], aBL);
-        }
-      }
-
-      if(ancestor === clippingBoundary) break;
-      ancestor = ancestor.parentElement;
-    }
-
-    return radii;
-  }
-
   protected getLayoutReserves(): {top: number, bottom: number} {
     if(mediaSizes.isMobile) {
       return {top: RESERVE_TOP_MOBILE, bottom: RESERVE_BOTTOM_MOBILE};
@@ -2311,22 +2206,9 @@ export default class AppMediaViewerBase<
     const altDocs = await this.managers.appDocsManager.getAltDocsByDocument(doc.id);
     if(!altDocs) return;
 
-    const qualityEntries = getQualityFilesEntries(altDocs);
-    if(!qualityEntries.length) return;
-
-    const availableHeights = Array.from(new Set(qualityEntries.map((entry) => snapQualityHeight(entry.h))))
-    .sort((a, b) => b - a);
-
-    const filteredEntries = availableHeights.map((height) => {
-      let chosenEntry: (typeof qualityEntries)[number];
-      for(const entry of qualityEntries) {
-        if(snapQualityHeight(entry.h) !== height) continue;
-        if(!chosenEntry || entry.bandwidth < chosenEntry.bandwidth) chosenEntry = entry;
-      }
-      return chosenEntry;
-    });
-
-    if(filteredEntries.length <= 1) return;
+    const filteredEntries = getQualityLevels(altDocs);
+    // * the menu is offered when the video plays over HLS: then there are qualities to save
+    if(!playsOverHls(filteredEntries)) return;
 
     const options: ButtonMenuItemOptionsVerifiable[] = await Promise.all(filteredEntries.map(async(entry) => {
       const doc = await this.managers.appDocsManager.getDoc(entry.id);
@@ -2848,11 +2730,7 @@ export default class AppMediaViewerBase<
           };
 
           video.addEventListener('waiting', () => {
-            const loading = video.networkState === video.NETWORK_LOADING;
-            const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
-
-            // this.log('video waiting for progress', loading, isntEnoughData);
-            if(loading && isntEnoughData) {
+            if(isVideoStalled(video)) {
               _onBuffering();
             }
           });

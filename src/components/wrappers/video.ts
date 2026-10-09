@@ -28,6 +28,7 @@ import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import rootScope from '@lib/rootScope';
 import {ThumbCache} from '@lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
@@ -60,7 +61,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 
 let turnedObserverOn = false;
 
-export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, fillBox, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, fillBox, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur, observer, setShowControlsOn, uploadingFileName, onGlobalMedia, onLoad, withPreview, hlsStreaming, streamablePreloader}: {
   doc: MyDocument,
   altDoc?: MyDocument,
   container?: HTMLElement,
@@ -93,7 +94,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   setShowControlsOn?: HTMLElement,
   uploadingFileName?: string,
   onGlobalMedia?: (media: HTMLMediaElement) => void,
-  onLoad?: () => void
+  onLoad?: () => void,
+  // * stream its quality ladder over HLS instead of the one file, as the media viewer does
+  hlsStreaming?: boolean,
+  // * a stream shows the media viewer's loader (the ring with a square), not the chat's spinner
+  streamablePreloader?: boolean
 }) {
   const supportsStreaming = doc.supportsStreaming && !ignoreStreaming;
   if(!supportsStreaming && altDoc && !onlyPreview && !IS_H265_SUPPORTED) {
@@ -527,6 +532,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   } else if(supportsStreaming && !withoutPreloader) {
     preloader = new ProgressivePreloader({
       cancelable: false,
+      streamable: streamablePreloader,
       attachMethod: 'prepend'
     });
   }
@@ -695,7 +701,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         video.append(...sources);
         video.load();
       } else {
-        renderImageFromUrl(video, cacheContext.url);
+        // * an `hls/` source is played by hls.js, see createVideo
+        renderImageFromUrl(video, hlsStreaming && supportsStreaming ? getDocumentURL(doc, {supportsHlsStreaming: true}) : cacheContext.url);
       }
     }, noop);
 
@@ -837,8 +844,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         return;
       }
 
-      video.muted = appMediaPlaybackController.muted;
-      video.volume = Math.min(appMediaPlaybackController.volume, 1);
+      appMediaPlaybackController.applySharedVolume(video);
     };
 
     const onPlaybackMediaParams = (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
@@ -846,9 +852,9 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         return;
       }
 
+      appMediaPlaybackController.applySharedVolume(video);
       video.muted = turnedObserverOn ? params.muted : true;
       video.playbackRate = params.playbackRate;
-      video.volume = Math.min(params.volume, 1);
     };
 
     appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);

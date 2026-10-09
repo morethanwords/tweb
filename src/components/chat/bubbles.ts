@@ -109,7 +109,8 @@ import paymentsWrapCurrencyAmount, {GRAM_CURRENCY_SYMBOL, formatNanoton, nanoton
 import {createPaymentPopup} from '@components/popups/payment';
 import isInDOM from '@helpers/dom/isInDOM';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners, {getMediaPeekDocSource, getMessageMediaPeekSource} from '@components/mediaPeek';
+import {findRegisteredMediaPeekElement, getRegisteredMediaPeekSource} from '@components/mediaPeek/sources';
 import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import wrapSticker from '@components/wrappers/sticker';
 import computeStickerSetPreviewGrid from '@helpers/stickerSetPreviewGrid';
@@ -125,7 +126,7 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import {BatchProcessor} from '@helpers/sortedList';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
-import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
+import wrapMediaSpoiler, {hasMediaSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 import liteMode from '@helpers/liteMode';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
@@ -646,6 +647,13 @@ function getBubbleFullMid(bubble: HTMLElement) {
   const mid = bubble.dataset.mid;
   if(mid === undefined) return;
   return makeFullMid(bubble.dataset.peerId.toPeerId(), +bubble.dataset.mid);
+}
+
+// * the message a media item of a bubble shows: an item of grouped messages names its own, an item of
+// * one message's album (paid media) is an index into the bubble's
+function getGroupedItemFullMid(bubble: HTMLElement, groupedItem: HTMLElement) {
+  const index = groupedItem ? +(groupedItem.dataset.index ?? -1) : -1;
+  return {fullMid: getBubbleFullMid(index !== -1 ? bubble : groupedItem || bubble), index};
 }
 
 const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
@@ -1595,13 +1603,21 @@ export default class ChatBubbles {
     !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('messages_downloaded', this.updateMessageReply);
     !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('stories_downloaded', this.updateMessageReply);
 
-    attachStickerViewerListeners({
+    attachMediaPeekListeners({
       listenTo: this.scrollable.container,
       listenerSetter: this.listenerSetter,
-      findTarget: (e) => {
-        const target = e.target as HTMLElement;
-        const found = target.closest('.attachment.media-sticker-wrapper, .attachment.media-gif-wrapper, .poll-option-sticker.media-sticker-wrapper') || (findUpClassName(target, 'attachment') && target.closest('.custom-emoji'));
-        return found as HTMLElement;
+      findTarget: (target) => {
+        // * a press while selecting selects
+        if(this.chat.selection.isSelecting) return;
+        const found = target.closest<HTMLElement>('.attachment.media-sticker-wrapper, .attachment.media-gif-wrapper, .poll-option-sticker.media-sticker-wrapper') ||
+          (findUpClassName(target, 'attachment') && target.closest<HTMLElement>('.custom-emoji')) ||
+          this.findMediaPeekTarget(target);
+        // * not what a spoiler hides: a GIF can have one too
+        if(found && !hasMediaSpoiler(found)) return found;
+      },
+      getSource: (element) => {
+        if(isRichMessageTarget(element)) return getRegisteredMediaPeekSource(element);
+        return element.dataset.docId ? getMediaPeekDocSource(element) : this.getMediaPeekSource(element);
       }
     });
     attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
@@ -4088,6 +4104,22 @@ export default class ChatBubbles {
     });
   }
 
+  // * a photo or video the media viewer would open
+  private findMediaPeekTarget(target: HTMLElement) {
+    if(this.chat.type === ChatType.Logs) return;
+    // * a rich message's media is its page's, and the page has said what it shows
+    return isRichMessageTarget(target) ?
+      findRegisteredMediaPeekElement(target) :
+      target.closest<HTMLElement>('.album-item, .attachment.media-container, .webpage-preview.media-container');
+  }
+
+  private getMediaPeekSource(element: HTMLElement) {
+    const bubble = findUpClassName(element, 'bubble');
+    if(!bubble || bubble.classList.contains('story')) return;
+    const {fullMid, index} = getGroupedItemFullMid(bubble, element.classList.contains('album-item') ? element : undefined);
+    return getMessageMediaPeekSource(fullMid && this.chat.getMessage(fullMid), index === -1 ? undefined : index);
+  }
+
   public checkTargetForMediaViewer(target: HTMLElement, e?: Event, mediaTimestamp?: number) {
     const bubble = findUpClassName(target, 'bubble');
     const documentDiv = findUpClassName(target, 'document-with-thumb');
@@ -4139,8 +4171,7 @@ export default class ChatBubbles {
       }
 
       cancelEvent(e);
-      const groupedItemIndex = groupedItem ? +(groupedItem.dataset.index ?? -1) : -1;
-      const fullMessageId = getBubbleFullMid(groupedItemIndex !== -1 ? bubble : groupedItem || bubble);
+      const {fullMid: fullMessageId, index: groupedItemIndex} = getGroupedItemFullMid(bubble, groupedItem);
       let message = this.chat.getMessage(fullMessageId), isSponsored = false;
       if(!message) {
         if(splitFullMid(fullMessageId).mid < 0) {

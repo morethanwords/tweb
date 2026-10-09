@@ -8,7 +8,7 @@ import rootScope from '@lib/rootScope';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import Scrollable from '@components/scrollable';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import AutocompleteHelper from '@components/chat/autocompleteHelper';
 import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
 
@@ -115,7 +115,7 @@ export default class StickersHelper extends AutocompleteHelper {
           mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
 
           this.listenerSetter = new ListenerSetter();
-          attachStickerViewerListeners({listenTo: this.container, listenerSetter: this.listenerSetter});
+          attachMediaPeekListeners({listenTo: this.container, listenerSetter: this.listenerSetter});
         }
 
         this.onChangeScreen();

@@ -10,7 +10,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import forEachReverse from '@helpers/array/forEachReverse';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import wrapSticker from '@components/wrappers/sticker';
 import {getStickerSetInputById, getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import isStickerSetAdded from '@lib/appManagers/utils/stickers/isStickerSetAdded';
@@ -163,7 +163,7 @@ const Stickers: Component = () => {
     setsDiv.classList.add('sticker-sets');
     tab.scrollable.append(setsDiv);
 
-    attachStickerViewerListeners({listenTo: setsDiv, listenerSetter: tab.listenerSetter});
+    attachMediaPeekListeners({listenTo: setsDiv, listenerSetter: tab.listenerSetter});
 
     attachClickEvent(setsDiv, (e) => {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');

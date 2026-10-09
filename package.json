@@ -22,6 +22,7 @@
     "test:focus:app": "playwright test e2e/focusPixelsApp.spec.ts",
     "test:a11y:app": "playwright test e2e/accessibilitySignedIn.spec.ts",
     "test:idle:app": "playwright test e2e/profileSidebarIdle.spec.ts",
+    "test:peek:app": "playwright test e2e/mediaPeekApp.spec.ts",
     "whybundled": "pnpm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
     "generate-changelog": "node ./src/scripts/generate_changelog.js",

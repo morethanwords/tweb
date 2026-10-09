@@ -1,0 +1,186 @@
+@use "../../scss/mixins" as *;
+@use "../../scss/variables" as *;
+
+// * the springy one, for switching between neighbours
+$switch-transition: .2s cubic-bezier(.12, 1.1, .56, 1.2);
+
+// * the one clock of the opening and the closing: 0 over what it is opened on, 1 shown. The flight,
+// * the crop and the cut are all worked out from it, so they move together - transitioned on their
+// * own, the transform runs on the compositor and a clip-path on the main thread, and the clip lags
+// * behind the picture it is meant to cut
+@property --media-peek-progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.MediaPeek {
+  position: fixed;
+  inset: 0;
+  z-index: var(--media-peek-z-index, 4);
+  pointer-events: none;
+  // * the registered initial value, spelled out for a browser without `@property`: there it snaps
+  // * from one end to the other instead of leaving every calc() above without a value
+  --media-peek-progress: 0;
+
+  @include animation-level-global(2) {
+    transition: --media-peek-progress var(--layer-transition);
+  }
+
+  &.visible {
+    --media-peek-progress: 1;
+  }
+
+  &:before {
+    content: " ";
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, .6);
+    opacity: 0;
+
+    @include animation-level-global(2) {
+      transition: opacity var(--layer-transition);
+    }
+  }
+
+  &.visible:before {
+    opacity: 1;
+  }
+
+  // * cut where the area it is opened from cuts what it is opened on, as the media viewer's mover is,
+  // * until it has grown out from under those edges
+  &Frame {
+    --media-peek-rest: calc(1 - var(--media-peek-progress));
+    position: absolute;
+    inset: 0;
+    clip-path: inset(
+      calc(var(--edge-top, 0px) * var(--media-peek-rest))
+      calc(var(--edge-right, 0px) * var(--media-peek-rest))
+      calc(var(--edge-bottom, 0px) * var(--media-peek-rest))
+      calc(var(--edge-left, 0px) * var(--media-peek-rest))
+    );
+
+    // * with nowhere to fly back to, it is put away where it is
+    &.inPlace {
+      --media-peek-progress: 1;
+    }
+  }
+
+  // * sits over what it was opened on until the peek is visible, and flies back there when it closes
+  &Mover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform:
+      translate(
+        calc(var(--origin-x, 0px) * var(--media-peek-rest) + var(--shift) * var(--media-peek-progress)),
+        calc(var(--origin-y, 0px) * var(--media-peek-rest))
+      )
+      scale(calc(var(--origin-scale, 1) * var(--media-peek-rest) + var(--media-peek-progress)));
+  }
+
+  &Item {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // * switching to another one: the old one shrinks away as the new one springs up
+  &Item.entering,
+  &Item.leaving {
+    transform: scale(.4);
+    opacity: 0;
+  }
+
+  &Item.entering,
+  &Item.leaving,
+  &Item.switching {
+    @include animation-level-global(2) {
+      transition: transform $switch-transition, opacity $switch-transition;
+    }
+  }
+
+  &Media {
+    position: absolute;
+
+    :global(.media-photo),
+    :global(.media-poster),
+    :global(.media-video) {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    // * a video still loading shows its progress over the poster, as the media viewer does
+    :global(.preloader-container) {
+      z-index: 2;
+    }
+
+    &.gif {
+      :global(.media-poster),
+      :global(.media-video) {
+        margin: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+    }
+
+    // * a photo, video or GIF grows from the crop it is shown in, with its corners, into a rounded whole
+    &.clip {
+      clip-path: inset(
+        calc(var(--crop-y, 0px) * var(--media-peek-rest))
+        calc(var(--crop-x, 0px) * var(--media-peek-rest))
+        round
+        calc(var(--radius-tl, 0px) * var(--media-peek-rest) + #{$border-radius} * var(--media-peek-progress))
+        calc(var(--radius-tr, 0px) * var(--media-peek-rest) + #{$border-radius} * var(--media-peek-progress))
+        calc(var(--radius-br, 0px) * var(--media-peek-rest) + #{$border-radius} * var(--media-peek-progress))
+        calc(var(--radius-bl, 0px) * var(--media-peek-rest) + #{$border-radius} * var(--media-peek-progress))
+      );
+    }
+  }
+
+  &Emoji {
+    position: absolute;
+    top: -3rem;
+    transform: translateX(calc(var(--shift) * -1)) scale(2);
+
+    &.withEffect {
+      top: -5.5rem;
+    }
+  }
+
+  // * the media shows at once, growing out of what it is opened on
+  &Media,
+  &Emoji,
+  :global(.emoji-animation) {
+    opacity: 0;
+
+    @include animation-level-global(2) {
+      transition: opacity var(--layer-transition);
+    }
+  }
+
+  &.visible &Media,
+  &.visible &Emoji,
+  &.visible :global(.emoji-animation) {
+    opacity: 1;
+  }
+
+  &.visible &Media {
+    transition: none;
+  }
+
+  // * put away, it flies back whole into what it was opened on and is gone once it lands there, as the
+  // * media viewer's mover is; only with nowhere to fly back to does it fade where it is
+  &.closing &Media {
+    opacity: 1;
+  }
+
+  &.closing &Frame.inPlace &Media {
+    opacity: 0;
+  }
+}

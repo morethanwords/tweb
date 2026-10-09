@@ -100,6 +100,7 @@ import {askOpenGoogleMaps} from '@components/confirmOpenGoogleMaps';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import showTooltip from '@components/tooltip';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
+import isVideoStalled from '@helpers/dom/isVideoStalled';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import {showStoryReport} from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
@@ -1224,10 +1225,7 @@ const Stories = (props: {
     };
 
     const onWaiting = () => {
-      const loading = video.networkState === video.NETWORK_LOADING;
-      const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
-
-      if(loading && isntEnoughData) {
+      if(isVideoStalled(video)) {
         setLoading(true);
         if(isActive()) {
           actions.setBuffering(true);

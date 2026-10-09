@@ -17,7 +17,7 @@ import {createSignal, createMemo, createResource, createEffect, untrack} from 's
 import {render, Portal} from 'solid-js/web';
 import Icon from '@components/icon';
 import Scrollable, {ScrollableX} from '@components/scrollable';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import VisibilityIntersector from '@components/visibilityIntersector';
 import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '@components/emoticonsDropdown/category';
 import Tabs from '@components/tabs';
@@ -59,7 +59,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
 
   public managers: AppManagers;
   protected noMenu: boolean;
-  protected additionalStickerViewerClass: string;
+  protected mediaPeekClass: string;
   // * returning the results directly (not a promise) renders them without a repaint gap
   protected searchFetcher?: (value: string) => MaybePromise<T>;
   protected groupFetcher?: (group: EmojiGroup) => MaybePromise<T>;
@@ -73,7 +73,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   constructor(options: {
     managers: AppManagers,
     noMenu?: boolean,
-    additionalStickerViewerClass?: string,
+    mediaPeekClass?: string,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],
     groupFetcher?: EmoticonsTabC<Category, T>['groupFetcher'],
     processSearchResult?: EmoticonsTabC<Category, T>['processSearchResult'],
@@ -468,8 +468,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     isGif?: boolean,
     onContextMenu?: Parameters<typeof createStickersContextMenu>[0]['onContextMenu']
   } = {}) {
-    attachStickerViewerListeners({
-      additionalClass: this.additionalStickerViewerClass,
+    attachMediaPeekListeners({
+      class: this.mediaPeekClass,
       listenTo: this.content,
       listenerSetter: this.listenerSetter,
       getTextColor

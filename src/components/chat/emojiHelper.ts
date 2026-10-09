@@ -9,7 +9,7 @@ import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import mediaSizes from '@helpers/mediaSizes';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import CustomEmojiElement from '@lib/customEmoji/element';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import ListenerSetter from '@helpers/listenerSetter';
 import rootScope from '@lib/rootScope';
 
@@ -104,7 +104,7 @@ export default class EmojiHelper extends AutocompleteHelper {
           this.innerList = undefined;
         }
       });
-      attachStickerViewerListeners({listenTo: this.container, listenerSetter});
+      attachMediaPeekListeners({listenTo: this.container, listenerSetter});
 
       await customEmojiRenderer.add({
         addCustomEmojis: customEmojis

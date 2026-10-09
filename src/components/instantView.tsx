@@ -74,6 +74,7 @@ import {toastNew} from '@components/toast';
 import {Latex, hydrateInlineMath} from '@components/instantViewMath';
 import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
+import {registerMediaPeekSource} from '@components/mediaPeek/sources';
 import showTooltip from '@components/tooltip';
 import {reconcileStablePageBlockEntries} from '@components/instantView/stablePageBlocks';
 import {
@@ -703,6 +704,10 @@ function prepareMediaForViewer(
     }
   };
   context.media.push(item);
+  registerMediaPeekSource(ref, () => {
+    const value = media();
+    return value && {media: value};
+  });
 
   // it opens the media viewer, so it is a button: reachable with Tab (with the a11y layer), pressed with Enter or Space
   if(Modes.a11y) ref.tabIndex = 0;

@@ -12,7 +12,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import createStickersContextMenu from '@helpers/dom/createStickersContextMenu';
-import attachStickerViewerListeners from '@components/stickerViewer';
+import attachMediaPeekListeners from '@components/mediaPeek';
 import {Document, StickerSet} from '@layer';
 import RowTsx from '@components/rowTsx';
 import rootScope from '@lib/rootScope';
@@ -333,7 +333,7 @@ export default function showStickersPopup(
     };
 
     onMount(() => {
-      attachStickerViewerListeners({listenTo: scrollableEl, listenerSetter});
+      attachMediaPeekListeners({listenTo: scrollableEl, listenerSetter});
 
       const onContainerClick = (e: MouseEvent) => {
         const callback = onMediaCaptionClick(containerEl, e);

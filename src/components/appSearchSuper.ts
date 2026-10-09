@@ -63,7 +63,8 @@ import SwipeHandler from '@components/swipeHandler';
 import wrapDocument from '@components/wrappers/document';
 import wrapPhoto from '@components/wrappers/photo';
 import wrapVideo from '@components/wrappers/video';
-import wrapMediaSpoiler, {hasSensitiveSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
+import attachMediaPeekListeners, {getMessageMediaPeekSource} from '@components/mediaPeek';
+import wrapMediaSpoiler, {hasMediaSpoiler, hasSensitiveSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 import filterAsync from '@helpers/array/filterAsync';
 import ChatContextMenu, {getSponsoredMessageButtons} from '@components/chat/contextMenu';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
@@ -791,7 +792,7 @@ export default class AppSearchSuper {
       }
 
       const peerId = target.dataset.peerId.toPeerId();
-      const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
+      const message = await this.getItemMessage(target);
       if(!target.isConnected) {
         return;
       }
@@ -836,6 +837,17 @@ export default class AppSearchSuper {
       },
       {listenerSetter: this.listenerSetter}
     );
+    mediaTab?.itemsTab && attachMediaPeekListeners({
+      listenTo: mediaTab.itemsTab,
+      listenerSetter: this.listenerSetter,
+      findTarget: (target) => {
+        // * a press while selecting selects
+        if(this.selection?.isSelecting || this.mediaFilterStagingItemsTab) return;
+        const element = findUpClassName(target, 'grid-item');
+        return element && !hasMediaSpoiler(element) ? element : undefined;
+      },
+      getSource: async(element) => getMessageMediaPeekSource(await this.getItemMessage(element))
+    });
     this.tabs.inputMessagesFilterDocument && attachClickEvent(
       this.tabs.inputMessagesFilterDocument,
       onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'),
@@ -1196,6 +1208,11 @@ export default class AppSearchSuper {
 
       return {element: dialogElement.container, message};
     });
+  }
+
+  // * the message a `search-super-item` shows
+  private getItemMessage(item: HTMLElement) {
+    return this.managers.appMessagesManager.getMessageByPeer(item.dataset.peerId.toPeerId(), +item.dataset.mid);
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {

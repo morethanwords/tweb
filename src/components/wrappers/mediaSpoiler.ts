@@ -231,6 +231,11 @@ function wrapMediaSpoilerWithImage(options: {
   return {container, readyResult};
 }
 
+// * still hidden behind a spoiler: a revealed one is removed
+export function hasMediaSpoiler(container: HTMLElement) {
+  return container.querySelector('.media-spoiler-container') != null;
+}
+
 export function hasSensitiveSpoiler(container: HTMLElement) {
   return container.querySelector('.media-spoiler-container[data-is-sensitive]') != null;
 }

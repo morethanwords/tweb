@@ -28,6 +28,7 @@ import type AppSearchSuper from '@components/appSearchSuper';
 import isInDOM from '@helpers/dom/isInDOM';
 import {randomLong} from '@helpers/random';
 import {attachClickEvent, AttachClickOptions} from '@helpers/dom/clickEvent';
+import swallowNextClick from '@helpers/dom/swallowNextClick';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import EventListenerBase from '@helpers/eventListenerBase';
 import safeAssign from '@helpers/object/safeAssign';
@@ -314,10 +315,8 @@ export class AppSelection extends EventListenerBase<{
 
       if(seen.size) {
         // * the click that ends a drag has to be swallowed, or whoever listens for it acts on the
-        // * element the press started on - and toggles back what the drag has just done. It lands on
-        // * the common ancestor of the press and the release rather than on either element, so
-        // * `ignoreMove` is what lets this one through the moved-since-mousedown guard
-        attachClickEvent(activeWindow, cancelEvent, {capture: true, once: true, passive: false, ignoreMove: true});
+        // * element the press started on - and toggles back what the drag has just done
+        swallowNextClick(activeWindow);
       }
 
       this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);

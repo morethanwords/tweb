@@ -17,7 +17,7 @@ import debounce from '@helpers/schedulers/debounce';
 import overlayCounter from '@helpers/overlayCounter';
 import onMediaLoad from '@helpers/onMediaLoad';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import safePlay from '@helpers/dom/safePlay';
+import playOrPlayMuted from '@helpers/dom/playOrPlayMuted';
 import ButtonIcon from '@components/buttonIcon';
 import Button from '@components/button';
 import Icon from '@components/icon';
@@ -254,13 +254,7 @@ export default class VideoPlayer extends ControlsHover {
     }
 
     if(play/*  && video.paused */) {
-      video.play().catch((err: Error) => {
-        if(err.name === 'NotAllowedError') {
-          video.muted = true;
-          video.autoplay = true;
-          safePlay(video);
-        }
-      }).finally(() => { // due to autoplay, play will not call
+      playOrPlayMuted(video).finally(() => { // due to autoplay, play will not call
         this.setIsPlaying(!this.video.paused);
       });
     } else {

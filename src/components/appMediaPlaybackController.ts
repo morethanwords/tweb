@@ -335,6 +335,14 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     return mediaType === 'voice' ? clamp(this._volume + this._boost, 0, 2) : this._volume;
   }
 
+  /**
+   * A video the controller does not play itself (one autoplaying in a chat, a peek at one) sounds as
+   * loud as everything else - or is silent, when everything is.
+   */
+  public applySharedVolume(video: HTMLVideoElement) {
+    this.applyVolumeToMedia(video, this.getVolumeForType('video'), this.muted, 'video');
+  }
+
   private applyVolumeToMedia(
     media: HTMLMediaElement,
     volume: number,

@@ -7,10 +7,9 @@ import {Middleware} from '@helpers/middleware';
 import clamp from '@helpers/number/clamp';
 import safeAssign from '@helpers/object/safeAssign';
 import pause from '@helpers/schedulers/pause';
-import cancelEvent from '@helpers/dom/cancelEvent';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {getOverlayRoot} from '@helpers/appWindow';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
+import swallowNextClick from '@helpers/dom/swallowNextClick';
 import getSortableRun, {isSortableElement} from '@helpers/dom/sortableRun';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import whichChild from '@helpers/dom/whichChild';
@@ -245,11 +244,8 @@ export default class Sortable {
     if(!IS_TOUCH_SUPPORTED) {
       // Swallow the click that ends the reorder on the active window's body (the PiP doc when popped
       // out), else the post-drag click isn't suppressed there. (The drag itself runs via SwipeHandler.)
-      // A drag that ends over another row makes its click on the common ancestor of the two, so
-      // `ignoreMove` is what lets this one past the moved-since-mousedown guard - without it the
-      // swallow is skipped in the very case it is here for, and the row the drag began on is acted
-      // upon (a chat list in selection mode toggles it).
-      attachClickEvent(getOverlayRoot(), cancelEvent, {capture: true, once: true, ignoreMove: true});
+      // Without it the row the drag began on is acted upon (a chat list in selection mode toggles it).
+      swallowNextClick(getOverlayRoot());
     }
 
     if(liteMode.isAvailable('animations')) {

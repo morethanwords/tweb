@@ -62,7 +62,7 @@ export const useEmojiDropdown = ({
   if(!element.hasAttribute('aria-label')) element.setAttribute('aria-label', I18n.format('Emoji', true));
   const emojiTab = new EmojiTab({
     managers: rootScope.managers,
-    additionalStickerViewerClass: styles.StickerViewer,
+    mediaPeekClass: styles.MediaPeek,
     noPacks: noPacks ?? !rootScope.premium,
     noSearchGroups: noSearchGroups ?? !rootScope.premium,
     noRegularEmoji,
