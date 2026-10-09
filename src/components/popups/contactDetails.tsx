@@ -4,6 +4,7 @@ import Section from '@components/section';
 import {toastNew} from '@components/toast';
 import {makeContactPhoneFormatter} from '@components/wrappers/formatUserPhone';
 import {copyTextToClipboard} from '@helpers/clipboard';
+import {copyPhoneNumber} from '@helpers/copyContact';
 import classNames from '@helpers/string/classNames';
 import {isVcardPhoneType, sortVcardItems, VcardItem, VcardItemType} from '@helpers/parseVcard';
 import {i18n, LangPackKey} from '@lib/langPack';
@@ -43,12 +44,6 @@ const ICONS: Record<VcardItemType, Icon> = {
   name: 'person_filled'
 };
 
-// * a formatted phone goes to the clipboard without its grouping
-export function copyFormattedPhone(formatted: string) {
-  copyTextToClipboard(formatted.replace(/\s/g, ''));
-  toastNew({langPackKey: 'PhoneCopied'});
-}
-
 function ContactDetailsRow(props: VcardItem & {formatPhone: (phone: string) => string}) {
   const isPhone = isVcardPhoneType(props.type);
   const isUrl = props.type === 'url';
@@ -56,7 +51,7 @@ function ContactDetailsRow(props: VcardItem & {formatPhone: (phone: string) => s
 
   const copy = () => {
     if(isPhone) {
-      copyFormattedPhone(text);
+      copyPhoneNumber(text);
       return;
     }
 

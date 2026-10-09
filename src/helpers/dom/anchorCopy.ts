@@ -1,35 +1,33 @@
-import {toastNew} from '@components/toast';
-import {LangPackKey} from '@lib/langPack';
-import {copyTextToClipboard} from '@helpers/clipboard';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {copyTmeLink, copyUsername, T_ME} from '@helpers/copyContact';
 
-const T_ME = 'https://t.me/';
 export default function anchorCopy(options: Partial<{
   // href: string,
   mePath: string,
-  username: string
+  username: string,
+  /** Takes over the click; `copy` is what it would have done. */
+  onClick: (copy: () => void) => void
 }> = {}) {
   const anchor = document.createElement('a');
   anchor.classList.add('anchor-copy');
 
-  let copyWhat: string, copyText: LangPackKey = 'LinkCopied';
+  let copy: () => void;
   if(options.mePath) {
-    const href = T_ME + options.mePath;
-    copyWhat = anchor.href = anchor.innerText = href;
+    anchor.href = anchor.innerText = T_ME + options.mePath;
+    copy = () => copyTmeLink(options.mePath);
   }
 
   if(options.username) {
-    const href = T_ME + options.username;
-    anchor.href = href;
-    copyWhat = anchor.innerText = '@' + options.username;
-    copyText = 'UsernameCopied';
+    anchor.href = T_ME + options.username;
+    anchor.innerText = '@' + options.username;
+    copy = () => copyUsername(options.username);
   }
 
   attachClickEvent(anchor, (e) => {
     cancelEvent(e);
-    copyTextToClipboard(copyWhat ?? anchor.href);
-    toastNew({langPackKey: copyText});
+    if(options.onClick) options.onClick(copy);
+    else copy();
   });
 
   return anchor;

@@ -4043,6 +4043,11 @@
 "PeerInfo.Action.VoiceChat" = "Video Chat";
 "PeerInfo.Action.LiveStream" = "Live Stream";
 "PeerInfo.Phone.AnonymousInfo" = "This number is not tied to a SIM card and was acquired on [Fragment]().";
+"FragmentUsernameTitle" = "**%s** is a collectible username that belongs to";
+"FragmentUsernameMessage" = "This username was bought on **Fragment** on %1$s for **%2$s** %3$s";
+"FragmentUsernameOpen" = "Learn More";
+"FragmentPhoneTitle" = "**%s** is a collectible phone number that belongs to";
+"FragmentPhoneMessage" = "This phone number was bought on **Fragment** on %1$s for **%2$s** %3$s";
 "PeerInfo.SetAboutDescription" = "You can provide an optional description for your group.";
 "PeerMedia.Members" = "Members";
 "PollResults.Title.Poll" = "Poll Results";

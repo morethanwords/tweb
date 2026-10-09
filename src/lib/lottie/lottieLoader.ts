@@ -69,6 +69,8 @@ export type LottieAssetName =
   | 'key'
   | 'UtyanDisappear'
   | 'hand_stop'
+  | 'collectible_username'
+  | 'collectible_phone'
 ;
 
 export class LottieLoader {

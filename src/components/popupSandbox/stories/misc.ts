@@ -442,3 +442,29 @@ defineStories('Stars & payments (more)', [
     }
   }
 ]);
+
+// fixture-only: the purchase is made up, and there is no telling which username or number of a
+// live session's peers was bought on Fragment
+defineStories('Profile', (['username', 'phone'] as const).map((type) => ({
+  id: `collectibleInfo/${type}`,
+  fixtureOnly: true,
+  title: type === 'username' ? 'Collectible username' : 'Collectible phone number',
+  managers: {
+    appProfileManager: {
+      getCollectibleInfo: () => ({
+        _: 'fragment.collectibleInfo',
+        purchase_date: 1667260800,
+        currency: 'USD',
+        amount: 1290000,
+        crypto_currency: 'TON',
+        crypto_amount: '5000000000000',
+        url: 'https://fragment.com'
+      })
+    }
+  },
+  open: async(ctx) => {
+    const {default: showCollectibleInfoPopup} = await import('@components/popups/collectibleInfo');
+    const peerId = ctx.peer('private');
+    showCollectibleInfoPopup(type === 'username' ? {peerId, username: 'sandbox'} : {peerId, phone: '88800809944'});
+  }
+})));

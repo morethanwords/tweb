@@ -1,0 +1,37 @@
+.popup {
+  --popup-width: 22.5rem;
+}
+
+.body {
+  padding: 2rem 1rem .5rem;
+}
+
+// descendant selectors on purpose: they outrank the header's own `gap` and the circle's own
+// `--size`, which are declared at one class in other modules, whatever the load order
+.body .header {
+  gap: 1rem;
+}
+
+.header .icon {
+  --size: 4.5rem;
+}
+
+// the username or number in the title: copies itself, so it reads as a link
+.entity {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--link-color);
+  cursor: pointer;
+}
+
+// two classes, so it outranks the picker chip's own `max-width` and `margin` whatever the load order
+:global(.selector-user).owner {
+  align-self: center;
+  max-width: 100%;
+  margin: 0;
+  // nothing to do on it: no hover tint, no remove cross
+  pointer-events: none;
+  cursor: default;
+}

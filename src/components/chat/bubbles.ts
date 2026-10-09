@@ -183,7 +183,8 @@ import flatten from '@helpers/array/flatten';
 import WebPageBox, {WebPageFooterButton} from '@components/wrappers/webPage';
 import {makeContactPhoneFormatter} from '@components/wrappers/formatUserPhone';
 import parseVcard, {isVcardPhoneType} from '@helpers/parseVcard';
-import showContactDetailsPopup, {copyFormattedPhone} from '@components/popups/contactDetails';
+import showContactDetailsPopup from '@components/popups/contactDetails';
+import {copyPhoneNumber} from '@helpers/copyContact';
 import showCreateContactPopup from '@components/popups/createContact';
 import wrapPeerColorPattern from '@components/wrappers/peerColorPattern';
 import showTooltip from '@components/tooltip';
@@ -11435,7 +11436,7 @@ export default class ChatBubbles {
       lastName: contact.last_name,
       phone
     });
-    const copyPhone = () => copyFormattedPhone(phoneText);
+    const copyPhone = () => copyPhoneNumber(phoneText);
 
     // * The box itself shows the vCard when there is one, as tdesktop's does; otherwise it opens
     // * the chat, or copies the phone of someone who is not on Telegram
