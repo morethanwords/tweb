@@ -85,6 +85,7 @@ import {Storyboard, StoryboardFrame} from '@lib/mediaPlayer/preview';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import isVideoStalled from '@helpers/dom/isVideoStalled';
+import {getMoverTransform, MOVER_TRANSFORM_PROPERTY, MOVER_TRANSFORM_SYNCED_CLASS, setMoverTransform} from '@components/mediaViewer/moverTransform';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1255,7 +1256,7 @@ export default class AppMediaViewerBase<
       // the container — all in the same frame so the visual position stays
       // unchanged.
       mover.style.transition = 'none';
-      mover.style.transform = startTransform;
+      setMoverTransform(mover, startTransform);
       mover.classList.remove('center');
       this.clearCenterStyles(mover);
       if(!zoomedClose) {
@@ -1507,12 +1508,12 @@ export default class AppMediaViewerBase<
     }
     mover.style.clipPath = '';
 
-    const transitionProperty = needOpacity ? 'opacity' : 'transform';
+    const transitionProperty = needOpacity ? 'opacity' : MOVER_TRANSFORM_PROPERTY;
     const closeTransitionPromise = closing ? this.waitForMoverTransition(mover, delay, transitionProperty) : undefined;
-    mover.style.transform = transform;
+    setMoverTransform(mover, transform);
 
     /* if(wasActive) {
-      this.log('setMoverToTarget', mover.style.transform);
+      this.log('setMoverToTarget', getMoverTransform(mover));
     } */
 
     let path: SVGPathElement;
@@ -1710,8 +1711,7 @@ export default class AppMediaViewerBase<
     // await new Promise((resolve) => setTimeout(resolve, 5e3));
 
     const openTransitionPromise = this.waitForMoverTransition(mover, delay, transitionProperty);
-    mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
-    // mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
+    setMoverTransform(mover, `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`);
     needOpacity && (mover.style.opacity = ''/* closing ? '0' : '' */);
     if(useClipPath) {
       wrapper.style.clipPath = NO_MEDIA_VIEWER_CLIP_PATH;
@@ -1890,7 +1890,7 @@ export default class AppMediaViewerBase<
       // transition inline for this reflow, then clear so the subsequent close
       // animation (scaled transform in setMoverToTarget) animates normally.
       mover.style.transition = 'none';
-      mover.style.transform = `translate3d(${rect.left}px,${rect.top}px,0)`;
+      setMoverTransform(mover, `translate3d(${rect.left}px,${rect.top}px,0)`);
       mover.classList.remove('center');
       this.clearCenterStyles(mover);
       void mover.offsetLeft; // reflow
@@ -1908,17 +1908,16 @@ export default class AppMediaViewerBase<
 
     const rect = mover.getBoundingClientRect();
 
-    const newTransform = mover.style.transform.replace(/translate3d\((.+?),/, (match, p1) => {
+    const newTransform = getMoverTransform(mover).replace(/translate3d\((.+?),/, (match, p1) => {
       const x = toLeft ? -rect.width : windowW;
       // const x = toLeft ? -(rect.right + (rect.width / 2)) : windowW / 2;
 
       return match.replace(p1, x + 'px');
     });
 
-    // //////this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
     const delay = liteMode.isAvailable('animations') ? MOVE_TRANSITION_TIME : 0;
-    const transitionPromise = this.waitForMoverTransition(mover, delay, 'transform');
-    mover.style.transform = newTransform;
+    const transitionPromise = this.waitForMoverTransition(mover, delay, MOVER_TRANSFORM_PROPERTY);
+    setMoverTransform(mover, newTransform);
 
     void transitionPromise.then((completed) => {
       if(!completed) return;
@@ -1936,6 +1935,7 @@ export default class AppMediaViewerBase<
 
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
+    if(MOVER_TRANSFORM_PROPERTY !== 'transform') newMover.classList.add(MOVER_TRANSFORM_SYNCED_CLASS);
     // Keep a tiny laid-out transform target from construction onward. display:none
     // made will-change ineffective until the same frame as the first animation.
     newMover.style.cssText = 'visibility: hidden; width: 1px; height: 1px;';
@@ -2161,7 +2161,7 @@ export default class AppMediaViewerBase<
     const s = mover.style;
     s.left = '50%';
     s.top = `calc(50% + ${(top - bottom) / 2}px)`;
-    s.transform = 'translate3d(-50%, -50%, 0)';
+    setMoverTransform(mover, 'translate3d(-50%, -50%, 0)');
     s.maxWidth = '100vw';
     s.maxHeight = `calc(100vh - ${top + bottom}px)`;
     // On handhelds, force the mover to fill the viewport (overrides the px

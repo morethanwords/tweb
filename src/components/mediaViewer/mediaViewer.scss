@@ -2,6 +2,27 @@
 
 $inactive-opacity: .4;
 
+// * what a mover is moved by where the browser has registered properties (moverTransform.ts): its
+// * transitions then run on the main thread together with the clip, corners and size it opens and
+// * closes with, instead of on the compositor ahead of them
+@property --media-viewer-mover-transform {
+  syntax: '<transform-list>';
+  inherits: false;
+  initial-value: translateZ(0) scale3d(1, 1, 1);
+}
+
+// * how a mover opens, closes and moves aside, by whichever property moves it
+@mixin mover-transitions($moved) {
+  &.active,
+  &.active.opening {
+    transition: #{$moved} var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
+  }
+
+  &.moving {
+    transition: #{$moved} var(--move-duration) ease;
+  }
+}
+
 .media-viewer {
   position: fixed;
   top: 0;
@@ -375,16 +396,11 @@ $inactive-opacity: .4;
     //   }
     // }
 
-    &.active {
-      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
-    }
+    @include mover-transitions(transform);
 
-    &.active.opening {
-      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
-    }
-
-    &.moving {
-      transition: transform var(--move-duration) ease;
+    &.is-transform-synced {
+      transform: var(--media-viewer-mover-transform);
+      @include mover-transitions(--media-viewer-mover-transform);
     }
 
     /* &.center {
