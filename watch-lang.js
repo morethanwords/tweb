@@ -75,8 +75,21 @@ const checkFilesExist = (files) => {
   return true;
 };
 
+// Vite evaluates vite.config.ts again, in the same process, on every dev-server restart. Each start
+// bumps the version, restarts included; the watchers are made once per process, or every restart
+// would stack another set, each bumping the version again on a single edit.
+const WATCHING_KEY = Symbol.for('tweb.watchLangFile');
+
 // Main watching function using fs.watch
 const watchLangFile = () => {
+  const watching = globalThis[WATCHING_KEY];
+  if(watching) {
+    watching.currentVersion.value = getCurrentVersion();
+    updateVersion(++watching.currentVersion.value);
+    console.log(`📊 Current version: ${watching.currentVersion.value}`);
+    return;
+  }
+
   const files = [
     {path: LANG_FILE_PATH, name: 'lang.ts'},
     {path: LANG_SIGN_FILE_PATH, name: 'langSign.ts'}
@@ -121,6 +134,7 @@ const watchLangFile = () => {
   });
 
   console.log('✅ Watching started. Press Ctrl+C to stop.');
+  globalThis[WATCHING_KEY] = {currentVersion};
 
   // Process termination handling
   const cleanup = () => {

@@ -38,6 +38,18 @@ const LEGACY_SASS_API_WARNING = /legacy-js-api/;
 
 const STDIO = ['ignore', 'inherit', 'pipe'];
 
+// Vite evaluates vite.config.ts again, in the same process, on every dev-server restart (an edited
+// config, `.env.local`, a config dependency). One watcher per process, or every restart leaves one more
+// `typed-scss-modules --watch` running until the server exits.
+const WATCHER_KEY = Symbol.for('tweb.watchScssTypes');
+
+// The CLI runs behind this prelude so the watcher leaves with the dev server even when the server is
+// killed outright (SIGKILL, the OOM killer): no 'exit' handler runs then, and it would live on as an
+// orphan. `require` keeps the CLI's own argv: `node -e … cli.js args` hands it [node, cli.js, ...args].
+const EXIT_WITH_PARENT = 'const parent = process.ppid;' +
+  'setInterval(() => process.ppid !== parent && process.exit(0), 5000).unref();' +
+  'require(process.argv[1]);';
+
 function forwardStderr(stderr) {
   let carry = '';
   let dropping = false;
@@ -81,14 +93,25 @@ function generateScssTypes() {
 }
 
 function watchScssTypes() {
+  const running = globalThis[WATCHER_KEY];
+  if(running && running.exitCode === null && running.signalCode === null) {
+    return running;
+  }
+
   generateScssTypes();
 
-  const child = spawn(process.execPath, [bin, ...ARGS, '--watch', '--ignoreInitial'], {stdio: STDIO});
+  const child = spawn(process.execPath, ['-e', EXIT_WITH_PARENT, bin, ...ARGS, '--watch', '--ignoreInitial'], {stdio: STDIO});
   forwardStderr(child.stderr);
   const stop = () => child.kill();
   process.on('exit', stop);
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
+  child.once('exit', () => {
+    process.off('exit', stop);
+    process.off('SIGINT', stop);
+    process.off('SIGTERM', stop);
+  });
+  globalThis[WATCHER_KEY] = child;
   return child;
 }
 
