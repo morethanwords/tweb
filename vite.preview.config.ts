@@ -36,12 +36,26 @@ const cacheKey = basename(seedPath).replace(/\.json$/, '');
 const staticDir = process.env.TWEB_PREVIEW_STATIC_DIR ||
   resolve(__dirname, 'tmp/preview-dist', cacheKey);
 
+// The main checkout: this one, or the one a worktree hangs off.
+const mainCheckout = (() => {
+  try {
+    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {cwd: __dirname, encoding: 'utf8'});
+    return dirname(resolve(__dirname, commonDir.trim()));
+  } catch{
+    return __dirname;
+  }
+})();
+
 // Where a remote request that says nothing (no ?static=) lands: the built
 // bundle by default, or — with TWEB_PREVIEW_REMOTE=dev in the environment or in
-// this checkout's .env.local — the dev server with HMR, for a checkout that is
-// only ever reached through the proxy. ?static=1 still gets the bundle.
+// .env.local — the dev server with HMR, for a machine whose previews are only
+// ever reached through the proxy. ?static=1 still gets the bundle. A worktree's
+// .env.local starts empty (vite.config.ts copies the example), so one that says
+// nothing defers to the main checkout's: the knob is about the machine, and
+// every new worktree would otherwise come up serving the bundle.
 const remoteGetsDev = (process.env.TWEB_PREVIEW_REMOTE ??
-  loadEnv('development', __dirname, 'TWEB_PREVIEW_').TWEB_PREVIEW_REMOTE) === 'dev';
+  loadEnv('development', __dirname, 'TWEB_PREVIEW_').TWEB_PREVIEW_REMOTE ??
+  loadEnv('development', mainCheckout, 'TWEB_PREVIEW_').TWEB_PREVIEW_REMOTE) === 'dev';
 
 // Hashed names can be pinned forever; the service worker never (a new build has
 // to be able to take over), the entry document never, and public/assets — 38 MB
@@ -248,14 +262,6 @@ function staticForRemotePlugin() {
 // a word or two about the task. scripts/preview-switcher.js puts that name at
 // the head of the tab title and in a badge that lists the rest; /_previews is
 // the same list as a page of its own, /_previews.json as data.
-const mainCheckout = (() => {
-  try {
-    const commonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {cwd: __dirname, encoding: 'utf8'});
-    return dirname(resolve(__dirname, commonDir.trim()));
-  } catch{
-    return __dirname;
-  }
-})();
 const previewRegistry = join(mainCheckout, 'tmp/previews');
 const switcherScript = resolve(__dirname, 'scripts/preview-switcher.js');
 

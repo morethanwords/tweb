@@ -58,8 +58,9 @@
 #
 #   ?static=1     force the built bundle from localhost too (to check it).
 #   ?static=0     force the dev server for a remote request (to debug the split).
-#   TWEB_PREVIEW_REMOTE=dev (env, or .env.local of the checkout): remote requests
-#                 get the dev server too, ?static=1 still gets the bundle.
+#   TWEB_PREVIEW_REMOTE=dev (env, or .env.local of the checkout — a worktree
+#                 whose .env.local says nothing takes the main checkout's): remote
+#                 requests get the dev server too, ?static=1 still gets the bundle.
 #   --static      serve ONLY the built bundle, no dev server at all.
 #   --watch       --static plus a rebuild watcher.
 #
