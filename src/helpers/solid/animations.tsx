@@ -1,7 +1,7 @@
 import {JSX, Show} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {AnimationList} from '@helpers/solid/animationList';
-import {getTransition} from '@config/transitions';
+import {CROSS_FADE_KEYFRAMES, getAnimatedOptions} from '@helpers/dom/crossfadeContent';
 import classNames from '@helpers/string/classNames';
 
 type AnimationType = 'cross-fade' | 'grow-width' | 'grow-height';
@@ -15,7 +15,7 @@ export const growKeyframes = (property: 'width' | 'height', size: number): Keyfr
 };
 
 const ANIMATIONS: {[key in AnimationType]: Keyframe[] | ((element: Element) => Keyframe[])} = {
-  'cross-fade': [{opacity: 0}, {opacity: 1}],
+  'cross-fade': CROSS_FADE_KEYFRAMES,
   'grow-width': (element) => growKeyframes('width', element.clientWidth),
   'grow-height': (element) => growKeyframes('height', element.clientHeight)
 };
@@ -28,7 +28,7 @@ export function SimpleAnimation(props: Pick<
 }) {
   return (
     <AnimationList
-      animationOptions={{duration: 200, easing: getTransition('standard').easing}}
+      animationOptions={getAnimatedOptions()}
       keyframes={props.keyframes}
       mode={props.mode || 'replacement'}
       itemClass={classNames(!props.noItemClass && 'animated-item', props.itemClass)}

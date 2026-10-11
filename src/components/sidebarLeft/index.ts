@@ -56,7 +56,7 @@ import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import Icon from '@components/icon';
 import AppSelectPeers from '@components/appSelectPeers';
-import setBadgeContent from '@helpers/setBadgeContent';
+import setBadgeContent, {setBadgeCount} from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import {MyDocument} from '@appManagers/appDocsManager';
 import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
@@ -204,9 +204,7 @@ export class AppSidebarLeft extends SidebarSlider {
          0);
 
       setAllNotificationsCount(count);
-      [this.totalNotificationsCount].forEach((el) => {
-        setBadgeContent(el, '' + (count || ''));
-      });
+      setBadgeCount(this.totalNotificationsCount, count);
     });
 
     this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);
@@ -250,10 +248,7 @@ export class AppSidebarLeft extends SidebarSlider {
         return;
       }
 
-      setBadgeContent(
-        this.archivedCount,
-        unreadCount ? '' + formatNumber(unreadCount, 1) : ''
-      );
+      setBadgeCount(this.archivedCount, unreadCount, formatNumber(unreadCount, 1));
     };
     rootScope.addEventListener('folder_unread', (folder) => {
       if(folder.id === FOLDER_ID_ARCHIVE) {

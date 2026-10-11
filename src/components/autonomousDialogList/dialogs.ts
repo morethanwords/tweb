@@ -6,6 +6,7 @@ import isCollapsedCommunity from '@appManagers/utils/communities/isCollapsedComm
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
+import {setRollingText} from '@components/animatedCounter';
 import ArchiveDialog, {createArchiveDialogState, DisposableArchiveDialogState} from '@components/archiveDialog';
 import {AutonomousDialogListBase, BaseConstructorArgs, LoadDialogsInnerArgs} from '@components/autonomousDialogList/base';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
@@ -795,9 +796,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     const reuseClassNames = ['unread', 'mention'];
     this.sortedList.getAllDialogElementsMap().forEach((dialogElement) => {
       const {dom} = dialogElement;
-      const unreadContent = dom.unreadBadge?.textContent;
+      // * not the badge's own text, which holds the rolling characters while its count changes
+      const unreadContent = dialogElement.unreadText;
       if(
         !unreadContent ||
+        !dom.unreadBadge ||
         dom.unreadBadge.classList.contains('backwards') ||
         dom.unreadBadge.classList.contains('dialog-pinned-icon')
       ) {
@@ -807,7 +810,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       const isUnreadAvatarBadgeMounted = !!dom.unreadAvatarBadge;
       dialogElement.createUnreadAvatarBadge();
       dialogElement.toggleBadgeByKey('unreadAvatarBadge', true, isUnreadAvatarBadgeMounted);
-      dom.unreadAvatarBadge.textContent = unreadContent;
+      setRollingText({element: dom.unreadAvatarBadge, text: unreadContent, direction: 0, animate: false});
       const unreadAvatarBadgeClassList = dom.unreadAvatarBadge.classList;
       const unreadBadgeClassList = dom.unreadBadge.classList;
       reuseClassNames.forEach((className) => {

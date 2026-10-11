@@ -394,7 +394,7 @@ PeerProfile.SubtitleStatus = () => {
     }
 
     let span: HTMLSpanElement;
-    const ret = (<span ref={span}></span>);
+    const ret = (<span ref={span} class="profile-subtitle-status"></span>);
     let first = true;
     const [ready, {refetch}] = createResource(() => {
       const _first = first;
@@ -405,7 +405,9 @@ PeerProfile.SubtitleStatus = () => {
         needClear: _first,
         useWhitespace: true,
         middleware,
-        ignoreSelf: !isDialog
+        ignoreSelf: !isDialog,
+        // * the rating badge stands beside it
+        resize: true
       }).then((callback) => (callback?.(), true));
     });
 

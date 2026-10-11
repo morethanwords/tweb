@@ -412,6 +412,30 @@ import {Message, Chat, User, InputPeer} from '@layer';
   constants, search the codebase for an existing implementation and reuse or
   extend it. Every final review must explicitly check the completed change for
   duplicated code and remove any duplication found.
+- **Every final review also checks the change's performance** — above all
+  animations and anything that touches style or layout:
+  - A forced synchronous layout — reading `offsetWidth`, `clientWidth`,
+    `getBoundingClientRect()` or `getComputedStyle()` after a DOM write, or
+    `void el.offsetLeft` to restart a transition — is fine for a one-off heavy
+    animation: a popup opening, a page switching, once per user action. It is
+    not on a hot path — a chat-list row, an incoming update, the unread counter —
+    nor in an animation that stands in many places and fires often: there every
+    read goes before any write (`sequentialDom.measure` → `mutate`), and what
+    has to be styled before its transition waits a frame instead of reflowing.
+    Read only inside `measure(cb)` and write only inside `mutate(cb)`; their
+    promise says no more than "done" — code after `await measure()` is not
+    held to the read phase, and one more `await` puts it after the writes.
+  - Animate `transform` and `opacity`. A layout property (`width`, `height`,
+    `max-width`, `top`…) relays out on every frame — keep it to the one element
+    that needs it.
+  - What every row of a list wears is paid per row: mount the animation's DOM
+    only while it moves, and skip what is out of sight, in a hidden tab, or
+    with animations off (`liteMode`).
+  - Measure rather than guess: CDP `Performance.getMetrics` (`LayoutCount`,
+    `RecalcStyleCount` and their durations) around the change, with and without
+    it, and with many items changing at once. A cost that matters gets a
+    regression check (e.g. `e2e/dialogUnreadCounter.spec.ts` counts the
+    layouts read while the counts of many rows change).
 - **After every context compaction, reread this entire `AGENTS.md` before
   continuing work.** A compacted context or summary does not replace the
   canonical instructions in this file.

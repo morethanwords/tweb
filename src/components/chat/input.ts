@@ -140,7 +140,7 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import idleController from '@helpers/idleController';
 import getFileMimeType from '@helpers/files/getFileMimeType';
 import Icon from '@components/icon';
-import setBadgeContent from '@helpers/setBadgeContent';
+import {setBadgeCount} from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import deepEqual from '@helpers/object/deepEqual';
 import MarkupTooltip from '@components/chat/markupTooltip';
@@ -500,6 +500,8 @@ export default class ChatInput {
 
   private goDownBtn: HTMLButtonElement;
   private goDownUnreadBadge: HTMLElement;
+  /** the chat the counts of the go-down buttons were last put in for (`setUnreadCount`) */
+  private unreadCountChatKey: string;
   private goMentionBtn: HTMLButtonElement;
   private goMentionUnreadBadge: HTMLSpanElement;
   private goReactionBtn: HTMLButtonElement;
@@ -2444,6 +2446,10 @@ export default class ChatInput {
       return;
     }
 
+    // * the counts of another chat put in are not a change of these, and do not roll - whichever
+    // * call puts them in first, the peer's first update or the end of the peer change
+    const chatKey = [this.chat.peerId, this.chat.threadId, this.chat.monoforumThreadId].join();
+
     const dialog = this.chat.monoforumThreadId ?
       await this.managers.monoforumDialogsStorage.getDialogByParent(this.chat.peerId, this.chat.monoforumThreadId) :
       await this.managers.dialogsStorage.getAnyDialog(
@@ -2462,8 +2468,10 @@ export default class ChatInput {
       | 'unread_poll_votes_count'
     >>>(dialog);
 
+    const animate = this.unreadCountChatKey === chatKey;
+    this.unreadCountChatKey = chatKey;
     const count = dialog?.unread_count;
-    setBadgeContent(this.goDownUnreadBadge, '' + (count || ''));
+    setBadgeCount(this.goDownUnreadBadge, count, undefined, animate);
     const isPeerLocalMuted = await this.managers.appNotificationsManager.isPeerLocalMuted({
       peerId: this.chat.peerId,
       respectType: true,
@@ -2473,19 +2481,19 @@ export default class ChatInput {
 
     if(this.goMentionUnreadBadge && this.chat.type === ChatType.Chat) {
       const hasMentions = !!(dialog?.unread_mentions_count && dialog.unread_count);
-      setBadgeContent(this.goMentionUnreadBadge, hasMentions ? '' + (dialog.unread_mentions_count) : '');
+      setBadgeCount(this.goMentionUnreadBadge, hasMentions ? dialog.unread_mentions_count : 0, undefined, animate);
       this.goMentionBtn.classList.toggle('is-visible', hasMentions);
     }
 
     if(this.goReactionUnreadBadge && this.chat.type === ChatType.Chat) {
       const hasReactions = !!dialog?.unread_reactions_count;
-      setBadgeContent(this.goReactionUnreadBadge, hasReactions ? '' + (dialog.unread_reactions_count) : '');
+      setBadgeCount(this.goReactionUnreadBadge, hasReactions ? dialog.unread_reactions_count : 0, undefined, animate);
       this.goReactionBtn.classList.toggle('is-visible', hasReactions);
     }
 
     if(this.goPollVoteUnreadBadge && this.chat.type === ChatType.Chat) {
       const hasPollVotes = !!dialog?.unread_poll_votes_count;
-      setBadgeContent(this.goPollVoteUnreadBadge, hasPollVotes ? '' + (dialog.unread_poll_votes_count) : '');
+      setBadgeCount(this.goPollVoteUnreadBadge, hasPollVotes ? dialog.unread_poll_votes_count : 0, undefined, animate);
       this.goPollVoteBtn.classList.toggle('is-visible', hasPollVotes);
     }
   }

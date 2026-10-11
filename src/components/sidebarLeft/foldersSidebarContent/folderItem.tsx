@@ -103,9 +103,8 @@ export default function FolderItem(props: FolderItemProps) {
           tag="div"
           color={props.notifications.muted/*  && !props.selected */ ? 'gray' : 'primary'}
           size={18}
-        >
-          {'' + props.notifications.count}
-        </Badge>
+          count={props.notifications.count}
+        />
       </Show>
     </div>
   );

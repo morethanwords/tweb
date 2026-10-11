@@ -102,9 +102,14 @@ const ArchiveDialog = defineSolidElement({
             </For>
           </div>
           <Show when={totalUnreadCount() > 0}>
-            <Badge class={styles.UnreadBadge} tag="span" size={22} color="gray">
-              {formatNumber(totalUnreadCount(), 1)}
-            </Badge>
+            <Badge
+              class={styles.UnreadBadge}
+              tag="span"
+              size={22}
+              color="gray"
+              count={totalUnreadCount()}
+              format={(count) => formatNumber(count, 1)}
+            />
           </Show>
         </div>
       </>

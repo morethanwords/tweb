@@ -1,6 +1,6 @@
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import DialogsPlaceholder from '@helpers/dialogsPlaceholder';
-import replaceContent from '@helpers/dom/replaceContent';
+import crossfadeContent from '@helpers/dom/crossfadeContent';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import attachPinnedDialogsReorder from '@components/dialogsPinnedReorder';
@@ -33,16 +33,25 @@ const NOT_IMPLEMENTED_ERROR = new Error('not implemented');
  * Returns whether the row is left showing an activity that can no longer be
  * rendered, i.e. the caller has to put the last message back.
  */
-export async function setDialogTyping({dom, peerId, threadId}: {
+export async function setDialogTyping({dom, peerId, threadId, animate}: {
   dom: DialogDom,
   peerId: PeerId,
-  threadId?: number
+  threadId?: number,
+  /** crossfade from the last message - not on a row being built */
+  animate?: boolean
 }) {
-  const oldTypingElement = dom.lastMessageSpan.querySelector('.peer-typing-container') as HTMLElement;
+  // * not the one still fading out after the last activity (`crossfadeContent`)
+  const getTypingElement = () => dom.lastMessageSpan.querySelector(':scope > .peer-typing-container') as HTMLElement;
+  const oldTypingElement = getTypingElement();
   const newTypingElement = await appImManager.getPeerTyping(peerId, oldTypingElement, threadId);
   if(newTypingElement) {
     if(!oldTypingElement) {
-      replaceContent(dom.lastMessageSpan, newTypingElement);
+      // * a call as quick as this one may have put its own in meanwhile: this one is an update of it
+      crossfadeContent(
+        dom.lastMessageSpan,
+        newTypingElement,
+        getTypingElement() ? 'update' : animate ? 'crossfade' : 'replace'
+      );
       dom.lastMessageSpan.classList.add('user-typing');
     }
 
@@ -340,7 +349,8 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     const needsLastMessage = await setDialogTyping({
       dom,
       peerId: dialog.peerId,
-      threadId: isForumTopic(dialog) ? dialog.id : undefined
+      threadId: isForumTopic(dialog) ? dialog.id : undefined,
+      animate: true
     });
 
     if(needsLastMessage) {
@@ -355,7 +365,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
       return;
     }
 
-    dialogElement.dom.lastMessageSpan.classList.remove('user-typing');
+    // * the last message takes the activity's place, and its `user-typing` (`setDialogSubtitle`)
     this.appDialogsManager.setLastMessageN({
       dialog,
       lastMessage: null,

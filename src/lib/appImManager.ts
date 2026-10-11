@@ -33,7 +33,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import disableTransition from '@helpers/dom/disableTransition';
 import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
-import replaceContent from '@helpers/dom/replaceContent';
+import crossfadeContent from '@helpers/dom/crossfadeContent';
 import whichChild from '@helpers/dom/whichChild';
 import singleInstance from '@lib/singleInstance';
 import {hideToast, toast, toastNew} from '@components/toast';
@@ -253,6 +253,34 @@ export type CreateConferenceOptions = {
 };
 
 class CallSwitchCancelledError extends Error {}
+
+/**
+ * What a status line says, its numbers and names aside: an activity, or the lang strings it is
+ * made of. A change of that is worth a crossfade - "online" giving way to "last seen just now",
+ * "N members" to "N members, M online" - while the minutes and the counts ticking are not
+ */
+function getStatusWording(nodes: Iterable<Node>) {
+  const keys: string[] = [];
+  for(const node of nodes) {
+    // * the placeholder is text, and says nothing; what fades out is no longer said
+    if(!(node instanceof HTMLElement) || node.classList.contains('crossfade-leaving')) {
+      continue;
+    }
+
+    if(node.classList.contains('peer-typing-container')) {
+      return 'typing';
+    }
+
+    for(const element of [node, ...node.querySelectorAll<HTMLElement>('.i18n')]) {
+      const intl = I18n.weakMap.get(element);
+      if(intl instanceof I18n.IntlElement && intl.key) {
+        keys.push(intl.key);
+      }
+    }
+  }
+
+  return keys.join();
+}
 
 export class AppImManager extends EventListenerBase<{
   chat_changing: (details: {from: Chat, to: Chat}) => void,
@@ -3862,16 +3890,18 @@ export class AppImManager extends EventListenerBase<{
     useWhitespace: boolean,
     middleware: () => boolean,
     ignoreSelf?: boolean,
-    noTyping?: boolean
+    noTyping?: boolean,
+    /** the element is as wide as its status: a status saying something else resizes it as it crossfades */
+    resize?: boolean
   }) {
     // const log = this.log.bindPrefix('status-' + peerId);
     // log('setting status', element);
 
-    const {peerId, element, needClear, useWhitespace, middleware, ignoreSelf, noTyping} = options;
+    const {peerId, element, needClear, useWhitespace, middleware, ignoreSelf, noTyping, resize} = options;
 
     if(!needClear) {
-      // * good good good
-      const typingContainer = element.querySelector('.peer-typing-container') as HTMLElement;
+      // * good good good - and not the one still fading out after the last activity (`crossfadeContent`)
+      const typingContainer = element.querySelector(':scope > .peer-typing-container') as HTMLElement;
       if(typingContainer && await this.getPeerTyping(peerId, typingContainer)) {
         // log('already have a status');
         return;
@@ -3891,7 +3921,19 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
-      return () => replaceContent(element, subtitle || placeholder);
+      return () => {
+        // * a status that says something else - an activity coming or going included - crossfades
+        // * with the one it takes the place of, while one that only counts on is put in plainly
+        const content = subtitle || placeholder;
+        const isReworded = getStatusWording(typeof(content) === 'string' ? [] : [content]) !==
+          getStatusWording(element.childNodes);
+        crossfadeContent(
+          element,
+          content,
+          needClear !== false ? 'replace' : isReworded ? 'crossfade' : 'update',
+          {resize}
+        );
+      };
     };
 
     const placeholder = useWhitespace ? NBSP : ''; // ! HERE U CAN FIND WHITESPACE

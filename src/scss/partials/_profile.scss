@@ -1,5 +1,30 @@
 @use "../shared" as *;
 
+// * the status keeps the anchor of the line as it crossfades and resizes (`crossfadeContent`): its
+// * centre where the line stays centred - the old status and the new, overflowing the resizing
+// * box or not - and its start where the line stays put at its start
+@mixin status-leaving-anchor($centred) {
+  .profile-subtitle-status {
+    @if $centred {
+      justify-content: center;
+
+      .crossfade-leaving {
+        inset-inline-start: auto;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+    } @else {
+      justify-content: flex-start;
+
+      .crossfade-leaving {
+        left: auto;
+        inset-inline-start: 0;
+        transform: none;
+      }
+    }
+  }
+}
+
 .profile {
   &-avatars {
     &-container {
@@ -239,6 +264,8 @@
         @include animation-level(2) {
           transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in), max-width var(--transition-standard-in);
         }
+
+        @include status-leaving-anchor(false);
       }
 
       .emoji-status {
@@ -504,6 +531,8 @@
           transform: translateX(-50%);
         }
 
+        @include status-leaving-anchor(true);
+
         .profile-name {
           max-width: 21.25rem;
         }
@@ -726,6 +755,21 @@
     .online {
       color: var(--primary-color);
     }
+
+    // * a box of its own, which what it showed fades out over (`crossfadeContent`) - an inline one
+    // * would leave that a line of another height - and which the new status resizes. What fades
+    // * out is not cut to the new status
+    &-status {
+      display: inline-flex;
+
+      .crossfade-leaving {
+        inset-inline-end: auto;
+        width: max-content;
+        overflow: visible;
+      }
+    }
+
+    @include status-leaving-anchor(true);
 
     .show-when {
       margin-inline-start: .25rem;

@@ -146,6 +146,7 @@ describe('Community dialog projection', () => {
       pinned: true,
       unread: true,
       unreadText: '2',
+      unreadCount: 2,
       unreadMention: false,
       unreadAvatar: false,
       mentions: true,

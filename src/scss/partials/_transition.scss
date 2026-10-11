@@ -301,3 +301,20 @@
     opacity: 1;
   }
 } */
+
+// * `crossfadeContent`: what the element held fades out laid over its own box - its content box,
+// * through the padding it inherits - while the new content takes its flow. `:where()` leaves
+// * a position of the element's own in place: any position but `static` holds the overlay
+:where(.is-crossfading) {
+  position: relative;
+}
+
+.crossfade-leaving {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}

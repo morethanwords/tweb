@@ -36,6 +36,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import replaceContent from '@helpers/dom/replaceContent';
+import crossfadeContent, {getCrossfadingTo} from '@helpers/dom/crossfadeContent';
 import highlightText, {TextHighlight} from '@helpers/dom/textHighlight';
 import ConnectionStatusComponent from '@components/connectionStatus';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
@@ -106,6 +107,7 @@ import {renderNewAuthorization} from '@components/sidebarLeft/newAuthorization';
 import {useHasFolders} from '@stores/foldersSidebar';
 import {useAppState} from '@stores/appState';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
+import {setRollingText} from '@components/animatedCounter';
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
 import {PossibleDialog, setDialogTyping} from '@components/autonomousDialogList/base';
 import {ForumTab} from '@components/forumTab/forumTab';
@@ -210,6 +212,17 @@ function disposeTextHighlight(dom: DialogDom) {
 }
 
 /**
+ * Puts the subtitle of a row in - crossfading from the activity it takes the place of, which
+ * came in the same way (`setDialogTyping`)
+ */
+function setDialogSubtitle(dom: DialogDom, nodes: Node[]) {
+  const {lastMessageSpan} = dom;
+  const wasTyping = lastMessageSpan.classList.contains('user-typing');
+  lastMessageSpan.classList.remove('user-typing');
+  crossfadeContent(lastMessageSpan, nodes, wasTyping ? 'crossfade' : 'update');
+}
+
+/**
  * Whether the subtitle in the DOM is still exactly what `setLastMessage` put
  * there — anyone else writing into `lastMessageSpan` (a community dialog
  * falling back to its chat count, a search result, a sidebar picker) has to
@@ -217,7 +230,8 @@ function disposeTextHighlight(dom: DialogDom) {
  */
 function isRenderedSubtitleIntact(dom: DialogDom) {
   const parts = dom.lastMessageRenderParts;
-  const {childNodes} = dom.lastMessageSpan;
+  // * crossfading in, the parts are what it fades to (`setDialogSubtitle`)
+  const childNodes = getCrossfadingTo(dom.lastMessageSpan) ?? dom.lastMessageSpan.childNodes;
   return !!parts &&
     parts.length === childNodes.length &&
     parts.every((part, idx) => part === childNodes[idx]);
@@ -267,6 +281,8 @@ export type DialogElementBadgeState = {
   pinned: boolean,
   unread: boolean,
   unreadText?: string,
+  /** the count `unreadText` stands for - tells which way a changed one rolls */
+  unreadCount?: number,
   unreadMention?: boolean,
   unreadAvatar: boolean,
   unreadAvatarText?: string,
@@ -282,6 +298,8 @@ type DialogElementAppliedBadgeState = {
 } & {
   hasOnlyPinnedBadge: boolean,
   unreadText?: string,
+  unreadCount?: number,
+  unreadMention?: boolean,
   unreadAvatarText?: string
 };
 
@@ -625,6 +643,12 @@ export class DialogElement {
     // * the bot's button takes the pin's place instead of covering it, as the unread badge does
     const pinned = options.pinned && !botApp;
 
+    // * `toggleBadgeByKey` writes what it toggles into the very state `previous` is
+    const wasVisible = {
+      unreadBadge: !!previous?.unreadBadge,
+      unreadAvatarBadge: !!previous?.unreadAvatarBadge
+    };
+
     const mounted = {
       pinnedBadge: !!this.dom.pinnedBadge,
       unreadBadge: !!this.dom.unreadBadge,
@@ -705,11 +729,26 @@ export class DialogElement {
       this.toggleBadgeByKey(key, visible, mounted[key], !transitionDuration);
     }
 
+    // * a count that changes on a badge already in sight rolls to the new one, character by
+    // * character, as it does in the official apps; one that comes in with its badge does not,
+    // * nor does the `@` of a mention, whose badge is cut differently (`.mention`) and would
+    // * swell on its way to a number
+    const unreadDirection = (options.unreadCount ?? 0) - (previous?.unreadCount ?? 0);
+    const rollUnread = !!transitionDuration && !!previous && !previous.unreadMention === !options.unreadMention;
+    const setUnreadText = (key: 'unreadBadge' | 'unreadAvatarBadge', text: string) => {
+      setRollingText({
+        element: this.dom[key],
+        text,
+        direction: unreadDirection,
+        animate: rollUnread && mounted[key] && wasVisible[key]
+      });
+    };
+
     if(options.unread && this.dom.unreadBadge) {
       if(options.unreadText !== undefined && options.unreadText !== previous?.unreadText) {
-        this.dom.unreadBadge.innerText = options.unreadText;
+        setUnreadText('unreadBadge', options.unreadText);
         if(this.dom.unreadAvatarBadge) {
-          this.dom.unreadAvatarBadge.innerText = options.unreadText;
+          setUnreadText('unreadAvatarBadge', options.unreadText);
         }
       }
       this.dom.unreadBadge.classList.add('unread');
@@ -718,7 +757,7 @@ export class DialogElement {
 
     if(options.unreadAvatar && this.dom.unreadAvatarBadge) {
       if(options.unreadAvatarText !== undefined && options.unreadAvatarText !== previous?.unreadAvatarText) {
-        this.dom.unreadAvatarBadge.innerText = options.unreadAvatarText;
+        setUnreadText('unreadAvatarBadge', options.unreadAvatarText);
       }
       this.dom.unreadAvatarBadge.classList.add('unread');
       this.dom.unreadAvatarBadge.classList.toggle('mention', !!options.unreadMention);
@@ -734,8 +773,15 @@ export class DialogElement {
       botAppButton: botApp,
       hasOnlyPinnedBadge,
       unreadText: options.unreadText,
+      unreadCount: options.unreadCount,
+      unreadMention: options.unreadMention,
       unreadAvatarText: options.unreadAvatarText
     };
+  }
+
+  /** what the unread badge says - its DOM holds the plain text only while the count stands still */
+  public get unreadText() {
+    return this.lastBadgeState?.unreadText;
   }
 
   /**
@@ -2691,7 +2737,7 @@ export class AppDialogsManager {
       const emptySubtitle = this.getEmptySubtitle(peerId, dom.listEl);
 
       disposeTextHighlight(dom);
-      dom.lastMessageSpan.replaceChildren(...(emptySubtitle ? [emptySubtitle] : []));
+      setDialogSubtitle(dom, emptySubtitle ? [emptySubtitle] : []);
       dom.lastTimeSpan.replaceChildren();
       delete dom.listEl.dataset.mid;
       delete dom.listEl.dataset.searchQuery;
@@ -2788,7 +2834,7 @@ export class AppDialogsManager {
       });
       dom.lastMessageSpan.classList.add('dialog-subtitle-parts');
       disposeTextHighlight(dom);
-      dom.lastMessageSpan.replaceChildren(...parts);
+      setDialogSubtitle(dom, parts);
       renderedParts = parts;
 
       // * the last part is the message text itself (the ones before are the sender, the
@@ -2945,6 +2991,7 @@ export class AppDialogsManager {
       pinned: hasPinnedBadge,
       unread: hasUnreadBadge,
       unreadText: unreadBadgeText,
+      unreadCount,
       unreadMention: isMention,
       unreadAvatar: hasUnreadAvatarBadge,
       unreadAvatarText: unreadBadgeText || undefined,

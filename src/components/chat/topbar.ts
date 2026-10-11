@@ -46,7 +46,7 @@ import canClearHistory from '@appManagers/utils/chats/canClearHistory';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
-import setBadgeContent from '@helpers/setBadgeContent';
+import {setBadgeCount} from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
@@ -1073,7 +1073,8 @@ export default class ChatTopbar {
       }
 
       const size = folder.unreadUnmutedPeerIds.size;
-      setBadgeContent(this.btnBackBadge, size ? '' + formatNumber(size, 1) : '');
+      // * it is shown on handhelds only (`.back-unread-badge`): elsewhere a roll is for nobody
+      setBadgeCount(this.btnBackBadge, size, formatNumber(size, 1), mediaSizes.isMobile);
       // this.btnBack.classList.remove('tgico-left', 'tgico-previous');
       // this.btnBack.classList.add(size ? 'tgico-previous' : 'tgico-left');
     });
