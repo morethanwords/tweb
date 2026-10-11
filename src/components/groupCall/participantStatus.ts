@@ -3,15 +3,18 @@ import setInnerHTML from '@helpers/dom/setInnerHTML';
 import {GroupCallParticipant} from '@layer';
 import {i18n} from '@lib/langPack';
 import {GROUP_CALL_PARTICIPANT_MUTED_STATE} from '.';
-import {GroupCallParticipantVideoType} from '@components/groupCall/participantVideo';
+import type {GroupCallVideoTileType} from '@components/groupCall/videoTile';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import Icon from '@components/icon';
 
 const className = 'group-call-participant-status';
 export default class GroupCallParticipantStatusElement {
   public container: HTMLElement;
+  private span: HTMLElement;
+  // what it shows now: a roster poll re-renders every row every few seconds, mostly unchanged
+  private shownKey: string;
 
-  constructor(private withIcons: GroupCallParticipantVideoType[]) {
+  constructor(private withIcons: GroupCallVideoTileType[]) {
     this.container = document.createElement('div');
     this.container.classList.add(className + '-container');
   }
@@ -24,6 +27,12 @@ export default class GroupCallParticipantStatusElement {
    * calls_group_members_row.cpp:702) and never shows `about` for it.
    */
   public setState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE, participant: GroupCallParticipant, withAccess?: boolean) {
+    const key = [state, !!withAccess, participant.about, ...this.withIcons.map((type) => !!participant[type])].join();
+    if(key === this.shownKey) {
+      return;
+    }
+
+    this.shownKey = key;
     const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
     const icons = withAccess ? [] : this.withIcons.filter((type) => !!participant[type]).map((type) => {
       const iconClassName: Icon = `${type === 'presentation' ? 'listscreenshare_filled' : 'videocamera_filled'}`;
@@ -54,10 +63,13 @@ export default class GroupCallParticipantStatusElement {
       actionClassName = 'is-listening';
     }
 
-    const span = document.createElement('span');
-    span.classList.add(className, actionClassName);
-    span.append(...icons, element2);
+    // the same element from state to state, so its colour can fade between them
+    const span = this.span ??= document.createElement('span');
+    span.className = className + ' ' + actionClassName;
+    span.replaceChildren(...icons, element2);
 
-    replaceContent(this.container, span);
+    if(span.parentElement !== this.container) {
+      replaceContent(this.container, span);
+    }
   }
 }

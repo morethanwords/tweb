@@ -11,10 +11,13 @@
  */
 
 import rootScope from '@lib/rootScope';
+import apiManagerProxy from '@lib/apiManagerProxy';
 import CALL_STATE from '@lib/calls/callState';
-import type {GroupCall, GroupCallParticipant} from '@layer';
-import {defineStories} from '../registry';
+import type {GroupCall, GroupCallParticipant, GroupCallParticipantVideo} from '@layer';
+import type {GroupCallId} from '@appManagers/appGroupCallsManager';
+import {defineStories, PopupStory} from '../registry';
 import type {PopupStoryContext} from '../context';
+import {videoChatUsers} from '../fixtures';
 
 /** The SAS a connected call prints in its header. Derived from the shared key, of which there is none. */
 const FINGERPRINT: [string, string, string, string] = ['🐶', '🌴', '🎩', '🍎'];
@@ -32,38 +35,52 @@ function sandboxStreams(withVideo: boolean) {
   const audio = audioContext.createMediaStreamDestination().stream;
   const streams: {ownAudio: MediaStream, video?: MediaStream, ownVideo?: MediaStream} = {ownAudio: audio};
 
-  let interval: number;
-  let video: MediaStream;
-  if(withVideo) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 480;
-    const context = canvas.getContext('2d');
-
-    let frame = 0;
-    const draw = () => {
-      const shift = (frame++ * 4) % canvas.width;
-      const gradient = context.createLinearGradient(shift - canvas.width, 0, shift, canvas.height);
-      gradient.addColorStop(0, '#3e917a');
-      gradient.addColorStop(0.5, '#53a4d1');
-      gradient.addColorStop(1, '#a667d5');
-      context.fillStyle = gradient;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    };
-
-    draw();
-    interval = window.setInterval(draw, 1000 / 30);
-    video = canvas.captureStream(30);
-    streams.video = streams.ownVideo = video;
+  const camera = withVideo && sandboxCanvasStream(640, 480, 30, (context, frame) => {
+    const {width, height} = context.canvas;
+    const shift = (frame * 4) % width;
+    const gradient = context.createLinearGradient(shift - width, 0, shift, height);
+    gradient.addColorStop(0, '#3e917a');
+    gradient.addColorStop(0.5, '#53a4d1');
+    gradient.addColorStop(1, '#a667d5');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+  });
+  if(camera) {
+    streams.video = streams.ownVideo = camera.stream;
   }
 
   return {
     streams,
     dispose: () => {
-      if(interval !== undefined) clearInterval(interval);
-      video?.getTracks().forEach((track) => track.stop());
+      camera && camera.dispose();
       audio.getTracks().forEach((track) => track.stop());
       audioContext.close();
+    }
+  };
+}
+
+/** A camera that is a canvas: `draw` paints frame number `frame`, `fps` times a second. */
+function sandboxCanvasStream(
+  width: number,
+  height: number,
+  fps: number,
+  draw: (context: CanvasRenderingContext2D, frame: number) => void
+) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+
+  let frame = 0;
+  const paint = () => draw(context, frame++);
+  paint();
+  const interval = window.setInterval(paint, 1000 / fps);
+  const stream = canvas.captureStream(fps);
+  return {
+    stream,
+    dispose: () => {
+      clearInterval(interval);
+      stream.getTracks().forEach((track) => track.stop());
     }
   };
 }
@@ -80,18 +97,60 @@ const sandboxGroupCall: GroupCall.groupCall = {
   version: 1
 };
 
+type GroupCallStoryOptions = {
+  /** Remote cameras: Alice's first, then the crowd fixtures'. */
+  videos?: number,
+  /** Our own camera too. */
+  selfVideo?: boolean,
+  /** Alice shares her screen, pinned the way a fresh screencast is. */
+  presentation?: boolean,
+  /**
+   * An end-to-end encrypted conference: `verified` with the call's key emoji, `syncing` while the
+   * participants still agree on the key.
+   */
+  conference?: 'verified' | 'syncing'
+};
+
+type GroupCallRosterRow = {
+  peerId: PeerId,
+  self?: boolean,
+  muted?: boolean,
+  video?: 'landscape' | 'portrait',
+  presentation?: boolean
+};
+
 /** Shared between the story's manager answers and its `open()`; both need the same rows. */
 let roster: ReturnType<typeof groupCallRoster>;
+
+/** SSRCs the fake videos are announced under; the panel looks each tile's element up by it. */
+const VIDEO_SOURCE_BASE = 1000;
+const PRESENTATION_SOURCE_BASE = 2000;
+
+function makeParticipantVideo(source: number): GroupCallParticipantVideo {
+  return {
+    _: 'groupCallParticipantVideo',
+    pFlags: {},
+    endpoint: 'sandbox-' + source,
+    source_groups: [{_: 'groupCallParticipantVideoSourceGroup', semantics: 'SIM', sources: [source]}]
+  };
+}
 
 /**
  * Its roster, ourselves first — the panel reads our own row off `instance.participant` and the rest
  * out of the participants cache, which is a Map the roster mutates in place. Built once per story
  * open so it stays the same Map across the calls the list makes.
  */
-function groupCallRoster(ctx: PopupStoryContext) {
-  const rows: Array<{peerId: PeerId, self?: boolean, muted?: boolean}> = [
-    {peerId: ctx.peer('self'), self: true, muted: true},
-    {peerId: ctx.peer('private')},
+function groupCallRoster(ctx: PopupStoryContext, options: GroupCallStoryOptions = {}) {
+  const {videos = 0} = options;
+  const rows: GroupCallRosterRow[] = [
+    {peerId: ctx.peer('self'), self: true, muted: true, video: options.selfVideo ? 'landscape' : undefined},
+    {peerId: ctx.peer('private'), video: videos > 0 ? 'landscape' : undefined, presentation: options.presentation},
+    // every third camera is held upright, the way a phone sends it
+    ...videoChatUsers.slice(0, Math.max(0, videos - 1)).map((user, index): GroupCallRosterRow => ({
+      peerId: user.id.toPeerId(false),
+      muted: index % 2 === 0,
+      video: index % 3 === 1 ? 'portrait' : 'landscape'
+    })),
     {peerId: ctx.peer('bot'), muted: true}
   ];
 
@@ -103,15 +162,46 @@ function groupCallRoster(ctx: PopupStoryContext) {
       ...(row.muted ? {muted: true} : {})
     },
     peer: {_: 'peerUser', user_id: row.peerId.toUserId()},
-    date: 0,
-    source: index + 1
+    date: index,
+    source: index + 1,
+    ...(row.video ? {video: makeParticipantVideo(VIDEO_SOURCE_BASE + index)} : {}),
+    ...(row.presentation ? {presentation: makeParticipantVideo(PRESENTATION_SOURCE_BASE + index)} : {})
   }));
 
   return {
+    rows,
     participants,
     self: participants[0],
     cached: new Map(rows.map((row, index) => [row.peerId, participants[index]]))
   };
+}
+
+/**
+ * A camera for a fixture that has none: a slow gradient with the name across it, drawn at a low
+ * frame rate so a dozen tiles stay cheap. The panel only mounts a tile once its element decodes
+ * frames, which a still stream would never give it.
+ */
+function sandboxVideo(label: string, hue: number, width: number, height: number) {
+  const camera = sandboxCanvasStream(width, height, 15, (context, frame) => {
+    const shift = (frame * 3) % 360;
+    const gradient = context.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, `hsl(${hue + shift / 6}, 55%, 42%)`);
+    gradient.addColorStop(1, `hsl(${hue + 60 + shift / 6}, 60%, 28%)`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = 'rgba(255, 255, 255, .85)';
+    context.font = `bold ${Math.round(Math.min(width, height) / 8)}px sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label, width / 2, height / 2);
+  });
+
+  const video = document.createElement('video');
+  video.autoplay = video.muted = true;
+  video.setAttribute('playsinline', 'true');
+  video.srcObject = camera.stream;
+
+  return {video, dispose: camera.dispose};
 }
 
 type CallStoryOptions = {
@@ -180,6 +270,122 @@ async function openCall(options: CallStoryOptions) {
   return () => {
     media?.dispose();
     instance.cleanup();
+  };
+}
+
+/*
+ * The legacy video chat, which is a panel rather than a box. Its state is read off the ICE
+ * connection and its roster off the participants cache, so the story hands it a connected-looking
+ * transport and answers the cache — everything else it builds itself. Cameras are canvases
+ * registered under the SSRCs the roster announces, which is where the panel looks a tile's video up.
+ */
+function groupCallStory(id: string, title: string, options: GroupCallStoryOptions = {}): Omit<PopupStory, 'group'> {
+  return {
+    id,
+    fixtureOnly: true,
+    title,
+    managers: (ctx) => {
+      roster = groupCallRoster(ctx, options);
+      return {
+        appGroupCallsManager: {
+          getCachedParticipants: () => roster.cached,
+          getGroupCallParticipants: () => ({participants: roster.participants, isEnd: true}),
+          getGroupCall: () => sandboxGroupCall,
+          getGroupCallFull: () => sandboxGroupCall,
+          // what "Share Link" and the invite picker hand out
+          exportGroupCallInvite: () => 'https://t.me/call/sandbox-video-chat'
+        }
+      };
+    },
+    open: async(ctx) => {
+      const [{default: GroupCallInstance}, {default: groupCallsController}, {default: showGroupCallPopup}] =
+        await Promise.all([
+          import('@lib/calls/groupCallInstance'),
+          import('@lib/calls/groupCallsController'),
+          import('@components/groupCall')
+        ]);
+
+      const media = sandboxStreams(false);
+      const instance = new GroupCallInstance({
+        id: sandboxGroupCall.id,
+        chatId: ctx.peer('group').toChatId(),
+        managers: rootScope.managers,
+        // The panel reads its state off the transport and its microphone off the capture track.
+        // There is neither, so stand in a connected-looking connection over the silent stream —
+        // the same shape `src/tests/groupCallSelfRow.test.ts` drives the instance with.
+        connections: {
+          main: {
+            connection: {iceConnectionState: 'connected'},
+            streamManager: {
+              inputStream: media.streams.ownAudio,
+              hasInputTrackKind: (kind: string) => kind === 'audio',
+              // a silent stand-in microphone: the waves idle
+              getInputAudioLevel: () => 0,
+              stop: () => {}
+            },
+            description: {},
+            sources: {audio: {source: 1}},
+            closeConnectionAndStream: () => {}
+          }
+        } as any
+      });
+      instance.groupCall = sandboxGroupCall;
+      instance.participant = roster.self;
+      instance.joined = true;
+      if(options.conference) {
+        // No encryption worker either: the panel only asks whether there is one, and reads the key
+        // off the last status it reported.
+        instance.e2e = {terminate: async() => {}, setSsrcUsers: async() => {}} as any;
+        if(options.conference === 'verified') {
+          instance.e2eStatus = {verification: {emojiHash: Uint8Array.from({length: 32}, (_, i) => i * 37 + 11)}} as any;
+        }
+      }
+      // No SFU to renegotiate with: a roster push only moves pins, the way the real one does. The
+      // controller, which routes those pushes to the instance, is only set up by a signed-in app.
+      instance.onParticipantUpdate = (participant) => instance.syncParticipantPins(participant);
+      const onParticipant = ({groupCallId, participant}: {groupCallId: GroupCallId, participant: GroupCallParticipant}) => {
+        if(groupCallId === instance.id) instance.syncParticipantPins(participant);
+      };
+      rootScope.addEventListener('group_call_participant', onParticipant);
+
+      // The other half of the sandbox-only shortcut in `openCall`: the elements a negotiated track
+      // would have registered, keyed the way `getVideoElementFromParticipantByType` reads them.
+      const elements: Map<string, HTMLMediaElement> = (instance as any).elements;
+      const videos = roster.rows.flatMap((row, index) => {
+        const peer = apiManagerProxy.getPeer(row.peerId);
+        const name = peer?._ === 'user' ? peer.first_name : '';
+        const hue = (index * 47) % 360;
+        const made: Array<ReturnType<typeof sandboxVideo>> = [];
+        if(row.video) {
+          const portrait = row.video === 'portrait';
+          const video = sandboxVideo(name, hue, portrait ? 360 : 640, portrait ? 640 : 360);
+          elements.set(row.self ? 'main' : '' + (VIDEO_SOURCE_BASE + index), video.video);
+          made.push(video);
+        }
+
+        if(row.presentation) {
+          const video = sandboxVideo(name + '\'s screen', hue + 180, 1280, 800);
+          elements.set('' + (PRESENTATION_SOURCE_BASE + index), video.video);
+          made.push(video);
+        }
+
+        return made;
+      });
+
+      roster.participants.forEach((participant) => {
+        if(participant.presentation) instance.syncParticipantPins(participant);
+      });
+
+      groupCallsController.setCurrentGroupCall(instance);
+      showGroupCallPopup();
+
+      return () => {
+        rootScope.removeEventListener('group_call_participant', onParticipant);
+        groupCallsController.setCurrentGroupCall(undefined);
+        videos.forEach((video) => video.dispose());
+        media.dispose();
+      };
+    }
   };
 }
 
@@ -343,69 +549,12 @@ defineStories('Calls', [
       showCallLinkPopup({link: 'https://t.me/call/sandbox-call-link', callId: '1', canManage: true});
     }
   },
-  {
-    /*
-     * The legacy video chat, which is a panel rather than a box. Its state is read off the ICE
-     * connection and its roster off the participants cache, so the story hands it a connected-looking
-     * transport and answers the cache — everything else it builds itself.
-     */
-    id: 'call/groupCall',
-    fixtureOnly: true,
-    title: 'Video chat',
-    managers: (ctx) => {
-      roster = groupCallRoster(ctx);
-      return {
-        appGroupCallsManager: {
-          getCachedParticipants: () => roster.cached,
-          getGroupCallParticipants: () => ({participants: roster.participants, isEnd: true}),
-          getGroupCall: () => sandboxGroupCall,
-          getGroupCallFull: () => sandboxGroupCall
-        }
-      };
-    },
-    open: async(ctx) => {
-      const [{default: GroupCallInstance}, {default: groupCallsController}, {default: showGroupCallPopup}] =
-        await Promise.all([
-          import('@lib/calls/groupCallInstance'),
-          import('@lib/calls/groupCallsController'),
-          import('@components/groupCall')
-        ]);
-
-      const media = sandboxStreams(false);
-      const instance = new GroupCallInstance({
-        id: sandboxGroupCall.id,
-        chatId: ctx.peer('group').toChatId(),
-        managers: rootScope.managers,
-        // The panel reads its state off the transport and its microphone off the capture track.
-        // There is neither, so stand in a connected-looking connection over the silent stream —
-        // the same shape `src/tests/groupCallSelfRow.test.ts` drives the instance with.
-        connections: {
-          main: {
-            connection: {iceConnectionState: 'connected'},
-            streamManager: {
-              inputStream: media.streams.ownAudio,
-              hasInputTrackKind: (kind: string) => kind === 'audio',
-              stop: () => {}
-            },
-            description: {},
-            sources: {audio: {source: 1}},
-            closeConnectionAndStream: () => {}
-          }
-        } as any
-      });
-      instance.groupCall = sandboxGroupCall;
-      instance.participant = roster.self;
-      instance.joined = true;
-
-      groupCallsController.setCurrentGroupCall(instance);
-      showGroupCallPopup();
-
-      return () => {
-        groupCallsController.setCurrentGroupCall(undefined);
-        media.dispose();
-      };
-    }
-  },
+  groupCallStory('call/groupCall', 'Video chat'),
+  groupCallStory('call/groupCallVideos', 'Video chat — five cameras', {videos: 4, selfVideo: true}),
+  groupCallStory('call/groupCallCrowd', 'Video chat — nine cameras', {videos: 8, selfVideo: true}),
+  groupCallStory('call/groupCallScreencast', 'Video chat — a pinned screencast', {videos: 2, presentation: true}),
+  groupCallStory('call/conference', 'Conference — the encryption key', {videos: 1, conference: 'verified'}),
+  groupCallStory('call/conferenceSyncing', 'Conference — agreeing on the key', {conference: 'syncing'}),
   {
     /*
      * The in-call sheet, in its 1-on-1 shape (the group-call one adds "Mute new participants" and

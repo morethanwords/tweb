@@ -6,7 +6,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
 import replaceContent from '@helpers/dom/replaceContent';
 import safePlay from '@helpers/dom/safePlay';
-import MovablePanel from '@helpers/movablePanel';
+import MovablePanel, {IS_MOVABLE_PANEL} from '@helpers/movablePanel';
 import onMediaLoad from '@helpers/onMediaLoad';
 import themeController from '@helpers/themeController';
 import classNames from '@helpers/string/classNames';
@@ -14,7 +14,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import CallInstance from '@lib/calls/callInstance';
 import ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
 import CALL_STATE from '@lib/calls/callState';
-import I18n, {i18n} from '@lib/langPack';
+import {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {animateValue} from '@helpers/animateValue';
 import animationIntersector from '@components/animationIntersector';
@@ -26,7 +26,7 @@ import {MovableState} from '@components/movableElement';
 import PeerTitle from '@components/peerTitle';
 import StackedAvatars from '@components/stackedAvatars';
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
-import makeButton, {setCallButtonBusy} from '@components/call/button';
+import CallButton from '@components/call/button';
 import CallDescriptionElement from '@components/call/description';
 import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
 import showCallSettingsPopup from '@components/call/settingsPopup';
@@ -96,19 +96,12 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
   let containerEl!: HTMLDivElement;
 
-  // Pieces the imperative update path keeps mutating. They are all built by
-  // DOM-returning helpers (`makeButton`, `ButtonIcon`, `avatarNew`), so they
-  // stay plain elements rather than signals — only the container's own classes
-  // are reactive.
+  // Pieces the imperative update path keeps mutating. They are built by
+  // DOM-returning helpers (`ButtonIcon`, `avatarNew`), so they stay plain
+  // elements; the call buttons (`CallButton`) follow signals of their own.
   let description: CallDescriptionElement;
   let emojisSubtitle: HTMLElement;
-  let declineI18nElement: I18n.IntlElement;
-  let muteI18nElement: I18n.IntlElement;
   let microphoneIcon: GroupCallMicrophoneIconMini;
-  let btnAccept: HTMLElement;
-  let btnVideo: HTMLElement;
-  let btnScreen: HTMLElement;
-  let btnMute: HTMLElement;
   let btnFullScreen: HTMLButtonElement;
   let btnExitFullScreen: HTMLButtonElement;
 
@@ -487,97 +480,86 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       );
     }
 
-    const makeCallButton = makeButton.bind(null, className, listenerSetter);
+    // What the buttons show; `updateInstance` keeps it in step with the call.
+    const [isClosed, setIsClosed] = createSignal(false);
+    const [canAccept, setCanAccept] = createSignal(false);
+    const [declineLabel, setDeclineLabel] = createSignal<LangPackKey>('Call.Decline');
+    const [isMuted, setIsMuted] = createSignal(false);
+    // follows the microphone icon's animation, a step behind `isMuted`
+    const [muteFilled, setMuteFilled] = createSignal(false);
+    const [sharingVideo, setSharingVideo] = createSignal(false);
+    const [sharingScreen, setSharingScreen] = createSignal(false);
+    const [mediaBusy, setMediaBusy] = createSignal(false);
+
+    const onMediaClick = (action: () => Promise<void>, errorKey: 'ConferenceCall.Media.CameraError' | 'ConferenceCall.Media.ScreenError') => {
+      setMediaBusy(true);
+      runControlAction(action, errorKey, () => setMediaBusy(false));
+    };
 
     let firstButtonsRow: HTMLElement;
     if(!inviteInstance) {
-      firstButtonsRow = document.createElement('div');
-      firstButtonsRow.classList.add(className + '-buttons', 'is-first');
-
-      btnVideo = makeCallButton({
-        text: 'Call.Camera',
-        icon: 'videocamera_filled',
-        callback: () => {
-          setMediaControlsBusy(true);
-          runControlAction(
-            () => callInstance.toggleVideoSharing(),
-            'ConferenceCall.Media.CameraError',
-            () => setMediaControlsBusy(false)
-          );
-        }
-      });
-
-      btnScreen = makeCallButton({
-        text: 'Call.Screen',
-        icon: 'sharescreen_filled',
-        callback: () => {
-          setMediaControlsBusy(true);
-          runControlAction(
-            () => callInstance.toggleScreenSharing(),
-            'ConferenceCall.Media.ScreenError',
-            () => setMediaControlsBusy(false)
-          );
-        }
-      });
-
-      const setMediaControlsBusy = (busy: boolean) => {
-        setCallButtonBusy(btnVideo, busy);
-        setCallButtonBusy(btnScreen, busy);
-      };
-
-      if(!IS_SCREEN_SHARING_SUPPORTED) {
-        btnScreen.classList.add('hide');
-      }
-
-      muteI18nElement = new I18n.IntlElement({
-        key: 'Call.Mute'
-      });
-      btnMute = makeCallButton({
-        text: muteI18nElement.element,
-        callback: () => {
-          runControlAction(
-            () => callInstance.toggleMuted(),
-            'ConferenceCall.Media.MicrophoneError'
-          );
-        }
-      });
-
       microphoneIcon = new GroupCallMicrophoneIconMini(true, true, 36);
-      btnMute.firstElementChild.append(microphoneIcon.container);
 
-      firstButtonsRow.append(btnVideo, btnScreen, btnMute);
+      firstButtonsRow = (
+        <div class={classNames(className + '-buttons', 'is-first')}>
+          <CallButton
+            class={className}
+            label="Call.Camera"
+            icon="videocamera_filled"
+            active={sharingVideo()}
+            pressed={sharingVideo()}
+            disabled={isClosed()}
+            busy={mediaBusy()}
+            onClick={() => onMediaClick(() => callInstance.toggleVideoSharing(), 'ConferenceCall.Media.CameraError')}
+          />
+          {IS_SCREEN_SHARING_SUPPORTED && (
+            <CallButton
+              class={className}
+              label="Call.Screen"
+              icon="sharescreen_filled"
+              active={sharingScreen()}
+              pressed={sharingScreen()}
+              busy={mediaBusy()}
+              onClick={() => onMediaClick(() => callInstance.toggleScreenSharing(), 'ConferenceCall.Media.ScreenError')}
+            />
+          )}
+          <CallButton
+            class={className}
+            label={isMuted() ? 'VoipUnmute' : 'Call.Mute'}
+            active={muteFilled()}
+            onClick={() => runControlAction(() => callInstance.toggleMuted(), 'ConferenceCall.Media.MicrophoneError')}
+          >
+            {microphoneIcon.container}
+          </CallButton>
+        </div>
+      ) as HTMLElement;
     }
 
-    const secondButtonsRow = document.createElement('div');
-    secondButtonsRow.classList.add(className + '-buttons', 'is-second');
-
-    declineI18nElement = new I18n.IntlElement({
-      key: 'Call.Decline'
-    });
-    const btnDecline = makeCallButton({
-      text: declineI18nElement.element,
-      icon: 'endcall_filled',
-      callback: () => {
-        runControlAction(
-          () => inviteInstance ?
-            inviteInstance.hangUp() :
-            callInstance.hangUp('phoneCallDiscardReasonHangup'),
-          'Error.AnError'
-        );
-      },
-      isDanger: true
-    });
-
-    btnAccept = makeCallButton({
-      text: 'Call.Accept',
-      icon: 'phone_filled',
-      callback: () => {
-        runControlAction(() => instance.acceptCall(), 'Error.AnError');
-      },
-      isConfirm: true
-    });
-
-    secondButtonsRow.append(btnDecline, btnAccept);
+    const secondButtonsRow = (
+      <div class={classNames(className + '-buttons', 'is-second')}>
+        <CallButton
+          class={className}
+          label={declineLabel()}
+          icon="endcall_filled"
+          color="red"
+          onClick={() => runControlAction(
+            () => inviteInstance ?
+              inviteInstance.hangUp() :
+              callInstance.hangUp('phoneCallDiscardReasonHangup'),
+            'Error.AnError'
+          )}
+        />
+        <CallButton
+          class={className}
+          label="Call.Accept"
+          icon="phone_filled"
+          color="green"
+          containerClass={canAccept() ? undefined : 'hide-me'}
+          disabled={!canAccept()}
+          onClick={() => runControlAction(() => instance.acceptCall(), 'Error.AnError')}
+        />
+      </div>
+    ) as HTMLElement;
 
     // Reception drives the bars, the weak-network pill and the palette, as in iOS
     // `PrivateCallScreen`: connecting (purple/blue) before the call is up, active (green/teal)
@@ -603,7 +585,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
           cancelFullScreen();
         }
 
-        btnVideo?.classList.add('disabled');
+        setIsClosed(true);
 
         context.hide();
         return;
@@ -615,11 +597,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       // the moment the invitation is accepted or declined.
       if(inviteInstance) {
         const isPending = connectionState === CALL_STATE.PENDING;
-        declineI18nElement.compareAndUpdate({
-          key: isPending ? 'Call.Decline' : 'Call.End'
-        });
-        btnAccept.classList.toggle('disable', !isPending);
-        btnAccept.classList.toggle('hide-me', !isPending);
+        setDeclineLabel(isPending ? 'Call.Decline' : 'Call.End');
+        setCanAccept(isPending);
         description.update(instance);
         return;
       }
@@ -627,33 +606,22 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       updateSignal();
 
       const isPendingIncoming = !instance.isOutgoing && connectionState === CALL_STATE.PENDING;
-      declineI18nElement.compareAndUpdate({
-        key: connectionState === CALL_STATE.PENDING ? 'Call.Decline' : 'Call.End'
-      });
-      btnAccept.classList.toggle('disable', !isPendingIncoming);
-      btnAccept.classList.toggle('hide-me', !isPendingIncoming);
+      setDeclineLabel(connectionState === CALL_STATE.PENDING ? 'Call.Decline' : 'Call.End');
+      setCanAccept(isPendingIncoming);
       setTwoButtonRows(isPendingIncoming);
 
-      const isMuted = callInstance.isMuted;
-      const onFrame = () => {
-        btnMute.firstElementChild.classList.toggle('active', isMuted);
-      };
+      const muted = callInstance.isMuted;
+      const onFrame = () => setMuteFilled(muted);
 
       const player = microphoneIcon.getItem().player;
-      microphoneIcon.setState(!isMuted, !isMuted, onFrame);
+      microphoneIcon.setState(!muted, !muted, onFrame);
       if(!player) {
         onFrame();
       }
 
-      muteI18nElement.compareAndUpdate({
-        key: isMuted ? 'VoipUnmute' : 'Call.Mute'
-      });
-
-      const isSharingVideo = callInstance.isSharingVideo;
-      btnVideo.firstElementChild.classList.toggle('active', isSharingVideo);
-
-      const isSharingScreen = callInstance.isSharingScreen;
-      btnScreen.firstElementChild.classList.toggle('active', isSharingScreen);
+      setIsMuted(muted);
+      setSharingVideo(callInstance.isSharingVideo);
+      setSharingScreen(callInstance.isSharingScreen);
 
       const outputState = callInstance.getMediaState('output');
       mutedNotice.setVisible(!!outputState?.muted);
@@ -841,7 +809,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
   createPopup(() => (
     <PopupElement
-      class="popup-call"
+      class={classNames('popup-call', IS_MOVABLE_PANEL && 'movable-element')}
       withoutOverlay
       closable
       show={show()}

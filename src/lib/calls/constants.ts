@@ -55,3 +55,9 @@ export const CONFERENCE_CALL_SLUG_REGEXP = /^[A-Za-z0-9_-]{1,64}$/;
 
 // Signal bars of a 1-on-1 call, as native tgcalls reports them (0..4).
 export const CALL_SIGNAL_BARS_COUNT = 4;
+
+// How long an asked-for unmute stays armed while the server has yet to confirm it — a server
+// accepted one waiting for a self row (GroupCallInstance.changeSelfMuted), a press made before
+// the server listed us (the video chat panel). Short-lived so a much later row cannot
+// surprise-open the microphone.
+export const UNMUTE_INTENT_TTL_MS = 15000;

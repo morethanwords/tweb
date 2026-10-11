@@ -1,14 +1,18 @@
 @use "../../shared" as *;
 
-// The shared call-button factory is used by both private calls and group calls.
-// Native buttons need a visible keyboard focus indicator in either popup.
-.call-button:focus-visible {
+// CallButton (call/button.tsx) is shared by private calls and group calls: a native button, with a
+// focus ring of its own in either popup, with the keyboard layer.
+:where(.a11y) .call-button:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
 
 .popup-group-call {
   $parent: ".popup";
+
+  // A panel, not a sheet: its corners stay close to the tiles inside, which sit half a rem in and
+  // are rounded a rem — concentric.
+  --popup-border-radius: #{$border-radius-big};
 
   &:not(.movable-element) {
     // max-width: 420px;
@@ -21,17 +25,16 @@
     }
   }
 
-  #{$parent} {
-    &-body {
+  // Its own parts only, as children: a popup opened from the panel in full screen sits inside it.
+  > #{$parent}-container {
+    background-color: var(--gc-background-color);
+    color: var(--gc-primary-text-color);
+
+    > #{$parent}-body {
       justify-content: space-between;
     }
 
-    &-container {
-      background-color: var(--gc-background-color);
-      color: var(--gc-primary-text-color);
-    }
-
-    &-close {
+    > #{$parent}-header > #{$parent}-close {
       margin: 0;
     }
   }
@@ -45,6 +48,8 @@
 
 .group-call {
   --call-button-margin: 1.25rem;
+  --gc-tile-radius: #{$border-radius-medium};
+  --gc-column-transition: transform var(--transition-standard-in);
   width: 100%;
   height: 100%;
   padding: 0 .5rem;
@@ -55,8 +60,9 @@
     right: 0;
     bottom: 0;
     left: 0;
-    height: 7.5rem;
-    background: linear-gradient(180deg, rgba(33, 33, 33, 0) 0%, rgba(33, 33, 33, 0.65) 48.54%, var(--gc-background-color) 100%);
+    height: 9rem;
+    background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--gc-background-color) 65%, transparent) 48.54%, var(--gc-background-color) 100%);
+    pointer-events: none;
   }
 
   &-header {
@@ -96,35 +102,26 @@
       font-size: .875rem;
       color: var(--gc-secondary-text-color);
     }
-
-    &-fingerprint {
-      flex: 0 1 auto;
-      min-width: 0;
-      margin-inline: .5rem;
-    }
   }
 
   &-buttons {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* flex: 0 0 auto;
-    margin-top: 3rem; */
-    // width: 350px;
     position: absolute;
-    // right: 0;
-    bottom: 1.75rem;
+    // far enough up for the microphone's waves to swell to their full size
+    bottom: 2rem;
     align-self: center;
     z-index: 1;
   }
 
   &-button {
-    opacity: 1;
     color: var(--gc-primary-text-color);
     background-color: var(--gc-button-unmuted-color);
 
     &:disabled {
       cursor: default;
+      color: var(--secondary-text-color);
     }
 
     .group-call[data-mic-state="muted"] & {
@@ -139,44 +136,48 @@
       background-color: var(--gc-button-unmuted-fill-color);
     }
 
-    // .group-call:not(.is-big-layout).is-muted & {
-    //   background-color: var(--gc-button-muted-fill-color);
-    // }
-
     &-red {
       background-color: var(--gc-button-leave-color) !important;
     }
   }
 
-  &-microphone-button {
-    .group-call[data-mic-state="unmuted"] & {
-      background: linear-gradient(230.46deg, #00A3B4 12.94%, #00CB47 86.29%);
+  // The microphone and its waves. The waves spill over the neighbouring buttons, under them.
+  &-microphone {
+    position: relative;
+
+    &-blobs {
+      --size: 8.75rem;
+      position: absolute;
+      // around the button, not the button and its name
+      top: calc(var(--call-button-size) / 2);
+      left: 50%;
+      width: var(--size);
+      height: var(--size);
+      margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+      z-index: -1;
+      pointer-events: none;
     }
-    
-    .group-call[data-mic-state="muted"] & {
-      background: linear-gradient(225deg, #4EABF8 14.73%, #3478F6 85.27%);
-    }
-    
-    .group-call[data-mic-state="hand"] & {
-      background: linear-gradient(225deg, #DF44B8 14.73%, #3851EB 85.27%);
+
+    &-button {
+      .group-call[data-mic-state="unmuted"] & {
+        background: linear-gradient(230.46deg, var(--gc-microphone-unmuted-from) 12.94%, var(--gc-microphone-unmuted-to) 86.29%);
+      }
+
+      .group-call[data-mic-state="muted"] & {
+        background: linear-gradient(225deg, var(--gc-microphone-muted-from) 14.73%, var(--gc-microphone-muted-to) 85.27%);
+      }
+
+      .group-call[data-mic-state="hand"] & {
+        background: linear-gradient(225deg, var(--gc-microphone-hand-from) 14.73%, var(--gc-microphone-hand-to) 85.27%);
+      }
     }
   }
 
   &-participant-menu {
-    // background-color: var(--gc-background-color);
     z-index: 5;
-
-    /* .btn-menu-item {
-      &:before {
-        color: var(--gc-secondary-text-color);
-      }
-
-      color: var(--gc-primary-text-color);
-    } */
   }
 
   &-participant {
-    // border-radius: 0;
     padding-right: .5rem;
 
     // On the e2e blockchain (so it holds the current call key) but absent from
@@ -189,10 +190,13 @@
     }
 
     &-status {
+      @include animation-level(2) {
+        transition: color .2s ease-in-out;
+      }
+
       &-icon {
         vertical-align: middle;
         margin-right: 6px;
-        // margin-top: 2px;
         line-height: 1;
         display: inline-block;
         font-size: 1.125rem;
@@ -215,249 +219,277 @@
       right: .5rem;
     }
 
-    &-video {
-      &-container {
-        position: relative;
-        height: 15rem;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        border-radius: $border-radius-medium;
-        background-color: #000;
-        overflow: hidden;
-        margin: .25rem;
-        width: 33%;
-        flex: 1 1 auto;
-        cursor: pointer;
+    // Sliding to a new place (createListGlide): opaque over the rows it passes, as the chat list's
+    // moving rows are, and over them when it passes more than one.
+    &.is-moving {
+      --background: var(--surface-color);
+    }
 
-        &:after {
-          content: " ";
-          position: absolute;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          left: 0;
-          background: linear-gradient(180deg, rgba(0, 0, 0, 0) 55.62%, rgba(0, 0, 0, 0.5) 86.46%);
-        }
+    &.is-lifted {
+      z-index: 1;
+    }
 
-        .group-call-participant-status-icon {
-          font-size: 1.25rem;
-          // margin-top: 0;
-          width: 1.25rem;
-          height: 1.25rem;
-        }
-      }
-
-      &-container:after,
-      &-info,
-      &-header {
-        opacity: 0;
-
-        @include animation-level(2) {
-          transition: opacity var(--transition-standard-in);  
-        }
-      }
-
-      &-info,
-      &-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 .5rem 0 .75rem;
-        position: absolute;
-        right: 0;
-        bottom: .25rem;
-        left: 0;
-        z-index: 1;
-      }
-
-      &-header {
-        top: 0;
-        bottom: auto;
-        justify-content: flex-end;
-        padding-right: .75rem;
-        padding-top: .875rem;
-
-        .group-call-pin-icon {
-          width: 1.5rem;
-          height: 1.5rem;
-          font-size: 1.5rem;
-        }
-      }
-
-      &-info {
-        .peer-title {
-          font-weight: var(--font-weight-bold);
-        }
-
-        .peer-title, 
-        &-left {
-          @include text-overflow();
-        }
-
-        .group-call-participant-status-container {
-          opacity: .6;
-          // margin-top: -1px; // if no icon
-          margin-top: -1px; // if with icon
-        }
-
-        &-left {
-          flex: 1 1 auto;
-        }
-
-        &-right {
-          flex: 0 0 auto;
-          margin-left: .75rem;
-          width: 2rem;
-          height: 2rem;
-        }
-      }
+    // The waves behind a speaker's avatar (avatarBlobs.ts), centred on it.
+    &-blobs {
+      position: absolute;
+      top: calc(50% - var(--size) / 2);
+      inset-inline-start: calc(.75rem + 1.3125rem - var(--size) / 2);
+      width: var(--size);
+      height: var(--size);
+      pointer-events: none;
     }
 
     .is-speaking {
       color: var(--gc-green-text-color);
     }
-  
+
     .is-waiting {
       color: var(--gc-blue-text-color);
     }
   }
 
+  // One camera or screencast. The grid (videoGrid.ts) gives it its size and moves it with a
+  // transform from the top left corner of its host.
+  &-video-tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    border-radius: var(--gc-tile-radius);
+    overflow: hidden;
+    background-color: var(--gc-tile-background);
+    cursor: pointer;
+    padding: 0;
+    color: inherit;
+    text-align: start;
+    container-type: size;
+
+    &-placeholder,
+    &-blur {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    &-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    &-avatar {
+      flex: 0 0 auto;
+
+      // a small tile keeps its avatar in proportion
+      @container (max-height: 160px) {
+        scale: .7;
+      }
+
+      @container (max-height: 100px) {
+        scale: .5;
+      }
+    }
+
+    // sized by the tile (videoTile.ts) to cover or fit it, and centred
+    &-video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      max-width: none;
+      translate: -50% -50%;
+      object-fit: cover;
+    }
+
+    // the speaker's outline (macOS), drawn inside the tile so it never needs room around it
+    &-outline {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 2px var(--gc-green-text-color);
+      opacity: 0;
+      pointer-events: none;
+
+      @include animation-level(2) {
+        transition: opacity .2s ease-in-out;
+      }
+    }
+
+    &.is-speaking &-outline {
+      opacity: 1;
+    }
+
+    &-blur,
+    &-video {
+      opacity: 0;
+    }
+
+    &.has-video {
+      .group-call-video-tile-blur,
+      .group-call-video-tile-video {
+        opacity: 1;
+      }
+
+      .group-call-video-tile-placeholder {
+        opacity: 0;
+      }
+    }
+
+    @include animation-level(2) {
+      &-placeholder,
+      &-blur,
+      &-video {
+        transition: opacity .2s ease-in-out;
+      }
+    }
+
+    // the name over a shade at the bottom
+    &:after {
+      content: " ";
+      position: absolute;
+      inset: 50% 0 0;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0) 10%, rgba(0, 0, 0, .5) 100%);
+      pointer-events: none;
+    }
+
+    &-info,
+    &-pin {
+      position: absolute;
+      z-index: 1;
+    }
+
+    &-info {
+      right: 0;
+      bottom: .25rem;
+      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 .5rem 0 .75rem;
+      line-height: var(--line-height);
+
+      .peer-title {
+        font-weight: var(--font-weight-bold);
+      }
+
+      .peer-title,
+      &-left {
+        @include text-overflow();
+      }
+
+      .group-call-participant-status-container {
+        opacity: .6;
+        margin-top: -1px;
+      }
+
+      .group-call-participant-status-icon {
+        font-size: 1.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      &-left {
+        flex: 1 1 auto;
+      }
+
+      &-right {
+        flex: 0 0 auto;
+        margin-left: .75rem;
+        width: 2rem;
+        height: 2rem;
+      }
+    }
+
+    &-pin {
+      top: .75rem;
+      right: .75rem;
+      font-size: 1.5rem;
+    }
+
+    :where(.a11y) &:focus-visible {
+      outline: 2px solid var(--gc-primary-text-color);
+      outline-offset: -2px;
+    }
+  }
+
+  // Where a tile moving between the stage and the column flies: over both (videoGrid.ts).
+  &-video-flight {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  // The tiles above the participants: their host only holds the room the grid asks for.
+  &-video-list {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  // The big area of a wide panel.
+  &-stage {
+    display: none;
+    position: absolute;
+    top: 3.625rem;
+    right: .5rem;
+    bottom: .5rem;
+    left: .5rem;
+
+    // the pointer steps aside with the controls when it rests
+    .group-call:not(.show-controls) & {
+      cursor: none;
+
+      .group-call-video-tile {
+        cursor: none;
+      }
+    }
+  }
+
   &-participants {
-    border-radius: $border-radius-medium;
+    border-radius: var(--gc-tile-radius);
     overflow: hidden;
     flex: 1 1 auto;
-    // padding: .5rem 0;
 
     &-scrollable {
       position: relative;
       border-radius: inherit;
       height: auto;
-      padding-bottom: 6rem;
+      // a little air between the header and the first row or tile, and room for the buttons
+      // floating over the end of the list
+      padding-top: .25rem;
+      padding-bottom: 7.5rem;
+
+      // what scrolls under the header fades out rather than being sliced off by it
+      &:not(.scrolled-start) {
+        mask-image: linear-gradient(to bottom, transparent, #000 1rem);
+      }
     }
 
-    &-video-container {
-      display: flex;
-      flex-wrap: wrap;
-      margin: -.25rem -.25rem 0;
-  
-      &:not(.show-controls) {
-        &,
-        .group-call-participant-video-container {
-          cursor: none;
-        }
-      }
-  
-      // &:empty {
-      //   display: none;
-      // }
-  
-      &[data-layout="3"] .group-call-participant-video-container:first-child {
-        width: 100%;
-      }
-  
-      // &[data-layout="4"] .group-call-participant-video-container:nth-child(n+3),
-      &[data-layout="4"] .group-call-participant-video-container, 
-      &[data-layout="3"] .group-call-participant-video-container:nth-child(n+2) {
-        height: auto;
-        flex: 1 0 auto;
-  
-        &:before {
-          content: " ";
-          display: block;
-          padding-top: 100%;
-        }
-      }
-  
-      &.show-controls {
-        .group-call-participant-video-container:after,
-        .group-call-participant-video-info,
-        .group-call-participant-video-header {
-          opacity: 1;
-        }
-      }
-    }
-  
-    /* &-invite {
-      border-radius: inherit;
-      border-top-right-radius: inherit;
-  
-      &:before {
-        margin-left: .25rem;
-        margin-right: 1.75rem;
-      }
-  
-      &,
-      &:before {
-        color: inherit;
-      }
-    } */
-  
     .chatlist {
       background: none;
       padding: 0;
-      max-width: 600px;
-      margin: 0 auto;
-  
-      /* &:first-child,
-      li:first-child {
-        border-top-left-radius: inherit;
-        border-top-right-radius: inherit;
-      }
-  
-      &,
-      li:last-child {
-        border-bottom-left-radius: inherit;
-        border-bottom-right-radius: inherit;
-      } */
     }
-  
+
     .user-title {
       color: var(--gc-primary-text-color);
     }
-  
+
     .user-last-message {
       color: var(--gc-secondary-text-color);
     }
-  
-    // .user-caption {
-    //   padding-right: 1rem;
-    // }
-  }
 
-  /* &-button {
-    width: 3rem;
-    height: 5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 .5rem;
-    cursor: pointer;
-    font-size: .875rem;
+    // the people, and what grows the call under them (participantsSection.tsx), in a popup's
+    // section — rounded as the video tiles over it are
+    &-section {
+      --section-padding-inline: 0;
+      --section-padding-bottom: 0;
+      // no wider than its rows need, in a panel stretched full screen too
+      max-width: 600px;
+      margin-inline: auto;
 
-    &-icon {
-      width: 3rem;
-      height: 3rem;
-      border-radius: 50%;
-      background-color: #333333;
-      margin-bottom: .25rem;
-    }
-  } */
-
-  &-big-video-container {
-    // padding: inherit;
-    position: relative;
-
-    .group-call-participants-video-container {
-      min-height: 100%;
-      margin-bottom: .25rem;
-    }
-
-    .group-call-participant-video-container {
-      height: auto;
-
-      &:before {
-        padding-top: 56.25% !important;
+      .sidebar-left-section {
+        border-radius: var(--gc-tile-radius);
       }
     }
   }
@@ -469,16 +501,6 @@
   &:not(.is-big-layout) {
     .popup-body .group-call-header {
       display: none;
-    }
-
-    .group-call-big-video-container {
-      display: none;
-    }
-
-    &.has-pinned {
-      .group-call-participant-video-container:not(.video-hidden) {
-        display: none;
-      }
     }
   }
 
@@ -516,56 +538,58 @@
       }
     }
 
-    .video-hidden {
-      display: none;
-    }
-
-    // &:not(.is-right-column-shown) {
-      // &:not(.show-controls) {
-      //   .group-call-participants-video-container {
-      //     cursor: none;
-      //   }
-      // }
-    // }
-
-    &.is-right-column-shown {
-      .popup-body {
-        right: 0;
-      }
-
-      .group-call-big-video-container {
-        width: calc(100% - var(--gc-right-column-width));
-      }
-
-      .group-call-buttons {
-        transform: translateX(calc(var(--gc-right-column-width) / -2));
-      }
-
-      .popup-container {
-        --translateX: calc(var(--gc-right-column-width) / -2);
-      }
+    .group-call-stage {
+      display: block;
     }
 
     .group-call-header-title {
       font-size: 1.25rem;
     }
 
-    .popup-body {
+    .group-call-header-subtitle {
+      display: none;
+    }
+
+    // The participants column. It slides in and out with a transform — its width never changes —
+    // and the tiles on the stage make room for it with theirs. A child: a popup opened from a
+    // panel in full screen sits inside it, and its body is not the column.
+    > .popup-body {
       position: absolute;
       top: 0;
-      right: calc(var(--gc-right-column-width) * -1);
+      right: 0;
       bottom: 0;
+      z-index: 1;
       width: var(--gc-right-column-width);
       background-color: var(--gc-background-color);
       padding: inherit;
+      transform: translateX(100%);
+      visibility: hidden;
+
+      @include animation-level(2) {
+        transition: var(--gc-column-transition), visibility 0s var(--transition-standard-in-time);
+      }
+    }
+
+    &.is-right-column-shown > .popup-body {
+      transform: none;
+      visibility: visible;
+
+      @include animation-level(2) {
+        transition: var(--gc-column-transition), visibility 0s;
+      }
     }
 
     .group-call-buttons {
       padding: .75rem;
       bottom: 2.5rem;
-      
+
+      // over the video the buttons go without their names, as tdesktop's and macOS's do
+      .group-call-button-text {
+        display: none;
+      }
+
       @include animation-level(2) {
-        transition: opacity var(--transition-standard-in);
+        transition: opacity var(--transition-standard-in), var(--gc-column-transition);
       }
 
       &:before {
@@ -575,25 +599,29 @@
         right: 0;
         bottom: 0;
         left: 0;
-        backdrop-filter: var(--blur-off, blur(100px));
-        background: rgba(0, 0, 0, .5);
+        z-index: -2;
+        // a plain shade: a backdrop blur over the video was re-rendered every frame
+        background: rgba(0, 0, 0, .6);
         border-radius: 1.25rem;
       }
 
       .group-call-button,
+      .group-call-microphone-blobs,
       &:before {
         opacity: 0;
       }
 
       &.show-controls {
         .group-call-button,
+        .group-call-microphone-blobs,
         &:before {
           opacity: 1;
         }
       }
 
       @include animation-level(2) {
-        &:before {
+        &:before,
+        .group-call-microphone-blobs {
           transition: opacity var(--transition-standard-in);
         }
 
@@ -603,12 +631,18 @@
       }
     }
 
-    .group-call-participants-scrollable {
-      padding-bottom: .5rem;
+    &.is-right-column-shown {
+      .group-call-buttons {
+        transform: translateX(calc(var(--gc-right-column-width) / -2));
+      }
+
+      .popup-container {
+        --translateX: calc(var(--gc-right-column-width) / -2);
+      }
     }
 
-    .group-call-header-subtitle {
-      display: none;
+    .group-call-participants-scrollable {
+      padding-bottom: .5rem;
     }
   }
 }

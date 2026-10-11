@@ -8,24 +8,21 @@ import rootScope from '@lib/rootScope';
 import ButtonIcon from '@components/buttonIcon';
 import GroupCallMicrophoneIcon from '@components/groupCall/microphoneIcon';
 import GroupCallParticipantsElement from '@components/groupCall/participants';
-import GroupCallParticipantsVideoElement from '@components/groupCall/participantVideos';
+import GroupCallVideoGrid from '@components/groupCall/videoGrid';
+import GroupCallMicrophoneBlobs from '@components/groupCall/microphoneBlobs';
 import GroupCallDescriptionElement from '@components/groupCall/description';
 import GroupCallTitleElement from '@components/groupCall/title';
 import requestGroupCallLeave from '@components/groupCall/requestLeave';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
-import Scrollable from '@components/scrollable';
+import ControlsHover from '@helpers/dom/controlsHover';
 import {MovableState} from '@components/movableElement';
 import animationIntersector from '@components/animationIntersector';
 import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import throttle from '@helpers/schedulers/throttle';
 import IS_SCREEN_SHARING_SUPPORTED from '@environment/screenSharingSupport';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
-import makeButton, {
-  setCallButtonBusy,
-  setCallButtonDisabled,
-  setCallButtonLabel
-} from '@components/call/button';
-import MovablePanel from '@helpers/movablePanel';
+import CallButton, {setCallButtonLabel} from '@components/call/button';
+import MovablePanel, {IS_MOVABLE_PANEL} from '@helpers/movablePanel';
 import ListenerSetter from '@helpers/listenerSetter';
 import classNames from '@helpers/string/classNames';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -41,7 +38,9 @@ import {
   GROUP_CALL_MICROPHONE_BUTTON_STATE,
   getGroupCallMicrophoneButtonState,
   getMicrophoneControlAccessibility,
-  performMicrophoneControlAction
+  performMicrophoneControlAction,
+  shouldCarryOutMicrophonePress,
+  MicrophonePressBeforeListed
 } from '@components/groupCall/microphoneControl';
 import showPickUserPopup, {createCopyLinkFooter} from '@components/popups/pickUser';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -51,6 +50,7 @@ import {
   inviteConferenceParticipants,
   showConferenceInviteResultToast
 } from '@components/groupCall/inviteParticipants';
+import {GROUP_CALL_STAGE_GAP} from '@components/groupCall/videoLayout';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   // Microphone open, not speaking right now.
@@ -108,10 +108,13 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
     case states.UNMUTED:
       colorStr = 'blue';
       break;
+    // An open microphone stays grey until its owner speaks, then turns green;
+    // green for every unmuted row said "speaking" to people who were silent.
+    case states.UNMUTED:
     case states.MUTED:
     case states.MUTED_FOR_ME:
     case states.MUTED_BY_ADMIN:
-      colorStr = state === states.MUTED ? 'secondary' : 'red';
+      colorStr = state === states.MUTED || state === states.UNMUTED ? 'secondary' : 'red';
       break;
     case states.SPEAKING:
       colorStr = 'green';
@@ -145,7 +148,6 @@ export default function showGroupCallPopup() {
   const [isBigLayout, setIsBigLayout] = createSignal(false);
   // the constructor used to flip this on right after building the popup
   const [isRightColumnShown, setIsRightColumnShown] = createSignal(true);
-  const [hasPinned, setHasPinned] = createSignal(false);
   const [showControls, setShowControls] = createSignal(false);
 
   let containerEl!: HTMLDivElement;
@@ -157,10 +159,7 @@ export default function showGroupCallPopup() {
   let btnFullScreen: HTMLButtonElement;
   let btnFullScreen2: HTMLButtonElement;
   let btnExitFullScreen: HTMLButtonElement;
-  let btnInvite: HTMLButtonElement;
   let btnShowColumn: HTMLButtonElement;
-  let btnVideo: HTMLButtonElement;
-  let btnScreen: HTMLButtonElement;
   let btnMute: HTMLButtonElement;
   let buttonsContainer: HTMLDivElement;
   let movablePanel: MovablePanel;
@@ -168,11 +167,32 @@ export default function showGroupCallPopup() {
   let groupCallDescription: GroupCallDescriptionElement;
   let groupCallBodyHeaderDescription: GroupCallDescriptionElement;
   let groupCallParticipants: GroupCallParticipantsElement;
-  let groupCallParticipantsVideo: GroupCallParticipantsVideoElement;
+  let videoGrid: GroupCallVideoGrid;
+  let microphoneBlobs: GroupCallMicrophoneBlobs;
+  let updateBlobsVisibility: () => void;
   let groupCallMicrophoneIcon: GroupCallMicrophoneIcon;
-  let videosScrollable: Scrollable;
+  let bodyEl!: HTMLDivElement;
 
-  const toggleRightColumn = () => setIsRightColumnShown((shown) => !shown);
+  // How much of the stage the participants column covers, plus a gap before it. Read off layout
+  // offsets rather than boxes, so a column still sliding in reads where it is going.
+  const getColumnCover = () => {
+    if(!untrack(isBigLayout) || !untrack(isRightColumnShown) || !bodyEl) {
+      return 0;
+    }
+
+    const {stage} = videoGrid;
+    return stage.offsetLeft + stage.offsetWidth - bodyEl.offsetLeft + GROUP_CALL_STAGE_GAP;
+  };
+
+  const updateGridMode = (animate: boolean) => {
+    videoGrid?.setMode({wide: untrack(isBigLayout), columnWidth: getColumnCover()}, animate);
+  };
+
+  const toggleRightColumn = () => {
+    setIsRightColumnShown((shown) => !shown);
+    // the column slides with a transform and the tiles move aside with theirs, in step
+    updateGridMode(true);
+  };
 
   const toggleBigLayout = () => {
     const movable = movablePanel?.movable;
@@ -186,7 +206,7 @@ export default function showGroupCallPopup() {
     const wasBig = untrack(isBigLayout);
     let buttons: HTMLElement[];
     if(isBig && !wasBig) { // fix buttons transition to 0 opacity
-      buttons = Array.from(buttonsContainer.children) as HTMLElement[];
+      buttons = Array.from(buttonsContainer.querySelectorAll<HTMLElement>('.' + className + '-button'));
       buttons.forEach((element) => {
         element.style.opacity = '0';
       });
@@ -195,8 +215,14 @@ export default function showGroupCallPopup() {
     }
 
     setIsBigLayout(isBig);
-    btnInvite.classList.toggle('hide', isBig);
     btnShowColumn.classList.toggle('hide', !isBig);
+    // A resize of the panel runs this on every step of the drag. The column keeps its width
+    // whatever the panel's, so the stage it covers changes with the layout only — measuring it
+    // each step forced a layout for nothing.
+    if(isBig !== wasBig) {
+      updateGridMode(false);
+    }
+    updateBlobsVisibility?.();
 
     if(buttons) {
       // window.requestAnimationFrame(() => {
@@ -215,6 +241,8 @@ export default function showGroupCallPopup() {
     setIsFull(isFullNow);
     btnFullScreen && btnFullScreen.classList.toggle('hide', isFullNow);
     btnExitFullScreen && btnExitFullScreen.classList.toggle('hide', !isFullNow);
+    // the column is wider in full screen, which only its new class tells
+    updateGridMode(false);
 
     if(isFullNow !== wasFullScreen) {
       animationIntersector.checkAnimations2(isFullNow);
@@ -248,15 +276,10 @@ export default function showGroupCallPopup() {
       });
     }
 
-    btnInvite = ButtonIcon('adduser');
     btnShowColumn = ButtonIcon('rightpanel ' + className + '-only-big');
 
-    setCallButtonLabel(btnInvite, 'VoiceChat.Invite.InviteMembers');
     setCallButtonLabel(btnShowColumn, 'ConferenceCall.Controls.ShowParticipants');
     listenerSetter.add(btnShowColumn)('click', toggleRightColumn);
-    if(instance.e2e) {
-      listenerSetter.add(btnInvite)('click', () => onConferenceInviteClick());
-    }
 
     const headerInfo = document.createElement('div');
     headerInfo.classList.add(className + '-header-info');
@@ -287,16 +310,22 @@ export default function showGroupCallPopup() {
     setCallButtonLabel(btnHideColumn, 'ConferenceCall.Controls.HideParticipants');
     listenerSetter.add(btnHideColumn)('click', toggleRightColumn);
 
-    videosScrollable = new Scrollable(undefined);
-    videosScrollable.container.classList.add('group-call-big-video-container');
+    videoGrid = new GroupCallVideoGrid({
+      instance,
+      listenerSetter,
+      onCountChange: (count) => {
+        videosCount = count;
+        toggleBigLayout();
+      }
+    });
 
     groupCallTitle = new GroupCallTitleElement(title);
     groupCallDescription = new GroupCallDescriptionElement(subtitle);
     groupCallBodyHeaderDescription = new GroupCallDescriptionElement(newHeaderTitle);
 
-    // When this popup is hosting a TdE2E conference (instance.e2e is set), a
-    // fingerprint badge in the header lets users visually verify the call is
-    // encrypted to the same key on every participant's device. No badge for a
+    // When this popup is hosting a TdE2E conference (instance.e2e is set), the
+    // call's key, under the header, lets users visually verify the call is
+    // encrypted to the same key on every participant's device. No key for a
     // legacy voice chat.
     let fingerprintBadge: HTMLElement;
     if(instance?.e2e) {
@@ -308,20 +337,26 @@ export default function showGroupCallPopup() {
       });
 
       fingerprintBadge = wrapSolidComponent(() => (
-        <FingerprintBadge
-          class={className + '-header-fingerprint'}
-          emojiHash={hash()}
-        />
+        <FingerprintBadge emojiHash={hash()} />
       ), middleware);
     }
 
+    // What the call's buttons show; `updateInstance` keeps it in step with the call.
+    const [sharingVideo, setSharingVideo] = createSignal(false);
+    const [sharingScreen, setSharingScreen] = createSignal(false);
+    const [mediaReady, setMediaReady] = createSignal(false);
+    const [videoBusy, setVideoBusy] = createSignal(false);
+    const [screenBusy, setScreenBusy] = createSignal(false);
+    const [microphoneLabel, setMicrophoneLabel] = createSignal<LangPackKey>('VoipUnmute');
+
+    // `setBusy`, when the action has one of the call's buttons to show busy meanwhile
     const runControlAction = async(
-      button: HTMLButtonElement,
+      setBusy: ((busy: boolean) => void) | undefined,
       action: () => MaybePromise<void>,
       errorKey: LangPackKey,
       didFail?: () => boolean
     ) => {
-      setCallButtonBusy(button, true);
+      setBusy?.(true);
       let failed = false;
       try {
         await action();
@@ -330,7 +365,7 @@ export default function showGroupCallPopup() {
         console.error('group call control failed', err);
         failed = true;
       } finally {
-        setCallButtonBusy(button, false);
+        setBusy?.(false);
         updateInstance();
       }
 
@@ -342,7 +377,7 @@ export default function showGroupCallPopup() {
     const onVideoClick = () => {
       const wasSharing = instance.isSharingVideo;
       return runControlAction(
-        btnVideo,
+        setVideoBusy,
         () => instance.toggleVideoSharing(),
         'ConferenceCall.Media.CameraError',
         () => instance.isSharingVideo === wasSharing
@@ -352,18 +387,26 @@ export default function showGroupCallPopup() {
     const onScreenClick = () => {
       const wasSharing = instance.isSharingScreen;
       return runControlAction(
-        btnScreen,
+        setScreenBusy,
         () => instance.toggleScreenSharing(),
         'ConferenceCall.Media.ScreenError',
         () => instance.isSharingScreen === wasSharing
       );
     };
 
+    // A press before the server lists us (a conference takes our row a roster
+    // poll after the join) asks for the state the label offered, and is carried
+    // out once we are listed rather than lost (shouldCarryOutMicrophonePress).
+    let pressBeforeListed: MicrophonePressBeforeListed;
+
     // Fire-and-forget behind the leading-edge throttle, like the topbar plate:
     // the icon follows the instance's own state events, so making the press wait
     // out (and lock the button for) a round trip only made muting feel sluggish.
     const onMuteClick = () => {
-      if(!instance.participant) return;
+      if(!instance.participant) {
+        pressBeforeListed = {muted: !instance.isMicrophoneMuted, at: performance.now()};
+        return;
+      }
 
       performMicrophoneControlAction(instance).catch((err) => {
         console.error('group call microphone action failed', err);
@@ -389,9 +432,19 @@ export default function showGroupCallPopup() {
       await showConferenceInviteResultToast(result);
     };
 
+    // A conference has no admins, so nobody mints a speaker link.
+    const onConferenceShareLinkClick = () => shareGroupCallInviteLink(instance, {
+      canManage: false,
+      isAlive: () => isConferenceInviteContextCurrent(instance)
+    });
+
+    // one picker at a time: the row that opens it stays clickable while the list loads
+    let isPickingInvitees = false;
     function onConferenceInviteClick() {
+      if(isPickingInvitees) return;
+      isPickingInvitees = true;
       return runControlAction(
-        btnInvite,
+        undefined,
         async() => {
           // The link is fetched with the participants rather than on the click:
           // the clipboard only accepts a write in the same tick as the user
@@ -452,17 +505,15 @@ export default function showGroupCallPopup() {
               middleware: popup.middleware,
               onClick: () => {
                 popup.hide();
-                // A conference has no admins, so nobody mints a speaker link.
-                void shareGroupCallInviteLink(instance, {
-                  canManage: false,
-                  isAlive: () => isConferenceInviteContextCurrent(instance)
-                });
+                void onConferenceShareLinkClick();
               }
             }));
           });
         },
         'Error.AnError'
-      );
+      ).finally(() => {
+        isPickingInvitees = false;
+      });
     }
 
     const onMoreClick = async() => {
@@ -490,53 +541,75 @@ export default function showGroupCallPopup() {
       }
     };
 
-    buttonsContainer = document.createElement('div');
-    buttonsContainer.classList.add(className + '-buttons');
-    buttonsContainer.setAttribute('role', 'toolbar');
-    buttonsContainer.setAttribute('aria-label', i18n('ConferenceCall.Controls.Toolbar').textContent);
-
-    const _makeButton = makeButton.bind(null, className, listenerSetter);
-
-    btnVideo = _makeButton({
-      ariaLabel: 'VoiceChat.Video.Stream.Video',
-      callback: onVideoClick,
-      disabled: true,
-      icon: 'videocamera_filled'
-    }) as HTMLButtonElement;
-
-    btnScreen = _makeButton({
-      ariaLabel: 'VoiceChat.Video.Stream.Screencast',
-      callback: onScreenClick,
-      disabled: true,
-      icon: 'sharescreen_filled'
-    }) as HTMLButtonElement;
-
-    btnScreen.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
-
-    btnMute = _makeButton({
-      ariaLabel: 'VoiceChat.Status.Connecting',
-      noRipple: true,
-      callback: throttle(onMuteClick, 600, true)
-    }) as HTMLButtonElement;
-    btnMute.classList.add(className + '-microphone-button');
-
     groupCallMicrophoneIcon = new GroupCallMicrophoneIcon();
-    btnMute.append(groupCallMicrophoneIcon.container);
 
-    const btnMore = _makeButton({
-      ariaLabel: 'CallSettings.Title',
-      icon: 'settings_filled',
-      callback: onMoreClick
-    }) as HTMLButtonElement;
+    buttonsContainer = (
+      <div
+        class={className + '-buttons'}
+        role="toolbar"
+        aria-label={i18n('ConferenceCall.Controls.Toolbar').textContent}
+      >
+        <CallButton
+          class={className}
+          label="Call.Camera"
+          icon="videocamera_filled"
+          pressed={sharingVideo()}
+          // Starting capture before the canonical join and our participant update
+          // complete either races negotiation or leaves a local-only camera/mic
+          // indicator. An already-active share must remain stoppable if a transient
+          // participant update disappears while the call recovers.
+          disabled={!mediaReady() && !sharingVideo()}
+          busy={videoBusy()}
+          onClick={onVideoClick}
+        />
+        {IS_SCREEN_SHARING_SUPPORTED && (
+          <CallButton
+            class={className}
+            label="Call.Screen"
+            icon="sharescreen_filled"
+            pressed={sharingScreen()}
+            disabled={!mediaReady() && !sharingScreen()}
+            busy={screenBusy()}
+            onClick={onScreenClick}
+          />
+        )}
+        {/* the waves go under the button (onMount), over the neighbours' backgrounds */}
+        <CallButton
+          class={className}
+          label={microphoneLabel()}
+          containerClass={className + '-microphone'}
+          buttonClass={className + '-microphone-button'}
+          noRipple
+          onClick={throttle(onMuteClick, 600, true)}
+          ref={(button) => btnMute = button}
+        >
+          {groupCallMicrophoneIcon.container}
+        </CallButton>
+        <CallButton
+          class={className}
+          label="CallSettings.Title"
+          icon="settings_filled"
+          onClick={onMoreClick}
+        />
+        <CallButton
+          class={className}
+          label="VoiceChat.Leave"
+          icon="close"
+          color="red"
+          onClick={onLeaveClick}
+        />
+      </div>
+    ) as HTMLDivElement;
 
-    const btnLeave = _makeButton({
-      ariaLabel: 'VoiceChat.Leave',
-      isDanger: true,
-      callback: onLeaveClick,
-      icon: 'close'
-    }) as HTMLButtonElement;
-
-    buttonsContainer.append(btnVideo, btnScreen, btnMute, btnMore, btnLeave);
+    // No waves until there is a microphone to listen to, nor while the controls of a wide panel are
+    // faded out — the canvas would only be drawing under opacity 0.
+    updateBlobsVisibility = () => {
+      microphoneBlobs?.setHidden(
+        !instance.participant ||
+        instance.state === GROUP_CALL_STATE.CONNECTING ||
+        (untrack(isBigLayout) && !untrack(showControls))
+      );
+    };
 
     const updateInstance = () => {
       if(instance.state === GROUP_CALL_STATE.CLOSED) {
@@ -551,37 +624,34 @@ export default function showGroupCallPopup() {
       groupCallTitle.update(instance);
       groupCallDescription.update(instance);
       groupCallBodyHeaderDescription.update(instance);
-      setHasPinned(!!instance.pinnedSource);
 
-      btnVideo.setAttribute('aria-pressed', String(instance.isSharingVideo));
-      btnScreen.setAttribute('aria-pressed', String(instance.isSharingScreen));
+      setSharingVideo(instance.isSharingVideo);
+      setSharingScreen(instance.isSharingScreen);
+      setMediaReady(instance.isMediaRuntimeReady);
 
+      // Before the server lists us the microphone is what capture says — not a
+      // blank: no icon, the default fill and "Connecting..." under it. The label
+      // names the next action (Mute / Unmute / Raise hand), so the button has no
+      // pressed state: it would say the opposite.
       const {participant} = instance;
-      const mediaReady = instance.isMediaRuntimeReady;
-      // Starting capture before the canonical join and our participant update
-      // complete either races negotiation or leaves a local-only camera/mic
-      // indicator. An already-active share must remain stoppable if a transient
-      // participant update disappears while the call recovers.
-      setCallButtonDisabled(btnVideo, !mediaReady && !instance.isSharingVideo);
-      setCallButtonDisabled(btnScreen, !mediaReady && !instance.isSharingScreen);
+      const muted = instance.isMicrophoneMuted;
+      setMicrophoneLabel(getMicrophoneControlAccessibility(participant, muted).label);
 
-      // Only the label follows the participant — the button itself stays live.
-      // `onMuteClick` already no-ops before the participant arrives and for an
-      // already-raised hand, and a microphone the user cannot press is worse than
-      // one whose press is a no-op.
-      const microphoneAccessibility = getMicrophoneControlAccessibility(participant, instance.isMuted);
-      setCallButtonLabel(btnMute, microphoneAccessibility.label);
-      // The label describes the next action (Mute / Unmute / Raise hand), so a
-      // simultaneous pressed state would communicate the inverse semantics.
-      btnMute.removeAttribute('aria-pressed');
-
-      if(!participant) {
-        return;
-      }
-
-      const microphoneButtonState = getGroupCallMicrophoneButtonState(participant, instance.isMuted);
-      containerEl.dataset.micState = microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.HAND ? 'hand' : (microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.MUTED ? 'muted' : 'unmuted');
+      const microphoneButtonState = getGroupCallMicrophoneButtonState(participant, muted);
+      const micState = microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.HAND ? 'hand' : (microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.MUTED ? 'muted' : 'unmuted');
+      containerEl.dataset.micState = micState;
+      microphoneBlobs?.setColors(micState);
       groupCallMicrophoneIcon.setState(microphoneButtonState);
+
+      updateBlobsVisibility();
+
+      if(participant && pressBeforeListed) {
+        const press = pressBeforeListed;
+        pressBeforeListed = undefined;
+        if(shouldCarryOutMicrophonePress(press, participant, muted)) {
+          onMuteClick();
+        }
+      }
     };
 
     listenerSetter.add(instance)('state', () => {
@@ -594,39 +664,44 @@ export default function showGroupCallPopup() {
       }
     });
 
-    listenerSetter.add(instance)('pinned', () => {
-      setHasPinned(!!instance.pinnedSource);
-    });
-
-    let bodyEl!: HTMLDivElement;
-
     onMount(() => {
       if(!IS_APPLE_MOBILE) {
         addFullScreenListener(containerEl, onFullScreenChange, listenerSetter);
       }
 
-      groupCallParticipantsVideo = new GroupCallParticipantsVideoElement({
-        appendTo: videosScrollable.container,
-        instance,
-        listenerSetter,
-        displayPinned: true,
-        onLengthChange: (length) => {
-          videosCount = length;
-          toggleBigLayout();
-        },
-        managers
-      });
       groupCallParticipants = new GroupCallParticipantsElement({
         appendTo: bodyEl,
         instance,
         listenerSetter,
-        managers
+        managers,
+        videoList: videoGrid.list,
+        videoGrid,
+        // under the last participant, as tdesktop has them (a voice chat's are in its settings)
+        actions: instance.e2e ? {
+          addPeople: () => void onConferenceInviteClick(),
+          shareLink: () => void onConferenceShareLinkClick()
+        } : undefined
       });
 
-      listenerSetter.add(groupCallParticipantsVideo)('toggleControls', (show: boolean) => {
+      // On the stage the controls step aside while the pointer rests, the way a player's do.
+      const controlsHover = new ControlsHover();
+      controlsHover.setup({
+        element: videoGrid.stage,
+        listenerSetter,
+        showOnLeaveToClassName: className + '-buttons'
+      });
+      listenerSetter.add(controlsHover)('toggleControls', (show: boolean) => {
         setShowControls(show);
         buttonsContainer.classList.toggle('show-controls', show);
+        updateBlobsVisibility();
       });
+
+      // A muted microphone reads as silence anyway; it is zeroed outright so the waves settle the
+      // moment it mutes.
+      microphoneBlobs = new GroupCallMicrophoneBlobs(btnMute.offsetWidth / 2 || 27, () => {
+        return instance.isMicrophoneMuted ? 0 : instance.connections.main?.streamManager.getInputAudioLevel();
+      });
+      btnMute.before(microphoneBlobs.canvas);
 
       movablePanel = new MovablePanel({
         listenerSetter,
@@ -639,7 +714,7 @@ export default function showGroupCallPopup() {
             if(findUpClassName(target, 'chatlist') ||
               findUpClassName(target, 'group-call-button') ||
               findUpClassName(target, 'btn-icon') ||
-              findUpClassName(target, 'group-call-participants-video-container') ||
+              findUpClassName(target, 'group-call-video-tile') ||
               isFullScreen()) {
               return false;
             }
@@ -667,16 +742,16 @@ export default function showGroupCallPopup() {
           {[
             btnExitFullScreen,
             headerInfo,
-            instance.e2e && btnInvite,
-            fingerprintBadge,
             btnFullScreen,
             btnShowColumn
           ].filter(Boolean)}
         </PopupElement.Header>
+        {fingerprintBadge}
         <PopupElement.Body ref={(element) => bodyEl = element}>
           {newHeader}
         </PopupElement.Body>
-        {videosScrollable.container}
+        {videoGrid.stage}
+        {videoGrid.flight}
         {buttonsContainer}
       </>
     );
@@ -687,16 +762,19 @@ export default function showGroupCallPopup() {
       previousState = movablePanel.state;
       movablePanel.destroy();
     }
+  };
 
-    groupCallParticipantsVideo?.destroy();
+  // The panel fades out with its videos and rows still in it; they go once it is gone.
+  const onCloseAfterTimeout = () => {
+    videoGrid?.destroy();
     groupCallParticipants?.destroy();
     groupCallMicrophoneIcon?.destroy();
-    videosScrollable?.destroy();
+    microphoneBlobs?.destroy();
   };
 
   createPopup(() => (
     <PopupElement
-      class="popup-group-call"
+      class={classNames('popup-group-call', IS_MOVABLE_PANEL && 'movable-element')}
       kind={GROUP_CALL_POPUP_KIND}
       withoutOverlay
       closable
@@ -707,11 +785,12 @@ export default function showGroupCallPopup() {
         isFull() && 'is-full-screen',
         isBigLayout() && 'is-big-layout',
         isRightColumnShown() && 'is-right-column-shown',
-        hasPinned() && 'has-pinned',
-        showControls() && 'show-controls'
+        showControls() && 'show-controls',
+        instance?.e2e && 'is-conference'
       )}
       containerProps={{ref: (element) => containerEl = element}}
       onClose={onClose}
+      onCloseAfterTimeout={onCloseAfterTimeout}
     >
       <Inner />
     </PopupElement>

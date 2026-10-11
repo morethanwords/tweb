@@ -1,38 +1,337 @@
+@use "../../shared" as *;
+
 /* Conference-call verification and authenticated-membership UI. */
 
-.conference-fingerprint {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
+// The call's encryption key (fingerprintBadge.tsx): a pill in a row of its own under the header,
+// over the stage in a wide panel, that opens into a card in the middle of the panel — the call
+// popups' own look: a raised fill, a bold title, the secondary text.
+$header-height: 3.625rem; // .group-call-header with its margin
+$row-height: 2.75rem;
+$pill-height: 2rem;
+$radius: $pill-height * .5;
+
+.conference-encryption {
+  &-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    // a popup's
+    background-color: rgba(0, 0, 0, .3);
+    opacity: 0;
+    visibility: hidden;
+
+    @include animation-level(2) {
+      transition: opacity .2s ease-in-out, visibility 0s .2s;
+    }
+
+    .is-expanded > & {
+      opacity: 1;
+      visibility: visible;
+
+      @include animation-level(2) {
+        transition: opacity .2s ease-in-out, visibility 0s;
+      }
+    }
+  }
+
+  &-card {
+    --conference-encryption-surface: var(--light-filled-secondary-text-color);
+    position: absolute;
+    top: $header-height + ($row-height - $pill-height) * .5;
+    right: 0;
+    left: 0;
+    z-index: 11;
+    // the surface's slices go under the content, inside the card
+    isolation: isolate;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    column-gap: .125rem;
+    width: fit-content;
+    height: $pill-height;
+    margin: 0 auto;
+    padding: 0 .5rem;
+    border: 0;
+    border-radius: $radius;
+    background-color: var(--conference-encryption-surface);
+    color: var(--gc-primary-text-color);
+    font: inherit;
+    font-size: var(--font-size-14);
+    cursor: pointer;
+    user-select: none;
+
+    // no transition on its fill: the surface takes over from it, and back, within one frame
+    @include animation-level(2) {
+      transition: scale .15s ease-out;
+    }
+
+    // its surface draws it while it changes its shape
+    &.is-morphing {
+      background: none;
+    }
+
+    &:not(.is-expanded) {
+      // opaque: the slices overlap, and a translucent fill would show where they do
+      @include hover() {
+        --conference-encryption-surface: color-mix(in srgb, var(--gc-primary-text-color) 6%, var(--light-filled-secondary-text-color));
+      }
+
+      &:active {
+        scale: .97;
+      }
+    }
+
+    :where(.a11y) &:focus-visible {
+      outline: 2px solid var(--gc-primary-text-color);
+      outline-offset: 2px;
+    }
+
+    // over the stage, clear of the participants' column
+    .group-call.is-big-layout.is-right-column-shown &:not(.is-expanded) {
+      right: var(--gc-right-column-width, 0px);
+    }
+
+    @include animation-level(2) {
+      .group-call.is-big-layout & {
+        transition: scale .15s ease-out, right var(--transition-standard-in);
+      }
+    }
+
+    &.is-expanded {
+      inset: 0;
+      width: 18.5rem;
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      justify-content: center;
+      align-items: start;
+      column-gap: 1rem;
+      height: fit-content;
+      margin: auto;
+      padding: 1.25rem 1rem;
+      cursor: default;
+    }
+  }
+
+  // The card's background while it changes its shape (fingerprintBadge.tsx): nine pieces laid out
+  // as the open card, centred on the card — the corners slide, the edges stretch along themselves,
+  // the middle both ways. Each piece reaches 4px past where the next begins: those it covers only
+  // slide or stretch the other way, so no seam opens between them.
+  &-surface {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: -1;
+    translate: -50% -50%;
+    pointer-events: none;
+
+    .is-morphing > & {
+      display: block;
+    }
+
+    > span {
+      position: absolute;
+      background-color: var(--conference-encryption-surface);
+    }
+
+    &-tl,
+    &-tr,
+    &-bl,
+    &-br {
+      width: calc(#{$radius} + 4px);
+      height: calc(#{$radius} + 4px);
+    }
+
+    &-tl {
+      top: 0;
+      left: 0;
+      border-top-left-radius: $radius;
+    }
+
+    &-tr {
+      top: 0;
+      right: 0;
+      border-top-right-radius: $radius;
+    }
+
+    &-bl {
+      bottom: 0;
+      left: 0;
+      border-bottom-left-radius: $radius;
+    }
+
+    &-br {
+      right: 0;
+      bottom: 0;
+      border-bottom-right-radius: $radius;
+    }
+
+    &-t,
+    &-b {
+      right: $radius;
+      left: $radius;
+      height: calc(#{$radius} + 4px);
+    }
+
+    &-t {
+      top: 0;
+    }
+
+    &-b {
+      bottom: 0;
+    }
+
+    &-l,
+    &-r {
+      top: $radius;
+      bottom: $radius;
+      width: calc(#{$radius} + 4px);
+    }
+
+    &-l {
+      left: 0;
+    }
+
+    &-r {
+      right: 0;
+    }
+
+    &-c {
+      inset: $radius;
+    }
+  }
+
+  &-emoji {
+    // over the label fading under them as they spread
+    z-index: 1;
+    flex: 0 0 auto;
+    width: 1.25em;
+    height: 1.25em;
+    margin-top: calc(($pill-height - 1.25em) / 2);
+    font-size: 1rem;
+    line-height: 1.25em;
+    text-align: center;
+    overflow: hidden;
+    transform-origin: 0 0;
+
+    .is-expanded > & {
+      margin-top: 0;
+      font-size: 2rem;
+    }
+
+    // the reel's emoji come in and go out softly
+    .is-syncing > & {
+      mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+    }
+
+    .emoji {
+      width: 1em;
+      height: 1em;
+      vertical-align: -.125em;
+    }
+
+    &-value {
+      display: block;
+
+      @include animation-level(2) {
+        animation: fade-in-opacity .2s ease-out;
+      }
+    }
+
+    // where a key will be, while it cannot spin
+    &-pending {
+      display: block;
+      width: .375em;
+      height: .375em;
+      margin: .4375em auto;
+      border-radius: 50%;
+      background-color: currentColor;
+      opacity: .4;
+    }
+  }
+
+  // a key on its way: the emoji roll by, as on a slot machine (macOS: 0.7 s a turn)
+  &-reel {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(-6.25em);
+
+    > span {
+      flex: 0 0 1.25em;
+    }
+
+    @include animation-level(2) {
+      animation: conference-encryption-reel .7s linear infinite;
+    }
+  }
+
+  &-label {
+    margin-inline: .375rem;
+    font-weight: var(--font-weight-bold);
+    line-height: $pill-height;
+    white-space: nowrap;
+
+    // over the open card's top edge, faded out (the morph fades it, fingerprintBadge.tsx)
+    .is-expanded > & {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      margin: 0;
+      text-align: center;
+      opacity: 0;
+    }
+  }
+
+  &-title {
+    display: block;
+    margin-top: .75rem;
+    font-size: var(--font-size-20);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.5rem;
+  }
+
+  &-details {
+    display: none;
+    grid-column: 1 / -1;
+    text-align: center;
+
+    .is-expanded > & {
+      display: block;
+
+      @include animation-level(2) {
+        animation: fade-in-opacity .2s .1s ease-out backwards;
+      }
+    }
+  }
+
+  &-info {
+    display: block;
+    margin-top: .375rem;
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-15);
+    line-height: 1.25rem;
+    white-space: normal;
+  }
 }
 
-.conference-fingerprint-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  border: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: inherit;
-  font: inherit;
-  user-select: none;
-
-  &__visual {
-    display: contents;
+@keyframes conference-encryption-reel {
+  from {
+    transform: translateY(-6.25em);
   }
 
-  &__emoji {
-    font-size: 1.25rem;
-    line-height: 1;
+  to {
+    transform: translateY(-1.25em);
+  }
+}
+
+// the row the pill takes under the header
+.group-call.is-conference {
+  &:not(.is-big-layout) > .popup-body {
+    margin-top: $row-height;
   }
 
-  &__pending {
-    display: inline-block;
-    width: 4.5rem;
-    height: 1.25rem;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.08);
+  .group-call-stage {
+    top: $header-height + $row-height;
   }
-
 }

@@ -400,6 +400,24 @@
   }
 }
 
+// A movable panel (the call popups) squares off a corner pushed into the window's own corner —
+// `--movable-round-*` is 0 there (movableElement.ts). No more specific than the container's own
+// radius, so a full-screen or bottom-sheet panel still squares all of them.
+:where(.popup.movable-element) > .popup-container {
+  border-radius:
+    calc(var(--popup-border-radius) * var(--movable-round-tl, 1))
+    calc(var(--popup-border-radius) * var(--movable-round-tr, 1))
+    calc(var(--popup-border-radius) * var(--movable-round-br, 1))
+    calc(var(--popup-border-radius) * var(--movable-round-bl, 1));
+  transition:
+    transform var(--popup-transition-time) var(--popup-transition-function),
+    border-radius var(--transition-standard-in);
+
+  body.animation-level-0 & {
+    transition: none;
+  }
+}
+
 .suggested-post-popup {
   .popup-container {
     width: 400px !important;

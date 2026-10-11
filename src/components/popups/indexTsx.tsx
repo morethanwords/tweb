@@ -1,4 +1,4 @@
-import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, createRenderEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
+import {createContext, useContext, createSignal, createMemo, onCleanup, JSX, Show, createRoot, Accessor, createEffect, createRenderEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
@@ -117,8 +117,8 @@ const PopupControllerContext = createContext<PopupControllerContextValue>();
 export const usePopupController = () => useContext(PopupControllerContext);
 
 const DEFAULT_APPEND_TO = document.body;
-// A fullscreen element always wins; otherwise each popup uses the realm it captured at creation
-// (see the Portal mount below). Only the fullscreen state is reactive here.
+// A fullscreen element wins, unless it is the popup's own part; otherwise each popup uses the realm
+// it captured at creation (see the Portal mount below). Only the fullscreen state is reactive here.
 const [fullScreenElement, setFullScreenElement] = createSignal<HTMLElement>(null);
 
 const onFullScreenChange = () => {
@@ -332,6 +332,14 @@ const PopupElement = (props: {
   const [destroyed, setDestroyed] = createSignal(false);
   const [hiding, setHiding] = createSignal(false);
   const [popupElement, setPopupElement] = createSignal<HTMLElement>();
+  // Whatever goes full screen takes the popups along, so they stay over it — unless it is a part of
+  // this very popup (the video chat's panel): moving the popup into its own child cannot be done,
+  // and the Portal tearing it down to try took the panel out of full screen. A memo, so that the
+  // Portal moves only when the place changes: rebuilt in place, it did the same.
+  const portalMount = createMemo(() => {
+    const element = fullScreenElement();
+    return element && !popupElement()?.contains(element) ? element : capturedRoot;
+  });
   const [containerElement, setContainerElement] = createSignal<HTMLElement>();
   const [btnConfirmOnEnter, setBtnConfirmOnEnter] = createSignal<HTMLElement>();
 
@@ -423,7 +431,7 @@ const PopupElement = (props: {
 
   return (
     <PopupContext.Provider value={value}>
-      <Portal mount={fullScreenElement() || capturedRoot}>
+      <Portal mount={portalMount()}>
         <div
           ref={setPopupElement}
           class={classNames(

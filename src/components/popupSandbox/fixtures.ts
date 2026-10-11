@@ -110,6 +110,24 @@ export const deletedUser = makeUser({
   pFlags: {deleted: true}
 });
 
+/** More people for the video chat stories, whose grids only show their layouts with a crowd. */
+export const videoChatUsers = [
+  ['Carol', 'Clark'],
+  ['Dave', 'Davis'],
+  ['Erin', 'Evans'],
+  ['Frank', 'Foster'],
+  ['Grace', 'Green'],
+  ['Heidi', 'Hill'],
+  ['Ivan', 'Ivanov'],
+  ['Judy', 'Jones']
+].map(([first_name, last_name], index) => makeUser({
+  id: 777011 + index,
+  access_hash: '' + (11 + index),
+  first_name,
+  last_name,
+  photo: {_: 'userProfilePhotoEmpty'}
+}));
+
 export const groupChat: Chat.chat = {
   _: 'chat',
   pFlags: {creator: true},
@@ -155,7 +173,8 @@ export const peers = {
   [DELETED_PEER_ID]: deletedUser,
   [GROUP_PEER_ID]: groupChat,
   [CHANNEL_PEER_ID]: channelChat,
-  [MEGAGROUP_PEER_ID]: megagroupChat
+  [MEGAGROUP_PEER_ID]: megagroupChat,
+  ...Object.fromEntries(videoChatUsers.map((user) => [user.id.toPeerId(false), user]))
 } as {[peerId: PeerId]: User.user | Chat};
 
 /** A legacy (private-chat) mid; the mirror keeps these in the global history storage. */

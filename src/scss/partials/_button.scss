@@ -1280,7 +1280,8 @@ $btn-menu-z-index: 4;
   font-size: 1.5rem;
   position: relative;
   border-radius: 50%;
-  backdrop-filter: var(--blur-off, blur(25px));
+  // No backdrop blur: over a playing video it is re-rendered every frame, and the call panels
+  // stuttered with it.
   // These are native <button>s, so the UA stylesheet paints a 2px outset
   // ButtonBorder around every circle unless it is cleared here.
   border: none;
@@ -1291,19 +1292,6 @@ $btn-menu-z-index: 4;
     align-items: center;
     cursor: pointer;
     width: var(--call-button-size);
-
-    &.disabled {
-      pointer-events: none;
-
-      .call-button { // ! fix backdrop-filter transition
-        pointer-events: none;
-
-        &,
-        &-text {
-          opacity: .8;
-        }
-      }
-    }
   }
 
   &-text {
@@ -1320,7 +1308,6 @@ $btn-menu-z-index: 4;
     transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
   }
 
-  & + &,
   &-container + &-container {
     margin-inline-start: var(--call-button-margin);
   }

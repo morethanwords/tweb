@@ -99,8 +99,9 @@ afterEach(() => {
 describe('group call participant row lifecycle', () => {
   it('destroys a row deleted while its fastRaf cleanup is still pending', async() => {
     const instance = {
-      getParticipantByPeerId: vi.fn().mockResolvedValue(participant),
-      isMemberWithAccess: vi.fn().mockReturnValue(false)
+      getParticipantRow: vi.fn().mockResolvedValue(participant),
+      isMemberWithAccess: vi.fn().mockReturnValue(false),
+      isSpeaking: vi.fn(() => false)
     };
     const list = new GroupCallParticipantsList(instance as any);
     await list.add(1 as PeerId);
@@ -123,10 +124,11 @@ describe('group call participant row lifecycle', () => {
       resolveUpdate = resolve;
     });
     const instance = {
-      getParticipantByPeerId: vi.fn()
+      getParticipantRow: vi.fn()
       .mockResolvedValueOnce(participant)
       .mockReturnValueOnce(pendingUpdate),
-      isMemberWithAccess: vi.fn().mockReturnValue(false)
+      isMemberWithAccess: vi.fn().mockReturnValue(false),
+      isSpeaking: vi.fn(() => false)
     };
     const list = new GroupCallParticipantsList(instance as any);
     await list.add(1 as PeerId);
@@ -145,10 +147,11 @@ describe('group call participant row lifecycle', () => {
     const error = new Error('participant lookup failed');
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const instance = {
-      getParticipantByPeerId: vi.fn()
+      getParticipantRow: vi.fn()
       .mockResolvedValueOnce(participant)
       .mockRejectedValueOnce(error),
-      isMemberWithAccess: vi.fn().mockReturnValue(false)
+      isMemberWithAccess: vi.fn().mockReturnValue(false),
+      isSpeaking: vi.fn(() => false)
     };
     const list = new GroupCallParticipantsList(instance as any);
 

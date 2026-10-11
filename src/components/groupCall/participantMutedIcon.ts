@@ -30,7 +30,9 @@ export default class GroupCallParticipantMutedIcon extends SuperLottieIcon<{
       },
       getColor: colored ? (state, prevState) => {
         return getColorByMutedState(state);
-      } : undefined
+      } : undefined,
+      // speaking comes and goes with the voice; the colour should not flicker with it
+      colorTransition: 200
     });
 
     const className = 'group-call-participant-muted-icon';

@@ -243,7 +243,7 @@ function getFolderTitleTextColor(active: boolean) {
 
 const BADGE_SIZE = 22;
 
-const avatarSizeMap: {[k in DialogElementSize]?: number} = {
+export const DIALOG_AVATAR_SIZES: {[k in DialogElementSize]?: number} = {
   bigger: 54,
   abitbigger: 42,
   small: 32
@@ -373,7 +373,7 @@ export class DialogElement {
       undefined :
       avatarNew({
         middleware: this.middlewareHelper.get(),
-        size: avatarSizeMap[avatarSize],
+        size: DIALOG_AVATAR_SIZES[avatarSize],
 
         lazyLoadQueue: newWrapOptions.lazyLoadQueue,
         isDialog: !!meAsSaved,

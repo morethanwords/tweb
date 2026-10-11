@@ -260,11 +260,15 @@
   --old-input-background-color: #F1F3F5;
   --premium-color: #9275ff;
 
-  --gc-background-color: #212121;
-  --gc-button-leave-color: rgba(255, 89, 90, .3);
-  --gc-button-unmuted-color: rgba(1, 200, 80, .2);
-  --gc-button-muted-color: rgba(60, 135, 247, .2);
-  --gc-button-hand-color: rgba(223, 68, 184, .2);
+  // a popup's background (--background-color at night): the participants' section stands out of it
+  // as a popup's sections do
+  --gc-background-color: #181818;
+  // What the old translucent tints looked like on the panel, nearly opaque: without a backdrop blur
+  // the translucent ones vanished over a video.
+  --gc-button-leave-color: rgba(100, 50, 50, .92);
+  --gc-button-unmuted-color: rgba(27, 66, 42, .92);
+  --gc-button-muted-color: rgba(38, 53, 76, .92);
+  --gc-button-hand-color: rgba(71, 40, 63, .92);
   --gc-button-unmuted-fill-color: #195530;
   --gc-button-muted-fill-color: #3C87F7;
   --gc-green-color: #195530;
@@ -278,6 +282,15 @@
   --gc-red-text-color: #ff595a;
 
   --gc-right-column-width: 26.25rem;
+  --gc-tile-background: #2c2c2e;
+  // the microphone button's gradients, from its top-right corner to its bottom-left one — the waves
+  // round it are drawn in them too (microphoneBlobs.ts)
+  --gc-microphone-unmuted-from: #00A3B4;
+  --gc-microphone-unmuted-to: #00CB47;
+  --gc-microphone-muted-from: #4EABF8;
+  --gc-microphone-muted-to: #3478F6;
+  --gc-microphone-hand-from: #DF44B8;
+  --gc-microphone-hand-to: #3851EB;
 
   // a message's secondary color, at the root as well as on .chat: message content shown outside a
   // chat (an Instant View page) is shaded with it too, so it looks the same there. The .chat one

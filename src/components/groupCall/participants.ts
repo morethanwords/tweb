@@ -21,7 +21,10 @@ import PeerTitle from '@components/peerTitle';
 import PopupElement from '@components/popups/indexTsx';
 import Scrollable from '@components/scrollable';
 import GroupCallParticipantsList from '@components/groupCall/participantsList';
-import GroupCallParticipantsVideoElement from '@components/groupCall/participantVideos';
+import createGroupCallParticipantsSection, {GroupCallParticipantsActions} from '@components/groupCall/participantsSection';
+import {getMiddleware} from '@helpers/middleware';
+import type GroupCallVideoGrid from '@components/groupCall/videoGrid';
+import type {GroupCallVideoTileType} from '@components/groupCall/videoTile';
 import {toastNew} from '@components/toast';
 
 export class GroupCallParticipantContextMenu {
@@ -30,50 +33,106 @@ export class GroupCallParticipantContextMenu {
   private targetPeerId: PeerId;
   private participant: GroupCallParticipant;
   private instance: GroupCallInstance;
+  private videoGrid: GroupCallVideoGrid;
   private canManageCall: boolean;
+  private canRemove: boolean;
   private managers: AppManagers;
   private listenerSetter = new ListenerSetter();
-  private contextMenu: ReturnType<typeof createContextMenu>;
+  private contextMenus: ReturnType<typeof createContextMenu>[];
   private destroyed = false;
   private openGeneration = 0;
   private removeParentCleanup: () => void;
 
+  /**
+   * tdesktop's members context menu (calls_group_members.cpp, createRowContextMenu), opened on a
+   * row of the list and on a video tile alike.
+   */
   constructor(options: {
     listenerSetter: ListenerSetter,
-    onContextElement: HTMLElement,
+    onContextElement: HTMLElement | HTMLElement[],
     managers: AppManagers,
     instance: GroupCallInstance,
+    videoGrid?: GroupCallVideoGrid
   }) {
+    const isSelf = () => !!this.participant.pFlags.self;
+    // muted by an admin, as opposed to by themselves
+    const isForceMuted = () => !!this.participant.pFlags.muted && !this.participant.pFlags.can_self_unmute;
+    const isMutedForMe = () => !!this.participant.pFlags.muted_by_you;
+    const getTile = (type: GroupCallVideoTileType) => this.videoGrid?.getPeerTiles(this.targetPeerId)?.get(type);
+    // a lone video has nothing to be pinned over
+    const canPin = (type: GroupCallVideoTileType, pinned: boolean) => {
+      const tile = getTile(type);
+      return !!tile && this.videoGrid.count > 1 && (this.videoGrid.pinnedTile === tile) === pinned;
+    };
+    const togglePin = (type: GroupCallVideoTileType) => {
+      const tile = getTile(type);
+      if(!tile) return;
+      if(this.videoGrid.pinnedTile === tile) this.instance.unpinAll();
+      else this.instance.pinSource(tile.source);
+    };
+
     this.buttons = [{
-      icon: 'gc_microphoneoff',
-      text: 'VoiceChat.MutePeer',
-      verify: () => this.canManageCall && this.participant.pFlags.can_self_unmute,
-      onClick: () => this.toggleParticipantMuted(true)
+      icon: 'pin',
+      text: 'VoiceChat.PinVideo',
+      verify: () => canPin('video', false),
+      onClick: () => togglePin('video')
     }, {
-      icon: 'gc_microphone',
+      icon: 'unpin',
+      text: 'VoiceChat.UnpinVideo',
+      verify: () => canPin('video', true),
+      onClick: () => togglePin('video')
+    }, {
+      icon: 'pin',
+      text: 'VoiceChat.PinScreencast',
+      verify: () => canPin('presentation', false),
+      onClick: () => togglePin('presentation')
+    }, {
+      icon: 'unpin',
+      text: 'VoiceChat.UnpinScreencast',
+      verify: () => canPin('presentation', true),
+      onClick: () => togglePin('presentation')
+    }, {
+      // whichever applies first: an admin lets the muted speak, anyone can undo their own mute,
+      // an admin mutes for everyone, anyone else for themselves
+      icon: 'user_allow_speak',
       text: 'VoiceChat.UnmutePeer',
-      verify: () => this.canManageCall && !this.participant.pFlags.can_self_unmute,
+      verify: () => !isSelf() && this.canManageCall && isForceMuted(),
       onClick: () => this.toggleParticipantMuted(false)
-    }, {
-      icon: 'gc_microphoneoff',
-      text: 'VoiceChat.MuteForMe',
-      verify: () => !this.canManageCall && !this.participant.pFlags.muted_by_you,
-      onClick: () => this.toggleParticipantMuted(true)
     }, {
       icon: 'gc_microphone',
       text: 'VoiceChat.UnmuteForMe',
-      verify: () => !this.canManageCall && this.participant.pFlags.muted_by_you,
+      verify: () => !isSelf() && !(this.canManageCall && isForceMuted()) && isMutedForMe(),
       onClick: () => this.toggleParticipantMuted(false)
     }, {
-      icon: 'newprivate',
+      icon: 'gc_microphoneoff',
+      text: 'VoiceChat.MutePeer',
+      verify: () => !isSelf() && this.canManageCall && !isForceMuted() && !isMutedForMe(),
+      onClick: () => this.toggleParticipantMuted(true)
+    }, {
+      icon: 'gc_microphoneoff',
+      text: 'VoiceChat.MuteForMe',
+      verify: () => !isSelf() && !this.canManageCall && !isMutedForMe(),
+      onClick: () => this.toggleParticipantMuted(true)
+    }, {
+      icon: 'hand',
+      text: 'VoiceChat.CancelSpeakRequest',
+      verify: () => isSelf() && this.participant.raise_hand_rating !== undefined,
+      onClick: () => this.cancelRaiseHand()
+    }, {
+      icon: 'user',
       text: 'VoiceChat.OpenProfile',
-      verify: () => true,
-      onClick: this.onOpenProfileClick
+      verify: () => !isSelf(),
+      onClick: () => this.openPeer(true)
+    }, {
+      icon: 'message',
+      text: 'SendMessage',
+      verify: () => !isSelf() && this.targetPeerId.isUser(),
+      onClick: () => this.openPeer(false)
     }, {
       icon: 'deleteuser',
       className: 'danger',
       text: 'VoiceChat.RemovePeer',
-      verify: () => this.managers.appChatsManager.hasRights(this.chatId, 'ban_users'),
+      verify: () => !isSelf() && this.canRemove,
       onClick: () => {
         void this.removeParticipant();
       }
@@ -83,19 +142,22 @@ export class GroupCallParticipantContextMenu {
     this.removeParentCleanup = options.listenerSetter.addCleanup(() => this.destroy());
     this.managers = options.managers;
     this.instance = options.instance;
+    this.videoGrid = options.videoGrid;
     this.chatId = this.instance.chatId;
 
-    this.contextMenu = createContextMenu({
+    const elements = Array.isArray(options.onContextElement) ? options.onContextElement : [options.onContextElement];
+    this.contextMenus = elements.map((listenTo) => createContextMenu({
       buttons: this.buttons,
-      listenTo: options.onContextElement,
+      listenTo,
       listenerSetter,
-      findElement: (e) => findUpClassName(e.target, 'group-call-participant'),
+      // a row of the list, or a video tile: both carry the participant's peer id
+      findElement: (e) => findUpClassName(e.target, 'group-call-participant') || findUpClassName(e.target, 'group-call-video-tile'),
       resolveAppendTo: () => isFullScreen() ?
         PopupElement.getPopups(GROUP_CALL_POPUP_KIND)[0]?.container ?? getOverlayRoot() :
         getOverlayRoot(),
-      onOpen: async(_e, li) => {
+      onOpen: async(_e, target) => {
         const generation = ++this.openGeneration;
-        const peerId = li.dataset.peerId.toPeerId();
+        const peerId = target.dataset.peerId.toPeerId();
         // A chain-only member has no SFU participant behind them, so every
         // action here (mute, mute-for-me, kick) would address a row the server
         // doesn't know about. tdesktop keeps these rows inert too
@@ -107,13 +169,14 @@ export class GroupCallParticipantContextMenu {
 
         const participant = await this.instance.getParticipantByPeerId(peerId);
         if(this.destroyed || this.openGeneration !== generation) return false;
-        if(!participant || participant.pFlags.self) return false;
+        if(!participant) return false;
 
-        const canManageCall = await this.managers.appChatsManager.hasRights(this.chatId, 'manage_call');
+        const [canManageCall, canRemove] = await Promise.all([this.canManage(), this.canRemoveParticipant(peerId)]);
         if(this.destroyed || this.openGeneration !== generation) return false;
         this.targetPeerId = peerId;
         this.participant = participant;
         this.canManageCall = canManageCall;
+        this.canRemove = canRemove;
       },
       onElementReady: (element) => {
         element.classList.add('group-call-participant-menu', 'night');
@@ -123,7 +186,7 @@ export class GroupCallParticipantContextMenu {
       },
       reopenOnTrigger: true,
       cancelOnOpenFalse: true
-    });
+    }));
 
     listenerSetter.add(rootScope)('group_call_participant', ({groupCallId, participant}) => {
       if(this.instance.id === groupCallId) {
@@ -145,19 +208,57 @@ export class GroupCallParticipantContextMenu {
     }, listenerSetter);
   }
 
-  private closeContextMenu() {
-    ++this.openGeneration;
-    this.contextMenu.close();
+  private isConferenceCreator() {
+    const {groupCall} = this.instance;
+    return groupCall?._ === 'groupCall' && !!groupCall.pFlags.creator;
   }
 
-  private onOpenProfileClick = () => {
-    const popup = PopupElement.getPopups(GROUP_CALL_POPUP_KIND)[0];
-    if(popup) {
-      popup.hide();
+  /** A conference has no chat behind it: there its creator runs the call (tdesktop canManage). */
+  private async canManage() {
+    if(this.instance.e2e) {
+      return this.isConferenceCreator();
     }
 
-    appImManager.setInnerPeer({peerId: this.targetPeerId});
-  };
+    return this.managers.appChatsManager.hasRights(this.chatId, 'manage_call');
+  }
+
+  private async canRemoveParticipant(peerId: PeerId) {
+    if(this.instance.e2e) {
+      return peerId.isUser() && this.isConferenceCreator();
+    }
+
+    // the chat speaking as itself is not someone to remove from it
+    return peerId !== this.chatId.toPeerId(true) && this.managers.appChatsManager.hasRights(this.chatId, 'ban_users');
+  }
+
+  private closeContextMenu() {
+    ++this.openGeneration;
+    this.contextMenus.forEach((contextMenu) => contextMenu.close());
+  }
+
+  /** Their profile, or the chat with them; the call carries on behind its plate either way. */
+  private openPeer(profile: boolean) {
+    const peerId = this.targetPeerId;
+    PopupElement.getPopups(GROUP_CALL_POPUP_KIND)[0]?.hide();
+
+    const opened = appImManager.setInnerPeer({peerId});
+    if(profile) {
+      void Promise.resolve(opened).then(async() => {
+        const {default: appSidebarRight} = await import('@components/sidebarRight');
+        appSidebarRight.toggleSidebar(true);
+      }).catch((err) => {
+        console.error('open group call participant profile failed', err);
+      });
+    }
+  }
+
+  private cancelRaiseHand() {
+    return this.instance.changeRaiseHand(false).catch((err) => {
+      if(this.destroyed) return;
+      console.error('lower group call hand failed', err);
+      toastNew({langPackKey: 'Error.AnError'});
+    });
+  }
 
   private toggleParticipantMuted = (muted: boolean) => {
     return this.instance.editParticipant(this.participant, {
@@ -170,12 +271,13 @@ export class GroupCallParticipantContextMenu {
   };
 
   private async removeParticipant(): Promise<void> {
-    const chatId = this.chatId;
+    const {chatId, instance} = this;
     const peerId = this.targetPeerId;
     const generation = this.openGeneration;
+    const isConference = !!instance.e2e;
     let isBroadcast: boolean;
     try {
-      isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
+      isBroadcast = !isConference && await this.managers.appChatsManager.isBroadcast(chatId);
     } catch(err) {
       if(!this.destroyed && this.openGeneration === generation) {
         console.error('load remove-participant confirmation failed', err);
@@ -189,7 +291,9 @@ export class GroupCallParticipantContextMenu {
       await confirmationPopup({
         peerId,
         title: new PeerTitle({peerId}).element,
-        descriptionLangKey: isBroadcast ? 'VoiceChat.RemovePeer.Confirm.Channel' : 'VoiceChat.RemovePeer.Confirm',
+        descriptionLangKey: isConference ?
+          'VoiceChat.RemovePeer.Confirm.Call' :
+          (isBroadcast ? 'VoiceChat.RemovePeer.Confirm.Channel' : 'VoiceChat.RemovePeer.Confirm'),
         descriptionLangArgs: [new PeerTitle({peerId}).element],
         button: {
           langKey: 'VoiceChat.RemovePeer.Confirm.OK',
@@ -202,7 +306,11 @@ export class GroupCallParticipantContextMenu {
     }
 
     try {
-      await this.managers.appChatsManager.kickFromChat(chatId, peerId);
+      if(isConference) {
+        await instance.kickConferenceParticipant(peerId);
+      } else {
+        await this.managers.appChatsManager.kickFromChat(chatId, peerId);
+      }
     } catch(err) {
       if(this.destroyed) return;
       console.error('remove group call participant failed', err);
@@ -214,7 +322,7 @@ export class GroupCallParticipantContextMenu {
     if(this.destroyed) return;
     this.destroyed = true;
     ++this.openGeneration;
-    this.contextMenu.destroy();
+    this.contextMenus.forEach((contextMenu) => contextMenu.destroy());
     this.removeParentCleanup();
     this.listenerSetter.removeAll();
   }
@@ -225,7 +333,6 @@ export default class GroupCallParticipantsElement {
   private sortedList: GroupCallParticipantsList;
   private instance: GroupCallInstance;
   private listenerSetter: ListenerSetter;
-  private groupCallParticipantsVideo: GroupCallParticipantsVideoElement;
   private contextMenu: GroupCallParticipantContextMenu;
   private managers: AppManagers;
   private scrollable: Scrollable;
@@ -234,12 +341,17 @@ export default class GroupCallParticipantsElement {
   private rowMutationGeneration = 0;
   private rowMutationGenerations = new Map<PeerId, number>();
   private releaseSpeaking: () => void;
+  private middlewareHelper = getMiddleware();
 
   constructor(options: {
     appendTo: HTMLElement,
     instance: GroupCallInstance,
     listenerSetter: ListenerSetter,
-    managers: AppManagers
+    managers: AppManagers,
+    videoList?: HTMLElement,
+    videoGrid?: GroupCallVideoGrid,
+    /** What a conference offers under its last participant. */
+    actions?: GroupCallParticipantsActions
   }) {
     safeAssign(this, options);
 
@@ -247,29 +359,33 @@ export default class GroupCallParticipantsElement {
 
     const scrollable = this.scrollable = new Scrollable(undefined);
     scrollable.container.classList.add(className + '-scrollable');
+    // `scrolled-start` drives the fade at the top edge
+    scrollable.attachBorderListeners();
 
     const container = this.container = document.createElement('div');
     container.classList.add(className);
 
-    // const invite = Button(`btn-primary btn-transparent ${className}-invite`, {icon: 'adduser', text: 'VoiceChat.Invite.InviteMembers'});
-
     const sortedList = this.sortedList = new GroupCallParticipantsList(this.instance);
 
     const {instance, listenerSetter} = this;
+    // the rows, and the video tiles wherever the grid has put them
     this.contextMenu = new GroupCallParticipantContextMenu({
       ...options,
-      onContextElement: sortedList.list,
+      onContextElement: [sortedList.list, options.videoGrid?.stage, options.videoGrid?.list].filter(Boolean),
       listenerSetter,
       instance
     });
 
-    this.groupCallParticipantsVideo = new GroupCallParticipantsVideoElement({
-      ...options,
-      appendTo: scrollable.container,
-      displayPinned: false
-    });
+    // the video grid's tiles for this column sit above the rows and scroll with them
+    if(options.videoList) {
+      scrollable.append(options.videoList);
+    }
 
-    scrollable.append(/* invite,  */sortedList.list);
+    scrollable.append(createGroupCallParticipantsSection({
+      list: sortedList.list,
+      actions: options.actions,
+      middleware: this.middlewareHelper.get()
+    }));
     container.append(scrollable.container);
 
     options.appendTo.append(container);
@@ -286,7 +402,7 @@ export default class GroupCallParticipantsElement {
       }
     });
     // Audio levels are only sampled while the list is on screen.
-    this.releaseSpeaking = instance.watchSpeaking?.();
+    this.releaseSpeaking = instance.watchSpeaking();
 
     // Members that the e2e blockchain authorises but the SFU roster omits. They
     // hold the current call key, so they get a row like anyone else — see
@@ -320,7 +436,7 @@ export default class GroupCallParticipantsElement {
   }
 
   // Re-render one row from whatever the instance currently knows about the peer
-  // (a real SFU participant, a chain-only member, or neither). Reading the
+  // (a real SFU participant, a chain-only member, our stand-in, or neither). Reading the
   // participant crosses the manager proxy, so swallow a transient failure
   // rather than dropping the row — or leaking an unhandled rejection.
   private async refreshRow(peerId: PeerId): Promise<void> {
@@ -328,10 +444,10 @@ export default class GroupCallParticipantsElement {
     const instance = this.instance;
     const generation = this.instanceGeneration;
     try {
-      const participant = await instance.getParticipantByPeerId(peerId);
+      const participant = await instance.getParticipantRow(peerId);
       if(this.destroyed || this.instance !== instance || this.instanceGeneration !== generation) return;
       if(participant) {
-        this.updateParticipant(participant);
+        await this.updateParticipant(participant);
       } else if(this.sortedList.has(peerId)) {
         this.sortedList.delete(peerId);
       }
@@ -342,7 +458,8 @@ export default class GroupCallParticipantsElement {
     }
   }
 
-  private updateParticipant(participant: GroupCallParticipant) {
+  /** Resolves once its row is in place. */
+  private updateParticipant(participant: GroupCallParticipant): Promise<void> {
     if(this.destroyed) return;
     const peerId = getPeerId(participant.peer);
     const mutationGeneration = ++this.rowMutationGeneration;
@@ -368,12 +485,12 @@ export default class GroupCallParticipantsElement {
       return;
     }
 
+    this.sortedList.setParticipant(peerId, participant);
     if(!has) {
-      this.runListMutation(peerId, mutationGeneration, 'add', this.sortedList.add(peerId));
-      return;
+      return this.runListMutation(peerId, mutationGeneration, 'add', this.sortedList.add(peerId));
     }
 
-    this.runListMutation(peerId, mutationGeneration, 'update', this.sortedList.update(peerId));
+    return this.runListMutation(peerId, mutationGeneration, 'update', this.sortedList.update(peerId));
   }
 
   private runListMutation(
@@ -382,7 +499,7 @@ export default class GroupCallParticipantsElement {
     operation: 'add' | 'update',
     result: MaybePromise<void>
   ) {
-    void Promise.resolve(result).catch((err) => {
+    return Promise.resolve(result).catch((err) => {
       if(this.destroyed || this.rowMutationGenerations.get(peerId) !== generation) return;
       if(operation === 'add' && this.sortedList.has(peerId)) {
         // SortedList registers the element before its async index lookup. If
@@ -412,19 +529,27 @@ export default class GroupCallParticipantsElement {
       instance.participants.set(userId.toPeerId(), participant);
       this.updateParticipant(participant);
     } */
+    // the rows already in the call just appear, as the chat list's first page does
+    const unblockGlide = this.sortedList.blockGlide();
     try {
       const participants = await instance.participants;
       if(this.destroyed || this.instance !== instance || this.instanceGeneration !== generation) return;
+      const placed: Promise<void>[] = [];
       participants.forEach((participant) => {
-        this.updateParticipant(participant);
+        placed.push(this.updateParticipant(participant));
       });
 
       // The popup can open mid-call, after reconciliation already ran.
-      instance.memberWithAccessPeerIds.forEach((peerId) => this.refreshRow(peerId));
+      instance.memberWithAccessPeerIds.forEach((peerId) => placed.push(this.refreshRow(peerId)));
+      // and we are on the list before the server lists us (getParticipantRow)
+      if(!participants.has(instance.selfPeerId)) placed.push(this.refreshRow(instance.selfPeerId));
+      await Promise.all(placed);
     } catch(err) {
       if(!this.destroyed && this.instance === instance && this.instanceGeneration === generation) {
         console.error('load group call participants failed', err);
       }
+    } finally {
+      unblockGlide();
     }
   }
 
@@ -437,6 +562,6 @@ export default class GroupCallParticipantsElement {
     this.contextMenu.destroy();
     this.scrollable.destroy();
     this.sortedList.destroy();
-    this.groupCallParticipantsVideo.destroy();
+    this.middlewareHelper.destroy();
   }
 }

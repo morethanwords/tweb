@@ -345,7 +345,8 @@
     // call's dark gradient in every theme, so spell the colour out (the same
     // way `.group-call-button` does with `--gc-primary-text-color`).
     color: #fff;
-    background-color: rgba(255, 255, 255, .15);
+    // fuller than it was under a backdrop blur, which no longer thickens it
+    background-color: rgba(255, 255, 255, .25);
 
     &-red {
       background-color: var(--danger-color) !important;
@@ -381,11 +382,13 @@
         filter: brightness(0);
       }
     }
+  }
 
-    &,
-    &-text {
-      opacity: 0;
-    }
+  // Hidden over the video until the pointer comes (`.show-controls`; `.no-video` keeps them shown).
+  // Inside the panel only: the button itself is shared with the video chat's.
+  .call-button,
+  .call-button-text {
+    opacity: 0;
   }
 
   // ===== Video tiles =====
@@ -461,7 +464,6 @@
     display: flex;
     align-items: center;
     margin-top: 1rem;
-    backdrop-filter: var(--blur-off, blur(25px));
     font-weight: var(--font-weight-bold);
     opacity: 0;
     transform: scale(0) translateY(0);

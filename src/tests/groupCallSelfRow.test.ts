@@ -16,6 +16,8 @@ const cue = vi.hoisted(() => ({notifyAllowedToSpeak: vi.fn()}));
 vi.mock('@components/groupCall/allowedToSpeakCue', () => ({default: cue.notifyAllowedToSpeak}));
 
 import GroupCallInstance from '@lib/calls/groupCallInstance';
+import rootScope from '@lib/rootScope';
+import {NULL_PEER_ID} from '@appManagers/constants';
 
 class FakeTrack extends EventTarget {
   public readonly kind = 'audio';
@@ -138,5 +140,41 @@ describe('GroupCallInstance self participant row', () => {
     unjoined.onParticipantUpdate(selfRow({muted: true}));
     unjoined.onParticipantUpdate(selfRow({muted: true, can_self_unmute: true}));
     expect(cue.notifyAllowedToSpeak).not.toHaveBeenCalled();
+  });
+
+  // A conference takes our row only from a roster that already carries this connection's source, a
+  // poll after the join: until then the list shows a stand-in, which is nobody's participant.
+  it('keeps us on the list with a stand-in until the server lists us, and hands it to nothing else', async() => {
+    const myId = rootScope.myId;
+    rootScope.myId = (42 as UserId).toPeerId(false);
+    try {
+      const {instance, audioTrack} = makeInstance();
+      instances.push(instance);
+      const cached = new Map<PeerId, unknown>();
+      (instance as any).managers.appGroupCallsManager.getCachedParticipants = vi.fn(async() => cached);
+
+      // what capture says: a microphone that sends is not shown muted, nor one that does not open
+      const standIn = await instance.getParticipantRow(rootScope.myId);
+      expect(standIn).toMatchObject({pFlags: {self: true}, source: 0});
+      expect(standIn.pFlags.muted).toBeUndefined();
+      expect(instance.isMicrophoneMuted).toBe(false);
+      audioTrack.enabled = false;
+      const muted = await instance.getParticipantRow(rootScope.myId);
+      expect(muted.pFlags.muted).toBe(true);
+      expect(instance.isMicrophoneMuted).toBe(true);
+      // and it keeps its place in the list
+      expect(muted.date).toBe(standIn.date);
+      expect(await instance.getParticipantRow((7 as UserId).toPeerId(false))).toBeUndefined();
+      expect(await instance.getParticipantByPeerId(rootScope.myId)).toBeUndefined();
+      expect(await instance.getParticipantByPeerId(NULL_PEER_ID)).toBeUndefined();
+      expect(instance.participant).toBeUndefined();
+
+      const row = selfRow({can_self_unmute: true});
+      cached.set(rootScope.myId, row);
+      instance.onParticipantUpdate(row);
+      expect(await instance.getParticipantRow(rootScope.myId)).toBe(row);
+    } finally {
+      rootScope.myId = myId;
+    }
   });
 });

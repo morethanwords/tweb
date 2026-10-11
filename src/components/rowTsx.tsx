@@ -421,7 +421,8 @@ Row.Icon = (props: {
     <span
       class={classNames(
         'row-icon',
-        'row-icon-colored',
+        // white is for the glyph on a tile; without one it is a row's plain icon
+        !props.noBackground && 'row-icon-colored',
         props.class
       )}
       style={!props.noBackground && {
