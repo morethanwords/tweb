@@ -451,6 +451,17 @@ import {Message, Chat, User, InputPeer} from '@layer';
   the hold-to-peek on photos (`components/mediaPeek`). A change none
   of them exercises (chat-only styling, a manager fix) skips them. Report what
   ran, and what was skipped and why.
+- **Heavy runs wait their turn on a shared machine.** Every Playwright run and a
+  full `vitest run` take their workers from one budget for the whole machine —
+  75% of the CPUs, shared by every checkout and worktree
+  (`scripts/test-queue.sh`) — so suites from parallel sessions run one after
+  another instead of starving each other into timeouts. A run may print
+  `[test-queue] … waits for its turn` and sit there: start suites in the
+  background, never kill a waiting run to retry it, and see who is ahead with
+  `bash scripts/test-queue.sh`. A Playwright run narrowed to some files or
+  tests gets at most 4 workers unless `--workers` says otherwise, so a few of
+  them share the machine; vitest on a few files does not queue at all.
+  `TWEB_TEST_QUEUE=0` runs without the queue; CI never queues.
 
 ## Accessibility (a11y) is part of every UI feature
 

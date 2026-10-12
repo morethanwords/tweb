@@ -1,12 +1,13 @@
 import {defineConfig, devices} from '@playwright/test';
 import base from './playwright.config';
+import {playwrightWorkers} from './scripts/testQueue';
 
 export default defineConfig<{freshContext: boolean}>({
   ...base,
   // The base runs one test at a time for the lottie screenshot detector; nothing here needs that,
   // and one worker is what made this suite a quarter of an hour long.
   fullyParallel: true,
-  workers: process.env.A11Y_WORKERS ? Number(process.env.A11Y_WORKERS) : '75%',
+  workers: playwrightWorkers(process.env.A11Y_WORKERS ? Number(process.env.A11Y_WORKERS) : '75%'),
   testMatch: /accessibility(?:Keyboard|MediaEditor|Window|Stories|Contrast)?\.spec\.ts/,
   projects: [
     {name: 'chromium', use: {...devices['Desktop Chrome']}},

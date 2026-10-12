@@ -12,6 +12,7 @@ import {createHash} from 'crypto';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import {watchScssTypes} from './scss-types.js';
+import {vitestWorkers} from './scripts/testQueue';
 import devChecks from './scripts/dev-checks.mjs';
 import settingsSearchPlugin from './scripts/settings-search-plugin.mjs';
 import watchTransformCache from './scripts/watch-transform-cache.mjs';
@@ -239,6 +240,8 @@ export default defineConfig({
     // otherwise, solid would be loaded twice:
     // deps: {registerNodeLoader: true},
     pool: 'forks',
+    // a full run waits for its turn in the machine-wide queue of heavy test runs (scripts/test-queue.sh)
+    maxWorkers: vitestWorkers(),
     globals: true,
     setupFiles: ['./src/tests/setup.ts']
   },

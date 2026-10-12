@@ -1,4 +1,6 @@
 import {defineConfig, devices} from '@playwright/test';
+import path from 'path';
+import {playwrightWorkers} from './scripts/testQueue';
 
 const PORT = 8100;
 
@@ -6,7 +8,9 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: /chatInputEditor.*\.spec\.ts/,
   fullyParallel: false,
-  workers: 1,
+  workers: playwrightWorkers(1),
+  // waits for its turn in the machine-wide queue of heavy test runs (scripts/test-queue.sh)
+  globalSetup: path.join(__dirname, 'scripts/testQueue.ts'),
   timeout: 30_000,
   reporter: [['list']],
   use: {

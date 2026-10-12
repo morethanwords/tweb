@@ -1,4 +1,6 @@
 import {defineConfig, devices} from '@playwright/test';
+import path from 'path';
+import {playwrightWorkers} from './scripts/testQueue';
 
 const PORT = 8117;
 
@@ -13,7 +15,9 @@ export default defineConfig<{freshContext: boolean}>({
   // Every test opens its own sandbox page and shares nothing with the others, so they run side by
   // side; one worker made this 13 minutes long.
   fullyParallel: true,
-  workers: process.env.POPUPS_WORKERS ? Number(process.env.POPUPS_WORKERS) : '75%',
+  workers: playwrightWorkers(process.env.POPUPS_WORKERS ? Number(process.env.POPUPS_WORKERS) : '75%'),
+  // waits for its turn in the machine-wide queue of heavy test runs (scripts/test-queue.sh)
+  globalSetup: path.join(__dirname, 'scripts/testQueue.ts'),
   timeout: 60_000,
   reporter: [['list']],
   use: {
