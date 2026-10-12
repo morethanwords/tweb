@@ -41,10 +41,14 @@ export type PopupPremiumOptions = {
   peerId?: PeerId,
   isOut?: boolean,
   stack?: PopupPremiumProps['stack'],
-  emojiStatusId?: DocId
+  emojiStatusId?: DocId,
+  // where the offer was opened from, for the statistics: a link's `ref`
+  ref?: string
 };
 
 export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
+  // * the source the official clients report: the link's `ref`, else the feature opened on, else Settings
+  const source = options.ref || options.feature || 'settings';
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
@@ -178,6 +182,10 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
     transition(options.feature ? 1 : 0);
 
     setShow(true);
+
+    if(props.type === 'premium') {
+      rootScope.managers.appPaymentsManager.reportPremiumPromoShown(source);
+    }
   }
 
   const selectFeature = async(feature: PremiumPromoFeatureType) => {
@@ -239,8 +247,8 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
 
     promoSlideTab.transition = transition;
     promoSlideTab.selectFeature = selectFeature;
-    promoSlideTab.selectPeriod = (option) => {
-      option = option;
+    promoSlideTab.selectPeriod = (selected) => {
+      option = selected;
       updateActionLayout();
     };
     promoSlideTab.close = close;
@@ -299,8 +307,17 @@ export default function showPremiumPopup(options: PopupPremiumOptions = {}) {
     if(buying) return;
     buying = true;
 
+    rootScope.managers.appPaymentsManager.reportPremiumPromoAccepted();
     close(() => {
-      appImManager.openUrl(option.bot_url);
+      const {premium_bot_username, premium_invoice_slug} = props.appConfig;
+      if(option?.bot_url) {
+        appImManager.openUrl(option.bot_url);
+      } else if(premium_bot_username) {
+        // * a period with no link of its own goes through the Premium bot, told where the user came from
+        appImManager.openUsername({userName: premium_bot_username, startParam: source});
+      } else if(premium_invoice_slug) {
+        appImManager.openUrl('https://t.me/$' + premium_invoice_slug);
+      }
     });
   }
 

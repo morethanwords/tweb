@@ -16,8 +16,11 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {getStarsTransactionMessagePeerId} from '@appManagers/utils/payments/starsTransaction';
+import toJSONValue from '@appManagers/utils/toJSONValue';
 import forEachReverse from '@helpers/array/forEachReverse';
 import makeError from '@helpers/makeError';
+import noop from '@helpers/noop';
+import tsNow from '@helpers/tsNow';
 
 export default class AppPaymentsManager extends AppManager {
   private premiumPromo: MaybePromise<HelpPremiumPromo>;
@@ -140,6 +143,36 @@ export default class AppPaymentsManager extends AppManager {
         return this.premiumPromo = helpPremiumPromo;
       }
     });
+  }
+
+  /**
+   * The Premium offer came up. `source` says where from — a link's `ref`, the feature it opened
+   * on, or `settings` — and travels with the order of features the server asked for.
+   */
+  public async reportPremiumPromoShown(source: string) {
+    const appConfig = await this.apiManager.getAppConfig();
+    return this.saveAppLog('premium.promo_screen_show', {
+      premium_promo_order: appConfig.premium_promo_order || [],
+      source
+    });
+  }
+
+  /** The subscribe button of the Premium offer was pressed. */
+  public reportPremiumPromoAccepted() {
+    return this.saveAppLog('premium.promo_screen_accept', null);
+  }
+
+  // * statistics: nobody waits for it, and a failure is not the user's business
+  private saveAppLog(type: string, data: any) {
+    return this.apiManager.invokeApi('help.saveAppLog', {
+      events: [{
+        _: 'inputAppEvent',
+        time: tsNow() / 1000 + this.timeManager.getServerTimeOffset(),
+        type,
+        peer: 0,
+        data: toJSONValue(data)
+      }]
+    }, {ignoreErrors: true}).catch(noop);
   }
 
   public checkGiftCode(slug: string) {

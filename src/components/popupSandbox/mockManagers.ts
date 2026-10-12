@@ -191,6 +191,9 @@ function createDefaultHandlers(): ManagerHandlers {
       getStarsTransactions: () => makeStarsStatus(starsAmount),
       getStarsSubscriptions: () => makeStarsStatus(starsAmount),
       getPremiumPromo: () => premiumPromo,
+      // the Premium offer's statistics: answered, so the sandbox reports nothing
+      reportPremiumPromoShown: () => true,
+      reportPremiumPromoAccepted: () => true,
       getStarsTopupOptions: () => [100, 500, 1000].map((stars) => ({
         _: 'starsTopupOption',
         pFlags: {},

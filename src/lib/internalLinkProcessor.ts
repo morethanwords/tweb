@@ -25,6 +25,7 @@ import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import shake from '@helpers/dom/shake';
 import showPremiumPopup from '@components/popups/premium';
+import getPremiumLinkRef from '@helpers/getPremiumLinkRef';
 import rootScope from '@lib/rootScope';
 import showBoostPopup from '@components/popups/boost';
 import showGiftLinkPopup from '@components/popups/giftLink';
@@ -597,6 +598,24 @@ export class InternalLinkProcessor {
       protocol: 'tg',
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.PREMIUM_FEATURES, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
+
+    // t.me/GetPremium?ref=twitter = tg://premium_offer?ref=tme_getpremium_twitter
+    addAnchorListener<{
+      uriParams: {
+        ref?: string
+      }
+    }>({
+      name: 'premium_offer',
+      noPathnameParams: true,
+      callback: ({uriParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.PREMIUM_FEATURES,
+          ref: getPremiumLinkRef(uriParams.ref)
+        };
+
         return this.processInternalLink(link);
       }
     });
@@ -1511,7 +1530,8 @@ export class InternalLinkProcessor {
       return;
     }
 
-    showPremiumPopup();
+    // * a bare tg://premium_offer is reported as tdesktop reports it
+    showPremiumPopup({ref: link.ref || 'deeplink'});
   };
 
   public processGiftCodeLink = (link: InternalLink.InternalLinkGiftCode) => {
