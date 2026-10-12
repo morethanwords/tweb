@@ -3,7 +3,10 @@ import {
   BusinessBotRecipients,
   BusinessBotRights,
   BusinessIntro,
+  BusinessLocation,
+  BusinessWorkHours,
   ConnectedBot,
+  GeoPoint,
   InputBusinessBotRecipients,
   InputUser,
   MessageEntity,
@@ -160,6 +163,62 @@ export default class AppBusinessManager extends AppManager {
 
     intro.sticker = this.appDocsManager.saveDoc(intro.sticker, {type: 'userFull', userId});
     return intro;
+  }
+
+  /**
+   * `account.updateBusinessWorkHours` — pass nothing to stop showing business hours.
+   * Mirrors Android's OpeningHoursActivity.processDone.
+   */
+  public async updateBusinessWorkHours(workHours?: BusinessWorkHours.businessWorkHours) {
+    const hours = workHours?.weekly_open?.length ? workHours : undefined;
+    const result = await this.apiManager.invokeApi('account.updateBusinessWorkHours', {
+      business_work_hours: hours
+    });
+
+    if(!result) {
+      throw new Error('ACCOUNT_UPDATE_BUSINESS_WORK_HOURS_FAILED');
+    }
+
+    this.appProfileManager.modifyCachedFullUser(this.rootScope.myId.toUserId(), (userFull) => {
+      if(hours) userFull.business_work_hours = hours;
+      else delete userFull.business_work_hours;
+    });
+
+    return hours;
+  }
+
+  /**
+   * `account.updateBusinessLocation` — pass nothing to remove the location.
+   * The geo point is optional: an address alone is a valid business location.
+   */
+  public async updateBusinessLocation(location?: {address: string, geoPoint?: GeoPoint.geoPoint}) {
+    const address = location?.address?.trim();
+    const geoPoint = address ? location.geoPoint : undefined;
+    const result = await this.apiManager.invokeApi('account.updateBusinessLocation', {
+      address: address || undefined,
+      geo_point: geoPoint && {
+        _: 'inputGeoPoint',
+        lat: geoPoint.lat,
+        long: geoPoint.long
+      }
+    });
+
+    if(!result) {
+      throw new Error('ACCOUNT_UPDATE_BUSINESS_LOCATION_FAILED');
+    }
+
+    const businessLocation: BusinessLocation.businessLocation = address ? {
+      _: 'businessLocation',
+      address,
+      geo_point: geoPoint
+    } : undefined;
+
+    this.appProfileManager.modifyCachedFullUser(this.rootScope.myId.toUserId(), (userFull) => {
+      if(businessLocation) userFull.business_location = businessLocation;
+      else delete userFull.business_location;
+    });
+
+    return businessLocation;
   }
 
   public resolveBusinessChatLink(slug: string) {

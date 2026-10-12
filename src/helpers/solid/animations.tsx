@@ -1,4 +1,4 @@
-import {JSX, Show} from 'solid-js';
+import {Accessor, For, JSX, Show} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {AnimationList} from '@helpers/solid/animationList';
 import {CROSS_FADE_KEYFRAMES, getAnimatedOptions} from '@helpers/dom/crossfadeContent';
@@ -88,6 +88,24 @@ export function GrowHeightReveal(props: {
           {props.children}
         </div>
       </Show>
+    </Animated>
+  );
+}
+
+// The list counterpart of GrowHeightReveal: an item added to `each` grows in and a
+// removed one shrinks out, each in its own `overflow: hidden` wrapper for the same
+// reason as above. Items already there on mount appear without animating.
+export function GrowHeightList<T>(props: {
+  each: readonly T[],
+  children: (item: T, index: Accessor<number>) => JSX.Element
+}) {
+  return (
+    <Animated type="grow-height" noItemClass mode="add-remove" appear={false}>
+      <For each={props.each}>{(item, index) => (
+        <div style={{overflow: 'hidden'}}>
+          {props.children(item, index)}
+        </div>
+      )}</For>
     </Animated>
   );
 }

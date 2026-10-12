@@ -50,6 +50,12 @@
     }
   }
 
+  // A feature page's header sits over a scrolling list whose own top border is the
+  // separator once it scrolls; a border here as well would draw a second line.
+  .premium-feature-tab .popup-header-background {
+    border-bottom-color: transparent;
+  }
+
   .popup-title {
     opacity: 0;
 
@@ -215,7 +221,8 @@
       --y-static: -41.3%;
       border-radius: 0 0 36px 36px;
 
-      .media-video {
+      .media-video,
+      .media-photo {
         top: 28.3%;
         border-radius: 0 0 36px 36px;
       }
@@ -234,6 +241,12 @@
       z-index: 2;
       display: block;
       width: 100%;
+    }
+
+    // the video's thumbnail, under the video and in the very same box
+    &-poster {
+      position: absolute;
+      inset: 0;
     }
 
     &-preload-icon {
@@ -256,10 +269,17 @@
     }
 
     .media-video,
-    .thumbnail {
+    .media-photo {
       max-width: 100%;
       padding: 4%;
       border-radius: 36px 36px 0 0;
+    }
+
+    // sized the way the video sizes itself: full width, height from the aspect ratio
+    .media-photo {
+      width: 100%;
+      height: auto;
+      bottom: auto;
     }
   }
 
@@ -473,31 +493,41 @@
     }
   }
 
+  // A feature the promo carries no video for: nothing fills the stage, so the
+  // title and subtitle underneath take the slide's whole height.
+  .carousel-item.no-content {
+    justify-content: center;
+
+    .carousel-item-content-top-section {
+      height: auto !important;
+      flex: 0 0 auto;
+    }
+  }
+
+  // A window of `--visible` dots over the whole row, which slides by `--start` dots.
   &-controls {
+    --dot-size: .5rem;
+    --dot-gap: .625rem;
+    --dot-step: calc(var(--dot-size) + var(--dot-gap));
     position: absolute;
     bottom: 0;
     left: 50%;
     display: flex;
-    justify-content: center;
-    margin-left: auto;
-    margin-right: auto;
-    width: 8.375rem;
+    width: calc(var(--visible) * var(--dot-step) - var(--dot-gap));
     overflow: hidden;
     height: 3.25rem;
     transform: translateX(-50%);
+    // the row slides by a dot count from its left edge, whatever the language
+    direction: ltr;
 
     &-dots {
       --dots-color: var(--border-color);
-      --dot-width: calc(.625rem + .5rem);
-      --count: 8;
-      --center: calc((var(--amount) * var(--dot-width)) / 2);
       display: flex;
-      gap: .625rem;
-      min-height: .5rem;
-      justify-content: center;
+      flex: 0 0 auto;
+      gap: var(--dot-gap);
       align-items: center;
       margin-top: -.0625rem;
-      transform: translateX(calc(var(--center) - (var(--dot-width) * var(--count) / 2) - (var(--dot-width) * var(--start))));
+      transform: translateX(calc(var(--start) * var(--dot-step) * -1));
 
       @include animation-level(2) {
         transition: transform var(--transition-standard-in);
@@ -509,8 +539,9 @@
     }
 
     &-dot {
-      width: .5rem;
-      height: .5rem;
+      flex: 0 0 auto;
+      width: var(--dot-size);
+      height: var(--dot-size);
       background-color: var(--dots-color);
       border-radius: 50%;
       cursor: pointer;

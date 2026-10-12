@@ -2,7 +2,13 @@ import {createEffect, createMemo, createResource, createSignal, JSX, on, onClean
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {AppChatAutomationTab, type AppEditProfileTab} from '@components/solidJsTabs/tabs';
+import {
+  AppBusinessHoursTab,
+  AppBusinessLocationTab,
+  AppChatAutomationTab,
+  openBusinessEditorTab,
+  type AppEditProfileTab
+} from '@components/solidJsTabs/tabs';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
@@ -20,8 +26,10 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {toastNew} from '@components/toast';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
-import {ConnectedBot, User, UserFull} from '@layer';
+import {BusinessWorkHours, ConnectedBot, User, UserFull} from '@layer';
+import OpeningHours from '@helpers/openingHours';
 import {trackAvatarUpload} from '@stores/avatarUpload';
+import usePremium from '@stores/premium';
 
 type AppEditProfileTabType = typeof AppEditProfileTab;
 
@@ -98,10 +106,24 @@ const EditProfileForm = (props: {
   const [personalChannelId, setPersonalChannelId] = createSignal<ChatId>(initialPersonalChannelId);
   const [personalChannelTitle, setPersonalChannelTitle] = createSignal<JSX.Element>(i18n('EditProfile.PersonalChannel.Add'));
   const [hasBirthday, setHasBirthday] = createSignal(!!userFull.birthday);
+  const premium = usePremium();
+  const [businessWorkHours, setBusinessWorkHours] = createSignal(userFull.business_work_hours);
+  const [businessLocation, setBusinessLocation] = createSignal(userFull.business_location);
   const [connectedBot, setConnectedBot] = createSignal<ConnectedBot.connectedBot>();
   const [connectedBotLoaded, setConnectedBotLoaded] = createSignal(false);
   const [connectedBotLoadFailed, setConnectedBotLoadFailed] = createSignal(false);
   const [chatAutomationTitle, setChatAutomationTitle] = createSignal<JSX.Element>(i18n('Loading'));
+
+  /** `open 24/7`, or how many days of the week have hours — the row's value. */
+  const businessHoursSummary = () => {
+    const hours = businessWorkHours() as BusinessWorkHours.businessWorkHours;
+    if(OpeningHours.is24x7(hours)) {
+      return i18n('BusinessHoursProfileFullOpen');
+    }
+
+    const openDays = OpeningHours.getDaysHours(hours.weekly_open).filter((periods) => periods.length);
+    return i18n('Days', [openDays.length]);
+  };
 
   let cleanedUp = false;
   let connectedBotVersion = 0;
@@ -177,6 +199,18 @@ const EditProfileForm = (props: {
   });
 
   tab.listenerSetter.add(rootScope)('chat_automation_update', setConnectedBotFromUpdate);
+
+  // The business sub-tabs write straight into the cached userFull, so the two rows
+  // below follow along without re-opening Edit Profile.
+  tab.listenerSetter.add(rootScope)('user_full_update', async(userId) => {
+    if(userId !== rootScope.myId.toUserId()) return;
+
+    const fresh = await tab.managers.appProfileManager.getCachedFullUser(userId);
+    if(cleanedUp || !fresh) return;
+
+    setBusinessWorkHours(fresh.business_work_hours);
+    setBusinessLocation(fresh.business_location);
+  });
 
   const openChatAutomation = async() => {
     if(connectedBotLoadFailed()) {
@@ -366,6 +400,30 @@ const EditProfileForm = (props: {
           <Row.Icon icon="newchannel_filled" />
           <Row.Title titleRight={!personalChannelId() && <span class="primary">{personalChannelTitle()}</span>}>
             {personalChannelId() ? personalChannelTitle() : i18n('EditProfile.PersonalChannel.Label')}
+          </Row.Title>
+        </Row>
+      </Section>
+
+      <Section
+        name="TelegramBusiness"
+        caption={i18n(premium() ? 'TelegramBusinessSubscribedSubtitle' : 'TelegramBusinessSubtitle')}
+      >
+        <Row clickable={() => openBusinessEditorTab(tab.slider, AppBusinessHoursTab)}>
+          <Row.Icon icon="time_filled" />
+          <Row.Title
+            titleRight={businessWorkHours() ? businessHoursSummary() : i18n('Off')}
+            titleRightSecondary
+          >
+            {i18n('BusinessHours')}
+          </Row.Title>
+        </Row>
+        <Row clickable={() => openBusinessEditorTab(tab.slider, AppBusinessLocationTab)}>
+          <Row.Icon icon="location_filled" />
+          <Row.Title
+            titleRight={businessLocation()?.address || i18n('Off')}
+            titleRightSecondary
+          >
+            {i18n('BusinessLocation')}
           </Row.Title>
         </Row>
       </Section>

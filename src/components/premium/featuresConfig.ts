@@ -18,7 +18,6 @@ export interface PremiumPromoFeature {
   _subtitleLangArgs?: (managers: AppManagers) => MaybePromise<FormatterArguments>;
   videoPosition?: 'bottom' | 'top';
   video?: Document.document;
-  wrappedVideo?: any;
   type?: string;
   content?: Array<{
     titleLangKey?: LangPackKey,
@@ -35,8 +34,7 @@ export interface PremiumPromoFeature {
     free?: number,
     premium?: number
   }>;
-  new?: boolean,
-  builded?: boolean
+  new?: boolean
 }
 
 export const PREMIUM_FEATURES_COLORS: string[] = [
@@ -181,6 +179,93 @@ const doubleLimits: PremiumPromoFeature = {
 
 const formatParts = (parts: number) => formatBytes(parts * 1.024 * 512 * 1024, 0);
 
+// the server lists it among the business features, yet it is also reached by name from the
+// premium promo (`showPremiumPopup`), so both sets carry it
+const folderTags: PremiumPromoFeature = {
+  feature: 'folder_tags',
+  icon: 'premium_tags_filled',
+  titleLangKey: 'PremiumPreviewFolderTags',
+  subtitleLangKey: 'PremiumPreviewFolderTagsDescription',
+  videoPosition: 'top'
+};
+
+/**
+ * Telegram Business — the promo shown from Settings, ordered by the app config's
+ * `business_promo_order` (see {@link BUSINESS_FEATURES_FALLBACK_ORDER}).
+ */
+export const BUSINESS_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromoFeature} = {
+  greeting_message: {
+    feature: 'greeting_message',
+    icon: 'message_add',
+    titleLangKey: 'PremiumBusinessGreetingMessages',
+    subtitleLangKey: 'PremiumBusinessGreetingMessagesDescription',
+    videoPosition: 'top'
+  },
+  away_message: {
+    feature: 'away_message',
+    icon: 'message_away',
+    titleLangKey: 'PremiumBusinessAwayMessages',
+    subtitleLangKey: 'PremiumBusinessAwayMessagesDescription',
+    videoPosition: 'top'
+  },
+  quick_replies: {
+    feature: 'quick_replies',
+    icon: 'message_filled',
+    titleLangKey: 'PremiumBusinessQuickReplies',
+    subtitleLangKey: 'PremiumBusinessQuickRepliesDescription',
+    videoPosition: 'top'
+  },
+  business_hours: {
+    feature: 'business_hours',
+    icon: 'time_filled',
+    titleLangKey: 'PremiumBusinessOpeningHours',
+    subtitleLangKey: 'PremiumBusinessOpeningHoursDescription',
+    videoPosition: 'top'
+  },
+  business_location: {
+    feature: 'business_location',
+    icon: 'location_filled',
+    titleLangKey: 'PremiumBusinessLocation',
+    subtitleLangKey: 'PremiumBusinessLocationDescription',
+    videoPosition: 'top'
+  },
+  business_links: {
+    feature: 'business_links',
+    icon: 'link_filled',
+    titleLangKey: 'PremiumBusinessChatLinks',
+    subtitleLangKey: 'PremiumBusinessChatLinksDescription',
+    videoPosition: 'top'
+  },
+  business_intro: {
+    feature: 'business_intro',
+    icon: 'message_quote',
+    titleLangKey: 'PremiumBusinessIntro',
+    subtitleLangKey: 'PremiumBusinessIntroDescription',
+    videoPosition: 'top'
+  },
+  business_bots: {
+    feature: 'business_bots',
+    icon: 'bot_filled',
+    titleLangKey: 'PremiumBusinessChatbots',
+    subtitleLangKey: 'PremiumBusinessChatbotsDescription',
+    videoPosition: 'top'
+  },
+  folder_tags: folderTags
+};
+
+/** What the other clients fall back to when the app config carries no order. */
+export const BUSINESS_FEATURES_FALLBACK_ORDER: PremiumPromoFeatureType[] = [
+  'greeting_message',
+  'away_message',
+  'quick_replies',
+  'business_hours',
+  'business_location',
+  'business_links',
+  'business_intro',
+  'business_bots',
+  'folder_tags'
+];
+
 export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromoFeature} = {
   stories: stories,
   double_limits: doubleLimits,
@@ -311,13 +396,7 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     titleLangKey: 'PremiumPreviewTags',
     subtitleLangKey: 'PremiumPreviewTagsDescription2'
   },
-  // * the server lists it among the business features, so it is reached by name (`showPremiumPopup`)
-  folder_tags: {
-    feature: 'folder_tags',
-    icon: 'premium_tags_filled',
-    titleLangKey: 'PremiumPreviewFolderTags',
-    subtitleLangKey: 'PremiumPreviewFolderTagsDescription'
-  },
+  folder_tags: folderTags,
   pm_noforwards: {
     feature: 'pm_noforwards',
     icon: 'sharingoff_filled',

@@ -143,9 +143,13 @@ const Row = (props: {children: JSX.Element} & Partial<{
       )).filter((element) => element !== primaryTarget);
       setHasNestedControl(!!nested.length);
       // A row with a separate trailing action needs a separate primary target,
-      // rather than an interactive ancestor or a mouse-only title.
+      // rather than an interactive ancestor or a mouse-only title. A field takes the
+      // row's click itself — unless it sits in the right column, where it is that
+      // trailing action (a weekday's switch on a row that opens the day).
       const needsPrimaryTarget = !props.as && !props.role && !isCheckbox() && nested.length &&
-        title && !nested.some((element) => title.contains(element) || element.matches('input, select, textarea, [contenteditable="true"]'));
+        title && !nested.some((element) => title.contains(element) || (
+          element.matches('input, select, textarea, [contenteditable="true"]') && !element.closest('.row-right')
+        ));
       if(!needsPrimaryTarget || primaryTarget !== title) clearPrimaryTarget();
       if(needsPrimaryTarget) {
         primaryTarget = title;

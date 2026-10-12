@@ -3,8 +3,10 @@ import {Dynamic} from 'solid-js/web';
 
 import LottieAnimation from '@components/lottieAnimation';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import noop from '@helpers/noop';
 import classNames from '@helpers/string/classNames';
-import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
+import lottieLoader, {LottieAssetName, PreloadedLottieAsset} from '@lib/lottie/lottieLoader';
 
 import styles from '@components/mediaHeader.module.scss';
 
@@ -26,7 +28,9 @@ import styles from '@components/mediaHeader.module.scss';
  * monkey components, etc. Cards that need an imperative ref to the slot can
  * pass a stable container element via `element`. It is a square, centred box;
  * media that is not square (a wide illustration) goes straight into
- * `<MediaHeader>` as a child instead, with its own sizing.
+ * `<MediaHeader>` as a child instead, with its own sizing. A tab passes its
+ * asset as `animationData` instead of `name`, fetched from its `getInitArgs`,
+ * and does not slide in before the sticker has drawn its first frame.
  *
  * The type scale is deliberately narrow — a 24px or a 20px title (`size`), body
  * copy or a smaller grey / danger variant (`color`). Reach for a prop rather
@@ -101,8 +105,13 @@ MediaHeader.Backdrop = function MediaHeaderBackdrop(props: {
 /* ------------------------------------------------------------------ */
 
 export type MediaHeaderStickerProps = {
-  /** Built-in lottie asset name. Mutually exclusive with `element`. */
+  /** Built-in lottie asset name. Mutually exclusive with `animationData` and `element`. */
   name?: LottieAssetName,
+  /**
+   * A built-in asset whose fetch a tab started in `getInitArgs`. The tab holds its
+   * slide-in until the sticker's first frame, so it never opens on an empty box.
+   */
+  animationData?: PreloadedLottieAsset,
   /** Custom JSX (SVG, canvas, monkey container, …). Mutually exclusive with `name`. */
   element?: JSX.Element | (() => JSX.Element),
   /** Sticker size in px (drives `--sticker-size` and the lottie's render dimensions). Default 130. */
@@ -121,6 +130,7 @@ export type MediaHeaderStickerProps = {
 
 MediaHeader.Sticker = function MediaHeaderSticker(props: MediaHeaderStickerProps): JSX.Element {
   const size = () => props.size || 130;
+  const promiseCollector = usePromiseCollector();
 
   if(props.element) {
     props.onReady?.();
@@ -133,7 +143,7 @@ MediaHeader.Sticker = function MediaHeaderSticker(props: MediaHeaderStickerProps
       ref={props.ref}
     >
       <Show
-        when={props.name}
+        when={props.name || props.animationData}
         fallback={typeof(props.element) === 'function' ? props.element() : props.element}
       >
         <LottieAnimation
@@ -142,8 +152,13 @@ MediaHeader.Sticker = function MediaHeaderSticker(props: MediaHeaderStickerProps
           lottieLoader={lottieLoader}
           restartOnClick={props.restartOnClick ?? true}
           name={props.name}
+          animationData={props.animationData}
           onPromise={(promise) => {
             promise.then(props.onReady);
+            if(props.animationData) {
+              // a sticker that fails to load must not keep its tab from opening
+              promiseCollector.collect(promise.then((player) => lottieLoader.waitForFirstFrame(player)).catch(noop));
+            }
           }}
         />
       </Show>

@@ -53,6 +53,14 @@ defineStories('Premium & Stars', [
     }
   },
   {
+    id: 'premium/business',
+    title: 'Telegram Business',
+    open: async(ctx) => {
+      const {showBusinessPopup} = await import('@components/popups/premium');
+      showBusinessPopup();
+    }
+  },
+  {
     id: 'giftPremium',
     fixtureOnly: true,
     title: 'Gift Premium',

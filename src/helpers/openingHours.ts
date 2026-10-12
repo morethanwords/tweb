@@ -116,8 +116,17 @@ export default class OpeningHours {
         if(days[prevDay].length && days[prevDay][days[prevDay].length - 1].end >= ONE_DAY_MINUTES) {
           days[prevDay][days[prevDay].length - 1].end = ONE_DAY_MINUTES - 1;
         }
+
+        // the day may run past midnight — keep the overflow instead of truncating it,
+        // but never past the moment the next day opens
+        let periodEnd = Math.min(m - start - 1, ONE_DAY_MINUTES * 2 - 1);
+        const nextDay = days[(7 + i + 1) % 7];
+        if(periodEnd >= ONE_DAY_MINUTES && nextDay.length && nextDay[0].start < periodEnd - ONE_DAY_MINUTES) {
+          periodEnd = ONE_DAY_MINUTES + nextDay[0].start - 1;
+        }
+
         days[i].length = 0;
-        days[i].push(new Period(0, ONE_DAY_MINUTES - 1));
+        days[i].push(new Period(0, periodEnd));
       } else {
         const nextDay = (i + 1) % 7;
         if(days[i].length && days[nextDay].length) {
@@ -131,6 +140,21 @@ export default class OpeningHours {
       }
     }
     return days;
+  }
+
+  /** Inverse of {@link OpeningHours.getDaysHours} — flattens per-day periods back into the API shape. */
+  static fromDaysHours(days: Period[][]): BusinessWeeklyOpen[] {
+    const hours: BusinessWeeklyOpen[] = [];
+    days?.forEach((periods, day) => {
+      periods?.forEach((period) => {
+        hours.push({
+          _: 'businessWeeklyOpen',
+          start_minute: day * ONE_DAY_MINUTES + period.start,
+          end_minute: day * ONE_DAY_MINUTES + period.end
+        });
+      });
+    });
+    return hours;
   }
 
   static is24x7(hours: BusinessWorkHours) {

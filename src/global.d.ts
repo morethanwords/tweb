@@ -139,7 +139,10 @@ declare global {
     'translations' | 'animated_emoji' | 'more_upload' | 'emoji_status' | 'profile_badge' |
     'advanced_chat_management' | 'no_ads' | 'app_icons' | 'infinite_reactions' |
     'animated_userpics' | 'premium_stickers' | 'peer_colors' | 'wallpapers' |
-    'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards' | 'folder_tags';
+    'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards' |
+    // Telegram Business — the `business_promo_order` set
+    'business_location' | 'business_hours' | 'quick_replies' | 'greeting_message' |
+    'away_message' | 'business_bots' | 'business_links' | 'business_intro' | 'folder_tags';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/aac' | 'audio/flac' | 'audio/mp4' | 'audio/mpeg' |

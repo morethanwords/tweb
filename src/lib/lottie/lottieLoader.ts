@@ -26,6 +26,8 @@ const TLOTTIE_WASM_URL = new URL(
 ).href;
 
 export type LottieAssetName =
+  | 'BusinessHours'
+  | 'BusinessLocation'
   | 'EmptyFolder'
   | 'Folders_1'
   | 'Folders_2'
@@ -72,6 +74,13 @@ export type LottieAssetName =
   | 'collectible_username'
   | 'collectible_phone'
 ;
+
+/**
+ * An asset whose data is already being fetched — what a tab's `getInitArgs` starts
+ * with {@link LottieLoader.loadAnimationFromURLManually}, so the sticker is there by
+ * the time the tab's component renders.
+ */
+export type PreloadedLottieAsset = ReturnType<LottieLoader['loadAnimationFromURLManually']>;
 
 export class LottieLoader {
   private loadPromise: Promise<void>;

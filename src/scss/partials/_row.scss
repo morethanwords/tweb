@@ -43,6 +43,13 @@ $row-border-radius: $border-radius-medium;
     pointer-events: all;
   }
 
+  // A toggle in the right column is a control of its own beside what the row's click does
+  // (a weekday's switch on a row that opens the day) — unlike the row's own toggle, which
+  // the whole row flips through its label.
+  &-right > .checkbox-field-toggle {
+    pointer-events: auto;
+  }
+
   &-title-row,
   & > &-title {
     order: 0;

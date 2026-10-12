@@ -26,6 +26,20 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'timePicker',
+    title: 'Time picker — business hours',
+    open: async(ctx) => {
+      const {default: showTimePickerPopup} = await import('@components/popups/timePicker');
+      showTimePickerPopup({
+        titleLangKey: 'BusinessHoursDayOpenHourPicker',
+        value: 9 * 60,
+        min: 0,
+        max: 24 * 60 - 1,
+        onPick: noop
+      });
+    }
+  },
+  {
     id: 'scheduleSending',
     title: 'Schedule message',
     open: async(ctx) => {

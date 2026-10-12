@@ -12,6 +12,10 @@ import {scaffoldSolidJSTab, scaffoldSolidJSTabEventable} from '@components/solid
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import rootScope from '@lib/rootScope';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
+import type {BusinessHoursTabPayload} from '@components/sidebarLeft/tabs/businessHours';
+import type {BusinessLocationTabPayload} from '@components/sidebarLeft/tabs/businessLocation';
+import type {TimezoneTabPayload} from '@components/sidebarLeft/tabs/timezone';
+import type {BusinessPeriod} from '@components/sidebarLeft/tabs/businessHoursShared';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -96,6 +100,92 @@ export const AppEditProfileTab =
     getComponentModule: () => import('../sidebarLeft/tabs/editProfile')
   });
 (AppEditProfileTab as any).noSame = true;
+
+
+export function getBusinessHoursInitArgs(): BusinessHoursTabPayload {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('BusinessHours'),
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId()),
+    timezones: rootScope.managers.apiManager.getTimezonesList().then((list) => (
+      list._ === 'help.timezonesList' ? list.timezones : []
+    ))
+  };
+}
+
+export const AppBusinessHoursTab = Object.assign(
+  scaffoldSolidJSTab<BusinessHoursTabPayload>({
+    title: 'BusinessHours',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessHours')
+  }),
+  {getInitArgs: getBusinessHoursInitArgs}
+);
+(AppBusinessHoursTab as any).noSame = true;
+
+
+type AppBusinessHoursDayTabPayload = {
+  /** Already-formatted weekday name — the header text, not a lang key. */
+  dayName: string,
+  periods: BusinessPeriod[],
+  /** Earliest minute this day may open at, given how far the previous day runs. */
+  min: number,
+  /** Latest minute this day may close at, given when the next day opens. */
+  max: number,
+  maxPeriodsCount: number,
+  /** Called once, with the day as saved; an unsaved tab reports nothing. */
+  onSave: (periods: BusinessPeriod[]) => void
+};
+
+export const AppBusinessHoursDayTab =
+  scaffoldSolidJSTab<AppBusinessHoursDayTabPayload>({
+    title: 'BusinessHours',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessHoursDay')
+  });
+(AppBusinessHoursDayTab as any).noSame = true;
+
+
+export const AppTimezoneTab =
+  scaffoldSolidJSTab<TimezoneTabPayload>({
+    title: 'TimezoneTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/timezone')
+  });
+(AppTimezoneTab as any).noSame = true;
+
+
+export function getBusinessLocationInitArgs(): BusinessLocationTabPayload {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('BusinessLocation'),
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId())
+  };
+}
+
+export const AppBusinessLocationTab = Object.assign(
+  scaffoldSolidJSTab<BusinessLocationTabPayload>({
+    title: 'BusinessLocation',
+    getComponentModule: () => import('../sidebarLeft/tabs/businessLocation')
+  }),
+  {getInitArgs: getBusinessLocationInitArgs}
+);
+(AppBusinessLocationTab as any).noSame = true;
+
+/**
+ * Opens one of the Business editors. Both save through `account.updateBusiness*`, which a
+ * free account is refused, so one gets the Business promo instead of a form that could only
+ * fail on save — the way Android gates them.
+ */
+export async function openBusinessEditorTab(
+  slider: SidebarSlider,
+  Tab: typeof AppBusinessHoursTab | typeof AppBusinessLocationTab
+) {
+  if(!rootScope.premium) {
+    const {showBusinessPopup} = await import('@components/popups/premium');
+    showBusinessPopup({feature: Tab === AppBusinessHoursTab ? 'business_hours' : 'business_location'});
+    return;
+  }
+
+  const tab = slider.createTab(Tab);
+  await tab.open(Tab.getInitArgs() as BusinessHoursTabPayload & BusinessLocationTabPayload);
+  return tab;
+}
 
 
 type AppChatAutomationTabPayload = {

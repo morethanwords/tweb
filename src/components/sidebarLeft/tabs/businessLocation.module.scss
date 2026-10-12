@@ -1,0 +1,21 @@
+.mapPreview {
+  // a <button> with the a11y layer, a div without: the same block either way
+  display: block;
+  width: calc(100% - 2rem);
+  padding: 0;
+  border: 0;
+  margin: 0 1rem 1rem;
+  border-radius: var(--border-radius-medium);
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  min-height: 10rem;
+  background-color: var(--light-secondary-text-color);
+
+  :global(img),
+  :global(canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}

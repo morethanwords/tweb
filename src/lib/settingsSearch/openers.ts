@@ -31,7 +31,10 @@ export const NON_NAVIGABLE_SECTIONS = new Set([
   'AppIncludedChatsTab',
   'AppSharedFolderTab',
   'AppAddMembersTab',
-  'AppChangeLoginEmailTab'
+  'AppChangeLoginEmailTab',
+  // one weekday of the business-hours schedule, and the zone picker it hands its choice back to
+  'AppBusinessHoursDayTab',
+  'AppTimezoneTab'
 ]);
 
 /**
@@ -113,6 +116,9 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
     // opened on its own, so there is no privacy row waiting for the new value
     return openTab(slider, tabs.AppPrivacyMessagesTab, middleware, {onSaved: () => {}});
   },
+  // a free account gets the Business promo instead, as it does from Edit Profile
+  AppBusinessHoursTab: (slider) => tabs.openBusinessEditorTab(slider, tabs.AppBusinessHoursTab),
+  AppBusinessLocationTab: (slider) => tabs.openBusinessEditorTab(slider, tabs.AppBusinessLocationTab),
   AppActiveWebSessionsTab: async(slider, middleware) => {
     const authorizations = await rootScope.managers.appSeamlessLoginManager.getWebAuthorizations();
     return openTab(slider, tabs.AppActiveWebSessionsTab, middleware, authorizations);

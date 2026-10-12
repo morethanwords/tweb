@@ -31,7 +31,9 @@ export function earliestSelectableMinuteMs(minTimeMs: number, nowMs: number) {
 
 export function getWeekDays() {
   const dateTimeFormat = I18n.getDateTimeFormat({weekday: 'long'});
-  const date = new Date(Date.UTC(2017, 0, 2));
+  // Monday, January 2nd, at local noon: the formatter works in local time, so a UTC
+  // midnight would still be Sunday anywhere west of Greenwich.
+  const date = new Date(2017, 0, 2, 12);
   const out: string[] = [];
   for(let i = 0; i < 7; ++i) {
     out.push(capitalizeFirstLetter(dateTimeFormat.format(date)));

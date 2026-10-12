@@ -23,7 +23,7 @@ import {AccountAuthorizations, Authorization, ConnectedBot} from '@layer';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
 import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
-import showPremiumPopup from '@components/popups/premium';
+import showPremiumPopup, {showBusinessPopup} from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars, {hasTonTransactions} from '@stores/stars';
 import showStarsPopup from '@components/popups/stars';
@@ -421,6 +421,10 @@ const Settings = () => {
           <Row clickable={() => showPremiumPopup()}>
             <Row.Icon icon="premium_badge" />
             <Row.Title>{i18n('Premium.Boarding.Title')}</Row.Title>
+          </Row>
+          <Row clickable={() => showBusinessPopup()}>
+            <Row.Icon icon="business_filled" />
+            <Row.Title>{i18n('TelegramBusiness')}</Row.Title>
           </Row>
           <Show when={!!stars()}>
             <Row clickable={() => showStarsPopup()}>

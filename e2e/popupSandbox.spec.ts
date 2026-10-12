@@ -208,3 +208,37 @@ for(const reduced of [false, true]) for(let part = 0; part < PARTS; ++part) test
 
   expect(failed, `\n${failed.join('\n')}\n`).toEqual([]);
 });
+
+/*
+ * The promo slide of the premium/business popup is a `.tabs-tab` whose `active` class is set
+ * imperatively by TransitionSlider, while its own `not-bottom` / header classes are reactive.
+ * Binding both through `class=` made Solid rewrite className wholesale on the first scroll and
+ * drop `active`, collapsing the popup to an empty grey sheet. Scrolling to the bottom is the only
+ * way to see it, so it is asserted here rather than in the walk above.
+ *
+ * Only the business story is used: both popups share this slide, and it is the one whose feature
+ * list overflows under the sandbox fixtures (`premium/boarding` gets a four-feature promo order
+ * from the mock app config and fits without scrolling).
+ */
+test('premium/business keeps its content after scrolling to the bottom', async({page}) => {
+  await page.goto('/?popups=1');
+  await page.waitForFunction(() => !!window.popupSandbox, null, {timeout: 30_000});
+  await page.evaluate(() => window.popupSandbox.ready());
+  await page.evaluate(() => window.popupSandbox.open('premium/business'));
+
+  const tab = page.locator('.popup-premium .premium-promo-tab');
+  await expect(tab).toBeVisible({timeout: SHOWN_TIMEOUT});
+  await expect(tab).toHaveClass(/\bactive\b/);
+
+  const scrolled = await tab.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+    return el.scrollTop;
+  });
+  expect(scrolled, 'the promo slide should overflow enough to scroll').toBeGreaterThan(0);
+
+  await expect(tab).toHaveClass(/\bactive\b/);
+  await expect(tab.locator('.popup-body')).toBeVisible();
+  await expect(tab.locator('.popup-premium-features-container .row').first()).toBeVisible();
+  // The header only fades in once scrolled past 100px — proof the handler ran at all.
+  await expect(tab.locator('.popup-header')).toHaveClass(/\bis-visible\b/);
+});
