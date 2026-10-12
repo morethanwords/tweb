@@ -65,7 +65,7 @@ export default function StoryMusicPanel(props: {
       onClick: () => addToProfileMusic(props.doc.id),
       verify: async() => !(await isInProfile())
     }, {
-      icon: 'delete',
+      icon: 'note_crossed',
       text: 'SavedMusic.RemoveFromProfile',
       onClick: () => removeFromProfileMusic(props.doc.id),
       verify: isInProfile

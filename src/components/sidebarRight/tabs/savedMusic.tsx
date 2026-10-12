@@ -171,7 +171,7 @@ function SavedMusicContent(props: {
         onClick: () => props.startSorting(),
         verify: () => props.isMine && !props.sorting() && docCount() > 1
       }, {
-        icon: 'delete',
+        icon: 'note_crossed',
         text: 'SavedMusic.RemoveFromProfile',
         danger: true,
         onClick: async() => {

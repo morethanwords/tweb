@@ -1307,7 +1307,7 @@ export default class ChatInput {
       verify: () => canUploadAsWhenEditing({asWhat: 'media', message: this.editMessage})
       // verify: () => getSendMediaRights().then(({photos, videos}) => photos && videos)
     }, {
-      icon: 'music_filled',
+      icon: 'note',
       richMessageAction: 'audio',
       textElement: createAttachPremiumLabel('Chat.Input.Editor.Toolbar.Audio'),
       onClick: () => this.onAttachClick(

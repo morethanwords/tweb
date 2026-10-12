@@ -640,7 +640,16 @@ const Icons = {
   blockquote: 'eb7e',
   sort_name: 'eb7f',
   sort_online: 'eb80',
-  ai_letters_plain: 'eb81'
+  ai_letters_plain: 'eb81',
+  account_add_filled: 'eb82',
+  flag_filled: 'eb83',
+  group_star_filled: 'eb84',
+  loop_filled: 'eb85',
+  note_crossed: 'eb86',
+  note: 'eb87',
+  reload_star_filled: 'eb88',
+  replace_circles_filled: 'eb89',
+  reply_crossed: 'eb8a'
 };
 
 export default Icons;

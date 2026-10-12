@@ -1261,7 +1261,7 @@ export default class ChatContextMenu {
       onClick: () => addToProfileMusic(this.getSavedMusicDocId()),
       verify: () => this.verifySavedMusic(false)
     }, {
-      icon: 'delete',
+      icon: 'note_crossed',
       text: 'SavedMusic.RemoveFromProfile',
       onClick: () => removeFromProfileMusic(this.getSavedMusicDocId()),
       verify: () => this.verifySavedMusic(true)

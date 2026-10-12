@@ -1131,7 +1131,7 @@ PeerProfile.BotReport = () => {
   return (
     <Show when={canReport()}>
       <Row clickable={() => showPeerReport(context.peerId)}>
-        <Row.Icon icon="flag" />
+        <Row.Icon icon="flag_filled" />
         <Row.Title>{i18n('ReportChat')}</Row.Title>
       </Row>
     </Show>
