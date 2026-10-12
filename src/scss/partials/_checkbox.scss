@@ -12,7 +12,7 @@
     min-width: var(--size);
     min-height: var(--size);
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: .2s opacity;
     }
 
@@ -212,7 +212,7 @@
       border-radius: 50%;
       opacity: 1;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: border-color .1s ease, opacity .1s ease;
       }
     }
@@ -226,7 +226,7 @@
       transform: translateY(-50%) scale(0);
       transform-origin: center;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: transform .1s ease;
       }
     }
@@ -405,7 +405,7 @@
     display: flex;
     align-items: center;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: border-color var(--transition), background-color var(--transition);
     }
 
@@ -419,7 +419,7 @@
       position: absolute;
       inset-inline-start: 0;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: background-color var(--transition), transform var(--transition);
       }
 

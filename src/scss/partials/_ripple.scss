@@ -1,3 +1,5 @@
+@use "../shared" as *;
+
 .rp {
   position: relative;
 }
@@ -56,6 +58,17 @@
     transition: calc(var(--ripple-duration) / 2) opacity, calc(var(--ripple-duration) / 2) background-color;
     // transition: calc(var(--ripple-duration) / 2.5) opacity, calc(var(--ripple-duration) / 2) background-color;
     pointer-events: none;
+
+    // * reduced animations: no wave spreading from the press, only the highlight it grows into -
+    // * there at once, fading in quickly and out as usual (animations off draw none at all)
+    @include animation-level-below(2) {
+      animation: none;
+      transform: scale(var(--ripple-end-scale));
+
+      &:not(.hiding) {
+        transition-duration: .1s;
+      }
+    }
   }
 
   &__circle.hiding, 

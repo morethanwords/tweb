@@ -12,7 +12,7 @@
 
   transform: translate(-50%, -50%) translateY(var(--translate-y)) rotate(var(--rotate)) scale(0.75);
 
-  @include animation-level-global(2) {
+  @include animation-level-global(1) {
     transition: transform 0.1s;
   }
 

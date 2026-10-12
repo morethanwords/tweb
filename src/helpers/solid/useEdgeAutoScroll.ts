@@ -1,4 +1,5 @@
 import {type Accessor, createEffect, onCleanup} from 'solid-js';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 export type ScrollAxis = 'horizontal' | 'vertical';
 
@@ -150,7 +151,7 @@ export function useEdgeAutoScroll(args: UseEdgeAutoScrollArgs): void {
         delta = childStart - containerStart - padding();
       }
 
-      const behavior: ScrollBehavior = smooth() ? 'smooth' : 'auto';
+      const behavior: ScrollBehavior = smooth() ? smoothScrollBehavior() : 'auto';
       if(horizontal) {
         el.scrollBy({left: delta, behavior});
       } else {

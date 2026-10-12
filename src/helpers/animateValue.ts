@@ -26,7 +26,7 @@ export function animateValue<T extends number | number[]>(
     if(!startTime) startTime = currentTime;
 
     const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
+    const progress = duration ? Math.min(elapsed / duration, 1) : 1;
     const easedProgress = easing(progress);
 
     if(start instanceof Array && end instanceof Array) {

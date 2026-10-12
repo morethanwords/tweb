@@ -44,7 +44,7 @@
       border-radius: var(--border-radius);
       background-color: var(--old-input-background-color);
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: box-shadow var(--transition-standard-in), background-color var(--transition-standard-in);
       }
 
@@ -198,9 +198,7 @@
       position: relative;
       // margin-inline-end: .5rem;
 
-      @include animation-level(2) {
-        transition: width var(--transition-standard-in), opacity var(--transition-standard-in);
-      }
+      @include animation-level-transition(width var(--transition-standard-in), opacity var(--transition-standard-in));
 
       &.is-hidden {
         width: 0;
@@ -273,7 +271,7 @@
       pointer-events: none;
       opacity: 0;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
 

@@ -1,4 +1,5 @@
 @use "sass:string";
+@use "../shared" as *;
 
 // Toast docked just below the chat topbar — a .tooltip mounted on the .chat
 // element by showChatToast (@components/chat/chatToast).
@@ -30,10 +31,14 @@
     transform: translate(-50%, 0);
   }
 
-  // Rises into place while the tooltip parts fade in.
+  // Rises into place while the tooltip parts fade in (only fades in, with reduced animations).
   &--fade.tooltip {
     &.mounted {
       transform: translate(-50%, -1rem);
+
+      @include animation-level-below(2) {
+        transform: translate(-50%, 0);
+      }
     }
 
     &.is-visible.forwards {

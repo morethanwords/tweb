@@ -359,9 +359,10 @@ export class ThemeController {
 
   public setTheme(coordinates?: {x: number, y: number}) {
     const _log = log.bindPrefix('setTheme');
-    const fast = !('startViewTransition' in document) || !this.applied;
-    const animationsAvailable = liteMode.isAvailable('animations');
-    _log(`start, fast=${fast}, coordinates=${JSON.stringify(coordinates)}, animations=${animationsAvailable}`);
+    // off: the theme changes at once; reduced: it crossfades instead of spreading from the click
+    const animationLevel = liteMode.getAnimationLevel();
+    const fast = !('startViewTransition' in document) || !this.applied || !animationLevel;
+    _log(`start, fast=${fast}, coordinates=${JSON.stringify(coordinates)}, animationLevel=${animationLevel}`);
 
     if(fast) {
       const silent = !this.applied;
@@ -376,7 +377,7 @@ export class ThemeController {
       return;
     }
 
-    if(!animationsAvailable) {
+    if(animationLevel < 2) {
       coordinates = undefined;
     }
 

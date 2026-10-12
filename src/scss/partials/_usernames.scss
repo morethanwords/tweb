@@ -23,7 +23,7 @@
         stroke: var(--color);
         stroke-linecap: round;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: stroke-dasharray var(--transition-standard-in);
         }
       }

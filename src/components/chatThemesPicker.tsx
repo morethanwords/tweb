@@ -312,7 +312,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     props.onSelect(item.theme);
     lastOnFrameNo?.(-1);
 
-    if(!item.player || !liteMode.isAvailable('animations')) return;
+    if(!item.player || !liteMode.isAvailable('motion')) return;
 
     if(IS_SAFARI) {
       if(item.player.paused) item.player.restart();

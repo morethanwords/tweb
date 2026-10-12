@@ -1,6 +1,7 @@
 import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor} from 'solid-js';
 
 import createAnimatedValue from '@helpers/solid/createAnimatedValue';
+import liteMode from '@helpers/liteMode';
 import ListenerSetter from '@helpers/listenerSetter';
 import useElementSize from '@hooks/useElementSize';
 import styles from '@components/verticalVirtualList.module.scss';
@@ -98,7 +99,8 @@ const VerticalVirtualList: Component<{
     onScrollShift
   });
 
-  const canAnimate = createMemo(() => shouldAnimate() && props.animate);
+  // rows glide to a new place only with full animations - with reduced ones they step there
+  const canAnimate = createMemo(() => shouldAnimate() && props.animate && liteMode.isAvailable('motion'));
 
   const isVisible = createSelector(
     () => [scrollAmount(), hostHeight(), getLayout(), props.thresholdPadding] as const,

@@ -50,12 +50,7 @@ export const createButtonMenuIcon = ({filter, isChecked, docId, emoji}: CreateBu
           dontAnimate={filter.pFlags?.title_noanimate}
         />
       </Show>
-      <Transition
-        enterActiveClass={styles.AppearZoomEnterActive}
-        exitActiveClass={styles.AppearZoomEnterActive}
-        enterClass={styles.AppearZoomEnter}
-        exitToClass={styles.AppearZoomExitTo}
-      >
+      <Transition name='t-zoom'>
         <Show when={isChecked()}>
           <span class={styles.ItemIconCheck}>
             <IconTsx icon='check' />

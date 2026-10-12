@@ -338,7 +338,7 @@
         border-radius: 50%; // the box is exactly the button, so this is the button's shape
         background-color: rgba(0, 0, 0, .3);
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: background-color .2s ease-in-out;
         }
       }
@@ -348,7 +348,7 @@
         position: relative;
       }
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
     }

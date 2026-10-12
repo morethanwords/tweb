@@ -123,7 +123,8 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
       appNavigationController.removeItem(navigationItem);
     }
 
-    const animate = liteMode.isAvailable('animations') && card.isConnected;
+    const animates = liteMode.isAvailable('animations') && card.isConnected;
+    const animate = animates && liteMode.isAvailable('motion');
     // Every box below is read on screen, where a press leaves the pill at `scale: .97` and on its
     // way back to 1 for a while yet. The morph runs inside the card, in its own units: divided by
     // that, its surface ends at the card's full size instead of 3% short of it — which the card's
@@ -155,6 +156,11 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
     setExpanded(expand);
 
     if(!animate) {
+      // * reduced animations: no morph - the card takes its new shape at once and fades into it
+      if(animates) {
+        running.push(card.animate([{opacity: 0}, {opacity: 1}], {duration: 200, easing: 'ease-out'}));
+      }
+
       return;
     }
 
@@ -241,7 +247,7 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
       <Show
         when={emojis()?.[index]}
         keyed
-        fallback={liteMode.isAvailable('animations') ? (
+        fallback={liteMode.isAvailable('motion') ? (
           <span class="conference-encryption-reel">
             <For each={[0, 1, 2, 3, 0, 1, 2]}>
               {(position) => <span>{wrapEmojiText(reelEmojis[index * REEL_LENGTH + position])}</span>}

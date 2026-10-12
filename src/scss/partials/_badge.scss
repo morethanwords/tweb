@@ -14,7 +14,7 @@
   line-height: var(--size) !important;
   padding: 0 var(--padding);
   
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: background-color .2s ease-in-out;
   }
 

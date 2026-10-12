@@ -154,7 +154,7 @@ export default class LimitLine {
       }
     };
 
-    if(lastProgress !== undefined && liteMode.isAvailable('animations')) {
+    if(lastProgress !== undefined && liteMode.isAvailable('motion')) {
       const duration = 200;
       const startTime = Date.now();
       const toAdd = progress - this.lastProgress;
@@ -181,7 +181,7 @@ export default class LimitLine {
   };
 
   public _setHintActive() {
-    if(liteMode.isAvailable('animations')) {
+    if(liteMode.isAvailable('motion')) {
       doubleRaf().then(this.setHintActive);
     } else {
       this.setHintActive();

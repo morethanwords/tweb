@@ -153,11 +153,12 @@ import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import createChatAudio, {ChatAudioController} from '@components/chat/audio';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {useAppSettings} from '@stores/appSettings';
+import useReducedMotion from '@stores/reducedMotion';
 import {MessageSendingParams, MyMessage} from '@appManagers/appMessagesManager';
 import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {usePeer} from '@stores/peers';
-import {untrack} from 'solid-js';
+import {createEffect, createRoot, on, untrack} from 'solid-js';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import positionMenu from '@helpers/positionMenu';
@@ -415,6 +416,8 @@ export class AppImManager extends EventListenerBase<{
 
     this.setSettings();
     rootScope.addEventListener('settings_updated', this.setSettings);
+    // * the system's reduce-motion preference moves the animation level too, under the a11y layer
+    createRoot(() => createEffect(on(useReducedMotion(), this.setAnimationLevel, {defer: true})));
 
     const onPremiumToggle = (isPremium: boolean) => {
       if(document.body.classList.contains('is-premium') === isPremium) {
@@ -2756,6 +2759,14 @@ export class AppImManager extends EventListenerBase<{
     );
   }
 
+  // * every level up to the current one, so `@include animation-level(1)` holds at full too
+  private setAnimationLevel = () => {
+    const animationLevel = liteMode.getAnimationLevel();
+    document.body.classList.toggle('animation-level-0', animationLevel === 0);
+    document.body.classList.toggle('animation-level-1', animationLevel >= 1);
+    document.body.classList.toggle('animation-level-2', animationLevel === 2);
+  };
+
   private setSettings = () => {
     const [appSettings] = useAppSettings();
     const {messagesTextSize} = appSettings;
@@ -2779,9 +2790,7 @@ export class AppImManager extends EventListenerBase<{
       });
     }
 
-    document.body.classList.toggle('animation-level-0', !liteMode.isAvailable('animations'));
-    document.body.classList.toggle('animation-level-1', false);
-    document.body.classList.toggle('animation-level-2', liteMode.isAvailable('animations'));
+    this.setAnimationLevel();
 
     // Firefox keeps no-backdrop unconditionally — it renders backdrop-filter poorly.
     document.documentElement.classList.toggle('no-backdrop', !liteMode.isAvailable('blur') || IS_FIREFOX);
@@ -3279,11 +3288,12 @@ export class AppImManager extends EventListenerBase<{
 
     this.log('selectTab', id, prevTabId);
 
-    let animationPromise: Promise<any> = liteMode.isAvailable('animations') ? doubleRaf() : Promise.resolve();
+    // * the columns slide with full animations only - below them there is nothing to wait for
+    let animationPromise: Promise<any> = liteMode.isAvailable('motion') ? doubleRaf() : Promise.resolve();
     if(
       prevTabId !== undefined &&
       prevTabId !== id &&
-      liteMode.isAvailable('animations') &&
+      liteMode.isAvailable('motion') &&
       animate !== false &&
       mediaSizes.activeScreen !== ScreenSize.large
     ) {

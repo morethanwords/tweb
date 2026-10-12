@@ -95,9 +95,7 @@
     interpolate-size: allow-keywords;
     max-height: max-content;
 
-    @include animation-level(2) {
-      transition: max-height .3s ease, opacity .3s ease;
-    }
+    @include animation-level-transition(max-height .3s ease, opacity .3s ease);
 
     &.is-collapsed {
       max-height: 0;

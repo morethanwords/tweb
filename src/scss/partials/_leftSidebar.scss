@@ -59,7 +59,7 @@
     opacity: 0;
     pointer-events: none;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .2s ease-in-out;
     }
 
@@ -105,7 +105,8 @@
     // so the column and the incoming tab arrive in lockstep.
     transition: width var(--transition-standard-in);
 
-    body.resizing-left-sidebar & {
+    body.resizing-left-sidebar &,
+    body:not(.animation-level-2) & {
       transition: none;
     }
 
@@ -294,7 +295,7 @@
     transform: translate3d(calc((var(--left-column-visual-width) + var(--page-chats-padding)) * -1 * var(--reflect)), 0, 0);
     transition: transform var(--layer-transition);
 
-    body.animation-level-0 & {
+    @include animation-level-below(2) {
       transition: none;
     }
 
@@ -489,7 +490,7 @@
       &:not(.menu-open) .animated-button-icon-icon-first,
       &.menu-open .animated-button-icon-icon-last {
         visibility: visible;
-        animation: grow-icon .4s forwards ease-in-out;
+        @include animation-level-icon-in();
       }
 
       @include respond-to(handhelds) {
@@ -646,7 +647,7 @@
   // from "trigger never was". The class persists across the open lifetime,
   // so the close transition (width 2.5rem → 0) also runs.
   .left-sidebar-burger.appear-animated {
-    transition: width 0.12s, opacity 0.12s, margin-inline-start 0.12s;
+    @include animation-level-transition(width 0.12s, opacity 0.12s, margin-inline-start 0.12s);
   }
 
   .sidebar-tools-button {
@@ -1229,7 +1230,7 @@
   &-dialogs {
     opacity: 0;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .2s ease-in-out;
     }
 

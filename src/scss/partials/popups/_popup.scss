@@ -102,7 +102,8 @@
     min-height: string.unquote('min(100%, var(--popup-min-height))');
     max-height: string.unquote('min(100%, var(--popup-max-height))');
 
-    body.animation-level-0 & {
+    // reduced: the popup fades in where it stands
+    @include animation-level-below(2) {
       transition: none;
     }
   }
@@ -160,7 +161,7 @@
         opacity: 0;
         // visibility: hidden;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in)/* , visibility 0s */;
           // transition-delay: 0s, var(--transition-standard-in-time);
         }
@@ -256,7 +257,7 @@
     border-top: 1px solid transparent;
     background-color: transparent;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: background-color var(--transition-standard-in), border-top-color var(--transition-standard-in);
     }
 

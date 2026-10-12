@@ -12,9 +12,8 @@
 	box-shadow: 0 0 20px 0 rgba(0, 0, 0, .15);
 	transform: translateZ(0);
 	opacity: 0;
-	transition:
-		opacity var(--layer-transition),
-		transform var(--layer-transition);
+	// reduced: it fades, and moves to a new selection at once
+	@include animation-level-transition(opacity var(--layer-transition), transform var(--layer-transition));
 	position: fixed;
 	top: 0;
 	right: 0;
@@ -100,10 +99,6 @@
 			text-indent: 1rem;
 			width: 100%;
 		}
-	}
-
-	body.animation-level-0 & {
-		transition: none;
 	}
 
 	&-wrapper {

@@ -43,7 +43,7 @@
   border: none;
   flex: 1 1 auto;
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 }
@@ -156,7 +156,7 @@
       line-height: 2.5rem;
       margin-top: .5rem;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: color .1s ease-in-out, background-color .1s ease-in-out;
       }
 

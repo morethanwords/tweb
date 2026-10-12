@@ -43,12 +43,40 @@
     }
   }
 
+  @keyframes fade-input-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: var(--max-opacity, 1);
+    }
+  }
+
+  @keyframes fade-input-out {
+    from {
+      opacity: var(--max-opacity, 1);
+    }
+
+    to {
+      opacity: 0;
+    }
+  }
+
   .will-animate {
+    @include animation-level(1) {
+      animation: fade-input-in .2s forwards ease-in-out;
+    }
+
     @include animation-level(2) {
       animation: grow-input .25s forwards ease-in-out;
     }
 
     &.is-hiding {
+      @include animation-level(1) {
+        animation: fade-input-out .15s forwards ease-in-out;
+      }
+
       @include animation-level(2) {
         animation: hide-input .25s forwards ease-in-out;
       }

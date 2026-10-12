@@ -92,7 +92,7 @@
     image-rendering: auto;
     opacity: 1;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .6s ease;
     }
 
@@ -207,9 +207,7 @@
     opacity: 0;
     z-index: 0;
 
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), width var(--transition-standard-in), height var(--transition-standard-in), margin-bottom var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), width var(--transition-standard-in), height var(--transition-standard-in), margin-bottom var(--transition-standard-in));
 
     .avatar-full {
       font-size: 3.5rem;
@@ -243,22 +241,18 @@
   // Transitions cover both the size change (video↔no-video) and the
   // opacity change (controls visibility).
   &-title {
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), font-size var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), font-size var(--transition-standard-in));
   }
 
   &-subtitle {
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), font-size var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), font-size var(--transition-standard-in));
   }
 
   &-emojis,
   .popup-header {
     opacity: 0;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
   }
@@ -302,12 +296,10 @@
       }
     }
 
-    @include animation-level(2) {
-      .call-button { // ! fix backdrop-filter transition
-        &,
-        &-text {
-          transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-        }
+    .call-button { // ! fix backdrop-filter transition
+      &,
+      &-text {
+        @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in));
       }
     }
 
@@ -433,7 +425,7 @@
 
     &,
     &-blur {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity var(--transition-standard-in);
       }
     }
@@ -469,9 +461,7 @@
     transform: scale(0) translateY(0);
     max-width: 100%;
 
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-    }
+    @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in));
 
     .lottie-icon {
       width: 1.875rem !important;

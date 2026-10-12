@@ -150,7 +150,7 @@ export default function ContactsList(props: {
     if(
       (!made.length && !removed.length) ||
       scrollable.scrollTop !== scrollTop ||
-      !liteMode.isAvailable('animations')
+      !liteMode.isAvailable('motion')
     ) {
       removed.forEach(({remove}) => remove());
       return;

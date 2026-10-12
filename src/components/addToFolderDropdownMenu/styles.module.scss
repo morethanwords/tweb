@@ -1,5 +1,4 @@
 @use "../../scss/variables" as *;
-@use "../../scss/mixins" as *;
 
 .Container {
   min-width: 12rem !important;
@@ -169,14 +168,3 @@
   }
 }
 
-.AppearZoom {
-  &EnterActive, &ExitActive {
-    @include animation-level-global(2) {
-      transition: transform 0.1s;
-    }
-  }
-
-  &Enter, &ExitTo {
-    transform: scale(0);
-  }
-}

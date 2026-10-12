@@ -80,7 +80,7 @@
         transform: none !important;
       }
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
       }
     }
@@ -218,7 +218,7 @@
     opacity: 0;
     transform: scale(.86);
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
     }
   }

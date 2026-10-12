@@ -339,7 +339,8 @@ export default class GroupCallVideoGrid {
       return !unchanged && {tile, host, rect, maxCrop};
     }).filter(Boolean);
 
-    const shouldAnimate = animate && liteMode.isAvailable('animations');
+    // * tiles fly to their places, and the list grows with them, with full animations only
+    const shouldAnimate = animate && liteMode.isAvailable('motion');
     // read every start before writing anything: measured mid-flight when a move interrupts another
     const starts = shouldAnimate ? moves.map(({tile}) => tile.measure()) : [];
     const hostRects = shouldAnimate ? new Map([this.stage, this.list, this.flight].map((host) => [host, host.getBoundingClientRect()])) : undefined;
@@ -355,7 +356,7 @@ export default class GroupCallVideoGrid {
       const wasPlaced = !!tile.host;
       if(!start) {
         tile.place(host, rect, maxCrop);
-        if(shouldAnimate && !wasPlaced) {
+        if(animate && liteMode.isAvailable('animations') && !wasPlaced) {
           tile.appear();
         }
 

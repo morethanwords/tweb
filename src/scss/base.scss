@@ -43,8 +43,6 @@
   --transition-standard-easing: cubic-bezier(.4, .0, .2, 1);
   --transition-standard-in-time: .3s;
   --transition-standard-out-time: .25s;
-  --transition-standard-in: var(--transition-standard-in-time) var(--transition-standard-easing);
-  --transition-standard-out: var(--transition-standard-out-time) var(--transition-standard-easing);
   --transform-origin-inline-start: left;
   --transform-origin-inline-end: right;
   --transform-origin-left-center: left center;
@@ -90,8 +88,6 @@
   // --messages-service-text-size: calc(var(--messages-text-size) - 2px);
   --messages-service-text-size: calc(var(--messages-text-size) - 1px);
   --messages-custom-emoji-size: calc(var(--messages-text-size) + 4px);
-  --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
-  --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
   --line-height-24: 30px;
   --line-height-20: 26px;
   --line-height-18: 24px;
@@ -474,6 +470,25 @@ body {
   transition: background-color 0.2s;
 }
 
+// * reduced animations: what moved now only fades or grows in place, and neither carries the eye
+// * anywhere - the time a movement took would only be waited out. So the shared timings get the
+// * length of a fade (going quicker than coming), and the press highlight goes sooner
+body.animation-level-1:not(.animation-level-2) {
+  --transition-standard-in-time: .2s;
+  --transition-standard-out-time: .15s;
+  --ripple-duration: .4s;
+}
+
+// * the tokens built of the timings: a token resolves where it is declared, so they are
+// * declared again where the timings change
+:root,
+body.animation-level-1:not(.animation-level-2) {
+  --transition-standard-in: var(--transition-standard-in-time) var(--transition-standard-easing);
+  --transition-standard-out: var(--transition-standard-out-time) var(--transition-standard-easing);
+  --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+  --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
+}
+
 
 
 body.deactivated {
@@ -799,7 +814,7 @@ input:-webkit-autofill:active {
     opacity: 1;
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 
@@ -923,6 +938,15 @@ b {
   &.active {
     transform: scale(1);
     opacity: 1;
+  }
+
+  // reduced: it fades in where it stands
+  @include animation-level-below(2) {
+    transform: none;
+  }
+
+  @include animation-level(0) {
+    transition: none;
   }
 
   ul {
@@ -1067,7 +1091,7 @@ not screen and (                min-resolution: 2dppx) {
   > img {
     object-fit: contain;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       animation: fade-in-opacity .2s ease forwards;
     }
   } */
@@ -1076,7 +1100,7 @@ not screen and (                min-resolution: 2dppx) {
 .fade-in-transition {
   opacity: 1;
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity .2s ease-in-out;
   }
 }
@@ -1283,7 +1307,7 @@ middle-ellipsis-element {
   }
 
   &.fade-in {
-    @include animation-level(2) {
+    @include animation-level(1) {
       animation: fade-in-opacity .2s ease-in-out forwards;
     }
   }
@@ -1316,13 +1340,13 @@ middle-ellipsis-element {
 }
 
 .fade-in {
-  @include animation-level(2) {
+  @include animation-level(1) {
     animation: fade-in-opacity .2s ease-in-out forwards;
   }
 }
 
 .fade-out {
-  @include animation-level(2) {
+  @include animation-level(1) {
     animation: fade-out-opacity .2s ease-in-out forwards;
   }
 }
@@ -1505,7 +1529,7 @@ hr {
     background-color: var(--light-secondary-text-color);
     pointer-events: none;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       opacity: 0;
       transition: opacity .2s ease-in-out;
     }
@@ -1517,7 +1541,7 @@ hr {
     vertical-align: unset;
     margin: 0;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       opacity: 1;
       transition: opacity .2s ease-in-out;
     }
@@ -1836,7 +1860,7 @@ hr {
     display: inline-block;
     line-height: 0;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: transform var(--transition-standard-in);
     }
   }
@@ -2160,7 +2184,7 @@ hr {
     width: calc(100% - 4.5rem - .5rem);
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 

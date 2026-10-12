@@ -527,6 +527,7 @@ export const SETTINGS_INIT: StateSettings = {
   liteMode: {
     all: false,
     animations: false,
+    motion: false,
     blur: false,
     chat: false,
     chat_background: false,

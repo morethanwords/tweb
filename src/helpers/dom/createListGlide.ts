@@ -89,7 +89,7 @@ export default function createListGlide(list: HTMLElement, options: ListGlideOpt
         !blocked &&
         list.isConnected &&
         !document.hidden &&
-        liteMode.isAvailable('animations') &&
+        liteMode.isAvailable('motion') &&
         list.checkVisibility?.({visibilityProperty: true}) !== false) {
         before = new Map();
         for(const element of Array.from(list.children)) {

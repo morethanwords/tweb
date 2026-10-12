@@ -33,7 +33,7 @@
       height: 0;
       opacity: 0;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity var(--transition-standard-in);
       }
 
@@ -382,7 +382,7 @@
 
     .search-super-nav-scrollable,
     .search-super-selection-container {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
     }

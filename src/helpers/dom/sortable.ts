@@ -277,7 +277,7 @@ export default class Sortable {
       swallowNextClick(getOverlayRoot());
     }
 
-    if(liteMode.isAvailable('animations')) {
+    if(liteMode.isAvailable('motion')) {
       await pause(250);
     }
 

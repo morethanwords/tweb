@@ -190,7 +190,7 @@
     }
 
     &-status {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: color .2s ease-in-out;
       }
 
@@ -311,7 +311,7 @@
       opacity: 0;
       pointer-events: none;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
     }
@@ -336,7 +336,7 @@
       }
     }
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       &-placeholder,
       &-blur,
       &-video {
@@ -588,9 +588,7 @@
         display: none;
       }
 
-      @include animation-level(2) {
-        transition: opacity var(--transition-standard-in), var(--gc-column-transition);
-      }
+      @include animation-level-transition(opacity var(--transition-standard-in), var(--gc-column-transition));
 
       &:before {
         position: absolute;
@@ -619,7 +617,7 @@
         }
       }
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         &:before,
         .group-call-microphone-blobs {
           transition: opacity var(--transition-standard-in);

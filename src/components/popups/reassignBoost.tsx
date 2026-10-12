@@ -99,7 +99,7 @@ export default async function showReassignBoostPopup(
       const transitionList = createListTransition(resolveElements(() => realList).toArray, {
         exitMethod: 'keep-index',
         onChange: ({added, removed, finishRemoved}) => {
-          const options: KeyframeAnimationOptions = {duration: liteMode.isAvailable('animations') ? 200 : 0/* , fill: 'forwards' */, easing: 'ease-in-out'};
+          const options: KeyframeAnimationOptions = {duration: liteMode.isAvailable('motion') ? 200 : 0/* , fill: 'forwards' */, easing: 'ease-in-out'};
           const keyframes: Keyframe[] = [{transform: 'translateX(var(--offset)) scale(0)'}, {transform: 'translateX(var(--offset)) scale(1)'}];
           queueMicrotask(() => {
             for(const element of added) {

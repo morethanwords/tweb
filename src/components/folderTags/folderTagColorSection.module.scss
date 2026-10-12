@@ -44,7 +44,7 @@
     opacity: 0;
     transform: scale(.8);
 
-    @include animation-level(2) {
+    @include animation-level-global(1) {
       transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
     }
   }
@@ -64,7 +64,7 @@
   width: 1.75rem;
   height: 1.75rem;
 
-  @include animation-level(2) {
+  @include animation-level-global(1) {
     transition: transform var(--transition-standard-in);
   }
 

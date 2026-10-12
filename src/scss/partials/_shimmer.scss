@@ -17,7 +17,8 @@
 .shimmer {
   --opacity: .2;
 
-  @include animation-level(0) {
+  // the wave is decoration, it runs with full animations only
+  @include animation-level-below(2) {
     &:before {
       content: unset;
     }

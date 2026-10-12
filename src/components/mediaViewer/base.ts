@@ -1291,7 +1291,15 @@ export default class AppMediaViewerBase<
 
     const wasActive = fromRight !== 0;
 
-    const delay = liteMode.isAvailable('animations') ? (wasActive ? MOVE_TRANSITION_TIME : OPEN_TRANSITION_TIME) : 0;
+    // * reduced animations: the media fades in and out where it stands and steps to the next one
+    // * at once. Closing, it fades as it does toward a source out of sight
+    const animationLevel = liteMode.getAnimationLevel();
+    const delay = animationLevel === 2 ?
+      (wasActive ? MOVE_TRANSITION_TIME : OPEN_TRANSITION_TIME) :
+      (animationLevel && !wasActive ? OPEN_TRANSITION_TIME : 0);
+    if(animationLevel === 1 && closing) {
+      target = undefined;
+    }
     // let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {
@@ -1369,6 +1377,16 @@ export default class AppMediaViewerBase<
     // reset it after transferring its transform to the mover), so this returns
     // the pre-zoom layout rect just like for a non-zoomed close.
     const containerRect = this.content.media.getBoundingClientRect();
+
+    // * reduced animations, opening: the source lends its picture to show until the media loads,
+    // * but none of its place - the mover starts where the media stands
+    if(animationLevel === 1 && !closing) {
+      realParent = this.content.media;
+      rect = cloneDOMRect(containerRect);
+      needOpacity = true;
+      viewportClipPath = undefined;
+      overflowElement = undefined;
+    }
 
     let transform = '';
     let left: number;
@@ -1915,7 +1933,7 @@ export default class AppMediaViewerBase<
       return match.replace(p1, x + 'px');
     });
 
-    const delay = liteMode.isAvailable('animations') ? MOVE_TRANSITION_TIME : 0;
+    const delay = liteMode.isAvailable('motion') ? MOVE_TRANSITION_TIME : 0;
     const transitionPromise = this.waitForMoverTransition(mover, delay, MOVER_TRANSFORM_PROPERTY);
     setMoverTransform(mover, newTransform);
 

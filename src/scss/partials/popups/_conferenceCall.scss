@@ -20,7 +20,7 @@ $radius: $pill-height * .5;
     opacity: 0;
     visibility: hidden;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .2s ease-in-out, visibility 0s .2s;
     }
 
@@ -28,7 +28,7 @@ $radius: $pill-height * .5;
       opacity: 1;
       visibility: visible;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out, visibility 0s;
       }
     }
@@ -60,8 +60,9 @@ $radius: $pill-height * .5;
     cursor: pointer;
     user-select: none;
 
-    // no transition on its fill: the surface takes over from it, and back, within one frame
-    @include animation-level(2) {
+    // no transition on its fill: the surface takes over from it, and back, within one frame;
+    // the scale is the press, which reduced animations keep
+    @include animation-level(1) {
       transition: scale .15s ease-out;
     }
 
@@ -233,7 +234,7 @@ $radius: $pill-height * .5;
     &-value {
       display: block;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         animation: fade-in-opacity .2s ease-out;
       }
     }
@@ -299,7 +300,7 @@ $radius: $pill-height * .5;
     .is-expanded > & {
       display: block;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         animation: fade-in-opacity .2s .1s ease-out backwards;
       }
     }

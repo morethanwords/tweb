@@ -85,9 +85,11 @@
     opacity: 0;
     transform: scale(0.75);
     
-    @include animation-level-global(2) {
-      transition: var(--transition-standard-in);
-      transition-property: opacity, transform;
+    @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in), $global: true);
+
+    // reduced: it fades in and out where it stands when the item is done
+    @include animation-level-below-global(2) {
+      transform: translateX(14px);
     }
 
     .itemCompleted & {

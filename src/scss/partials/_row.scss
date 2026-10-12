@@ -18,7 +18,7 @@ $row-border-radius: $border-radius-medium;
     min-height: 3.375rem;
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 

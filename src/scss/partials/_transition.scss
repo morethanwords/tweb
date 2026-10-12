@@ -1,3 +1,5 @@
+@use "../shared" as *;
+
 // * Jolly Cobra's transition
 
 .transition {
@@ -161,6 +163,24 @@
   } */
 }
 
+// * Reduced animations: TransitionSlider crossfades the screens of every type
+// * instead of sliding, pushing or zooming them (`fade` in its selectTab), so the
+// * movement the types lay on `.from` / `.to` gives way here
+.animating-fade {
+  > .from,
+  > .to {
+    transform: none !important;
+  }
+
+  > .from {
+    animation: fade-out-opacity .15s ease forwards !important;
+  }
+
+  > .to {
+    animation: fade-in-opacity .15s ease forwards !important;
+  }
+}
+
 .fade-enter-active,
 .fade-exit-active {
   transition: opacity 0.1s ease-out;
@@ -186,29 +206,52 @@
 }
 
 .t-move {
-  transition: transform 0.2s ease-out;
+  @include animation-level(2) {
+    transition: transform 0.2s ease-out;
+  }
 }
 
 .t-move-std {
   // Do not change easing function here, some places need synced easings for animations to not be jerky
-  transition: transform 0.2s;
+  @include animation-level(2) {
+    transition: transform 0.2s;
+  }
 }
 
+// * a zoom fades in place below full animations - something has to transition
+// * all the same, its end is what lets a leaving element go
 .t-zoom-enter-active,
 .t-zoom-exit-active,
 .t-var-zoom-enter-active,
 .t-var-zoom-exit-active {
   transition: transform 0.12s ease-out;
+
+  @include animation-level-below(2) {
+    transition: opacity 0.12s ease-out;
+  }
 }
 
 .t-zoom-enter,
 .t-zoom-exit-to {
-  transform: scale(0);
+  @include animation-level(2) {
+    transform: scale(0);
+  }
 }
 
 .t-var-zoom-enter,
 .t-var-zoom-exit-to {
-  --t-zoom-scale: 0;
+  @include animation-level(2) {
+    --t-zoom-scale: 0;
+  }
+}
+
+.t-zoom-enter,
+.t-zoom-exit-to,
+.t-var-zoom-enter,
+.t-var-zoom-exit-to {
+  @include animation-level-below(2) {
+    opacity: 0;
+  }
 }
 
 /*
@@ -317,4 +360,14 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
+}
+
+// * `CrossfadeBlock`: the content leaving and the one coming share a cell, one over the other
+.crossfade-block {
+  display: grid;
+
+  &-item {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
 }

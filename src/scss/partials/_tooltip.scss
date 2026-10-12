@@ -18,6 +18,13 @@
   &.mounted {
     transform: scale(0.9);
     // transform: translateY(-.375rem) scale(1);
+
+    // reduced: it fades where it stands (a chat toast keeps its own centring, _chatToast.scss)
+    &:not(.chat-toast) {
+      @include animation-level-below(2) {
+        transform: none;
+      }
+    }
   }
 
   &-background {
@@ -47,7 +54,7 @@
     opacity: 0;
     // transform: scale(0.4);
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--btn-menu-transition);
     }
   }

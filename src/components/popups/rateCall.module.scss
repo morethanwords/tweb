@@ -52,7 +52,7 @@
   stroke-width: 1.5;
   stroke-linejoin: round;
 
-  @include animation-level-global(2) {
+  @include animation-level-global(1) {
     transition: fill var(--transition-standard-in);
   }
 

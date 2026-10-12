@@ -73,7 +73,7 @@ export default function fastSmoothScroll(options: ScrollOptions) {
   options.axis ??= 'y';
   // return;
 
-  if(!liteMode.isAvailable('animations') || options.forceDuration === 0) {
+  if(!liteMode.isAvailable('motion') || options.forceDuration === 0) {
     options.forceDirection = FocusDirection.Static;
   }
 

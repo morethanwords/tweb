@@ -43,9 +43,7 @@ $transition: .2s ease-in-out;
     opacity: 0;
     transform: scale(0);
 
-    body:not(.animation-level-0) & {
-      transition: opacity $transition, transform $transition;
-    }
+    @include animation-level-transition(opacity $transition, transform $transition);
 
     &.is-visible {
       &.forwards {
@@ -121,7 +119,9 @@ $transition: .2s ease-in-out;
     stroke-width: 2;
   }
 
-  @include animation-level(2) {
+  // a spinner and its progress say something is going on, so they keep going
+  // with reduced animations
+  @include animation-level(1) {
     &.is-visible:not(.manual), &.is-visible.animating {
       .you-spin-me-round {
         animation: rotate 2s linear infinite;
@@ -163,7 +163,7 @@ $transition: .2s ease-in-out;
     //transform: scale(1);
     opacity: 1;
     
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .2s ease-in-out/* , transform .2s ease-in-out */;
     }
 

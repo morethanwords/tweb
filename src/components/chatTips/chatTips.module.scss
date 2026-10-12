@@ -125,6 +125,11 @@ $card-padding: 1rem;
   pointer-events: none;
   transform: scale(.1);
   transition: opacity var(--transition-standard-out), transform var(--transition-standard-out), visibility 0s var(--transition-standard-out-time);
+
+  // reduced: the deck fades where it stands
+  @include animation-level-below-global(2) {
+    transform: none;
+  }
 }
 
 // Fixed box the cards are absolutely stacked in, so the outgoing and incoming card overlap
@@ -465,6 +470,11 @@ $card-padding: 1rem;
   pointer-events: none;
   transform: translateX(var(--tip-slide));
   transition: opacity .3s ease, transform .3s ease;
+
+  // reduced: the cards crossfade in place
+  @include animation-level-below-global(2) {
+    transform: none;
+  }
 
   @include animation-level-global(0) {
     transition: none;

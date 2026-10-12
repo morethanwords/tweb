@@ -1,4 +1,5 @@
 import {animateValue} from '@helpers/animateValue';
+import liteMode from '@helpers/liteMode';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import throttleWith from '@helpers/schedulers/throttleWith';
 import {useIsCleaned} from '@hooks/useIsCleaned';
@@ -417,7 +418,8 @@ const useEndDrag = <T, >(context: DragContext<T>) => {
       resetDragState();
       onReorder(reorder(items(), startIndex, overIndex));
 
-      if(shift === 0) return;
+      // the dropped row settles into place only with full animations
+      if(shift === 0 || !liteMode.isAvailable('motion')) return;
 
       setFinishingAnimationState({
         id,
@@ -512,7 +514,7 @@ const useItemStyle = <T, >(context: DragContext<T>) => {
 
     return {
       transform: `translateY(${shift}px)`,
-      transition: 'transform 0.2s'
+      transition: liteMode.isAvailable('motion') ? 'transform 0.2s' : 'none'
     };
   }
 };

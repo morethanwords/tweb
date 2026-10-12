@@ -1,11 +1,11 @@
 import Button from '@components/buttonTsx';
+import CrossfadeBlock from '@components/crossfadeBlock';
 import MediaHeader from '@components/mediaHeader';
 import PopupElementTsx, {createPopup as createPopupTsx} from '@components/popups/indexTsx';
 import RippleElement from '@components/rippleElement';
 import appSidebarLeft from '@components/sidebarLeft';
 import {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import Animated from '@helpers/solid/animations';
 import classNames from '@helpers/string/classNames';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
 import getAuthorizationErrorLangKey from '@helpers/getAuthorizationErrorLangKey';
@@ -16,7 +16,7 @@ import {hideToast, toast, toastNew} from '@components/toast';
 import {useIsSidebarCollapsed} from '@stores/foldersSidebar';
 import useUnconfirmedAuthorizations from '@stores/unconfirmedAuthorizations';
 import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
-import {createEffect, createSignal, JSX, onCleanup, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 import styles from '@components/sidebarLeft/newAuthorization.module.scss';
 
@@ -254,22 +254,13 @@ export function renderNewAuthorization(toElement: HTMLElement) {
 
   render(() => {
     const authorizations = useUnconfirmedAuthorizations();
-    const [element, setElement] = createSignal<JSX.Element>();
-
-    createEffect(() => {
-      const authorization = authorizations()[0];
-      setElement(authorization ? (
-        <div class={styles.noticeContainer}>
-          <NewAuthorization
-            authorization={authorization}
-            total={authorizations().length}
-          />
-        </div>
-      ) : undefined);
+    // * the next one crossfades in when the first is answered, the count changes in place
+    const authorization = createMemo(() => authorizations()[0], undefined, {
+      equals: (previous, next) => previous?.hash === next?.hash
     });
 
     createEffect(() => {
-      document.body.classList.toggle('has-unconfirmed-authorization', !!element());
+      document.body.classList.toggle('has-unconfirmed-authorization', !!authorization());
     });
 
     onCleanup(() => {
@@ -277,14 +268,14 @@ export function renderNewAuthorization(toElement: HTMLElement) {
     });
 
     return (
-      <Animated
-        type="grow-height"
-        appear
-        mode="add-remove"
-        noItemClass
-      >
-        {element()}
-      </Animated>
+      <CrossfadeBlock value={authorization()} class={styles.noticeContainer}>
+        {(authorization) => (
+          <NewAuthorization
+            authorization={authorization}
+            total={authorizations().length}
+          />
+        )}
+      </CrossfadeBlock>
     );
   }, toElement);
 }

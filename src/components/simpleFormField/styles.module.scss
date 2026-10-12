@@ -88,7 +88,7 @@
   &Thin {
     border: 1px solid var(--input-search-border-color);
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition: border-color .2s;
     }
   }
@@ -97,7 +97,7 @@
     border: 2px solid var(--primary-color);
     opacity: 0;
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition: opacity .2s;
     }
   }
@@ -151,9 +151,7 @@
   color: $placeholder-color;
   pointer-events: none;
 
-  @include animation-level-global(2) {
-    transition: all .2s, font-weight .05s 0.1s;
-  }
+  @include animation-level-transition(font-size .2s, top .2s, left .2s, padding .2s, color .2s, background-color .2s, font-weight .05s .1s, $global: true);
 
   &.noTransition {
     transition: none !important;

@@ -33,6 +33,7 @@ import {CreatePollStore, QUIZ_POLL_SETTINGS, useCreatePollContext} from './store
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
 import {createFormFieldClickHandler, interactableClass, useSupportsMedia} from './utils';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
@@ -221,7 +222,7 @@ export const PollSettingsSectionContent = (props: {
         onClick={handleSettingsFlag('durationLimited')}
       />
       <HeightTransition
-        onAfterEnter={() => limitDurationExtraElement()?.scrollIntoView({behavior: 'smooth', block: 'center'})}
+        onAfterEnter={() => limitDurationExtraElement()?.scrollIntoView({behavior: smoothScrollBehavior(), block: 'center'})}
       >
         <Show when={context.store.durationLimited}>
           <div ref={setLimitDurationExtraElement} style={{overflow: !isDurationMenuOpen() ? 'hidden' : undefined}}>
@@ -264,7 +265,7 @@ export const PollSettingsSectionContent = (props: {
         </Show>
       </HeightTransition>
 
-      <HeightTransition onAfterEnter={() => explanationElement()?.scrollIntoView({behavior: 'smooth', block: 'center'})}>
+      <HeightTransition onAfterEnter={() => explanationElement()?.scrollIntoView({behavior: smoothScrollBehavior(), block: 'center'})}>
         <Show when={context.store.hasCorrectAnswer}>
           <div ref={setExplanationElement} style={{overflow: 'hidden'}}>
             <Space amount='1rem' />

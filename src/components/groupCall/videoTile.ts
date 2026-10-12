@@ -8,6 +8,7 @@ import PeerTitle from '@components/peerTitle';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import {STANDARD_TRANSITION_EASING, STANDARD_TRANSITION_IN_TIME} from '@helpers/standardTransition';
 import Icon from '@components/icon';
+import liteMode from '@helpers/liteMode';
 import Button from '@components/button';
 import {avatarNew} from '@components/avatarNew';
 import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
@@ -323,13 +324,17 @@ export default class GroupCallVideoTile {
     }], options);
   }
 
-  /** Grows into its place, for a tile that was nowhere before. */
+  /** Grows into its place, for a tile that was nowhere before (only fades in, with reduced animations). */
   public appear() {
     const translate = `translate3d(${this.rect.x}px, ${this.rect.y}px, 0)`;
     this.element.animate([
-      {transform: translate + ' scale(.8)', opacity: 0},
+      {transform: this.shrunk(translate), opacity: 0},
       {transform: translate, opacity: 1}
     ], {duration: GROUP_CALL_MOVE_DURATION, easing: GROUP_CALL_MOVE_EASING});
+  }
+
+  private shrunk(translate: string) {
+    return liteMode.isAvailable('motion') ? translate + ' scale(.8)' : translate;
   }
 
   public stopMoving() {
@@ -348,7 +353,7 @@ export default class GroupCallVideoTile {
     const translate = `translate3d(${this.rect.x}px, ${this.rect.y}px, 0)`;
     const animation = this.element.animate([
       {transform: translate, opacity: 1},
-      {transform: translate + ' scale(.8)', opacity: 0}
+      {transform: this.shrunk(translate), opacity: 0}
     ], {duration: GROUP_CALL_MOVE_DURATION, easing: GROUP_CALL_MOVE_EASING, fill: 'forwards'});
     animation.finished.then(() => this.destroy(), () => this.destroy());
   }

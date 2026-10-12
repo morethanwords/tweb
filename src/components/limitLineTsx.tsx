@@ -162,7 +162,7 @@ export function LimitLineTsx(props: {
   }
 
   createEffect(on(() => props.progress, (val, prev) => {
-    if(prev !== undefined && liteMode.isAvailable('animations') && !isSlider && props.animateProgress !== false) {
+    if(prev !== undefined && liteMode.isAvailable('motion') && !isSlider && props.animateProgress !== false) {
       const duration = 200;
       const startTime = performance.now();
       const diff = val - prev;

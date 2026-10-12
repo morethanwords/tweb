@@ -90,9 +90,7 @@
 		}
 
 		&.show.backwards {
-			@include animation-level(2) {
-				animation: hide-icon .4s forwards ease-in-out !important;
-			}
+			@include animation-level-icon-out(true);
 		}
 	}
 
@@ -101,9 +99,7 @@
 		display: none !important;
 		margin: 0 !important;
 
-		@include animation-level(2) {
-			animation: grow-icon .4s forwards ease-in-out !important;
-		}
+		@include animation-level-icon-in(true);
 	}
 
 	&:not(.is-recording) {
@@ -196,7 +192,7 @@
     &.stop .btn-send-icon-stop,
     &.forward .btn-send-icon-forward {
 			visibility: visible !important;
-      animation: grow-icon .4s forwards ease-in-out !important;
+      @include animation-level-icon-in(true);
 		}
 	}
 
@@ -497,13 +493,15 @@
         }
 
         .btn-send {
-          transition: $input-transition-time transform;
+          @include animation-level(2) {
+            transition: $input-transition-time transform;
+          }
         }
       }
     }
   }
 
-  @include animation-level(0) {
+  @include animation-level-below(2) {
     transition: none !important;
   }
 
@@ -591,6 +589,14 @@
 		transition: none !important;
 	}
 
+	// the centring is movement: with reduced animations the chat is where it goes at once
+	// (a phone's column still fades in and out, pages/_chats.scss)
+	@include respond-to(no-floating-left-sidebar) {
+		@include animation-level-below(2) {
+			transition: none !important;
+		}
+	}
+
 	@include respond-to(handhelds) {
 		body.is-left-column-shown & {
 			transform: translate3d(100vw, 0, 0);
@@ -632,7 +638,7 @@
 	width: 100%;
 	align-items: center;
 	flex-direction: column;
-	transition: transform var(--tabs-transition), opacity var(--tabs-transition);
+	@include animation-level-transition(transform var(--tabs-transition), opacity var(--tabs-transition));
 
 	@include animation-level(0) {
 		transition: none !important;
@@ -644,6 +650,11 @@
 
     &:last-child {
       transform: translate3d(200px, 0, 0);
+    }
+
+    // reduced: the chats crossfade in place
+    @include animation-level-below(2) {
+      transform: none;
     }
   }
 
@@ -1092,6 +1103,11 @@
         opacity: 0;
         pointer-events: none;
 
+        // reduced: it fades in and out where it stands
+        @include animation-level-below(2) {
+          transform: none;
+        }
+
         &.is-visible {
           &.forwards {
             transform: scale(1);
@@ -1099,7 +1115,7 @@
           }
 
           &.animating {
-            transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+            @include animation-level-transition(transform var(--transition-standard-in), opacity var(--transition-standard-in));
           }
         }
       }
@@ -1161,17 +1177,19 @@
       }
 
       &.animating {
+        // reduced: the field steps aside at once and the buttons fade in - going, they are gone
+        // at once, as it is their scale(0) that hides them
         .attach-file,
         .input-message-container {
-          transition: transform var(--transition-standard-in);
+          @include animation-level-transition(transform var(--transition-standard-in));
         }
 
         .new-message-send-as-container {
-          transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+          @include animation-level-transition(transform var(--transition-standard-in), opacity var(--transition-standard-in));
         }
 
         .new-message-bot-commands {
-          transition: transform var(--transition-standard-in), opacity var(--transition-standard-in), width var(--transition-standard-in);
+          @include animation-level-transition(transform var(--transition-standard-in), opacity var(--transition-standard-in), width var(--transition-standard-in));
         }
       }
     }
@@ -1293,7 +1311,7 @@
     }
   }
 
-	@include animation-level(0) {
+	@include animation-level-below(2) {
 		transition: none !important;
 	}
 
@@ -1335,8 +1353,10 @@
 
 	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
 
+	// * reduced animations keep this shift: it is short, the user's own doing, and
+	// * bubbles jumping aside at once read worse than them stepping over
 	&.is-selecting {
-    @include animation-level(2) {
+    @include animation-level(1) {
       .is-in .bubble-content-wrapper,
       .bubbles-group-avatar {
         transition: var(--bubble-transition-out);
@@ -1344,7 +1364,7 @@
     }
 
     &.forwards {
-      @include animation-level(2) {
+      @include animation-level(1) {
         .is-in .bubble-content-wrapper,
         .bubbles-group-avatar {
           transition: var(--bubble-transition-in);
@@ -1385,7 +1405,8 @@
     opacity: 1;
     visibility: visible;
 
-    @include animation-level(2) {
+    // its transform is pinned, so this is a fade
+    @include animation-level(1) {
       transition: opacity var(--layer-transition), transform var(--layer-transition), visibility 0s 0s !important;
     }
   }
@@ -1439,7 +1460,7 @@
     transition: none;
   }
 
-  @include animation-level(0) {
+  @include animation-level-below(2) {
     transition: none !important;
   }
 }
@@ -1456,7 +1477,7 @@
 	transform: translateY(0);
   box-sizing: content-box;
 
-	@include animation-level(0) {
+	@include animation-level-below(2) {
 		transition: none !important;
 	}
 
@@ -1532,13 +1553,13 @@
 	cursor: default;
 	opacity: 0;
 	visibility: hidden;
-  transition: transform var(--layer-transition), opacity var(--layer-transition), visibility 0s .2s !important;
+	@include animation-level-transition(transform var(--layer-transition), opacity var(--layer-transition), visibility 0s .2s, $important: true);
 
 	&.is-visible {
 		cursor: pointer;
 		opacity: 1;
 		visibility: visible;
-		transition: transform var(--layer-transition), opacity var(--layer-transition), visibility 0s 0s !important;
+		@include animation-level-transition(transform var(--layer-transition), opacity var(--layer-transition), visibility 0s 0s, $important: true);
 	}
 
   &.is-visible + .bubbles-go-reaction {
@@ -1648,7 +1669,7 @@
     pointer-events: none;
     opacity: 0;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
 

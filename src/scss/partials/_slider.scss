@@ -57,7 +57,7 @@
       margin: 0 .25rem;
       min-width: 1px; // * fix width
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: background-color var(--tabs-transition) !important;
       }
 

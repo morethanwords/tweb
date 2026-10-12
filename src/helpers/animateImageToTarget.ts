@@ -1,6 +1,7 @@
 import {animateValue} from './animateValue';
 import deferredPromise from './cancellablePromise';
 import {lerp} from './lerp';
+import liteMode from '@helpers/liteMode';
 
 type AnimateImageToTargetArgs = {
   animatedImg: HTMLImageElement;
@@ -17,8 +18,9 @@ export function animateImageToTarget({animatedImg, target, targetIsRound}: Anima
   const leftDiff = (targetBcr.left + targetBcr.width / 2) - left;
   const topDiff = (targetBcr.top + targetBcr.height / 2) - top;
 
+  // * with reduced animations the image lands at once
   const cancelAnimation = animateValue(
-    0, 1, 200,
+    0, 1, liteMode.isAvailable('motion') ? 200 : 0,
     (progress) => {
       animatedImg.style.transform = `translate(calc(${ progress * leftDiff }px - 50%), calc(${ progress * topDiff }px - 50%))`;
       animatedImg.style.width = lerp(width, targetBcr.width, progress) + 'px';

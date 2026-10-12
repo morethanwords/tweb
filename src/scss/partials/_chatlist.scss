@@ -1,23 +1,5 @@
 @use "../shared" as *;
 
-@mixin dialog-badge-transition-reset() {
-  transition: none;
-  transform: scale(0);
-  opacity: 1;
-}
-
-@mixin dialog-badge-transition-visible() {
-  transform: scale(1);
-}
-
-@mixin dialog-badge-transition-backwards() {
-  opacity: 0;
-}
-
-@mixin dialog-badge-transition-animating() {
-  transition: background-color var(--chatlist-badge-transition-in), transform var(--chatlist-badge-transition-in);
-}
-
 // * where the selection's checkbox sits at the start of a row, and how far the row's contents move
 // * past it: the checkbox, then the same gap the peer picker leaves after its own. A row can move
 // * them further (`--select-lane-shift`), and the slide into the lane follows whatever it is.
@@ -36,50 +18,58 @@ $select-lane-shift: var(--select-lane-shift, #{1.5rem + .625rem});
   }
 }
 
-@mixin dialog-badge-transition-animating-backwards() {
-  transition: background-color var(--chatlist-badge-transition-out), transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
-}
-
+// * a badge pops in and out with full animations, and fades with reduced ones. Hidden until it is
+// * made visible either way (SetTransition marks it a couple of frames after it is in place). The
+// * reduced fade-in is an animation rather than a state, so a row can still hide its badges
+// * meanwhile (selection mode)
 @mixin dialog-badge-transition($after: false) {
+  $pseudo: '';
+  @if $after {
+    $pseudo: ':after';
+  }
+
+  @include animation-level(1) {
+    &.backwards#{$pseudo} {
+      opacity: 0;
+    }
+  }
+
+  @include animation-level-only(1) {
+    &:not(.is-visible)#{$pseudo} {
+      opacity: 0;
+    }
+
+    // * the badge's own timings spring for the pop, which a fade has no use for
+    &.is-visible.forwards.animating#{$pseudo} {
+      animation: fade-in-opacity var(--transition-standard-in);
+    }
+
+    &.animating#{$pseudo} {
+      transition: background-color var(--transition-standard-in);
+    }
+
+    &.animating.backwards#{$pseudo} {
+      transition: background-color var(--transition-standard-out), opacity var(--transition-standard-out);
+    }
+  }
+
   @include animation-level(2) {
-    @if $after {
-      &:after {
-        @include dialog-badge-transition-reset();
-      }
+    &#{$pseudo} {
+      transition: none;
+      transform: scale(0);
+      opacity: 1;
+    }
 
-      &.is-visible.forwards:after {
-        @include dialog-badge-transition-visible();
-      }
+    &.is-visible.forwards#{$pseudo} {
+      transform: scale(1);
+    }
 
-      &.backwards:after {
-        @include dialog-badge-transition-backwards();
-      }
+    &.animating#{$pseudo} {
+      transition: background-color var(--chatlist-badge-transition-in), transform var(--chatlist-badge-transition-in);
+    }
 
-      &.animating:after {
-        @include dialog-badge-transition-animating();
-      }
-
-      &.animating.backwards:after {
-        @include dialog-badge-transition-animating-backwards();
-      }
-    } @else {
-      @include dialog-badge-transition-reset();
-
-      &.is-visible.forwards {
-        @include dialog-badge-transition-visible();
-      }
-
-      &.backwards {
-        @include dialog-badge-transition-backwards();
-      }
-
-      &.animating {
-        @include dialog-badge-transition-animating();
-
-        &.backwards {
-          @include dialog-badge-transition-animating-backwards();
-        }
-      }
+    &.animating.backwards#{$pseudo} {
+      transition: background-color var(--chatlist-badge-transition-out), transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
     }
   }
 }
@@ -197,7 +187,7 @@ ul.chatlist {
     // * that merely scrolls into view meanwhile comes up with the checkbox already there.
     // * `DialogsSelectionBase` holds the app's own animations back while this runs.
     .is-selection-animating & .dialog-select-checkbox {
-      @include animation-level(2) {
+      @include animation-level(1) {
         animation: fade-in-opacity var(--transition-standard-in) forwards;
       }
     }
@@ -205,7 +195,7 @@ ul.chatlist {
     // * the row keeps the checkbox until it has faded out (`DialogsSelectionBase` takes it off at
     // * the end), so the mode leaves the way it came
     .is-selection-animating &.is-leaving-selection .dialog-select-checkbox {
-      @include animation-level(2) {
+      @include animation-level(1) {
         animation: fade-in-backwards-opacity var(--transition-standard-in) forwards;
       }
     }
@@ -259,7 +249,7 @@ ul.chatlist {
     .row-sortable-icon,
     .dialog-title-details,
     .dialog-subtitle-badge {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity var(--transition-standard-in);
       }
     }
@@ -711,7 +701,7 @@ ul.chatlist {
         pointer-events: none;
         line-height: 23px !important;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
            transition: opacity 0.2s;
          }
       }
@@ -867,7 +857,9 @@ ul.chatlist {
     @include dialog-badge-transition(true);
 
     .avatar-auto-delete-timer {
-      transition: transform var(--chatlist-badge-transition-in);
+      @include animation-level(2) {
+        transition: transform var(--chatlist-badge-transition-in);
+      }
     }
 
     &.is-visible.forwards .avatar-auto-delete-timer  {

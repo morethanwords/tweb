@@ -70,6 +70,7 @@ import Modes from '@config/modes';
 
 import styles from '@components/popups/sendGift.module.scss';
 import Animated from '@helpers/solid/animations';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -182,7 +183,7 @@ function GiftOptionsPage(props: {
     setCategory(it as CategoryName);
 
     fastRaf(() => {
-      container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : 'smooth'});
+      container.scrollTo({top: categoriesContainer.offsetTop - 56, behavior: wasPinned ? 'instant' : smoothScrollBehavior()});
     });
   }
 

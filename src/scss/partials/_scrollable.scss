@@ -128,7 +128,7 @@ html.custom-scroll {
     // each side is opted into on its own — a scroll with nothing above it wants no top border,
     // and one with nothing below it no bottom border. The colour then follows the scroll position.
     &.scrollable-y-bordered {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
       }
 
@@ -179,7 +179,7 @@ html.custom-scroll {
     border-radius: $border-radius;
     // z-index: 5;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity .1s ease-in-out;
     }
 

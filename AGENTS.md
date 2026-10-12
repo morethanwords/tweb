@@ -117,7 +117,8 @@ Either way every `rootScope.managers` call is answered from
   `calls` and `unhandled` follow the active data source.
   `pnpm test:popups` runs the `e2e/popupSandbox*.spec.ts` suites in headless
   Chromium (~50 s): `popupSandbox.spec.ts` opens every story and fails on one
-  that throws or never becomes visible; the others drive the composer's popups.
+  that throws, never becomes visible or never leaves — twice, with full and
+  with reduced animations; the others drive the composer's popups.
   `pnpm test:popups:full` adds Firefox and WebKit (~3 min).
 - `src/tests/popupSandboxCoverage.test.ts` fails when a module under
   `components/popups/` can open a popup and no story imports it, so a new popup
@@ -354,6 +355,55 @@ consciously:
 `messageEntityHighlight` entities to point at a piece of rendered text. Use
 `highlightText()` from `@helpers/dom/textHighlight`** (options and modes are
 documented in the file; styles in `scss/partials/_textHighlight.scss`).
+
+### Animation levels
+
+Interface animations have three levels (`liteMode.getAnimationLevel()`): **0**
+off, **1** reduced, **2** full. Reduced is "Interface Animations" on with
+"Motion Effects" off in Power Saving, or the OS reduce-motion preference under
+`?a11y=1` (`liteMode.isMotionHeldBySystem()`; level 0 stays the switch that
+turns everything off). It follows the platforms' Reduce Motion: control feedback
+(colour, toggle knob, checkbox tick, the press highlight — a ripple that does not
+spread, only fades), fades and spinners stay, and so does something growing or
+shrinking where it stands (a block entering or leaving the flow, a section
+expanding, a field following its content) — a fade at a size that changes at
+once opens a hole before it or leaves one after. Slides and zooms become
+crossfades; what travels (a position, a reorder, a flight to a new place),
+scrolling and the window's own layout (columns, sidebars) change at once, and
+changing digits are replaced in place rather than rolled; decorative effects
+(shake, shimmer, pops, hover zooms, looping waves) go. One shift is kept on
+purpose: the bubbles stepping aside for the selection checkboxes — short, the
+user's own doing, and worse as a jump.
+
+- **JS:** `isAvailable('animations')` is level 1 and up, `isAvailable('motion')`
+  level 2. Gate movement on `motion`, growth on `animations`. Code that waits
+  for a `transitionend` or `animationend` must be gated on the same level as the
+  CSS that fires it — an event that never comes leaves things stuck at level 1.
+- **SCSS:** the body carries `animation-level-0`, or every level up to the
+  current one, so `@include animation-level(1)` is reduced and full, `(2)` full
+  only, `(0)` off only, `animation-level-below(2)` off and reduced,
+  `animation-level-only(1)` reduced alone. A fade or a size goes under `(1)`,
+  movement under `(2)`. A transition list that does both is written once, with
+  `animation-level-transition(...)`, which hands reduced the part that does not
+  move (fades, colours, sizes and margins; transforms, positions, padding and
+  font size move); an icon swapped in a button uses `animation-level-icon-in` /
+  `-out`. The mixin does not touch the states: where a hidden state is an offset
+  or a scale, neutralise it below level 2 (`transform: none`), or hiding makes it
+  jump before it fades — but only where something else (`visibility`,
+  `pointer-events`, `display`) keeps the hidden element from being clicked; one
+  that `scale(0)` alone hides is better gone at once. In a `.module.scss` use
+  the `-global` mixins (`$global: true` for the transition one): a plain
+  `animation-level(...)` gets its body class hashed and never matches.
+- **Durations:** a fade has no distance for the eye to follow, so at level 1 it
+  is short — 150–200 ms, going quicker than coming. The shared timings
+  (`--transition-standard-*`, `--ripple-duration`) shorten themselves there
+  (`base.scss`), for the growth they time as well; a fade that stands for a
+  movement keeps to that range rather than inheriting the movement's length
+  (an ambient fade of its own, a background settling, may take longer).
+- **Shared pieces already follow the levels:** `TransitionSlider` (every type
+  crossfades at level 1), `fastSmoothScroll`, `smoothScrollBehavior()`,
+  `AnimationList` (keyframes without what moves, by `reducedKeyframes`),
+  `HeightTransition`, `crossfadeContent`, the popup and menu CSS.
 
 ### Settings tabs are indexed for search
 

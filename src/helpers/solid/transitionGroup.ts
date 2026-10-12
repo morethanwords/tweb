@@ -51,7 +51,7 @@ export const TransitionGroup: FlowComponent<{
         dispose?.();
       }
 
-      if(props.noWait?.() || !liteMode.isAvailable('animations')) {
+      if(props.noWait?.() || !liteMode.isAvailable('motion')) {
         finishRemoved(removed);
         return;
       }

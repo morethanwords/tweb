@@ -34,6 +34,11 @@ $menu-search-translateY: -#{$menu-height};
   opacity: 0;
   transform-origin: 100% 100%;
 
+  // reduced: the panel fades where it stands, in and out
+  @include animation-level-below(2) {
+    transform: none;
+  }
+
   body.animation-level-0 & {
     transition: none;
   }
@@ -431,7 +436,7 @@ $menu-search-translateY: -#{$menu-height};
         z-index: 1;
         opacity: 1;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in);
         }
 

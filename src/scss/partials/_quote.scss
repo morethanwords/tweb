@@ -88,7 +88,7 @@
       display: inline-block;
       transform: rotate(0deg);
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: transform var(--transition-standard-in);
       }
     }
@@ -97,7 +97,7 @@
   &-collapsable {
     max-height: calc(var(--messages-secondary-line-height) * 3 + 2px); // don't forget padding here
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: max-height var(--transition-standard-in);
     }
 

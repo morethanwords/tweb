@@ -282,7 +282,7 @@ poll-element {
       line-height: 16px;
       animation: none;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease;
       }
     }
@@ -297,6 +297,7 @@ poll-element {
     transform: scale(.1);
     visibility: hidden;
 
+    // a hover zoom: full animations only
     @include animation-level(2) {
       transition: transform .12s ease;
     }

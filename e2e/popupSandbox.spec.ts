@@ -17,6 +17,10 @@ const PARTS = Number(process.env.POPUP_STORY_PARTS) || 8;
  * dev server is enough. That makes it a cheap regression net over every popup in the app: one that
  * starts throwing on construction, or never reaches its visible state, fails here.
  *
+ * Every story is walked twice: with full animations and with reduced ones (AGENTS.md "Animation
+ * levels"). The second walk is what catches a popup that waits for a `transitionend` or an
+ * `animationend` its CSS fires only with full animations - it opens, and then never leaves.
+ *
  * This covers the FIXTURE source only. The panel's other source — the signed-in session's own data,
  * run against the real managers — needs an authorized preview and has no e2e yet; its write guard is
  * covered by `src/tests/popupSandboxLiveManagers.test.ts` instead.
@@ -137,13 +141,24 @@ async function layoutComplaints(page: Page): Promise<string[]> {
   return await page.evaluate(collectLayoutComplaints);
 }
 
-for(let part = 0; part < PARTS; ++part) test(`every popup story opens and becomes visible (part ${part + 1}/${PARTS})`, async({page}) => {
+/** Reduced animations, as Power Saving sets them; the sandbox runs no `appImManager` to put the body's classes on. */
+function reduceAnimations() {
+  const [, setAppSettings] = (window as any).useAppSettings();
+  setAppSettings('liteMode', 'motion', true);
+  document.body.classList.remove('animation-level-2');
+}
+
+for(const reduced of [false, true]) for(let part = 0; part < PARTS; ++part) test(`every popup story opens and becomes visible (part ${part + 1}/${PARTS}${reduced ? ', reduced animations' : ''})`, async({page}) => {
   // A part still walks a slice of the registry, more than the config's per-test default allows.
   test.setTimeout(3 * 60_000);
 
   const {pageErrors, renderErrors} = trackBrowserErrors(page);
 
   await preparePopupSandbox(page);
+  if(reduced) {
+    await page.evaluate(reduceAnimations);
+    expect(await page.evaluate(() => (window as any).liteMode.getAnimationLevel())).toBe(1);
+  }
 
   const stories = takeStoryPart(await page.evaluate(() => window.popupSandbox.list()), part, PARTS);
   expect(stories.length).toBeGreaterThan(0);

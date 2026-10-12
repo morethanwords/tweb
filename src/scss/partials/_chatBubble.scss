@@ -52,7 +52,10 @@
     cursor: pointer;
     pointer-events: all;
     overflow: hidden;
-    transition: bottom var(--transition-standard-out);
+
+    @include animation-level(2) {
+      transition: bottom var(--transition-standard-out);
+    }
 
     .bubbles.is-selecting & {
       transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
@@ -246,7 +249,7 @@
       &.is-hiding {
         opacity: 0 !important;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-out);
         }
       }
@@ -500,8 +503,11 @@
     justify-content: center;
     box-shadow: var(--menu-box-shadow);
 
-    @include animation-level(2) {
-      transition: opacity var(--btn-corner-transition), transform var(--btn-corner-transition);
+    @include animation-level-transition(opacity var(--btn-corner-transition), transform var(--btn-corner-transition));
+
+    // reduced: it fades where it stands, in and out
+    @include animation-level-below(2) {
+      transform: none;
     }
 
     &.is-visible {
@@ -627,6 +633,10 @@
 
     html.no-touch &.with-hover {
       opacity: 0;
+    }
+
+    html.no-touch body.animation-level-1 & {
+      transition: opacity .2s ease-in-out;
     }
 
     html.no-touch body.animation-level-2 & {
@@ -1792,7 +1802,7 @@
       z-index: 2;
       opacity: 1;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity var(--transition-standard-in);
       }
 
@@ -1865,7 +1875,7 @@
     line-height: 1;
     opacity: 1;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
 
@@ -3940,7 +3950,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     .bubble-content-wrapper {
       transition: var(--bubble-transition-in);
     }
@@ -3954,6 +3964,11 @@
       transform: translateX(0) scale3d(.8, .8, 1);
       //transform: scale(.8) translateX(0);
       opacity: 0;
+
+      // reduced: it fades where it stands
+      @include animation-level-only(1) {
+        transform: none;
+      }
     }
   }
 

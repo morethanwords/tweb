@@ -607,6 +607,16 @@ class TextHighlighter implements TextHighlight {
     const boxes = this.computeLineBoxes(this.ranges);
     if(this.introPending) {
       this.introPending = false;
+      // * reduced animations: the match fades in where it is, without narrowing onto it
+      if(!liteMode.isAvailable('motion')) {
+        this.fadeOverlayIn(boxes.map((box) => this.createLineBox(box)));
+        this.introTimeout = window.setTimeout(() => {
+          this.introTimeout = undefined;
+          this.overlay.classList.remove(OVERLAY_INTRO_CLASS);
+        }, NARROW_APPEAR);
+        return;
+      }
+
       const fullRange = boxes.length && computeFullRange(container, skip);
       const full = fullRange ? this.computeLineBoxes([fullRange]) : [];
       if(full.length) {
@@ -642,13 +652,7 @@ class TextHighlighter implements TextHighlight {
   private narrowIn(full: TextLineBox[], targets: TextLineBox[]) {
     const {overlay} = this;
     const elements = full.map((box) => this.createLineBox(box));
-    // * the transparent start state is committed while nothing transitions yet — otherwise the
-    // * jump to it would itself animate and the fade-in would reverse from ~1
-    overlay.classList.add(OVERLAY_APPEARING_CLASS);
-    overlay.replaceChildren(...elements);
-    void overlay.offsetWidth;
-    overlay.classList.add(OVERLAY_INTRO_CLASS);
-    overlay.classList.remove(OVERLAY_APPEARING_CLASS);
+    this.fadeOverlayIn(elements);
 
     this.introTimeout = window.setTimeout(() => {
       const {ends, extra} = computeNarrowing(full, targets);
@@ -674,6 +678,18 @@ class TextHighlighter implements TextHighlight {
         this.paintLineBoxes(targets);
       }, NARROW_DURATION);
     }, NARROW_APPEAR + NARROW_HOLD);
+  }
+
+  /** puts `elements` into the overlay and fades it in */
+  private fadeOverlayIn(elements: HTMLElement[]) {
+    const {overlay} = this;
+    // * the transparent start state is committed while nothing transitions yet — otherwise the
+    // * jump to it would itself animate and the fade-in would reverse from ~1
+    overlay.classList.add(OVERLAY_APPEARING_CLASS);
+    overlay.replaceChildren(...elements);
+    void overlay.offsetWidth;
+    overlay.classList.add(OVERLAY_INTRO_CLASS);
+    overlay.classList.remove(OVERLAY_APPEARING_CLASS);
   }
 
   private clearIntro() {

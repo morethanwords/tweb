@@ -20,6 +20,7 @@ import {delay} from '@components/mediaEditor/utils';
 import {TabContentContext} from '@components/mediaEditor/tabs/tabContent';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import A11yButton from '@components/a11yButton';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 export default function StickersTab() {
   const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
@@ -60,7 +61,7 @@ export default function StickersTab() {
     setActiveSet(String(id));
     setScrolling(true);
     container()?.querySelector(`[data-set-id="${id}"]`)?.scrollIntoView({
-      behavior: 'smooth',
+      behavior: smoothScrollBehavior(),
       block: 'start'
     });
     await delay(1000);

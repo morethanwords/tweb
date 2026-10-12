@@ -261,6 +261,7 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppPowerSavingTab:LiteMode.Key.effects.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.effects.Title'},
     {id: 'AppPowerSavingTab:LiteMode.Key.emoji_appear.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.emoji_appear.Title'},
     {id: 'AppPowerSavingTab:LiteMode.Key.gif.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.gif.Title'},
+    {id: 'AppPowerSavingTab:LiteMode.Key.motion.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.motion.Title'},
     {id: 'AppPowerSavingTab:LiteMode.Key.stickers_chat.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.stickers_chat.Title'},
     {id: 'AppPowerSavingTab:LiteMode.Key.stickers_panel.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.stickers_panel.Title'},
     {id: 'AppPowerSavingTab:LiteMode.Key.stickers.Title', sectionId: 'AppPowerSavingTab', kind: 'option', titleLangKey: 'LiteMode.Key.stickers.Title'},

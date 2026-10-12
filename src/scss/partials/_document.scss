@@ -26,7 +26,7 @@
     &-text {
       opacity: 0;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
     }

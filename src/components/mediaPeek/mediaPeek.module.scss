@@ -38,7 +38,7 @@ $switch-transition: .2s cubic-bezier(.12, 1.1, .56, 1.2);
     background-color: rgba(0, 0, 0, .6);
     opacity: 0;
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition: opacity var(--layer-transition);
     }
   }
@@ -93,14 +93,17 @@ $switch-transition: .2s cubic-bezier(.12, 1.1, .56, 1.2);
   &Item.leaving {
     transform: scale(.4);
     opacity: 0;
+
+    // reduced: the two crossfade where they stand
+    @include animation-level-below-global(2) {
+      transform: none;
+    }
   }
 
   &Item.entering,
   &Item.leaving,
   &Item.switching {
-    @include animation-level-global(2) {
-      transition: transform $switch-transition, opacity $switch-transition;
-    }
+    @include animation-level-transition(transform $switch-transition, opacity $switch-transition, $global: true);
   }
 
   &Media {
@@ -159,7 +162,7 @@ $switch-transition: .2s cubic-bezier(.12, 1.1, .56, 1.2);
   :global(.emoji-animation) {
     opacity: 0;
 
-    @include animation-level-global(2) {
+    @include animation-level-global(1) {
       transition: opacity var(--layer-transition);
     }
   }

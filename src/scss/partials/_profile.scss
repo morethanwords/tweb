@@ -158,7 +158,7 @@
         --size: 420px;
         opacity: 0;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition-standard-in);
         }
       }
@@ -196,8 +196,11 @@
         transition-delay: 0s, 0s;
         transform: scale(1);
 
-        @include animation-level(2) {
-          transition: opacity .05s, transform var(--transition-standard-in);
+        @include animation-level-transition(opacity .05s, transform var(--transition-standard-in));
+
+        // reduced: no shrink to time its fade by - it fades on a clock of its own
+        @include animation-level-only(1) {
+          transition: opacity var(--transition-standard-out);
         }
       }
 
@@ -219,7 +222,7 @@
       background: linear-gradient(360deg, rgba(0, 0, 0, .3) 8.98%, rgba(0, 0, 0, 0) 100%);
       pointer-events: none;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         opacity: 1;
         transition: opacity var(--transition-standard-easing) calc(var(--transition-standard-in-time) / 2);
         transition-delay: calc(var(--transition-standard-in-time) / 2);
@@ -247,9 +250,7 @@
         bottom: 1.9375rem;
       }
 
-      @include animation-level(2) {
-        transition: transform var(--transition-standard-in), color var(--transition-standard-in), bottom var(--transition-standard-in);
-      }
+      @include animation-level-transition(transform var(--transition-standard-in), color var(--transition-standard-in), bottom var(--transition-standard-in));
 
       .profile-name,
       .profile-subtitle {
@@ -260,6 +261,11 @@
         transform: translateX(0);
         position: relative;
         white-space: nowrap;
+
+        // the width follows the place it moves to, so it goes along with it: at once, with reduced animations
+        @include animation-level(1) {
+          transition: color var(--transition-standard-in);
+        }
 
         @include animation-level(2) {
           transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in), max-width var(--transition-standard-in);
@@ -278,7 +284,7 @@
         
         &-text {
           opacity: var(--secondary-opacity-max);
-          @include animation-level(2) {
+          @include animation-level(1) {
             transition: opacity var(--transition-standard-in);
           }
         }
@@ -299,7 +305,7 @@
       }
 
       .premium-icon {
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: color var(--transition-standard-in), opacity var(--transition-standard-in);
         }
       }
@@ -314,7 +320,7 @@
       height: .125rem;
       pointer-events: none;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         opacity: 1;
         transition: opacity var(--transition-standard-in);
       }
@@ -366,7 +372,7 @@
         opacity: 1;
       }
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
 
@@ -548,6 +554,12 @@
         opacity: 0;
         transform: scale(.8916666667);
         transition-delay: calc(var(--transition-standard-in-time) - .05s), 0s;
+
+        // reduced: it fades out where it stands, at once
+        @include animation-level-below(2) {
+          transform: none;
+          transition-delay: 0s;
+        }
       }
 
       .profile-subtitle-text,
@@ -654,19 +666,19 @@
       inset-inline: 0;
       z-index: 3;
 
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: background-color var(--transition);
       }
 
       &:after {
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity var(--transition);
         }
       }
 
       .sidebar-header__title,
       .btn-icon {
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: color var(--transition);
         }
       }

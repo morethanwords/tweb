@@ -89,7 +89,7 @@ $btn-menu-z-index: 4;
     }
   }
 
-  body.animation-level-0 & {
+  @include animation-level-below(2) {
 		transition: none !important;
   }
 
@@ -137,6 +137,11 @@ $btn-menu-z-index: 4;
     opacity: 0;
     transform: var(--transform-extra) scale(.8);
     transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
+
+    // reduced: a menu fades where it opens, in and out
+    @include animation-level-below(2) {
+      transform: var(--transform-extra);
+    }
 
     body.animation-level-0 & {
       transition: none;
@@ -321,7 +326,7 @@ $btn-menu-z-index: 4;
       }
     }
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: transform .1s var(--transition-standard-easing);
     }
 
@@ -705,9 +710,7 @@ $btn-menu-z-index: 4;
       transform: scale(.8);
       transform-origin: bottom left;
 
-      @include animation-level(2) {
-        transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-      }
+      @include animation-level-transition(opacity var(--transition-standard-in), transform var(--transition-standard-in));
 
       &.is-visible {
         opacity: 1;
@@ -1037,7 +1040,7 @@ $btn-menu-z-index: 4;
     opacity: 0;
     pointer-events: none;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
   }
@@ -1067,6 +1070,15 @@ $btn-menu-z-index: 4;
     transform-origin: 0 0;
     transform: scale(0.5);
     opacity: 0;
+
+    // reduced: it fades where it stands
+    @include animation-level-below(2) {
+      transform: none;
+    }
+  }
+
+  @include animation-level(0) {
+    transition: none;
   }
 }
 
@@ -1183,9 +1195,7 @@ $btn-menu-z-index: 4;
     line-height: 1;
     font-weight: var(--font-weight-bold);
 
-    @include animation-level(2) {
-      transition: width 0.2s, background-color .2s, color .2s;
-    }
+    @include animation-level-transition(width 0.2s, background-color .2s, color .2s);
 
     &.active {
       background-color: var(--light-primary-color) !important;
@@ -1299,12 +1309,12 @@ $btn-menu-z-index: 4;
     font-size: .875rem;
     margin-top: .25rem;
 
-    @include animation-level(2) {
+    @include animation-level(1) {
       transition: opacity var(--transition-standard-in);
     }
   }
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
   }
 

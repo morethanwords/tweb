@@ -1958,6 +1958,7 @@ const Stories = (props: {
   const scrollPath = (path: number) => {
     const target = Math.max(0, path);
     const startTime = Date.now();
+    const duration = liteMode.isAvailable('motion') ? 300 : 0;
     scrolling = true;
 
     const story = currentStory();
@@ -1966,7 +1967,7 @@ const Stories = (props: {
         return false;
       }
 
-      const t = Math.min(1, (Date.now() - startTime) / 300);
+      const t = duration ? Math.min(1, (Date.now() - startTime) / duration) : 1;
       const value = easeOutCubicApply(t, 1);
       const currentPath = path * (1 - value);
       const scrollTop = Math.round(target - currentPath);
@@ -2606,7 +2607,7 @@ const Stories = (props: {
     on(
       () => [isActive(), currentStory()],
       () => {
-        if(liteMode.isAvailable('animations')) {
+        if(liteMode.isAvailable('motion')) {
           return;
         }
 
@@ -3202,7 +3203,8 @@ export default function StoriesViewer(props: {
   let avatarFrom: ReturnType<typeof AvatarNew>;
   const open = () => {
     const target = props.target?.();
-    if(!target || !target.classList.contains('avatar')) {
+    // * the avatar flies to the header with full animations only, so below them nothing waits for it
+    if(!target || !target.classList.contains('avatar') || !liteMode.isAvailable('motion')) {
       setShow(true);
       return;
     }
@@ -3291,9 +3293,21 @@ export default function StoriesViewer(props: {
 
     const containers = Array.from(el.querySelectorAll(`.${styles.ViewerStoryContainer}`));
     let needAvatarOpacity: boolean;
+    const dropAvatarFrom = () => {
+      if(avatarFrom) {
+        avatarFrom.node.remove();
+        avatarFrom = undefined;
+      }
+    };
     const target = untrack(() => {
       const target = props.target?.();
       if(!target) {
+        return;
+      }
+
+      // reduced animations: the viewer fades where it stands instead of flying from the avatar
+      if(!liteMode.isAvailable('motion')) {
+        dropAvatarFrom();
         return;
       }
 
@@ -3304,11 +3318,7 @@ export default function StoriesViewer(props: {
 
       const visibleRect = getVisibleRect(target as HTMLElement, overflowElement);
       if(!visibleRect) {
-        if(avatarFrom) {
-          avatarFrom.node.remove();
-          avatarFrom = undefined;
-        }
-
+        dropAvatarFrom();
         return;
       }
 

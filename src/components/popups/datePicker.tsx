@@ -13,6 +13,7 @@ import {wrapReplyMedia} from '@components/chat/replyContainer';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {Message, MessagesFilter} from '@layer';
 import {ScrollableContextValue} from '@components/scrollable2';
+import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 
 const MILLIS_IN_MINUTE = 60 * 1000;
 
@@ -390,7 +391,7 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
       // would suppress the scroll event we need to update reactive state.
       scrollableHostRef.scrollTo({
         top: section.offset,
-        behavior: smooth ? 'smooth' : 'auto'
+        behavior: smooth ? smoothScrollBehavior() : 'auto'
       });
     }
 

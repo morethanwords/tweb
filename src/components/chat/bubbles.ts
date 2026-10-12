@@ -12601,8 +12601,9 @@ export default class ChatBubbles {
         }
       }
 
+      // * the ladder's zoom runs with full animations only, and is waited for
       if(animate === undefined && !noTransition) {
-        animate = true;
+        animate = liteMode.isAvailable('motion');
       }
 
       if(isWaitingForAnimation || animate) {
@@ -13279,7 +13280,7 @@ export default class ChatBubbles {
 
     const waitPromise = isAdditionRender ? processPromise(resultPromise) : promise;
 
-    if(isFirstMessageRender && liteMode.isAvailable('animations')/*  && false */) {
+    if(isFirstMessageRender && liteMode.isAvailable('motion')/*  && false */) {
       let times = isAdditionRender ? 2 : 1;
       this.messagesQueueOnRenderAdditional = () => {
         this.log('messagesQueueOnRenderAdditional');

@@ -71,7 +71,7 @@
   transform: translate(-50%, -50%) scale(var(--scale, 1));
   background-color: var(--primary-color);
 
-  @include animation-level-global(2) {
+  @include animation-level-global(1) {
     transition:
       width 0.1s,
       height 0.1s,

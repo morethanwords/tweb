@@ -10,7 +10,7 @@
   padding: 0 .5rem;
 	transition: transform .2s ease;
 
-	body.animation-level-0 & {
+	@include animation-level-below(2) {
 		transition: none;
 	}
 

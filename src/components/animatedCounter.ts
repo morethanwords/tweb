@@ -326,7 +326,7 @@ export function setRollingText({element, text, direction, animate}: {
     return;
   }
 
-  if(!animate || document.hidden || !element.isConnected || !liteMode.isAvailable('animations')) {
+  if(!animate || document.hidden || !element.isConnected || !liteMode.isAvailable('motion')) {
     if(rolling) {
       rolling.text = text;
       settle(element, rolling);

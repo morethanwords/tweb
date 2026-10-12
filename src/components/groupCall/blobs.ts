@@ -233,7 +233,8 @@ export default abstract class GroupCallBlobs {
   }
 
   private applyHidden(hidden: boolean, now: number) {
-    hidden ||= !liteMode.isAvailable('animations');
+    // * the waves wobble and grow: decorative motion, which reduced animations go without
+    hidden ||= !liteMode.isAvailable('motion');
     if(this.hidden === hidden) {
       return false;
     }

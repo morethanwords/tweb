@@ -36,7 +36,7 @@
         height: var(--mask-height);
         opacity: 0;
 
-        @include animation-level(2) {
+        @include animation-level(1) {
           transition: opacity .2s ease-in-out;
         }
       }
@@ -90,7 +90,7 @@
       border-radius: 3px;
     }
 
-    body:not(.animation-level-0) & {
+    @include animation-level(2) {
       &-wrapper,
       &-mark {
         transition: transform .25s ease-in-out;
@@ -451,11 +451,7 @@
   }
 
   .animated-counter {
-    transition: transform var(--pm-transition), opacity var(--pm-transition);
-
-    body.animation-level-0 & {
-      transition: none;
-    }
+    @include animation-level-transition(transform var(--pm-transition), opacity var(--pm-transition));
 
     &:before {
       content: "#";
@@ -464,6 +460,11 @@
     &.is-last {
       transform: scale(0.68);
       opacity: 0;
+
+      // reduced: it fades out where it stands
+      @include animation-level-below(2) {
+        transform: none;
+      }
     }
   }
 
@@ -606,7 +607,7 @@
     transition: transform var(--transition-standard-out);
 
     &:before {
-      @include animation-level(2) {
+      @include animation-level(1) {
         transition: opacity .2s ease-in-out;
       }
     }
@@ -751,7 +752,7 @@
   gap: .25rem;
   opacity: 1;
 
-  @include animation-level(2) {
+  @include animation-level(1) {
     transition: opacity var(--transition-standard-in);
   }
 

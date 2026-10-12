@@ -194,10 +194,20 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
   // let animationStarted = 0;
   let from: HTMLElement = null;
 
+  // what ends the switch in flight: the type's own movement is a transition when
+  // it has a function, a keyframe animation otherwise, and so is the crossfade
+  // that stands in for any of them at the reduced animation level
+  let endEventName = animationFunction ? 'transitionend' : 'animationend';
   if(withAnimationListener) {
-    const listenerName = animationFunction ? 'transitionend' : 'animationend';
+    const listenerNames: ('transitionend' | 'animationend')[] = animationFunction ? ['transitionend', 'animationend'] : ['animationend'];
 
     const onEndEvent = (e: TransitionEvent | AnimationEvent) => {
+      // * the content's own end is not this slider's: the content is a screen of an
+      // * outer one (the settings tab is a slider of its own), which waits for it
+      if(e.type !== endEventName || e.target === content) {
+        return;
+      }
+
       cancelEvent(e);
 
       if((e.target as HTMLElement).parentElement !== content) {
@@ -222,19 +232,23 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
 
       onTransitionEnd?.(selectTab.prevId());
 
-      content.classList.remove('animating', 'backwards', 'disable-hover');
+      content.classList.remove('animating', 'animating-fade', 'backwards', 'disable-hover');
 
       if(once) {
-        if(listenerSetter) listenerSetter.removeManual(content, listenerName, onEndEvent);
-        else content.removeEventListener(listenerName, onEndEvent/* , {capture: false} */);
+        listenerNames.forEach((listenerName) => {
+          if(listenerSetter) listenerSetter.removeManual(content, listenerName, onEndEvent);
+          else content.removeEventListener(listenerName, onEndEvent/* , {capture: false} */);
+        });
         from = animationDeferred = undefined;
         onTransitionEndCallbacks.clear();
       }
     };
 
     // TODO: check for transition type (transform, etc) using by animationFunction
-    if(listenerSetter) listenerSetter.add(content)(listenerName, onEndEvent);
-    else content.addEventListener(listenerName, onEndEvent/* , {passive: true, capture: false} */);
+    listenerNames.forEach((listenerName) => {
+      if(listenerSetter) listenerSetter.add(content)(listenerName, onEndEvent);
+      else content.addEventListener(listenerName, onEndEvent/* , {passive: true, capture: false} */);
+    });
   }
 
   function selectTab(id: number | HTMLElement, animate = true, overrideFrom?: typeof from) {
@@ -255,7 +269,8 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
 
     const to = content.children[id] as HTMLElement;
 
-    if(!liteMode.isAvailable('animations') || (prevId === -1 && !animateFirst)) {
+    const animationLevel = liteMode.getAnimationLevel();
+    if(!animationLevel || (prevId === -1 && !animateFirst)) {
       animate = false;
     }
 
@@ -280,7 +295,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
         to.classList.add('active');
       }
 
-      content.classList.remove('animating', 'backwards', 'disable-hover');
+      content.classList.remove('animating', 'animating-fade', 'backwards', 'disable-hover');
 
       from = to;
 
@@ -292,7 +307,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
       content.dataset.timeout = '' + window.setTimeout(() => {
         to.classList.remove('to');
         from && from.classList.remove('from');
-        content.classList.remove('animating', 'backwards', 'disable-hover');
+        content.classList.remove('animating', 'animating-fade', 'backwards', 'disable-hover');
         delete content.dataset.timeout;
       }, transitionTime);
     }
@@ -302,7 +317,12 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
       from.classList.add('from');
     }
 
+    // with reduced animations whatever the type does - slide, push, zoom - the
+    // screens crossfade instead (`.animating-fade` in _transition.scss)
+    const fade = animationLevel === 1 && type !== 'none' && !!to;
+    endEventName = fade || !animationFunction ? 'animationend' : 'transitionend';
     content.classList.add('animating'/* , 'disable-hover' */);
+    content.classList.toggle('animating-fade', fade);
     const toRight = prevId < id;
     content.classList.toggle('backwards', !toRight);
 
@@ -310,7 +330,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
     if(!to) {
       // prevTabContent.classList.remove('active');
     } else {
-      if(animationFunction) {
+      if(animationFunction && !fade) {
         onTransitionEndCallback = animationFunction(to, from, toRight);
       } else {
         to.classList.add('active');

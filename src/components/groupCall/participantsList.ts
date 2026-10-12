@@ -14,6 +14,7 @@ import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import type {GroupCallParticipant} from '@layer';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
+import liteMode from '@helpers/liteMode';
 
 interface SortedParticipant extends SortedElementBase<PeerId> {
   dom: DialogDom,
@@ -155,7 +156,8 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
     const shown = speaking && (state === states.SPEAKING || state === states.MUTED_FOR_ME);
     let {blobs} = element;
     if(!blobs) {
-      if(!shown) {
+      // * nor any canvas for waves that would not show
+      if(!shown || !liteMode.isAvailable('motion')) {
         return;
       }
 

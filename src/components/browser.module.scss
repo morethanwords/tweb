@@ -134,7 +134,7 @@ $transition: .2s var(--transition-standard-easing);
           height: 1.6875rem;
           border-radius: 50%;
 
-          @include animation-level-global(2) {
+          @include animation-level-global(1) {
             transition: border-color $transition;
           }
         }
@@ -192,7 +192,7 @@ $transition: .2s var(--transition-standard-easing);
         opacity: 0;
         pointer-events: none;
 
-        @include animation-level-global(2) {
+        @include animation-level-global(1) {
           transition: opacity $transition, background-color $transition;
         }
       }
@@ -224,9 +224,7 @@ $transition: .2s var(--transition-standard-easing);
       opacity: 1;
       box-shadow: 0px 0px 5px rgba(0, 0, 0, .08);
 
-      @include animation-level-global(2) {
-        transition: transform $transition, width $transition, opacity $transition;
-      }
+      @include animation-level-transition(transform $transition, width $transition, opacity $transition, $global: true);
 
       &Tail {
         position: absolute;
@@ -254,15 +252,13 @@ $transition: .2s var(--transition-standard-easing);
 
       @include text-overflow();
 
-      @include animation-level-global(2) {
-        transition: opacity $transition, transform $transition;
-      }
+      @include animation-level-transition(opacity $transition, transform $transition, $global: true);
     }
 
     &NewButton {
       opacity: 1;
 
-      @include animation-level-global(2) {
+      @include animation-level-global(1) {
         transition: opacity $transition;
       }
     }

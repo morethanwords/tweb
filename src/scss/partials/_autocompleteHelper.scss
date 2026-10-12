@@ -25,7 +25,7 @@
 		visibility: hidden;
 	}
 
-	@include animation-level(2) {
+	@include animation-level(1) {
 		&.is-visible {
 			animation: fade-out-opacity .2s ease-in-out forwards;
 			transition: visibility 0s .2s;
@@ -36,7 +36,7 @@
 	#stories-viewer &.is-visible.forwards {
 		visibility: visible;
 
-		@include animation-level(2) {
+		@include animation-level(1) {
 			animation-name: fade-in-opacity;
 			transition: visibility 0s 0s;
 		}
