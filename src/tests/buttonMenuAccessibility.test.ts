@@ -53,6 +53,24 @@ function pressKey(element: HTMLElement, key: string) {
   return event;
 }
 
+describe('ButtonMenu separators', () => {
+  const tags = (menu: HTMLElement) => [...menu.children].map((child) => child.tagName);
+
+  it('draws none ahead of the first item or past the last, only between items', () => {
+    // what is left of a menu once the items before a separated one failed their verify
+    expect(tags(ButtonMenuSync({buttons: [
+      {regularText: 'Remove', separator: true, onClick: vi.fn()}
+    ]}))).toEqual(['DIV']);
+    expect(tags(ButtonMenuSync({buttons: [
+      {regularText: 'Edit', separatorDown: true, onClick: vi.fn()}
+    ]}))).toEqual(['DIV']);
+    expect(tags(ButtonMenuSync({buttons: [
+      {regularText: 'Edit', onClick: vi.fn()},
+      {regularText: 'Remove', separator: true, onClick: vi.fn()}
+    ]}))).toEqual(['DIV', 'HR', 'DIV']);
+  });
+});
+
 describe('ButtonMenu keyboard accessibility', () => {
   afterEach(() => document.body.replaceChildren());
   beforeEach(() => {

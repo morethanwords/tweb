@@ -311,8 +311,11 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
     });
   }
 
-  const items = buttons.map(ButtonMenuItem);
-  el.append(...flatten(items));
+  // a separator stands between items: none ahead of the first one a `verify` left, nor past the last
+  const elements = flatten(buttons.map(ButtonMenuItem));
+  while(elements[0]?.tagName === 'HR') elements.shift();
+  while(elements[elements.length - 1]?.tagName === 'HR') elements.pop();
+  el.append(...elements);
 
   if(radioGroups) {
     radioGroups.forEach((group) => {
