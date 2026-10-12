@@ -48,11 +48,16 @@ if(isDEV) {
     copyFileSync(path.join(rootDir, '.env.local.example'), ENV_LOCAL_FILE_PATH);
   }
 
-  watchLangFile();
-  // the dev server is what runs while the SCSS is being edited, so it is what keeps the generated
-  // `*.module.d.scss.ts` in step — otherwise the editor (and `typecheck:watch`) reports a class
-  // that was just renamed as missing until someone remembers to regenerate.
-  watchScssTypes();
+  // A Playwright suite's server (TWEB_E2E) only serves the tree: the lang watcher would bump the
+  // version and run format-lang on every start, holding the start up and rewriting files under
+  // the run, and nobody edits SCSS through it.
+  if(!process.env.TWEB_E2E) {
+    watchLangFile();
+    // the dev server is what runs while the SCSS is being edited, so it is what keeps the generated
+    // `*.module.d.scss.ts` in step — otherwise the editor (and `typecheck:watch`) reports a class
+    // that was just renamed as missing until someone remembers to regenerate.
+    watchScssTypes();
+  }
 }
 
 const handlebarsPlugin = handlebars({

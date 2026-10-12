@@ -34,7 +34,7 @@ export default defineConfig({
   webServer: externalBaseURL ? undefined : {
     command: `pnpm exec vite --config vite.e2e.config.ts --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
-    env: {TWEB_PREVIEW: '1'},
+    env: {TWEB_PREVIEW: '1', TWEB_E2E: '1'},
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
   }

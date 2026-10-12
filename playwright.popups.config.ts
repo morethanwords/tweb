@@ -36,7 +36,7 @@ export default defineConfig<{freshContext: boolean}>({
   webServer: {
     command: `node_modules/.bin/vite --config vite.popups-e2e.config.ts --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}/?popups=1`,
-    env: {TWEB_PREVIEW: '1'},
+    env: {TWEB_PREVIEW: '1', TWEB_E2E: '1'},
     reuseExistingServer: false,
     timeout: 120_000
   }
