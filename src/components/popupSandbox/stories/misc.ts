@@ -408,6 +408,24 @@ defineStories('Stars & payments (more)', [
     }
   },
   {
+    // Saved shipping information on the account: the rows come filled, and validating them — which
+    // is what hands them to the bot — waits for the user to press Pay.
+    id: 'payment/invoiceSavedInfo',
+    fixtureOnly: true,
+    title: 'Invoice checkout with saved information',
+    open: async(ctx) => {
+      const [{createPaymentPopup}, {paymentForm, savedPaymentInfo}] = await Promise.all([
+        import('@components/popups/payment'),
+        import('../fixtures')
+      ]);
+
+      await createPaymentPopup({
+        paymentForm: {...paymentForm, saved_info: savedPaymentInfo},
+        inputInvoice: {_: 'inputInvoiceMessage', peer: {_: 'inputPeerSelf'}, msg_id: ctx.mid('private')}
+      });
+    }
+  },
+  {
     id: 'payment/starsPay',
     fixtureOnly: true,
     title: 'Pay with Stars',

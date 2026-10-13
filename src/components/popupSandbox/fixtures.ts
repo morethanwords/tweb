@@ -13,6 +13,7 @@ import type {
   Document,
   HelpPremiumPromo,
   Message,
+  PaymentRequestedInfo,
   PaymentsPaymentForm,
   PaymentsValidatedRequestedInfo,
   Photo,
@@ -509,6 +510,25 @@ export const starsPaymentForm: PaymentsPaymentForm.paymentsPaymentFormStars = {
     prices: [{_: 'labeledPrice', label: 'Pack', amount: 250}]
   },
   users: [botUser]
+};
+
+/**
+  * What the account saved from an earlier order. The checkout fills its rows from this, and the
+  * invoice asks for exactly what it carries — a set the server would accept.
+  */
+export const savedPaymentInfo: PaymentRequestedInfo = {
+  _: 'paymentRequestedInfo',
+  name: 'Sandbox Buyer',
+  email: 'buyer@example.com',
+  shipping_address: {
+    _: 'postAddress',
+    street_line1: '1 Sandbox Street',
+    street_line2: '',
+    city: 'Sandboxville',
+    state: '',
+    country_iso2: 'DE',
+    post_code: '10115'
+  }
 };
 
 export const shippingOptions: ShippingOption.shippingOption[] = [

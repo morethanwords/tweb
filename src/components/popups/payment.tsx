@@ -271,6 +271,9 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
   const paymentForm = options.paymentForm;
   let result: PopupPaymentResult = 'cancelled';
   let opened = false;
+  // Set the moment the checkout goes away (`destroy` fires `onClose` at once, 250ms before the
+  // content is disposed), so nothing awaited across the close carries on afterwards.
+  let closed = false;
   // The form resolves in two stages, so the content does too: the item itself is known from the
   // invoice and renders right away, everything priced waits for the server. Both are components
   // rather than elements — `build` defines them, the popup instantiates them under its own owner.
@@ -298,7 +301,10 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
           class={'popup-payment' + (loading() ? ' is-loading' : '')}
           closable
           show={show()}
-          onClose={() => emitter.dispatchEvent('finish', result)}
+          onClose={() => {
+            closed = true;
+            emitter.dispatchEvent('finish', result);
+          }}
         >
           <PopupElement.Header>
             <PopupElement.CloseButton />
@@ -413,16 +419,17 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
     let savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt.paymentsPaymentReceipt).info;
     const savedCredentials = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_credentials?.[0];
+    // Validating the saved information is what hands it over to the bot: for a flexible invoice the
+    // server turns the call into a shipping query carrying the name and the whole postal address. So
+    // the checkout never validates while it is being built — only once the user has pressed Pay.
+    let lastRequestedInfo: PaymentsValidatedRequestedInfo;
+    // Bumped by every popup the user opens from a row. A press that is waiting for the server comes
+    // back to a checkout they have moved on from, so the count is what tells it so.
+    let interactions = 0;
     let [
-      lastRequestedInfo,
       passwordState,
       providerPeerTitle
     ] = await Promise.all([
-      !isReceipt && savedInfo && rootScope.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo).catch((err: ApiError) => {
-        console.error('validateRequestedInfo', err, savedInfo);
-        // savedInfo = undefined;
-        return undefined as PaymentsValidatedRequestedInfo;
-      }),
       savedCredentials && rootScope.managers.passwordManager.getState(),
       wrapPeerTitle({peerId: isStars ? NULL_PEER_ID : (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).provider_id.toPeerId()})
     ]);
@@ -559,6 +566,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
     };
 
     const onMethodClick = async() => {
+      ++interactions;
       const user = useUser(rootScope.myId) as User.user;
       assumeType<PaymentsPaymentForm.paymentsPaymentForm>(paymentForm);
 
@@ -632,6 +640,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
     if(!isReceipt) {
       onShippingAddressClick = (focus) => {
+        ++interactions;
         showPaymentShippingPopup({
           paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentForm,
           inputInvoice,
@@ -666,6 +675,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
       shippingMethodRow = createPaymentRowState({hidden: true});
       onShippingMethodClick = () => {
+        ++interactions;
         showPaymentShippingMethodsPopup({
           paymentForm: paymentForm as PaymentsPaymentForm,
           requestedInfo: lastRequestedInfo,
@@ -768,25 +778,67 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
     // /
     let hideVerification: () => void, lastTmpPasword: AccountTmpPassword;
-    const onClick = () => {
+    // Pressing Pay is the first moment the user has agreed to disclose the saved information, so
+    // that is where it is validated, and the same press then carries on through the rest of the flow.
+    const validateSavedInfo = async(): Promise<void | false> => {
+      const info = savedInfo;
+      const since = interactions;
+      let requestedInfo: PaymentsValidatedRequestedInfo;
+      try {
+        requestedInfo = await rootScope.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, info);
+      } catch(err) {
+        console.error('validateRequestedInfo', err, info);
+      }
+
+      // The whole checkout stays live while the request is in flight: it can be closed, a row can
+      // be opened and edited (`savedInfo` is only replaced when that editor is done, so the count
+      // is what catches an edit still being made), the terms can be unticked. Anything of that and
+      // the press this answers is spent: it must neither pay, nor open anything over what the user
+      // is doing, nor replace information that carries a validation of its own.
+      if(closed || interactions !== since || savedInfo !== info || payDisabled()) {
+        return false;
+      }
+
+      if(!requestedInfo) { // the server refused it — let the user correct it by hand
+        onShippingAddressClick();
+        return false;
+      }
+
+      lastRequestedInfo = requestedInfo;
+      setShippingInfo(info); // the shipping method row appears once its options are known
+      return onClick();
+    };
+
+    const onClick = (): MaybePromise<void | false> => {
       const missingInfo = invoice.pFlags.name_requested && !savedInfo?.name ? 'name' : (invoice.pFlags.email_requested && !savedInfo?.email ? 'email' : (invoice.pFlags.phone_requested && !savedInfo?.phone ? 'phone' : undefined));
+      const requestsInfo = invoice.pFlags.shipping_address_requested || invoice.pFlags.name_requested ||
+        invoice.pFlags.email_requested || invoice.pFlags.phone_requested;
+      // what the invoice asks for and the saved information does not carry has to be typed in first —
+      // an incomplete set would only be refused by the server
+      const savedInfoComplete = !!savedInfo && !missingInfo &&
+        (!invoice.pFlags.shipping_address_requested || !!savedInfo.shipping_address);
+
+      if(requestsInfo && savedInfoComplete && !lastRequestedInfo) {
+        return validateSavedInfo();
+      }
+
       if(invoice.pFlags.shipping_address_requested) {
         if(!lastRequestedInfo) {
           onShippingAddressClick();
-          return;
+          return false;
         } else if(!lastShippingOption && lastRequestedInfo.shipping_options) {
           onShippingMethodClick();
-          return;
+          return false;
         }
       } else if(missingInfo) {
         onShippingAddressClick(missingInfo);
-        return;
+        return false;
       }
 
       if(!previousCardDetails && !lastTmpPasword) {
         if(!savedCredentials) {
           onMethodClick();
-          return;
+          return false;
         }
 
         Promise.resolve(passwordState ?? rootScope.managers.passwordManager.getState()).then((_passwordState) => {
@@ -809,7 +861,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
           });
         });
 
-        return;
+        return false;
       }
 
       return Promise.resolve().then(async() => {

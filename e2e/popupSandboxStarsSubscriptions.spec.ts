@@ -70,8 +70,9 @@ test('already-paid bot and channel subscriptions restore through the existing ma
     await expect(popup.locator('.popup-stars-pay-tos2')).toContainText('already paid');
     await popup.getByRole('button', {name: kind === 'bot' ? 'RESUME SUBSCRIPTION' : 'SUBSCRIBE TO CHANNEL', exact: true}).click();
     await expect.poll(() => page.evaluate(() => {
-      const sandbox = window.popupSandbox as typeof window.popupSandbox & {calls(): {manager: string, method: string, args: unknown[]}[]};
-      return sandbox.calls().filter((call) => call.manager === 'appPaymentsManager' && call.method === 'fulfillStarsSubscription').map((call) => call.args[0]);
+      return window.popupSandbox.calls()
+      .filter((call) => call.manager === 'appPaymentsManager' && call.method === 'fulfillStarsSubscription')
+      .map((call) => call.args[0]);
     })).toContain(`sandbox-subscription-restore-${kind}`);
     await expect(popup).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => (window as any).restoredSubscriptionPeer?.peerId)).toBe(kind === 'bot' ? 777004 : -888002);

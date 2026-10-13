@@ -27,6 +27,7 @@ import {
   starGiftUpgradePreview,
   starGiftValueInfo,
   starsAmount,
+  validatedRequestedInfo,
   NOW,
   SELF_PEER_ID,
   SELF_USER_ID
@@ -186,6 +187,10 @@ function createDefaultHandlers(): ManagerHandlers {
       preloadAnimatedEmojiSticker: () => ({doc: undefined as any, animation: undefined as any, sound: undefined as any})
     },
     appPaymentsManager: {
+      // Answered so the checkout can be driven past its shipping step. The call hands the saved
+      // address to the bot, so the popup must only make it once the user has confirmed — see
+      // `payment/invoiceSavedInfo`.
+      validateRequestedInfo: () => validatedRequestedInfo,
       getStarsStatus: () => makeStarsStatus(starsAmount),
       getStarsStatusTon: () => makeStarsStatus({...starsAmount, amount: 0}),
       getStarsTransactions: () => makeStarsStatus(starsAmount),

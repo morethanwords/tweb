@@ -1,6 +1,8 @@
 import type {Page} from '@playwright/test';
 
 type Story = {id: string, title: string, group: string, surface?: string};
+/** One recorded `rootScope.managers` call — what the sandbox answered, or did not. */
+type ManagerCall = {manager: string, method: string, args: unknown[]};
 
 declare global {
   interface Window {
@@ -10,7 +12,8 @@ declare global {
       list(): Story[],
       open(id: string): Promise<void>,
       closePopups(): void,
-      unhandled(): Array<{manager: string, method: string}>
+      calls(): ManagerCall[],
+      unhandled(): ManagerCall[]
     };
     /** Where `openStory` parks the outcome for the poller below to pick up. */
     popupSandboxOutcome: {error: string} | undefined;
