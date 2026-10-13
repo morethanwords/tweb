@@ -94,10 +94,13 @@
 #                 test DCs is a master seed with "isTest": 1 in it
 #                 (TWEB_MASTER_SEED=<it> ... --id <another>): it is minted there,
 #                 and its preview boots in test mode with no ?test=1 needed.
-#   --port        port for a new preview. Default: first free port from 9001
-#                 upward. With --detach a preview of this checkout running on
-#                 another port is still handed out (the script says so); a
-#                 foreground run fails instead.
+#   --port        port for a new preview. Default: 9001 for the main checkout's
+#                 own preview (its default id) — the port is kept for it, so a
+#                 fixed address can point at it — and the first free port from
+#                 9002 upward for any other. Only that preview may ask for 9001.
+#                 With --detach a preview of this checkout running on another
+#                 port is still handed out (the script says so); a foreground
+#                 run fails instead.
 #   --remint      discard the cached auth for this id and mint a fresh one.
 #   --no-worker   run MTProto + crypto in the main thread (debug only). Sets
 #                 Modes.noWorker at build time so breakpoints span the full
@@ -179,6 +182,10 @@ ID="$(sanitize "$ID")"
 # TWEB_MASTER_SEED may be: unset (default seed.json), an absolute path, or a
 # bare filename which we resolve against the main worktree's tmp/.
 MAIN="$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd -P)"
+# The main checkout's own preview — its default id — always gets this port, and no other preview
+# takes it: one address that always shows master.
+MAIN_PORT=9001
+if [ "$REPO" = "$MAIN" ] && [ "$ID" = "$(sanitize "$(basename "$MAIN")")" ]; then IS_MAIN_PREVIEW=1; else IS_MAIN_PREVIEW=0; fi
 MASTER_SEED="${TWEB_MASTER_SEED:-seed.json}"
 case "$MASTER_SEED" in
   /*) ;;  # already absolute — leave as-is
@@ -588,6 +595,9 @@ else
   done
 
   if [ -n "$PORT" ]; then
+    if [ "$PORT" = "$MAIN_PORT" ] && [ "$IS_MAIN_PREVIEW" = 0 ]; then
+      die "port $MAIN_PORT is kept for the main checkout's own preview — pick another port, or none"
+    fi
     if [ -d "$REG/$PORT" ]; then
       say "port $PORT is taken by another preview:" >&2
       describe "$REG/$PORT" | sed 's/^/[start-preview]   /' >&2
@@ -595,10 +605,23 @@ else
     fi
     if port_busy "$PORT"; then die "port $PORT is taken by something that is not a preview"; fi
   else
-    # pick the first free port from 9001 upward
-    for p in $(seq 9001 9099); do
-      [ -d "$REG/$p" ] || port_busy "$p" || { PORT="$p"; break; }
-    done
+    if [ "$IS_MAIN_PREVIEW" = 1 ]; then
+      if [ -d "$REG/$MAIN_PORT" ]; then
+        say "warning: :$MAIN_PORT, kept for this preview, is taken by another one — using the next free port:" >&2
+        describe "$REG/$MAIN_PORT" | sed 's/^/[start-preview]   /' >&2
+        say "to get :$MAIN_PORT back, stop that one and this one, then start this again" >&2
+      elif port_busy "$MAIN_PORT"; then
+        say "warning: :$MAIN_PORT, kept for this preview, is taken by something that is not a preview — using the next free port" >&2
+      else
+        PORT=$MAIN_PORT
+      fi
+    fi
+    # any other preview: the first free port above the main checkout's
+    if [ -z "$PORT" ]; then
+      for p in $(seq $((MAIN_PORT + 1)) 9099); do
+        [ -d "$REG/$p" ] || port_busy "$p" || { PORT="$p"; break; }
+      done
+    fi
     [ -n "$PORT" ] || die "no free port in 9001-9099"
   fi
 
