@@ -501,7 +501,7 @@ const BUBBLE_TEXT_HIGHLIGHT_SKIP = '.time, .reactions, .reply, .code-header, .we
 type MessageFocus = {
   /** the search query / the quote about to be lit up in the text */
   textHighlight?: TextHighlightMatch,
-  /** an element of the bubble: the answer a poll option link points at */
+  /** an element of the bubble: the answer a poll option link points at, the item of an album */
   element?: HTMLElement
 };
 
@@ -5547,6 +5547,11 @@ export default class ChatBubbles {
 
   /** the text a highlight applies to — `element` is either the bubble or an album/document item inside it */
   private getBubbleTextContainer(element: HTMLElement) {
+    // * an album has one caption, the bubble's — a document of a group has its own
+    if(element.classList.contains('album-item')) {
+      element = findUpClassName(element, 'bubble');
+    }
+
     return element.classList.contains('bubble') ? element.querySelector<HTMLElement>('.message') : element;
   }
 
@@ -5587,15 +5592,47 @@ export default class ChatBubbles {
     return {offset: rect.top - element.getBoundingClientRect().top, height: rect.height};
   }
 
-  /** what the jump is about inside the message: the text about to be lit up, or the poll answer */
+  /**
+   * What a jump to `fullMid` lands on — lights up, plays: the one item of an album (or of a group
+   * of documents) it points at, as the other clients do, or every item when a link names the album
+   * as a whole — a message link without `?single`. `element` is the bubble, or the item
+   * `getMountedBubble` found.
+   */
+  private getJumpTargets(element: HTMLElement, fullMid: FullMid, wholeAlbum?: boolean): HTMLElement[] {
+    const bubble = findUpClassName(element, 'bubble');
+    const items = bubble ? this.getBubbleGroupedItems(bubble) : [];
+    if(items.length < 2) {
+      return [element];
+    }
+
+    if(wholeAlbum) {
+      // * a group of documents paints no flash of its own, only its items do
+      return bubble.classList.contains('is-multiple-documents') ? items : [bubble];
+    }
+
+    const {peerId, mid} = splitFullMid(fullMid);
+    const item = items.find((item) => +item.dataset.mid === mid && item.dataset.peerId === '' + peerId);
+    return [item || element];
+  }
+
+  /**
+   * what the jump is about inside the message: the text about to be lit up, the poll answer, or
+   * the item of an album (`targets`, see `getJumpTargets`) — unless the text is, which is the
+   * album's caption then
+   */
   private getMessageFocus(
     bubble: HTMLElement,
     fullMid: FullMid,
     highlight?: TextHighlightMatch,
-    pollOption?: string | Uint8Array
+    pollOption?: string | Uint8Array,
+    targets?: HTMLElement[]
   ): MessageFocus {
     const index = this.getBubblePollAnswerIndex(bubble, fullMid, pollOption);
-    const element = index === -1 ? undefined : bubble.querySelector<HTMLElement>(`[data-poll-option-idx="${index}"]`);
+    let element = index === -1 ? undefined : bubble.querySelector<HTMLElement>(`[data-poll-option-idx="${index}"]`);
+    if(!element && !highlight && targets?.length === 1 && targets[0].classList.contains('album-item')) {
+      element = targets[0];
+    }
+
     return highlight || element ? {textHighlight: highlight, element} : undefined;
   }
 
@@ -5866,7 +5903,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption, highlight} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption, highlight, wholeAlbum} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -6016,10 +6053,11 @@ export default class ChatBubbles {
         } else if(isTarget) {
           // * the highlight waits for the scroll to settle (iOS does the same) — otherwise it
           // * plays while the message is still travelling
-          const focusOn = this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption);
+          const targets = this.getJumpTargets(bubble, lastMsgFullMid, wholeAlbum);
+          const focusOn = this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption, targets);
           this.scrollToBubble(bubble, 'center', undefined, undefined, focusOn).then(() => {
             if(!middleware()) return;
-            this.highlightBubble(bubble, highlight);
+            targets.forEach((target) => this.highlightBubble(target, highlight));
             this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           });
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
@@ -6326,6 +6364,7 @@ export default class ChatBubbles {
           const lastBubble = this.getLastBubble();
           const position: ScrollLogicalPosition = followingUnread ? 'start' : (!isJump && !isTarget && lastBubble === bubble ? 'end' : 'center');
           const willHighlight = !followingUnread && isTarget && foundTarget;
+          const targets = willHighlight && this.getJumpTargets(bubble, lastMsgFullMid, wholeAlbum);
 
           if(position === 'end' && lastBubble === bubble && samePeer) {
             promise = this.scrollToEnd();
@@ -6335,7 +6374,7 @@ export default class ChatBubbles {
               position,
               !samePeer ? FocusDirection.Static : undefined,
               undefined,
-              willHighlight ? this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption) : undefined
+              willHighlight ? this.getMessageFocus(bubble, lastMsgFullMid, highlight, pollOption, targets) : undefined
             );
           }
 
@@ -6343,7 +6382,7 @@ export default class ChatBubbles {
             // * after the scroll settles, see the same-peer branch above
             promise.then(() => {
               if(!middleware()) return;
-              this.highlightBubble(bubble, highlight);
+              targets.forEach((target) => this.highlightBubble(target, highlight));
               this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
             });
           }
@@ -6457,7 +6496,7 @@ export default class ChatBubbles {
         return;
       }
 
-      this.playMediaWithTimestamp(mounted.bubble, mediaTimestamp);
+      this.playMediaWithTimestamp(this.getJumpTargets(mounted.bubble, lastMsgFullMid)[0], mediaTimestamp);
     });
   }
 

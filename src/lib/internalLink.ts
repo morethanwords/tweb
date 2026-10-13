@@ -76,7 +76,7 @@ export namespace InternalLink {
     admin?: string,
     option?: string,
     t?: string, // media timestamp
-    single?: string,
+    single?: string, // present (empty) when the link is to this one item of an album, not to the whole album
     text?: string,
     stack?: ChatSetPeerOptions['stack'] // local
   }
@@ -89,6 +89,7 @@ export namespace InternalLink {
     comment?: string,
     option?: string,
     t?: string // media timestamp
+    single?: string, // see InternalLinkMessage
     stack?: ChatSetPeerOptions['stack'] // local
   }
 

@@ -1016,6 +1016,22 @@
       top: .5rem;
     }
 
+    // * the item a jump lands on: the flash a bubble gets, over the photo of this one item — and
+    // * over its spoiler cover, which takes the same level earlier in the tree
+    &.is-highlighted:after {
+      content: " ";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      border-radius: inherit;
+      background-color: var(--message-highlighting-color);
+      pointer-events: none;
+
+      body:not(.animation-level-0) & {
+        animation: bubbleSelected 2s linear;
+      }
+    }
+
     // * the selection drives its state with SetTransition (`forwards` while in, `animating` +
     // * `backwards` while out), the context menu's target with its own pair of classes
     &.is-selected,

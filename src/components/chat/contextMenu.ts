@@ -1984,6 +1984,11 @@ export default class ChatContextMenu {
       else url += '/' + msgId;
     }
 
+    // * the item of an album the menu was opened on, not the album as a whole (tdlib: !for_album)
+    if(this.isTargetAGroupedItem && this.groupedMessages?.length > 1) {
+      url += (url.includes('?') ? '&' : '?') + 'single';
+    }
+
     return {url, isPrivate: !username};
   }
 

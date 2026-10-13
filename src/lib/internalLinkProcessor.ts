@@ -316,8 +316,8 @@ export class InternalLinkProcessor {
       });
     }
 
-    type K1 = {thread?: string, comment?: string, t?: string, option?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string};
+    type K1 = {thread?: string, comment?: string, t?: string, option?: string, single?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, startgroup?: string, startchannel?: string, admin?: string, t?: string, text?: string, option?: string, single?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
@@ -387,7 +387,8 @@ export class InternalLinkProcessor {
             comment: uriParams.comment,
             option: 'option' in uriParams ? uriParams.option : undefined,
             stack: appImManager.getStackFromElement(element),
-            t: uriParams.t
+            t: uriParams.t,
+            single: uriParams.single
           };
         } else if(pathnameParams[1] ? isWebAppNameValid(pathnameParams[1]) : (uriParams as K4).startapp !== undefined) {
           assumeType<K4>(uriParams);
@@ -415,7 +416,8 @@ export class InternalLinkProcessor {
             option: 'option' in uriParams ? uriParams.option : undefined,
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t,
-            text: uriParams.text
+            text: uriParams.text,
+            single: uriParams.single
           };
         }
 
@@ -464,7 +466,8 @@ export class InternalLinkProcessor {
         appname?: string,
         startapp?: string,
         compact?: string,
-        story?: string
+        story?: string,
+        single?: string
       }
     }>({
       name: 'resolve',
@@ -506,7 +509,8 @@ export class InternalLinkProcessor {
         channel: string,
         post: string,
         thread?: string,
-        comment?: string
+        comment?: string,
+        single?: string
       }
     }>({
       name: 'privatepost',
@@ -1103,7 +1107,8 @@ export class InternalLinkProcessor {
       stack: link.stack,
       threadId,
       mediaTimestamp: link.t && +link.t,
-      text: link.text
+      text: link.text,
+      wholeAlbum: link.single === undefined
     });
   };
 
@@ -1135,7 +1140,8 @@ export class InternalLinkProcessor {
       threadId,
       pollOption: link.option,
       stack: link.stack,
-      mediaTimestamp: link.t && +link.t
+      mediaTimestamp: link.t && +link.t,
+      wholeAlbum: link.single === undefined
     });
   };
 

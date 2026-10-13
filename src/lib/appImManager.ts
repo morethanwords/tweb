@@ -192,6 +192,11 @@ export type ChatSetPeerOptions = {
   pollOption?: string | Uint8Array,
   /** text to light up inside the `lastMsgId` bubble: the search query it was found by, or the quote that led here */
   highlight?: TextHighlightMatch,
+  /**
+   * the jump is to the whole album `lastMsgId` is an item of — a message link without `?single` —
+   * and lights all of it up instead of that one item
+   */
+  wholeAlbum?: boolean,
   lastMsgPeerId?: PeerId,
   threadId?: number,
   monoforumThreadId?: PeerId,
@@ -2194,7 +2199,8 @@ export class AppImManager extends EventListenerBase<{
       return this.openComment({
         peerId,
         msgId: lastMsgId,
-        commentId
+        commentId,
+        wholeAlbum: options.wholeAlbum
       });
     }
 
@@ -2234,9 +2240,8 @@ export class AppImManager extends EventListenerBase<{
   public async openThread(options: {
     peerId: PeerId,
     lastMsgId: number,
-    threadId: number,
-    stack?: ChatSetPeerOptions['stack']
-  }) {
+    threadId: number
+  } & Pick<ChatSetPeerOptions, 'stack' | 'wholeAlbum'>) {
     if(await this.managers.appChatsManager.isForum(options.peerId.toChatId()) || await this.managers.appPeersManager.isBotforum(options.peerId)) {
       await this.managers.dialogsStorage.getForumTopicOrReload(options.peerId, options.threadId);
       return this.setInnerPeer(options);
@@ -2261,13 +2266,14 @@ export class AppImManager extends EventListenerBase<{
     peerId: PeerId,
     msgId: number,
     commentId: number
-  }) {
+  } & Pick<ChatSetPeerOptions, 'wholeAlbum'>) {
     return this.managers.appMessagesManager.getDiscussionMessage(options.peerId, options.msgId).then((message) => {
       if(!message) return;
       return this.openThread({
         peerId: message.peerId,
         lastMsgId: options.commentId,
-        threadId: message.mid
+        threadId: message.mid,
+        wholeAlbum: options.wholeAlbum
       });
     });
   }
