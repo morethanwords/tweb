@@ -48,9 +48,9 @@ if(isDEV) {
     copyFileSync(path.join(rootDir, '.env.local.example'), ENV_LOCAL_FILE_PATH);
   }
 
-  // A Playwright suite's server (TWEB_E2E) only serves the tree: the lang watcher would bump the
-  // version and run format-lang on every start, holding the start up and rewriting files under
-  // the run, and nobody edits SCSS through it.
+  // A Playwright suite's server (TWEB_E2E) only serves the tree: the lang watcher would hash the
+  // strings on every start and, after a lang.ts edit, run format-lang and rewrite files under the
+  // run, and nobody edits SCSS through it.
   if(!process.env.TWEB_E2E) {
     watchLangFile();
     // the dev server is what runs while the SCSS is being edited, so it is what keeps the generated
