@@ -24,6 +24,13 @@ $inactive-opacity: .4;
   }
 }
 
+// * the album strip hidden with the caption: its thumbs stop taking presses, and with the keyboard
+// * layer leave the tab order (albumThumbs.module.scss reads these). Harmless on what hides with it
+@mixin album-thumbs-hidden {
+  --media-viewer-album-thumbs-events: none;
+  --media-viewer-album-thumbs-visibility: hidden;
+}
+
 .media-viewer {
   position: fixed;
   top: 0;
@@ -155,7 +162,8 @@ $inactive-opacity: .4;
     text-overflow: ellipsis;
     z-index: 4;
     // bottom: .75rem;
-    bottom: 0;
+    // * above the album strip when there is one
+    bottom: var(--media-viewer-album-height, 0px);
     left: 0;
     right: 0;
     padding: .5rem .5rem 0;
@@ -198,7 +206,7 @@ $inactive-opacity: .4;
       width: 100%;
       transform: translateZ(0);
       text-align: unset;
-      bottom: 1.0625rem;
+      bottom: calc(1.0625rem + var(--media-viewer-album-height, 0px));
       background-color: var(--mv-panel-background-handhelds);
       opacity: 1 !important;
       padding-bottom: .75rem;
@@ -244,6 +252,34 @@ $inactive-opacity: .4;
 
       @include hover() {
         background-color: rgba(255, 255, 255, .4);
+      }
+    }
+  }
+
+  // * the album's thumbnails (albumThumbs.tsx), under the caption; on handhelds they float over the media
+  // * with the rest of the chrome, above a video's controls
+  &-album-thumbs {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+
+    @include respond-to(handhelds) {
+      bottom: 1.0625rem;
+      background-color: var(--mv-panel-background-handhelds);
+      transform: translateZ(0);
+
+      @include animation-level(2) {
+        transition: opacity var(--open-duration) ease-in-out, transform var(--layer-transition) !important;
+      }
+
+      .media-viewer-whole.has-video-controls & {
+        transform: translate3d(0, -45px, 0);
+      }
+
+      .media-viewer-whole.backwards & {
+        visibility: hidden;
       }
     }
   }
@@ -601,9 +637,11 @@ $inactive-opacity: .4;
       }
 
       &.hide-caption {
-        .media-viewer-caption {
+        .media-viewer-caption,
+        .media-viewer-album-thumbs {
           opacity: 0 !important;
           pointer-events: none;
+          @include album-thumbs-hidden;
         }
       }
 
@@ -613,9 +651,11 @@ $inactive-opacity: .4;
       // chrome-hidden, set in onClick).
       &.has-video:not(.has-video-controls),
       &.chrome-hidden {
-        .media-viewer-caption {
+        .media-viewer-caption,
+        .media-viewer-album-thumbs {
           opacity: 0 !important;
           pointer-events: none;
+          @include album-thumbs-hidden;
         }
 
         .media-viewer-topbar {
@@ -633,9 +673,11 @@ $inactive-opacity: .4;
 
     &.is-zooming {
       .media-viewer-caption,
+      .media-viewer-album-thumbs,
       .media-viewer-switcher .media-viewer-sibling-button {
         opacity: 0 !important;
         pointer-events: none;
+        @include album-thumbs-hidden;
       }
     }
 
@@ -754,9 +796,11 @@ $inactive-opacity: .4;
   &.is-visible {
     opacity: 1;
 
-    & ~ .media-viewer-caption {
+    & ~ .media-viewer-caption,
+    & ~ .media-viewer-album-thumbs {
       opacity: 0 !important;
       pointer-events: none;
+      @include album-thumbs-hidden;
     }
 
     & ~ .media-viewer-movers {
@@ -781,13 +825,16 @@ $inactive-opacity: .4;
   transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
 }
 
-// Avatar viewer: "X of Y" / "Public Photo" prefix before the date, separated by
-// a large dot — "2 of 5 • 1 Jan 2024" / "Public Photo • 1 Jan 2024".
+// "X of Y" (or the avatar viewer's "Public Photo") before the date, separated by
+// a large dot — "2 of 5 • 1 Jan 2024" / "Public Photo • 1 Jan 2024" (setDateExtra).
 .media-viewer-date-dot::before {
   content: '•';
   margin: 0 .375rem;
   font-size: 1.15em;
   vertical-align: middle;
+  // larger than the text, it would make the line taller - and the line has it only while there is an
+  // extra, so the title above moved each time one came or went
+  line-height: 0;
 }
 
 .media-viewer-whole.live {

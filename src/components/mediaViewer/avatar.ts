@@ -182,27 +182,9 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     });
   }
 
-  // The date line reads "<X of Y / Public Photo> • <date>". The base sets the
-  // date text; this prepends the avatar-specific prefix + a large-dot separator.
+  // The date line reads "<X of Y / Public Photo> • <date>"; re-applied on navigation and once the count loads.
   private applyDateExtra() {
-    const dateEl = this.author?.date;
-    if(!dateEl) return;
-
-    // Re-applied on navigation and once the count loads — drop the old prefix.
-    dateEl.querySelector('.media-viewer-date-extra')?.remove();
-    dateEl.querySelector('.media-viewer-date-dot')?.remove();
-
-    const content = this.getDateExtraContent();
-    if(!content) return;
-
-    const extra = document.createElement('span');
-    extra.classList.add('media-viewer-date-extra');
-    extra.append(content);
-
-    const dot = document.createElement('span');
-    dot.classList.add('media-viewer-date-dot');
-
-    dateEl.prepend(extra, dot);
+    this.setDateExtra(this.getDateExtraContent());
   }
 
   private getDateExtraContent(): HTMLElement | undefined {

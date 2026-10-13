@@ -633,8 +633,9 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
                     standaloneMessage.id = getServerMessageId(transaction.msg_id);
                     standaloneMessage.mid = transaction.msg_id;
 
+                    // * the message's own ids: the viewer tells the items of one message apart by them and the index
                     const targets: AppMediaViewer['target'][] = media.map((media, index) => {
-                      return {element: null as HTMLElement, mid: 0, peerId: 0, index, message: standaloneMessage};
+                      return {element: null as HTMLElement, mid: standaloneMessage.mid, peerId: standaloneMessage.peerId, index, message: standaloneMessage};
                     });
 
                     targets[0].element = avatar;
@@ -643,6 +644,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
                     .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
                     .openMedia({
                       message: standaloneMessage,
+                      index: 0,
                       target: targets[0].element,
                       fromRight: 0,
                       reverse: false,

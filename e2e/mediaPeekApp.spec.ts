@@ -1,4 +1,5 @@
 import {expect, Page, test} from '@playwright/test';
+import {findMessage, openMessage, PAGE_MEDIA, Point} from './chatMedia.helpers';
 
 /*
  * Holding the mouse button on a photo or video peeks at it (`components/mediaPeek`): in a chat, in a
@@ -16,13 +17,6 @@ import {expect, Page, test} from '@playwright/test';
 const PEEK = 'div[aria-hidden="true"][class*="_MediaPeek_"]';
 const PEEK_ITEM = '[class*="_MediaPeekItem_"]';
 const VIEWER = '.media-viewer-whole.active';
-// * a photo or video of a message, and one of a rich message's page
-const MESSAGE_MEDIA = '.attachment.media-container, .album-item';
-const PAGE_MEDIA = '[class*="_MediaViewable_"]';
-// * how far down the chat list to look for a photo
-const DIALOGS_LIMIT = 30;
-
-type Point = {x: number, y: number};
 
 test.describe('the media peek', () => {
   test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'needs an authorized preview (PLAYWRIGHT_BASE_URL)');
@@ -140,60 +134,6 @@ test.describe('the media peek', () => {
     await expect(page.locator(VIEWER), 'releasing the peek opened the viewer as well').toHaveCount(0);
   });
 });
-
-// * the first message in the chat list with a photo a peek can show, or a rich message whose page has
-// * a photo or a video
-async function findMessage(page: Page, kind: 'photo' | 'rich') {
-  return page.evaluate(async({kind, limit}) => {
-    const managers = (window as any).appImManager.managers;
-    const {dialogs} = await managers.dialogsStorage.getDialogs({filterId: 0, limit});
-    for(const {peerId} of dialogs) {
-      const result = await managers.appMessagesManager.getHistory({
-        peerId,
-        ...(kind === 'photo' ? {inputFilter: {_: 'inputMessagesFilterPhotos'}, limit: 10} : {limit: 50})
-      }).catch((): undefined => undefined);
-      for(const mid of result?.history || []) {
-        const message = await managers.appMessagesManager.getMessageByPeer(peerId, mid);
-        const media = message?.media;
-        const found = kind === 'photo' ?
-          media?._ === 'messageMediaPhoto' && !media.pFlags.spoiler && !media.ttl_seconds :
-          message?.rich_message && /pageBlock(Photo|Video)/.test(JSON.stringify(message.rich_message));
-        if(found) {
-          return {peerId, mid};
-        }
-      }
-    }
-  }, {kind, limit: DIALOGS_LIMIT});
-}
-
-async function openMessage(page: Page, {peerId, mid}: {peerId: number, mid: number}, mediaSelector = MESSAGE_MEDIA): Promise<Point> {
-  await page.evaluate(async({peerId, mid, limit}) => {
-    // * a fresh page knows only the chats its list has drawn: load as many as the search went through
-    const {appImManager} = window as any;
-    await appImManager.managers.dialogsStorage.getDialogs({filterId: 0, limit});
-    await appImManager.setInnerPeer({peerId, lastMsgId: mid});
-  }, {peerId, mid, limit: DIALOGS_LIMIT});
-  const args = {selector: `#column-center [data-mid="${mid}"]`, mediaSelector};
-  await page.waitForFunction(({selector, mediaSelector}) => {
-    const element = document.querySelector(selector);
-    const bubble = element?.closest('.bubble') || element;
-    return !!bubble?.querySelector(mediaSelector);
-  }, args, {timeout: 60_000});
-  await page.waitForTimeout(1500);
-  const findMedia = ({selector, mediaSelector, scroll}: typeof args & {scroll?: boolean}) => {
-    const element = document.querySelector(selector);
-    const bubble = element.closest('.bubble') || element;
-    const media = element.matches(mediaSelector) ? element : bubble.querySelector(mediaSelector);
-    if(scroll) media.scrollIntoView({block: 'center'});
-    const rect = media.getBoundingClientRect();
-    return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
-  };
-
-  await page.evaluate(findMedia, {...args, scroll: true});
-  // * scrolling there can bring in more of the chat around it: measured once it has settled
-  await page.waitForTimeout(800);
-  return page.evaluate(findMedia, args);
-}
 
 // * the first two tiles of the media tab of the open profile, not behind a spoiler
 async function getMediaTiles(page: Page): Promise<Point[]> {

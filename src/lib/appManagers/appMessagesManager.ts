@@ -9006,19 +9006,9 @@ export class AppMessagesManager extends AppManager {
 
     if(options.isCacheableSearch) { // * don't update messages list if it's a global search
 
-    } else if(!searchStorage.originalInsertSlice) {
-      searchStorage.originalInsertSlice = searchStorage.history.insertSlice.bind(searchStorage.history);
-      searchStorage.history.insertSlice = (...args) => {
-        const slice = searchStorage.originalInsertSlice(...args);
-        if(slice) {
-          args[0].forEach((mid) => {
-            searchStorage.onMidInsertion(mid);
-          });
-        }
-
-        return slice;
-      };
-
+    } else if(!searchStorage.onMidInsertion) {
+      // * the slices a request brings are marked in mergeHistoryResult: overriding history.insertSlice
+      // * does nothing, the mirroring proxy around history keeps the method it first handed out
       searchStorage.filterMessages = (messages) => {
         return filterMessagesByInputFilter({
           inputFilter: options.inputFilter._,
@@ -13426,6 +13416,12 @@ export class AppMessagesManager extends AppManager {
       slice = slicedArray.insertSlice(mids);
       hadSlice = !!slice;
       slice ||= slicedArray.slice;
+
+      // * a search storage keeps track of its messages: an edit or a deletion finds it through them, and
+      // * without the mark an edited message would be inserted a second time
+      if(hadSlice && historyStorage?.onMidInsertion) {
+        mids.forEach(historyStorage.onMidInsertion);
+      }
     }
 
     if(hadSlice) {

@@ -43,11 +43,13 @@ import SearchListLoader from '@helpers/searchListLoader';
 import createVideo from '@helpers/dom/createVideo';
 import {AppManagers} from '@lib/managers';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
+import {THUMB_TYPE_FULL} from '@appManagers/constants';
 import setAttachmentSize from '@helpers/setAttachmentSize';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import overlayCounter from '@helpers/overlayCounter';
 import appDownloadManager from '@lib/appDownloadManager';
+import noop from '@helpers/noop';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {toastNew} from '@components/toast';
 import clamp from '@helpers/number/clamp';
@@ -587,6 +589,7 @@ export default class AppMediaViewerBase<
           findUpAsChild(e.target as HTMLElement, this.zoomElements.container) ||
           findUpClassName(e.target, 'ckin__controls') ||
           findUpClassName(e.target, 'media-viewer-caption') ||
+          findUpClassName(e.target, 'media-viewer-album-thumbs') ||
           (findUpClassName(e.target, 'media-viewer-topbar') && e.type !== 'wheel')) {
           return false;
         }
@@ -1797,11 +1800,13 @@ export default class AppMediaViewerBase<
     return new Promise<boolean>((resolve) => {
       let settled = false;
       let timeout = 0;
+      let running = false;
 
       const finish = (completed: boolean) => {
         if(settled) return;
         settled = true;
         clearTimeout(timeout);
+        mover.removeEventListener('transitionrun', onTransitionRun);
         mover.removeEventListener('transitionend', onTransitionEnd);
         mover.removeEventListener('transitioncancel', onTransitionCancel);
         if(this.moverTransitionCancels.get(mover) === cancel) {
@@ -1810,18 +1815,22 @@ export default class AppMediaViewerBase<
         resolve(completed);
       };
       const cancel = () => finish(false);
-      const onTransitionEnd = (event: TransitionEvent) => {
-        if(event.target === mover && event.propertyName === propertyName) {
-          finish(true);
-        }
+      const isMoverProperty = (event: TransitionEvent) => event.target === mover && event.propertyName === propertyName;
+      const onTransitionRun = (event: TransitionEvent) => {
+        if(isMoverProperty(event)) running = true;
       };
+      const onTransitionEnd = (event: TransitionEvent) => {
+        if(isMoverProperty(event)) finish(true);
+      };
+      // * a mover moved aside while still moving in replaces that transition, and the cancel of the old one
+      // * comes first: only a cancel of the transition waited for counts, or a paging pressed twice left
+      // * its mover behind, never removed (moveTheMover)
       const onTransitionCancel = (event: TransitionEvent) => {
-        if(event.target === mover && event.propertyName === propertyName) {
-          finish(false);
-        }
+        if(running && isMoverProperty(event)) finish(false);
       };
 
       this.moverTransitionCancels.set(mover, cancel);
+      mover.addEventListener('transitionrun', onTransitionRun);
       mover.addEventListener('transitionend', onTransitionEnd);
       mover.addEventListener('transitioncancel', onTransitionCancel);
       // A transition may legitimately not be created when start/end values are
@@ -1937,8 +1946,8 @@ export default class AppMediaViewerBase<
     const transitionPromise = this.waitForMoverTransition(mover, delay, MOVER_TRANSFORM_PROPERTY);
     setMoverTransform(mover, newTransform);
 
-    void transitionPromise.then((completed) => {
-      if(!completed) return;
+    // * gone either way: nothing moves a mover back once it has been moved aside
+    void transitionPromise.then(() => {
       mover.middlewareHelper.destroy();
       // Remove the wrapper too so it doesn't leak.
       (mover.parentElement || mover).remove();
@@ -2054,12 +2063,43 @@ export default class AppMediaViewerBase<
     });
   }
 
+  /**
+   * The date line reads "<extra> • <date>": "X of Y", or the avatar viewer's "Public Photo". The date is
+   * set anew for every media (setAuthorInfo), so the extra goes on after it, and replaces an older one.
+   */
+  protected setDateExtra(content?: Node) {
+    const dateEl = this.author?.date;
+    if(!dateEl) return;
+
+    dateEl.querySelector('.media-viewer-date-extra')?.remove();
+    dateEl.querySelector('.media-viewer-date-dot')?.remove();
+
+    if(!content) return;
+
+    const extra = document.createElement('span');
+    extra.classList.add('media-viewer-date-extra');
+    extra.append(content);
+
+    const dot = document.createElement('span');
+    dot.classList.add('media-viewer-date-dot');
+
+    dateEl.prepend(extra, dot);
+  }
+
   protected getLayoutReserves(): {top: number, bottom: number} {
     if(mediaSizes.isMobile) {
       return {top: RESERVE_TOP_MOBILE, bottom: RESERVE_BOTTOM_MOBILE};
     }
 
-    return {top: RESERVE_TOP_DESKTOP, bottom: RESERVE_BOTTOM_DESKTOP};
+    return {top: RESERVE_TOP_DESKTOP, bottom: RESERVE_BOTTOM_DESKTOP + this.getBottomChromeHeight()};
+  }
+
+  /**
+   * Chrome a subclass puts under the media on top of the caption's room (the album strip): on desktop
+   * the media keeps clear of it, on handhelds everything floats over the media anyway.
+   */
+  protected getBottomChromeHeight() {
+    return 0;
   }
 
   // Floating overlays on the source/target bubble (e.g. .video-time, .time.is-floating) should
@@ -2293,10 +2333,6 @@ export default class AppMediaViewerBase<
     this.live = isLiveStream;
     const setAuthorPromise = noAuthor ? Promise.resolve() : this.setAuthorInfo(fromId, timestamp);
     void setAuthorPromise.catch(() => {});
-    // Open-path: only update padding so mediaBoxSize reads the right reserves.
-    // The current mover (if any) is about to be replaced via setNewMover (or is
-    // hidden post-close); skip the refit + recenter that the resize handler does.
-    this.applyLayoutPadding();
 
     if(this.isFirstOpen) {
       // this.targetContainer = targetContainer;
@@ -2402,6 +2438,14 @@ export default class AppMediaViewerBase<
       }
     }
 
+    // Open-path: only update padding so mediaBoxSize reads the right reserves.
+    // The current mover (if any) is about to be replaced via setNewMover (or is
+    // hidden post-close); skip the refit + recenter that the resize handler does.
+    // Only after moveTheMover: the outgoing mover is pinned at content.media's rect, and
+    // reserves that change between media (an album's strip) would move that rect first —
+    // the old media would jump by half the difference before it slides away.
+    this.applyLayoutPadding();
+
     const mover = this.content.mover;
 
     const mediaBoxSize = this.mediaBoxSize;
@@ -2449,8 +2493,11 @@ export default class AppMediaViewerBase<
     }
     if(useContainerAsTarget && !isLiveStream) {
       const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size?.type);
+      // * a video's box is sized from the document itself, and its full context is the video file -
+      // * no picture: an <img> of it is a broken image. Its own thumbnails stand in for it instead
+      const isPicture = !isVideo || cacheContext.type !== THUMB_TYPE_FULL;
       let img: HTMLImageElement | HTMLCanvasElement;
-      if(cacheContext.downloaded) {
+      if(cacheContext.downloaded && isPicture) {
         img = new Image();
         // Await decode: setMoverToTarget draws this thumbnail onto a canvas via
         // drawImage, which yields a BLANK canvas for a not-yet-decoded image —
@@ -2462,7 +2509,8 @@ export default class AppMediaViewerBase<
           photo: media,
           cacheContext,
           useBlur: true,
-          onlyStripped: true
+          // * a thumbnail of the video the chat has already loaded, sharper than the stripped one
+          onlyStripped: isPicture
         });
         if(gotThumb) {
           thumbPromise = gotThumb.loadPromise;
@@ -2859,6 +2907,38 @@ export default class AppMediaViewerBase<
       // if(wasActive) return;
         // return;
 
+        // * A picture whose URL is gone by the time it loads - revoked under it, or its cache entry evicted
+        // * and left blank - draws nothing, and must not take the place of what is shown (the thumbnail
+        // * gave way to an empty box). It is asked for once more, with that entry dropped so the worker
+        // * makes a new URL from the file it keeps.
+        const renderPicture = (
+          image: HTMLImageElement,
+          url: string,
+          thumb: PhotoSize | undefined,
+          onLoad: (url: string) => void,
+          retried?: boolean
+        ) => {
+          renderImageFromUrl(image, url, () => {
+            if(image.naturalWidth) {
+              onLoad(url);
+              return;
+            }
+
+            this.log.warn('the picture loaded nothing', url, thumb?.type, retried ? 'again' : '');
+            if(retried || this.tempId !== tempId) {
+              return;
+            }
+
+            this.managers.thumbsStorage.deleteCacheContext(media, thumb?.type)
+            .then(() => appDownloadManager.downloadMediaURL({media, thumb}))
+            .then((url) => {
+              if(this.tempId === tempId) {
+                renderPicture(image, url, thumb, onLoad, true);
+              }
+            }, noop);
+          }, false);
+        };
+
         const load = async() => {
           const cancellablePromise = isDocument ? appDownloadManager.downloadMediaURL({media}) : appDownloadManager.downloadMediaURL({media, thumb: size});
 
@@ -2897,9 +2977,14 @@ export default class AppMediaViewerBase<
               if((haveImage as HTMLImageElement)?.src !== url)  {
                 const image = new Image();
                 image.classList.add('thumbnail');
+                const fullImage = cancellableFullPromise && new Image();
 
-                renderImageFromUrl(image, url, () => {
+                renderPicture(image, url, isDocument ? undefined : size, (url) => {
                   fastRaf(() => {
+                    if(fullImage?.isConnected) { // * the full one got there first
+                      return;
+                    }
+
                     this.updateMediaSource(target, url, 'img');
 
                     if(haveImage) {
@@ -2910,16 +2995,18 @@ export default class AppMediaViewerBase<
 
                     div.append(image);
                   });
-                }, false);
+                });
 
                 cancellableFullPromise && cancellableFullPromise.then((url) => {
-                  const fullImage = new Image();
                   fullImage.classList.add('thumbnail');
-                  renderImageFromUrl(fullImage, url, () => {
+                  renderPicture(fullImage, url, fullPhotoSize, () => {
                     fastRaf(() => {
-                      image.replaceWith(fullImage);
+                      // * over the smaller one - or over the thumbnail, should that one have loaded nothing
+                      const shown = image.isConnected ? image : haveImage;
+                      if(shown?.isConnected) shown.replaceWith(fullImage);
+                      else div.append(fullImage);
                     });
-                  }, false);
+                  });
                 });
               }
             }

@@ -44,11 +44,34 @@ export default function getMediaViewerClipPath(options: Parameters<typeof getMed
   return toClipPath(getMediaViewerClipInsets(options));
 }
 
+// * whether a box that clips inside the scrolling area hides `rect` whole, as a slideshow does all its
+// * slides but one. Its style is read only for a box that shows less than a pixel of the rect
+function isClippedAway(element: HTMLElement, rect: DOMRectMinified, boundary: HTMLElement) {
+  for(let ancestor = element; ancestor && ancestor !== boundary; ancestor = ancestor.parentElement) {
+    // * a box clips at its padding edge, inside the borders: a slideshow's next slide starts on its border
+    const {left, top} = ancestor.getBoundingClientRect();
+    const clipLeft = left + ancestor.clientLeft;
+    const clipTop = top + ancestor.clientTop;
+    const shownWidth = Math.min(rect.right, clipLeft + ancestor.clientWidth) - Math.max(rect.left, clipLeft);
+    const shownHeight = Math.min(rect.bottom, clipTop + ancestor.clientHeight) - Math.max(rect.top, clipTop);
+    if(shownWidth >= 1 && shownHeight >= 1) {
+      continue;
+    }
+
+    if(window.getComputedStyle(ancestor).overflow !== 'visible') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * How much of `element` its scrolling area shows, and - when the area cuts it - the clip that
  * reproduces the area's edges in viewport pixels, for what is opened from it to grow out from under
  * them. In a chat the area is the bubbles' viewport between the topbar and the input, not the
- * scrollable, which runs on under both
+ * scrollable, which runs on under both. An element that a box inside the area hides whole is off
+ * screen, as one scrolled away is
  */
 export function getMediaSourceClip(element: HTMLElement, rect: DOMRectMinified = element.getBoundingClientRect()) {
   const overflowElement = findUpClassName(element, 'scrollable');
@@ -72,7 +95,11 @@ export function getMediaSourceClip(element: HTMLElement, rect: DOMRectMinified =
     };
   }
 
-  const visibleRect = getVisibleRect(element, overflowElement, true, rect, overflowRect);
+  let visibleRect = getVisibleRect(element, overflowElement, true, rect, overflowRect);
+  if(visibleRect && isClippedAway(element, rect, overflowElement)) {
+    visibleRect = null;
+  }
+
   const insets = visibleRect && (visibleRect.overflow.vertical || visibleRect.overflow.horizontal) ?
     getMediaViewerClipInsets({visibleRect, viewportWidth: windowSize.width, viewportHeight: windowSize.height}) :
     undefined;

@@ -163,6 +163,14 @@ test('purchased media opens in the real media viewer', async({page}) => {
   await page.evaluate(() => window.popupSandbox.open('transaction/stars/media'));
   await page.locator('.popup-stars-pay.active .popup-stars-pay-avatar').click();
   await expect(page.locator('.media-viewer-whole')).toBeVisible({timeout: 15_000});
+  // * the items of the purchase are one album: the strip under the media shows them all
+  const thumbs = page.locator('.media-viewer-whole .media-viewer-album-thumbs [data-index]');
+  await expect(thumbs).toHaveCount(2);
+  await expect(thumbs.first()).toHaveCSS('pointer-events', 'auto');
+  // * zoomed in, the strip fades away - and its thumbs no longer take a press where they were
+  await page.evaluate(() => (window as any).appMediaViewer.buttons.zoomin.click());
+  await expect(page.locator('.media-viewer-whole')).toHaveClass(/\bis-zooming\b/);
+  await expect(thumbs.first()).toHaveCSS('pointer-events', 'none');
   expect(errors).toEqual([]);
 });
 

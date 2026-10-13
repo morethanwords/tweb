@@ -194,7 +194,7 @@ export default class VideoPlayer extends ControlsHover {
         if(this.speedDragHandler?.controls.isChangingSpeed()) return false;
         return true;
       },
-      showOnLeaveToClassName: ['media-viewer-caption', 'media-viewer-topbar'],
+      showOnLeaveToClassName: ['media-viewer-caption', 'media-viewer-topbar', 'media-viewer-album-thumbs'],
       ignoreClickClassName: 'ckin__controls'
     });
 

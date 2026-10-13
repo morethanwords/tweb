@@ -923,6 +923,7 @@ async function onMediaClick({
   .setSearchContext({peerId: NULL_PEER_ID, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
   .openMedia({
     message: target.message,
+    index: target.index,
     target: target.element,
     fromRight: 0,
     reverse: false,

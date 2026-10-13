@@ -1446,4 +1446,34 @@ describe('InstantViewBlocks streaming updates', () => {
     dispose();
     container.remove();
   });
+
+  // * the viewer's album strip groups the items of one list by their index: the opened one has to carry it too
+  test('opens an album item with its place among the page media', async() => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const dispose = render(() => (
+      <InstantViewBlocks
+        webPageId={1}
+        page={makeMediaPage([1, 2, 3], true)}
+        sourceRevision={1}
+        openNewPage={() => {}}
+        collapse={() => {}}
+      />
+    ), container);
+    await Promise.resolve();
+
+    (container.querySelector('[data-photo-id="2"]') as HTMLElement).click();
+    await vi.waitFor(() => expect(instantViewMocks.openMedia).toHaveBeenCalledOnce());
+    const options = instantViewMocks.openMedia.mock.calls[0][0] as {
+      index: number,
+      prevTargets: Array<{index: number}>,
+      nextTargets: Array<{index: number}>
+    };
+    expect(options.index).toBe(1);
+    expect(options.prevTargets.map((target) => target.index)).toEqual([0]);
+    expect(options.nextTargets.map((target) => target.index)).toEqual([2]);
+
+    dispose();
+    container.remove();
+  });
 });
