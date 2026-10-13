@@ -513,6 +513,13 @@ import {Message, Chat, User, InputPeer} from '@layer';
   tests gets at most 4 workers unless `--workers` says otherwise, so a few of
   them share the machine; vitest on a few files does not queue at all.
   `TWEB_TEST_QUEUE=0` runs without the queue; CI never queues.
+- **A code review goes to Codex first.** Asked to review a change, an agent
+  other than Codex does not review its own work: it hands the change, and what
+  it is for, to Codex (GPT) with `scripts/codex-review.sh`, then checks each
+  finding against the code before fixing or reporting it — the `codex-review`
+  skill (`.claude/skills/codex-review/SKILL.md`) has the steps. Only when Codex
+  is unavailable (the script exits 3: not installed, signed out, every model
+  refused) does the agent review the change itself, and its report says so.
 
 ## Accessibility (a11y) is part of every UI feature
 
