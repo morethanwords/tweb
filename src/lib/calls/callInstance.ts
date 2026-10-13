@@ -38,6 +38,7 @@ import {black, silence} from '@lib/calls/p2P/fallbackMedia';
 import P2PConnectionRecovery, {P2PRecoveryTrigger} from '@lib/calls/p2P/connectionRecovery';
 import P2PCallStats, {P2PCallStatsReport} from '@lib/calls/p2P/callStats';
 import watchLowBattery from '@lib/calls/p2P/lowBattery';
+import {describeNoiseSuppressionStatus, getNoiseSuppressionStatus} from '@lib/calls/noiseSuppression/noiseSuppression';
 import {
   ActiveLocalMedia,
   buildIceServers,
@@ -953,6 +954,11 @@ export default class CallInstance extends CallInstanceBase<{
 
     const stats = this.p2p?.stats;
     if(stats) {
+      const noiseSuppression = getNoiseSuppressionStatus(getStreamTrack(this.p2p.streams.ownAudio));
+      if(noiseSuppression) {
+        stats.addEvent(describeNoiseSuppressionStatus(noiseSuppression));
+      }
+
       stats.addEvent(`hang up: ${discardReason?._ ?? 'none'}${discardedByOtherParty ? ' (by the peer)' : ''}`);
       if(discardReason?._ === 'phoneCallDiscardReasonDisconnect' && this.p2pConnectionState !== 'connected') {
         stats.setFailed();
@@ -1415,6 +1421,10 @@ export default class CallInstance extends CallInstanceBase<{
       });
       throw err;
     }
+  }
+
+  public getInputAudioTrack() {
+    return getStreamTrack(this.p2p?.streams.ownAudio);
   }
 
   // A microphone track (not the silent placeholder) that has not ended: it

@@ -34,6 +34,7 @@ import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import {CALL_REQUEST_TIMEOUT} from '@lib/calls/constants';
 import {getConferenceCallState} from '@lib/calls/helpers/conferenceCallAction';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
+import {preloadNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
 
 type InviteEntry = {
   peerId: PeerId,
@@ -279,6 +280,7 @@ export class ConferenceInvitesController extends EventListenerBase<{
 
     this.ringing.set(conferenceId, instance);
     this.audioAsset.play({name: 'incoming', loop: true});
+    preloadNoiseSuppression();
 
     instance.addEventListener('state', (state) => {
       if(state !== CALL_STATE.CLOSED) {

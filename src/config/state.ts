@@ -184,10 +184,10 @@ export type StateSettings = {
     microphoneId: string,
     cameraId: string,
     micVolume: number,
-    // Whether to apply the browser's `noiseSuppression` constraint when
-    // requesting a microphone stream. Skipped if the browser doesn't
-    // advertise support (`IS_NOISE_SUPPRESSION_SUPPORTED`). Default true
-    // matches tdesktop / the legacy behavior before this flag existed.
+    // The call settings' "Noise suppression" switch: RNNoise on the
+    // microphone where the browser can run it (calls/noiseSuppression),
+    // otherwise the browser's own `noiseSuppression` constraint. On by
+    // default, as the browser's suppression was before the switch existed.
     noiseSuppression: boolean
   },
   // What the composer's recording button captures when the input is empty.

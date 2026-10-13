@@ -85,6 +85,7 @@ import showConferenceJoinPopup from '@components/call/conferenceJoinPopup';
 import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import callsController from '@lib/calls/callsController';
+import {preloadNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
 import getConferenceInviteErrorLangKey from '@lib/calls/conferenceInviteError';
 import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
@@ -2272,6 +2273,8 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public callUser(userId: UserId, type: CallType): Promise<void> {
+    // Loads while the confirmations and the call request go on.
+    preloadNoiseSuppression();
     return this.callTransitions.run(async() => {
       const call = callsController.getCallByUserId(userId);
       if(call) {
@@ -2389,6 +2392,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId): Promise<void> {
+    preloadNoiseSuppression();
     return this.callTransitions.run(async() => {
       const chatId = peerId.toChatId();
       const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
@@ -2446,6 +2450,7 @@ export class AppImManager extends EventListenerBase<{
    * link/anchor sites stay dumb.
    */
   public joinConference(input: InputGroupCall, options?: JoinConferenceOptions): Promise<void> {
+    preloadNoiseSuppression();
     return this.callTransitions.run(() => this.joinConferenceInternal(input, options));
   }
 
@@ -2459,6 +2464,7 @@ export class AppImManager extends EventListenerBase<{
    * only be in the way.
    */
   public createConference(options?: CreateConferenceOptions): Promise<void> {
+    preloadNoiseSuppression();
     return this.callTransitions.run(() => this.createConferenceInternal(options));
   }
 

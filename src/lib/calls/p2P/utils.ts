@@ -7,7 +7,9 @@
 
 import {Logger} from '@lib/logger';
 import {appSettings} from '@stores/appSettings';
+import getCallStream from '@lib/calls/helpers/getCallStream';
 import getStream from '@lib/calls/helpers/getStream';
+import {shouldUseBrowserNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
 import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
 import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
 import getScreenStream from '@lib/calls/helpers/getScreenStream';
@@ -137,16 +139,15 @@ export function getUserStream(streamType: StreamType, facing: VideoFacingModeEnu
   const audioId = appSettings.callDevices?.microphoneId;
   const audio = streamType === 'audio' ? {
     echoCancellation: IS_ECHO_CANCELLATION_SUPPORTED ? true : undefined,
-    noiseSuppression: IS_NOISE_SUPPRESSION_SUPPORTED ?
-      (appSettings.callDevices?.noiseSuppression ?? true) :
-      undefined,
+    noiseSuppression: IS_NOISE_SUPPRESSION_SUPPORTED ? shouldUseBrowserNoiseSuppression() : undefined,
     deviceId: audioId ? {exact: audioId} : undefined
   } : false;
 
   const video = streamType === 'video' ? getP2pVideoConstraints(facing) : false;
 
-  // Stale-deviceId recovery and incremental retry live inside `getStream`.
-  return getStream({audio, video});
+  // Stale-deviceId recovery and incremental retry live inside `getStream`,
+  // the microphone's noise suppression in `getCallStream` around it.
+  return (streamType === 'audio' ? getCallStream : getStream)({audio, video});
 }
 
 export function getStreamTrack(stream: MediaStream | undefined) {

@@ -5,7 +5,7 @@ import WeakRefSet from '@helpers/weakRefSet';
 import {logger} from '@lib/logger';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
 import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
-import getStream from '@lib/calls/helpers/getStream';
+import getCallStream from '@lib/calls/helpers/getCallStream';
 import getStreamCached from '@lib/calls/helpers/getStreamCached';
 import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
 import stopTrack from '@lib/calls/helpers/stopTrack';
@@ -186,6 +186,12 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   }
 
   public abstract get streamManager(): StreamManager;
+
+  /** The microphone track the call sends, muted or not. */
+  public getInputAudioTrack(): MediaStreamTrack | undefined {
+    return this.streamManager?.inputStream?.getAudioTracks()[0];
+  }
+
   public abstract get description(): LocalConferenceDescription;
   public abstract toggleMuted(): Promise<void>;
 
@@ -666,7 +672,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     const generation = this.beginMediaDeviceChange(kind);
     let newStream: MediaStream;
     try {
-      newStream = await getStream(opts.constraints);
+      newStream = await getCallStream(opts.constraints);
     } catch(err) {
       if(!this.isMediaDeviceChangeCurrent(kind, generation)) return false;
       this.log?.[opts.acquisitionFailureLogLevel ?? 'error']?.(`${label} getUserMedia failed`, err);

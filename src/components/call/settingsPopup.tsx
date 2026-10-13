@@ -18,6 +18,7 @@ import {
   useCallDeviceSettings
 } from '@components/call/callDeviceSettings';
 import {IS_NOISE_SUPPRESSION_SUPPORTED} from '@lib/calls/p2P/utils';
+import {IS_RNNOISE_SUPPORTED, isCallNoiseSuppressionEnabled} from '@lib/calls/noiseSuppression/noiseSuppression';
 import {changeCallDevice} from '@lib/calls/applyDeviceToActiveCall';
 import type CallInstance from '@lib/calls/callInstance';
 import CALL_STATE from '@lib/calls/callState';
@@ -56,7 +57,7 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
     const groupCallInstance = isGroupCall ? options.instance : undefined;
     const p2pInstance = !isGroupCall ? options.instance : undefined;
     const canManage = isGroupCall ? options.canManage : false;
-    const [appSettings, setAppSettings] = useAppSettings();
+    const [, setAppSettings] = useAppSettings();
     const callDevices = useCallDeviceSettings();
     const {SnitchPopupContext, popupContext} = useSnitchedPopupContext();
     const shareInviteMiddleware = () => {
@@ -135,18 +136,18 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
     }
 
     const onToggleNoiseSuppression = (checked: boolean) => {
-      const previous = appSettings.callDevices?.noiseSuppression ?? true;
+      const previous = isCallNoiseSuppressionEnabled();
       setAppSettings('callDevices', 'noiseSuppression', checked);
-      // Re-acquire the mic so the new noiseSuppression constraint takes
-      // effect mid-call. Sharing the same transaction path as picker changes
-      // prevents an older failure from rolling back a newer device choice.
-      if(options.instance.isSharingAudio) {
-        void changeCallDevice('microphone', callDevices.deviceId('microphone')).catch((err) => {
-          setAppSettings('callDevices', 'noiseSuppression', previous);
-          console.error('apply noise suppression failed', err);
-          toastNew({langPackKey: 'ConferenceCall.Media.MicrophoneError'});
-        });
-      }
+      // Re-acquire the mic so the change takes effect mid-call: RNNoise wraps
+      // a fresh capture, the browser's constraint applies to one. Sharing the
+      // transaction path of picker changes keeps an older failure from
+      // rolling back a newer device choice, and the call decides whether it
+      // has a microphone to swap — a muted one included.
+      void changeCallDevice('microphone', callDevices.deviceId('microphone')).catch((err) => {
+        setAppSettings('callDevices', 'noiseSuppression', previous);
+        console.error('apply noise suppression failed', err);
+        toastNew({langPackKey: 'ConferenceCall.Media.MicrophoneError'});
+      });
     };
 
     const onToggleMuteNewParticipants = (checked: boolean) => {
@@ -240,12 +241,12 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
               <div class="call-settings-popup-meter-wrap">
                 <MicrophoneLevelMeter deviceId={callDevices.deviceId('microphone')} />
               </div>
-              <Show when={IS_NOISE_SUPPRESSION_SUPPORTED}>
+              <Show when={IS_RNNOISE_SUPPORTED || IS_NOISE_SUPPRESSION_SUPPORTED}>
                 <Row>
                   <Row.CheckboxFieldToggle>
                     <CheckboxFieldTsx
                       toggle
-                      checked={appSettings.callDevices?.noiseSuppression ?? true}
+                      checked={isCallNoiseSuppressionEnabled()}
                       onChange={onToggleNoiseSuppression}
                     />
                   </Row.CheckboxFieldToggle>

@@ -28,6 +28,7 @@ import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
 import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import {CALL_PROTOCOL_LIBRARY_VERSIONS} from '@lib/calls/p2P/getCallProtocol';
 import {CALL_REQUEST_TIMEOUT, CALL_WAITING_RING_VOLUME} from '@lib/calls/constants';
+import {preloadNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
 
 /**
  * How long a call that closed here waits for the server's own phoneCallDiscarded — the one that may
@@ -445,6 +446,8 @@ export class CallsController extends EventListenerBase<{
     interlocutorUserId: UserId,
     protocol?: PhoneCallProtocol
   }) {
+    // Ringing or dialing: the microphone is not far off.
+    preloadNoiseSuppression();
     const call = new CallInstance({
       managers: this.managers,
       ...options

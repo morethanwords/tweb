@@ -498,7 +498,8 @@ import {Message, Chat, User, InputPeer} from '@layer';
   can observe what changed: `test:popups` / `test:a11y` /
   `test:focus` cover the popup sandbox and the sign-in screens, their `:app`
   variants the signed-in client, `test:editor:e2e` the composer, `test:peek:app`
-  the hold-to-peek on photos (`components/mediaPeek`). A change none
+  the hold-to-peek on photos (`components/mediaPeek`), `test:calls` the calls'
+  noise suppressor (`lib/calls/noiseSuppression`). A change none
   of them exercises (chat-only styling, a manager fix) skips them. Report what
   ran, and what was skipped and why.
 - **Heavy runs wait their turn on a shared machine.** Every Playwright run and a
@@ -618,6 +619,7 @@ pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
 pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT_BASE_URL)
 pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
+pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
 ```
 
 `test:a11y` runs against a plain unauthenticated server, so everything past the

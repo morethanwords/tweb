@@ -15,6 +15,7 @@
     "test:a11y:full": "A11Y_ALL_THEMES=1 playwright test --config playwright.a11y.config.ts",
     "test:ephemeral-bot": "node ./src/tests/fixtures/ephemeralBot/bot.mjs",
     "test:lottie": "playwright test e2e/lottie*.spec.ts",
+    "test:calls": "playwright test e2e/callNoiseSuppression.spec.ts",
     "test:popups": "playwright test --config=playwright.popups.config.ts",
     "test:popups:full": "POPUPS_ALL_ENGINES=1 playwright test --config=playwright.popups.config.ts",
     "test:editor:e2e": "playwright test --config=playwright.editor.config.ts",
