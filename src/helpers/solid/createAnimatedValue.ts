@@ -1,15 +1,19 @@
-import {Accessor, createEffect, createSignal, on, onCleanup} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, on, onCleanup} from 'solid-js';
 import {simpleEasing} from '@helpers/animateValue';
 import {animate} from '@helpers/animation';
 
 
 export default function createAnimatedValue(value: Accessor<number>, time: number, easing = simpleEasing, shouldAnimate: Accessor<boolean> = () => true) {
-  const [current, setCurrent] = createSignal(value());
+  // * the animation answers the number changing, not whatever it is computed from: a virtual list
+  // * lays all its rows out anew on every update, and a row that stays where it is must keep gliding
+  // * to its place - an update that moves nothing does not animate, so it cut the glide to its end
+  const target = createMemo(value);
+  const [current, setCurrent] = createSignal(target());
   const [animating, setAnimating] = createSignal(false);
 
-  createEffect(on(value, () => {
+  createEffect(on(target, () => {
     if(!shouldAnimate()) {
-      setCurrent(value());
+      setCurrent(target());
       return;
     }
 
@@ -24,7 +28,7 @@ export default function createAnimatedValue(value: Accessor<number>, time: numbe
 
       const progress = easing(Math.min(1, (performance.now() - startTime) / time));
 
-      setCurrent((value() - startValue) * progress + startValue);
+      setCurrent((target() - startValue) * progress + startValue);
 
       if(progress < 1) return true;
       setAnimating(false);
