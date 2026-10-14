@@ -767,8 +767,9 @@ export default class AppSearchSuper {
 
     attachClickEvent(this.tabsContainer, (e) => {
       if(this.selection.isSelecting) {
-        cancelClickOrNextIfNotClick(e);
-        this.selection.toggleByElement(findUpClassName(e.target, 'search-super-item'));
+        const item = findUpClassName(e.target, 'search-super-item');
+        this.selection.cancelElementClick(e, item, cancelClickOrNextIfNotClick);
+        this.selection.toggleByElement(item);
       }
     }, {capture: true, passive: false, listenerSetter: this.listenerSetter});
 

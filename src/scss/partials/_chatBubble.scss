@@ -389,6 +389,9 @@
     inset-inline-start: 0;
     display: flex;
     margin: 0;
+    // the bubble under it is the click target; the checkbox only shows what the selection holds.
+    // A touch device toggles on the press, and a tap's click on the box would tick it back
+    pointer-events: none;
 
     .checkbox-box-border {
       border-color: var(--message-checkbox-border-color);
@@ -432,6 +435,12 @@
     img,
     video,
     a {
+      pointer-events: none;
+    }
+
+    // * with the a11y layer an album item's spoiler is a button of its own, which would reveal the
+    // * media instead of letting the click select the item - the item's checkbox lies over it too
+    .media-spoiler-container {
       pointer-events: none;
     }
   }

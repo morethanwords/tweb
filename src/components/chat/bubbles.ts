@@ -3612,7 +3612,8 @@ export default class ChatBubbles {
         return;
       }
 
-      cancelEvent(e);
+      const element = findUpClassName(target, 'grouped-item') || bubble;
+      this.chat.selection.cancelElementClick(e, element);
       // console.log('bubble click', e);
 
       if(IS_TOUCH_SUPPORTED && this.chat.selection.selectedText) {
@@ -3621,7 +3622,7 @@ export default class ChatBubbles {
       }
 
       // this.chatSelection.toggleByBubble(bubble);
-      this.chat.selection.toggleByElement(findUpClassName(target, 'grouped-item') || bubble);
+      this.chat.selection.toggleByElement(element);
       return;
     }
 

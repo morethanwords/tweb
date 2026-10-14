@@ -17,6 +17,7 @@ vi.mock('@components/checkboxField', () => ({
 
     constructor() {
       this.label.classList.add('checkbox-field');
+      this.input.type = 'checkbox';
       this.input.classList.add('checkbox-field-input');
       this.label.append(this.input);
     }
@@ -246,6 +247,71 @@ describe('chat album pointer drag selection', () => {
 
     expect(input.checked).toBe(false);
     expect(documentBubble.querySelectorAll('.bubble-select-checkbox')).toHaveLength(1);
+  });
+});
+
+describe('a click on a selection checkbox itself', () => {
+  // * what the chat does with a click while selecting (ChatBubbles.onBubblesClick): a keyboard or a
+  // * screen reader clicks the checkbox, the browser ticks it before anyone hears of the click
+  const click = (selection: ChatSelection, element: HTMLElement) => {
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const element = target.closest<HTMLElement>('.grouped-item') || target.closest<HTMLElement>('.bubble');
+      selection.cancelElementClick(e, element);
+      selection.toggleByElement(element);
+    };
+
+    document.body.addEventListener('click', onClick);
+    element.querySelector<HTMLInputElement>(':scope > .checkbox-field > .checkbox-field-input').click();
+    document.body.removeEventListener('click', onClick);
+    return flushPromises();
+  };
+
+  const checked = (element: HTMLElement) => {
+    return element.querySelector<HTMLInputElement>(':scope > .checkbox-field > .checkbox-field-input').checked;
+  };
+
+  it('ticks and unticks the box together with the selection', async() => {
+    const {text, documentBubble, selection} = createHarness();
+    selection.toggleByElement(documentBubble);
+    selection.toggleElementCheckbox(text, true);
+    await flushPromises();
+
+    await click(selection, text);
+    expect(selection.getSelectedMids()).toEqual([104, 105]);
+    expect(checked(text)).toBe(true);
+
+    await click(selection, text);
+    expect(selection.getSelectedMids()).toEqual([105]);
+    expect(checked(text)).toBe(false);
+  });
+
+  it('selects and deselects a whole album from its own box', async() => {
+    const {album, firstItem, secondItem, thirdItem, text, selection} = createHarness();
+    selection.toggleByElement(text);
+    selection.toggleElementCheckbox(album, true);
+    await flushPromises();
+
+    await click(selection, album);
+    expect(selection.getSelectedMids()).toEqual([101, 102, 103, 104]);
+    expect([album, firstItem, secondItem, thirdItem].map(checked)).toEqual([true, true, true, true]);
+    expect(album.classList.contains('is-selected')).toBe(true);
+
+    await click(selection, album);
+    expect(selection.getSelectedMids()).toEqual([104]);
+    expect([album, firstItem, secondItem, thirdItem].map(checked)).toEqual([false, false, false, false]);
+    expect(album.classList.contains('is-selected')).toBe(false);
+  });
+
+  it('selects one item of an album from its box', async() => {
+    const {album, firstItem, secondItem, text, selection} = createHarness();
+    selection.toggleByElement(text);
+    selection.toggleElementCheckbox(album, true);
+    await flushPromises();
+
+    await click(selection, secondItem);
+    expect(selection.getSelectedMids()).toEqual([102, 104]);
+    expect([album, firstItem, secondItem].map(checked)).toEqual([false, false, true]);
   });
 });
 

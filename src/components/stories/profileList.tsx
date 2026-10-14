@@ -910,7 +910,7 @@ export function StoriesProfileList(props: {
                 if(selection.isSelecting) {
                   const item = findUpClassName(e.target, 'search-super-item');
                   if(!item) return;
-                  cancelClickOrNextIfNotClick(e);
+                  selection.cancelElementClick(e, item, cancelClickOrNextIfNotClick);
                   selection.toggleByElement(item);
                 }
               }, {capture: true, passive: false, listenerSetter: props.listenerSetter});

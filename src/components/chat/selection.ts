@@ -451,6 +451,23 @@ export class AppSelection extends EventListenerBase<{
     return input as HTMLInputElement;
   }
 
+  /**
+   * Swallows a click the selection acts on. One on the element's own checkbox is not prevented: the
+   * browser has ticked the box before the click is dispatched, and puts it back once a prevented
+   * click is over - over the mark the selection has set by then. So the tick is undone here and the
+   * click keeps its default, which leaves the box to the selection
+   */
+  public cancelElementClick(e: Event, element: HTMLElement, cancel: (e: Event) => void = cancelEvent) {
+    const input = element && this.getCheckboxInputFromElement(element);
+    if(e.type !== 'click' || !input || e.target !== input) {
+      cancel(e);
+      return;
+    }
+
+    input.checked = !input.checked;
+    e.stopPropagation();
+  }
+
   protected async updateContainer(forceSelection = false) {
     const size = this.selectedMids.size;
     if(!size && !forceSelection) return;
