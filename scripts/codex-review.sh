@@ -9,7 +9,7 @@
 # it cannot touch a tree other sessions work in — and cannot run the tests
 # either, those stay with the agent.
 #
-# Usage: bash scripts/codex-review.sh [--about <text>] <what>
+# Usage: bash scripts/codex-review.sh [--fast] [--about <text>] <what>
 #
 # What is reviewed — exactly one of:
 #   --commit <sha>      what a commit changes
@@ -37,6 +37,10 @@
 # "gpt-6.1-sol gpt-6-astra"), each at CODEX_REVIEW_EFFORT (default xhigh), each
 # attempt for at most CODEX_REVIEW_TIMEOUT minutes (default 20).
 #
+# --fast runs them in Codex's fast mode (the "priority" service tier): about twice
+# as fast, and it spends more of the plan's limits — only when the user asks for it.
+# A model that does not offer the tier runs at normal speed, and the script says so.
+#
 # Prints the review and keeps it, with Codex's event log, in tmp/codex-review/.
 # Exit status:
 #   0  reviewed; the review may still list findings
@@ -50,16 +54,18 @@ set -uo pipefail
 
 say() { echo "[codex-review] $*" >&2; }
 die() { local code=$1; shift; say "$*"; exit "$code"; }
-USAGE='usage: bash scripts/codex-review.sh [--about <text>] --commit <sha> | --base <branch> | --uncommitted | --paths <path>... | --patch <file>'
+USAGE='usage: bash scripts/codex-review.sh [--fast] [--about <text>] --commit <sha> | --base <branch> | --uncommitted | --paths <path>... | --patch <file>'
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die 2 "not inside a git checkout"
 
-about=
-if [ "${1:-}" = --about ]; then
-  [ $# -ge 2 ] || die 2 "$USAGE"
-  about=$2
-  shift 2
-fi
+about= fast=0
+while :; do
+  case "${1:-}" in
+    --about) [ $# -ge 2 ] || die 2 "$USAGE"; about=$2; shift 2;;
+    --fast) fast=1; shift;;
+    *) break;;
+  esac
+done
 mode=${1:-}
 [ $# -gt 0 ] && shift
 case "$mode" in
@@ -184,16 +190,22 @@ effort=${CODEX_REVIEW_EFFORT:-xhigh}
 minutes=${CODEX_REVIEW_TIMEOUT:-20}
 limit=()
 command -v timeout >/dev/null && limit=(timeout "${minutes}m")
+tier=() how=$effort
+if [ "$fast" = 1 ]; then tier=(-c 'service_tier="priority"'); how="$effort, fast"; fi
 failures=()
 for model in "${models[@]}"; do
-  say "$model ($effort) reviews $what…"
-  "${limit[@]}" codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" -s read-only --ephemeral \
+  say "$model ($how) reviews $what…"
+  "${limit[@]}" codex exec -m "$model" -c "model_reasoning_effort=\"$effort\"" "${tier[@]}" -s read-only --ephemeral \
     review --commit "$sha" --title "$title" --json -o "$OUT/$model.md" \
     > "$OUT/$model.jsonl" 2> "$OUT/$model.stderr" < /dev/null
   code=$?
   if [ $code -eq 0 ] && grep -q '"type":"turn.completed"' "$OUT/$model.jsonl" && [ -s "$OUT/$model.md" ]; then
     cp "$OUT/$model.md" "$OUT/review.md"
-    echo "Codex review by $model ($effort) of $what:"
+    if [ "$fast" = 1 ] && grep -q 'is not advertised as supported' "$OUT/$model.jsonl"; then
+      say "$model does not offer fast mode: it ran at normal speed"
+      how=$effort
+    fi
+    echo "Codex review by $model ($how) of $what:"
     echo
     cat "$OUT/review.md"
     echo

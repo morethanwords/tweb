@@ -2,7 +2,7 @@
 name: codex-review
 description: "Code review by Codex (GPT) instead of reviewing your own change: hand the change and what it is for to `scripts/codex-review.sh` (Codex at xhigh effort), check every finding against the code, then fix or report it. Review in this session only when Codex is unavailable. Use whenever a code review is asked for — \"сделай ревью\", \"проверь изменения\", \"ревью и поправь\", \"review this\", \"review before committing\" — unless the request names another reviewer."
 user-invocable: true
-argument-hint: "[--about <text>] [--commit <sha> | --base <branch> | --paths <path>... | --patch <file>]"
+argument-hint: "[--fast] [--about <text>] [--commit <sha> | --base <branch> | --paths <path>... | --patch <file>]"
 ---
 
 # /codex-review — Codex reviews, this session checks
@@ -58,6 +58,9 @@ purpose. Forum topics are left as they are." --paths src/components/foo.tsx src/
 - **Run it in the background and wait for it to finish.** An xhigh review of a
   few hundred lines takes 5–10 minutes, and the script stops each model after 20.
 - Do not start a second review of the same change while one runs.
+- **Fast mode only when asked.** Add `--fast` only when the user explicitly asks
+  for it ("в fast-режиме", "fast", "быстрый кодекс"). It runs about twice as fast
+  but spends noticeably more of the ChatGPT plan's limits, so never on your own.
 - **Do not review the change yourself while you wait.** Your part starts when
   Codex answers, and it is checking Codex's findings.
 
@@ -96,8 +99,8 @@ final review calls for.
 
 ## 7. Report
 
-- **Who reviewed:** Codex with its model, or this session because Codex was
-  unavailable, with the reason.
+- **Who reviewed:** Codex with its model (and fast mode, if it ran in it), or
+  this session because Codex was unavailable, with the reason.
 - **Each finding,** marked as one of:
   - confirmed and fixed;
   - confirmed but not fixed, and why;
