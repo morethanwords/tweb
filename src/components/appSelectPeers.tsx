@@ -63,6 +63,10 @@ export default class AppSelectPeers {
     avatarSize: 48
   } */);
   protected oldList: HTMLElement;
+  // * the rows of a list live as long as it is on screen: one that a new search replaces stays
+  // * there until the results are in, and rows torn down before that lose their layout in view
+  private listMiddlewareHelper: MiddlewareHelper;
+  private oldListMiddlewareHelper: MiddlewareHelper;
   public scrollable: Scrollable/*  | ScrollableContextValue */;
   public selectorSearch: SelectorSearch;
   public inputSearch: InputSearch;
@@ -120,8 +124,10 @@ export default class AppSelectPeers {
   private sectionNameLangPackKey: SectionOptions['name'];
   private sectionCaption: SectionOptions['caption'];
 
+  /** `middleware` is the row's: what the subtitle wraps lives as long as the row does */
   private getSubtitleForElement: (
-    peerId: PeerId
+    peerId: PeerId,
+    middleware: Middleware
   ) => HTMLElement | DocumentFragment | undefined | Promise<HTMLElement | DocumentFragment | undefined>;
   private processElementAfter: (peerId: PeerId, dialogElement: DialogElement) => void | Promise<void>;
 
@@ -231,6 +237,7 @@ export default class AppSelectPeers {
 
     this.middlewareHelper = options.middleware.create();
     this.middlewareHelperLoader = this.middlewareHelper.get().create();
+    this.listMiddlewareHelper = this.middlewareHelper.get().create();
     if(!this.noPlaceholder) this.dialogsPlaceholder = new DialogsPlaceholder(options.placeholderSizes || {
       avatarSize: 42,
       avatarMarginRight: 18,
@@ -310,9 +317,8 @@ export default class AppSelectPeers {
       // The search promise's then() handles the in-flight case. This branch
       // covers callers that invoke renderResultsFunc directly (e.g. realtime
       // chat_participant updates) outside of any pending search.
-      if(this.oldList && !this.promise) {
-        this.oldList.replaceWith(this.list);
-        this.oldList = undefined;
+      if(!this.promise) {
+        this.mountList();
       }
 
       if(!this.promise) {
@@ -674,11 +680,17 @@ export default class AppSelectPeers {
       ++this.tempIds[i];
     }
 
-    // Keep the currently mounted list reference until the new search resolves.
-    // ??= so that rapid re-typing doesn't overwrite the in-DOM list with a
-    // detached one from a still-pending previous search.
-    this.oldList ??= this.list;
+    // Keep the currently mounted list, rows alive, until the new search resolves.
+    // A list from a still-pending previous search was never shown and goes now,
+    // so rapid re-typing doesn't overwrite the in-DOM list with a detached one.
+    if(this.oldList) {
+      this.listMiddlewareHelper.destroy();
+    } else {
+      this.oldList = this.list;
+      this.oldListMiddlewareHelper = this.listMiddlewareHelper;
+    }
     this.list = appDialogsManager.createChatList();
+    this.listMiddlewareHelper = this.middlewareHelper.get().create();
 
     this.promise = undefined;
     this.query = value;
@@ -1095,10 +1107,7 @@ export default class AppSelectPeers {
 
       if(middleware()) {
         // Search is done — swap the previous list out for the freshly built one.
-        if(this.oldList) {
-          this.oldList.replaceWith(this.list);
-          this.oldList = undefined;
-        }
+        this.mountList();
 
         const loadedWhatValues = Object.values(this.loadedWhat);
         const loadedAll = loadedWhatValues.every((v) => v);
@@ -1118,6 +1127,25 @@ export default class AppSelectPeers {
     });
 
     return promise;
+  }
+
+  /**
+   * What the rows put in `list` live by - the list itself, which a new search keeps on screen until
+   * its results take its place. The loader's middleware only says whether a search is still current
+   */
+  public getRowsMiddleware() {
+    return this.listMiddlewareHelper.get();
+  }
+
+  private mountList() {
+    if(!this.oldList) {
+      return;
+    }
+
+    this.oldList.replaceWith(this.list);
+    this.oldList = undefined;
+    this.oldListMiddlewareHelper.destroy();
+    this.oldListMiddlewareHelper = undefined;
   }
 
   private getMoreSomething(peerType: SelectSearchPeerType) {
@@ -1153,6 +1181,11 @@ export default class AppSelectPeers {
     // Concurrent participant updates must keep their insertion order, not their load order.
     const position = document.createComment('');
     list[append === false ? 'prepend' : 'append'](position);
+    // * the rows live with their list, and a batch the search has moved on from goes before it is shown
+    const rowsMiddleware = this.getRowsMiddleware();
+    const cancelled = new Promise<void>((resolve) => middleware.onClean(resolve));
+    const dialogElements: DialogElement[] = [];
+    let mounted = false;
     const checkboxes: {key: PeerId, input: HTMLInputElement}[] = [];
     const promises = peerIds.map(async(key) => {
       const additionalParams = this.additionalDialogParams?.(key);
@@ -1164,13 +1197,14 @@ export default class AppSelectPeers {
         meAsSaved: this.meAsSaved,
         append,
         wrapOptions: {
-          middleware
+          middleware: rowsMiddleware
         },
         withStories: this.withStories,
         ...additionalParams,
         container,
         loadPromises: dialogLoadPromises
       });
+      dialogElements.push(dialogElement);
       const rowMiddleware = dialogElement.middlewareHelper.get();
 
       if(this.getPeerIdFromKey) {
@@ -1203,7 +1237,7 @@ export default class AppSelectPeers {
       const prepare = async() => {
         let subtitleEl: HTMLElement | DocumentFragment;
         if(this.getSubtitleForElement) {
-          subtitleEl = await this.getSubtitleForElement(key);
+          subtitleEl = await this.getSubtitleForElement(key, rowMiddleware);
         }
 
         if(!middleware() || !rowMiddleware()) {
@@ -1227,7 +1261,8 @@ export default class AppSelectPeers {
 
       return Promise.race([
         Promise.all([...dialogLoadPromises, prepare()]),
-        new Promise<void>((resolve) => rowMiddleware.onClean(resolve))
+        new Promise<void>((resolve) => rowMiddleware.onClean(resolve)),
+        cancelled
       ]);
     });
 
@@ -1242,9 +1277,13 @@ export default class AppSelectPeers {
       }
 
       position.replaceWith(...container.children);
+      mounted = true;
     } finally {
       position.remove();
       this.pendingLists.delete(container);
+      if(!mounted) {
+        dialogElements.forEach((dialogElement) => dialogElement.destroy());
+      }
     }
   }
 

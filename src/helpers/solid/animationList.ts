@@ -16,7 +16,9 @@ export function AnimationList(props: {
   keyframes: Keyframe[] | ((element: Element, removed: boolean) => Keyframe[]),
   mode: 'replacement' | 'add-remove'/*  | 'add' */ | 'remove',
   itemClass?: string,
-  appear?: boolean
+  appear?: boolean,
+  /** an element is done leaving: its exit has played and it is taken out */
+  onAfterExit?: (element: Element) => void
 }) {
   const children = resolveElements(() => props.children).toArray;
 
@@ -32,7 +34,11 @@ export function AnimationList(props: {
   const transitionList = createListTransition(children, {
     exitMethod: 'keep-index',
     appear: props.appear,
-    onChange: ({added, removed, finishRemoved}) => {
+    onChange: ({added, removed, finishRemoved: _finishRemoved}) => {
+      const finishRemoved = (removed: Element[]) => {
+        _finishRemoved(removed);
+        removed.forEach((element) => props.onAfterExit?.(element));
+      };
       const animationLevel = liteMode.getAnimationLevel();
       const options = props.animationOptions;
 

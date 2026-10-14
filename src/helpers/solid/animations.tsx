@@ -21,7 +21,7 @@ const ANIMATIONS: {[key in AnimationType]: Keyframe[] | ((element: Element) => K
 };
 
 export function SimpleAnimation(props: Pick<
-  Parameters<typeof AnimationList>[0], 'children' | 'keyframes' | 'mode' | 'appear'
+  Parameters<typeof AnimationList>[0], 'children' | 'keyframes' | 'mode' | 'appear' | 'onAfterExit'
 > & {
   noItemClass?: boolean,
   itemClass?: string
@@ -33,6 +33,7 @@ export function SimpleAnimation(props: Pick<
       mode={props.mode || 'replacement'}
       itemClass={classNames(!props.noItemClass && 'animated-item', props.itemClass)}
       appear={props.appear}
+      onAfterExit={props.onAfterExit}
     >
       {props.children}
     </AnimationList>
@@ -49,7 +50,8 @@ export default function Animated(props: {
   mode?: Parameters<typeof AnimationList>[0]['mode'],
   appear?: boolean,
   noItemClass?: boolean,
-  itemClass?: string
+  itemClass?: string,
+  onAfterExit?: Parameters<typeof AnimationList>[0]['onAfterExit']
 }) {
   return (
     <Dynamic
@@ -59,6 +61,7 @@ export default function Animated(props: {
       appear={props.appear}
       noItemClass={props.noItemClass}
       itemClass={props.itemClass}
+      onAfterExit={props.onAfterExit}
     >
       {props.children}
     </Dynamic>

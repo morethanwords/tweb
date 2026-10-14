@@ -285,6 +285,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       },
       renderResultsFunc: async(threadIds, append) => {
         const middleware = fs.middlewareHelperLoader.get();
+        const rowsMiddleware = fs.getRowsMiddleware();
         if(firstRender) {
           firstRender = false;
 
@@ -294,7 +295,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         }
 
         const promises = threadIds.map((threadId) => {
-          return wrapTopicRow({peerId, threadId, middleware});
+          return wrapTopicRow({peerId, threadId, middleware: rowsMiddleware});
         });
         const elements = await Promise.all(promises);
         if(!middleware()) {

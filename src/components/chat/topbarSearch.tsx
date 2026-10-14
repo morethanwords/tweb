@@ -13,7 +13,7 @@ import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, Reacti
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
-import {Middleware, getMiddleware} from '@helpers/middleware';
+import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import whichChild from '@helpers/dom/whichChild';
 import appImManager from '@lib/appImManager';
@@ -63,6 +63,8 @@ const DEFAULT_SEARCH_TYPE: SearchType = undefined;
 
 type LoadOptions = {
   middleware: Middleware,
+  /** what the rendered rows live by: the list they go in, which outlives its search on screen */
+  rowsMiddleware: Middleware,
   peerId: PeerId,
   threadId: number,
   monoforumThreadId: PeerId,
@@ -72,7 +74,7 @@ type LoadOptions = {
   searchType?: SearchType
 };
 
-const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query, searchType/* , fromPeerId */}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
+const renderHistoryResult = ({rowsMiddleware, peerId, fromSavedDialog, messages, query, searchType/* , fromPeerId */}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
   const promises = messages.map(async(message) => {
     const fromPeerId = message.fromId;
     const loadPromises: Promise<any>[] = [];
@@ -85,7 +87,7 @@ const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, que
       query,
       // noIcons: this.noIcons,
       wrapOptions: {
-        middleware
+        middleware: rowsMiddleware
       },
       loadPromises,
       threadId: fromSavedDialog ? ((message as Message.message).saved_peer_id ? getPeerId((message as Message.message).saved_peer_id) : rootScope.myId) : undefined,
@@ -174,7 +176,7 @@ const createSearchLoader = (options: LoadOptions) => {
 };
 
 const createParticipantsLoader = (options: LoadOptions) => {
-  const {middleware, peerId, query} = options;
+  const {middleware, rowsMiddleware, peerId, query} = options;
   let loading = false, offset = 0;
   const loadMore = async() => {
     if(loading) {
@@ -199,7 +201,7 @@ const createParticipantsLoader = (options: LoadOptions) => {
       const peer = apiManagerProxy.getPeer(peerId);
       const username = getPeerActiveUsernames(peer)[0];
       const size = 40;
-      const avatar = avatarNew({peerId, size, middleware});
+      const avatar = avatarNew({peerId, size, middleware: rowsMiddleware});
       const row = wrapSolidComponent(() => (
         <RowTsx clickable class="topbar-search-left-sender">
           <RowTsx.Title>
@@ -209,7 +211,7 @@ const createParticipantsLoader = (options: LoadOptions) => {
           </RowTsx.Title>
           <RowTsx.Media size="40">{avatar.node}</RowTsx.Media>
         </RowTsx>
-      ), middleware);
+      ), rowsMiddleware);
       await avatar.readyThumbPromise;
 
       return row;
@@ -370,6 +372,14 @@ export default function TopbarSearch(props: {
   const [count, setCount] = createSignal<number>();
   const [totalCount, setTotalCount] = createSignal<number>();
   const [list, setList] = createSignal<{element: HTMLElement, type: 'messages' | 'senders'}>();
+  // * the rows of a list live as long as it is on screen: a new search leaves it there until its own
+  // * results are in, and then it fades out - rows torn down before that lose their layout in view
+  const listsRows = new Map<Element, MiddlewareHelper>();
+  const releaseListRows = (element: Element) => {
+    listsRows.get(element)?.destroy();
+    listsRows.delete(element);
+  };
+  onCleanup(() => listsRows.forEach((helper) => helper.destroy()));
   const [messages, setMessages] = createSignal<(Message.message | Message.messageService)[]>();
   const [sendersPeerIds, setSendersPeerIds] = createSignal<PeerId[]>();
   const [loadMore, setLoadMore] = createSignal<() => Promise<void>>();
@@ -785,8 +795,18 @@ export default function TopbarSearch(props: {
     setSendersPeerIds();
     setTarget();
 
+    // * a list that never made it to the screen goes with its search, a shown one by `releaseListRows`
+    const rowsMiddlewareHelper = getMiddleware();
+    let shown = false;
+    onCleanup(() => {
+      if(!shown) {
+        rowsMiddlewareHelper.destroy();
+      }
+    });
+
     const loader = (isSender ? createParticipantsLoader : createSearchLoader)({
       middleware,
+      rowsMiddleware: rowsMiddlewareHelper.get(),
       peerId,
       threadId,
       monoforumThreadId: props.chat.monoforumThreadId,
@@ -832,6 +852,8 @@ export default function TopbarSearch(props: {
     const onLoad = (firstElement?: HTMLElement) => {
       if(first) {
         inputSearch.toggleLoading(false);
+        shown = true;
+        listsRows.set(ref, rowsMiddlewareHelper);
         setList({element: ref, type: isSender ? 'senders' : 'messages'});
         scrollableDiv.scrollTop = 0;
         first = false;
@@ -1280,7 +1302,7 @@ export default function TopbarSearch(props: {
       }}
     >
       {!isSmallScreen() && <div class="topbar-search-left-delimiter"></div>}
-      <Animated type="cross-fade">
+      <Animated type="cross-fade" onAfterExit={releaseListRows}>
         {list()?.element}
       </Animated>
     </Scrollable>

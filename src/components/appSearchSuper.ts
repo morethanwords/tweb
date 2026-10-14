@@ -2188,7 +2188,9 @@ export default class AppSearchSuper {
       return wall;
     };
 
-    let paywall: HTMLElement, wasPremium: boolean;
+    // * the rows on screen live until the next list takes their place: a premium toggle leaves them
+    // * there while it loads, and rows torn down before that lose their layout in view
+    let paywall: HTMLElement, wasPremium: boolean, shownRowsHelper: MiddlewareHelper;
     const onPremium = async(isPremium: boolean) => {
       if(wasPremium === isPremium) {
         return;
@@ -2196,6 +2198,7 @@ export default class AppSearchSuper {
 
       middlewareHelper.clean();
       const middleware = middlewareHelper.get();
+      const rowsHelper = this.middleware.get().create();
 
       const [messagesChats, premiumLimit, isPremiumFeaturesHidden] = await Promise.all([
         this.managers.appChatsManager.getChannelRecommendations(this.searchContext.peerId.toChatId()),
@@ -2203,12 +2206,15 @@ export default class AppSearchSuper {
         apiManagerProxy.isPremiumFeaturesHidden()
       ]);
 
-      const chatlist = await renderChats(messagesChats.chats, middleware);
+      const chatlist = await renderChats(messagesChats.chats, rowsHelper.get());
       if(!middleware()) {
+        rowsHelper.destroy();
         return;
       }
 
       mediaTab.itemsTab.replaceChildren(chatlist);
+      shownRowsHelper?.destroy();
+      shownRowsHelper = rowsHelper;
       this.afterPerforming(1, mediaTab);
       this.loaded[mediaTab.type] = true;
 

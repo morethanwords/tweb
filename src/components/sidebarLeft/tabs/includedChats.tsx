@@ -17,6 +17,7 @@ import wrapFolderTitle from '@components/wrappers/folderTitle';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppIncludedChatsTab} from '@components/solidJsTabs/tabs';
+import type {Middleware} from '@helpers/middleware';
 
 const IncludedChats: Component = () => {
   const [tab] = useSuperTab<typeof AppIncludedChatsTab>();
@@ -31,8 +32,7 @@ const IncludedChats: Component = () => {
   let limit: number;
   const dialogsByFilters: Map<MyDialogFilter, Set<PeerId>> = new Map();
 
-  const getSubtitleForElement = async(peerId: PeerId) => {
-    const middleware = selector.middlewareHelperLoader.get();
+  const getSubtitleForElement = async(peerId: PeerId, middleware: Middleware) => {
     const titles = await Promise.all([...dialogsByFilters.entries()].map(async([filter, dialogs]) => {
       if(!dialogs.has(peerId)) return;
       const span = document.createElement('span');

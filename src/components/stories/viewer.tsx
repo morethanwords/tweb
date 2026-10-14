@@ -2469,7 +2469,7 @@ const Stories = (props: {
           peerId,
           date: view.date,
           isMine: true,
-          middleware: popup.selector.middlewareHelperLoader.get(),
+          middleware: dialogElement.middlewareHelper.get(),
           reaction: view.reaction
         });
       },

@@ -31,7 +31,7 @@ export default function showPickCountryPopup(options: ShowPickCountryPopupOption
   const popup = showPickUserPopup({
     peerType: ['custom'],
     renderResultsFunc: (iso2s) => {
-      const middleware = popup.selector.middlewareHelperLoader.get();
+      const middleware = popup.selector.getRowsMiddleware();
       iso2s.forEach((iso2) => {
         const country = lastFiltered.get(iso2 as any as string);
         const emoji = getCountryEmoji(country.iso2);
