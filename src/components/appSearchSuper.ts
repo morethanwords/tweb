@@ -2207,6 +2207,7 @@ export default class AppSearchSuper {
         return;
       }
 
+      wasPremium = isPremium;
       middlewareHelper.clean();
       const middleware = middlewareHelper.get();
       const rowsHelper = this.middleware.get().create();

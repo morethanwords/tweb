@@ -1476,6 +1476,7 @@ export class AppSidebarLeft extends SidebarSlider {
       searchSuper.load(true);
 
       helperMiddlewareHelper.clean();
+      const helperMiddleware = helperMiddlewareHelper.get();
       onHelperLength(true);
 
       const promises: MaybePromise<HTMLElement[]>[] = [];
@@ -1506,6 +1507,11 @@ export class AppSidebarLeft extends SidebarSlider {
       }
 
       Promise.all(promises).then((arrays) => {
+        // * an earlier query answering late must not take the chips of the current one away
+        if(!helperMiddleware()) {
+          return;
+        }
+
         helper.replaceChildren();
         const flattened = flatten(arrays);
         appendToHelper(flattened);
