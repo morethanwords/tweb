@@ -1,2 +1,0 @@
-import{t as e}from"./cancelEvent-DOcVzRz1.js";import{n as t}from"./clickEvent-D_b_Pkxy.js";import{fn as n,pn as r,un as i}from"./buttonMenu-CC9m-JLv.js";function a(a={}){let o=document.createElement(`a`);o.classList.add(`anchor-copy`);let s;return a.mePath&&(o.href=o.innerText=i+a.mePath,s=()=>n(a.mePath)),a.username&&(o.href=i+a.username,o.innerText=`@`+a.username,s=()=>r(a.username)),t(o,t=>{e(t),a.onClick?a.onClick(s):s()}),o}export{a as t};
-//# sourceMappingURL=anchorCopy-DeFBix3z.js.map

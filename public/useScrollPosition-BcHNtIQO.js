@@ -1,0 +1,2 @@
+import{A as e,S as t,h as n}from"./solid-NBrjMhfa.js";import{a as r}from"./placeCaretAtEnd-DUoqXwA4.js";function i(i,a=`y`){let[o,s]=t(0),c=!1,l=e=>{c||(c=!0,r(()=>{c=!1,s(a===`y`?e.scrollTop:Math.abs(e.scrollLeft))}))};return n(()=>{let t=i();if(!t){s(0);return}l(t);let n=()=>l(t);t.addEventListener(`scroll`,n,{passive:!0}),e(()=>{t.removeEventListener(`scroll`,n)})}),o}export{i as t};
+//# sourceMappingURL=useScrollPosition-BcHNtIQO.js.map

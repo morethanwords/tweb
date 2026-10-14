@@ -1,2 +1,0 @@
-import{Rt as e}from"./apiManagerProxy-BR1b-JXW.js";import{f as t,s as n}from"./solid-NBrjMhfa.js";import{Uo as r}from"./buttonMenu-CC9m-JLv.js";function i(i){return t(r.Media,{size:`small`,get children(){return t(n,{get when(){return i.sticker},children:n=>t(e,{get sticker(){return n()},width:32,height:32})})}})}export{i as t};
-//# sourceMappingURL=reactionStickerPreview-B65uV6eU.js.map

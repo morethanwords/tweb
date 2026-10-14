@@ -1,0 +1,2 @@
+import{p as e}from"./userAgent-CYX9hM8v.js";import{t}from"./eventListenerBase-DyZE06LJ.js";var n=new class extends t{constructor(...e){super(...e),this.overlaysActive=0,this.hasDarkOverlays=0}get isOverlayActive(){return this.overlaysActive>0}set isOverlayActive(e){this.overlaysActive+=e?1:-1,this.dispatchEvent(`change`,this.isOverlayActive)}get isDarkOverlayActive(){return this.hasDarkOverlays>0}set isDarkOverlayActive(e){this.hasDarkOverlays+=e?1:-1,this.isOverlayActive=e}};e&&(e.overlayCounter=n);export{n as t};
+//# sourceMappingURL=overlayCounter-DNwcer-X.js.map

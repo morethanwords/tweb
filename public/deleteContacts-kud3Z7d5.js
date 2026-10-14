@@ -1,0 +1,2 @@
+import{uo as e}from"./buttonMenu-B5-qDUHl.js";function t(t){return e({...t.length===1?{peerId:t[0],titleLangKey:`DeleteContact`,descriptionLangKey:`AreYouSureDeleteContact`}:{titleLangKey:`DeleteContactsTitle`,titleLangArgs:[t.length],descriptionLangKey:`DeleteContactsSubtitle`},button:{langKey:`Delete`,isDanger:!0}})}export{t};
+//# sourceMappingURL=deleteContacts-kud3Z7d5.js.map

@@ -1,0 +1,2 @@
+import{p as e}from"./userAgent-CYX9hM8v.js";import{t}from"./superMessagePort-B2MWCDGl.js";var n=class n extends t{constructor(t=!0){super(`MTPROTO`),n.INSTANCE=this,t?n.MASTER_INSTANCE=this:n.NON_MASTER_INSTANCE=this,e&&(e.mtprotoMessagePort=this)}static getInstance(){return this.INSTANCE}static getMasterInstance(){return this.MASTER_INSTANCE}static getNonMasterInstance(){return this.NON_MASTER_INSTANCE}};export{n as t};
+//# sourceMappingURL=mainMessagePort-ChmBxBhb.js.map

@@ -1343,7 +1343,7 @@ export default class ChatInput {
       verify: () => canUploadAsWhenEditing({asWhat: 'document', message: this.editMessage})
       // verify: () => this.chat.canSend('send_docs')
     }, {
-      icon: 'music_filled',
+      icon: 'note',
       text: 'SharedMusicTab2',
       onClick: async() => {
         const {default: showMusicSearchPopup} = await import('@components/popups/musicSearch');
