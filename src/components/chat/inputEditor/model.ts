@@ -1,5 +1,6 @@
 import type {Editor, JSONContent} from '@tiptap/core';
 import {TextSelection, type Transaction} from '@tiptap/pm/state';
+import type {Schema} from '@tiptap/pm/model';
 import type {MessageEntity} from '@layer';
 import combineSameEntities from '@lib/richTextProcessor/combineSameEntities';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
@@ -340,10 +341,9 @@ function trimHorizontalWhitespace(
   direction: 'end' | 'start'
 ): JSONContent[] {
   const result = content.map((child) => ({...child}));
-  const indexes = direction === 'start' ?
-    result.map((_child, index) => index) :
-    result.map((_child, index) => index).reverse();
-  for(const index of indexes) {
+  // a node trimmed away moves the next one into its place: always look at the edge
+  while(result.length) {
+    const index = direction === 'start' ? 0 : result.length - 1;
     const child = result[index];
     if(child.type !== 'text') break;
     const text = child.text || '';
@@ -400,6 +400,24 @@ function splitInlineQuotes(node: JSONContent): JSONContent[] {
       content: [paragraph]
     };
   }).filter((child) => child.type === 'blockquote' || !!child.content?.length);
+}
+
+/**
+ * The entities of a value that a field's narrower schema can hold. The rest go and
+ * the text stays exactly as it came: a value with an entity the field does not
+ * carry (a quote in a poll option, bold in a folder name) used to make the whole
+ * document invalid, and the field showed nothing at all.
+ */
+export function entitiesFittingSchema(entities: MessageEntity[], schema: Schema) {
+  return entities.filter((entity) => {
+    switch(entity._) {
+      case 'messageEntityBlockquote': return !!schema.nodes.blockquote;
+      case 'messageEntityPre': return !!schema.nodes.codeBlock;
+      case 'messageEntityCustomEmoji': return !!schema.nodes.customEmoji;
+    }
+    const mark = entityToMark(entity);
+    return !mark || !!schema.marks[mark.type];
+  });
 }
 
 export function normalizeBlockOnlyQuotes(document: JSONContent): JSONContent {

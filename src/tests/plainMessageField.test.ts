@@ -9,7 +9,7 @@ import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import type {DraftMessage, MessageEntity} from '@layer';
 import type {Editor} from '@tiptap/core';
 import {Fragment, Slice} from '@tiptap/pm/model';
-import {useChatInputEditorHarness, type TiptapEditorInternals} from '@/tests/helpers/chatInputEditorHarness';
+import {typeTextThroughEditorView, useChatInputEditorHarness, type TiptapEditorInternals} from '@/tests/helpers/chatInputEditorHarness';
 
 vi.mock('@environment/webpSupport', () => ({default: true}));
 vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
@@ -26,9 +26,13 @@ describe('plain message field', () => {
 
   const mountField = (
     options: ConstructorParameters<typeof InputField>[0] = {},
-    editorOptions?: Parameters<typeof attachPlainMessageEditor>[1]
+    editorOptions?: Parameters<typeof attachPlainMessageEditor>[1],
+    messageField?: boolean
   ) => {
     const inputField = new InputField({withLinebreaks: true, ...options});
+    // what InputFieldMessage does before attaching: a caption or a forward comment
+    // is a message field, and declares all the formatting a plain message carries
+    if(messageField) inputField.input.classList.replace('input-field-input', 'input-message-input');
     document.body.append(inputField.container);
     const editor = attachPlainMessageEditor(inputField.input, editorOptions);
     mounted.push({destroy: () => {
@@ -38,12 +42,17 @@ describe('plain message field', () => {
     return {editor, inputField};
   };
 
+  const mountCaption = (
+    options: ConstructorParameters<typeof InputField>[0] = {},
+    editorOptions?: Parameters<typeof attachPlainMessageEditor>[1]
+  ) => mountField(options, editorOptions, true);
+
   afterEach(() => {
     mounted.splice(0).forEach((item) => item.destroy());
   });
 
   test('reads back the text and entities the field was given', () => {
-    const {editor, inputField} = mountField();
+    const {editor, inputField} = mountCaption();
     const entities: MessageEntity[] = [
       {_: 'messageEntityBold', offset: 0, length: 4},
       {_: 'messageEntityTextUrl', offset: 5, length: 4, url: 'https://telegram.org/'}
@@ -57,7 +66,7 @@ describe('plain message field', () => {
   });
 
   test('applies formatting through the same entry point as the chat input', () => {
-    const {editor, inputField} = mountField();
+    const {editor, inputField} = mountCaption();
     editor.setTextWithEntities('caption');
     editor.restoreSelection({from: 1, to: 8}, false);
 
@@ -121,7 +130,7 @@ describe('plain message field', () => {
         date: 0,
         pFlags: {}
       } as DraftMessage.draftMessage;
-      const {inputField} = mountField();
+      const {inputField} = mountCaption();
       const value = draftTextWithEntities(draft);
 
       inputField.setValueSilently(wrapDraftText(value.text, {entities: value.entities}));
@@ -185,8 +194,9 @@ describe('plain message field', () => {
       expect(getRichValueWithCaret(inputField.input, true, false).value).toBe('firstsecond');
     });
 
-    test('keeps the marks a pasted line brings', () => {
-      const {editor, inputField, tiptap} = mountSingleLine();
+    test('keeps the marks a pasted line brings, of the formatting the field declares', () => {
+      const {editor, inputField} = mountField({withLinebreaks: false, canHaveFormatting: ['bold']});
+      const {editor: tiptap} = editor as unknown as {editor: Editor};
       const {schema} = tiptap;
       const slice = new Slice(Fragment.fromArray([
         schema.nodes.paragraph.create(null, schema.text('bold', [schema.marks.bold.create()]))
@@ -268,7 +278,7 @@ describe('plain message field', () => {
     tiptap.commands.selectAll();
     const {dom} = tiptap.view.serializeForClipboard(tiptap.state.selection.content());
 
-    const {editor, inputField} = mountField();
+    const {editor, inputField} = mountCaption();
     const {editor: caption} = editor as unknown as {editor: Editor};
     caption.view.pasteHTML(dom.innerHTML, new Event('paste', {cancelable: true}) as ClipboardEvent);
 
@@ -310,6 +320,37 @@ describe('plain message field', () => {
       expect(editor.getRichValue(false).value).toBe('caption\n');
     });
 
+    test('breaks no line in an empty field, on either shortcut', () => {
+      for(const {editor, inputField} of [mountCaption({}, {leaveSendShortcut: true}), mountField()]) {
+        editor.focusAtEnd();
+        const event = pressEnter(inputField.input, {shiftKey: true});
+        expect(event.defaultPrevented).toBe(true);
+        expect(isSendShortcutLeft(event)).toBe(false);
+        // a break would sit inside the one paragraph: the value tells it, not the paragraphs
+        expect(editor.getRichValue(false).value).toBe('');
+      }
+
+      // a field whose popup does not send on Enter takes Enter for a line — but not an empty one's
+      const {editor, inputField} = mountField();
+      editor.focusAtEnd();
+      expect(pressEnter(inputField.input).defaultPrevented).toBe(true);
+      expect(editor.getRichValue(false).value).toBe('');
+    });
+
+    test('leaves a quote that ends the caption on a second new-line shortcut', () => {
+      const {editor, inputField} = mountCaption({}, {leaveSendShortcut: true});
+      const {editor: tiptap} = editor as unknown as {editor: Editor};
+      editor.setTextWithEntities('quoted', [{_: 'messageEntityBlockquote', offset: 0, length: 6} as MessageEntity]);
+      editor.focusAtEnd();
+      pressEnter(inputField.input, {shiftKey: true});
+      pressEnter(inputField.input, {shiftKey: true});
+      typeTextThroughEditorView(tiptap, 'after');
+
+      const {value, entities} = editor.getRichValue(true, false);
+      expect(value).toBe('quoted\nafter');
+      expect(entities).toEqual([expect.objectContaining({_: 'messageEntityBlockquote', offset: 0, length: 6})]);
+    });
+
     test('keeps Enter for the text in a field whose popup does not send on it', () => {
       const {editor, inputField} = mountField();
       editor.setTextWithEntities('description');
@@ -318,6 +359,277 @@ describe('plain message field', () => {
       const event = pressEnter(inputField.input);
       expect(isSendShortcutLeft(event)).toBe(false);
       expect(editor.getRichValue(false).value).toBe('description\n');
+    });
+
+    // A one-line field takes no line break at all, so its Enter belongs to whatever the
+    // field sits in: the popup's confirm button, a poll option moving to the next one.
+    test('leaves Enter to the popup in a one-line field', () => {
+      const {editor, inputField} = mountField({withLinebreaks: false});
+      editor.setTextWithEntities('Folder');
+      editor.focusAtEnd();
+
+      const event = pressEnter(inputField.input);
+      expect(isSendShortcutLeft(event)).toBe(true);
+      expect(editor.getRichValue(false).value).toBe('Folder');
+    });
+
+    test('takes Backspace at the start of a one-line field', () => {
+      const {editor, inputField} = mountField({withLinebreaks: false});
+      editor.setTextWithEntities('Folder');
+      editor.restoreSelection({from: 1, to: 1}, false);
+
+      const errors: ErrorEvent[] = [];
+      const onError = (event: ErrorEvent) => errors.push(event);
+      window.addEventListener('error', onError);
+      inputField.input.dispatchEvent(new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        key: 'Backspace'
+      }));
+      window.removeEventListener('error', onError);
+
+      expect(errors.map((event) => event.error?.message ?? event.message)).toEqual([]);
+      expect(editor.getRichValue(false).value).toBe('Folder');
+    });
+  });
+
+  /**
+   * The composer keeps an empty paragraph after the document so a block at the end of a
+   * message has a line to type after. A plain field can hold no block, and the line it
+   * would leave under the text carries "Type something..." over the field's own placeholder.
+   */
+  describe('the composer\'s trailing paragraph', () => {
+    const trailingPlaceholders = (input: HTMLElement) =>
+      input.querySelectorAll('.chat-input-trailing-placeholder').length;
+
+    test('is not in a plain field, empty or with text', () => {
+      const {editor, inputField} = mountField();
+      expect(editor.getDocument().content).toHaveLength(1);
+      expect(trailingPlaceholders(inputField.input)).toBe(0);
+
+      editor.setTextWithEntities('caption');
+      expect(editor.getDocument().content).toHaveLength(1);
+      expect(trailingPlaceholders(inputField.input)).toBe(0);
+      expect(editor.getRichValue(false).value).toBe('caption');
+    });
+
+    // a field with no block to type after takes no paragraph for the technical one
+    test('keeps the last empty line of a value in a field that holds no block', () => {
+      const {editor, inputField} = mountField();
+      const {editor: tiptap} = editor as unknown as {editor: Editor};
+      editor.setTextWithEntities('one\n');
+      expect(editor.getRichValue(false).value).toBe('one\n');
+      // nothing takes it for the technical paragraph: not the label (a plain field hides that)…
+      expect(trailingPlaceholders(inputField.input)).toBe(0);
+      // …nor the clipboard, which leaves the technical one out of a select-all
+      tiptap.commands.selectAll();
+      const {slice} = tiptap.view.serializeForClipboard(tiptap.state.selection.content());
+      expect(slice.content.childCount).toBe(2);
+    });
+
+    // a caption may end in a quote, and the line after it is where the second break leaves it for
+    test('is kept in a field that can hold a quote, and a second break leaves one that ends it', () => {
+      const {editor, inputField} = mountCaption();
+      const {editor: tiptap} = editor as unknown as {editor: Editor};
+      editor.setTextWithEntities('quoted', [{_: 'messageEntityBlockquote', offset: 0, length: 6} as MessageEntity]);
+      editor.focusAtEnd(false);
+      inputField.input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true}));
+      inputField.input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true}));
+      typeTextThroughEditorView(tiptap, 'after');
+
+      const {value, entities} = editor.getRichValue(true, false);
+      expect(value).toBe('quoted\nafter');
+      expect(entities).toEqual([expect.objectContaining({_: 'messageEntityBlockquote', offset: 0, length: 6})]);
+    });
+
+    test('leaves the field as many lines high as the text is', () => {
+      const {editor, inputField} = mountField();
+      editor.setTextWithEntities('one\ntwo');
+
+      expect(inputField.input.querySelectorAll('[data-chat-input-paragraph]')).toHaveLength(2);
+      expect(trailingPlaceholders(inputField.input)).toBe(0);
+      expect(editor.getRichValue(false).value).toBe('one\ntwo');
+    });
+  });
+
+  /**
+   * A field carries the formatting it declares — `can-format`, or all of it for a
+   * message field (a caption, a forward comment) — and nothing else: no shortcut,
+   * no typed markdown, no value arriving with it puts any of the rest into it.
+   */
+  describe('formatting', () => {
+    const press = (input: HTMLElement, init: KeyboardEventInit) => {
+      input.dispatchEvent(new KeyboardEvent('keydown', {bubbles: true, cancelable: true, ...init}));
+    };
+    const selectAll = (editor: ReturnType<typeof mountField>['editor']) => {
+      editor.restoreSelection({from: 1, to: editor.getRichValue(false).value.length + 1}, false);
+    };
+    const entityTypes = (editor: ReturnType<typeof mountField>['editor']) =>
+      editor.getRichValue(true, false).entities.map((entity) => entity._);
+
+    test('is none in a field that declares none', () => {
+      const {editor} = mountField({withLinebreaks: false});
+      const {editor: tiptap} = editor as unknown as {editor: Editor};
+      editor.setTextWithEntities('Folder');
+      selectAll(editor);
+      press(editor.input, {key: 'b', code: 'KeyB', ctrlKey: true});
+      press(editor.input, {key: 'i', code: 'KeyI', ctrlKey: true});
+      expect(entityTypes(editor)).toEqual([]);
+
+      editor.focusAtEnd(false);
+      typeTextThroughEditorView(tiptap, ' **bold** ');
+      expect(editor.getRichValue(true, false)).toMatchObject({value: 'Folder **bold** ', entities: []});
+    });
+
+    test('keeps the text of a value that carries what the field does not', () => {
+      const {editor} = mountField({withLinebreaks: false});
+      editor.setTextWithEntities('quoted bold', [
+        {_: 'messageEntityBlockquote', offset: 0, length: 6} as MessageEntity,
+        {_: 'messageEntityBold', offset: 7, length: 4}
+      ]);
+      expect(editor.getRichValue(true, false)).toMatchObject({value: 'quoted bold', entities: []});
+    });
+
+    test('is only what a field declares', () => {
+      const {editor} = mountField({canHaveFormatting: ['bold', 'italic', 'link']});
+      editor.setTextWithEntities('fact');
+      selectAll(editor);
+      press(editor.input, {key: 'u', code: 'KeyU', ctrlKey: true});
+      expect(entityTypes(editor)).toEqual([]);
+      press(editor.input, {key: 'b', code: 'KeyB', ctrlKey: true});
+      expect(entityTypes(editor)).toEqual(['messageEntityBold']);
+
+      editor.setTextWithEntities('quoted', [{_: 'messageEntityBlockquote', offset: 0, length: 6} as MessageEntity]);
+      expect(editor.getRichValue(true, false)).toMatchObject({value: 'quoted', entities: []});
+      expect(editor.supportsMarkup('quote')).toBe(false);
+      expect(editor.supportsMarkup('link')).toBe(true);
+    });
+
+    // the tooltip's path: applying a mark clears code and a formatted date — of those the field has
+    test('applies what a field declares when code and dates are not among it', () => {
+      const {editor} = mountField({canHaveFormatting: ['bold', 'italic', 'link']});
+      editor.setTextWithEntities('fact');
+      selectAll(editor);
+      expect(editor.applyMarkup({type: 'link', href: 'https://telegram.org/'})).toBe(true);
+      expect(editor.applyMarkup({type: 'bold'})).toBe(true);
+      expect(entityTypes(editor).sort()).toEqual(['messageEntityBold', 'messageEntityTextUrl']);
+    });
+
+    test('is all a plain message carries in a message field', () => {
+      const {editor} = mountCaption();
+      editor.setTextWithEntities('caption');
+      selectAll(editor);
+      press(editor.input, {key: 'u', code: 'KeyU', ctrlKey: true});
+      expect(entityTypes(editor)).toEqual(['messageEntityUnderline']);
+      expect(editor.supportsMarkup('quote')).toBe(true);
+      expect(editor.supportsMarkup('monospace')).toBe(true);
+    });
+
+    // a plain field has no heading, and a one-line one no code block, for these to make
+    test.each([
+      ['heading', {key: 'H', code: 'KeyH', ctrlKey: true, shiftKey: true}],
+      ['heading level', {key: '1', code: 'Digit1', ctrlKey: true, altKey: true}],
+      ['monospace', {key: 'm', code: 'KeyM', ctrlKey: true}]
+    ] as const)('takes the %s shortcut without throwing', (_name, init) => {
+      for(const {editor} of [mountCaption(), mountCaption({withLinebreaks: false})]) {
+        editor.setTextWithEntities('line');
+        selectAll(editor);
+        const errors: ErrorEvent[] = [];
+        const onError = (event: ErrorEvent) => errors.push(event);
+        window.addEventListener('error', onError);
+        press(editor.input, init);
+        window.removeEventListener('error', onError);
+        expect(errors.map((event) => event.error?.message ?? event.message)).toEqual([]);
+        expect(editor.getRichValue(false).value).toBe('line');
+      }
+    });
+  });
+
+  /**
+   * The app draws an emoji as its own image wherever the platform's font would
+   * not (jsdom's agent is not an Apple one), and a field shows it as the message
+   * will — over the text, which stays what is sent.
+   */
+  describe('emoji', () => {
+    const images = (input: HTMLElement) => [...input.querySelectorAll<HTMLElement>('.chat-input-emoji-image')];
+
+    test('is drawn as the app\'s image over the text it stays', () => {
+      const {editor, inputField} = mountField({withLinebreaks: false});
+      editor.setTextWithEntities('a \u{1F603} b');
+
+      const [image, ...rest] = images(inputField.input);
+      expect(rest).toEqual([]);
+      expect(image.textContent).toBe('\u{1F603}');
+      expect(image.style.backgroundImage).toContain('assets/img/emoji/1f603.png');
+      expect(editor.getRichValue(true, false)).toMatchObject({value: 'a \u{1F603} b', entities: []});
+    });
+
+    test('follows the text it is typed into', () => {
+      const {editor, inputField} = mountCaption();
+      const {editor: tiptap} = editor as unknown as {editor: Editor};
+      editor.setTextWithEntities('one');
+      editor.focusAtEnd(false);
+      typeTextThroughEditorView(tiptap, ' \u{1F44D}\u{1F3FD} two');
+      expect(images(inputField.input).map((image) => image.textContent)).toEqual(['\u{1F44D}\u{1F3FD}']);
+
+      editor.setTextWithEntities('');
+      expect(images(inputField.input)).toEqual([]);
+    });
+
+    test('goes when code is applied over it and comes back when code is taken off', () => {
+      const {editor, inputField} = mountCaption();
+      editor.setTextWithEntities('a \u{1F603} b');
+      editor.restoreSelection({from: 1, to: editor.getRichValue(false).value.length + 1}, false);
+      expect(images(inputField.input)).toHaveLength(1);
+
+      expect(editor.applyMarkup({type: 'monospace'})).toBe(true);
+      expect(images(inputField.input)).toHaveLength(0);
+      expect(editor.applyMarkup({type: 'monospace'})).toBe(true);
+      expect(images(inputField.input)).toHaveLength(1);
+    });
+
+    // formatting can split one emoji over text nodes: it stays one image, not one per part
+    test('is one image when formatting splits it over text nodes', () => {
+      const {editor, inputField} = mountCaption();
+      const grapheme = '\u{1F469}\u{1F3FD}\u200D\u{1F4BB}';
+      editor.setDocument({type: 'doc', content: [{type: 'paragraph', content: [
+        {type: 'text', text: 'A'},
+        ...Array.from(grapheme).map((text, index) => ({type: 'text', text, marks: [{type: index % 2 ? 'italic' : 'bold'}]})),
+        {type: 'text', text: 'B'}
+      ]}]});
+
+      const [image, ...rest] = images(inputField.input);
+      expect(rest).toEqual([]);
+      expect(image.style.backgroundImage).toContain('1f469-1f3fd-200d-1f4bb.png');
+      expect(inputField.input.querySelectorAll('.chat-input-emoji-image-rest')).toHaveLength(Array.from(grapheme).length - 1);
+      expect(editor.getRichValue(false).value).toBe(`A${grapheme}B`);
+    });
+
+    test('is left as typed in code', () => {
+      const {editor, inputField} = mountCaption();
+      editor.setTextWithEntities('\u{1F603}', [{_: 'messageEntityCode', offset: 0, length: 2}]);
+      expect(images(inputField.input)).toEqual([]);
+    });
+  });
+
+  // The emoji panel takes the focus itself, and a field opened with a value — a folder
+  // name, a contact note — may never have been given a caret at all.
+  describe('what the emoji panel inserts', () => {
+    test('goes after the text when the field was never focused', () => {
+      const {editor} = mountField({withLinebreaks: false});
+      editor.setTextWithEntities('Folder');
+
+      editor.replaceSelection('\u{1F60A}');
+      expect(editor.getRichValue(false).value).toBe('Folder\u{1F60A}');
+    });
+
+    test('goes to the caret the person left', () => {
+      const {editor} = mountField({withLinebreaks: false});
+      editor.setTextWithEntities('Folder');
+      editor.restoreSelection({from: 4, to: 4}, false);
+
+      editor.replaceSelection('\u{1F60A}');
+      expect(editor.getRichValue(false).value).toBe('Fol\u{1F60A}der');
     });
   });
 });

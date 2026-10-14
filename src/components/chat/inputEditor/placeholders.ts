@@ -3,6 +3,7 @@ import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
 import {Plugin, PluginKey, TextSelection} from '@tiptap/pm/state';
 import {Decoration, DecorationSet, type EditorView} from '@tiptap/pm/view';
 import {isTrailingPlaceholderNode} from '@components/chat/inputEditor/model';
+import {hasTrailingPlaceholder} from '@components/chat/inputEditor/extensions/trailingPlaceholder';
 import {CHAT_TABLE_TITLE_NODE_NAME} from '@components/chat/inputEditor/tableSchema';
 import classNames from '@helpers/string/classNames';
 import rootScope from '@lib/rootScope';
@@ -172,7 +173,8 @@ function placeholderDecoration(
   node: ProseMirrorNode,
   position: number,
   parent: ProseMirrorNode,
-  doc: ProseMirrorNode
+  doc: ProseMirrorNode,
+  trailing: boolean
 ) {
   if(node.type.name === CHAT_TABLE_TITLE_NODE_NAME) {
     const placeholder = I18n.format('Chat.Input.Editor.Table.TitlePlaceholder', true);
@@ -223,8 +225,13 @@ function placeholderDecoration(
     ), placeholderLabelDecoration(position, placeholder, node.type.name)];
   }
 
+  // An empty field is one empty paragraph, and it is the field's own placeholder
+  // that belongs there — "Type something..." on top of it is the technical
+  // paragraph's label claiming a line that holds the whole document.
   if(
+    trailing &&
     parent === doc &&
+    doc.childCount > 1 &&
     node === doc.lastChild &&
     isTrailingPlaceholderNode(node)
   ) {
@@ -342,13 +349,15 @@ export const ChatInputPlaceholders = Extension.create({
         decorations(state) {
           if(state.doc === lastDocument) return lastDecorations;
           const decorations: Decoration[] = [];
+          const trailing = hasTrailingPlaceholder(state);
           state.doc.forEach((block, offset) => {
             for(const {node, parent, position} of collect(block)) {
               const nodeDecorations = placeholderDecoration(
                 node,
                 offset + position,
                 parent || state.doc,
-                state.doc
+                state.doc,
+                trailing
               );
               if(nodeDecorations) decorations.push(...nodeDecorations);
             }

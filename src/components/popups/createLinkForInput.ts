@@ -68,7 +68,8 @@ export async function openCreateLinkPopupForEditor(
 /** Resolves the editor the input carries — every formattable field mounts one. */
 export default function openCreateLinkPopupForInput(input: HTMLElement) {
   const editor = getChatInputEditor(input);
-  if(!editor) return Promise.resolve(false);
+  // a field that declared no links (a folder name, a poll option) has no link to edit
+  if(!editor?.supportsMarkup('link')) return Promise.resolve(false);
   if(editor.requestLinkEditor()) return Promise.resolve(true);
   return openCreateLinkPopupForEditor(editor);
 }

@@ -1,7 +1,4 @@
-import type {EMOJI_VERSION} from '@environment/emojiVersionsSupport';
 import {SITE_HASHTAGS} from '.';
-import {EmojiVersions} from '@config/emoji';
-import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 import buildURLHash from '@helpers/buildURLHash';
 import copy from '@helpers/object/copy';
 import encodeEntities from '@helpers/string/encodeEntities';
@@ -11,7 +8,7 @@ import parseEntities from '@lib/richTextProcessor/parseEntities';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import setExternalToAnchor, {getElectronHelpers} from '@helpers/electronHelpers';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
-import EMOJI_VERSIONS_SUPPORTED from '@environment/emojiVersionsSupport';
+import {getEmojiImageUrl, isEmojiNative} from '@lib/richTextProcessor/emojiImage';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
 import IS_CUSTOM_EMOJI_SUPPORTED from '@environment/customEmojiSupport';
 import BOM from '@helpers/string/bom';
@@ -556,18 +553,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityEmoji': {
-        let isSupported = IS_EMOJI_SUPPORTED;
-        if(isSupported) {
-          for(const version in EmojiVersions) {
-            if(version) {
-              const emojiData = EmojiVersions[version as EMOJI_VERSION];
-              if(emojiData.hasOwnProperty(entity.unicode) && !EMOJI_VERSIONS_SUPPORTED[version as EMOJI_VERSION]) {
-                isSupported = false;
-                break;
-              }
-            }
-          }
-        }
+        const isSupported = isEmojiNative(entity.unicode);
 
         // if(!(options.wrappingDraft && isSupported)) { // * fix safari emoji
         if(!isSupported) { // no wrapping needed
@@ -575,7 +561,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           //   insertPart(entity, '<span class="emoji">', '</span>');
           // } else {
           element = document.createElement('img');
-          (element as HTMLImageElement).src = `assets/img/emoji/${entity.unicode}.png`;
+          (element as HTMLImageElement).src = getEmojiImageUrl(entity.unicode);
           property = 'alt';
           element.className = 'emoji emoji-image';
 

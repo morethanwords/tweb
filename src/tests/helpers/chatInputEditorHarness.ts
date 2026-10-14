@@ -383,12 +383,19 @@ export function useChatInputEditorHarness() {
     const placeholders = input.querySelectorAll<HTMLElement>(
       '.chat-input-trailing-placeholder'
     );
+    const position = doc.content.size - terminal!.nodeSize;
+    // An empty document is this paragraph and nothing else: the field's own placeholder
+    // stands there, so the terminal one is labelled only once it follows something.
+    if(doc.childCount < 2) {
+      expect(placeholders).toHaveLength(0);
+      return {node: terminal!, position};
+    }
+
     expect(placeholders).toHaveLength(1);
     expect(placeholders[0].dataset.placeholder).toBe(I18n.format(
       'Chat.Input.Editor.TrailingPlaceholder',
       true
     ));
-    const position = doc.content.size - terminal!.nodeSize;
     expect(tiptap.view.nodeDOM(position)).toBe(placeholders[0]);
     return {node: terminal!, position};
   }

@@ -17,6 +17,21 @@ describe('Tiptap chat input editor: Quotes', () => {
     });
   });
 
+  // The same split, from a value: the whitespace at it is trimmed node by node, and a node trimmed
+  // away hands its place to the next — which reading on by the old index ran past the end.
+  test('opens a value whose quote covers the start of a line before formatted text', () => {
+    const {editor} = mountEditor();
+    editor.setTextWithEntities('quoted bold', [
+      {_: 'messageEntityBlockquote', offset: 0, length: 6, pFlags: {}},
+      {_: 'messageEntityBold', offset: 7, length: 4}
+    ]);
+
+    const {value, entities} = editor.getRichValue(true, false);
+    expect(value).toBe('quoted\nbold');
+    expect(findEntity(entities, 'messageEntityBlockquote')).toMatchObject({offset: 0, length: 6});
+    expect(findEntity(entities, 'messageEntityBold')).toMatchObject({offset: 7, length: 4});
+  });
+
   test('splits a selected part of a paragraph into a standalone quote block', () => {
     const {editor, input} = mountEditor();
     editor.setTextWithEntities('before selected after');

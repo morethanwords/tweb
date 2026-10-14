@@ -93,7 +93,10 @@ export const ChatParagraph = Node.create({
       if(!(selection instanceof TextSelection) || !selection.empty) return false;
       const {$from} = selection;
       const previous = $from.nodeBefore;
-      if(previous?.type !== state.schema.nodes.hardBreak) return false;
+      // A one-line field's schema has no hard break at all, so both sides of a plain
+      // comparison would be `undefined` at the start of the field — with nothing before
+      // the caret to take a size from.
+      if(!previous || previous.type !== state.schema.nodes.hardBreak) return false;
       view.dispatch(state.tr.delete(
         $from.pos - previous.nodeSize,
         $from.pos

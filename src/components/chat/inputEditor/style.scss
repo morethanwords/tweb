@@ -790,3 +790,72 @@
 .can-send-collapsed > .chat-input-quote-toggle {
   display: block;
 }
+
+// `.RichMessage` resets a message's box, and on an InputField (`.input-field-input`) it took the
+// field's own height and background with it: the field keeps them.
+.input-field-input.chat-input-plain-field {
+  min-height: var(--height);
+  background-color: var(--surface-color);
+}
+
+// A plain field that can hold a quote or code keeps the trailing paragraph only to have a line after
+// one that ends it (index.ts): like the collapsed composer, it never shows it as a row of its own.
+.chat-input-plain-field > .chat-input-trailing-placeholder {
+  display: none;
+}
+
+// A plain field's paragraphs are its lines — a caption, a folder name, a poll option. The field's
+// own padding is where its placeholder and label sit, and a rich message's page gutter on top of it
+// pushed the text a gutter past them (the chat input drops the gutter the same way, collapsed). The
+// gutter comes from the IV knob, so it goes through the knob, on the paragraph: the field's own
+// padding reads a variable of the same name.
+.chat-input-plain-field > [data-chat-input-paragraph] {
+  --padding-horizontal: 0px;
+}
+
+// A field with vertical padding of its own (InputField's, a form field's) takes no block spacing
+// around its lines either. A message field has none: its lines keep it, as the chat input's do.
+.chat-input-plain-field:not(.input-message-input) > [data-chat-input-paragraph] {
+  --iv-scale: 0;
+}
+
+// An emoji the platform's font would draw differently (`extensions/emojiImages.ts`): the text stays
+// in the document and under the caret, its glyph goes transparent, and the app's image is painted in
+// its place at the size `.emoji-image` has in a message. Every field on the composer's engine gets it.
+.chat-input-emoji-image {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  vertical-align: middle;
+  color: transparent;
+  line-height: 18px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+
+  // selected, the browser would paint the glyph in its selection colour over the image
+  &::selection {
+    color: transparent;
+    background-color: transparent;
+  }
+}
+
+// the parts of one emoji split over text nodes after its first, which carries the image
+.chat-input-emoji-image-rest {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  color: transparent;
+
+  &::selection {
+    color: transparent;
+    background-color: transparent;
+  }
+}
+
+// the selection's own colour, behind the image, while the field holds the selection
+.ProseMirror-focused .chat-input-emoji-image-selected {
+  background-color: Highlight;
+}

@@ -1,5 +1,5 @@
 import '@components/chat/inputEditor/style.scss';
-import {Editor, getMarkRange, JSONContent, selectionToInsertionEnd} from '@tiptap/core';
+import {Editor, getMarkRange, JSONContent, selectionToInsertionEnd, type ChainedCommands} from '@tiptap/core';
 import {detectCodeLanguage} from '@/codeLanguages';
 import {closeHistory, redoNoScroll, undoNoScroll} from '@tiptap/pm/history';
 import {Fragment, Slice} from '@tiptap/pm/model';
@@ -27,12 +27,11 @@ import classNames from '@helpers/string/classNames';
 import type {Document, MessageEntity, PageBlock, Photo, RichMessage, RichText} from '@layer';
 import {
   CHAT_INPUT_EXTENSIONS,
-  PLAIN_MESSAGE_EXTENSIONS,
-  SINGLE_LINE_MESSAGE_EXTENSIONS,
+  getPlainMessageExtensions,
   TIPTAP_BASE_EXTENSIONS
 } from '@components/chat/inputEditor/extensions';
-import {PLAIN_MESSAGE_MARK_NAMES, PLAIN_MESSAGE_NODE_NAMES} from '@components/chat/inputEditor/plainSchema';
-import {ChatTrailingPlaceholder} from '@components/chat/inputEditor/extensions/trailingPlaceholder';
+import {holdsPlainMessageBlocks, PLAIN_MESSAGE_MARK_NAMES, PLAIN_MESSAGE_NODE_NAMES} from '@components/chat/inputEditor/plainSchema';
+import {ChatTrailingPlaceholder, hasTrailingPlaceholder} from '@components/chat/inputEditor/extensions/trailingPlaceholder';
 import {moveSelectionToDetailsSummaryOnClose} from '@components/chat/inputEditor/extensions/details';
 import {moveSelectedTopLevelBlock, selectedStructuralTopLevelRange} from '@components/chat/inputEditor/extensions/blockStructure';
 import {wrapBareChatInputTables} from '@components/chat/inputEditor/extensions/tableNodes';
@@ -66,6 +65,7 @@ import {RICH_MEDIA_ACTION_SETTLED_META} from '@components/chat/inputEditor/media
 import {richReplacementSlice, selectedRichContent, withCopiedOrderedListStarts} from '@components/chat/inputEditor/selectionSlice';
 import {
   clampSelectionOutsideTrailingPlaceholder,
+  entitiesFittingSchema,
   isTrailingPlaceholderNode,
   normalizeBlockOnlyQuotes,
   telegramTextToTiptap,
@@ -313,7 +313,8 @@ function stripCopiedPlaceholders(slice: Slice, view: EditorView) {
     let changed = false;
     fragment.forEach((node, _offset, index) => {
       const trailing = root && index === fragment.childCount - 1 &&
-        view.state.selection instanceof AllSelection && isTrailingPlaceholderNode(node);
+        view.state.selection instanceof AllSelection && hasTrailingPlaceholder(view.state) &&
+        isTrailingPlaceholderNode(node);
       if(trailing || node.type.name === 'blockquoteCaption' && !node.content.size) {
         changed = true;
         return;
@@ -335,7 +336,7 @@ function inlineCopiedSoleParagraph(slice: Slice, view: EditorView) {
   const {doc, schema, selection} = view.state;
   const paragraph = doc.firstChild;
   const logicalChildCount = doc.childCount - (
-    isTrailingPlaceholderNode(doc.lastChild) ? 1 : 0
+    hasTrailingPlaceholder(view.state) && isTrailingPlaceholderNode(doc.lastChild) ? 1 : 0
   );
   if(
     !(selection instanceof AllSelection) ||
@@ -1361,6 +1362,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
   private structuralDoubleClickSelection: StructuralDoubleClickSelection;
   private unregister: () => void;
   private destroyed = false;
+  private caretPlaced = false;
+  private trailingPlaceholder: boolean;
 
   private openSelectedMathTooltip() {
     const {selection} = this.editor.state;
@@ -1570,6 +1573,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   private applyMonospaceShortcut() {
+    if(!this.supportsMarkup('monospace')) return false;
     const {selection} = this.editor.state;
     const {$from, $to} = selection;
     for(let depth = $from.depth; depth > 0; --depth) {
@@ -1582,7 +1586,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
       $from.sameParent($to) &&
       (currentBlock.type.name === 'paragraph' || currentBlock.type.name === 'heading')
     ) {
-      if(this.getMarkupState('monospace').fully) {
+      // a one-line field has no code block to turn the line into
+      if(this.getMarkupState('monospace').fully || !this.editor.schema.nodes.codeBlock) {
         return this.applyMarkup({type: 'monospace'});
       }
       return this.editor.chain().focus().setCodeBlock().run();
@@ -1603,13 +1608,18 @@ class TiptapChatInputEditor implements ChatInputEditor {
     // A plain field builds its schema so rich blocks cannot exist in it, rather
     // than letting them in and reporting `rich` afterwards — a caption has no way
     // to carry them.
-    const composerExtensions = this.options.singleLine ?
-      SINGLE_LINE_MESSAGE_EXTENSIONS :
-      this.options.plainOnly ?
-        PLAIN_MESSAGE_EXTENSIONS :
-        [...TIPTAP_BASE_EXTENSIONS, ...(this.options.enableBlockSelection === false ?
-          CHAT_INPUT_EXTENSIONS.filter((extension) => extension.name !== 'chatBlockReorder') :
-          CHAT_INPUT_EXTENSIONS)];
+    const composerExtensions = this.options.singleLine || this.options.plainOnly ?
+      getPlainMessageExtensions(!!this.options.singleLine, this.options.formatting ?? 'all') :
+      [...TIPTAP_BASE_EXTENSIONS, ...(this.options.enableBlockSelection === false ?
+        CHAT_INPUT_EXTENSIONS.filter((extension) => extension.name !== 'chatBlockReorder') :
+        CHAT_INPUT_EXTENSIONS)];
+    // The trailing paragraph is a line to type after a block that ends the message. A field that
+    // can hold one keeps it: the composer, and a caption with its quotes and code (whose quote is
+    // left on a second line break into that paragraph). A plain field never shows it (style.scss),
+    // as the collapsed composer does not. A field that can hold no block has nothing to type after,
+    // and no paragraph of its own — a value's last empty line — may be taken for one.
+    this.trailingPlaceholder = !this.options.singleLine &&
+      (!this.options.plainOnly || holdsPlainMessageBlocks(composerExtensions));
 
     this.editor = new Editor({
       autofocus: false,
@@ -1627,7 +1637,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
           'class': classNames(
             instantViewStyles.RichMessage,
             instantViewStyles.RichText,
-            instantViewStyles.Blocks
+            instantViewStyles.Blocks,
+            (this.options.plainOnly || this.options.singleLine) && 'chat-input-plain-field'
           ),
           'data-chat-input-editor': 'tiptap'
         },
@@ -1638,7 +1649,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
 
           const inline = inlineSelectionDocument(this.editor.state);
           if(inline) return tiptapToTelegram(inline).text;
-          const serialized = tiptapToTelegram(this.editor.state.doc, true, {forClipboard: true});
+          const serialized = tiptapToTelegram(this.editor.state.doc, this.trailingPlaceholder, {forClipboard: true});
           return serialized.text.slice(
             serialized.textOffsetAtPosition(selection.from, 'backward'),
             serialized.textOffsetAtPosition(selection.to, 'forward')
@@ -1852,6 +1863,13 @@ class TiptapChatInputEditor implements ChatInputEditor {
             event.preventDefault();
             return true;
           }
+          // An empty field takes no line break, with whichever shortcut: there is nothing for one
+          // to separate, and it only grew the field by an empty row. Sending on Enter was taken
+          // above (`onKeyDown`); an empty quote, list or table is not an empty field.
+          if(event.key === 'Enter' && !event.isComposing && this.isPlaceholderEmpty()) {
+            event.preventDefault();
+            return true;
+          }
           if(this.options.isNewLineShortcutPressed?.(event)) {
             this.remappingNewLineShortcut = true;
             try {
@@ -1911,9 +1929,9 @@ class TiptapChatInputEditor implements ChatInputEditor {
         }
       },
       element: {mount: input} as unknown as HTMLElement,
-      extensions: this.options.singleLine ?
-        composerExtensions :
-        [...composerExtensions, ChatTrailingPlaceholder],
+      extensions: this.trailingPlaceholder ?
+        [...composerExtensions, ChatTrailingPlaceholder] :
+        composerExtensions,
       injectCSS: false
     });
     this.editor.registerPlugin(new Plugin({
@@ -1939,6 +1957,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
     this.editor.on('selectionUpdate', this.onSelectionUpdate);
     this.editor.on('transaction', this.onTransaction);
     this.syncDirection();
+    input.addEventListener('focusin', this.onFocusIn);
     input.addEventListener('input', this.onNativeInputCapture, {capture: true});
     input.addEventListener('compositionstart', this.onCompositionStart);
     input.addEventListener('compositionend', this.onCompositionEnd);
@@ -1977,6 +1996,10 @@ class TiptapChatInputEditor implements ChatInputEditor {
     ) return;
     event.preventDefault();
     target.click();
+  };
+
+  private onFocusIn = () => {
+    this.caretPlaced = true;
   };
 
   private onCompositionStart = () => {
@@ -2076,7 +2099,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   };
 
   public getRichValue(withEntities = true, withCaret = true) {
-    const serialized = tiptapToTelegram(this.editor.state.doc, true);
+    const serialized = tiptapToTelegram(this.editor.state.doc, this.trailingPlaceholder);
     const selection = this.editor.state.selection;
     return {
       value: serialized.text,
@@ -2086,7 +2109,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public getDocument() {
-    return withoutTrailingPlaceholder(this.editor.state.doc).toJSON();
+    return this.withoutTrailingPlaceholder(this.editor.state.doc).toJSON();
   }
 
   public getMode() {
@@ -2106,7 +2129,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
       hasBlockquote = true;
       return false;
     });
-    return documentRequiresRichMode(withoutTrailingPlaceholder(document), true) ||
+    return documentRequiresRichMode(this.withoutTrailingPlaceholder(document), true) ||
       this.expanded && hasBlockquote ? 'rich' : 'plain';
   }
 
@@ -2168,7 +2191,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public getLegacyValueIfLossless() {
-    const document = withoutTrailingPlaceholder(this.editor.state.doc);
+    const document = this.withoutTrailingPlaceholder(this.editor.state.doc);
     return this.getLegacyValueForDocument(document);
   }
 
@@ -2267,7 +2290,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public requestLinkEditor() {
-    if(!this.options.onLinkEditor) return false;
+    if(!this.options.onLinkEditor || !this.supportsMarkup('link')) return false;
     this.options.onLinkEditor(this.captureSelection());
     return true;
   }
@@ -2433,7 +2456,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public setTextWithEntities(text: string, entities: MessageEntity[] = []) {
-    this.setDocument(telegramTextToTiptap(text, entities));
+    this.setDocument(this.textToDocument(text, entities));
   }
 
   public setDocument(document: JSONContent) {
@@ -2442,14 +2465,14 @@ class TiptapChatInputEditor implements ChatInputEditor {
     return set;
   }
 
-  /**
-   * A one-line field has no trailing paragraph: the placeholder exists so a
-   * block at the end of a message still has a line to type after, and here the
-   * one line is all there is — a second would show as an empty row.
-   */
   private withTrailingPlaceholder(document: JSONContent, hasExistingPlaceholder = false) {
-    if(this.options.singleLine) return document;
+    if(!this.trailingPlaceholder) return document;
     return withTrailingPlaceholder(document, hasExistingPlaceholder);
+  }
+
+  /** The document as written: without the trailing paragraph, where the field has one. */
+  private withoutTrailingPlaceholder(document: ProseMirrorNode) {
+    return this.trailingPlaceholder ? withoutTrailingPlaceholder(document) : document;
   }
 
   private parseDocument(document: JSONContent) {
@@ -2460,6 +2483,20 @@ class TiptapChatInputEditor implements ChatInputEditor {
     ));
     doc.check();
     return doc;
+  }
+
+  /**
+   * A value arrives in a plain field as text plus entities, and some of them the
+   * field may not carry: a quote in a poll option, bold in a folder name. Those go
+   * and the text stays — a document that does not fit is refused whole, which
+   * would leave the field empty. The composer's own schema holds every entity.
+   */
+  private textToDocument(text: string, entities: MessageEntity[] = []) {
+    if(this.options.plainOnly || this.options.singleLine) {
+      entities = entitiesFittingSchema(entities, this.editor.schema);
+    }
+
+    return telegramTextToTiptap(text, entities);
   }
 
   private replaceDocument(document: JSONContent) {
@@ -2506,6 +2543,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public toggleHeading(level: InstantViewHeadingLevel) {
+    // a plain field has no headings: its shortcut does nothing there
+    if(!this.editor.schema.nodes.heading) return false;
     const chain = this.editor.chain().focus();
     return this.editor.isActive('heading', {level}) ?
       chain.setNode('paragraph').run() :
@@ -3839,7 +3878,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   ) {
     if(isEmptyFirstLineSpace(this.editor.state, from, to, text)) return false;
 
-    return this.replaceContent(from, to, telegramTextToTiptap(text, entities));
+    return this.replaceContent(from, to, this.textToDocument(text, entities));
   }
 
   public replaceDocumentRangeWithRichMessage(from: number, to: number, message: RichMessage) {
@@ -3847,7 +3886,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public replaceAllText(text: string, entities: MessageEntity[] = []) {
-    return this.replaceAllContent(telegramTextToTiptap(text, entities));
+    return this.replaceAllContent(this.textToDocument(text, entities));
   }
 
   public replaceAllRichMessage(message: RichMessage) {
@@ -3887,13 +3926,20 @@ class TiptapChatInputEditor implements ChatInputEditor {
     }).run();
   }
 
+  /**
+   * A field nobody has put a caret in yet has none to insert at — its selection is
+   * wherever ProseMirror starts, before everything. What comes from outside (an
+   * emoji picked from the panel over a folder name, a contact note) goes after the
+   * text the field was opened with, as it did before the composer.
+   */
   public replaceSelection(text: string, entities: MessageEntity[] = []) {
+    if(!this.caretPlaced) this.focusAtEnd(false);
     const {from, to} = this.editor.state.selection;
     return this.replaceDocumentRange(from, to, text, entities);
   }
 
   public replaceTextRange(from: number, to: number, text: string, entities: MessageEntity[] = []) {
-    const serialized = tiptapToTelegram(this.editor.state.doc, true);
+    const serialized = tiptapToTelegram(this.editor.state.doc, this.trailingPlaceholder);
     const pmFrom = serialized.positionAtTextOffset(from, 'forward');
     const pmTo = serialized.positionAtTextOffset(to, 'backward');
     return this.replaceDocumentRange(pmFrom, pmTo, text, entities);
@@ -4088,7 +4134,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
     if(type === 'link') {
       const chain = this.editor.chain().focus();
       if(!href) return chain.extendMarkRange('link').unsetMark('link').run();
-      return chain.unsetMark('code').unsetMark('formattedDate').setMark('link', {href}).run();
+      return this.unsetExclusiveMarks(chain).setMark('link', {href}).run();
     }
 
     if(type === 'date') {
@@ -4106,15 +4152,23 @@ class TiptapChatInputEditor implements ChatInputEditor {
       return this.editor.isActive('code') ? chain.unsetMark('code').run() : chain.setMark('code').run();
     }
 
-    const chain = this.editor
-    .chain()
-    .focus()
-    .unsetMark('code')
-    .unsetMark('formattedDate');
+    const chain = this.unsetExclusiveMarks(this.editor.chain().focus());
     if(type === 'subscript' || type === 'superscript') {
       chain.unsetMark(type === 'subscript' ? 'superscript' : 'subscript');
     }
     return chain.toggleMark(name).run();
+  }
+
+  /**
+   * Code and a formatted date take no other formatting, so applying one clears them —
+   * those of them the field has: a fact check carries neither, a poll description
+   * no date, and a command for a mark the schema lacks throws.
+   */
+  private unsetExclusiveMarks(chain: ChainedCommands) {
+    (['code', 'formattedDate'] as const).forEach((name) => {
+      if(this.editor.schema.marks[name]) chain.unsetMark(name);
+    });
+    return chain;
   }
 
   public getMarkupState(type: MarkdownType): ChatInputMarkupState {
@@ -4192,6 +4246,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
   }
 
   public restoreSelection(selection: ChatInputEditorSelection, focus = true) {
+    // A caret carried over a reload is the person's own, whether or not it is focused.
+    this.caretPlaced = true;
     const max = this.editor.state.doc.content.size;
     const from = Math.max(0, Math.min(max, selection.from));
     const rawTo = Math.max(0, Math.min(max, selection.to));
@@ -4228,10 +4284,11 @@ class TiptapChatInputEditor implements ChatInputEditor {
   public focusAtEnd(focus = true) {
     const {doc} = this.editor.state;
     const trailing = doc.lastChild;
-    let boundary = isTrailingPlaceholderNode(trailing) ?
+    const hasTrailing = this.trailingPlaceholder && isTrailingPlaceholderNode(trailing);
+    let boundary = hasTrailing ?
       doc.content.size - trailing.nodeSize :
       doc.content.size;
-    const logicalLast = isTrailingPlaceholderNode(trailing) && doc.childCount > 1 ?
+    const logicalLast = hasTrailing && doc.childCount > 1 ?
       doc.child(doc.childCount - 2) :
       doc.lastChild;
     const caption = logicalLast?.lastChild;
@@ -4341,6 +4398,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
     this.editor.off('update', this.onUpdate);
     this.editor.off('selectionUpdate', this.onSelectionUpdate);
     this.editor.off('transaction', this.onTransaction);
+    this.input.removeEventListener('focusin', this.onFocusIn);
     this.input.removeEventListener('input', this.onNativeInputCapture, {capture: true});
     this.input.removeEventListener('compositionstart', this.onCompositionStart);
     this.input.removeEventListener('compositionend', this.onCompositionEnd);

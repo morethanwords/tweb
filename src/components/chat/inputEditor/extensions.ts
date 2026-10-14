@@ -9,7 +9,8 @@ import {Underline} from '@tiptap/extension-underline';
 import {UndoRedo} from '@tiptap/extensions';
 import {getSchema, type AnyExtension} from '@tiptap/core';
 import type {Schema} from '@tiptap/pm/model';
-import isPlainMessageExtension, {isSingleLineMessageExtension} from '@components/chat/inputEditor/plainSchema';
+import isPlainMessageExtension, {isDeclaredFormattingExtension, isSingleLineMessageExtension} from '@components/chat/inputEditor/plainSchema';
+import type {InputFormattingTypes} from '@helpers/dom/getInputFormattingTypes';
 import classNames from '@helpers/string/classNames';
 import {instantViewStyles} from '@components/instantViewFormatting';
 import {CHAT_INPUT_HISTORY_NEW_GROUP_DELAY} from '@components/chat/inputEditor/history';
@@ -62,6 +63,7 @@ import {ChatRichMedia} from '@components/chat/inputEditor/extensions/media';
 import {ChatRichFooter, ChatRichDivider, ChatOpaqueRichBlock} from '@components/chat/inputEditor/extensions/richBlocks';
 import {ChatRichMap} from '@components/chat/inputEditor/extensions/map';
 import {ChatCustomEmoji, ChatCustomEmojiText} from '@components/chat/inputEditor/extensions/customEmoji';
+import {ChatEmojiImages} from '@components/chat/inputEditor/extensions/emojiImages';
 import {ChatInlineAtomNavigation, ChatEmptyDocumentSelection} from '@components/chat/inputEditor/extensions/navigation';
 import {ChatBlockReorder} from '@components/chat/inputEditor/extensions/blockReorder';
 import {ChatButtonRow, ChatRichButton} from '@components/chat/inputEditor/extensions/richButtons';
@@ -158,6 +160,7 @@ export const CHAT_INPUT_EXTENSIONS: AnyExtension[] = [
   ChatOpaqueRichBlock,
   ChatCustomEmoji,
   ChatCustomEmojiText,
+  ChatEmojiImages,
   ChatInlineAtomNavigation,
   ChatEmptyDocumentSelection,
   ChatBlockReorder
@@ -209,3 +212,23 @@ export const PLAIN_MESSAGE_EXTENSIONS: AnyExtension[] = composeExtensions(isPlai
 
 /** The same, minus the block structure a one-line field has nowhere to put. */
 export const SINGLE_LINE_MESSAGE_EXTENSIONS: AnyExtension[] = composeExtensions(isSingleLineMessageExtension);
+
+const declaredFormattingExtensions = new Map<string, AnyExtension[]>();
+
+/**
+ * A plain field's extensions, narrowed to the formatting it declares. A field
+ * declaring all of it — a caption, a forward comment — shares the sets above;
+ * the rest are composed once per combination, since a field is mounted often.
+ */
+export function getPlainMessageExtensions(singleLine: boolean, formatting: InputFormattingTypes): AnyExtension[] {
+  if(formatting === 'all') return singleLine ? SINGLE_LINE_MESSAGE_EXTENSIONS : PLAIN_MESSAGE_EXTENSIONS;
+  const key = `${+singleLine}:${[...formatting].sort().join(',')}`;
+  let extensions = declaredFormattingExtensions.get(key);
+  if(!extensions) {
+    const isPlain = singleLine ? isSingleLineMessageExtension : isPlainMessageExtension;
+    extensions = composeExtensions((extension) => isPlain(extension) && isDeclaredFormattingExtension(extension, formatting));
+    declaredFormattingExtensions.set(key, extensions);
+  }
+
+  return extensions;
+}

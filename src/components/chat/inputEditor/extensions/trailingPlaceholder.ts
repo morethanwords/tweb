@@ -21,6 +21,15 @@ type ChatTrailingPlaceholderPluginState = {
 const chatTrailingPlaceholderPluginKey =
   new PluginKey<ChatTrailingPlaceholderPluginState>('chatTrailingPlaceholder');
 
+/**
+ * Whether the editor keeps a technical trailing paragraph at all. A field that cannot hold a block
+ * has none (index.ts), and there a last empty paragraph is a line of the value, not the technical
+ * one: nothing may decorate, hide or strip it as one.
+ */
+export function hasTrailingPlaceholder(state: EditorState) {
+  return !!chatTrailingPlaceholderPluginKey.get(state);
+}
+
 function trailingPlaceholderTransaction(state: EditorState, addToHistory = false) {
   if(isTrailingPlaceholderNode(state.doc.lastChild)) return;
   const paragraph = state.schema.nodes.paragraph?.createAndFill();
@@ -95,6 +104,12 @@ function moveSelectionToTrailingPlaceholder(
     if(!boundary || boundary.index !== state.doc.childCount - 2) return false;
   }
 
+  // a plain field and the collapsed composer do not show it: the end of the last line shown is
+  // the end, and an emoji picked next must not land on a line of its own
+  const dom = view?.nodeDOM(trailingPosition);
+  const appWindow = dom?.ownerDocument?.defaultView;
+  if(appWindow && dom instanceof appWindow.Element && appWindow.getComputedStyle(dom).display === 'none') return true;
+
   if(dispatch) {
     dispatch(state.tr.setSelection(
       TextSelection.create(state.doc, trailingPosition + 1)
@@ -117,7 +132,7 @@ export const ChatTrailingPlaceholder = Extension.create({
           tableHasRtlDirection(view, context.tableStart - 1) !==
           (direction === 'left')
         ) return false;
-        return moveSelectionToTrailingPlaceholder(state, dispatch);
+        return moveSelectionToTrailingPlaceholder(state, dispatch, view);
       }
       const modelDirection = selectionHasRtlDirection(view) === (direction === 'left') ? 1 : -1;
       if(state.selection instanceof NodeSelection) {
@@ -129,7 +144,7 @@ export const ChatTrailingPlaceholder = Extension.create({
         !view.endOfTextblock(direction)
       ) return false;
       return moveSelectionWithinTopLevelBlock(state, dispatch, modelDirection) ||
-        modelDirection > 0 && moveSelectionToTrailingPlaceholder(state, dispatch) ||
+        modelDirection > 0 && moveSelectionToTrailingPlaceholder(state, dispatch, view) ||
         moveSelectionIntoAdjacentTopLevelBlock(state, dispatch, modelDirection);
     };
     return {

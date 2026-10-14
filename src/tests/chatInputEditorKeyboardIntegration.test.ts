@@ -81,6 +81,31 @@ describe('Tiptap chat input editor: Keyboard', () => {
     expectSingleTerminalParagraph(input, tiptap);
   });
 
+  // nothing to separate: a line break in an empty composer only grew it by an empty row
+  test.each([
+    ['the new-line shortcut', {shiftKey: true}],
+    ['Enter itself', {}],
+    ['Ctrl+Enter', {ctrlKey: true}]
+  ] as const)('breaks no line in an empty composer with %s', (_name, init) => {
+    const {editor, input} = mountEditor(undefined, {
+      isNewLineShortcutPressed: (event) => event.key === 'Enter' && event.shiftKey
+    });
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    editor.focusAtEnd(false);
+
+    const event = new KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true, ...init});
+    input.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(tiptap.state.doc.childCount).toBe(1);
+    expect(editor.getRichValue(false).value).toBe('');
+
+    // text there, the same shortcut breaks the line as before
+    editor.setTextWithEntities('line');
+    editor.focusAtEnd(false);
+    input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true, shiftKey: true}));
+    expect(editor.getRichValue(false).value).toBe('line\n');
+  });
+
   test.each([false, true])(
     'inserts one newline from the terminal placeholder with shiftKey=%s',
     (shiftKey) => {

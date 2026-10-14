@@ -8,6 +8,7 @@ import type {
   RichMessage
 } from '@layer';
 import type {MarkdownType} from '@helpers/dom/getRichElementValue';
+import type {InputFormattingTypes} from '@helpers/dom/getInputFormattingTypes';
 import type {InstantViewHeadingLevel} from '@components/instantViewFormatting';
 import type {ButtonBackground, ButtonRowAlign} from '@components/wrappers/buttonTypes';
 
@@ -55,6 +56,11 @@ export type ChatInputEditorOptions = {
   plainOnly?: boolean,
   /** Restrict it further to one line: no block structure, no break, no Enter. */
   singleLine?: boolean,
+  /**
+   * The formatting a plain field declares (`getInputFormattingTypes`); its schema
+   * leaves out the rest. Everything a plain message carries when not given.
+   */
+  formatting?: InputFormattingTypes,
   isNewLineShortcutPressed?: (event: KeyboardEvent) => boolean,
   onCodeBlockLanguagePicker?: (element: HTMLElement) => void,
   onLinkEditor?: (selection: ChatInputEditorSelection) => void,

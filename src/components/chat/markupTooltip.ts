@@ -30,6 +30,7 @@ import createAiEditorIcon from '@components/chat/createAiEditorIcon';
 import tooltipController from '@helpers/tooltipController';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import {FOCUS_TRAP_ATTACHED_ATTRIBUTE} from '@helpers/dom/focusTrap';
+import getInputFormattingTypes from '@helpers/dom/getInputFormattingTypes';
 
 export type MarkupTooltipTypes = Extract<
   MarkdownType,
@@ -506,16 +507,13 @@ export default class MarkupTooltip {
 
     this.setActiveMarkupButton();
 
-    const canFormat = this.input.getAttribute('can-format');
-    const allowedTypes = canFormat !== null ?
-      new Set(canFormat.split(',').filter(Boolean) as MarkupTooltipTypes[]) :
-      null;
+    const formatting = getInputFormattingTypes(this.input);
     const hiddenTypes = new Set<MarkupTooltipTypes>();
     const editor = getChatInputEditor(this.input);
     (Object.keys(this.buttons) as MarkupTooltipTypes[]).forEach((type) => {
       // What the mounted schema cannot apply must not be offered: a plain field
       // carries no highlight or script marks.
-      const hidden = !!allowedTypes && !allowedTypes.has(type) || !editor?.supportsMarkup(type);
+      const hidden = formatting !== 'all' && !formatting.has(type) || !editor?.supportsMarkup(type);
       this.buttons[type].classList.toggle('hide', hidden);
       if(hidden) hiddenTypes.add(type);
     });
@@ -629,8 +627,8 @@ export default class MarkupTooltip {
 
   public canFormatInput(input: Element) {
     if(!input) return false;
-    const canFormat = input.getAttribute('can-format');
-    return canFormat !== null ? !!canFormat.trim() : input.classList.contains('input-message-input');
+    const formatting = getInputFormattingTypes(input);
+    return formatting === 'all' || !!formatting.size;
   }
 
   private handleSelectionChange = (event?: Event) => {

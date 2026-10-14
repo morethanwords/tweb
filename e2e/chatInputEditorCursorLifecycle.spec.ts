@@ -1089,3 +1089,24 @@ for(const key of ['Delete', 'Backspace'] as const) for(const source of ['keyboar
   expect(await page.evaluate(() => window.chatInputEditorHarness.undo())).toBe(true);
   expect(await page.evaluate(() => window.chatInputEditorHarness.document())).toEqual(before);
 });
+
+// Nothing for a line break to separate: in an empty composer it only grew the field by an empty row.
+test('an empty composer takes no line break, whichever key makes one', async({page}) => {
+  await openEditor(page);
+  const editor = page.locator('#editor');
+  await editor.click();
+  await settleNativeSelection(page);
+  const breaks = editor.locator('br:not(.ProseMirror-trailingBreak)');
+  for(const key of ['Enter', 'Shift+Enter', 'ControlOrMeta+Enter']) {
+    await page.keyboard.press(key);
+    await settleNativeSelection(page);
+    expect(await blocks(page), key).toHaveLength(1);
+    await expect(breaks, key).toHaveCount(0);
+  }
+
+  // with text in it the same key breaks the line as before
+  await page.keyboard.type('line');
+  await page.keyboard.press('Enter');
+  await settleNativeSelection(page);
+  expect((await blocks(page)).map(({text}) => text)).toEqual(['line', '']);
+});
