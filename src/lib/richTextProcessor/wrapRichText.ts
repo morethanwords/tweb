@@ -29,6 +29,7 @@ import {observeResize} from '@components/resizeObserver';
 import DotRenderer from '@components/dotRenderer';
 import Icon from '@components/icon';
 import isSuspiciousUrl from '@helpers/string/isSuspiciousUrl';
+import isWhitelistedUrl, {isMaskedUrlTrusted} from '@lib/richTextProcessor/isWhitelistedUrl';
 import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
 import formatFormattedDate from '@helpers/date/formatFormattedDate';
 import formatRelativeTime from '@helpers/date/formatRelativeTime';
@@ -630,15 +631,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           url = wrapped.url;
           onclick = wrapped.onclick;
 
-          if(options.whitelistedDomains) {
-            try {
-              const hostname = new URL(url).hostname;
-              if(!options.whitelistedDomains.includes(hostname)) {
-                break;
-              }
-            } catch(err) {
-              break;
-            }
+          if(options.whitelistedDomains && !isWhitelistedUrl(url, options.whitelistedDomains)) {
+            break;
           }
 
           if(entity._ === 'messageEntityTextUrl') {
@@ -649,7 +643,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
               ++nasty.i;
             }
 
-            if(url !== fullEntityText) {
+            // a host the server vouches for opens at once, whatever text it hides under
+            if(url !== fullEntityText && !isMaskedUrlTrusted(url)) {
               masked = true;
             }
           } else {

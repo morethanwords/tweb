@@ -125,6 +125,7 @@ import DotRenderer from '@components/dotRenderer';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import {BatchProcessor} from '@helpers/sortedList';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import {isMaskedUrlTrusted} from '@lib/richTextProcessor/isWhitelistedUrl';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import wrapMediaSpoiler, {hasMediaSpoiler, onMediaSpoilerClick} from '@components/wrappers/mediaSpoiler';
 import liteMode from '@helpers/liteMode';
@@ -9570,7 +9571,7 @@ export default class ChatBubbles {
               });
             }
           } else {
-            const isUnsafe = !context.messageMedia.pFlags.safe;
+            const isUnsafe = !context.messageMedia.pFlags.safe && !isMaskedUrlTrusted(wrapped.url);
             boxRefs.push((box) => {
               setBlankToAnchor(box);
 

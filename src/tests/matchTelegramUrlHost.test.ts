@@ -66,6 +66,12 @@ describe('matchUrlHost', () => {
   test('survives a url the parser never produced', () => {
     expect(matchUrlHost(undefined, [TELESCOPE_LINK_HOST])).toBeUndefined();
   });
+
+  // the order of a server-sent list is not a promise that parents come after their subdomains
+  test('prefers the host itself to a parent listed ahead of it', () => {
+    expect(matchUrlHost(new URL('https://translations.telegram.org/en'), ['telegram.org', 'translations.telegram.org']))
+    .toEqual({host: 'translations.telegram.org', subdomain: ''});
+  });
 });
 
 describe('the pathname an internal handler receives', () => {
