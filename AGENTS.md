@@ -521,6 +521,14 @@ import {Message, Chat, User, InputPeer} from '@layer';
   skill (`.claude/skills/codex-review/SKILL.md`) has the steps. Only when Codex
   is unavailable (the script exits 3: not installed, signed out, every model
   refused) does the agent review the change itself, and its report says so.
+- **"Финализируй" (`/finalize`) means review, fix and commit.** It is the
+  explicit request to commit that the rule under "What NOT to Do" waits for,
+  and it covers only the change at hand: review it as above, fix what the review
+  confirms, run the tests the final review calls for, and commit it as one
+  commit of only that change — never pushed. A fix the code and the rules
+  already settle is made without asking; a question only the user can answer
+  holds the commit until they have answered and said to commit. The steps are in
+  `.claude/skills/finalize/SKILL.md`.
 
 ## Accessibility (a11y) is part of every UI feature
 
