@@ -1,0 +1,2 @@
+import{Vo as e}from"./buttonMenu-CC9m-JLv.js";function t(t){return e({...t.length===1?{peerId:t[0],titleLangKey:`DeleteContact`,descriptionLangKey:`AreYouSureDeleteContact`}:{titleLangKey:`DeleteContactsTitle`,titleLangArgs:[t.length],descriptionLangKey:`DeleteContactsSubtitle`},button:{langKey:`Delete`,isDanger:!0}})}export{t};
+//# sourceMappingURL=deleteContacts-CYMOTNcW.js.map

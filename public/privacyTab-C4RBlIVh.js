@@ -1,0 +1,2 @@
+import{j as e}from"./solid-NBrjMhfa.js";import{Ci as t}from"./buttonMenu-CC9m-JLv.js";var n=(n,r)=>()=>{let[i]=t();return e(()=>{i.container.classList.add(`privacy-tab`,n),r(i)}),null};export{n as t};
+//# sourceMappingURL=privacyTab-C4RBlIVh.js.map

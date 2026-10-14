@@ -1,0 +1,2 @@
+import{n as e}from"./rootScope-mqmIf7yY.js";import{b as t}from"./solid-NBrjMhfa.js";import{a as n,n as r,o as i}from"./store-CsSt2isQ.js";var[a,o]=t(()=>r({})),s=(...t)=>{let n=t[0];return o(...t),e.managers.appStateManager.setByKey(n,i(a[n]))},c=(e,t)=>{typeof e==`object`?o(e):o(e,n(t))},l=()=>[a,s],u=()=>a.appConfig,d=()=>!!u().freeze_since_date;export{l as a,u as i,s as n,d as o,c as r,a as t};
+//# sourceMappingURL=appState-BLBjb1NE.js.map

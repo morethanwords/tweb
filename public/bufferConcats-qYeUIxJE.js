@@ -1,0 +1,2 @@
+function e(...e){let t=e.reduce((e,t)=>e+(t.byteLength||t.length),0),n=new Uint8Array(t),r=0;return e.forEach(e=>{n.set(e instanceof ArrayBuffer?new Uint8Array(e):e,r),r+=e.byteLength||e.length}),n}export{e as t};
+//# sourceMappingURL=bufferConcats-qYeUIxJE.js.map

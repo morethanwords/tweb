@@ -1,0 +1,2 @@
+import{n as e}from"./rolldown-runtime-hePW80VL.js";var t=e({default:()=>n});function n(e,t=`preview`){let n=e.video_sizes?.filter(e=>e._===`videoSize`);if(n?.length)return t===`preview`?n.find(e=>e.type===`p`)||n.reduce((e,t)=>t.size<e.size?t:e,n[0]):n.find(e=>e.type===`u`)||n.reduce((e,t)=>t.size>e.size?t:e,n[0])}export{t as n,n as t};
+//# sourceMappingURL=chooseProfileVideoSize-C-XpWfuf.js.map

@@ -1,0 +1,2 @@
+import{A as e,h as t}from"./solid-NBrjMhfa.js";import{t as n}from"./resizeObserver-CgbGMB9w.js";function r(r,i){t(()=>{let t=r();if(!t)return;let a=n(t,i);e(()=>void a())})}export{r as t};
+//# sourceMappingURL=useObserveResize-DgDlKrOq.js.map

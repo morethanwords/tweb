@@ -1,0 +1,2 @@
+import{m as e}from"./langPack-CsDh892S.js";import{O as t,P as n}from"./solid-NBrjMhfa.js";import{c as r,h as i,p as a}from"./web-Cng6oOKJ.js";import{t as o}from"./classNames-hZG6twJP.js";var s=i(`<span aria-hidden=true>`),c=i=>{let[c,l]=n(i,[`icon`,`class`]);return(()=>{var n=s();return a(n,t({get class(){return o(`tgico`,c.class)}},l),!1,!0),r(n,()=>e(c.icon)),n})()};export{c as t};
+//# sourceMappingURL=iconTsx-Bm7U438I.js.map
