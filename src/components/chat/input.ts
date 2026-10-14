@@ -1372,6 +1372,21 @@ export default class ChatInput {
         this.managers.appMessagesManager.isRichMessageMapAvailable()
       )
     }, {
+      // opens the expanded editor even when it is empty, where the expand button is not shown yet
+      icon: 'text_add',
+      richMessageAction: 'article',
+      text: 'Chat.Input.Attach.Article',
+      onClick: () => {
+        this.setMessageInputExpanded(true, true);
+        // the menu's focus trap would pull the caret back and then hand it to the attach button
+        contextMenuController.close();
+        runAttachEditorCommand((editor) => {
+          editor.focus();
+          return true;
+        });
+      },
+      verify: () => !!this.richMessageInput?.expandable
+    }, {
       icon: 'group',
       richMessageAction: 'groupCollage',
       textElement: createAttachPremiumLabel('Chat.Input.Editor.Media.GroupAsCollage'),

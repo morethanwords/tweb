@@ -167,6 +167,7 @@ const lang = {
   'Chat.Input.UnpinAll': 'Unpin All Messages',
   'Chat.Input.Attach.PhotoOrVideo': 'Photo or Video',
   'Chat.Input.Attach.Document': 'Document',
+  'Chat.Input.Attach.Article': 'Article',
   'Chat.Input.Attach': 'Attach',
   'Chat.Input.Record.Voice': 'Voice Message',
   'Chat.Input.Record.Video': 'Video Message',

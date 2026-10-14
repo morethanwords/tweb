@@ -24,6 +24,8 @@ describe('rich-message Attach menu policy', () => {
     'giftPremium',
     'poll',
     'standaloneChecklist',
+    // it is what expands the editor
+    'article',
     'attachBot'
   ])('hides the standalone action %s while the editor is expanded', (action) => {
     expect(isRichMessageAttachMenuActionAllowed(action)).toBe(false);

@@ -408,6 +408,8 @@ export class RichMessageInputController {
     }
   }
 
+  public get expandable() {return !!this.expandButton;}
+
   public setExpanded(expanded: boolean, animate = false) {
     if(!this.expandButton) return;
     if(this.expanded === expanded) {
