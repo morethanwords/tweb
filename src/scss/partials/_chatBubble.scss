@@ -17,6 +17,18 @@
   }
 }
 
+// * the flash a bubble gets when a jump lands on it: the highlight colour comes up and fades away,
+// * over an overlay that is painted with that colour and is taken away afterwards, by the timeout in
+// * `highlightBubble` (BUBBLE_HIGHLIGHT_DURATION, the same 2s). `forwards` is what holds the faded-out
+// * end until it is: the timeout runs in a task, so it is late by a frame at best and by however long
+// * the main thread is busy at worst — and with no fill mode the overlay snaps back to the full colour
+// * it is painted with, blinking once before it goes.
+@mixin bubble-highlight-flash {
+  body:not(.animation-level-0) & {
+    animation: bubbleSelected 2s linear forwards;
+  }
+}
+
 .bubbles-date-group {
   position: relative;
 
@@ -296,9 +308,7 @@
     //background-color: rgba(0, 132, 255, .3);
     background-color: var(--message-highlighting-color);
 
-    body:not(.animation-level-0) & {
-      animation: bubbleSelected 2s linear;
-    }
+    @include bubble-highlight-flash;
   }
 
   &.is-first-unread {
@@ -1027,9 +1037,7 @@
       background-color: var(--message-highlighting-color);
       pointer-events: none;
 
-      body:not(.animation-level-0) & {
-        animation: bubbleSelected 2s linear;
-      }
+      @include bubble-highlight-flash;
     }
 
     // * the selection drives its state with SetTransition (`forwards` while in, `animating` +
@@ -1514,13 +1522,8 @@
       &.is-highlighted {
         .document-selection {
           background-color: var(--message-highlighting-color);
-        }
 
-        body:not(.animation-level-0) & {
-          .document-selection/* ,
-          .document-wrapper:before */ {
-            animation: bubbleSelected 2s linear;
-          }
+          @include bubble-highlight-flash;
         }
       }
 
