@@ -19,6 +19,8 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import pause from '@helpers/schedulers/pause';
 import {getWindowClients} from '@helpers/context';
+import getLoginCodeEntity from '@appManagers/utils/messages/getLoginCodeEntity';
+import encodeSpoiler from '@lib/richTextProcessor/encodeSpoiler';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
@@ -427,6 +429,11 @@ function fireNotification(
   let title = obj.title || 'Telegram';
   let body = obj.description || '';
   let tag = 'peer' + peerId;
+
+  const loginCodeEntity = getLoginCodeEntity(+peerId, body);
+  if(loginCodeEntity) {
+    body = encodeSpoiler(body, loginCodeEntity).text;
+  }
 
   const messageKey = peerId + '_' + obj.custom.msg_id;
   if(ignoreMessages.has(messageKey)) {
