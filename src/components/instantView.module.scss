@@ -285,11 +285,19 @@
 }
 
 // Math (Temml → MathML). Block formulas (`$$…$$`) display-centered in a horizontal scroller for
-// wide equations; inline formulas (`$x$`) flow with the surrounding text.
+// wide equations; inline formulas (`$x$`) flow with the surrounding text. A formula reads left to
+// right in any language; the scroller with it, so a wide one opens at its beginning.
 .MathBlockWrapper {
   margin-block: calc(.6666rem * var(--iv-scale));
   overflow-x: auto;
   overflow-y: hidden;
+  direction: ltr;
+}
+
+.Latex,
+.LatexInline {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .Latex {
@@ -994,7 +1002,7 @@
     var(--secondary-text-color) 100%
   );
   background-size: 200% 100%;
-  background-position: 100% 0;
+  background-position: calc(100% * var(--reflect)) 0;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1006,14 +1014,15 @@
   }
 }
 
+// * the light runs along the line, from the inline start
 @keyframes thinking-gradient {
   0% {
-    background-position: 100% 0;
+    background-position: calc(100% * var(--reflect)) 0;
   }
 
   50%,
   100% {
-    background-position: -100% 0;
+    background-position: calc(-100% * var(--reflect)) 0;
   }
 }
 

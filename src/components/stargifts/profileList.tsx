@@ -8,6 +8,7 @@ import createButtonMenuCheckboxFilters from '@components/buttonMenuCheckboxFilte
 import {AnimationList} from '@helpers/solid/animationList';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {I18nTsx} from '@helpers/solid/i18n';
+import I18n from '@lib/langPack';
 import classNames from '@helpers/string/classNames';
 import {StickerTsx} from '@components/wrappers/sticker';
 import {MyDocument} from '@appManagers/appDocsManager';
@@ -222,7 +223,8 @@ export function StarGiftsProfileTab(props: {
   }
 
   const slideKeyframes = (_element: Element, removed: boolean): Keyframe[] => {
-    const dir = direction()
+    // * the next collection's chip is toward the inline end — to the left in a right-to-left layout
+    const dir = direction() * (I18n.getIsRTL() ? -1 : 1)
     const yOffset = scrollDiff ? ` translateY(${scrollDiff}px)` : ''
     if(removed) {
       // AnimationList reverses these for exit; Y offset compensates scroll change

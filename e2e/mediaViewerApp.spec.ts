@@ -165,6 +165,34 @@ test.describe('the media viewer', () => {
     expect(await page.evaluate(() => window.appMediaViewer.listLoader.next[1]?.mid)).toBe(opened);
   });
 
+  // * right to left the viewer pages in reading order: the step ArrowLeft takes left to right is
+  // * ArrowRight's, and the button back stands on the right, the one forward on the left
+  test('pages in reading order right to left', async({page}) => {
+    test.setTimeout(4 * 60_000);
+    await page.goto('/?noSharedWorker=1&rtl=1');
+    await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0, null, {timeout: 180_000});
+    expect(await page.evaluate(() => document.documentElement.dir)).toBe('rtl');
+    const found = await findMessage(page, 'photo', {photos: 3});
+    test.skip(!found, 'no chat with three photos in the recent chats of this account');
+    const photo = await openMessage(page, found);
+    await page.mouse.click(photo.x, photo.y);
+    await expect(page.locator(`${VIEWER} .media-viewer-mover.center`)).toHaveCount(1);
+    await page.waitForTimeout(1000);
+    const opened = await page.evaluate(() => window.appMediaViewer.target.mid);
+
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => page.evaluate(() => window.appMediaViewer.listLoader.next[0]?.mid), {
+      message: 'ArrowRight stepped back from the photo opened'
+    }).toBe(opened);
+    await page.waitForTimeout(1000);
+
+    const middle = page.viewportSize().width / 2;
+    const previous = await page.locator(`${VIEWER} .media-viewer-switcher-prev`).boundingBox();
+    const next = await page.locator(`${VIEWER} .media-viewer-switcher-next`).boundingBox();
+    expect(previous.x, 'the button back stands on the right').toBeGreaterThanOrEqual(middle);
+    expect(next.x + next.width, 'the button forward stands on the left').toBeLessThanOrEqual(middle);
+  });
+
   // * The URL of a picture can be gone by the time the viewer shows it: revoked, or its cache entry
   // * evicted. Such a picture loads nothing - it must not replace the thumbnail with an empty box, but be
   // * asked for anew. The worker is made to hand out a dead URL for one photo, every size of it, until

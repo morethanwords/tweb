@@ -1,6 +1,25 @@
 @use "sass:string";
 @use "shared" as *;
 
+// * what the stylesheets mirror with: `--reflect` multiplies a movement along the line, the origins
+// * name the inline sides of a transform
+@mixin direction-vars($dir) {
+  $start: left;
+  $end: right;
+  $reflect: 1;
+  @if $dir == rtl {
+    $start: right;
+    $end: left;
+    $reflect: -1;
+  }
+
+  --reflect: #{$reflect};
+  --transform-origin-inline-start: #{$start};
+  --transform-origin-inline-end: #{$end};
+  --transform-origin-left-center: #{$start} center;
+  --transform-origin-right-center: #{$end} center;
+}
+
 @font-face {
   font-family: 'Numbers Rounded';
   src: url('#{$fonts-path}/Numbers-Rounded.woff2') format('woff2');
@@ -49,11 +68,7 @@
   --transform-origin-right-center: right center;
 
   &.is-rtl {
-    --reflect: -1;
-    --transform-origin-inline-start: right;
-    --transform-origin-inline-end: left;
-    --transform-origin-left-center: right center;
-    --transform-origin-right-center: left center;
+    @include direction-vars(rtl);
   }
 
   --pm-transition: .2s ease-in-out;
@@ -430,6 +445,16 @@ html.no-backdrop {
   --menu-background-color: var(--surface-color);
   --menu-backdrop-filter: none;
   --blur-off: none;
+}
+
+// * an element that declares its own direction - a playback control, a phone number, an article -
+// * lays its insides out by it, so the variables the stylesheets mirror with follow it there
+[dir="ltr"] {
+  @include direction-vars(ltr);
+}
+
+[dir="rtl"] {
+  @include direction-vars(rtl);
 }
 
 @supports(padding: string.unquote('max(0px)')) {
@@ -2053,6 +2078,37 @@ hr {
   transform: scaleX(-1);
 }
 
+// * a glyph that points along the line (arrows, send, reply, `iconsReverse.ts`) turns with it;
+// * a class rather than a decision made when the icon is created, so a language switched on the
+// * fly flips the icons already on screen. It follows the nearest `dir`: `<html>`'s, or an island's
+// * that declares its own (media playback is `dir="ltr"`, an RTL article in an LTR layout is
+// * `dir="rtl"`). Flipped with `scale`, which composes with whatever `transform` animates the icon
+// * (and undoes an `.icon-reflect` that was flipped on purpose); `transform` where it is missing.
+:where([dir="rtl"], [dir="ltr"] [dir="rtl"]) .icon-mirror {
+  display: inline-block;
+  scale: -1 1;
+
+  @supports not (scale: 1) {
+    transform: scaleX(-1);
+
+    &.icon-reflect {
+      transform: none;
+    }
+  }
+}
+
+:where([dir="rtl"] [dir="ltr"]) .icon-mirror {
+  scale: none;
+
+  @supports not (scale: 1) {
+    transform: none;
+
+    &.icon-reflect {
+      transform: scaleX(-1);
+    }
+  }
+}
+
 .code {
   --code-content-padding: .25rem .625rem;
   --font-size: var(--messages-secondary-text-size);
@@ -2132,7 +2188,8 @@ hr {
   }
 
   &--zoom {
-    inset: -8px 1rem auto auto !important;
+    inset-block: -8px auto !important;
+    inset-inline: auto 1rem !important;
   }
 }
 
@@ -2296,6 +2353,7 @@ hr {
   border-radius: 0.25rem;
   animation: text-loading 1.5s linear infinite;
 
+  // * sweeps along the line, from the inline start
   @keyframes text-loading {
     0% {
       background-position-x: 0;
@@ -2307,7 +2365,7 @@ hr {
     }
 
     100% {
-      background-position-x: var(--background-gradient-size);
+      background-position-x: calc(var(--background-gradient-size) * var(--reflect));
       opacity: 1;
     }
   }

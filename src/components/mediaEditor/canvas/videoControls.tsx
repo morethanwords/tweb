@@ -300,14 +300,19 @@ const VideoControls: Component<{}> = () => {
     });
   };
 
-  const showMutedTooltip = (el: HTMLElement) => showTooltip({
-    element: el,
-    mountOn: el.parentElement.parentElement.parentElement,
-    vertical: 'top',
-    textElement: i18n('MediaEditor.VideoMutedTooltip'),
-    lighter: true,
-    auto: true
-  });
+  const showMutedTooltip = (el: HTMLElement) => {
+    const textElement = i18n('MediaEditor.VideoMutedTooltip');
+    // * text in the language's own direction, mounted in the canvas's left-to-right island
+    textElement.dir = 'auto';
+    return showTooltip({
+      element: el,
+      mountOn: el.parentElement.parentElement.parentElement,
+      vertical: 'top',
+      textElement,
+      lighter: true,
+      auto: true
+    });
+  };
 
   let closeTooltip: () => void;
 

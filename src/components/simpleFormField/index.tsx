@@ -3,6 +3,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
 import classNames from '@helpers/string/classNames';
 import labelControl from '@helpers/dom/labelControl';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import {Accessor, batch, createContext, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, Show, splitProps, useContext} from 'solid-js';
 
 
@@ -174,7 +175,9 @@ SimpleFormField.Label = (props: ParentProps<{
 
     const rect = parentElement.getBoundingClientRect();
     const inputRect = context.offsetElement().getBoundingClientRect();
-    setOffset(inputRect.left - rect.left);
+    // from the inline start, the side the label sits on; a flipped layout mirrors it, so the
+    // distance holds when the direction changes later
+    setOffset(isDocumentRTL(parentElement.ownerDocument) ? rect.right - inputRect.right : inputRect.left - rect.left);
   });
 
   onMount(() => {

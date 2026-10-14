@@ -5,6 +5,7 @@ import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import overlayCounter from '@helpers/overlayCounter';
 import throttle from '@helpers/schedulers/throttle';
 import classNames from '@helpers/string/classNames';
@@ -1812,13 +1813,14 @@ const Stories = (props: {
 
     const storyWidth = stories.width;
     const MARGIN = 40;
-    const multiplier = diff > 0 ? 1 : -1;
+    // * the sets further on in the list stand at the inline end: on the left in RTL
+    const multiplier = (diff > 0 ? 1 : -1) * (I18n.isRTL() ? -1 : 1);
     const smallStoryWidth = storyWidth * STORY_SCALE_SMALL;
     let offset = storyWidth * multiplier;
     const distance = (storyWidth - smallStoryWidth) / 2 - MARGIN;
     offset = (storyWidth - distance) * multiplier;
     if(Math.abs(diff) !== 1) {
-      const d = diff - 1 * multiplier;
+      const d = (Math.abs(diff) - 1) * multiplier;
       offset += d * smallStoryWidth + MARGIN * d;
     }
     return offset + 'px';
@@ -2644,12 +2646,13 @@ const Stories = (props: {
     return props.index() - props.peers.indexOf(stories.peer);
   });
 
+  // * a set further on in the list turns in from the inline end: from the left in RTL
   const fromLeft = createMemo<boolean>((prev) => {
-    return sliding() ? prev : diffToActive() < 0;
+    return sliding() ? prev : (I18n.isRTL() ? diffToActive() > 0 : diffToActive() < 0);
   });
 
   const fromRight = createMemo<boolean>((prev) => {
-    return sliding() ? prev : diffToActive() > 0;
+    return sliding() ? prev : (I18n.isRTL() ? diffToActive() < 0 : diffToActive() > 0);
   });
 
   const [fadeIn, setFadeIn] = createSignal(false);
@@ -2766,7 +2769,9 @@ const Stories = (props: {
           findUpClassName(e.target, styles.ViewerStory)
         ) {
           const rect = div.getBoundingClientRect();
-          const next = e.clientX > (rect.left + rect.width / 3);
+          // * the first third from the inline start goes back: the right one in RTL
+          const x = I18n.getIsRTL() ? rect.right - e.clientX : e.clientX - rect.left;
+          const next = x > rect.width / 3;
           actions.goToNearestStorySafe(next);
         }
       }}
@@ -2935,9 +2940,10 @@ export default function StoriesViewer(props: {
   };
 
   const throttledKeyDown = throttle((e: KeyboardEvent) => {
-    if(e.key === 'ArrowRight') {
+    const inlineKeys = getInlineArrowKeys();
+    if(e.key === inlineKeys.next) {
       actions.goToNearestStorySafe(true);
-    } else if(e.key === 'ArrowLeft') {
+    } else if(e.key === inlineKeys.previous) {
       actions.goToNearestStorySafe(false);
     } else if(e.code === 'Space') {
       actions.toggle();
@@ -3139,7 +3145,8 @@ export default function StoriesViewer(props: {
       }
 
       const peerIndex = stories.peers.indexOf(stories.peer);
-      const neighbourIndex = peerIndex + (xDiff < 0 ? 1 : -1);
+      // * a swipe toward the inline start brings the next set: to the right in RTL
+      const neighbourIndex = peerIndex + ((xDiff < 0) !== I18n.getIsRTL() ? 1 : -1);
       const neighbour = stories.peers[neighbourIndex];
       if(!neighbour) {
         close();
@@ -3421,7 +3428,7 @@ export default function StoriesViewer(props: {
       }
 
       return containers.map((container, idx, arr) => {
-        const offsetX = (next ? idx + 1 : (arr.length - idx)) * 60 * (next ? -1 : 1);
+        const offsetX = (next ? idx + 1 : (arr.length - idx)) * 60 * (next ? -1 : 1) * (I18n.getIsRTL() ? -1 : 1);
         return container.animate(makeKeyframes([{
           transform: `translate3d(calc(var(--translateX) + ${offsetX}px), 0, 0) scale3d(${STORY_SCALE_SMALL / 2}, ${STORY_SCALE_SMALL / 2}, 1)`,
           opacity: 0.001 // fix lag with fractal opacity so element should be prepared for animation

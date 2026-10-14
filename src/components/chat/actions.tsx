@@ -22,6 +22,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapEmojiStatus from '@components/wrappers/emojiStatus';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
 import {AckedResult} from '@lib/superMessagePort';
 import {Accessor, createSignal, For, Show} from 'solid-js';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
@@ -159,6 +160,10 @@ function ActionsPlateBody(props: {
         const peerTitle = new PeerTitle();
         peerTitle.update({peerId: info.peerId});
 
+        // * the chat's title is isolated like the name, so neither reorders the sentence around it
+        const chatTitle = document.createElement('span');
+        setInnerHTML(chatTitle, wrapEmojiText(info.title));
+
         return (
           <TopbarPlate.PrimaryButton
             quiet
@@ -167,7 +172,7 @@ function ActionsPlateBody(props: {
           >
             {i18n(
               info.isBroadcast ? 'ChatWithChannelAdmin' : 'ChatWithGroupAdmin',
-              [peerTitle.element, wrapEmojiText(info.title)]
+              [peerTitle.element, chatTitle]
             )}
           </TopbarPlate.PrimaryButton>
         );

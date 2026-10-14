@@ -233,7 +233,7 @@
       height: var(--message-beside-button-size);
       position: absolute;
       top: 50%;
-      right: var(--message-beside-button-margin);
+      inset-inline-end: var(--message-beside-button-margin);
       transform: translateY(-50%);
       color: #fff;
       border-radius: 50%;
@@ -873,8 +873,8 @@
 
     .message {
       position: relative !important;
-      margin-left: auto;
-      right: 0 !important;
+      margin-inline-start: auto;
+      inset-inline-end: 0 !important;
     }
   }
 
@@ -1030,8 +1030,7 @@
 
     .bubble-select-checkbox {
       bottom: auto !important;
-      left: auto;
-      right: .5rem;
+      inset-inline: auto .5rem;
       top: .5rem;
     }
 
@@ -1344,7 +1343,7 @@
     .time {
       position: absolute;
       bottom: 4px;
-      right: 8px;
+      inset-inline-end: 8px;
     }
   }
 
@@ -1357,7 +1356,7 @@
     &.is-empty {
       .reply {
         margin-top: 0 !important;
-        margin-right: 2.5rem !important;
+        margin-inline-end: 2.5rem !important;
         background-color: transparent;
 
         &-content {
@@ -1428,7 +1427,7 @@
       display: flex;
       align-items: center;
       margin-top: .0625rem;
-      margin-left: -.1875rem;
+      margin-inline-start: -.1875rem;
       line-height: var(--messages-secondary-line-height);
     }
 
@@ -1630,7 +1629,8 @@
     }
 
     .reactions-block {
-      margin: -1rem 0.5rem 0.375rem 0.25rem;
+      margin-block: -1rem 0.375rem;
+      margin-inline: 0.25rem 0.5rem;
     }
   }
 
@@ -1645,7 +1645,7 @@
   &.poll-message {
     .time {
       position: absolute;
-      right: 8px;
+      inset-inline-end: 8px;
       bottom: 5px;
     }
   }
@@ -1727,8 +1727,9 @@
     direction: ltr; // * rtl fix
     float: right;   // * rtl fix
 
+    // * the line's end, which is the left in RTL (`float: inline-end` is not on our targets)
     .is-rtl & {
-      float: inline-end;
+      float: left;
       direction: inherit;
     }
 
@@ -1797,9 +1798,14 @@
     }
 
     &-post-author {
+      // * the time runs the way the UI does (see `direction` above), so its end is a physical side
       &-comma {
-        float: inline-end;
+        float: right;
         direction: ltr;
+
+        .is-rtl & {
+          float: left;
+        }
       }
     }
 
@@ -1826,7 +1832,7 @@
       max-width: inherit;
       position: absolute;
       bottom: .1875rem;
-      right: .1875rem;
+      inset-inline-end: .1875rem;
       z-index: 2;
       opacity: 1;
 
@@ -1889,7 +1895,7 @@
     --height: calc(var(--messages-time-text-size) + .375rem);
     position: absolute;
     top: 3px;
-    left: 3px;
+    inset-inline-start: 3px;
     border-radius: var(--height);
     background-color: var(--message-time-background);
     padding: 0px 6px;
@@ -1910,7 +1916,8 @@
     &-icon {
       // * same as .iconVolume
       order: 1;
-      padding: 0 1px 0 3px;
+      padding-block: 0;
+      padding-inline: 3px 1px;
       font-size: calc(var(--messages-time-text-size) + 8px);
       color: #fff;
     }
@@ -1922,8 +1929,7 @@
     }
 
     &.other-side {
-      left: auto;
-      right: 3px;
+      inset-inline: auto 3px;
     }
   }
 
@@ -2050,7 +2056,7 @@
 
   &-name {
     &-first {
-      margin-right: auto;
+      margin-inline-end: auto;
     }
 
     &-rank {
@@ -2173,7 +2179,7 @@
       max-height: 52px;
       bottom: 47px; // * forward button + 9px margin
       border-radius: 2rem;
-      right: -44px; // * because not 38px, as forward button
+      inset-inline-end: -44px; // * because not 38px, as forward button
       padding: .375rem 0 .5rem;
 
       &-text {
@@ -2257,7 +2263,7 @@
     }
 
     &.is-in .bubble-content-wrapper {
-      margin-left: 0;
+      margin-inline-start: 0;
     }
   }
 
@@ -2736,8 +2742,18 @@
         &-resizer {
           width: 3rem;
           height: 3rem;
-          float: inline-end;
+          // * at the end of the line the text runs on (a `dir="auto"` message may run either way);
+          // * `float: inline-end` is not on every target, so a side first, and the UI's end in RTL
+          float: right;
           margin-inline-start: .625rem;
+
+          @supports (float: inline-end) {
+            float: inline-end;
+          }
+
+          .is-rtl & {
+            float: left;
+          }
         }
 
         // sticker-set / custom-emoji preview grid: box is sized inline (boxSize px),
@@ -2901,7 +2917,7 @@
 
     &-icon {
       position: absolute;
-      right: -.125rem;
+      inset-inline-end: -.125rem;
       top: .125rem;
       display: block;
     }
@@ -2950,7 +2966,7 @@
       // * where it stood before the button reached past the padding and lost its border
       #{$parent}-footer-icon {
         top: #{.125rem + $border};
-        right: #{$webpage-padding - .125rem};
+        inset-inline-end: #{$webpage-padding - .125rem};
       }
     }
 
@@ -3184,7 +3200,7 @@
     &-timer {
       position: absolute;
       top: 50%;
-      right: .1875rem;
+      inset-inline-end: .1875rem;
       transform: translateY(-50%);
       width: 1.875rem;
       height: 1.875rem;
@@ -3217,7 +3233,7 @@
 
     &.is-live {
       position: relative;
-      padding-right: 3rem;
+      padding-inline-end: 3rem;
     }
   }
 }
@@ -3392,7 +3408,7 @@
 }
 
 .message-action-icon {
-  margin-right: 0.25rem;
+  margin-inline-end: 0.25rem;
   margin-bottom: 2.5px;
   vertical-align: bottom;
   display: inline-block;
@@ -3481,10 +3497,10 @@
 
   &.just-media {
     .floating-part {
-      left: calc(100% + 10px);
+      inset-inline-start: calc(100% + 10px);
 
       @include respond-to(handhelds) {
-        left: calc(100% + 1px);
+        inset-inline-start: calc(100% + 1px);
       }
     }
   }
@@ -3543,7 +3559,7 @@
   --border-end-start-radius: #{$bubble-border-radius-big};
 
   .bubble-content {
-    margin-left: auto;
+    margin-inline-start: auto;
 
     &,
     .poll-footer-button {
@@ -3812,7 +3828,7 @@
 
     &-icon {
       position: absolute;
-      right: .125rem;
+      inset-inline-end: .125rem;
       top: .125rem;
       display: block;
     }
@@ -3903,7 +3919,7 @@
 }
 
 .bubble-meta-inline-stars {
-  margin-right: 6px;
+  margin-inline-end: 6px;
 }
 
 .unknown-user-bubble {

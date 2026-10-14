@@ -53,7 +53,9 @@ $menu-search-translateY: -#{$menu-height};
   }
 
   &.is-standalone {
-    transform-origin: calc(9rem * var(--reflect)) 4.625rem;
+    // * physical, as the panel's place is: every `getOpenPosition` hands over the physical `left`
+    // * of its anchor, in RTL too (a `* var(--reflect)` here put the origin 9rem outside the panel)
+    transform-origin: 9rem 4.625rem;
     transform: scale(.85);
     bottom: auto;
     // Physical `right`, not `inset-inline-start`: --top/--left are physical viewport
@@ -445,9 +447,10 @@ $menu-search-translateY: -#{$menu-height};
           opacity: 0;
         }
 
+        // * fades the side the categories scrolled away to: the inline start
         &.is-scrolled {
           -webkit-mask-image: linear-gradient(
-            to right,
+            calc(90deg * var(--reflect)),
             rgba(0, 0, 0, 0) 0%,
             rgb(0, 0, 0) .75rem
           );

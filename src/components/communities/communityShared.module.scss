@@ -17,7 +17,7 @@
 
 .peerAvatarOverlay {
   position: absolute;
-  right: -.1875rem;
+  inset-inline-end: -.1875rem;
   bottom: -.1875rem;
   display: flex;
   border: 2px solid var(--surface-color);

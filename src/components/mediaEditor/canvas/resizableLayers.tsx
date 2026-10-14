@@ -11,6 +11,8 @@ import Modes from '@config/modes';
 
 import {observeResize} from '@components/resizeObserver';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
+import Icon from '@components/icon';
+import {getIconMirrorClass} from '@/iconsReverse';
 import type {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
 
@@ -449,6 +451,13 @@ function useContextMenu({container, layer, actionsButton}: UseContextMenuArgs) {
     });
   }
 
+  // * the layer moves across the picture, which is never mirrored: these arrows stay as drawn in RTL
+  const physicalArrow = (icon: Icon) => {
+    const element = Icon(icon);
+    element.classList.remove(getIconMirrorClass(icon));
+    return element;
+  };
+
   // the move/resize/rotate items and the actions button stand in for dragging — a11y layer only
   const a11y = Modes.a11y;
   const contextMenu = createContextMenu({
@@ -456,8 +465,8 @@ function useContextMenu({container, layer, actionsButton}: UseContextMenuArgs) {
       ...(a11y ? [
         {icon: 'up', text: 'MediaEditor.MoveUp', onClick: () => move(0, -10)},
         {icon: 'down', text: 'MediaEditor.MoveDown', onClick: () => move(0, 10)},
-        {icon: 'left', text: 'MediaEditor.MoveLeft', onClick: () => move(-10, 0)},
-        {icon: 'next', text: 'MediaEditor.MoveRight', onClick: () => move(10, 0)},
+        {iconElement: physicalArrow('left'), text: 'MediaEditor.MoveLeft', onClick: () => move(-10, 0)},
+        {iconElement: physicalArrow('next'), text: 'MediaEditor.MoveRight', onClick: () => move(10, 0)},
         {icon: 'plus', text: 'MediaEditor.EnlargeLayer', onClick: () => layer.scale *= 1.1},
         {icon: 'minus', text: 'MediaEditor.ShrinkLayer', onClick: () => layer.scale /= 1.1},
         {icon: 'rotate', text: 'MediaEditor.RotateLayer', onClick: () => layer.rotation += Math.PI / 12}

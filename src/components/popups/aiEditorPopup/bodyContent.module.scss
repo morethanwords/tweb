@@ -185,7 +185,7 @@
 
   &ContextMenuIcon {
     position: absolute;
-    right: 0.5rem;
+    inset-inline-end: 0.5rem;
     top: 0.5rem;
     font-size: 0.75rem;
     opacity: 0;
@@ -290,14 +290,15 @@
 
   opacity: 0;
 
-  &Left {
-    left: 2px;
-    transform: translateY(-50%) rotate(90deg);
+  // * at the row's inline start / end, pointing outward (the chevron points down unrotated)
+  &Start {
+    inset-inline-start: 2px;
+    transform: translateY(-50%) rotate(calc(90deg * var(--reflect)));
   }
 
-  &Right {
-    right: 2px;
-    transform: translateY(-50%) rotate(-90deg);
+  &End {
+    inset-inline-end: 2px;
+    transform: translateY(-50%) rotate(calc(-90deg * var(--reflect)));
   }
 
   &.hidden {

@@ -2,6 +2,7 @@ import SwipeHandler, {getEvent} from '@components/swipeHandler';
 import {toastNew} from '@components/toast';
 import {getOverlayRoot} from '@helpers/appWindow';
 import rootScope from '@lib/rootScope';
+import I18n from '@lib/langPack';
 import {appSettings, setAppSettings} from '@stores/appSettings';
 import {
   MIN_SIDEBAR_WIDTH,
@@ -63,8 +64,10 @@ export default function installColumnResize(opts: InstallColumnResizeOptions): v
       const e = getEvent(_e);
       const rect = columnEl.getBoundingClientRect();
       // The handle sits on the inner edge of its column; width is the
-      // distance from the OUTER edge to the pointer.
-      const rawWidth = side === 'left' ?
+      // distance from the OUTER edge to the pointer. The left column is the
+      // inline-start one, so in a right-to-left layout it is on the right.
+      const isOnLeft = (side === 'left') !== I18n.getIsRTL();
+      const rawWidth = isOnLeft ?
         Math.round(e.clientX - rect.left) :
         Math.round(rect.right - e.clientX);
 

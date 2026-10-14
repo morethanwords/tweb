@@ -1778,8 +1778,11 @@ export default class ChatContextMenu {
       const AVATAR_SIZE = 22;
       const MAX_AVATARS = 3;
       const PADDING_PER_AVATAR = 1.125;
+      // * room for the avatars at the item's inline end - by the layout's direction, as a name's
+      // * `dir="auto"` would turn a logical side around
+      const avatarsPaddingSide = I18n.getIsRTL() ? 'paddingLeft' : 'paddingRight';
       i18nElem.element.style.visibility = 'hidden';
-      i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
+      i18nElem.element.style[avatarsPaddingSide] = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
       const middleware = this.middleware.get();
       this.managers.appMessagesManager.getMessageReactionsListAndReadParticipants(this.message as Message.message).then((result) => {
         if(!middleware()) {
@@ -1823,7 +1826,7 @@ export default class ChatContextMenu {
         }
 
         if(fakeElem) {
-          fakeElem.style.paddingRight = PADDING_PER_AVATAR * Math.min(MAX_AVATARS, reactedLength) + 'rem';
+          fakeElem.style[avatarsPaddingSide] = PADDING_PER_AVATAR * Math.min(MAX_AVATARS, reactedLength) + 'rem';
           fakeElem.classList.add('btn-menu-item-text-fake');
           viewsButton.element.append(fakeElem);
         }

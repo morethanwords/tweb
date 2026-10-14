@@ -12,6 +12,7 @@ declare global {
       list(): Story[],
       open(id: string): Promise<void>,
       closePopups(): void,
+      setDirection(dir: 'ltr' | 'rtl'): void,
       calls(): ManagerCall[],
       unhandled(): ManagerCall[]
     };

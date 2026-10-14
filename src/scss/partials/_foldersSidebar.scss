@@ -156,7 +156,7 @@
     &-badge {
       position: absolute;
       top: 6px;
-      right: 10px;
+      inset-inline-end: 10px;
       font-size: var(--font-size-12);
       line-height: 18px !important;
       // box-shadow: 0 0 0 1px var(--folders-sidebar-background-hover);
@@ -230,8 +230,9 @@
   &__add-folders-button {
     position: absolute;
     top: calc(var(--offset) * 1px);
-    right: 0;
-    transform: translate(100%, -50%);
+    inset-inline-end: 0;
+    // * a tab sticking out of the bar's inline end into the chat list
+    transform: translate(calc(100% * var(--reflect)), -50%);
 
     display: none;
     flex-direction: column;
@@ -241,9 +242,10 @@
 
     width: 4.5rem;
     height: 5.5rem;
-    border-top-right-radius: $border-radius;
-    border-bottom-right-radius: $border-radius;
+    border-start-end-radius: $border-radius;
+    border-end-end-radius: $border-radius;
 
+    // * the shape is drawn for the left-to-right side: its notches meet the bar on the left
     mask-image: url('/assets/img/add-chats-to-folder-shape.svg');
 
     font-size: 10px;
@@ -251,7 +253,7 @@
     font-weight: var(--font-weight-bold);
 
     color: #aaaaaa;
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    border-inline-start: 1px solid rgba(0, 0, 0, 0.1);
 
     transition: opacity .2s;
 
@@ -271,6 +273,10 @@
 
     &-icon {
       font-size: 30px;
+    }
+
+    :where(.is-rtl) & {
+      mask-image: url('/assets/img/add-chats-to-folder-shape-rtl.svg');
     }
   }
 }

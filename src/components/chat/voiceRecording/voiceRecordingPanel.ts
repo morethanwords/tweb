@@ -91,6 +91,8 @@ export default class VoiceRecordingPanel {
 
     this.pillEl = document.createElement('div');
     this.pillEl.classList.add('voice-recording-pill');
+    // * a tape: playback, waveform and timer run left to right in any layout
+    this.pillEl.dir = 'ltr';
     this.pillEl.append(this.leadEl, this.waveform.element, this.timerEl);
 
     this.element.append(

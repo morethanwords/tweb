@@ -463,7 +463,8 @@ ul.chatlist {
 
   .sending-status-icon-premium_lock {
     font-size: .8125rem;
-    margin: .1875rem 0 0 .5rem;
+    margin-block: .1875rem 0;
+    margin-inline: .5rem 0;
     color: var(--secondary-color);
   }
 
@@ -601,7 +602,7 @@ ul.chatlist {
 
     .row-icon {
       position: absolute;
-      right: .5rem;
+      inset-inline-end: .5rem;
       font-size: 1.5rem;
       color: var(--secondary-text-color);
     }
@@ -665,7 +666,9 @@ ul.chatlist {
     }
 
     &-span {
-      unicode-bidi: isolate;
+      // * isolates the part like `isolate`, but takes its direction from its own content: under
+      // * `.is-rtl [dir=auto] {direction: inherit}` an `isolate` part would turn "/start" into "start/"
+      unicode-bidi: plaintext;
       // * the prefixes keep their trailing space, the message flattens its own
       // * newlines into the single preview line
       white-space: pre;
@@ -694,7 +697,8 @@ ul.chatlist {
         --size: 1.625rem;
         margin: 0;
         position: absolute;
-        right: calc(100% - 4.0625rem);
+        // * on the avatar's bottom corner that faces the row's inline end
+        inset-inline-end: calc(100% - 4.0625rem);
         top: 2.4375rem;
         // border: 2px solid var(--surface-color);
         border: 2px solid var(--background, var(--surface-color));

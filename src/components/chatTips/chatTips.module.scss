@@ -306,14 +306,15 @@ $card-padding: 1rem;
     height: 20.83%;
   }
 
+  // the same sides as the strip's own rule (`_themes.scss`), so these replace its insets
   :global(.theme-bubble.is-out) {
     top: 8.33%;
-    right: 8.33%;
+    inset-inline-end: 8.33%;
   }
 
   :global(.theme-bubble.is-in) {
     top: 33.33%;
-    left: 8.33%;
+    inset-inline-start: 8.33%;
   }
 }
 
@@ -468,7 +469,8 @@ $card-padding: 1rem;
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  transform: translateX(var(--tip-slide));
+  // `--tip-slide` says next/previous along the line: the next card waits at the inline end
+  transform: translateX(calc(var(--tip-slide) * var(--reflect)));
   transition: opacity .3s ease, transform .3s ease;
 
   // reduced: the cards crossfade in place

@@ -318,7 +318,8 @@
 
     .checkbox-field {
       padding: 0 !important;
-      margin: 2rem 0 0 -1.75rem !important;
+      margin-block: 2rem 0 !important;
+      margin-inline: -1.75rem 0 !important;
       --offset-left: 0 !important;
     }
   }
@@ -458,7 +459,7 @@
   }
 
   &-pinned-gifts {
-    margin-left: 0.25rem;
+    margin-inline-start: 0.25rem;
     display: flex;
     flex-direction: row;
     align-items: center;

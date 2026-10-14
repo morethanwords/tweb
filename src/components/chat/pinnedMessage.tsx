@@ -29,6 +29,7 @@ import {createSignal, JSX} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import getWebPageActionOnClick from '@components/chat/getWebPageActionOnClick';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 
 /**
  * Top-level body component so solid-refresh can swap it on HMR. All
@@ -602,6 +603,8 @@ export default function createChatPinnedMessage(
       debug && log('setPinnedMessage: fromTop', fromTop, pinnedIndex, wasPinnedIndex);
 
       const writeTo = animatedSubtitle.getRow(pinnedIndex);
+      // * the message's text: ordered and truncated by its own direction
+      setDirection(writeTo);
       const writeMediaTo = animatedMedia.getRow(pinnedIndex);
       writeMediaTo.classList.add('pinned-message-media');
       const loadPromises: Promise<any>[] = [];
@@ -762,6 +765,8 @@ export default function createChatPinnedMessage(
       'pinned-message-action-button',
       'text-overflow-no-wrap'
     );
+    // * a bot's button label: truncated at its own end, whatever the layout's direction
+    setDirection(btn);
     if(typeof opts.text === 'string') {
       btn.textContent = opts.text;
     } else {

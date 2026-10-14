@@ -1,7 +1,6 @@
 import {TGICO_CLASS} from '@helpers/tgico';
 import Icons from '@/icons';
-import IconsReverse from '@/iconsReverse';
-import I18n from '@lib/langPack';
+import {getIconMirrorClass} from '@/iconsReverse';
 
 export function getIconContent(icon: Icon) {
   return String.fromCharCode(parseInt(Icons[icon], 16));
@@ -28,8 +27,9 @@ export function OverlayedIcon(icons: (Icon | IconWithClass)[], className?: strin
 
 export default function Icon(icon: Icon, ...classes: string[]) {
   const span = document.createElement('span');
-  if(I18n.getIsRTL() && IconsReverse.has(icon)) {
-    classes.push('icon-reflect');
+  const mirrorClass = getIconMirrorClass(icon);
+  if(mirrorClass) {
+    classes.push(mirrorClass);
   }
 
   span.classList.add(TGICO_CLASS/* ...tgico(icon) */, ...classes);

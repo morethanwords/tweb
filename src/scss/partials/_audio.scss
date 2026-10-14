@@ -74,7 +74,7 @@
       height: 1.375rem;
       margin: 0 !important;
       top: 57.5%;
-      left: 57.5%;
+      inset-inline-start: 57.5%;
       background: none;
       display: flex !important;
     }
@@ -381,11 +381,11 @@
     // selection prepends the checkbox into the row, so every positioned thing after it — the play
     // button in Row's media slot, the download preloader over it (z-index 2) — paints on top of it
     z-index: 3;
-    left: auto;
+    inset-inline-start: auto;
     top: auto;
     background: #fff;
     border-radius: 50%;
-    margin-left: calc(var(--padding-left, var(--padding-left-default)) * -1 + var(--icon-size, var(--icon-size-default)) - var(--size) + var(--margin-left));
+    margin-inline-start: calc(var(--padding-left, var(--padding-left-default)) * -1 + var(--icon-size, var(--icon-size-default)) - var(--size) + var(--margin-left));
     margin-top: calc(var(--icon-size, var(--icon-size-default)) - var(--size) + var(--margin-top));
 
     @include respond-to(handhelds) {

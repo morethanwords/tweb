@@ -105,9 +105,9 @@ function SponsoredPlateBody(props: {
           >
             <I18nTsx class="primary" key="SponsoredMessageAd" />
             {' '}
-            {wrapEmojiText(message().title)}
+            <span dir="auto">{wrapEmojiText(message().title)}</span>
           </A11yButton>
-          <div class="pre-wrap">
+          <div class="pre-wrap" dir="auto">
             {wrapRichText(message().message, {entities: message().entities})}
           </div>
         </div>

@@ -74,6 +74,7 @@ import {
   withoutTrailingPlaceholder
 } from '@components/chat/inputEditor/model';
 import {
+  editorDocumentRtl,
   inferRichMessageNoAutolink,
   normalizeOpaqueRichBlockForInput,
   richTextPlainText,
@@ -1340,6 +1341,8 @@ function blockquoteCaptionText(quote: ProseMirrorNode) {
 
 class TiptapChatInputEditor implements ChatInputEditor {
   public readonly input: HTMLElement;
+  // * the field's own `dir` while the draft's direction stands in for it (see `syncDirection`)
+  private inputDir: string | null;
   public isComposing = false;
 
   private editor: Editor;
@@ -1935,6 +1938,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
     this.editor.on('update', this.onUpdate);
     this.editor.on('selectionUpdate', this.onSelectionUpdate);
     this.editor.on('transaction', this.onTransaction);
+    this.syncDirection();
     input.addEventListener('input', this.onNativeInputCapture, {capture: true});
     input.addEventListener('compositionstart', this.onCompositionStart);
     input.addEventListener('compositionend', this.onCompositionEnd);
@@ -2022,6 +2026,29 @@ class TiptapChatInputEditor implements ChatInputEditor {
     });
   };
 
+  // * the draft is laid out in the direction it is sent in (`editorDocumentRtl`), whatever the
+  // * layout's: an English draft in an Arabic interface reads left to right, as its message will. An
+  // * empty one keeps the field's own `dir`, which the layout's direction fills
+  private syncDirection() {
+    const rtl = editorDocumentRtl(this.editor.state.doc);
+    if(rtl === undefined) {
+      this.restoreInputDirection();
+      return;
+    }
+
+    if(this.inputDir === undefined) this.inputDir = this.input.getAttribute('dir');
+    const dir = rtl ? 'rtl' : 'ltr';
+    // * typed on every key: an attribute written again invalidates style all the same
+    if(this.input.dir !== dir) this.input.dir = dir;
+  }
+
+  private restoreInputDirection() {
+    if(this.inputDir === undefined) return;
+    if(this.inputDir === null) this.input.removeAttribute('dir');
+    else this.input.setAttribute('dir', this.inputDir);
+    this.inputDir = undefined;
+  }
+
   private scheduleStateChange() {
     if(this.stateChangeScheduled) return;
     this.stateChangeScheduled = true;
@@ -2034,6 +2061,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
   private onTransaction = ({transaction}: {transaction: Transaction}) => {
     if(transaction.docChanged) {
       this.richMediaPreviewHistoryLease.sync(this.editor.state);
+      this.syncDirection();
     }
     this.scheduleStateChange();
   };
@@ -2445,6 +2473,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
       const changed = !this.editor.state.doc.eq(doc);
       this.editor.view.updateState(state);
       this.richMediaPreviewHistoryLease.sync(state);
+      this.syncDirection();
       this.scheduleStateChange();
       const legacyTables = wrapBareChatInputTables(this.editor.state, false);
       if(legacyTables) {
@@ -4320,6 +4349,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
     this.unregister();
     this.editor.destroy();
     this.richMediaPreviewHistoryLease.clear();
+    this.restoreInputDirection();
     this.input.classList.remove('tiptap', 'chat-input-editor-expanded');
     this.input.classList.remove(
       instantViewStyles.RichMessage,

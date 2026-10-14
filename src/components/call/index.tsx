@@ -331,6 +331,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
     emojisSubtitle = document.createElement('div');
     emojisSubtitle.classList.add(className + '-emojis');
+    // The key is a hash: both sides compare it in the same order, whatever their languages.
+    emojisSubtitle.dir = 'ltr';
 
     // iOS-style gradient backdrop. Uses the same renderer as chat backgrounds
     // (Telegram "swirl" gradient): 50×50 ImageData blended in JS, stretched

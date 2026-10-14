@@ -7,7 +7,7 @@
   align-items: center;
   position: relative;
   --limit-progress: 50%;
-  --limit-background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+  --limit-background: linear-gradient(calc(84.4deg * var(--reflect)), #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
   --limit-height: 2rem;
   --hint-background: var(--limit-background);
   --hint-height: 2rem;
@@ -43,10 +43,12 @@
   }
 
   &Filled {
+    // * filled from the inline start (90deg is to the right), from the end when reversed
+    --fill-angle: calc(90deg * var(--reflect));
     position: absolute;
     inset: 0;
     mask-image: linear-gradient(
-      to right,
+      var(--fill-angle),
       rgb(0, 0, 0) var(--limit-progress),
       rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
     );
@@ -54,11 +56,7 @@
     background: var(--limit-background);
 
     .reverse & {
-      mask-image: linear-gradient(
-        to left,
-        rgb(0, 0, 0) var(--limit-progress),
-        rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
-      );
+      --fill-angle: calc(-90deg * var(--reflect));
     }
   }
 }
@@ -97,7 +95,8 @@
   justify-content: center;
   gap: var(--hint-icon-gap);
   font-weight: var(--font-weight-bold);
-  transform: scale(.6) translate(-280px, 16px) rotate(-30deg);
+  // * flies in from the inline start
+  transform: scale(.6) translate(calc(-280px * var(--reflect)), 16px) rotate(calc(-30deg * var(--reflect)));
   left: var(--left);
   right: var(--right);
   padding: 0 .75rem;

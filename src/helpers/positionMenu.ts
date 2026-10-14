@@ -58,8 +58,11 @@ function canFitSide(
  * - `offset` is `[x, y]`. The component along the main axis acts as a gap from the trigger,
  *   the perpendicular component nudges along the alignment axis.
  *
- * Sets `left`, `top`, and `transformOrigin` on `menu`. Returns the actually used direction
- * (the side may flip to the opposite if the menu doesn't fit).
+ * `left`/`right` and a horizontal `start`/`end` follow the line: they swap in a right-to-left
+ * layout, so a submenu opens at the inline end and a menu aligned to a bubble's start stays there.
+ *
+ * Sets `left`, `top`, and `transformOrigin` on `menu`. Returns the actually used direction, in
+ * the same terms as `direction` (the side may flip to the opposite if the menu doesn't fit).
  */
 export function positionFloatingMenu(
   triggerBcr: DOMRect,
@@ -68,7 +71,8 @@ export function positionFloatingMenu(
   offset: [number, number] = [0, 0],
   options: FloatingMenuPositionOptions = {}
 ): FloatingMenuDirection {
-  const [requestedSide, alignment] = direction.split('-') as [FloatingMenuSide, FloatingMenuAlignment];
+  const isRTL = I18n.getIsRTL();
+  const [requestedSide, alignment] = mirrorFloatingDirection(direction, isRTL).split('-') as [FloatingMenuSide, FloatingMenuAlignment];
 
   const isHorizontalSide = requestedSide === 'left' || requestedSide === 'right';
   const mainOffset = isHorizontalSide ? offset[0] : offset[1];
@@ -143,7 +147,23 @@ export function positionFloatingMenu(
   menu.style.top = top + 'px';
   menu.style.transformOrigin = `${originX} ${originY}`;
 
-  return `${side}-${alignment}` as FloatingMenuDirection;
+  return mirrorFloatingDirection(`${side}-${alignment}` as FloatingMenuDirection, isRTL);
+}
+
+// * between the line's terms and the screen's: in RTL `left`/`right` swap, and so do `start`/`end`
+// * along a horizontal edge (top/bottom); the vertical alignment of a side menu stays top-to-bottom
+function mirrorFloatingDirection(direction: FloatingMenuDirection, isRTL: boolean): FloatingMenuDirection {
+  if(!isRTL) {
+    return direction;
+  }
+
+  const [side, alignment] = direction.split('-') as [FloatingMenuSide, FloatingMenuAlignment];
+  if(side === 'left' || side === 'right') {
+    return `${OPPOSITE_SIDE[side]}-${alignment}`;
+  }
+
+  const mirroredAlignment: FloatingMenuAlignment = alignment === 'start' ? 'end' : alignment === 'end' ? 'start' : alignment;
+  return `${side}-${mirroredAlignment}`;
 }
 
 export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: HTMLElement, side?: 'left' | 'right' | 'center', additionalPadding?: MenuPositionPadding) {
@@ -284,12 +304,39 @@ export function positionMenuTrigger(trigger: HTMLElement, menu: HTMLElement, dir
     menu.style.bottom = `${Math.max(bottom, additionalPadding?.bottom ?? 0)}px`
   }
 
-  if(directionY === 'right' || directionY === 'center') {
+  // * `left`/`right` name the inline sides, as the `.btn-menu` classes do, in the trigger's own
+  // * direction: from a left-to-right island (the video player's controls) a menu opens as in LTR.
+  // * In RTL one opening to the right grows to the left from the trigger's right edge, and the
+  // * paddings swap with the sides; placed by `left` there, as a `.contextmenu` forces `right: auto`.
+  // * The side left over is cleared, or a class's inset would pin it in a document of the other direction
+  const documentRTL = I18n.getIsRTL();
+  const rtl = documentRTL && !trigger.closest('[dir="ltr"]');
+  if(rtl) {
+    if(directionY === 'right' || directionY === 'center') {
+      const paddingRight = additionalPadding?.right ?? 0;
+      const right = Math.max(getAppWindow().innerWidth - triggerRect.right + paddingRight, paddingRight);
+      menu.style.left = `${getAppWindow().innerWidth - right - menu.offsetWidth}px`;
+      menu.style.right = 'auto';
+    } else {
+      const paddingLeft = additionalPadding?.left ?? 0;
+      menu.style.left = `${Math.max(triggerRect.left - paddingLeft, paddingLeft)}px`;
+    }
+  } else if(directionY === 'right' || directionY === 'center') {
     const left = triggerRect.left + (additionalPadding?.left ?? 0);
     menu.style.left = `${Math.max(left, additionalPadding?.left ?? 0)}px`
+    if(documentRTL) menu.style.right = 'auto';
   } else {
     const right = getAppWindow().innerWidth - triggerRect.left - triggerRect.width - (additionalPadding?.right ?? 0)
     menu.style.right = `${Math.max(right, additionalPadding?.right ?? 0)}px`
+    if(documentRTL) menu.style.left = 'auto';
+  }
+
+  // * a menu mounted outside the island lays out in the document's direction: where it grows from
+  // * and how it is centred follow the trigger's
+  if(rtl !== (documentRTL && !menu.closest('[dir="ltr"]'))) {
+    menu.style.setProperty('--reflect', rtl ? '-1' : '1');
+    menu.style.setProperty('--transform-origin-inline-start', rtl ? 'right' : 'left');
+    menu.style.setProperty('--transform-origin-inline-end', rtl ? 'left' : 'right');
   }
 
   if(directionY === 'center') {

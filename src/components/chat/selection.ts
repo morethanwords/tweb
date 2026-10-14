@@ -369,7 +369,8 @@ export class AppSelection extends EventListenerBase<{
 
     const firstRect = first.getBoundingClientRect();
     const lastRect = last.getBoundingClientRect();
-    const difference = (firstRect.top - lastRect.top) || (firstRect.left - lastRect.left);
+    // * on one row, what comes first is at the line's start: the right in RTL
+    const difference = (firstRect.top - lastRect.top) || (firstRect.left - lastRect.left) * (I18n.getIsRTL() ? -1 : 1);
     const isHigher = difference < 0;
 
     const parent = findUpClassName(first, this.lookupBetweenParentClassName);

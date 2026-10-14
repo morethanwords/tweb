@@ -29,6 +29,9 @@ export default class TelInputField extends InputField {
     this.container.classList.add('input-field-phone');
 
     const telEl = this.input;
+    // a phone number reads left to right in any language — the digits, the caret and the pattern
+    // still to type after them (`data-left-pattern`); the label keeps the layout's side
+    telEl.dir = 'ltr';
     if(telEl instanceof HTMLInputElement) {
       telEl.type = 'tel';
       telEl.autocomplete = 'rr55RandomRR55' as any;

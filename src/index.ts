@@ -55,7 +55,6 @@ import cancelImageEvents from '@helpers/dom/cancelImageEvents';
 import listenForLinkPress from '@helpers/dom/linkPress';
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
-import type {LangPackDifference} from '@layer';
 import commonStateStorage from '@lib/commonStateStorage';
 import {useAppSettings, setAppSettingsSilent} from '@stores/appSettings';
 import {isUserCollapsedLeft} from '@helpers/updateColumnWidths';
@@ -397,17 +396,6 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
 
 const TIME_LABEL = 'Elapsed time since unlocked';
 
-function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDifference) {
-  if(langPack.lang_code === 'ar' || langPack.lang_code === 'fa' && IS_BETA && false) {
-    document.documentElement.classList.add('is-rtl');
-    document.documentElement.dir = 'rtl';
-    document.documentElement.lang = langPack.lang_code;
-    I18n.setRTL(true);
-  } else {
-    document.documentElement.dir = 'ltr';
-  }
-}
-
 (window as any)['showIconLibrary'] = async() => {
   const {showIconLibrary} = await import('./components/iconLibrary/trigger');
   showIconLibrary();
@@ -470,8 +458,7 @@ if(import.meta.env.DEV) {
     appChatBackground.attach();
     appChatBackground.setBackground({transition: 'instant'});
 
-    const langPack = await I18n.getCacheLangPackAndApply();
-    setDocumentLangPackProperties(langPack);
+    await I18n.getCacheLangPackAndApply();
 
     if(IS_BETA) import('./pages/bootstrapIm'); // cache it
     // const settings = await commonStateStorage.get('settings');
@@ -578,8 +565,6 @@ if(import.meta.env.DEV) {
 
   appChatBackground.attach();
   appChatBackground.setBackground({transition: 'instant'});
-
-  setDocumentLangPackProperties(langPack);
 
   let authState = stateResult.state.authState;
 

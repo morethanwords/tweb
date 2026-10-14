@@ -4,8 +4,6 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  // * the row is laid out from the current thumb outwards, the same in either direction of text
-  direction: ltr;
   pointer-events: none;
 }
 
@@ -21,7 +19,7 @@
 .thumb {
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   height: 100%;
   padding: 0;
   border: 0;

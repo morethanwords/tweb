@@ -119,7 +119,7 @@ export default async function showCollectibleInfoPopup(options: Collectible & {
               <I18nTsx
                 key={phone ? 'FragmentPhoneTitle' : 'FragmentUsernameTitle'}
                 args={[
-                  <A11yButton as="a" class={styles.entity} onClick={() => copy(false)}>
+                  <A11yButton as="a" class={styles.entity} dir="ltr" onClick={() => copy(false)}>
                     {formatted}
                   </A11yButton>
                 ]}

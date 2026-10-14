@@ -4136,10 +4136,12 @@ export class AppImManager extends EventListenerBase<{
     activeAnimations.add(o);
 
     const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
+    // * the bubble's physical side: outgoing ones sit on the left of a right-to-left chat
+    const isOnRight = !!isOut !== I18n.getIsRTL();
     const {animationDiv} = wrapStickerAnimation({
       doc,
       middleware,
-      side: isOut ? 'right' : 'left',
+      side: isOnRight ? 'right' : 'left',
       size: 360,
       target: container,
       play: true,
@@ -4150,7 +4152,7 @@ export class AppImManager extends EventListenerBase<{
       scrollable: this.chat.bubbles.scrollable
     });
 
-    if(isOut !== undefined && !isOut) {
+    if(isOut !== undefined && !isOnRight) {
       animationDiv.classList.add('reflect-x');
     }
 

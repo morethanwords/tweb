@@ -1,4 +1,5 @@
 import {handleMenuKeyDown} from '@helpers/dom/menuKeyboard';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import Modes from '@config/modes';
 import flatten from '@helpers/array/flatten';
 import contextMenuController from '@helpers/contextMenuController';
@@ -363,8 +364,9 @@ export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
     const button = item && buttons.find(({element}) => element === item);
 
     const radioInput = button?.checkboxField?.input;
-    const radioStep = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 :
-      (e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0);
+    const inlineKeys = getInlineArrowKeys();
+    const radioStep = e.key === 'ArrowDown' || e.key === inlineKeys.next ? 1 :
+      (e.key === 'ArrowUp' || e.key === inlineKeys.previous ? -1 : 0);
     if(
       target === radioInput &&
       radioInput.type === 'radio' &&

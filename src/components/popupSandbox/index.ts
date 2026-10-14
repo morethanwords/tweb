@@ -23,6 +23,7 @@ import './bootstrapState';
 import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
+import I18n from '@lib/langPack';
 import PopupElementTsx from '@components/popups/indexTsx';
 import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -294,6 +295,8 @@ export const popupSandbox = {
     await openStory(story);
   },
   closePopups: closeAllPopups,
+  /** Lays the stories out right to left or back, for this page only (the panel's select persists). */
+  setDirection: (dir: 'ltr' | 'rtl') => I18n.forceRTL(dir === 'rtl'),
   /** 'fixtures' | 'live' — live needs a signed-in session. */
   setDataSource,
   setAllowWrites,

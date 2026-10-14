@@ -54,7 +54,7 @@ $transition: .2s var(--transition-standard-easing);
         flex: 1 1 auto;
         margin-inline: -5px 1rem;
         -webkit-mask-image: linear-gradient(
-          to right,
+          calc(90deg * var(--reflect)),
           transparent,
           #000 .5rem,
           #000 calc(100% - 30px),
@@ -100,9 +100,9 @@ $transition: .2s var(--transition-standard-easing);
       //   transparent,
       //   #000 1.875rem
       // );
-      -webkit-mask-image: linear-gradient(to right, #000 1.875rem, #000 calc(100% - 30px), transparent);
+      -webkit-mask-image: linear-gradient(calc(90deg * var(--reflect)), #000 1.875rem, #000 calc(100% - 30px), transparent);
       &.first {
-        -webkit-mask-image: linear-gradient(to right, #000 2.875rem, #000 calc(100% - 30px), transparent);
+        -webkit-mask-image: linear-gradient(calc(90deg * var(--reflect)), #000 2.875rem, #000 calc(100% - 30px), transparent);
       }
 
       @include animation-level-global(2) {
@@ -114,7 +114,10 @@ $transition: .2s var(--transition-standard-easing);
         font-weight: var(--font-weight-bold);
         white-space: nowrap;
         overflow: hidden;
-        text-align: left;
+        // the box is the text's width plus the faded end, so the text has to sit at the layout's
+        // start whatever its own direction (`start` would follow the title's `dir="auto"`)
+        text-align: -webkit-match-parent;
+        text-align: match-parent;
 
         @include animation-level-global(2) {
           transition: width $transition;
@@ -122,10 +125,10 @@ $transition: .2s var(--transition-standard-easing);
       }
 
       &Icon {
-        margin-left: .25rem;
+        margin-inline-start: .25rem;
 
         @include animation-level-global(2) {
-          transition: margin-left $transition;
+          transition: margin $transition;
         }
 
         &Inner {
@@ -159,7 +162,7 @@ $transition: .2s var(--transition-standard-easing);
       &Close {
         font-size: 1rem;
         position: absolute;
-        transform: translateX(calc(var(--text-width) - 3px + 1rem));
+        transform: translateX(calc((var(--text-width) - 3px + 1rem) * var(--reflect)));
         z-index: 1;
         padding: .25rem;
         color: var(--secondary-text-color);
@@ -168,10 +171,10 @@ $transition: .2s var(--transition-standard-easing);
       &Mask {
         position: absolute;
         height: 100%;
-        transform: translate(1.875rem);
+        transform: translate(calc(1.875rem * var(--reflect)));
         width: var(--text-width);
         background: linear-gradient(
-          90deg,
+          calc(90deg * var(--reflect)),
           transparent 50%,
           rgba(var(--surface-color-rgb), 1) 80%,
           rgba(var(--surface-color-rgb), 1) 100%
@@ -181,7 +184,7 @@ $transition: .2s var(--transition-standard-easing);
 
       &.active &Icon,
       &.first &Icon {
-        margin-left: 1.25rem;
+        margin-inline-start: 1.25rem;
       }
 
       &.active &Title {
@@ -245,8 +248,8 @@ $transition: .2s var(--transition-standard-easing);
       position: absolute;
       opacity: 0;
       font-weight: var(--font-weight-bold);
-      left: 7rem;
-      transform: translateX(3.5rem);
+      inset-inline-start: 7rem;
+      transform: translateX(calc(3.5rem * var(--reflect)));
       max-width: 10.25rem;
       pointer-events: none;
 
@@ -331,7 +334,7 @@ $transition: .2s var(--transition-standard-easing);
 
   &.collapsed &HeaderCollapsedTitle {
     opacity: 1;
-    transform: translateX(var(--translateX));
+    transform: translateX(calc(var(--translateX) * var(--reflect)));
   }
 
   &Catalogue {

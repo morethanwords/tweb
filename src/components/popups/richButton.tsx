@@ -131,6 +131,8 @@ export default function showRichButtonPopup(
       const urlInput = urlInputField.input as HTMLInputElement;
       urlInput.autocapitalize = 'none';
       urlInput.spellcheck = false;
+      // * a URL reads left to right in any language
+      urlInput.dir = 'ltr';
       if(button?.text) textInputField.setValueSilently(button.text);
       if(button?.url) urlInputField.setValueSilently(button.url);
       if(button?.copyText) copyInputField.setValueSilently(button.copyText);

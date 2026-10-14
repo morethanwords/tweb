@@ -206,7 +206,7 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
             <I18nTsx
               key="CreateBot.Link"
               args={[
-                <span class={styles.linkInfoLink}>
+                <span class={styles.linkInfoLink} dir="ltr">
                   t.me/{fullUsername()}
                 </span>
               ]}

@@ -718,7 +718,8 @@ PeerProfile.Phone = () => {
         }}
       >
         <Row.Icon icon="phone_filled" />
-        <Row.Title>{phoneDetails().formatted}</Row.Title>
+        {/* a phone number reads left to right in any language */}
+        <Row.Title><span dir="ltr">{phoneDetails().formatted}</span></Row.Title>
         <Row.Subtitle>{i18n(phoneDetails().isAnonymous ? 'AnonymousNumber' : 'Phone')}</Row.Subtitle>
       </Row>
     </Show>

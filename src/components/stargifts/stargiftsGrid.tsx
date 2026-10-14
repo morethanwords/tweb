@@ -265,7 +265,7 @@ function StarGiftGridItem(props: {
             <Sparkles mode='button' isDiv />
           )} */}
           <StarsStar />
-          <span>{
+          <span dir="ltr">{
             props.item.isResale && props.item.raw.resell_min_stars ?
               `${numberThousandSplitterForStars(props.item.raw.resell_min_stars)}+` :
               numberThousandSplitterForStars(props.item.raw.stars)

@@ -20,10 +20,15 @@ export default function FolderTag(props: {
   color: number,
   title?: TextWithEntities,
   class?: string,
+  /** the direction of what is put in it; a title reads in its own */
+  dir?: 'ltr' | 'rtl' | 'auto',
   children?: JSX.Element
 }) {
   return (
-    <span class={classNames(styles.tag, getFolderTagColorClassName(props.color), 'folder-tag', props.class)}>
+    <span
+      class={classNames(styles.tag, getFolderTagColorClassName(props.color), 'folder-tag', props.class)}
+      dir={props.dir ?? (props.title ? 'auto' : undefined)}
+    >
       {props.title ? <FolderTitleTsx title={props.title} /> : props.children}
     </span>
   );

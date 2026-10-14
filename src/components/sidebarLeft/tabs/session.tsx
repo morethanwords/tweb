@@ -88,7 +88,8 @@ export default function SessionTab() {
           }
         />
         <MediaHeader.Title class={styles.deviceName}>
-          {authorization().device_model || application()}
+          {/* a name the device gave itself, in whatever script: ordered by its own letters */}
+          <span dir="auto">{authorization().device_model || application()}</span>
         </MediaHeader.Title>
         <MediaHeader.Subtitle color="secondary">
           {isCurrent() ?

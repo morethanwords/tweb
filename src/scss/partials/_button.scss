@@ -256,7 +256,7 @@ $btn-menu-z-index: 4;
   &.bottom-center {
     --transform-origin-x: center;
     --transform-origin-y: top;
-    --transform-extra: translateX(calc(-50% + var(--parent-half-width)));
+    --transform-extra: translateX(calc((-50% + var(--parent-half-width)) * var(--reflect)));
     inset-block: 100% auto;
     inset-inline: 0 auto;
   }
@@ -332,7 +332,7 @@ $btn-menu-z-index: 4;
 
     &.submenu-trigger {
       cursor: default !important;
-      padding-right: 6px;
+      padding-inline-end: 6px;
     }
 
     &.is-static {
@@ -554,7 +554,7 @@ $btn-menu-z-index: 4;
       // the arrow only: a label's text may hold icons of its own (a premium star)
       &-arrow {
         font-size: 20px;
-        transform: rotate(-90deg);
+        transform: rotate(calc(-90deg * var(--reflect)));
         color: var(--secondary-color);
       }
     }
@@ -847,7 +847,7 @@ $btn-menu-z-index: 4;
         --offset: calc(var(--height) / 2);
         width: var(--size);
         height: calc(var(--size) / 2);
-        right: var(--offset);
+        inset-inline-end: var(--offset);
         // left: var(--offset);
         bottom: calc(var(--size) / -2);
         border-top: 0;
@@ -1128,8 +1128,7 @@ $btn-menu-z-index: 4;
   > svg,
   use {
     height: calc(100% - 20px);
-    inset-inline-end: 15px;
-    left: auto;
+    inset-inline: auto 15px;
   }
 
   &:disabled {

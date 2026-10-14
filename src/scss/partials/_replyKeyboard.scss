@@ -3,7 +3,7 @@
 .reply-keyboard {
   background: var(--surface-color);
   position: absolute !important;
-	right: 0;
+	inset-inline-end: 0;
 	bottom: calc(100% + .625rem);
 	width: 26.25rem !important;
   max-width: 100%;
@@ -15,7 +15,7 @@
 	@include animation-level-transition(transform var(--esg-transition), opacity var(--esg-transition));
 	transform: scale(0);
 	opacity: 0;
-	transform-origin: bottom right;
+	transform-origin: var(--transform-origin-inline-end) bottom;
   padding: 0 !important;
   display: flex !important;
   flex-direction: column;
@@ -69,7 +69,7 @@
     }
 
     & + & {
-      margin-left: .3125rem;
+      margin-inline-start: .3125rem;
     }
 
     &.reply-markup-button-bg {

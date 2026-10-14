@@ -195,7 +195,8 @@ test('a table draws its header cells, stripes, border and alignment the way it i
     }
     expect(styles[1][0].tag, surface).toBe('TD');
     expect(Number(styles[1][0].fontWeight), surface).toBeLessThan(500);
-    expect(styles[1].map((style) => style.textAlign), surface).toEqual(['left', 'center', 'right']);
+    // a cell with no alignment follows the line (left here), an aligned one keeps its side
+    expect(styles[1].map((style) => style.textAlign), surface).toEqual(['start', 'center', 'right']);
     // every other row is shaded
     expect(styles[2][0].background, surface).not.toBe(styles[1][0].background);
     expect(await page.evaluate((surface) => window.richTables.hasBorder(surface), surface), surface).toBe(true);

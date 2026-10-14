@@ -1,6 +1,7 @@
 import {Component, createSignal, For, Show} from 'solid-js';
 import Button from '@components/buttonTsx';
 import Section from '@components/section';
+import {joinSessionParts} from '@components/sidebarLeft/tabs/joinSessionParts';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppActiveWebSessionsTab} from '@components/solidJsTabs/tabs';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
@@ -86,10 +87,10 @@ const ActiveWebSessions: Component = () => {
           <PeerTitleTsx peerId={peerId()} />
         </Row.Title>
         <Row.Midtitle>
-          {[session().domain, session().browser, session().platform].filter(Boolean).join(', ')}
+          {joinSessionParts([{ltr: session().domain}, session().browser, session().platform], ', ')}
         </Row.Midtitle>
         <Row.Subtitle>
-          {[session().ip, session().region].filter(Boolean).join(' - ')}
+          {joinSessionParts([{ltr: session().ip}, session().region], ' - ')}
         </Row.Subtitle>
       </Row>
     );

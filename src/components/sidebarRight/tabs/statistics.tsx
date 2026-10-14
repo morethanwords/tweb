@@ -184,10 +184,11 @@ const StatisticsOverviewItem = ({
     const n = (value.part / value.total * 100).toFixed(2);
     v = `${n}%`;
 
+    // * an approximate or signed number reads left to right in any language
     if(describePercentage) {
       v = (
         <>
-          {`≈${value.part} `}
+          <span dir="ltr">{`≈${value.part}`}</span>{' '}
           <span class="statistics-overview-item-value-description">
             {v}
           </span>
@@ -198,7 +199,7 @@ const StatisticsOverviewItem = ({
     v = formatNumber(value.current, 1);
 
     if(value.approximate) {
-      v = '≈' + v;
+      v = (<span dir="ltr">{'≈' + v}</span>);
     }
 
     if(!value.current && !value.previous && !includeZeroValue) {
@@ -216,6 +217,7 @@ const StatisticsOverviewItem = ({
           {v}{' '}
           <span
             class={classNames('statistics-overview-item-value-description', diff > 0 ? 'green' : 'red')}
+            dir="ltr"
           >
             {str}
           </span>

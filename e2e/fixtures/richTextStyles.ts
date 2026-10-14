@@ -49,6 +49,11 @@ const article: JSONContent = {type: 'doc', content: [
   {type: 'blockMath', attrs: {source: 'x^2+y^2'}}
 ]};
 
+function withRightToLeftOpening(document: JSONContent): JSONContent {
+  const [first, ...rest] = document.content;
+  return {...document, content: [{...first, content: [text('פסקה '), ...first.content.slice(1)]}, ...rest]};
+}
+
 export function mountRichTextStyles(options: {fontSize: number, width: number, rtl: boolean, legacyHeadings: boolean}) {
   const grid = window.document.createElement('div');
   grid.style.cssText = 'position:absolute;inset:0;z-index:2;display:flex;align-items:flex-start;gap:20px;padding:20px;background:white;';
@@ -66,7 +71,9 @@ export function mountRichTextStyles(options: {fontSize: number, width: number, r
   input.style.cssText = 'width:100%;max-height:none;overflow:visible;';
   host('editor').append(input);
   const editor = createEditor(input);
-  editor.setDocument(article);
+  // * an article lays itself out in its own direction, read off its first block with text, in the
+  // * editor as in the message: the right-to-left pass opens it with a Hebrew word
+  editor.setDocument(options.rtl ? withRightToLeftOpening(article) : article);
   editor.setExpanded(true);
   const page = richMessageToPage(editor.getRichMessage().output);
   if(options.legacyHeadings) {

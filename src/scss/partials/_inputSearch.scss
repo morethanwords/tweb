@@ -103,7 +103,7 @@
     white-space: nowrap;
     inset-inline-start: calc(var(--padding-horizontal) + var(--border-width));
     pointer-events: none;
-    transform-origin: left center;
+    transform-origin: var(--transform-origin-left-center);
   }
 
   &-input {
@@ -189,7 +189,8 @@
   }
 
   .preloader-container {
-    right: auto;
+    // * gives up the end side `.preloader-container` centres itself with; the start one is above
+    inset-inline-end: auto;
     z-index: 1;
 
     .preloader-path-new {

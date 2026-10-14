@@ -491,10 +491,12 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
     if(!currencyData.symbol_left) symbolParts.reverse();
     const currencySymbol = symbolParts.join('');
 
+    // * a standalone amount keeps its own order (`30,00 €` would read `€ 30,00` in a right-to-left
+    // * line); the bot's label is of unknown direction
     const PriceLine = (props: {label: JSX.Element, amount: JSX.Element, class?: string}) => (
       <div class={classNames(`${className}-prices-price`, props.class)}>
-        <span>{props.label}</span>
-        <span>{props.amount}</span>
+        <span dir="auto">{props.label}</span>
+        <span dir="auto">{props.amount}</span>
       </div>
     );
 
@@ -514,7 +516,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
             }}
           >
             <span>{i18n(isReceipt ? 'PaymentTip' : 'PaymentTipOptional')}</span>
-            <span>
+            <span dir="ltr">
               {currencyData.symbol_left && currencySymbol}
               {inputRightNumber.input}
               {!currencyData.symbol_left && currencySymbol}
@@ -526,6 +528,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
                 {(suggested) => (
                   <button
                     class={`${className}-tips-tip`}
+                    dir="auto"
                     classList={{active: tipAmount() === +suggested}}
                     aria-pressed={tipAmount() === +suggested}
                     onClick={() => setTip(tipAmount() === +suggested ? 0 : +suggested)}

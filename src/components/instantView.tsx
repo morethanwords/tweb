@@ -399,6 +399,7 @@ export function InstantViewBlocks(props: {
 // `InstantView` (wrapped in Scrollable/MySuspense with a footer) and the inline `InstantViewBlocks`
 // (used to embed rich messages inside chat bubbles) delegate here so the block markup lives in one
 // place. The distinct context values (ready/scrollToAnchor) and outer chrome stay in each caller.
+// A page and a rich message state their own direction (`pFlags.rtl`), whatever the UI's is.
 function InstantViewContent(props: {
   value: InstantViewContextValue,
   class?: string,
@@ -411,7 +412,7 @@ function InstantViewContent(props: {
   return (
     <InstantViewContext.Provider value={props.value}>
       <div
-        dir={props.value.page.pFlags.rtl ? 'auto' : undefined}
+        dir={props.value.page.pFlags.rtl ? 'rtl' : 'ltr'}
         class={classNames(styles.RichText, styles.InstantView, props.class, 'text-overflow-wrap')}
         onClick={onClick.bind(null, props.value)}
         style={props.style}
@@ -1539,21 +1540,21 @@ function Block(props: {
     case 'pageBlockAuthorDate':
       return (
         <div
-          dir="auto"
           class={classNames(
             styles.Padding,
             styles.AuthorDate,
-            'secondary',
-            useContext(InstantViewContext).page.pFlags.rtl && 'text-right'
+            'secondary'
           )}
         >
           <Show when={!isRichTextEmpty(block.author)}>
-            <RichTextRenderer text={block.author} />
+            <span dir="auto"><RichTextRenderer text={block.author} /></span>
             {` • `}
           </Show>
-          {block.published_date ?
-            formatFullSentTime(block.published_date, true) :
-            formatDate(new Date())}
+          <span dir="auto">
+            {block.published_date ?
+              formatFullSentTime(block.published_date, true) :
+              formatDate(new Date())}
+          </span>
         </div>
       );
     case 'pageBlockAnchor':

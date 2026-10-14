@@ -57,9 +57,10 @@
   border-top-right-radius: var(--popup-border-radius);
   
   :global(.popup-title) {
-    margin-left: 1.5rem;
+    margin-inline-start: 1.5rem;
     opacity: 0;
-    transform: translateX(1rem);
+    // * slides in from the inline end
+    transform: translateX(calc(1rem * var(--reflect)));
     transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
   }
 
@@ -89,7 +90,8 @@
   position: absolute;
   height: 6.75rem;
   top: -0.25rem;
-  transform: translate(-3rem);
+  // * the picture is wider than the avatar and starts at its inline start (static position)
+  transform: translate(calc(-3rem * var(--reflect)));
 }
 
 .intro {
@@ -174,7 +176,7 @@
       display: flex;
       align-items: center;
       flex-direction: row;
-      margin-left: 0.25rem;
+      margin-inline-start: 0.25rem;
       font-weight: 600;
       gap: 0.125rem;
     }
@@ -243,8 +245,8 @@
 .secondPageHeader {
   display: flex;
   flex-direction: row;
-  padding: 0.5rem;
-  padding-right: 0.75rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.5rem 0.75rem;
   align-items: center;
   gap: 1.5rem;
   border-top-right-radius: var(--popup-border-radius);
@@ -289,12 +291,12 @@
 .limitedProgressProgress {
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   bottom: 0;
   background-color: var(--primary-color);
   color: #fff;
-  border-top-right-radius: 0.3125rem;
-  border-bottom-right-radius: 0.3125rem;
+  border-start-end-radius: 0.3125rem;
+  border-end-end-radius: 0.3125rem;
   padding: 0.375rem 0.75rem;
 }
 
@@ -364,8 +366,8 @@
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
-  padding: 0.5rem;
-  padding-right: 0.75rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.5rem 0.75rem;
   align-items: center;
   gap: 1.5rem;
   border-top-right-radius: var(--popup-border-radius);

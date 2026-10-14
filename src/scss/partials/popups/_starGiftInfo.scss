@@ -63,7 +63,7 @@
 .popup-star-gift-info-close {
   position: absolute;
   top: 0.5rem;
-  left: 1rem;
+  inset-inline-start: 1rem;
 }
 
 .is-collectible .popup-star-gift-info-close,
@@ -119,7 +119,7 @@
 .popup-star-gift-info-change-price {
   position: absolute;
   top: 0.8125rem;
-  right: 3.625rem;
+  inset-inline-end: 3.625rem;
   z-index: 1;
   color: #fff;
   background-color: rgba(255, 255, 255, .1);
@@ -196,7 +196,7 @@
 .popup-star-gift-info-menu-toggle {
   position: absolute;
   top: 0.5rem;
-  right: 1rem;
+  inset-inline-end: 1rem;
   z-index: 1;
 }
 
@@ -263,7 +263,7 @@
 
   &.has-delete {
     display: flex;
-    text-align: left;
+    text-align: start;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
@@ -305,7 +305,8 @@
   flex-direction: row;
   gap: 100px;
   position: absolute;
-  left: 0;
+  // * the strip rolls toward the inline start (`UpgradeAnimation` mirrors its offsets in RTL)
+  inset-inline-start: 0;
   top: 0;
   height: 120px;
 }

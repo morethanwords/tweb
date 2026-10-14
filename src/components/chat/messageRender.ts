@@ -169,10 +169,12 @@ export const fireMessageEffect = ({e, isOut, element, middleware, scrollable, ef
     const {doc, thumb: fullThumb} = await getDocForEffect(availableEffect);
     if(!middleware()) return;
 
+    // * the effect flies from the message's side of the chat toward the middle; RTL swaps the sides
+    const isOnRight = !!isOut !== I18n.getIsRTL();
     const {animationDiv} = wrapStickerAnimation({
       doc,
       middleware,
-      side: isOut ? 'right' : 'left',
+      side: isOnRight ? 'right' : 'left',
       size: 240,
       target: element,
       play: true,
@@ -184,7 +186,7 @@ export const fireMessageEffect = ({e, isOut, element, middleware, scrollable, ef
       }
     });
 
-    if(isOut === false) {
+    if(isOut !== undefined && !isOnRight) {
       animationDiv.classList.add('reflect-x');
     }
   });

@@ -97,7 +97,7 @@
         color: var(--premium-color);
         position: absolute;
         bottom: -.125rem;
-        right: -.125rem;
+        inset-inline-end: -.125rem;
         background-color: #fff;
         border-radius: 50%;
         transform: scale(0);
@@ -130,12 +130,13 @@
       }
     }
 
+    // * the boosts being moved stand at the start of the row, the channel they go to at its end
     &.has-left &-left {
-      transform: translateX(calc(var(--unfolded-translateX) * -1));
+      transform: translateX(calc(var(--unfolded-translateX) * -1 * var(--reflect)));
     }
 
     &.has-left &-right {
-      transform: translateX(var(--unfolded-translateX));
+      transform: translateX(calc(var(--unfolded-translateX) * var(--reflect)));
     }
   }
 

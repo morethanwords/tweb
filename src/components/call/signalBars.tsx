@@ -19,6 +19,8 @@ export default function createCallSignalBars(bars: Accessor<number | undefined>)
   return (
     <span
       class={styles.bars}
+      // * a level drawn as a bar chart, which is not mirrored: the bars rise to the right in RTL too
+      dir="ltr"
       role="img"
       aria-label={I18n.format('AccDescr.CallSignalStrength', true, [bars() ?? 0, CALL_SIGNAL_BARS_COUNT])}
       hidden={bars() === undefined}

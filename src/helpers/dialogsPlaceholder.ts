@@ -6,6 +6,7 @@ import roundRect from '@helpers/canvas/roundRect';
 import Shimmer from '@helpers/canvas/shimmer';
 import customProperties from '@helpers/dom/customProperties';
 import {CROSS_FADE_KEYFRAMES} from '@helpers/dom/crossfadeContent';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import easeInOutSine from '@helpers/easing/easeInOutSine';
 import liteMode from '@helpers/liteMode';
 import mediaSizes from '@helpers/mediaSizes';
@@ -312,6 +313,10 @@ export default class DialogsPlaceholder {
 
     patternContext.fillStyle = '#000';
     patternContext.globalCompositeOperation = 'destination-out';
+    // * the rows are laid out from the inline start: avatar first, the status at the end
+    if(isDocumentRTL()) {
+      patternContext.setTransform(-1, 0, 0, 1, patternCanvas.width, 0);
+    }
 
     const dialogHeight = this.dialogHeight = this.totalHeight * dpr;
     const gapVertical = this.gapVertical * dpr;

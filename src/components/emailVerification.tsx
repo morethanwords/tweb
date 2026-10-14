@@ -102,6 +102,8 @@ export function wrapEmailPattern(pattern: string) {
   }
 
   const wrapper = document.createElement('span');
+  // an address reads left to right in any language
+  wrapper.dir = 'ltr';
   wrapper.classList.add(styles.emailPattern);
   wrapper.append(wrapRichText(pattern, {entities, noTextFormat: true}));
   return wrapper;

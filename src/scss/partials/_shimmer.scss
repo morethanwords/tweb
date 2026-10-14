@@ -1,16 +1,17 @@
 @use "../shared" as *;
 
+// * sweeps along the line, from the inline start
 @keyframes wave {
   0% {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% * var(--reflect)));
   }
 
   50% {
-    transform: translateX(100%);
+    transform: translateX(calc(100% * var(--reflect)));
   }
 
   100% {
-    transform: translateX(100%);
+    transform: translateX(calc(100% * var(--reflect)));
   }
 }
 

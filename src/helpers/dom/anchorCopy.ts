@@ -11,6 +11,8 @@ export default function anchorCopy(options: Partial<{
 }> = {}) {
   const anchor = document.createElement('a');
   anchor.classList.add('anchor-copy');
+  // * a t.me link or an @username reads left to right in any language
+  anchor.dir = 'ltr';
 
   let copy: () => void;
   if(options.mePath) {

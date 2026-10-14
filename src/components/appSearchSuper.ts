@@ -1391,6 +1391,8 @@ export default class AppSearchSuper {
     const a = aFragment.firstElementChild as HTMLAnchorElement;
     const aIsAnchor = a instanceof HTMLAnchorElement;
     if(aIsAnchor) {
+      // * a URL reads left to right in any language
+      a.dir = 'ltr';
       try { // can have 'URIError: URI malformed'
         a.innerText = decodeURIComponent(a.href);
       } catch(err) {
@@ -1655,8 +1657,16 @@ export default class AppSearchSuper {
           //   dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
           // }
 
+          // * a handle or a phone number reads left to right in any language, and apart from the count
+          let usernameElement: HTMLElement;
+          if(username) {
+            usernameElement = document.createElement('span');
+            usernameElement.dir = 'ltr';
+            usernameElement.textContent = username;
+          }
+
           const toJoin: (Node | string)[] = [
-            username
+            usernameElement
           ];
 
           if(/* showMembersCount &&  */((peer as Chat.channel).participants_count || (peer as any).participants)) {
@@ -1742,7 +1752,8 @@ export default class AppSearchSuper {
                 // position menu
                 const rect = chip.getBoundingClientRect();
                 const bodyRect = getOverlayRoot().getBoundingClientRect();
-                element.style.right = `${bodyRect.width - (rect.left + rect.width)}px`;
+                // * `bottom-left` holds the menu by its inline end, the chip's end edge - its left one in RTL
+                element.style.insetInlineEnd = `${I18n.getIsRTL() ? rect.left : bodyRect.width - (rect.left + rect.width)}px`;
                 element.style.top = `${rect.top + rect.height + 8}px`;
               },
               direction: 'bottom-left'

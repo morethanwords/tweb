@@ -13,6 +13,7 @@ import {i18n} from '@lib/langPack';
 import Icon from '@components/icon';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import replaceContent from '@helpers/dom/replaceContent';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 import limitSymbols from '@helpers/string/limitSymbols';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
@@ -171,6 +172,10 @@ export async function wrapReplyDivAndCaption(options: {
 
   const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup, middleware, lazyLoadQueue, replyHeader} = options;
   let {storyItem, quote} = options;
+  // * a name and a message of their own direction, whichever box the caller hands in (the pinned
+  // * plate hands in no title)
+  if(titleEl) setDirection(titleEl);
+  if(subtitleEl) setDirection(subtitleEl);
   let quoteIcon: HTMLElement | undefined;
 
   let wrappedTitle = options.title;

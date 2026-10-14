@@ -17,8 +17,8 @@
     &-header {
       width: 100%;
       align-items: center;
-      // Three slots — close (left, auto-added by PopupElement), emojis
-      // (center), action cluster (right). The emoji slot is absolute-centred
+      // Three slots — close (start, auto-added by PopupElement), emojis
+      // (center), action cluster (end). The emoji slot is absolute-centred
       // (see `.call-emojis` below) so it stays in the geometric middle of
       // the header even when the close and action clusters have different
       // widths.
@@ -303,11 +303,12 @@
       }
     }
 
+    // the rows run along the line: in RTL the end-call button lands on the start side
     &.is-first {
       .call-button { // ! fix backdrop-filter transition
         &,
         &-text {
-          transform: /* scale(var(--scale))  */translateX(calc(var(--call-button-size) * -.5 + var(--call-button-margin) * -.5));
+          transform: /* scale(var(--scale))  */translateX(calc((var(--call-button-size) * -.5 + var(--call-button-margin) * -.5) * var(--reflect)));
         }
       }
     }
@@ -318,7 +319,7 @@
       .call-button { // ! fix backdrop-filter transition
         &,
         &-text {
-          transform: /* scale(var(--scale))  */translateX(calc(var(--call-button-size) * 2 + var(--call-button-margin) * var(--margin-length)));
+          transform: /* scale(var(--scale))  */translateX(calc((var(--call-button-size) * 2 + var(--call-button-margin) * var(--margin-length)) * var(--reflect)));
         }
       }
     }
@@ -406,8 +407,7 @@
 
       &.small {
         bottom: 8rem;
-        right: 1rem;
-        left: auto;
+        inset-inline: auto 1rem;
         top: auto;
         z-index: 1;
         border-radius: $border-radius-medium;
@@ -466,8 +466,7 @@
     .lottie-icon {
       width: 1.875rem !important;
       height: 1.875rem !important;
-      margin-right: .25rem;
-      margin-left: -.25rem;
+      margin-inline: -.25rem .25rem;
       flex: 0 0 auto;
     }
 
@@ -506,7 +505,8 @@
     align-items: center;
     gap: .5rem;
     margin-top: .75rem;
-    padding: .25rem .75rem .25rem .25rem;
+    padding-block: .25rem;
+    padding-inline: .25rem .75rem;
     border-radius: 1.25rem;
     background: rgba(255, 255, 255, .15);
     opacity: 1;

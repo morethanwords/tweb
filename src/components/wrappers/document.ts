@@ -326,7 +326,7 @@ export default async function wrapDocument({
     const sizeContainer = document.createElement('span');
     const _bytesContainer = formatBytes(doc.size);
     sizeContainer.style.position = 'absolute';
-    sizeContainer.style.left = '0';
+    sizeContainer.style.insetInlineStart = '0';
     // a transfer that failed or was cancelled leaves the row as it was, as a failed download does
     promise.then(onLoad, () => docDiv.classList.remove('downloading')).finally(() => {
       // sizeContainer.replaceWith(bytesContainer);

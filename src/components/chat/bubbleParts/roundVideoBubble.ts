@@ -321,7 +321,9 @@ export function wrapRoundVideoBubble({
 
     const bubbleStyle = window.getComputedStyle(bubbleTail);
     const initialTailTransform = bubbleStyle.transform;
-    bubbleTail.style.transform = `${initialTailTransform !== 'none' ? initialTailTransform : ''} translateX(calc(100% * var(--reflect)))`;
+    // * the computed transform already holds the tail's mirroring (`scaleX`), so the shift is along the
+    // * tail's own axis: into the bubble on either side, in either direction
+    bubbleTail.style.transform = `${initialTailTransform !== 'none' ? initialTailTransform : ''} translateX(100%)`;
     bubbleTail.style.transition = '.2s';
 
     if(true)

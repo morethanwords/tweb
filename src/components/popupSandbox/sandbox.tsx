@@ -2,7 +2,7 @@ import {createEffect, createMemo, createSignal, For, Show} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {useAppSettings} from '@stores/appSettings';
 import {AppTheme} from '@config/state';
-import {setSandboxTheme} from './environment';
+import {getSandboxDirection, SandboxDirection, setSandboxDirection, setSandboxTheme} from './environment';
 import {getStories, PopupStory} from './registry';
 import {
   checkedFilter,
@@ -147,6 +147,15 @@ export default function PopupSandboxPanel(props: SandboxProps) {
           >
             <For each={themeNames()}>
               {(name) => <option value={name} selected={name === appSettings.theme}>{name}</option>}
+            </For>
+          </select>
+          <select
+            class={styles.Theme}
+            title="Direction"
+            onChange={(e) => setSandboxDirection(e.currentTarget.value as SandboxDirection)}
+          >
+            <For each={['ltr', 'rtl'] as SandboxDirection[]}>
+              {(dir) => <option value={dir} selected={dir === getSandboxDirection()}>{dir}</option>}
             </For>
           </select>
         </Show>

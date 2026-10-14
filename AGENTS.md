@@ -35,7 +35,7 @@ pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 
-Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default).
+Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left").
 
 ### Preview
 
@@ -107,6 +107,8 @@ Either way every `rootScope.managers` call is answered from
 - The panel's theme select switches between `system` and every shipped theme
   (`day` / `night` / `light` / `tinted`) and survives a reload — the mock
   managers discard settings writes, so it is kept in `localStorage` instead.
+  The direction select beside it (`ltr` / `rtl`) is kept the same way and lays
+  every story out right to left; `?rtl=1` in the URL does the same.
 - Going through 200+ stories takes more than one sitting, so each row has a
   checkbox for "I have looked at this one" and the list can be sliced by it —
   **All / Unchecked / Checked**, counted within whatever the search box is
@@ -486,6 +488,9 @@ import {Message, Chat, User, InputPeer} from '@layer';
     it, and with many items changing at once. A cost that matters gets a
     regression check (e.g. `e2e/dialogUnreadCounter.spec.ts` counts the
     layouts read while the counts of many rows change).
+- **Every final review also checks the change in RTL** — mirrored, next to
+  LTR, as "Right-to-left (RTL)" below describes. A screen that only works
+  left to right is not finished.
 - **After every context compaction, reread this entire `AGENTS.md` before
   continuing work.** A compacted context or summary does not replace the
   canonical instructions in this file.
@@ -597,6 +602,92 @@ unit test of the layer imports `@/tests/helpers/a11yLayer`.
   custom interactions when available, and explicitly record untested cases.
   Passing Axe or source review alone does not establish full accessibility.
 
+## Right-to-left (RTL) is part of every UI feature
+
+Arabic, Persian, Hebrew and the other right-to-left languages lay the whole
+client out mirrored. **Every new or changed interface must work right to left**:
+design it, build it and check it that way before calling it done — the same as
+accessibility, never a follow-up. What mirrors and what does not follows the
+common bidirectional guidelines (Material Design's Bidirectionality, Apple's
+Right to left, the W3C's internationalization notes) — never another Telegram
+client, whose RTL support is incomplete.
+
+- **How the direction is set.** `I18n.applyDirection()` (`@lib/langPack`) puts
+  `dir`, `lang` and `.is-rtl` on `<html>` on every language apply, by the
+  server's word on the language (`langPackLanguage.rtl`, kept with the pack as
+  `rtl`), or by its code (`isRTLLangCode`) for a pack without it. A switch in Settings → Language flips the
+  running app without a reload, so nothing may decide the direction once, at
+  load or at construction: read `I18n.isRTL()` (a signal; `I18n.getIsRTL()`
+  outside a reactive scope) when laying out. `?rtl=1` forces RTL in any
+  language, `I18n.forceRTL(true | false | undefined)` flips it live from the
+  console, and the popup sandbox has a direction switch next to its theme.
+- **CSS is logical, not physical.** `margin-inline-*`, `padding-inline-*`,
+  `inset-inline-*`, `border-inline-*`, `text-align: start | end`, logical corner
+  radii (`border-start-start-radius` …). Physical `left` / `right` only for a
+  coordinate that is physical: a position JS measured, `left: 50%` centring,
+  full width. Movement along the line multiplies by `var(--reflect)` (`1` / `-1`):
+  `translateX(calc(100% * var(--reflect)))`, gradient angles
+  `calc(90deg * var(--reflect))`, a shimmer or loading sweep running from the
+  inline start; origins use `--transform-origin-inline-start` / `-end`. Where nothing logical exists (`background-position`, `clip-path`,
+  shadows), override under `.is-rtl &`. Never set a logical property and its
+  physical twin for the same side in one block: production's lightningcss
+  emits the lowered logical rule after the block with a higher specificity, and
+  the physical one silently loses in the build only (logical radii become
+  `:lang()` rules — one reason `<html lang>` must be right).
+- **Icons.** Glyphs that point along the line (arrows, back, send, reply,
+  forward, undo, list bullets) are listed in `src/iconsReverse.ts`; `Icon()` and
+  `<IconTsx>` give them `.icon-mirror`, which the stylesheet flips in RTL (with
+  `scale`, so it composes with a `transform` animation). A new directional icon
+  goes into that list; a glyph that points along the line in one place only (the
+  logo as a send plane) takes the class `icon-mirror` there — never a hand-made
+  `scaleX(-1)`.
+- **JS geometry and input.** `getBoundingClientRect()`, `clientX`, `offsetLeft`
+  and `style.left` are physical: mirror whatever is measured from "the start" of
+  a row, and prefer writing logical styles (`style.insetInlineStart`) or a CSS
+  variable the stylesheet applies logically. `scrollLeft` is `0` at the start
+  and negative toward the end in RTL. In a horizontal widget ArrowRight means
+  "previous" and ArrowLeft "next" (`getInlineArrowKeys()`); horizontal swipes
+  and drags (swipe-to-reply, swipe-back, tab swipes) flip their sign
+  (`handleTabSwipe` already does).
+- **Sequences page in reading order.** The media viewer, stories, the profile
+  photo carousel, slideshows and any other gallery or carousel put the next item
+  at the inline end — on the left in RTL: its arrow, the side a click goes on by,
+  ArrowLeft, a swipe to the right and the slide all point that way, and a
+  progress that counts steps (the stories strip) fills from the right. One
+  inside content of its own direction (a page's or a rich message's slideshow)
+  pages that way. Outgoing messages sit on the left.
+- **Text.** Content whose direction is unknown — names, messages, captions —
+  gets `dir="auto"` (`setDirection()` / `setInnerHTML()`); strings that are
+  always left to right — phone numbers, codes, card numbers, URLs, standalone
+  @usernames, signed amounts, code — get `dir="ltr"`; parts joined into one line
+  are isolated (`unicode-bidi: isolate`) so one RTL part does not reorder its
+  neighbours. A string an RTL pack lacks falls back to English, which `I18n`
+  puts in a left-to-right isolate inside its element (`untranslatedKeys`), the
+  spaces that join it to its neighbours left outside. The composer lays a draft
+  out in the direction it is sent in (`editorDocumentRtl`, the first block with
+  text), not the interface's.
+- **What is not mirrored.** Media playback — seek and progress bars, voice
+  waveforms, video timelines, play / rewind / forward — runs left to right: it
+  follows the tape, not the reading direction. Put the attribute `dir="ltr"` on
+  the control (icons inside a `[dir="ltr"]` island are not mirrored) and keep its
+  geometry physical. Media content, stickers, illustrations, avatars, QR codes,
+  maps, charts and graphs, clocks and anything that turns clockwise, check marks
+  and digits stay as they are. Value sliders (volume, sizes, colours) do mirror;
+  a native `<input type="range">` takes its arrow keys through
+  `onRangeInlineArrowKey` (WebKit steps a right-to-left range by the keys'
+  sides, not by its direction).
+- **Verify it.** Look at the change in the preview with `?rtl=1` (or flip
+  `I18n.forceRTL()` and back) side by side with LTR: layout, open/close and
+  slide animations, menus and tooltips opening toward the right side, scrolling
+  strips, keyboard and swipe directions. For an RTL language's own text, switch
+  the language to Arabic or Persian in Settings — on the preview's built bundle
+  (`?static=1`): the dev server lays the local English strings over the
+  server's pack. The direction switch
+  itself is covered by `src/tests/langDirection.test.ts`, and
+  `e2e/popupSandboxRtl.spec.ts` (part of `test:popups`) opens every popup story
+  in both directions and fails on a box that does not stand mirrored, and checks
+  that a value slider runs from the right.
+
 ## What NOT to Do
 
 (Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
@@ -637,7 +728,7 @@ pnpm test:focus:app  # the same, for the signed-in client (needs PLAYWRIGHT_BASE
 pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
 pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT_BASE_URL)
 pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
-pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
+pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
 pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
 ```
 

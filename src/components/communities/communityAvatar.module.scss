@@ -13,8 +13,10 @@
   position: absolute;
   z-index: 0;
   top: 0;
-  left: calc(var(--community-avatar-size) * -.25);
+  // * the stack peeks out on the outer, inline-start side: from behind the right edge in RTL
+  inset-inline-start: calc(var(--community-avatar-size) * -.25);
   width: calc(var(--community-avatar-size) * 1.25);
+  transform: scaleX(var(--reflect));
   height: var(--community-avatar-size);
   color: #000;
   pointer-events: none;

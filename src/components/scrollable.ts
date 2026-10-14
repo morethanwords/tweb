@@ -4,6 +4,7 @@ import {logger, LogTypes} from '@lib/logger';
 import fastSmoothScroll, {ScrollOptions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
 import WeakRefSet from '@helpers/weakRefSet';
@@ -506,7 +507,8 @@ export class ScrollableX extends ScrollableBase {
       const scrollHorizontally = (e: WheelEvent) => {
         e.stopPropagation();
         if(!e.deltaX && this.container.scrollWidth > this.container.clientWidth) {
-          this.container.scrollLeft += e.deltaY / 4;
+          // * scrolling down moves along the line, to the left in RTL
+          this.container.scrollLeft += e.deltaY / 4 * (isDocumentRTL() ? -1 : 1);
           cancelEvent(e);
         }
       };
@@ -518,5 +520,14 @@ export class ScrollableX extends ScrollableBase {
     this.scrollSizeProperty = 'scrollWidth';
     this.clientSizeProperty = 'clientWidth';
     this.offsetSizeProperty = 'offsetWidth';
+  }
+
+  // * from the inline start: a right-to-left row's `scrollLeft` runs from 0 down to minus the overflow
+  get scrollPosition() {
+    return Math.abs(this.container.scrollLeft);
+  }
+
+  set scrollPosition(value: number) {
+    this.container.scrollLeft = isDocumentRTL() ? -value : value;
   }
 }

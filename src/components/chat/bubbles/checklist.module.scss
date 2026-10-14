@@ -31,8 +31,8 @@
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.625rem;
-  padding-left: 0.6875rem;
+  padding-block: 0.625rem;
+  padding-inline: 0.6875rem 0.625rem;
   margin-inline: -0.5rem;
   min-height: 2.625rem;
   background-color: var(--item-background-color);
@@ -53,7 +53,7 @@
 
 .itemCheckbox {
   position: relative;
-  padding-right: 0.875rem;
+  padding-inline-end: 0.875rem;
 
   :global(.checkbox-field) {
     --size: 1.375rem;
@@ -81,7 +81,7 @@
   :global(.avatar) {
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     opacity: 0;
     transform: scale(0.75);
     
@@ -89,12 +89,12 @@
 
     // reduced: it fades in and out where it stands when the item is done
     @include animation-level-below-global(2) {
-      transform: translateX(14px);
+      transform: translateX(calc(14px * var(--reflect)));
     }
 
     .itemCompleted & {
       opacity: 1;
-      transform: translateX(14px) scale(1);
+      transform: translateX(calc(14px * var(--reflect))) scale(1);
     }
   }
 }
@@ -123,7 +123,7 @@
   width: 0.3125rem;
   height: 0.3125rem;
   border-radius: 50%;
-  margin-left: 0.21875rem;
+  margin-inline-start: 0.21875rem;
   background-color: var(--primary-color);
 }
 

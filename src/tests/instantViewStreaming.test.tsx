@@ -1385,7 +1385,7 @@ describe('InstantViewBlocks streaming updates', () => {
     ), container);
 
     await vi.waitFor(() => {
-      expect((container.querySelector('[data-photo-id="1"]')?.parentElement as HTMLElement).style.left).toBe('0%');
+      expect((container.querySelector('[data-photo-id="1"]')?.parentElement as HTMLElement).style.insetInlineStart).toBe('0%');
     });
     const firstPhoto = container.querySelector('[data-photo-id="1"]');
     const secondPhoto = container.querySelector('[data-photo-id="2"]');
@@ -1399,8 +1399,8 @@ describe('InstantViewBlocks streaming updates', () => {
       const photos = container.querySelectorAll('[data-photo-id]');
       expect(photos[0]).toBe(secondPhoto);
       expect(photos[1]).toBe(firstPhoto);
-      expect((secondPhoto.parentElement as HTMLElement).style.left).toBe('0%');
-      expect((firstPhoto.parentElement as HTMLElement).style.left).not.toBe('0%');
+      expect((secondPhoto.parentElement as HTMLElement).style.insetInlineStart).toBe('0%');
+      expect((firstPhoto.parentElement as HTMLElement).style.insetInlineStart).not.toBe('0%');
     });
 
     dispose();

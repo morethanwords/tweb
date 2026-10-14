@@ -51,7 +51,10 @@ const Modes = {
   // rings, key routing, inert off-screen columns, pinch zoom. Off by default
   // until it settles; ?a11y=1 turns it on. ARIA names and roles stay either way,
   // since nobody without assistive technology can tell they are there.
-  a11y: location.search.indexOf('a11y=1') > 0
+  a11y: location.search.indexOf('a11y=1') > 0,
+  // Lays the app out right to left in whatever language is loaded, to check a layout in RTL
+  // without switching to Arabic, Persian or Hebrew; the real switch follows the language.
+  rtl: location.search.indexOf('rtl=1') > 0
 };
 
 if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {

@@ -33,9 +33,10 @@ export default function StoryMusicPanel(props: {
     <div class={classNames(pillStyles.Pill, styles.Panel)}>
       <IconTsx icon="note_filled" class={styles.Icon} />
       <span class={styles.Text}>
-        {performer && <span>{wrapEmojiText(performer)}</span>}
+        {/* * each name in its own direction, so an RTL one does not reorder the other around the dot */}
+        {performer && <span dir="auto">{wrapEmojiText(performer)}</span>}
         {performer && title && <span class={styles.Separator}> • </span>}
-        {title && <span class={styles.Title}>{wrapEmojiText(title)}</span>}
+        {title && <span class={styles.Title} dir="auto">{wrapEmojiText(title)}</span>}
       </span>
     </div>
   ) as HTMLDivElement;

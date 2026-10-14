@@ -12,6 +12,7 @@ import TTip from '@lib/tchart/tip';
 import {getFormatter, getXIndex, roundRange, triggerEvent} from '@lib/tchart/utils';
 import {TChartAnimationProperty, TChartConstructorOptions, TChartData, TChartDataDetails, TChartRange, TChartRangePaired, TChartRangeSingle, TChartSettings, TChartState, TChartStateZoom, TChartType, TChartTypeRenderer, TChartUnitOptions} from '@lib/tchart/types';
 import {getLabelDate, getLabelTime} from '@lib/tchart/format';
+import I18n from '@lib/langPack';
 import '@lib/tchart/chart.scss';
 
 export default class TChart {
@@ -663,6 +664,10 @@ export default class TChart {
     const rectGraph = this.$graph.getBoundingClientRect();
     const s = this.settings;
     const graphHeight = rectGraph.height - s.DATES_HEIGHT - s.MINI_GRAPH_HEIGHT - s.MINI_GRAPH_TOP - s.MINI_GRAPH_BOTTOM;
+    // * the time axis runs left to right in any language, the range of dates above it is page text and turns with it
+    const datesSide = this.state.datesSide = I18n.getIsRTL() ?
+      (s.DATES_SIDE === 'right' ? 'left' : 'right') :
+      s.DATES_SIDE;
 
     this.state.dims = {
       composer: {
@@ -716,7 +721,7 @@ export default class TChart {
       dates: {
         w: s.DATES_WIDTH,
         h: s.DATES_HEIGHT,
-        l: this.opts.settings.DATES_SIDE === 'right' ? rectGraph.width - s.DATES_WIDTH - s.PADD[1] : s.PADD[1],
+        l: datesSide === 'right' ? rectGraph.width - s.DATES_WIDTH - s.PADD[1] : s.PADD[1],
         t: 0
       },
       mini: {

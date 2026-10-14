@@ -22,6 +22,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import {toastNew} from '@components/toast';
 import copyQrCode from '@helpers/qrCode/copyQrCode';
 import classNames from '@helpers/string/classNames';
+import isRTL from '@helpers/string/isRTL';
 import {BaseTheme, Chat, Theme, User, WallPaper} from '@layer';
 import {AppTheme, DEFAULT_THEME} from '@config/state';
 import {useAppSettings} from '@stores/appSettings';
@@ -447,6 +448,9 @@ function TopSection(props: {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
+      // a canvas inherits the page's direction: '@USERNAME' would read 'USERNAME@' in RTL,
+      // so the text takes its own, the way `dir="auto"` would give it
+      ctx.direction = isRTL(text) ? 'rtl' : 'ltr';
       // Available text column, mirroring iOS L2032: cardW − floor(qrInsetX × 1.2)
       // (= 300 − 48 = 252 on the standard card). Shrink the font to fit it on one
       // line, then ellipsize if even the min size overflows — a long @username or

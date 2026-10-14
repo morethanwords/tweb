@@ -28,6 +28,7 @@ import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';
 import Button from '@components/buttonTsx';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
 import classNames from '@helpers/string/classNames';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 
 export type ChatAudioController = {
   container: HTMLElement,
@@ -95,6 +96,8 @@ export default function createChatAudio(
   const volumeSelector = new VolumeSelector({listenerSetter, vertical: true, useGlobalVolume: 'auto'});
   const volumeProgressLineContainer = document.createElement('div');
   volumeProgressLineContainer.classList.add('progress-line-container');
+  // * a horizontal slider turned upright: it fills from the bottom whatever the reading direction
+  volumeProgressLineContainer.dir = 'ltr';
   volumeProgressLineContainer.append(volumeSelector.container);
   const tunnel = document.createElement('div');
   tunnel.classList.add('pinned-audio-volume-tunnel');
@@ -121,34 +124,37 @@ export default function createChatAudio(
     render: () => (
       <>
         <TopbarPlate.Body noRipple>
-          <Button
-            ref={prevEl}
-            class="btn-icon"
-            noRipple
-            aria-label={I18n.format('KeyboardShortcuts.Action.PreviousMedia', true)}
-            onClick={(e) => { cancelEvent(e); rewindIcon.play(); appMediaPlaybackController.previous(); }}
-          >
-            {rewindIcon.element}
-          </Button>
-          <Button
-            class="btn-icon pinned-audio-ico"
-            noRipple
-            aria-label={I18n.format(playing() ? 'Pause' : 'Play', true)}
-            onClick={(e) => { cancelEvent(e); appMediaPlaybackController.toggle(); }}
-          >
-            <div class="pinned-audio-play-icon" ref={playIconContainer} />
-          </Button>
-          <Button
-            ref={nextEl}
-            class="btn-icon"
-            noRipple
-            aria-label={I18n.format('KeyboardShortcuts.Action.NextMedia', true)}
-            onClick={(e) => { cancelEvent(e); forwardIcon.play(); appMediaPlaybackController.next(); }}
-          >
-            {forwardIcon.element}
-          </Button>
+          {/* playback runs along the tape, not the reading direction: previous stays on the left */}
+          <div class="pinned-audio-transport" dir="ltr">
+            <Button
+              ref={prevEl}
+              class="btn-icon"
+              noRipple
+              aria-label={I18n.format('KeyboardShortcuts.Action.PreviousMedia', true)}
+              onClick={(e) => { cancelEvent(e); rewindIcon.play(); appMediaPlaybackController.previous(); }}
+            >
+              {rewindIcon.element}
+            </Button>
+            <Button
+              class="btn-icon pinned-audio-ico"
+              noRipple
+              aria-label={I18n.format(playing() ? 'Pause' : 'Play', true)}
+              onClick={(e) => { cancelEvent(e); appMediaPlaybackController.toggle(); }}
+            >
+              <div class="pinned-audio-play-icon" ref={playIconContainer} />
+            </Button>
+            <Button
+              ref={nextEl}
+              class="btn-icon"
+              noRipple
+              aria-label={I18n.format('KeyboardShortcuts.Action.NextMedia', true)}
+              onClick={(e) => { cancelEvent(e); forwardIcon.play(); appMediaPlaybackController.next(); }}
+            >
+              {forwardIcon.element}
+            </Button>
+          </div>
           <TopbarPlate.Content class={classNames('hover-effect', inert() && 'pinned-audio-content-inert')} ripple clickable disabled={inert()}>
-            <TopbarPlate.Title>{title()}</TopbarPlate.Title>
+            <TopbarPlate.Title dir="auto">{title()}</TopbarPlate.Title>
             <TopbarPlate.Subtitle>
               <span class="pinned-audio-time">{timeText()}</span>
               {' • '}
@@ -181,7 +187,7 @@ export default function createChatAudio(
             />
           </div>
         </TopbarPlate.Body>
-        <div class="pinned-audio-progress-wrapper">
+        <div class="pinned-audio-progress-wrapper" dir="ltr">
           {progressLine.container}
         </div>
       </>
@@ -282,6 +288,8 @@ export default function createChatAudio(
 
     // Solid is throwing an error when trying to set the subtitle as a fragment / array of nodes
     const subtitleSpan = document.createElement('span');
+    // * a performer's name, isolated from the time before it
+    setDirection(subtitleSpan);
     subtitleSpan.append(subtitleVal);
 
     setSubtitle(subtitleSpan);

@@ -8,6 +8,7 @@ import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
 import {MyDialogFilter} from '@lib/storages/filters';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
+import isRTL from '@helpers/string/isRTL';
 import styles from '@components/addToFolderDropdownMenu/styles.module.scss';
 
 
@@ -72,6 +73,10 @@ export function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, 
   const fragment = wrapFolderTitle(title, middleware, true);
 
   span.append(fragment);
+  // * the direction of the title's own text, as `dir="auto"` would find it - set outright, so the
+  // * menu's direction does not override it and the highlighting can read it
+  const rtl = isRTL(span.textContent);
+  span.dir = rtl ? 'rtl' : 'ltr';
 
   const renderer: CustomEmojiRendererElement = span.querySelector('custom-emoji-renderer-element');
   renderer?.setTextColor('primary-text-color');
@@ -102,11 +107,15 @@ export function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, 
 
   return {
     span,
-    charSpansGroups
+    charSpansGroups,
+    rtl
   };
 }
 
-export function highlightTextNodes(nodeGroups: HTMLElement[][], indicies: number[]) {
+/** `rtl` - the title runs right to left, so a run of characters begins at its right end */
+export function highlightTextNodes(nodeGroups: HTMLElement[][], indicies: number[], rtl?: boolean) {
+  // * `styles.start` frames the left end of a run, `styles.end` the right one
+  const [firstCharClass, lastCharClass] = rtl ? [styles.end, styles.start] : [styles.start, styles.end];
   let acc = 0;
 
   const toCleanup: HTMLElement[] = [];
@@ -134,8 +143,8 @@ export function highlightTextNodes(nodeGroups: HTMLElement[][], indicies: number
       const nodeStart = nodeGroup[localIndicies[i]];
       const nodeEnd = nodeGroup[localIndicies[j]];
 
-      nodeStart.classList.add(styles.Char, styles.start);
-      nodeEnd.classList.add(styles.Char, styles.end);
+      nodeStart.classList.add(styles.Char, firstCharClass);
+      nodeEnd.classList.add(styles.Char, lastCharClass);
 
       toCleanup.push(nodeStart, nodeEnd);
 

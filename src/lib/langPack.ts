@@ -2,6 +2,7 @@ import type lang from '@/lang';
 import type langSign from '@/langSign';
 import type {State} from '@config/state';
 import {IS_BETA, MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
 import {HelpCountry, LangPackDifference, LangPackString} from '@layer';
 import App from '@config/app';
 import rootScope from '@lib/rootScope';
@@ -69,14 +70,28 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 
 export type LangPackKey = /* string |  */keyof typeof lang | keyof typeof langSign;
 
+// * base codes of the languages written right to left, for a pack the server has not said that of
+// * (`langPackLanguage.rtl`, kept with the pack): one stored before it was kept, or a code it does not
+// * know. A regional or custom pack (`fa-af`, `ar-raw`) goes by the part before the dash
+const RTL_LANG_CODES = new Set(['ar', 'arc', 'ckb', 'dv', 'fa', 'he', 'iw', 'ps', 'sd', 'ug', 'ur', 'yi']);
+
+export function isRTLLangCode(langCode: string) {
+  return !!langCode && RTL_LANG_CODES.has(langCode.split('-', 1)[0].toLowerCase());
+}
+
 export type FormatterArgument = string | number | Node | FormatterArgument[];
 export type FormatterArguments = FormatterArgument[];
 
 export const UNSUPPORTED_LANG_PACK_KEY: LangPackKey = IS_MOBILE ? 'Message.Unsupported.Mobile' : 'Message.Unsupported.Desktop';
 const TEST_LOCAL = IS_BETA && true;
 
+/** A string of the client's own English pack: where the server's pack has none, it stands in. */
+type LocalLangPackString = LangPackString & {local?: true};
+
 namespace I18n {
   export const strings: Map<LangPackKey, LangPackString> = new Map();
+  // * keys a right-to-left pack leaves to the English stand-in: that text reads left to right
+  export const untranslatedKeys: Set<LangPackKey> = new Set();
   export const countriesList: HelpCountry[] = [];
   let pluralRules: Intl.PluralRules;
 
@@ -85,18 +100,48 @@ namespace I18n {
   let lastRequestedNormalizedLangCode: string;
   let lastAppliedLangCode: string;
   let timeFormat: State['settings']['timeFormat'];
-  let isRTL = false;
+  // * a signal, so what is laid out in JS (icons, menus, transitions) can follow a language switched
+  // * on the fly; read it untracked through `getIsRTL()` anywhere outside a reactive scope
+  export const [isRTL, setIsRTL] = createSignal(false);
 
   export function getLastRequestedLangCode() { return lastRequestedLangCode; }
   export function getLastRequestedNormalizedLangCode() { return lastRequestedNormalizedLangCode; }
   export function getLastAppliedLangCode() { return lastAppliedLangCode; }
   export function getTimeFormat() { return timeFormat; }
-  export function getIsRTL() { return isRTL; }
+  export function getIsRTL() { return isRTL(); }
 
   export const [langCodeNormalized, setLangCodeNormalized] = createSignal<TranslatableLanguageISO>();
 
-  export function setRTL(rtl: boolean) {
-    isRTL = rtl;
+  let forcedRTL: boolean = Modes.rtl || undefined;
+  // * the direction of the language applied last, which a forced one stands over
+  let languageRTL: boolean;
+
+  /** Overrides the language's direction until called with `undefined` (the popup sandbox's switch). */
+  export function forceRTL(rtl: boolean | undefined) {
+    forcedRTL = rtl;
+    applyDirection(lastRequestedLangCode, languageRTL);
+  }
+
+  /**
+   * Lays the document out in the direction of the language `langCode` (`?rtl=1` forces right to left
+   * whatever the language): `dir` drives the logical properties, `.is-rtl` the `--reflect` math and
+   * what cannot be written logically. Also names the document's language, for screen readers and
+   * `:lang()`. `rtl` is the server's word on the language (`langPackLanguage.rtl`); without it the
+   * language goes by its code.
+   */
+  export function applyDirection(langCode: string, rtl = isRTLLangCode(langCode)) {
+    languageRTL = rtl;
+    rtl = forcedRTL ?? rtl;
+    setIsRTL(rtl);
+
+    if(typeof(document) === 'undefined') {
+      return;
+    }
+
+    const root = document.documentElement;
+    root.dir = rtl ? 'rtl' : 'ltr';
+    root.classList.toggle('is-rtl', rtl);
+    if(langCode) root.lang = langCode;
   }
 
   function setLangCode(langCode: string) {
@@ -183,7 +228,9 @@ namespace I18n {
       import('../lang'),
       import('../langSign'),
       managers.appLangPackManager.getCountriesList(langCode, ignoreCache),
-      polyfillPromise
+      polyfillPromise,
+      // * no word from the server (a code it does not know) leaves the direction to the code
+      managers.appLangPackManager.getLanguage(langCode, web ? 'web' : App.langPack).catch((): undefined => undefined)
     ]);
   }
 
@@ -223,11 +270,14 @@ namespace I18n {
       }
 
       throw err;
-    }).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
+    }).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _, language]) => {
       let strings: LangPackString[] = [];
 
       const pushLocal = () => [localLangPack1, localLangPack2].forEach((l) => {
-        formatLocalStrings(l.default as any, strings);
+        for(const string of formatLocalStrings(l.default as any)) {
+          (string as LocalLangPackString).local = true;
+          strings.push(string);
+        }
       });
 
       if(!TEST_LOCAL) pushLocal();
@@ -237,6 +287,7 @@ namespace I18n {
       langPack1.strings = strings;
       langPack1.countries = countries;
       langPack1.localVersion = App.langPackLocalVersion;
+      if(language) langPack1.rtl = !!language.pFlags.rtl;
       return saveLangPack(langPack1, true);
     });
   }
@@ -282,9 +333,17 @@ namespace I18n {
     }
 
     strings.clear();
+    untranslatedKeys.clear();
 
     for(const string of langPack.strings) {
       strings.set(string.key as LangPackKey, string);
+    }
+
+    const rtl = langPack.rtl ?? isRTLLangCode(langPack.lang_code);
+    if(rtl) {
+      strings.forEach((string, key) => {
+        if((string as LocalLangPackString).local) untranslatedKeys.add(key);
+      });
     }
 
     if(langPack.countries) {
@@ -302,6 +361,8 @@ namespace I18n {
         }
       });
     }
+
+    applyDirection(currentLangCode, rtl);
 
     if(lastAppliedLangCode !== currentLangCode) {
       if(lastAppliedLangCode && rootScope.myId) {
@@ -523,6 +584,30 @@ namespace I18n {
     abstract update(options?: Options): void;
   }
 
+  /**
+   * English standing in for a string a right-to-left pack lacks reads left to right, its full stop
+   * at its end: its text goes into a left-to-right isolate. The spaces at its edges, which join it
+   * to its neighbours, stay outside, and the element itself keeps the direction of its line.
+   */
+  function isolateUntranslated(element: HTMLElement) {
+    const isolate = document.createElement('span');
+    isolate.dir = 'ltr';
+    isolate.append(...Array.from(element.childNodes));
+
+    const edge = (node: ChildNode, pattern: RegExp) => {
+      if(node?.nodeType !== Node.TEXT_NODE) return;
+      const text = node as Text;
+      const match = pattern.exec(text.data);
+      if(!match || match[0].length === text.data.length) return;
+      text.data = text.data.slice(0, match.index) + text.data.slice(match.index + match[0].length);
+      return match[0];
+    };
+
+    const leading = edge(isolate.firstChild, /^\s+/);
+    const trailing = edge(isolate.lastChild, /\s+$/);
+    element.append(...[leading, isolate, trailing].filter(Boolean));
+  }
+
   export type IntlElementOptions = IntlElementBaseOptions & {
     key?: LangPackKey,
     args?: FormatterArguments
@@ -551,6 +636,10 @@ namespace I18n {
         this.element.replaceChildren(...format(this.key, false, this.args) as any);
         if(this.args?.length) {
           this.element.normalize();
+        }
+
+        if(untranslatedKeys.has(this.key)) {
+          isolateUntranslated(this.element);
         }
       } else {
         // @ts-ignore
@@ -809,6 +898,15 @@ export function handleStateCleared() {
 
 export async function checkLangPackForUpdates() {
   const storedLangPack = await I18n.getCacheLangPack();
+  // * a pack stored before its language's direction was kept asks the server once
+  if(storedLangPack.rtl === undefined) {
+    const language = await rootScope.managers.appLangPackManager.getLanguage(storedLangPack.lang_code, 'web').catch((): undefined => undefined);
+    if(language && storedLangPack.lang_code === I18n.getLastRequestedLangCode()) {
+      storedLangPack.rtl = !!language.pFlags.rtl;
+      await I18n.saveLangPack(storedLangPack, true);
+    }
+  }
+
   const difference = await rootScope.managers.appLangPackManager.getDifference(storedLangPack.lang_code, storedLangPack.version);
   if(difference.version > storedLangPack.version) {
     return handleUpdateLangPack({difference});

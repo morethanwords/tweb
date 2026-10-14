@@ -30,6 +30,7 @@ export default function showFrozenPopup() {
   if(canAppeal) {
     const anchor = anchorCallback(onClick, true);
     anchor.innerText = '@' + url.split('/').pop();
+    anchor.dir = 'ltr';
 
     rows.push({
       icon: 'hourglass',

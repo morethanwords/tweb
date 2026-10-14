@@ -1,5 +1,6 @@
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 import ListenerSetter from '@helpers/listenerSetter';
 import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
 import Button from '@components/button';
@@ -115,6 +116,9 @@ export class InviteLink {
     // Middle truncation, so both ends of the link survive a narrow box: the
     // same element documents and audio trim their file names with.
     const element = new MiddleEllipsisElement();
+    // * a link reads left to right by its own letters (a trailing `_` of the hash stays at its end),
+    // * yet sits at the start of the box in RTL
+    setDirection(element);
     element.textContent = wrapPlainText(s);
 
     this.textElement.replaceChildren(element);

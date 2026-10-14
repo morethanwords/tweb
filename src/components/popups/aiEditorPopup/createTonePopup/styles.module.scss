@@ -46,7 +46,8 @@
   gap: 0.5rem;
   margin: 0 auto;
   --padding: 6px;
-  padding: var(--padding) 12px var(--padding) var(--padding);
+  padding-block: var(--padding);
+  padding-inline: var(--padding) 12px;
   color: var(--secondary-text-color);
   gap: var(--padding);
 
@@ -61,6 +62,6 @@
 }
 
 .checkboxText {
-  text-align: left;
+  text-align: start;
   max-width: 240px;
 }

@@ -232,7 +232,8 @@ $color-inactive: rgba(255, 255, 255, .5);
       top: .625rem;
       left: 0;
       right: 0;
-      padding: 0 .625rem 0 .4375rem;
+      padding-block: 0;
+      padding-inline: .4375rem .625rem;
       height: .125rem;
       display: flex;
 
@@ -804,14 +805,15 @@ $color-inactive: rgba(255, 255, 255, .5);
         }
       }
 
+      // * focused, the input grows towards both sides: its start one way, the buttons at its end the other
       .rows-wrapper-wrapper {
-        transform: translateX(calc(var(--focus-translateX) * -1));
+        transform: translateX(calc(var(--focus-translateX) * -1 * var(--reflect)));
         transform-origin: center left;
       }
 
       .btn-send-container,
       .chat-input-secondary-button {
-        transform: translateX(var(--focus-translateX));
+        transform: translateX(calc(var(--focus-translateX) * var(--reflect)));
         transform-origin: center right;
       }
 
@@ -859,7 +861,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       .btn-reaction {
         --add-translateX: 0px;
         position: absolute;
-        transform: translateX(calc(var(--focus-translateX) + var(--add-translateX)));
+        transform: translateX(calc((var(--focus-translateX) + var(--add-translateX)) * var(--reflect)));
         inset-inline-end: calc(var(--chat-input-height) + var(--chat-input-padding) + #{$btn-send-margin});
 
         @include animation-level-transition(.2s color, transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out-time), $global: true);
@@ -970,7 +972,6 @@ $color-inactive: rgba(255, 255, 255, .5);
 
     .emoji-dropdown {
       --translateX: 0px;
-      left: auto;
       bottom: calc(var(--chat-input-height) + .5rem);
       border-radius: var(--chat-input-border-radius);
       transform: translateX(var(--translateX)) scale(0);
@@ -985,8 +986,8 @@ $color-inactive: rgba(255, 255, 255, .5);
       }
 
       @media only screen and (max-height: 759px) {
-        --translateX: -50%;
-        left: 50%;
+        --translateX: calc(-50% * var(--reflect));
+        inset-inline: 50% auto;
         transform-origin: bottom center;
       }
     }
@@ -1014,7 +1015,7 @@ $color-inactive: rgba(255, 255, 255, .5);
   &Close {
     position: absolute;
     top: 1rem;
-    right: 1rem;
+    inset-inline-end: 1rem;
     color: $color-inactive;
     transition: none;
 

@@ -190,22 +190,22 @@
         position: absolute;
         top: 0;
         bottom: 0;
-        left: 0;
-        right: 0;
+        inset-inline: 0;
         background-color: var(--light-filled-primary-color);
         z-index: -1;
       }
 
       // Bar reaches a row edge (col 0 / col 6) without an endpoint there —
       // round the bar's outer corner so it doesn't clip flat against the
-      // grid boundary.
+      // grid boundary. `left` / `right` in the class names are the row's
+      // start / end: the grid runs right to left in RTL.
       &.range-edge-left::after {
-        border-top-left-radius: 999px;
-        border-bottom-left-radius: 999px;
+        border-start-start-radius: 999px;
+        border-end-start-radius: 999px;
       }
       &.range-edge-right::after {
-        border-top-right-radius: 999px;
-        border-bottom-right-radius: 999px;
+        border-start-end-radius: 999px;
+        border-end-end-radius: 999px;
       }
 
       // For NON-endpoint row-edge cells: also clip the bar to align with the
@@ -214,10 +214,10 @@
       // (no neighbouring cell in this row to absorb the overflow). Endpoints
       // are handled by .range-start / .range-end below.
       &.range-edge-left:not(.range-start)::after {
-        left: calc(50% - var(--date-picker-cell) / 2);
+        inset-inline-start: calc(50% - var(--date-picker-cell) / 2);
       }
       &.range-edge-right:not(.range-end)::after {
-        right: calc(50% - var(--date-picker-cell) / 2);
+        inset-inline-end: calc(50% - var(--date-picker-cell) / 2);
       }
 
       // Range endpoints — the .active circle visually IS the bar's terminus,
@@ -225,14 +225,14 @@
       // (it would otherwise stick out past the circle). These rules come
       // AFTER range-edge-* so they win at equal specificity.
       &.range-start::after {
-        left: 50%;
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
+        inset-inline-start: 50%;
+        border-start-start-radius: 0;
+        border-end-start-radius: 0;
       }
       &.range-end::after {
-        right: 50%;
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
+        inset-inline-end: 50%;
+        border-start-end-radius: 0;
+        border-end-end-radius: 0;
       }
 
       // Single-day range (start === end on the same cell): no bar at all.
@@ -304,6 +304,8 @@
     &-time {
       display: flex;
       justify-content: center;
+      // * hours : minutes, like a clock - not mirrored in RTL
+      direction: ltr;
       margin: 1rem 0;
 
       @include respond-to(handhelds) {

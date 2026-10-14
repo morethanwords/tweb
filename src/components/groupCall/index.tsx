@@ -28,12 +28,12 @@ import classNames from '@helpers/string/classNames';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import themeController from '@helpers/themeController';
 import groupCallsController from '@lib/calls/groupCallsController';
-import {createSignal, onCleanup, onMount, untrack, useContext} from 'solid-js';
+import {createEffect, createSignal, on, onCleanup, onMount, untrack, useContext} from 'solid-js';
 import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import showCallSettingsPopup from '@components/call/settingsPopup';
 import {toastNew} from '@components/toast';
-import {i18n, LangPackKey} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {
   GROUP_CALL_MICROPHONE_BUTTON_STATE,
   getGroupCallMicrophoneButtonState,
@@ -174,14 +174,18 @@ export default function showGroupCallPopup() {
   let bodyEl!: HTMLDivElement;
 
   // How much of the stage the participants column covers, plus a gap before it. Read off layout
-  // offsets rather than boxes, so a column still sliding in reads where it is going.
+  // offsets rather than boxes, so a column still sliding in reads where it is going. The column is
+  // at the inline end: on the left in RTL.
   const getColumnCover = () => {
     if(!untrack(isBigLayout) || !untrack(isRightColumnShown) || !bodyEl) {
       return 0;
     }
 
     const {stage} = videoGrid;
-    return stage.offsetLeft + stage.offsetWidth - bodyEl.offsetLeft + GROUP_CALL_STAGE_GAP;
+    const cover = I18n.getIsRTL() ?
+      bodyEl.offsetLeft + bodyEl.offsetWidth - stage.offsetLeft :
+      stage.offsetLeft + stage.offsetWidth - bodyEl.offsetLeft;
+    return cover + GROUP_CALL_STAGE_GAP;
   };
 
   const updateGridMode = (animate: boolean) => {
@@ -318,6 +322,10 @@ export default function showGroupCallPopup() {
         toggleBigLayout();
       }
     });
+
+    // A language switched on the fly moves the column to the other side and the tiles follow it
+    // (the stage it leaves is as wide either way, so only the layout changes).
+    createEffect(on(I18n.isRTL, () => videoGrid.relayout(), {defer: true}));
 
     groupCallTitle = new GroupCallTitleElement(title);
     groupCallDescription = new GroupCallDescriptionElement(subtitle);

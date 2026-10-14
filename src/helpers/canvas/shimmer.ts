@@ -1,5 +1,6 @@
 import customProperties from '@helpers/dom/customProperties';
 import clamp from '@helpers/number/clamp';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 
 export default class Shimmer {
   private canvas: HTMLCanvasElement;
@@ -73,7 +74,10 @@ export default class Shimmer {
   }
 
   private animateSlide(): CanvasGradient {
-    var gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0),
+    // * the light sweeps along the line, from the inline start
+    var gradient = isDocumentRTL() ?
+        this.ctx.createLinearGradient(this.canvas.width, 0, 0, 0) :
+        this.ctx.createLinearGradient(0, 0, this.canvas.width, 0),
       smartInc = this.inc * (this.diffTime / (1000 / 60)),
       lightLeft,
       lightRight,

@@ -56,7 +56,7 @@
   .menu-send {
     top: unset;
     bottom: 4.5rem;
-    right: var(--section-padding-inline);
+    inset-inline-end: var(--section-padding-inline);
   }
 
   .popup-body {
@@ -69,7 +69,7 @@
 
   .checkbox-field {
     margin-bottom: 0;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   .popup-item-album {
@@ -113,7 +113,7 @@
     --height: calc(var(--messages-time-text-size) + .375rem);
     position: absolute;
     top: .75rem;
-    left: .75rem;
+    inset-inline-start: .75rem;
     border-radius: var(--height);
     background-color: var(--message-time-background);
     padding: 0px 6px;

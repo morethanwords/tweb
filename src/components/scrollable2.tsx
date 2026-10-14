@@ -3,6 +3,7 @@ import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import classNames from '@helpers/string/classNames';
 import useHeavyAnimationCheck from '@hooks/useHeavyAnimationCheck';
 import Modes from '@config/modes';
@@ -72,8 +73,12 @@ export default function Scrollable(props: {
   const clientAxis: 'clientY' | 'clientX' = axis === 'x' ? 'clientX' : 'clientY';
 
   const [ignoreScrollEvent, setIgnoreScrollEvent] = createSignal(false);
-  const scrollPosition = () => ref[scrollPositionProperty];
-  const setScrollPosition = (value: number) => ref[scrollPositionProperty] = value;
+  // * along x, from the inline start: a right-to-left row's `scrollLeft` runs from 0 down to minus the overflow
+  const scrollPosition = () => axis === 'x' ? Math.abs(ref.scrollLeft) : ref.scrollTop;
+  const setScrollPosition = (value: number) => {
+    if(axis === 'x') ref.scrollLeft = isDocumentRTL() ? -value : value;
+    else ref.scrollTop = value;
+  };
   const scrollSize = () => ref[scrollSizeProperty];
   const clientSize = () => ref[clientSizeProperty];
   const offsetSize = () => ref[offsetSizeProperty];
@@ -268,7 +273,8 @@ export default function Scrollable(props: {
     e.stopPropagation();
     const container = ref;
     if(!e.deltaX && container.scrollWidth > container.clientWidth) {
-      container.scrollLeft += e.deltaY / 4;
+      // * scrolling down moves along the line, to the left in RTL
+      container.scrollLeft += e.deltaY / 4 * (isDocumentRTL() ? -1 : 1);
       cancelEvent(e);
     }
   };

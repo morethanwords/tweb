@@ -33,20 +33,24 @@ export type ChatPreviewOptions = {
 };
 
 /**
- * Build a preview anchor from a dialog row. Anchors to the LEFT COLUMN's right edge
- * (instead of the row's own right edge) so the 8px gap from the sidebar is constant
+ * Build a preview anchor from a dialog row. Anchors to the LEFT COLUMN's inline-end edge
+ * (instead of the row's own edge) so the 8px gap from the sidebar is constant
  * regardless of the row's internal padding. Shared by Shift+Click and the context-menu
- * "Preview" entry — both want the popup pinned the same way.
+ * "Preview" entry — both want the popup pinned the same way. In RTL the column stands on
+ * the right of the screen, so that edge is its left one.
  */
 export function chatPreviewAnchorFromDialogRow(li: HTMLElement): ChatPreviewAnchor {
   const rect = li.getBoundingClientRect();
   const columnEl = li.closest<HTMLElement>('#column-left, .sidebar-left');
-  const columnRight = columnEl?.getBoundingClientRect().right ?? rect.right;
+  const columnRect = columnEl?.getBoundingClientRect();
+  const isRTL = I18n.getIsRTL();
+  const left = isRTL ? columnRect?.left ?? rect.left : rect.left;
+  const right = isRTL ? rect.right : columnRect?.right ?? rect.right;
   return {
-    x: columnRight,
+    x: isRTL ? left : right,
     y: rect.top + rect.height / 2,
-    left: rect.left,
-    right: columnRight,
+    left,
+    right,
     top: rect.top,
     bottom: rect.bottom
   };
@@ -171,20 +175,19 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
 
     function positionFromAnchor(anchor: ChatPreviewAnchor) {
       if(!anchor) return;
-      let ax: number, ay: number, rectLeft: number;
+      let ay: number, rectLeft: number, rectRight: number;
       if(anchor instanceof HTMLElement) {
         const r = anchor.getBoundingClientRect();
-        ax = r.right;
         ay = r.top + r.height / 2;
         rectLeft = r.left;
+        rectRight = r.right;
       } else if('left' in anchor) {
-        ax = anchor.right;
         ay = anchor.y;
         rectLeft = anchor.left;
+        rectRight = anchor.right;
       } else {
-        ax = anchor.x;
         ay = anchor.y;
-        rectLeft = anchor.x;
+        rectLeft = rectRight = anchor.x;
       }
 
       // Read the viewport from the active app window — while popped into a Document PiP
@@ -215,7 +218,12 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
         left = Math.max(MARGIN, (vw - width) / 2);
         top = Math.max(MARGIN, (vh - height) / 2);
       } else {
-        left = ax + MARGIN;
+        // The popup opens past the anchor's inline end (right of it, left of it in RTL)
+        // and flips to the other side when it does not fit there.
+        const isRTL = I18n.getIsRTL();
+        const afterRight = rectRight + MARGIN;
+        const beforeLeft = rectLeft - width - MARGIN;
+        left = isRTL ? beforeLeft : afterRight;
         top = ay - height / 2;
 
         // Keep the popup fully on-screen, clamping against the *fitted* size. Headless/
@@ -223,9 +231,8 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
         // collapsing to a negative coordinate.
         const maxLeft = vw > MARGIN * 2 ? vw - width - MARGIN : Infinity;
         const maxTop = vh > MARGIN * 2 ? vh - height - MARGIN : Infinity;
-        if(left > maxLeft) {
-          const fromLeft = rectLeft - width - MARGIN;
-          left = Math.max(MARGIN, fromLeft);
+        if(isRTL ? left < MARGIN && vw > MARGIN * 2 : left > maxLeft) {
+          left = isRTL ? Math.min(maxLeft, afterRight) : Math.max(MARGIN, beforeLeft);
         }
         if(top < MARGIN) top = MARGIN;
         if(top > maxTop) top = maxTop;

@@ -58,6 +58,14 @@ if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'authCode'}>;
 
+/** A phone number inside a sentence: it reads left to right in any language. */
+function wrapLeftToRight(text: string) {
+  const span = document.createElement('span');
+  span.dir = 'ltr';
+  span.textContent = text;
+  return span;
+}
+
 /**
  * Card variant of `pageAuthCode` — every code the server can ask for, except the
  * one that needs a login email first (that one goes to the `emailSetup` cards,
@@ -115,6 +123,8 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   // without `?a11y=1` the number stays an h4, which is what gives it the global heading size
   const phoneEl = document.createElement(Modes.a11y ? 'span' : 'h4');
   phoneEl.classList.add(styles.phone);
+  // a phone number reads left to right in any language
+  phoneEl.dir = 'ltr';
 
   const editButton = document.createElement('span');
   editButton.classList.add(styles.phoneEdit);
@@ -524,17 +534,18 @@ export default function AuthCodeCard(props: {spec: Spec}) {
         break;
       case 'auth.sentCodeTypeMissedCall':
         key = 'Login.Code.SentMissedCall';
-        args = [type.prefix];
+        args = [wrapLeftToRight(type.prefix)];
         break;
       case 'auth.sentCodeTypeSmsWord':
       case 'auth.sentCodeTypeSmsPhrase': {
         const isWord = type._ === 'auth.sentCodeTypeSmsWord';
+        const phone = wrapLeftToRight(sentCode.phone_number);
         if(type.beginning) {
           key = isWord ? 'Login.Code.SentSmsWordBeginning' : 'Login.Code.SentSmsPhraseBeginning';
-          args = [sentCode.phone_number, type.beginning];
+          args = [phone, type.beginning];
         } else {
           key = isWord ? 'Login.Code.SentSmsWord' : 'Login.Code.SentSmsPhrase';
-          args = [sentCode.phone_number];
+          args = [phone];
         }
         break;
       }

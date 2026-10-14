@@ -451,12 +451,13 @@ input[type=range] {
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
   animation: rtmp-loading-animation 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
 
+  // * sweeps along the line, from the inline start
   @keyframes rtmp-loading-animation {
     0%, 10% {
-      transform: translateX(-100%);
+      transform: translateX(calc(-100% * var(--reflect)));
     }
     100% {
-      transform: translateX(100%);
+      transform: translateX(calc(100% * var(--reflect)));
     }
   }
 

@@ -14,7 +14,7 @@
   user-select: none;
 }
 
-// pinned to the story's bottom-left, on the same gutter the caption uses
+// pinned to the story's bottom, at the start of the line, on the same gutter the caption uses
 .Wrapper {
   position: absolute;
   bottom: .5rem;
@@ -26,7 +26,7 @@
 
 .Icon {
   flex: 0 0 auto;
-  margin-right: .375rem;
+  margin-inline-end: .375rem;
   font-size: 1rem;
 }
 

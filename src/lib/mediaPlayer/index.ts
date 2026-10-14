@@ -29,6 +29,7 @@ import simulateEvent from '@helpers/dom/dispatchEvent';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {VideoTimestamp} from '@components/mediaViewer/base';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import keepLeftToRight from '@helpers/dom/keepLeftToRight';
 import {Accessor, createSignal, Setter} from 'solid-js';
 
 import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
@@ -297,6 +298,9 @@ export default class VideoPlayer extends ControlsHover {
 
     const html = this.buildControls();
     wrapper.insertAdjacentHTML('beforeend', html);
+    // * playback is never mirrored: the controls run left to right in an RTL layout too, the live
+    // * stream's included (its viewer count is text in the language's own direction, `dir="auto"`)
+    keepLeftToRight(wrapper.querySelector<HTMLElement>(`.${skin}__controls`));
     let timeDuration: HTMLElement;
 
     const onPlayCallbacks: (() => void)[] = [], onPauseCallbacks: (() => void)[] = [];
@@ -337,6 +341,7 @@ export default class VideoPlayer extends ControlsHover {
       const volumeSelector = this.volumeSelector = new VolumeSelector({
         listenerSetter,
         vertical: false,
+        keepLTR: true,
         media: video,
         useGlobalVolume: this.useGlobalVolume,
         onVolumeChange: this.onVolumeChange
@@ -599,7 +604,7 @@ export default class VideoPlayer extends ControlsHover {
 
     if(skin === 'default') {
       const time = this.live ? `
-      <span class="left-controls-watching"></span>
+      <span class="left-controls-watching" dir="auto"></span>
       ` : `
       <time class="ckin__time-elapsed">0:00</time>
       <span> / </span>

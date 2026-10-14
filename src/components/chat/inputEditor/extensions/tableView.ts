@@ -40,6 +40,7 @@ import {getChatInputTableMenuLayout} from '@components/chat/inputEditor/tableMen
 import contextMenuController from '@helpers/contextMenuController';
 import {getOverlayRoot} from '@helpers/appWindow';
 import classNames from '@helpers/string/classNames';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import I18n, {LangPackKey} from '@lib/langPack';
 import {tableCellContext} from '@components/chat/inputEditor/extensions/tableNavigation';
 
@@ -576,9 +577,10 @@ class ChatTableView extends TableView {
     const rect = expandChatTableRect(map, context.selectionRect);
     let row = rect.bottom - 1;
     let column = rect.right - 1;
+    const rtl = getComputedStyle(this.table).direction === 'rtl';
     if(event.key === 'ArrowUp') row--;
     else if(event.key === 'ArrowDown') row++;
-    else if(event.key === 'ArrowLeft') column--;
+    else if(event.key === getInlineArrowKeys(rtl).previous) column--;
     else column++;
     row = Math.max(0, Math.min(map.height - 1, row));
     column = Math.max(0, Math.min(map.width - 1, column));
@@ -611,11 +613,9 @@ class ChatTableView extends TableView {
     if(!context) return;
     const {map, table, tableStart} = context;
     const selectionRect = expandChatTableRect(map, context.selectionRect);
-    const rtl = getComputedStyle(this.table).direction === 'rtl';
-    const anchorColumn = rtl ? selectionRect.right - 1 : selectionRect.left;
     const anchorPosition = tableStart + map.positionAt(
       selectionRect.top,
-      anchorColumn,
+      selectionRect.left,
       table
     );
     const anchorRect = map.findCell(anchorPosition - tableStart);
@@ -1887,7 +1887,8 @@ class ChatTableView extends TableView {
     const rangeControlsVisible = !!this.view;
     this.rangeEndHandle.hidden = !rangeControlsVisible;
     if(rangeControlsVisible) {
-      this.rangeEndHandle.style.left = `${bounds.right - wrapperRect.left}px`;
+      // * the selection's bottom inline-end corner
+      this.rangeEndHandle.style.left = `${(rtl ? bounds.left : bounds.right) - wrapperRect.left}px`;
       this.rangeEndHandle.style.top = `${bounds.bottom - wrapperRect.top}px`;
     }
 

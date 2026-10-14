@@ -1574,8 +1574,10 @@ export default class ChatInput {
 
     this.btnSend = this.createButtonIcon();
     this.btnSend.classList.add('btn-circle', 'btn-send', 'animated-button-icon');
-    const icons: [Icon, string][] = [
-      ['logo', 'send'],
+    // * the plane is the Telegram logo, which is not mirrored anywhere else: as a send button it
+    // * flies along the line (`.icon-mirror`), not the clock or the check that take its place
+    const icons: [Icon, string, string?][] = [
+      ['logo', 'send', 'icon-mirror'],
       ['schedule', 'schedule'],
       ['check', 'edit'],
       ['microphone_filled', 'record'],
@@ -1583,7 +1585,7 @@ export default class ChatInput {
       ['forward_filled', 'forward'],
       ['stop', 'stop']
     ];
-    this.btnSend.append(...icons.map(([name, type]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type)));
+    this.btnSend.append(...icons.map(([name, type, mirror]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type, ...(mirror ? [mirror] : []))));
 
     this.addStarsBadge();
 

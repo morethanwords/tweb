@@ -120,6 +120,9 @@
         border-radius: 50%;
         position: absolute;
         // left: 50%;
+        // * drawn art, like a sticker: the glance is the same in either direction, and an
+        // * inline-start static position would put the pupil outside the eye in a right-to-left line
+        left: 0;
         top: 50%;
         // transform: translate(-50%, -50%);
         animation: eye-move 1.8s ease-in-out infinite;
@@ -208,13 +211,14 @@ $opacity-min: $opacity-max - ($opacity-step * 2);
   }
 }
 
+// * an indeterminate progress bar: it sweeps along the line
 @keyframes upload {
   0% {
-    transform: translateX(-13px);
+    transform: translateX(calc(-13px * var(--reflect)));
   }
 
   100% {
-    transform: translate(13px);
+    transform: translate(calc(13px * var(--reflect)));
   }
 }
 

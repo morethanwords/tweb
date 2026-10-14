@@ -41,6 +41,10 @@ $radius: $pill-height * .5;
     right: 0;
     left: 0;
     z-index: 11;
+    // The key reads left to right in every language, as a hash does: two people compare it side by
+    // side. Its words follow the interface (`-label`, `-details`). So the card's own logical
+    // properties resolve left to right too: its sides below are physical.
+    direction: ltr;
     // the surface's slices go under the content, inside the card
     isolation: isolate;
     display: flex;
@@ -87,14 +91,19 @@ $radius: $pill-height * .5;
       outline-offset: 2px;
     }
 
-    // over the stage, clear of the participants' column
+    // over the stage, clear of the participants' column, which is on the left in RTL
     .group-call.is-big-layout.is-right-column-shown &:not(.is-expanded) {
       right: var(--gc-right-column-width, 0px);
+
+      :where(.is-rtl) & {
+        right: 0;
+        left: var(--gc-right-column-width, 0px);
+      }
     }
 
     @include animation-level(2) {
       .group-call.is-big-layout & {
-        transition: scale .15s ease-out, right var(--transition-standard-in);
+        transition: scale .15s ease-out, left var(--transition-standard-in), right var(--transition-standard-in);
       }
     }
 
@@ -263,6 +272,14 @@ $radius: $pill-height * .5;
 
     @include animation-level(2) {
       animation: conference-encryption-reel .7s linear infinite;
+    }
+  }
+
+  // words in the card that runs left to right (`-card`): they read in the interface's direction
+  &-label,
+  &-details {
+    :where(.is-rtl) & {
+      direction: rtl;
     }
   }
 

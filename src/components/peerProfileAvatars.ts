@@ -36,6 +36,7 @@ import ProgressivePreloader from '@components/preloader';
 import {avatarUploads} from '@stores/avatarUpload';
 import Button from '@components/button';
 import Modes from '@config/modes';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = true;
@@ -204,9 +205,11 @@ export default class PeerProfileAvatars {
       const e = _e;
       // A native keyboard click has no pointer coordinates. The arrows still
       // enter the same paging path as pointer clicks, including wraparound.
+      // * the photos page in reading order: the next one is at the inline end, on the left in RTL
+      const rtl = isDocumentRTL();
       const arrow = (e.target as HTMLElement).closest('.' + PeerProfileAvatars.BASE_CLASS + '-arrow');
       const x = arrow ?
-        (arrow === this.arrowNext ? rect.right : rect.left) : e.pageX;
+        ((arrow === this.arrowNext) !== rtl ? rect.right : rect.left) : e.pageX;
 
       const clickX = x - rect.left;
       if((!this.listLoader.previous.length && !this.listLoader.next.length) ||
@@ -247,12 +250,12 @@ export default class PeerProfileAvatars {
         freeze = false;
       } else {
         const centerX = rect.right - (rect.width / 2);
-        const toRight = x > centerX;
+        const toNext = (x > centerX) !== rtl;
 
         let distance: number;
-        if(this.listLoader.index === 0 && !toRight) distance = this.listLoader.count - 1;
-        else if(this.listLoader.index === (this.listLoader.count - 1) && toRight) distance = -(this.listLoader.count - 1);
-        else distance = toRight ? 1 : -1;
+        if(this.listLoader.index === 0 && !toNext) distance = this.listLoader.count - 1;
+        else if(this.listLoader.index === (this.listLoader.count - 1) && toNext) distance = -(this.listLoader.count - 1);
+        else distance = toNext ? 1 : -1;
 
         this.goWithoutTransition(distance);
       }
@@ -265,11 +268,13 @@ export default class PeerProfileAvatars {
       }, {once: true});
     };
 
-    let width = 0, x = 0, lastDiffX = 0, /* lastIndex = 0, */ minX = 0;
+    // * `x` and `lastDiffX` run along the line: a positive `lastDiffX` goes on to the next photo, and
+    // * `reflect` turns them into the physical offset, which in RTL brings the strip in from the left
+    let width = 0, x = 0, lastDiffX = 0, /* lastIndex = 0, */ minX = 0, reflect = 1;
     const swipeHandler = this.swipeHandler = new SwipeHandler({
       element: this.avatars,
       onSwipe: (xDiff, yDiff) => {
-        xDiff *= -1;
+        xDiff *= -reflect;
         yDiff *= -1;
 
         lastDiffX = xDiff;
@@ -277,7 +282,7 @@ export default class PeerProfileAvatars {
         if(lastX > 0) lastX = 0;
         else if(lastX < minX) lastX = minX;
 
-        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', lastX + 'px');
+        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', lastX * reflect + 'px');
         // console.log(xDiff, yDiff);
         return false;
       },
@@ -298,12 +303,13 @@ export default class PeerProfileAvatars {
         const rect = this.avatars.getBoundingClientRect();
         width = rect.width;
         minX = -width * (this.tabs.childElementCount - 1);
+        reflect = isDocumentRTL() ? -1 : 1;
 
         /* lastIndex = whichChild(this.tabs.querySelector('.active'));
         x = -width * lastIndex; */
-        x = rect.left - this.container.getBoundingClientRect().left;
+        x = (rect.left - this.container.getBoundingClientRect().left) * reflect;
 
-        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', x + 'px');
+        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', x * reflect + 'px');
 
         this.container.classList.add('is-swiping');
         this.avatars.classList.add('no-transition');
@@ -529,7 +535,7 @@ export default class PeerProfileAvatars {
         const id = this.listLoader.index;
         // const nextId = Math.max(0, id);
         const x = 100 * PeerProfileAvatars.SCALE * id;
-        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', `-${x}%`);
+        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', `calc(-${x}% * var(--reflect))`);
 
         [this.tabs, this.avatars].forEach((container) => {
           const activeTab = container.querySelector('.active');

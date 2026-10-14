@@ -92,6 +92,19 @@ export type WrapRichTextOptions = Partial<{
 
 export const ENTITY_ELEMENT_MAP: WeakMap<HTMLElement, MessageEntity> = new WeakMap();
 
+// * Text that always runs left to right — a link, an address, a number, a command, a @username — is
+// * isolated as such, so a right-to-left line around it does not carry its punctuation off to the
+// * wrong end ("@name" read as "name@"); a hashtag runs by its own letters.
+const ENTITY_DIRECTIONS: {[type in MessageEntity['_']]?: 'ltr' | 'auto'} = {
+  messageEntityUrl: 'ltr',
+  messageEntityEmail: 'ltr',
+  messageEntityPhone: 'ltr',
+  messageEntityBotCommand: 'ltr',
+  messageEntityMention: 'ltr',
+  messageEntityCashtag: 'ltr',
+  messageEntityHashtag: 'auto'
+};
+
 function createMarkupFormatting(formatting: string, element = document.createElement('span')) {
   const str = 'markup-' + formatting;
   element.style.fontFamily = str;
@@ -326,6 +339,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           const container = document.createElement('pre');
           const content = document.createElement('div');
           content.classList.add('code-content');
+          // * code reads left to right in any language; the header and the stripe follow the UI
+          content.dir = 'ltr';
           element = document.createElement('code');
           element.classList.add('code-code');
           fragment.append(container);
@@ -935,6 +950,10 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
     }
 
     if(element) markMessageLinkEntity(element, entity);
+
+    if(element && !options.wrappingDraft && ENTITY_DIRECTIONS[entity._]) {
+      element.dir = ENTITY_DIRECTIONS[entity._];
+    }
 
     if(processingBlockElement) {
       let foundNextLinebreakIndex = -1;

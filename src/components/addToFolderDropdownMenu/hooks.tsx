@@ -3,6 +3,7 @@ import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import contextMenuController from '@helpers/contextMenuController';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import noop from '@helpers/noop';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {Dialog} from '@layer';
@@ -98,7 +99,7 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle, cu
 
   return filters().map((filter) => {
     const extractedTitle = extractEmojiFromFilterTitle(filter.title);
-    const {span, charSpansGroups} = wrapFolderTitleInSpan(extractedTitle.text, middleware.get());
+    const {span, charSpansGroups, rtl} = wrapFolderTitleInSpan(extractedTitle.text, middleware.get());
     span.classList.add(styles.ItemLabelText);
 
     const options: ButtonMenuItemOptions = {
@@ -137,7 +138,8 @@ export const createFolderItems = ({filters, isInFilter, isSelected, onToggle, cu
       textContent: span.textContent,
       buttonMenuItem,
       element: options.element,
-      charSpansGroups
+      charSpansGroups,
+      rtl
     };
   });
 });
@@ -203,7 +205,7 @@ export const createSearchableFolders = ({folderItems, search, isSelected, setSel
         if(isSelected(src.filter.id)) src.element.scrollIntoView({block: 'center'});
       });
 
-      highlightTextNodes(src.charSpansGroups, finderResult.found);
+      highlightTextNodes(src.charSpansGroups, finderResult.found, src.rtl);
 
       return true;
     }
@@ -289,7 +291,9 @@ export const useInputKeydown = ({search, setSearch, selected, setSelected, selec
 
     if(typeof selected() !== 'number') return;
 
-    const increment = ['ArrowUp', 'ArrowLeft'].includes(e.code) ? -1 : ['ArrowDown', 'ArrowRight'].includes(e.code) ? 1 : 0;
+    // * the side arrows step along the line: the previous folder is towards its start
+    const inlineKeys = getInlineArrowKeys();
+    const increment = e.code === 'ArrowUp' || e.code === inlineKeys.previous ? -1 : e.code === 'ArrowDown' || e.code === inlineKeys.next ? 1 : 0;
     setSelected(prev => (prev + increment + visibleFoldersCount()) % visibleFoldersCount())
   };
 };

@@ -109,7 +109,7 @@ function BrowserHeaderTab(props: {
       value += (index - 2) * -40;
     }
 
-    return `translateX(${value}px)`;
+    return `translateX(calc(${value}px * var(--reflect)))`;
   });
 
   return (
@@ -266,7 +266,7 @@ function BrowserHeader(props: {
           <div
             class={styles.BrowserHeaderSelector}
             style={{
-              transform: `translateX(${state.index * 40 + 7 + (state.index >= 1 ? 16 : 0)}px)`,
+              transform: `translateX(calc(${state.index * 40 + 7 + (state.index >= 1 ? 16 : 0)}px * var(--reflect)))`,
               width: state.page.titleWidth() + 16 * 2 + 34 + 'px'
             }}
           >

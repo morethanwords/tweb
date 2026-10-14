@@ -33,11 +33,12 @@
   }
 }
 
+// * the glint sweeps along the line, so in RTL from the right, slanted the mirrored way
 @keyframes skeleton-animation {
   0% {
-    transform: translateX(-125%) skewX(-45deg);
+    transform: translateX(calc(-125% * var(--reflect))) skewX(calc(-45deg * var(--reflect)));
   }
   40%, 100% {
-    transform: translateX(125%) skewX(-45deg);
+    transform: translateX(calc(125% * var(--reflect))) skewX(calc(-45deg * var(--reflect)));
   }
 }

@@ -8312,7 +8312,8 @@ export namespace LangPackDifference {
     version: number,
     strings: Array<LangPackString>,
     localVersion?: number,
-    countries?: HelpCountriesList.helpCountriesList
+    countries?: HelpCountriesList.helpCountriesList,
+    rtl?: boolean
   };
 }
 

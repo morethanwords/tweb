@@ -287,7 +287,7 @@ $inactive-opacity: .4;
   &-switcher {
     --offset-top: 7.5rem;
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 3.75rem;
     width: 7rem;
     height: calc(100% - var(--offset-top));
@@ -308,9 +308,8 @@ $inactive-opacity: .4;
       display: none !important;
     }
 
-    &-right {
-      left: auto;
-      right: 0;
+    &-next {
+      inset-inline: auto 0;
     }
   }
 
@@ -320,7 +319,7 @@ $inactive-opacity: .4;
     position: absolute;
     color: #fff;
     font-size: 2rem;
-    left: 1rem;
+    inset-inline-start: 1rem;
     top: 50%;
     transform: translateY(-50%);
     opacity: 0;
@@ -331,17 +330,16 @@ $inactive-opacity: .4;
 
     @include respond-to(not-handhelds) {
       font-size: 3rem;
-      left: 2rem;
+      inset-inline-start: 2rem;
     }
   }
 
   &-next-button {
-    left: auto;
-    right: 1rem;
+    inset-inline: auto 1rem;
     transform: translateY(-50%);
 
     @include respond-to(not-handhelds) {
-      right: 2rem;
+      inset-inline: auto 2rem;
     }
   }
 
@@ -844,7 +842,7 @@ $inactive-opacity: .4;
   }
 
   .media-viewer-userpic {
-    margin-right: 1.125rem;
+    margin-inline-end: 1.125rem;
     --size: 42px;
   }
 
@@ -944,10 +942,10 @@ $inactive-opacity: .4;
 
 .checkable-button-menu {
   .btn-menu-item {
-    padding-left: 8px;
+    padding-inline-start: 8px;
   }
   .btn-menu-item-icon {
-    margin-right: 12px;
+    margin-inline-end: 12px;
   }
 }
 

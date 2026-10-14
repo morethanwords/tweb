@@ -47,8 +47,10 @@ export default class AppPollResultsTab extends SliderSuperTab {
       const answerTitle = document.createElement('div');
       const answerText = wrapTextWithEntities(answer.text);
       const answerTextWrapped = wrapRichText(answerText.text, {entities: answerText.entities, middleware: this.middlewareHelper.get()});
-      setInnerHTML(answerTitle, answerTextWrapped);
-      answerTitle.append(' — ', Math.round(percents[idx]) + '%');
+      // * the answer keeps its own direction apart from the share: it would carry it to its side otherwise
+      const answerTextElement = document.createElement('span');
+      setInnerHTML(answerTextElement, answerTextWrapped);
+      answerTitle.append(answerTextElement, ' — ', Math.round(percents[idx]) + '%');
 
       const answerPercents = i18n('Chat.Poll.MembersVoted', [result.voters]);
 

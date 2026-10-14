@@ -282,10 +282,10 @@ describe('Tiptap chat input editor: MediaActions', () => {
       const layoutWidth = parseFloat(canvas.style.getPropertyValue('--width'));
       const layoutHeight = parseFloat(canvas.style.height);
       const firstRight = (
-        parseFloat(collageItems[0].style.left) +
+        parseFloat(collageItems[0].style.insetInlineStart) +
         parseFloat(collageItems[0].style.width)
       ) * layoutWidth / 100;
-      const secondLeft = parseFloat(collageItems[1].style.left) * layoutWidth / 100;
+      const secondLeft = parseFloat(collageItems[1].style.insetInlineStart) * layoutWidth / 100;
       const firstBottom = (
         parseFloat(collageItems[0].style.top) +
         parseFloat(collageItems[0].style.height)

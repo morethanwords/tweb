@@ -47,7 +47,7 @@
 
 .originalArrow {
   position: absolute;
-  right: var(--content-padding-x);
+  inset-inline-end: var(--content-padding-x);
   top: calc(var(--padding-top) + 0.75rem);
   transform: translateY(-50%) rotate(180deg);
 
@@ -77,7 +77,7 @@
 
 .originalCheckbox {
   position: absolute !important;
-  right: var(--content-padding-x);
+  inset-inline-end: var(--content-padding-x);
   top: calc(var(--padding-top) + 0.75rem);
   transform: translateY(-50%);
 }
@@ -223,7 +223,7 @@
   }
 
   &Content {
-    padding-right: 0.5rem;
+    padding-inline-end: 0.5rem;
     white-space: pre-wrap;
     word-wrap: break-word;
     user-select: text;
@@ -253,7 +253,8 @@
   position: relative;
   overflow: hidden;
   --padding: 6px;
-  padding: var(--padding) 12px var(--padding) var(--padding);
+  padding-block: var(--padding);
+  padding-inline: var(--padding) 12px;
   color: var(--secondary-text-color);
   display: flex;
   align-items: center;

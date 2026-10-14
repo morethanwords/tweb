@@ -15,7 +15,8 @@
   font-size: 1.0625rem;
   margin-inline-end: .125rem;
   // The shared `arrow_next` glyph points right; the call log tilts it the way
-  // the bubble does (`_chatBubble.scss` .bubble-call-arrow).
+  // the bubble does (`_chatBubble.scss` .bubble-call-arrow). In RTL `.icon-mirror`
+  // turns it over with `scale`, which composes with this rotation.
   transform: rotate(135deg);
   color: var(--green-color);
 

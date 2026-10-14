@@ -146,7 +146,8 @@ export default function AlbumThumbs(props: {
                   class={classNames(styles.thumb, isCurrent() && styles.isCurrent)}
                   style={{
                     'width': `${layout().widths[index()]}px`,
-                    'transform': `translateX(${layout().lefts[index()]}px)`
+                    // * the offset runs from the inline start: later thumbs lie to the left in a right-to-left layout
+                    'transform': `translateX(calc(${layout().lefts[index()]}px * var(--reflect)))`
                   }}
                   data-index={index()}
                   aria-current={isCurrent() ? 'true' : undefined}

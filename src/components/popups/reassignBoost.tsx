@@ -87,7 +87,8 @@ export default async function showReassignBoostPopup(
           return (
             <div
               class={`${className}-avatars-avatar-container`}
-              style={`--offset: ${diff() * -offset}px`}
+              // * the pile grows toward the row's start, away from the arrow: rightward in RTL
+              style={`--offset: calc(${diff() * -offset}px * var(--reflect))`}
             >
               {element}
               <IconTsx icon="boostcircle_filled" class={classNames(`${className}-avatars-avatar-icon`, !diff() && 'is-visible')} />
@@ -121,7 +122,8 @@ export default async function showReassignBoostPopup(
       return (
         <div
           class={classNames(`${className}-avatars`, peerIds().length && 'has-left')}
-          style={`transform: translateX(${Math.max(0, peerIds().length - 1) * (offset / 2)}px)`}
+          // * recentres the row as the pile grows toward its start
+          style={`transform: translateX(calc(${Math.max(0, peerIds().length - 1) * (offset / 2)}px * var(--reflect)))`}
         >
           <div class={`${className}-avatars-left`}>
             {transitionList}

@@ -20,6 +20,7 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import A11yButton from '@components/a11yButton';
 import attachTabList from '@helpers/dom/tabList';
 import Modes from '@config/modes';
+import {isElementRTL} from '@helpers/dom/isDocumentRTL';
 
 export type FeaturesCarouselProps = {
   features: PremiumPromoFeature[],
@@ -72,10 +73,12 @@ export default function FeaturesCarousel(props: FeaturesCarouselProps) {
   };
 
   // Clicking the left/right half of the stage steps through the features, the way
-  // tapping the edges of a story does.
+  // tapping the edges of a story does: the half toward the inline end goes forward,
+  // the left one in a right-to-left layout.
   const onStageClick = (e: MouseEvent) => {
     const rect = containerEl.getBoundingClientRect();
-    step(index() + ((rect.left + rect.width / 2) < e.clientX ? 1 : -1));
+    const toEnd = ((rect.left + rect.width / 2) < e.clientX) !== isElementRTL(containerEl);
+    step(index() + (toEnd ? 1 : -1));
   };
 
   return (

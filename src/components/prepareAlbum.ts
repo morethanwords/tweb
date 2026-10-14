@@ -47,7 +47,8 @@ export default function prepareAlbum(options: {
     div.style.width = (geometry.width / width * 100) + '%';
     div.style.height = (geometry.height / height * 100) + '%';
     div.style.top = (geometry.y / height * 100) + '%';
-    div.style.left = (geometry.x / width * 100) + '%';
+    // * the layout's left is the line's start, as the corners below say: an album reads from the right in RTL
+    div.style.insetInlineStart = (geometry.x / width * 100) + '%';
 
     if(sides & RectPart.Left && sides & RectPart.Top) {
       div.style.borderStartStartRadius = `calc(var(--border-start-start-radius) - ${options.spacing}px)`;

@@ -148,16 +148,17 @@
     position: absolute;
     pointer-events: none;
 
+    // * a chat in miniature: the outgoing bubble at the inline end, as in the chat itself
     &.is-out {
       top: .5rem;
-      right: .375rem;
+      inset-inline-end: .375rem;
       background-color: var(--light-filled-message-out-primary-color);
     }
 
     &.is-in {
       background-color: var(--message-background-color);
       top: calc(1.25rem + .5rem + .25rem);
-      left: .375rem;
+      inset-inline-start: .375rem;
     }
   }
 }

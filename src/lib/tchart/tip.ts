@@ -854,8 +854,10 @@ export default class TTip {
     opts.data.ys.forEach((item, ind) => {
       if(opts.state[`e_${ind}`]) {
         const percentageWidth = (maxLen * 8 + 17); // with right padding
-        this.labels[ind].$label.style.transform = 'translateX(' + percentageWidth + 'px)';
-        this.labels[ind].$label.style.webkitTransform = 'translateX(' + percentageWidth + 'px)';
+        // * the label steps past the percentage at the inline start: leftwards in RTL
+        const labelTransform = 'translateX(calc(' + percentageWidth + 'px * var(--reflect)))';
+        this.labels[ind].$label.style.transform = labelTransform;
+        this.labels[ind].$label.style.webkitTransform = labelTransform;
         this.labels[ind].$perText.nodeValue = (perInt[ind]) + '%';
         this.labels[ind].$per.style.width = (percentageWidth - 7) + 'px';
         if(percentageWidth > this.maxPercentageWidth) {

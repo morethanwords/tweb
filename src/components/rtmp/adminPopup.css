@@ -4,7 +4,7 @@
 }
 
 .rtmp-popup .popup-close {
-  margin-right: 16px;
+  margin-inline-end: 16px;
 }
 
 .rtmp-popup .popup-header {

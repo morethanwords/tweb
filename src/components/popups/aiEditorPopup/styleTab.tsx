@@ -75,9 +75,10 @@ export const StyleTab = () => {
   const maxSavedTones = useMaxSavedTones();
 
   const scrollableSize = hasArrows ? useElementSize(tonesListEl) : {width: 0, height: 0};
-  const scrollLeft = hasArrows ? useScrollPosition(tonesListEl, 'x') : () => 0;
-  const isScrolledLeft = () => scrollLeft() <= 1;
-  const isScrolledRight = () => !tonesListEl() || tonesListEl().scrollWidth - scrollLeft() - scrollableSize.width <= 1;
+  // * the distance from the row's inline start: the right edge in RTL
+  const scrollFromStart = hasArrows ? useScrollPosition(tonesListEl, 'x') : () => 0;
+  const isScrolledToStart = () => scrollFromStart() <= 1;
+  const isScrolledToEnd = () => !tonesListEl() || tonesListEl().scrollWidth - scrollFromStart() - scrollableSize.width <= 1;
 
   const selectedToneAuthorId = createMemo(() => {
     const tone = selectedTone();
@@ -237,16 +238,16 @@ export const StyleTab = () => {
         {hasArrows && (
           <>
             <IconTsx
-              class={classNames(styles.sectionArrow, styles.sectionArrowLeft)}
+              class={classNames(styles.sectionArrow, styles.sectionArrowStart)}
               classList={{
-                [styles.hidden]: isScrolledLeft()
+                [styles.hidden]: isScrolledToStart()
               }}
               icon='arrowhead'
             />
             <IconTsx
-              class={classNames(styles.sectionArrow, styles.sectionArrowRight)}
+              class={classNames(styles.sectionArrow, styles.sectionArrowEnd)}
               classList={{
-                [styles.hidden]: isScrolledRight()
+                [styles.hidden]: isScrolledToEnd()
               }}
               icon='arrowhead'
             />

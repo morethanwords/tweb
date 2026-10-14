@@ -106,14 +106,14 @@
     position: relative;
 
     > .from {
-      transform-origin: left center;
+      transform-origin: var(--transform-origin-left-center);
       transform: translateX(0);
       opacity: 1;
     }
 
     > .to {
-      transform-origin: left center;
-      transform: translateX(1.5rem);
+      transform-origin: var(--transform-origin-left-center);
+      transform: translateX(calc(1.5rem * var(--reflect)));
       opacity: 0;
     }
 
@@ -135,7 +135,7 @@
     }
 
     > .to {
-      transform: translateX(-1.5rem);
+      transform: translateX(calc(-1.5rem * var(--reflect)));
       opacity: 0;
     }
 
@@ -289,7 +289,7 @@
  */
 @keyframes slide-fade-in-move {
   0% {
-    transform: translateX(1.5rem);
+    transform: translateX(calc(1.5rem * var(--reflect)));
   }
   100% {
     transform: translateX(0);
@@ -301,7 +301,7 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-1.5rem);
+    transform: translateX(calc(-1.5rem * var(--reflect)));
   }
 }
 
@@ -310,13 +310,13 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(1.5rem);
+    transform: translateX(calc(1.5rem * var(--reflect)));
   }
 }
 
 @keyframes slide-fade-out-backwards-move {
   0% {
-    transform: translateX(-1.5rem);
+    transform: translateX(calc(-1.5rem * var(--reflect)));
   }
   100% {
     transform: translateX(0);

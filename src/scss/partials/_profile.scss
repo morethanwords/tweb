@@ -138,7 +138,7 @@
       align-items: center;
       flex-wrap: nowrap;
       transform: translate(0, 0);
-      transform-origin: left top;
+      transform-origin: var(--transform-origin-inline-start) top;
       transition: transform .2s ease-in-out;
       position: absolute;
     }
@@ -297,7 +297,7 @@
       }
 
       .stars-rating-icon:not(.stars-rating-icon-warning) {
-        margin-left: -4px;
+        margin-inline-start: -4px;
       }
 
       .online {
@@ -363,7 +363,7 @@
     &-arrow {
       position: absolute;
       top: 0;
-      left: 0;
+      inset-inline-start: 0;
       bottom: 0;
       width: calc(100% / 3);
       opacity: 0;
@@ -382,7 +382,7 @@
         transform: translateY(-50%);
         font-size: 2.1875rem;
         color: #fff;
-        left: .625rem;
+        inset-inline-start: .625rem;
       }
 
       .profile-avatars-container:not(.is-swiping) & {
@@ -399,12 +399,10 @@
       } */
 
       &-next {
-        left: auto;
-        right: 0;
+        inset-inline: auto 0;
 
         .profile-avatars-arrow-icon {
-          left: auto;
-          right: .625rem;
+          inset-inline: auto .625rem;
         }
       }
     }
@@ -455,11 +453,11 @@
       //   drop-shadow(0 0 #{$thickness} rgba(0, 0, 0, 0.1));
 
       &-warning {
-        margin-right: 0.25rem;
+        margin-inline-end: 0.25rem;
       }
 
       @include animation-level(2) {
-        transition: margin-left var(--transition-standard-in);
+        transition: margin-inline-start var(--transition-standard-in);
       }
     }
 
@@ -534,7 +532,7 @@
         .profile-name,
         .profile-subtitle {
           inset-inline-start: 50%;
-          transform: translateX(-50%);
+          transform: translateX(calc(-50% * var(--reflect)));
         }
 
         @include status-leaving-anchor(true);
@@ -570,7 +568,7 @@
       }
 
       .stars-rating-icon {
-        margin-left: 0;
+        margin-inline-start: 0;
       }
     }
 
@@ -890,12 +888,12 @@
     opacity: 1;
     transform: translateX(0);
     transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-    transform-origin: right center;
+    transform-origin: var(--transform-origin-right-center);
     transition-delay: 0.1s;
 
     .profile-container.is-collapsed & {
       opacity: 0;
-      transform: translateX(12px);
+      transform: translateX(calc(12px * var(--reflect)));
       pointer-events: none;
       transition-delay: 0s;
     }
@@ -948,13 +946,16 @@
       }
     }
 
+    // * mirrored in RTL, where the circle before it overlaps from the right: the bite
+    // * `#story-item-clip` takes out of the left has to come out of the right side
     &-media {
       border-radius: 50%;
       overflow: hidden;
       position: relative;
-      transform: scale(0.95);
+      transform: scale(calc(.95 * var(--reflect)), .95);
     }
 
+    // * ...and the photo turned back, media is never mirrored
     &-img {
       width: 100% !important;
       height: 100% !important;
@@ -962,6 +963,7 @@
       position: absolute;
       top: 0;
       left: 0;
+      transform: scaleX(var(--reflect));
     }
   }
 

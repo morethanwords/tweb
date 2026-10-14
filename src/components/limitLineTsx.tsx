@@ -38,7 +38,14 @@ export function LimitLineTsx(props: {
   let tailContainerRef!: HTMLDivElement;
 
   const isSlider = props.onScrub !== undefined
-  const isReverse = () => props.reverse ?? I18n.getIsRTL()
+  // * `reverse` fills against the reading direction; the layout itself follows the line (the parts'
+  // * row and the mask in CSS), while the hint is placed in screen pixels: from the right when the
+  // * fill runs right to left
+  const isReverse = () => props.reverse ?? false
+  const isFilledFromRight = () => isReverse() !== I18n.getIsRTL()
+
+  // * the hint stands in screen pixels: a direction switched on the fly moves it to the other side
+  createEffect(on(I18n.isRTL, () => updateHintPosition(), {defer: true}))
 
   onMount(() => {
     const resizeObserver = new ResizeObserver(updateHintPosition);
@@ -51,7 +58,9 @@ export function LimitLineTsx(props: {
 
   function updateHintPosition() {
     const hintWidth = hintRef.clientWidth; // ! not bounding rect so transform is not applied
-    const parentWidth = hintRef.parentElement.getBoundingClientRect().width;
+    // * nor here: a popup scaling in would shrink the line, and right to left, where the tip is
+    // * counted from the right edge, set the hint tens of pixels off for good
+    const parentWidth = hintRef.parentElement.offsetWidth;
 
     const progress$ = progress()
     let sliderTipPosition = progress$ * parentWidth
@@ -59,7 +68,7 @@ export function LimitLineTsx(props: {
       // adjust for slider thumb (30 - thumb width + padding)
       sliderTipPosition += 30 * (1 - progress$) - 15;
     }
-    if(isReverse()) {
+    if(isFilledFromRight()) {
       sliderTipPosition = parentWidth - sliderTipPosition;
     }
 

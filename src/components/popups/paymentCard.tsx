@@ -139,6 +139,15 @@ export class InputFieldCorrected extends InputField {
   }
 }
 
+/**
+ * A card number, an expiry date, a code: their characters keep left-to-right order in any language
+ * (the groups of a card number would swap places in a right-to-left line), while the field keeps
+ * its direction and starts on the side its label does — see `.popup-payment-ltr-input`.
+ */
+export function keepInputLeftToRight(inputField: InputField) {
+  inputField.input.classList.add('popup-payment-ltr-input');
+}
+
 export function handleInputFieldsOnChange(inputFields: (CountryInputField | InputField | InputFieldCorrected)[], _onChange: (valid: boolean) => void) {
   const onChange = () => {
     const valid = inputFields.every((inputField) => {
@@ -190,6 +199,7 @@ export function createCountryZipFields(country?: boolean, zip?: boolean) {
         return cardFormattingPatterns.postalCodeFromCountry(iso2 && iso2.toUpperCase());
       }
     });
+    if(zip) keepInputLeftToRight(postcodeInputField);
   }
 
   return {countryInputField, postcodeInputField};
@@ -367,6 +377,8 @@ export default function showPaymentCardPopup(options: {
     });
 
     const passwordHelpers = new PasswordInputHelpers(cvcInputField.container, cvcInputField.input as HTMLInputElement);
+
+    [cardInputField, expireInputField, cvcInputField].forEach(keepInputLeftToRight);
 
     const switchFocusOrder: (InputFieldCorrected | InputField)[] = [
       cardInputField,

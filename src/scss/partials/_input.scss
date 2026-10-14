@@ -24,7 +24,7 @@
     content: " ";
     top: 50%;
     bottom: 0;
-    right: 21px;
+    inset-inline-end: 21px;
     cursor: pointer;
     
     height: 0;
@@ -85,7 +85,7 @@
 
   &-icon {
     position: absolute;
-    right: 1rem;
+    inset-inline-end: 1rem;
     z-index: 1;
     top: 50%;
     transform: translateY(-50%);
@@ -209,7 +209,8 @@
     &:disabled ~ .input-field-error-label,
     &.force-focus ~ label,
     &.force-focus ~ .input-field-error-label {
-      transform: translate(calc(-.1875rem + (1rem - var(--padding-horizontal))), calc(var(--height) / -2 + .0625rem)) scale(.75);
+      // * floats up toward the inline start
+      transform: translate(calc((-.1875rem + (1rem - var(--padding-horizontal))) * var(--reflect)), calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;
       opacity: 1;
     }
@@ -344,7 +345,7 @@
 
     &[type="password"] {
       font-size: 2.25rem;
-      padding-left: calc(.875rem - var(--border-width));
+      padding-inline-start: calc(.875rem - var(--border-width));
       line-height: 1;
       padding-top: 0;
       padding-bottom: 0;
@@ -368,7 +369,7 @@
   
   .toggle-visible {
     position: absolute;
-    right: .375rem;
+    inset-inline-end: .375rem;
     z-index: 2;
     font-size: 1.5rem;
     color: $placeholder-color;

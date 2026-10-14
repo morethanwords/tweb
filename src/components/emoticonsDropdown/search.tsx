@@ -91,7 +91,8 @@ function addSearchCategories(props: {
       class="emoticons-search-input-scrollable"
       classList={{'is-searching': props.searching(), 'is-scrolled': scrolled()}}
       onScroll={() => {
-        setScrolled(scrollableContainer.scrollLeft > 0);
+        // * negative in RTL, where the scroll runs from 0 toward the left
+        setScrolled(scrollableContainer.scrollLeft !== 0);
       }}
     >
       {inputSearch.currentPlaceholder}

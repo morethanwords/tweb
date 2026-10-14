@@ -33,14 +33,14 @@
   &__pin-icon {
     position: absolute;
     top: 6px;
-    left: 12px;
+    inset-inline-start: 12px;
     font-size: 20px;
     color: white;
   }
   &__pin-count {
     position: absolute;
     top: 6px;
-    right: 12px;
+    inset-inline-end: 12px;
     font-size: 16px;
     line-height: 20px;
     color: white;
@@ -67,17 +67,17 @@
     flex: 1;
     padding: 6px 12px;
     background-color: var(--limit-line-empty-background);
-    border-top-left-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
+    border-start-start-radius: var(--radius);
+    border-end-start-radius: var(--radius);
   }
 
   &__bar-right {
     flex: 1;
     padding: 6px 12px;
     color: white;
-    background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
-    border-top-right-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
+    background: linear-gradient(calc(84.4deg * var(--reflect)), #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+    border-start-end-radius: var(--radius);
+    border-end-end-radius: var(--radius);
 
     display: flex;
     justify-content: space-between;
@@ -108,22 +108,23 @@
 }
 
 @keyframes accounts-limit-pin-animation {
+  // * it comes in from the start of the bar, leaning back
   0% {
-    transform: translateX(-160px) rotate(-16deg);
+    transform: translateX(calc(-160px * var(--reflect))) rotate(calc(-16deg * var(--reflect)));
     opacity: 0.5;
   }
 
   30% {
-    transform: translateX(0px) rotate(-16deg);
+    transform: translateX(0px) rotate(calc(-16deg * var(--reflect)));
     opacity: 1;
   }
 
   50% {
-    transform: translateX(0px) rotate(12deg);
+    transform: translateX(0px) rotate(calc(12deg * var(--reflect)));
   }
 
   75% {
-    transform: rotate(-2deg);
+    transform: rotate(calc(-2deg * var(--reflect)));
   }
 
   100% {

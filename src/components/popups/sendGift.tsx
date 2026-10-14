@@ -157,7 +157,7 @@ function GiftOptionsPage(props: {
                     class={styles.premiumOptionBadge}
                     textClass={styles.premiumOptionBadgeText}
                   >
-                      -{Math.round(option.discountPercent)}%
+                      <span dir="ltr">-{Math.round(option.discountPercent)}%</span>
                   </StarGiftBadge>
                 )}
 
@@ -793,7 +793,8 @@ function StarGiftLimitedProgress(props: {
       <div class={styles.limitedProgressBar}>
         <div class={styles.limitedProgressProgress} style={{width: `${100 * props.gift.availability_remains / props.gift.availability_total}%`}} />
         <div class={styles.limitedProgressText} style={{
-          'background-image': `linear-gradient(90deg, #fff ${progress}%, var(--secondary-text-color) ${progress}%)`
+          // * the fill grows from the inline start, and the text over it turns white with it
+          'background-image': `linear-gradient(calc(90deg * var(--reflect)), #fff ${progress}%, var(--secondary-text-color) ${progress}%)`
         }}>
           {left}
           {i18n('StarGiftLimitedSold2', [props.gift.availability_total - props.gift.availability_remains])}

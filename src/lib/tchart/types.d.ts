@@ -184,6 +184,8 @@ export type TChartState = TChartStateZoom & {
   speed?: number,
   deviceSpeed?: number,
   dims?: {[type in 'composer' | 'graph' | 'axisYLeft' | 'axisYRight' | 'axisYLines' | 'fadeTop' | 'fadeBottom' | 'axisX' | 'dates' | 'mini' | 'handle' | 'tip']: TChartDimensions},
+  // * where the range of dates stands as laid out: `DATES_SIDE`, mirrored on a right-to-left page
+  datesSide?: TChartSettings['DATES_SIDE'],
   detailInd1?: number,
   detailInd2?: number,
   zoomModeSlave?: boolean,

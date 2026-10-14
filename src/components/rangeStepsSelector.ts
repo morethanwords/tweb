@@ -51,12 +51,13 @@ export default class RangeStepsSelector<T extends any = any> {
     text.classList.add('range-setting-selector-option-text');
     text.replaceChildren(label);
     option.append(text);
-    option.style.left = `${idx / maxIndex * 100}%`;
+    // * from the inline start, as the track fills from there
+    option.style.insetInlineStart = `${idx / maxIndex * 100}%`;
 
     if(idx === 0 && !this.noFirstLast) option.classList.add('is-first');
     else if(idx === maxIndex) {
-      option.style.left = '';
-      option.style.right = '0';
+      option.style.insetInlineStart = '';
+      option.style.insetInlineEnd = '0';
       !this.noFirstLast && option.classList.add('is-last');
     }
 

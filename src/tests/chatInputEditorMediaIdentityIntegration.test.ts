@@ -11,6 +11,9 @@ import type {PageBlock, Photo} from '@layer';
 import I18n from '@lib/langPack';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
 
+// * the slideshow's strip moved to show item `index`, which lies toward the inline end (the left in RTL)
+const slideAt = (index: number) => `translate(calc(${-index * 100}% * var(--reflect)), 0)`;
+
 describe('Tiptap chat input editor: MediaIdentity', () => {
   const {mountEditor, insertPhotoSlideshow, openRichMediaMenu, richMediaMenuItem} = useChatInputEditorHarness();
 
@@ -151,7 +154,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
       'blob:slideshow-seed-second'
     ]);
     expect(itemsContainer.children).toHaveLength(2);
-    expect(itemsContainer.style.transform).toBe('translate(0%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(0));
 
     const addUploadId = 'upload-slideshow-add';
     const slideshowNode = tiptap.state.doc.firstChild!;
@@ -181,7 +184,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     )!;
     expect(pendingImage.getAttribute('src')).toBe('blob:slideshow-added');
     expect(itemsContainer.children).toHaveLength(3);
-    expect(itemsContainer.style.transform).toBe('translate(0%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(0));
 
     expect(editor.updateRichMediaUpload(addUploadId, [{
       id: `${addUploadId}-0`,
@@ -215,7 +218,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     expect(pendingItem.querySelector('.chat-input-rich-media-upload')).toBeNull();
     expect(pendingOverlay.isConnected).toBe(false);
     expect(itemsContainer.children).toHaveLength(3);
-    expect(itemsContainer.style.transform).toBe('translate(0%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(0));
     expect(editor.getRichMessage().input.blocks[0]).toMatchObject({
       _: 'pageBlockSlideshow',
       items: [
@@ -279,7 +282,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     expect(pendingProgress.classList.contains('is-visible')).toBe(true);
     expect(pendingProgress.classList.contains('animating')).toBe(false);
     expect(itemsContainer.children).toHaveLength(3);
-    expect(itemsContainer.style.transform).toBe('translate(-100%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(1));
 
     expect(editor.updateRichMediaUpload(uploadId, [{
       id: `${uploadId}-0`,
@@ -297,7 +300,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     expect(pendingOverlay.querySelector('[role="progressbar"]')).toBe(pendingProgress);
     expect(pendingProgress.getAttribute('aria-valuenow')).toBe('74');
     expect(itemsContainer.children).toHaveLength(3);
-    expect(itemsContainer.style.transform).toBe('translate(-100%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(1));
 
     const replacement = {
       _: 'photo',
@@ -319,7 +322,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     expect(pendingOverlay.isConnected).toBe(false);
     expect(pendingProgress.isConnected).toBe(false);
     expect(itemsContainer.children).toHaveLength(3);
-    expect(itemsContainer.style.transform).toBe('translate(-100%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(1));
     expect(editor.getRichMessage().input.blocks[0]).toMatchObject({
       _: 'pageBlockSlideshow',
       items: [
@@ -375,7 +378,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     const pendingProgress = pendingOverlay.querySelector<HTMLElement>('[role="progressbar"]')!;
     expect(pendingImage.getAttribute('src')).toBe('blob:slideshow-cancelled-add');
     expect(itemsContainer.children).toHaveLength(3);
-    expect(itemsContainer.style.transform).toBe('translate(0%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(0));
 
     expect(editor.removeRichMediaUpload(uploadId)).toBe(true);
     expect(media.dataset.richMediaLayout).toBe('slideshow');
@@ -388,7 +391,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     expect(pendingProgress.isConnected).toBe(false);
     expect(media.querySelector('.chat-input-rich-media-upload')).toBeNull();
     expect(itemsContainer.children).toHaveLength(2);
-    expect(itemsContainer.style.transform).toBe('translate(0%, 0)');
+    expect(itemsContainer.style.transform).toBe(slideAt(0));
     expect(editor.getRichMessage().input.blocks[0]).toMatchObject({
       _: 'pageBlockSlideshow',
       items: [
@@ -486,7 +489,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     expect(items[1].hasAttribute('data-active')).toBe(true);
     expect(slideshow.querySelector<HTMLElement>(
       `.${slideshowStyles.Items}`
-    )?.style.transform).toBe('translate(-100%, 0)');
+    )?.style.transform).toBe(slideAt(1));
   });
 
   test('keeps all rich-editor slideshow items mounted while changing the active slide', () => {
@@ -549,7 +552,7 @@ describe('Tiptap chat input editor: MediaIdentity', () => {
     )).toBe(firstItem);
     expect(slideshow.querySelector<HTMLElement>(
       `.${slideshowStyles.Items}`
-    )?.style.transform).toBe('translate(-1000%, 0)');
+    )?.style.transform).toBe(slideAt(10));
   });
 
   test('keeps a deleted local media preview alive throughout undo and redo history', () => {

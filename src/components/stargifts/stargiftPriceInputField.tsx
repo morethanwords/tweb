@@ -18,6 +18,8 @@ export class StarGiftPriceInputFieldClass extends InputField {
     super(options);
 
     this.container.classList.add(styles.input)
+    // * a price is digits, which order left to right — yet stay next to the icon at the field's start
+    this.input.classList.add('popup-payment-ltr-input')
 
     this.icon = document.createElement('div')
     this.icon.classList.add(styles.inputIcon)
@@ -40,7 +42,12 @@ export class StarGiftPriceInputFieldClass extends InputField {
   }
 
   public setApproxText(text: string) {
-    this.approxLabel.textContent = text
+    // * `≈$1.23` is one left-to-right token; the label itself keeps the field's direction, which
+    // * places it at the field's end
+    const span = document.createElement('span')
+    span.dir = 'ltr'
+    span.textContent = text
+    this.approxLabel.replaceChildren(span)
   }
 }
 

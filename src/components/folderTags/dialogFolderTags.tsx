@@ -105,7 +105,7 @@ export default function attachDialogFolderTags({
             {(filter) => <FolderTag color={getFolderTagColor(filter)} title={filter.title} />}
           </For>
           <Show when={fitted().more}>
-            <FolderTag color={FOLDER_TAG_MORE_COLOR}>{getFolderTagMoreText(fitted().more)}</FolderTag>
+            <FolderTag color={FOLDER_TAG_MORE_COLOR} dir="ltr">{getFolderTagMoreText(fitted().more)}</FolderTag>
           </Show>
         </>
       ));

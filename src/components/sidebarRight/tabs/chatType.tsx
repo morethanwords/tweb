@@ -354,6 +354,8 @@ const ChatType: Component = () => {
               openUserPermissionsTab(tab.slider, chatId, participant, true);
             }
           });
+          // * keeps its @ in front inside a right-to-left sentence
+          anchor.dir = 'ltr';
           anchor.append('@' + guardBotUsername);
           nodes.push(' ', i18n('GuardBotManagedBy', [anchor]));
         }

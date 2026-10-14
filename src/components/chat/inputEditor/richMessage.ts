@@ -3,6 +3,7 @@ import concatRichText from '@lib/richTextProcessor/concatRichText';
 import {inputPageBlock, inputRichText} from '@lib/richTextProcessor/inputRichMessageBlocks';
 import {getDocumentRowBlockId, isDocumentRowBlock, type DocumentRowBlock} from '@lib/richMessage';
 import type {JSONContent} from '@tiptap/core';
+import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
 import type {
   Document,
   InputRichMessage,
@@ -902,6 +903,42 @@ function blocksDirection(blocks: PageBlock[]): boolean | undefined {
 
 export function determineRichMessageRtl(blocks: PageBlock[]) {
   return blocksDirection(blocks) || false;
+}
+
+// * what `blockDirectionText` leaves out: a table's cells (its title counts), media and map captions,
+// * a quote's caption
+const DIRECTIONLESS_EDITOR_NODES = new Set(['table', 'richMedia', 'richMap', 'blockquoteCaption', 'pullquoteCaption']);
+
+/**
+ * The direction a draft is sent in, read off the editor's document the way `determineRichMessageRtl`
+ * reads it off the blocks: the first block with text decides. Undefined while there is no text.
+ */
+export function editorDocumentRtl(doc: ProseMirrorNode): boolean | undefined {
+  let rtl: boolean;
+  const decide = (text: string) => {
+    if(text.trim()) rtl = checkRTL(text);
+    return false;
+  };
+  // * a block's text as it is sent: the labels of its atoms (a button, a date, a mention) included
+  const textOf = (node: ProseMirrorNode) => richTextDirectionText(inlineContentToRichText(node.toJSON().content));
+
+  doc.descendants((node) => {
+    if(rtl !== undefined || DIRECTIONLESS_EDITOR_NODES.has(node.type.name)) return false;
+    if(node.type.name === 'blockquote' && node.attrs.collapsed) {
+      // * a collapsed quote of paragraphs goes as one text, a line per paragraph (`quotePageBlock`)
+      const lines: string[] = [];
+      let paragraphs = true;
+      node.forEach((child) => {
+        if(child.type.name === 'blockquoteCaption') return;
+        paragraphs &&= child.type.name === 'paragraph';
+        lines.push(textOf(child));
+      });
+      if(paragraphs) return decide(lines.join('\n'));
+    }
+
+    return node.isTextblock ? decide(textOf(node)) : true;
+  });
+  return rtl;
 }
 
 function collectDocumentMediaResources(document: JSONContent) {

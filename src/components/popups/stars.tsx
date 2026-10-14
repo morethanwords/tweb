@@ -108,9 +108,12 @@ export function StarsStackedStars(props: {stars: number, size: number}) {
     iconsElements = <StarsStrokeStar />;
   }
 
+  // * a picture of a pile, drawn with physical offsets (`margin-right`, the 90deg background that
+  // * hides the next star's leg) — it stays the same picture in a right-to-left layout
   iconsElements = (
     <div
       class="stars-stacked"
+      dir="ltr"
       style={{
         'width': `${props.size + (icons - 1) * 6}px`,
         '--size': props.size + 'px'
@@ -155,7 +158,8 @@ export function StarsChange(props: {
 }) {
   return (
     <div class={classNames('popup-stars-pay-amount', +props.stars >= 0 ? 'green' : 'danger', props.reverse && 'reverse', props.inline && 'inline')}>
-      {`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}
+      {/* a signed number reads left to right whatever the layout */}
+      <span dir="ltr">{`${+props.stars > 0 && !props.noSign ? '+' : ''}${props.stars}`}</span>
       {props.ton ? <IconTsx icon="ton" /> : <StarsStar />}
       {props.isRefund && <span class="popup-stars-pay-amount-status">{i18n('StarsRefunded')}</span>}
     </div>
@@ -687,7 +691,8 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
           </Show>
           <For each={topupOptions()}>{(option, idx) => {
             const index = createMemo(() => extended() || option.pFlags.extended ? idx() : alwaysVisible.indexOf(option));
-            const translateX = createMemo(() => (index() % 2) ? 'calc(100% + .5rem)' : '0');
+            // * the second column is toward the inline end — leftward in a right-to-left layout
+            const translateX = createMemo(() => (index() % 2) ? 'calc((100% + .5rem) * var(--reflect))' : '0');
             const translateY = createMemo(() => (Math.floor(index() / 2) * 79 + Math.floor(index() / 2) * 8) + 'px');
             const isFullWidth = createMemo(() => {
               if(!((extended() ? topupOptions() : alwaysVisible).length % 2)) {
@@ -759,7 +764,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
                   busy = false;
                 }}
               >
-                <div class="popup-stars-option-title">{`+${option.stars}`}{iconsElements}</div>
+                <div class="popup-stars-option-title"><span dir="ltr">{`+${option.stars}`}</span>{iconsElements}</div>
                 <div class="popup-stars-option-subtitle">{paymentsWrapCurrencyAmount(option.amount, option.currency)}</div>
               </div>
             );

@@ -223,6 +223,11 @@
     width: .625rem;
     z-index: 5;
 
+    // * on the selection's bottom inline-end corner (`tableView.ts`)
+    :where(.is-rtl) & {
+      cursor: nesw-resize;
+    }
+
     &::after {
       content: '';
       inset: -.5rem;
@@ -233,6 +238,10 @@
   .chat-input-table-range-dragging {
     cursor: nwse-resize;
     user-select: none;
+
+    :where(.is-rtl) & {
+      cursor: nesw-resize;
+    }
   }
 
   .chat-input-table-drop-indicator,
@@ -660,7 +669,7 @@
       background-color: rgba(0, 0, 0, .2);
       color: #fff;
       position: absolute;
-      right: .25rem;
+      inset-inline-end: .25rem;
       top: .25rem;
       z-index: 4;
 

@@ -119,7 +119,7 @@ import wrapDocument from '@components/wrappers/document';
 import wrapGroupedDocuments from '@components/wrappers/groupedDocuments';
 import wrapPhoto from '@components/wrappers/photo';
 import wrapVideo, {USE_VIDEO_OBSERVER} from '@components/wrappers/video';
-import isRTL, {endsWithRTL} from '@helpers/string/isRTL';
+import isRTL from '@helpers/string/isRTL';
 import NBSP from '@helpers/string/nbsp';
 import DotRenderer from '@components/dotRenderer';
 import toHHMMSS from '@helpers/string/toHHMMSS';
@@ -140,7 +140,7 @@ import SwipeHandler from '@components/swipeHandler';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect, createSignal, Signal, onCleanup, batch} from 'solid-js';
+import {createRoot, createEffect, createSignal, Signal, onCleanup, batch, on} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '@components/stories/preview';
 import wrapReply from '@components/wrappers/reply';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
@@ -668,6 +668,24 @@ function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: (
   callback();
 }
 
+// * The time floats at the end of the text's last line, so it shares that line only when the line runs
+// * the way the UI does — else it takes a line of its own. A message is `dir="auto"`: every paragraph
+// * runs by its own first strong letter, so in RTL it is the last paragraph's that counts (an Arabic
+// * sentence ending with a full stop or an emoji still runs right to left).
+function isBubbleTimeBlock(text: string) {
+  return I18n.getIsRTL() ?
+    !isRTL(text.slice(text.lastIndexOf('\n') + 1)) :
+    isRTL(text, true);
+}
+
+// * the text each time was placed by: a switch of direction on the fly places it anew
+const bubbleTimeTexts: WeakMap<HTMLElement, string> = new WeakMap();
+
+function placeBubbleTime(timeSpan: HTMLElement, text: string) {
+  bubbleTimeTexts.set(timeSpan, text);
+  timeSpan.classList.toggle('is-block', isBubbleTimeBlock(text));
+}
+
 function shouldShowUnknownUserPlaceholder(peerSettings?: PeerSettings) {
   return peerSettings?.phone_country || peerSettings?.registration_month;
 }
@@ -854,6 +872,7 @@ export default class ChatBubbles {
   private reflowWasWidth: number;
   private saveReflowScrollDebounced: DebounceReturnType<ChatBubbles['saveReflowScroll']>;
   private appWindowUnsubs: (() => void)[] = [];
+  private disposeDirectionEffect: () => void;
 
   private renderingMessages: Set<FullMid> = new Set();
   private setPeerCached: boolean;
@@ -935,6 +954,10 @@ export default class ChatBubbles {
 
     // --- scroll preservation across viewport reflows (window/PiP-window resize, PiP pop-in/out) ---
     this.saveReflowScrollDebounced = debounce(this.saveReflowScroll, 200, false, true);
+    this.disposeDirectionEffect = createRoot((dispose) => {
+      createEffect(on(I18n.isRTL, this.placeBubbleTimesAnew, {defer: true}));
+      return dispose;
+    });
     // PiP pop-in/out: snapshot the scroll BEFORE the window flips (DOM still at the old size, nothing
     // reflowed), then re-pin once the moved DOM has settled in the new window (rAF; two frames safe).
     this.appWindowUnsubs.push(onBeforeAppWindowChange(this.saveReflowScroll));
@@ -1879,7 +1902,8 @@ export default class ChatBubbles {
           return true;
         },
         onSwipe: (xDiff) => {
-          controller.move(xDiff);
+          // * a reply is pulled toward the line's start: leftward, rightward in RTL
+          controller.move(I18n.getIsRTL() ? -xDiff : xDiff);
         },
         onReset: () => {
           controller.reset();
@@ -1964,7 +1988,7 @@ export default class ChatBubbles {
       }
       icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
 
-      const x = -Math.max(0, Math.min(MAX, xDiff));
+      const x = -Math.max(0, Math.min(MAX, xDiff)) * (I18n.getIsRTL() ? -1 : 1);
       const transform = `translateX(${x}px)`;
       target.style.transform = transform;
       if(swipeAvatar) {
@@ -2070,16 +2094,21 @@ export default class ChatBubbles {
     }, IDLE_DELAY, false);
 
     // Let an inner element (code block, wide table) consume the swipe if it can still scroll that way.
-    // The reply swipe only ever engages with deltaX > 0 (rightward), so we only care whether an inner
-    // element can still scroll right (i.e. isn't already at its right edge).
-    const childCanScrollX = (from: HTMLElement) => {
+    // The reply swipe only ever engages with a scroll toward the line's end (rightward, leftward in
+    // RTL), so we only care whether an inner element can still scroll that way. `scrollLeft` counts
+    // from the element's own start: 0 to max left to right, 0 to -max right to left.
+    const childCanScrollX = (from: HTMLElement, towardsRight: boolean) => {
       let element = from;
       while(element && element !== container) {
         if(element.scrollWidth > element.clientWidth) {
-          const overflowX = window.getComputedStyle(element).overflowX;
-          if((overflowX === 'auto' || overflowX === 'scroll') &&
-            element.scrollLeft < element.scrollWidth - element.clientWidth - 1) {
-            return true;
+          const style = window.getComputedStyle(element);
+          const overflowX = style.overflowX;
+          if(overflowX === 'auto' || overflowX === 'scroll') {
+            const max = element.scrollWidth - element.clientWidth;
+            const fromLeft = style.direction === 'rtl' ? max + element.scrollLeft : element.scrollLeft;
+            if(towardsRight ? fromLeft < max - 1 : fromLeft > 1) {
+              return true;
+            }
           }
         }
 
@@ -2096,20 +2125,22 @@ export default class ChatBubbles {
         return;
       }
 
-      // normalize line/page delta modes (horizontal tilt-wheel mice) to pixels
-      const deltaX = wheelDeltaToPixels(e.deltaX, e.deltaMode, container.clientWidth);
+      // normalize line/page delta modes (horizontal tilt-wheel mice) to pixels, counted toward the
+      // line's end (rightward, leftward in RTL): that drags the bubble toward the start, as a reply
+      const isRTL = I18n.getIsRTL();
+      const deltaX = wheelDeltaToPixels(e.deltaX, e.deltaMode, container.clientWidth) * (isRTL ? -1 : 1);
 
       if(axis === undefined) {
         // Only a horizontal-dominant swipe in the reply direction (deltaX > 0, i.e. dragging the
-        // bubble left) engages; the opposite direction is left untouched so the browser's
-        // back/forward swipe still works over the chat.
+        // bubble toward the line's start) engages; the opposite direction is left untouched so the
+        // browser's back/forward swipe still works over the chat.
         if(deltaX <= 0 ||
           Math.abs(deltaX) <= Math.abs(e.deltaY) ||
           this.chat.type === ChatType.Pinned ||
           this.chat.type === ChatType.Logs ||
           this.chat.selection.isSelecting ||
           !this.chat.input.canSendPlain() ||
-          childCanScrollX(e.target as HTMLElement) ||
+          childCanScrollX(e.target as HTMLElement, !isRTL) ||
           isPagingSlideshowTarget(e.target)) { // * pages through its items instead
           axis = 'y'; // vertical / wrong-direction / not repliable — ignore for the rest of the gesture
           idle();
@@ -5663,6 +5694,7 @@ export default class ChatBubbles {
 
     this.listenerSetter.removeAll();
     this.appWindowUnsubs.forEach((unsub) => unsub());
+    this.disposeDirectionEffect();
     this.saveReflowScrollDebounced?.clearTimeout();
 
     this.lazyLoadQueue.clear();
@@ -5673,6 +5705,14 @@ export default class ChatBubbles {
     this.observer && delete this.observer;
     this.stickyIntersector && delete this.stickyIntersector;
   }
+
+  private placeBubbleTimesAnew = () => {
+    for(const fullMid in this.bubbles) {
+      const timeSpan = this.bubbles[fullMid].timeSpan;
+      const text = timeSpan && bubbleTimeTexts.get(timeSpan);
+      if(text !== undefined) placeBubbleTime(timeSpan, text);
+    }
+  };
 
   public updateStickyIntersectorRootMargin = () => {
     const top = this.chat.chatPaddingTop[0]();
@@ -7790,10 +7830,7 @@ export default class ChatBubbles {
       previous.setAttribute(attribute.name, attribute.value);
     }
     previous.replaceChildren(...Array.from(next.childNodes));
-    previous.classList.toggle(
-      'is-block',
-      I18n.getIsRTL() ? !endsWithRTL(message.message || '') : isRTL(message.message || '', true)
-    );
+    placeBubbleTime(previous, message.message || '');
     if(status) this.setBubbleSendingStatus(bubble, status);
   }
 
@@ -9048,6 +9085,8 @@ export default class ChatBubbles {
       context.messageMedia?._ !== 'messageMediaPoll' &&
       context.messageMedia?._ !== 'messageMediaToDo';
     if(canUseSolidMessageBody) {
+      // * the text runs by its own direction, as the legacy path's `setInnerHTML` makes it
+      setDirection(messageDiv);
       const element = document.createElement('div');
       solidMessageBodyEntry = mountSolidMessageBody(
         element,
@@ -9116,7 +9155,6 @@ export default class ChatBubbles {
     }
 
     const isOut = context.isOut = this.chat.isOutMessage(message);
-    const haveRTLChar = isRTL(context.messageMessage, true);
 
     // A call bubble prints the message's time itself, at the head of its status
     // line, and has no delivery state worth showing — tdesktop says the same
@@ -9146,9 +9184,7 @@ export default class ChatBubbles {
         messageDiv.append(timeSpan, _clearfix ??= clearfix());
       });
 
-      if(I18n.getIsRTL() ? !endsWithRTL(context.messageMessage) : haveRTLChar) {
-        timeSpan.classList.add('is-block');
-      }
+      placeBubbleTime(timeSpan, context.messageMessage || '');
 
       if(isBroadcast) {
         setUnreadObserver?.(timeSpan);

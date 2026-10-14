@@ -171,7 +171,8 @@
       background-color: var(--avatar-online-color);
       width: 14px;
       height: 14px;
-      left: 2.4375rem;
+      // * at the inline-end corner
+      inset-inline-start: 2.4375rem;
       top: 2.4375rem;
     }
   }
@@ -215,7 +216,7 @@
   &-star {
     position: absolute;
     top: 65%;
-    left: 65%;
+    inset-inline-start: 65%;
     width: calc(var(--size) * 0.4);
     height: calc(var(--size) * 0.4);
     overflow: unset;
@@ -225,7 +226,7 @@
 
   &-auto-delete-timer {
     position: absolute;
-    right: -4px;
+    inset-inline-end: -4px;
     bottom: -2px;
     z-index: 1;
 

@@ -4,6 +4,7 @@ import InputField from '@components/inputField';
 import PeerTitle from '@components/peerTitle';
 import Section from '@components/section';
 import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
+import {joinSessionParts} from '@components/sidebarLeft/tabs/joinSessionParts';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {
   AppConnectedBotSessionTab,
@@ -313,10 +314,10 @@ const ActiveSessions: Component = () => {
           {[authorization().app_name, authorization().app_version].filter(Boolean).join(' ')}
         </Row.Title>
         <Row.Midtitle>
-          {[authorization().device_model, authorization().system_version || authorization().platform].filter(Boolean).join(', ')}
+          {joinSessionParts([authorization().device_model, authorization().system_version || authorization().platform], ', ')}
         </Row.Midtitle>
         <Row.Subtitle>
-          {[authorization().ip, authorization().country].filter(Boolean).join(' - ')}
+          {joinSessionParts([{ltr: authorization().ip}, authorization().country], ' - ')}
         </Row.Subtitle>
       </Row>
     );
@@ -343,7 +344,7 @@ const ActiveSessions: Component = () => {
           <PeerTitleTsx peerId={peerId()} />
         </Row.Title>
         <Row.Midtitle>
-          {[bot().device, bot().location].filter(Boolean).join(', ')}
+          {joinSessionParts([bot().device, bot().location], ', ')}
         </Row.Midtitle>
         <Row.Subtitle>{i18n('ChatAutomation.Session')}</Row.Subtitle>
       </Row>

@@ -263,8 +263,9 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
     svgContainer.classList.add('audio-waveform-background');
   }
 
+  // * the waveform follows the tape, not the line: left to right in any language
   const waveformContainer = (
-    <div class="audio-waveform-container">
+    <div class="audio-waveform-container" dir="ltr">
       {svgContainer && [svgContainer, fakeSvgContainer]}
     </div>
   ) as HTMLElement;

@@ -131,7 +131,7 @@
       }
 
       .loading-dialog-skeleton {
-        padding-left: 13px;
+        padding-inline-start: 13px;
       }
 
       .chatlist-chat {
@@ -180,7 +180,7 @@
 
     .btn-update {
       position: fixed !important;
-      left: calc(var(--page-chats-padding) + 12px) !important;
+      inset-inline-start: calc(var(--page-chats-padding) + 12px) !important;
       z-index: 4;
     }
 
@@ -276,7 +276,7 @@
     margin-inline-end: var(--page-chats-padding);
 
     body:not(.is-left-column-shown) & {
-      transform: translate3d(-25vw, 0, 0);
+      transform: translate3d(calc(-25vw * var(--reflect)), 0, 0);
       opacity: 0;
     }
   }
@@ -656,7 +656,7 @@
 
     &-notifications {
       position: absolute;
-      right: -4px;
+      inset-inline-end: -4px;
       top: -2px;
       font-size: 12px;
     }
@@ -672,7 +672,7 @@
           --padding-right: .75rem;
 
           .btn-menu-item-text {
-            margin-right: .75rem;
+            margin-inline-end: .75rem;
           }
         }
       }
@@ -694,7 +694,7 @@
 #folders-sidebar {
   .sidebar-tools-button-notifications {
     top: .5rem;
-    right: .75rem;
+    inset-inline-end: .75rem;
     pointer-events: none;
   }
 }
@@ -790,7 +790,7 @@
 .folder-categories {
   .checkbox-field {
     position: absolute;
-    right: 1.125rem !important;
+    inset-inline-end: 1.125rem !important;
   }
 }
 
@@ -920,9 +920,10 @@
       height: 160px;
       margin: 1rem auto 1.3125rem;
 
+      // * an optical nudge of the artwork, which is never mirrored
       .lottie,
       .lottie-vector {
-        inset-inline-start: .625rem;
+        left: .625rem;
       }
     }
   }
@@ -931,7 +932,7 @@
     font-size: var(--font-size-14);
     margin-top: -1rem;
     color: var(--danger-color);
-    margin-left: 0.25rem;
+    margin-inline-start: 0.25rem;
     height: 1lh;
   }
 }
@@ -1031,7 +1032,8 @@
     background-color: var(--background-color);
     border-radius: 2px;
     z-index: 1;
-    margin-left: calc(var(--option-width) / -2);
+    // * centred on the point `RangeStepsSelector` puts it at, from the inline start
+    margin-inline-start: calc(var(--option-width) / -2);
 
     &.active {
       background-color: var(--primary-color);
@@ -1045,14 +1047,14 @@
       top: -1.875rem;
     }
 
+    // * the outer labels hang inwards from their ends of the track
     &.is-first &-text {
-      left: -2px;
+      inset-inline: -2px auto;
       transform: unset;
     }
 
     &.is-last &-text {
-      left: unset;
-      right: -2px;
+      inset-inline: auto -2px;
       transform: unset;
     }
   }
@@ -1091,21 +1093,22 @@
       }
 
       $media-corner-radius: calc(#{$border-radius-big} - 4px);
+      // * the corners are by place in the grid (`markGridCornerItem`), which runs along the line
       &.is-corner-tl {
-        &:after { border-top-left-radius: $border-radius-big; }
-        .grid-item-media { border-top-left-radius: $media-corner-radius; }
+        &:after { border-start-start-radius: $border-radius-big; }
+        .grid-item-media { border-start-start-radius: $media-corner-radius; }
       }
       &.is-corner-tr {
-        &:after { border-top-right-radius: $border-radius-big; }
-        .grid-item-media { border-top-right-radius: $media-corner-radius; }
+        &:after { border-start-end-radius: $border-radius-big; }
+        .grid-item-media { border-start-end-radius: $media-corner-radius; }
       }
       &.is-corner-bl {
-        &:after { border-bottom-left-radius: $border-radius-big; }
-        .grid-item-media { border-bottom-left-radius: $media-corner-radius; }
+        &:after { border-end-start-radius: $border-radius-big; }
+        .grid-item-media { border-end-start-radius: $media-corner-radius; }
       }
       &.is-corner-br {
-        &:after { border-bottom-right-radius: $border-radius-big; }
-        .grid-item-media { border-bottom-right-radius: $media-corner-radius; }
+        &:after { border-end-end-radius: $border-radius-big; }
+        .grid-item-media { border-end-end-radius: $media-corner-radius; }
       }
 
       &.active {
@@ -1220,7 +1223,8 @@
 
   .btn-control {
     margin-top: 1.75rem;
-    padding: 0 1.0625rem 0 1.25rem;
+    padding-block: 0;
+    padding-inline: 1.25rem 1.0625rem;
 
     &:before {
       margin-inline-end: .625rem;
@@ -1395,14 +1399,14 @@
     box-shadow: 0 0 0px 0.5px rgba(128, 128, 128, 1);
   }
 
-  // Left column: handle sits on its right edge. Right column: handle on its
-  // left edge.
+  // Left column: handle sits on its inline-end edge (the right one in LTR).
+  // Right column: handle on its inline-start edge. Both face the chat.
   &-left {
-    right: -3px;
+    inset-inline-end: -3px;
   }
 
   &-right {
-    left: -3px;
+    inset-inline-start: -3px;
   }
 
   html:has(.btn-menu.active) &,

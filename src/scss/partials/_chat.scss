@@ -160,10 +160,6 @@
     margin: 0 !important;
     width: var(--size);
 
-    .is-rtl & {
-      transform: scaleX(-1);
-    }
-
     @include hover() {
       background-color: var(--dark-primary-color) !important;
     }
@@ -599,12 +595,12 @@
 
 	@include respond-to(handhelds) {
 		body.is-left-column-shown & {
-			transform: translate3d(100vw, 0, 0);
+			transform: translate3d(calc(100vw * var(--reflect)), 0, 0);
 			opacity: 0;
 		}
 
 		body.is-right-column-shown & {
-			transform: translate3d(-25vw, 0, 0);
+			transform: translate3d(calc(-25vw * var(--reflect)), 0, 0);
 			opacity: 0;
 		}
 	}
@@ -612,7 +608,7 @@
 	@include respond-to(floating-left-sidebar) {
 		body.is-left-column-shown & {
 			//transform: translate3d(26.5rem, 0, 0);
-			transform: translate3d(26.5625rem, 0, 0); // + 1px to show left border
+			transform: translate3d(calc(26.5625rem * var(--reflect)), 0, 0); // + 1px to show left border
 
 			.sidebar-close-button {
         &:before {
@@ -646,10 +642,10 @@
 
   &:not(.active) {
     opacity: 0;
-    transform: translate3d(-200px, 0, 0);
+    transform: translate3d(calc(-200px * var(--reflect)), 0, 0);
 
     &:last-child {
-      transform: translate3d(200px, 0, 0);
+      transform: translate3d(calc(200px * var(--reflect)), 0, 0);
     }
 
     // reduced: the chats crossfade in place

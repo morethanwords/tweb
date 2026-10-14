@@ -95,7 +95,7 @@ export default function FolderItem(props: FolderItemProps) {
         />
       </Show>
       <Show when={title()}>
-        <div class="folders-sidebar__folder-item-name">{title()}</div>
+        <div class="folders-sidebar__folder-item-name" dir="auto">{title()}</div>
       </Show>
       <Show when={hasNotifications()}>
         <Badge

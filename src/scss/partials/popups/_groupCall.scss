@@ -82,7 +82,7 @@
 
     &-info {
       flex: 1 1 auto;
-      margin-left: 1.5rem;
+      margin-inline-start: 1.5rem;
       overflow: hidden;
     }
 
@@ -178,7 +178,7 @@
   }
 
   &-participant {
-    padding-right: .5rem;
+    padding-inline-end: .5rem;
 
     // On the e2e blockchain (so it holds the current call key) but absent from
     // the SFU roster — visible, but not connected to the media and not
@@ -196,7 +196,7 @@
 
       &-icon {
         vertical-align: middle;
-        margin-right: 6px;
+        margin-inline-end: 6px;
         line-height: 1;
         display: inline-block;
         font-size: 1.125rem;
@@ -211,12 +211,12 @@
 
     .dialog-title,
     .dialog-subtitle {
-      padding-right: 2.5rem;
+      padding-inline-end: 2.5rem;
     }
 
     &-muted-icon-container {
       position: absolute !important;
-      right: .5rem;
+      inset-inline-end: .5rem;
     }
 
     // Sliding to a new place (createListGlide): opaque over the rows it passes, as the chat list's
@@ -249,12 +249,13 @@
   }
 
   // One camera or screencast. The grid (videoGrid.ts) gives it its size and moves it with a
-  // transform from the top left corner of its host.
+  // transform from the top left corner of its host (physical: the grid mirrors its rects in RTL).
+  // It grows in and shrinks out from its inline-start corner.
   &-video-tile {
     position: absolute;
     top: 0;
     left: 0;
-    transform-origin: 0 0;
+    transform-origin: var(--transform-origin-inline-start) top;
     border-radius: var(--gc-tile-radius);
     overflow: hidden;
     background-color: var(--gc-tile-background);
@@ -366,7 +367,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 .5rem 0 .75rem;
+      padding-inline: .75rem .5rem;
       line-height: var(--line-height);
 
       .peer-title {
@@ -395,7 +396,7 @@
 
       &-right {
         flex: 0 0 auto;
-        margin-left: .75rem;
+        margin-inline-start: .75rem;
         width: 2rem;
         height: 2rem;
       }
@@ -403,7 +404,7 @@
 
     &-pin {
       top: .75rem;
-      right: .75rem;
+      inset-inline-end: .75rem;
       font-size: 1.5rem;
     }
 
@@ -556,13 +557,13 @@
     > .popup-body {
       position: absolute;
       top: 0;
-      right: 0;
+      inset-inline-end: 0;
       bottom: 0;
       z-index: 1;
       width: var(--gc-right-column-width);
       background-color: var(--gc-background-color);
       padding: inherit;
-      transform: translateX(100%);
+      transform: translateX(calc(100% * var(--reflect)));
       visibility: hidden;
 
       @include animation-level(2) {
@@ -629,13 +630,14 @@
       }
     }
 
+    // centred over the stage, which the column (at the inline end) narrows
     &.is-right-column-shown {
       .group-call-buttons {
-        transform: translateX(calc(var(--gc-right-column-width) / -2));
+        transform: translateX(calc(var(--gc-right-column-width) / -2 * var(--reflect)));
       }
 
       .popup-container {
-        --translateX: calc(var(--gc-right-column-width) / -2);
+        --translateX: calc(var(--gc-right-column-width) / -2 * var(--reflect));
       }
     }
 

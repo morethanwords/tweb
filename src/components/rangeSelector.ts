@@ -1,4 +1,7 @@
 import attachGrabListeners, {GrabEvent} from '@helpers/dom/attachGrabListeners';
+import keepLeftToRight from '@helpers/dom/keepLeftToRight';
+import {isElementRTL} from '@helpers/dom/isDocumentRTL';
+import onRangeInlineArrowKey from '@helpers/dom/onRangeInlineArrowKey';
 import clamp from '@helpers/number/clamp';
 import safeAssign from '@helpers/object/safeAssign';
 import I18n, {LangPackKey} from '@lib/langPack';
@@ -10,6 +13,8 @@ export default class RangeSelector {
 
   public mousedown = false;
   protected rect: DOMRect;
+  // * whether the grab in progress runs right to left: the slider's own direction, an island's included
+  protected rtl = false;
   protected _removeListeners: () => void;
 
   private events: Partial<{
@@ -29,6 +34,8 @@ export default class RangeSelector {
   protected useProperty = false;
   protected vertical = false;
   protected offsetAxisValue = 0;
+  /** A media playback bar: runs left to right in any language, as it follows the tape */
+  protected keepLTR = false;
 
   constructor(
     options: {
@@ -40,7 +47,8 @@ export default class RangeSelector {
       useTransform?: RangeSelector['useTransform'],
       vertical?: RangeSelector['vertical'],
       useProperty?: RangeSelector['useProperty'],
-      offsetAxisValue?: RangeSelector['offsetAxisValue']
+      offsetAxisValue?: RangeSelector['offsetAxisValue'],
+      keepLTR?: RangeSelector['keepLTR']
     },
     value = 0
   ) {
@@ -48,6 +56,9 @@ export default class RangeSelector {
 
     this.container = document.createElement('div');
     this.container.classList.add('progress-line');
+    if(this.keepLTR) {
+      keepLeftToRight(this.container);
+    }
 
     // there is no sense in using transition with transform, because it is updating every frame
     if(this.useTransform) {
@@ -104,6 +115,7 @@ export default class RangeSelector {
 
   protected onMouseDown = (event: GrabEvent) => {
     this.rect = this.container.getBoundingClientRect();
+    this.rtl = !this.vertical && isElementRTL(this.container);
     this.mousedown = true;
     this.scrub(event);
     this.container.classList.add('is-focused');
@@ -118,6 +130,7 @@ export default class RangeSelector {
 
   public setListeners() {
     this.seek.addEventListener('input', this.onInput);
+    if(!this.vertical) this.seek.addEventListener('keydown', onRangeInlineArrowKey);
     this._removeListeners = attachGrabListeners(this.container, this.onMouseDown, this.onMouseMove, this.onMouseUp);
   }
 
@@ -170,7 +183,7 @@ export default class RangeSelector {
       rectMax
     );
 
-    if(!this.vertical && I18n.getIsRTL()) {
+    if(this.rtl) {
       offsetAxisValue = rectMax - offsetAxisValue;
     }
 
@@ -204,6 +217,7 @@ export default class RangeSelector {
     }
 
     this.seek.removeEventListener('input', this.onInput);
+    this.seek.removeEventListener('keydown', onRangeInlineArrowKey);
 
     this.events = {};
   }

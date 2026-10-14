@@ -76,7 +76,7 @@ export default function showStarGiftValuePopup(options: {
               {paymentsWrapCurrencyAmount(value.last_sale_price, value.currency)}
             </span>
             <TableButton>
-              {diff > 0 ? '+' : ''}{Math.round(diff)}%
+              <span dir="ltr">{diff > 0 ? '+' : ''}{Math.round(diff)}%</span>
             </TableButton>
           </>
         ])
@@ -134,7 +134,7 @@ export default function showStarGiftValuePopup(options: {
             extraOptions={{play: true, loop: false}}
           />
 
-          <div class={/* @once */ styles.value}>
+          <div class={/* @once */ styles.value} dir="auto">
             {paymentsWrapCurrencyAmount(value.value, value.currency)}
           </div>
 

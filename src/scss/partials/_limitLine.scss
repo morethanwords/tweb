@@ -1,5 +1,21 @@
 @use "../shared" as *;
 
+// * the hint's tail hanging from its bottom-left / bottom-right corner (the shape is drawn for the right)
+@mixin limit-hint-tail-left() {
+  transform: scaleX(-1);
+  left: 0;
+  transform-origin: left center;
+  margin-left: 20.6px;
+  background-position-x: -5%;
+}
+
+@mixin limit-hint-tail-right() {
+  transform: none;
+  left: 100%;
+  margin-left: -20.6px;
+  background-position-x: 134%;
+}
+
 .limit-line {
   height: 2rem;
   border-radius: $border-radius-medium;
@@ -36,7 +52,8 @@
     align-items: center;
     justify-content: center;
     font-weight: var(--font-weight-bold);
-    transform: scale(.6) translate(-280px, 16px) rotate(-30deg);
+    // * flies in from the inline start
+    transform: scale(.6) translate(calc(-280px * var(--reflect)), 16px) rotate(calc(-30deg * var(--reflect)));
 
     @include animation-level(2) {
       transition: transform .3s cubic-bezier(.12, 1.1, .56, 1.2)/* , left .3s cubic-bezier(.12, 1.1, .56, 1.2) */;
@@ -47,11 +64,11 @@
     }
 
     &:not(.is-locked) {
-      --translateX: -50%;
-      left: var(--limit-progress);
+      --translateX: calc(-50% * var(--reflect));
+      inset-inline-start: var(--limit-progress);
       padding: 0 .75rem;
       position: absolute;
-      background: linear-gradient(73.4deg, #6C93FF -7.21%, #976FFF 114.57%, #DF69D1 241.52%);
+      background: linear-gradient(calc(73.4deg * var(--reflect)), #6C93FF -7.21%, #976FFF 114.57%, #DF69D1 241.52%);
       background-size: 200px var(--height);
   
       &:after {
@@ -73,42 +90,54 @@
 
     &.is-locked {
       --height: 2.75rem;
-      padding: 0 1.25rem 0 1rem;
-      margin-right: -.25rem;
+      padding-block: 0;
+      padding-inline: 1rem 1.25rem;
+      margin-inline-end: -.25rem;
       background-color: var(--primary-color);
     }
 
+    // * the tail and the gradient are drawn for a physical edge: in RTL the start is the right edge,
+    // * so it takes what LTR draws at the end, and the other way round
     &.is-start {
-      left: 0;
-      border-bottom-left-radius: 0;
+      inset-inline-start: 0;
+      border-end-start-radius: 0;
 
       &:after {
-        transform: scaleX(-1);
-        left: 0;
-        transform-origin: left center;
-        margin-left: 20.6px;
-        background-position-x: -5%;
+        @include limit-hint-tail-left();
+      }
+
+      .is-rtl & {
+        background-position-x: 100% !important;
+
+        &:after {
+          @include limit-hint-tail-right();
+        }
       }
     }
 
     &.is-end {
-      right: 0;
-      left: auto;
-      border-bottom-right-radius: 0;
+      inset-inline: auto 0;
+      border-end-end-radius: 0;
       background-position-x: 100% !important;
       min-width: 66px;
 
       &:after {
-        left: 100%;
-        margin-left: -20.6px;
-        background-position-x: 134%;
+        @include limit-hint-tail-right();
+      }
+
+      .is-rtl & {
+        background-position-x: 0 !important;
+
+        &:after {
+          @include limit-hint-tail-left();
+        }
       }
     }
 
     &.is-end,
     &.is-start {
       --translateX: 0;
-      background: linear-gradient(84.4deg,#6c93ff -4.85%,#976fff 51.72%,#df69d1 110.7%);
+      background: linear-gradient(calc(84.4deg * var(--reflect)),#6c93ff -4.85%,#976fff 51.72%,#df69d1 110.7%);
       background-size: 200px var(--height);
 
       @include animation-level(2) {
@@ -124,7 +153,7 @@
 
     &-icon {
       font-size: 1.25rem;
-      margin-right: .25rem;
+      margin-inline-end: .25rem;
       display: flex;
     }
   }
@@ -142,8 +171,9 @@
   &-absolute {
     position: absolute;
     inset: 0;
+    // * filled from the inline start (90deg is to the right)
     -webkit-mask-image: linear-gradient(
-      to right,
+      calc(90deg * var(--reflect)),
       rgb(0, 0, 0) var(--limit-progress),
       rgba(0, 0, 0, 0) calc(var(--limit-progress) + 0.01%)
     );
@@ -157,6 +187,6 @@
 
   &-filled {
     color: #fff;
-    --limit-background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+    --limit-background: linear-gradient(calc(84.4deg * var(--reflect)), #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
   }
 }

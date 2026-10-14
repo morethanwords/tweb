@@ -242,9 +242,9 @@
     // selection prepends the checkbox into the row, so the icon and the download preloader
     // (z-index 1) after it paint on top of it
     z-index: 3;
-    margin-left: calc(var(--padding-left) * -1 + var(--icon-size) - var(--size) + var(--margin-left));
+    margin-inline-start: calc(var(--padding-left) * -1 + var(--icon-size) - var(--size) + var(--margin-left));
     margin-top: calc(var(--icon-size) - var(--size) + var(--margin-top));
     top: auto;
-    left: auto;
+    inset-inline-start: auto;
   }
 }

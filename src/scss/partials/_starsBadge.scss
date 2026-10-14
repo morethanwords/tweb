@@ -4,8 +4,7 @@
   height: 20px;
   border-radius: 10px;
 
-  padding-left: 5px;
-  padding-right: 6px;
+  padding-inline: 5px 6px;
 
   display: flex;
   align-items: center;
@@ -57,9 +56,9 @@
 
 .dialog-stars-badge {
   top: 2px;
-  left: 58px;
+  inset-inline-start: 58px;
 
-  transform: translate(-100%);
+  transform: translate(calc(-100% * var(--reflect)));
 
   // z-index: 4;
 }

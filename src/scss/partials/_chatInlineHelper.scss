@@ -16,7 +16,7 @@
   &-separator {
     height: 1px;
     width: 100%;
-    margin-left: 4rem;
+    margin-inline-start: 4rem;
     background-color: var(--border-color);
 
     &:last-child {
@@ -35,12 +35,13 @@
     #{$parent} {
       &-result {
         height: 4rem;
-        padding: .5rem .5rem .5rem 4rem;
+        padding-block: .5rem;
+        padding-inline: 4rem .5rem;
         line-height: var(--line-height);
     
         &-preview {
           position: absolute;
-          left: .5rem;
+          inset-inline-start: .5rem;
           width: 3rem !important;
           height: 3rem !important;
           overflow: hidden;

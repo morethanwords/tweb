@@ -756,6 +756,10 @@
       {
         "name": "countries",
         "type": "HelpCountriesList.helpCountriesList"
+      },
+      {
+        "name": "rtl",
+        "type": "boolean"
       }
     ]
   },

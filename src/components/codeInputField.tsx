@@ -188,8 +188,10 @@ export function CodeInputField(props: {
   subscribeOn(document)('selectionchange', () => onSelectionChange())
 
   let inputRef!: HTMLInputElement;
+  // a code reads left to right in any language: the first digit is in the leftmost box
   return (
     <div
+      dir="ltr"
       class={classNames(
         styles.wrap,
         props.error && styles.error,

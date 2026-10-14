@@ -2,6 +2,7 @@ import contextMenuController from '@helpers/contextMenuController';
 import Modes from '@config/modes';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import {FloatingMenuDirection, positionFloatingMenu} from '@helpers/positionMenu';
 import {doubleRaf} from '@helpers/schedulers';
 
@@ -104,7 +105,8 @@ export default function attachFloatingButtonMenu({
   };
 
   function onKeyDown(e: KeyboardEvent) {
-    if(e.key !== 'ArrowRight' && e.key !== 'Enter' && e.key !== ' ') {
+    // * a submenu opens at the inline end: ArrowLeft opens it in RTL
+    if(e.key !== getInlineArrowKeys().next && e.key !== 'Enter' && e.key !== ' ') {
       return;
     }
 

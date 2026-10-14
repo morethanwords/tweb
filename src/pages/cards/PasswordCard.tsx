@@ -12,6 +12,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import htmlToSpan from '@helpers/dom/htmlToSpan';
 import replaceContent from '@helpers/dom/replaceContent';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 import formatDuration from '@helpers/formatDuration';
 import mediaSizes from '@helpers/mediaSizes';
 import {AccountPassword} from '@layer';
@@ -131,7 +132,10 @@ export default function PasswordCard(_props: {spec: Spec}) {
       state = _state;
 
       if(state.hint) {
-        replaceContent(passwordInputField.label, htmlToSpan(wrapEmojiText(state.hint)));
+        // the user's own words: they order by their own direction
+        const hint = htmlToSpan(wrapEmojiText(state.hint));
+        setDirection(hint);
+        replaceContent(passwordInputField.label, hint);
       } else {
         passwordInputField.setLabel();
       }

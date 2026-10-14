@@ -86,7 +86,7 @@ function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
       tooltipTextElement={i18n('StarGiftAttributeTooltip', [percent])}
       tooltipClass="popup-star-gift-info-tooltip"
     >
-      {percent}
+      <span dir="ltr">{percent}</span>
     </TableButtonWithTooltip>
   );
 }
@@ -101,10 +101,11 @@ export function AttributeValue(props: {name: string, rarity: StarGiftAttributeRa
           tabindex={Modes.a11y ? 0 : undefined}
           onClick={props.onClick}
           onKeyDown={buttonKeyDown}
+          dir="auto"
         >
           {props.name}
         </span>
-      ) : props.name}
+      ) : <span dir="auto">{props.name}</span>}
       <AttributeTableButton rarity={props.rarity} />
     </div>
   )
@@ -290,8 +291,11 @@ function UpgradeAnimation(props: {
 
     const containerWidth = modelsContainer.parentElement!.offsetWidth;
     const totalModelsWidth = MODELS_COUNT * MODEL_WIDTH + (MODELS_COUNT - 1) * MODEL_GAP;
-    const startOffset = (containerWidth - MODEL_WIDTH) / 2;
-    const endOffset = -(totalModelsWidth - containerWidth + startOffset);
+    // * the strip starts at the inline start and rolls toward it: rightward in a right-to-left layout
+    const reflect = I18n.getIsRTL() ? -1 : 1;
+    const startGap = (containerWidth - MODEL_WIDTH) / 2;
+    const startOffset = startGap * reflect;
+    const endOffset = -(totalModelsWidth - containerWidth + startGap) * reflect;
     const containerCenter = containerWidth / 2;
     const modelDivs = Array.from(modelsContainer.children) as HTMLDivElement[];
 
@@ -345,9 +349,10 @@ function UpgradeAnimation(props: {
       props.confetti.create({mode: 'poppers'});
     }, MODELS_DURATION - 750);
 
+    // * the colours follow the models: the gradient runs toward the inline end (see its style)
     setTimeout(() => backdropEl.animate([
-      {backgroundPosition: '0% 0%'},
-      {backgroundPosition: '100% 0%'}
+      {backgroundPosition: `${reflect > 0 ? 0 : 100}% 0%`},
+      {backgroundPosition: `${reflect > 0 ? 100 : 0}% 0%`}
     ], {
       duration: BACKDROPS_DURATION,
       easing: 'linear',
@@ -365,7 +370,7 @@ function UpgradeAnimation(props: {
         ref={backdropEl}
         class="popup-star-gift-info-upgrade-backdrops"
         style={{
-          'background': `linear-gradient(to right, ${gradientStopsStr})`,
+          'background': `linear-gradient(to ${I18n.getIsRTL() ? 'left' : 'right'}, ${gradientStopsStr})`,
           'background-size': `${totalSections * 100}% 100%`
         }}
       />
@@ -781,7 +786,7 @@ export default function showStarGiftInfoPopup(options: {
           rows.push([
             'StarGiftValue',
             <>
-              ~{paymentsWrapCurrencyAmount(props.value.value, props.value.currency)}
+              <span dir="ltr">~{paymentsWrapCurrencyAmount(props.value.value, props.value.currency)}</span>
               <TableButton
                 text="StarGiftValueLearnMore"
                 onClick={() => {

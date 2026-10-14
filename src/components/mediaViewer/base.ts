@@ -68,6 +68,9 @@ import {MediaSize} from '@helpers/mediaSize';
 import {getRtmpStreamUrl} from '@lib/rtmp/url';
 import boxBlurCanvasRGB from '@vendor/fastBlur';
 import {i18n} from '@lib/langPack';
+import {setDirection} from '@helpers/dom/setInnerHTML';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import getQualityLevels, {playsOverHls} from '@lib/hls/getQualityLevels';
 import {snapQualityHeight} from '@lib/hls/snapQualityHeight';
 import {ButtonMenuItemWithAuxiliaryText} from '@lib/mediaPlayer/qualityLevelsSwitchButton';
@@ -433,12 +436,14 @@ export default class AppMediaViewerBase<
     topbarLeft.append(this.buttons['mobile-close'], this.author.container);
     topbar.append(topbarLeft, buttonsDiv);
 
+    // * the media pages in reading order: next at the inline end, on the left in RTL (and so the arrow
+    // * keys, the swipes and the slide)
     this.buttons.prev = document.createElement('div');
-    this.buttons.prev.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-left`;
+    this.buttons.prev.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-prev`;
     this.buttons.prev.append(Icon('previous', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-prev-button`));
 
     this.buttons.next = document.createElement('div');
-    this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-right`;
+    this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-next`;
     this.buttons.next.append(Icon('next', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-next-button`));
 
     this.moversContainer = document.createElement('div');
@@ -558,7 +563,8 @@ export default class AppMediaViewerBase<
 
         const percents = Math.abs(xDiff) / windowSize.width;
         if(percents > .2 || Math.abs(xDiff) > 125) {
-          if(xDiff > 0) {
+          // * a drag toward the inline end brings the previous one in
+          if((xDiff > 0) !== isDocumentRTL()) {
             this.buttons.prev.click();
           } else {
             this.buttons.next.click();
@@ -1157,10 +1163,11 @@ export default class AppMediaViewerBase<
 
     const key = e.key;
 
+    const inlineKeys = getInlineArrowKeys();
     let good = true;
-    if(key === 'ArrowRight') {
+    if(key === inlineKeys.next) {
       !this.isZooming && this.buttons.next.click();
-    } else if(key === 'ArrowLeft') {
+    } else if(key === inlineKeys.previous) {
       !this.isZooming && this.buttons.prev.click();
     } else if(key === '-' || key === '=') {
       if(this.ctrlKeyDown) {
@@ -1397,7 +1404,8 @@ export default class AppMediaViewerBase<
     let top: number;
 
     if(wasActive) {
-      left = fromRight === 1 ? windowSize.width : -containerRect.width;
+      // * the next one comes in from the inline end
+      left = (fromRight === 1) !== isDocumentRTL() ? windowSize.width : -containerRect.width;
       top = containerRect.top;
     } else {
       left = rect.left;
@@ -2029,6 +2037,7 @@ export default class AppMediaViewerBase<
       const title = wrapTitlePromise = document.createElement('span');
       title.append(wrapEmojiText(fromId));
       title.classList.add('peer-title');
+      setDirection(title);
     }
 
     const oldAvatar = this.author.avatarEl;
@@ -2325,7 +2334,7 @@ export default class AppMediaViewerBase<
 
     const wasActive = fromRight !== 0;
     if(wasActive) {
-      this.moveTheMover(this.content.mover, fromRight === 1);
+      this.moveTheMover(this.content.mover, (fromRight === 1) !== isDocumentRTL());
       this.setNewMover();
     } else {
       this.navigationItem = {

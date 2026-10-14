@@ -503,7 +503,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
 
         const tablePeer = (isReceipt || subscription) && peerId && makeTablePeer(peerId);
 
-        const transactionIdSpan = transactionId && (<span onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
+        const transactionIdSpan = transactionId && (<span dir="ltr" onClick={onTransactionClick}>{wrapRichText(transactionId, {entities: [{_: 'messageEntityCode', length: transactionId.length, offset: 0}]})}</span>);
 
         let tableContent: Parameters<typeof Table>[0]['content'];
         if(subscription) {

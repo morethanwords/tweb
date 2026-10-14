@@ -3,6 +3,7 @@ import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import attachGrabListeners from '@helpers/dom/attachGrabListeners';
 import clamp from '@helpers/number/clamp';
 import InputField, {InputState} from '@components/inputField';
+import I18n from '@lib/langPack';
 import {observeResize} from './resizeObserver';
 
 export type ColorPickerColor = {
@@ -270,12 +271,7 @@ export default class ColorPicker {
     this.saturationHandler(this.boxRect.left + boxX, this.boxRect.top + boxY, false);
 
     // Set hue
-    this.hueRect = this.elements.hue.getBoundingClientRect();
-
-    const percentHue = color.h / 360;
-    const hueX = this.hueRect.left + this.hueRect.width * percentHue;
-
-    this.hueHandler(hueX, false);
+    this.setHuePercents(color.h / 360, false);
 
     // Set values
     this.hue = color.h;
@@ -325,6 +321,11 @@ export default class ColorPicker {
     const eventX = clamp(pageX - this.hueRect.left, 0, this.hueRect.width);
 
     const percents = eventX / this.hueRect.width;
+    // * the hue runs from the inline start: in RTL the strip is drawn mirrored (`_colorPicker.scss`)
+    this.setHuePercents(I18n.getIsRTL() ? 1 - percents : percents, update);
+  }
+
+  private setHuePercents(percents: number, update = true) {
     this.hue = Math.round(360 * percents);
 
     const hsla = `hsla(${this.hue}, 100%, 50%, ${this.alpha})`;

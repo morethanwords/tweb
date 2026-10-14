@@ -80,7 +80,8 @@ export default function LanguageChangeButton(): JSX.Element {
         disabled={submitting()}
         onClick={onClick}
       >
-        {content()}
+        {/* in the suggested language, not the page's: it orders by its own direction */}
+        <span dir="auto">{content()}</span>
         <Show when={submitting()}>
           <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
             <circle class="preloader-path" cx="50" cy="50" r="20" fill="none" stroke-miterlimit="10"/>

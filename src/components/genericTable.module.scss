@@ -62,7 +62,9 @@ $table-border-color: color-mix(in srgb, var(--message-status-color) 32%, var(--m
   padding: var(--table-cell-padding, calc(.5rem * var(--iv-scale, 1)));
   position: relative;
   vertical-align: top;
-  text-align: left;
+  // * a cell with no alignment of its own follows the line - the right side in an RTL article -
+  // * while `align_right` is the right, the way HTML's `align="right"` is
+  text-align: start;
 
   &.cellAlignCenter { text-align: center; }
   &.cellAlignRight { text-align: right; }

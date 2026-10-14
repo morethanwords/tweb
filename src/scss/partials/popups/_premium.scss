@@ -97,7 +97,7 @@
 
     &-icon {
       font-size: 24px;
-      margin-left: 10px;
+      margin-inline-start: 10px;
     }
   }
 
@@ -203,7 +203,8 @@
     overflow: hidden;
     border-radius: 36px 36px 0 0;
     // transform: perspective(200px) translate3d(calc(var(--scroll-progress-converted) * -30%), calc(var(--y-static) + var(--abs-scroll-progress-converted) * var(--y-dynamic)), 0) rotateY(calc(var(--scroll-progress-converted) * 40deg));
-    transform: perspective(200px) translate3d(0px, calc(var(--y-static) + var(--abs-scroll-progress-converted) * var(--y-dynamic)), 0) rotateY(calc(var(--scroll-progress-converted) * -5deg));
+    // * the frame turns toward where the slide goes, and slides go the other way in a right-to-left layout
+    transform: perspective(200px) translate3d(0px, calc(var(--y-static) + var(--abs-scroll-progress-converted) * var(--y-dynamic)), 0) rotateY(calc(var(--scroll-progress-converted) * -5deg * var(--reflect)));
     
     @include animation-level(2) {
       transition: transform var(--transition-standard-in);
@@ -517,8 +518,6 @@
     overflow: hidden;
     height: 3.25rem;
     transform: translateX(-50%);
-    // the row slides by a dot count from its left edge, whatever the language
-    direction: ltr;
 
     &-dots {
       --dots-color: var(--border-color);
@@ -527,7 +526,8 @@
       gap: var(--dot-gap);
       align-items: center;
       margin-top: -.0625rem;
-      transform: translateX(calc(var(--start) * var(--dot-step) * -1));
+      // * slides toward the inline start: the later dots lie to the left in a right-to-left layout
+      transform: translateX(calc(var(--start) * var(--dot-step) * -1 * var(--reflect)));
 
       @include animation-level(2) {
         transition: transform var(--transition-standard-in);

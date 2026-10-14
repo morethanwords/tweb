@@ -8,6 +8,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 
 import {getEnabledMenuItems, handleMenuKeyDown} from '@helpers/dom/menuKeyboard';
+import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import {onAppWindowChange} from '@helpers/appWindow';
 import Modes from '@config/modes';
 
@@ -57,7 +58,8 @@ class ContextMenuController extends OverlayClickHandler {
     }
 
 
-    if(e.key === 'ArrowLeft' && menu !== this.element) {
+    // * back toward the parent menu, which a submenu opens away from along the line
+    if(e.key === getInlineArrowKeys().previous && menu !== this.element) {
       e.preventDefault();
       this.closeFocusedAdditionalMenu();
       return;

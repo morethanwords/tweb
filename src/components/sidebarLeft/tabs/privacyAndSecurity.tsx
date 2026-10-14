@@ -529,7 +529,9 @@ const PrivacyAndSecurity: Component = () => {
 
             const subtitle: JSX.Element[] = [i18n(langKey)];
             if(disallowLength || allowLength) {
-              subtitle.push(` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`);
+              // * signed counts read left to right in any language, "(-2, +3)", not "(2-, 3+)"
+              const counts = `(${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`;
+              subtitle.push(' ', <span dir="ltr">{counts}</span>);
             }
             subtitleSignal[1](subtitle);
           });

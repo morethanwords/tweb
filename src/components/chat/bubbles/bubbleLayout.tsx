@@ -77,7 +77,7 @@ export function BubbleLayout(props: {
           )}
           {props.attachment}
           {(props.text || props.content) && (
-            <div class={classNames('message spoilers-container', props.attachment && 'mt-shorter')}>
+            <div class={classNames('message spoilers-container', props.attachment && 'mt-shorter')} dir="auto">
               {props.content ?? wrapRichText(props.text, {entities: props.textEntities})}
             </div>
           )}

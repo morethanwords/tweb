@@ -600,7 +600,8 @@ function StoriesGrid(props: {
   let scrollDiff = 0;
 
   const slideKeyframes = (_element: Element, removed: boolean): Keyframe[] => {
-    const dir = direction();
+    // * the album chips run the other way in RTL, and the albums slide in from the side of theirs
+    const dir = direction() * (I18n.getIsRTL() ? -1 : 1);
     const yOffset = scrollDiff ? ` translateY(${scrollDiff}px)` : '';
     if(removed) {
       // AnimationList reverses these for exit; Y offset compensates scroll change

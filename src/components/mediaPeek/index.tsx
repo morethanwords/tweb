@@ -16,6 +16,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import cancelSelection from '@helpers/dom/cancelSelection';
 import swallowNextClick from '@helpers/dom/swallowNextClick';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import ListenerSetter from '@helpers/listenerSetter';
 import {MediaSize, makeMediaSize} from '@helpers/mediaSize';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
@@ -173,8 +174,9 @@ function getEntryLayout(kind: MediaPeekKind, media: MediaPeekSource['media'], re
   return {
     box,
     size: dimensions ? dimensions.aspectFitted(box) : box,
-    // * the effect spreads behind the sticker, towards the middle of the chat
-    shift: hasEffect ? (side * STICKER_EFFECT_MULTIPLIER - side) / 3 * (isOut ? 1 : -1) : 0
+    // * the effect spreads behind the sticker, towards the middle of the chat (RTL swaps the sides
+    // * the messages are on, as `wrapSticker` does)
+    shift: hasEffect ? (side * STICKER_EFFECT_MULTIPLIER - side) / 3 * (isOut !== isDocumentRTL() ? 1 : -1) : 0
   };
 }
 

@@ -1304,9 +1304,12 @@ export class AppSidebarLeft extends SidebarSlider {
       if(pickedElements.length) {
         pause(0).then(() => chatTypeMenu.props.hidden = true);
 
+        // * how far the last chip reaches into the field from its inline start (`padding-inline-start`)
+        const pickedRect = pickedElements[pickedElements.length - 1].getBoundingClientRect();
+        const inputRect = this.inputSearch.input.getBoundingClientRect();
         this.inputSearch.input.style.setProperty(
           '--paddingLeft',
-          (pickedElements[pickedElements.length - 1].getBoundingClientRect().right - this.inputSearch.input.getBoundingClientRect().left) + 'px'
+          (I18n.getIsRTL() ? inputRect.right - pickedRect.left : pickedRect.right - inputRect.left) + 'px'
         );
       } else {
         chatTypeMenu.props.hidden = false;

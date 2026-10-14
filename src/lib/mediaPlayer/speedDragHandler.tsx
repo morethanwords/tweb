@@ -6,6 +6,7 @@ import {bindActiveWindowListener} from '@helpers/appWindow';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {IconTsx} from '@components/iconTsx';
 import clamp from '@helpers/number/clamp';
+import keepLeftToRight from '@helpers/dom/keepLeftToRight';
 import {IS_MOBILE} from '@environment/userAgent';
 
 import {i18n} from '@lib/langPack';
@@ -245,7 +246,7 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
           <IconTsx icon="arrow_prev" />
           <IconTsx icon="arrow_next" />
         </div>
-        <div class="speed-drag-handler__speed-tip-description">
+        <div class="speed-drag-handler__speed-tip-description" dir="auto">
           {i18n('PlaybackRateDragTip')}
         </div>
       </div>
@@ -256,6 +257,8 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
 
 export function createSpeedDragHandler(props: SpeedDragHandlerProps) {
   const element = document.createElement('div');
+  // * a drag to the right plays faster in an RTL layout too, and the arrows say so: playback is not mirrored
+  keepLeftToRight(element);
   let controls: SpeedDragHandlerControls;
 
   const dispose = render(

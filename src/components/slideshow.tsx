@@ -16,6 +16,7 @@ import classNames from '@helpers/string/classNames';
 import {fastRaf} from '@helpers/schedulers';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import {isElementRTL} from '@helpers/dom/isDocumentRTL';
 import {IconTsx} from '@components/iconTsx';
 import Modes from '@config/modes';
 
@@ -84,8 +85,10 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
   };
 
   // * A drag moves the items with the pointer - or the fingers on a trackpad - by one item at most, and
-  // * pages when it went far enough or was flicked; otherwise the item it started on comes back
-  let width = 0, startIndex = 0, offset = 0, dragging = false;
+  // * pages when it went far enough or was flicked; otherwise the item it started on comes back.
+  // * The items page in the direction of the text around them (a page's or a message's own): `offset`
+  // * runs along the line, positive toward the previous item, and `reflect` makes it physical
+  let width = 0, startIndex = 0, offset = 0, dragging = false, reflect = 1;
   let samples: {time: number, offset: number}[] = [];
 
   // how fast the drag went in its last moments: one held still before the release threw nothing,
@@ -122,6 +125,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
       },
       onFirstSwipe: () => {
         width = container.getBoundingClientRect().width;
+        reflect = isElementRTL(container) ? -1 : 1;
         startIndex = index();
         offset = 0;
         dragging = false;
@@ -129,7 +133,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
       },
       onSwipe: (xDiff) => {
         const lastIndex = getCount() - 1;
-        offset = Math.max(startIndex === lastIndex ? 0 : -width, Math.min(startIndex === 0 ? 0 : width, -xDiff));
+        offset = Math.max(startIndex === lastIndex ? 0 : -width, Math.min(startIndex === 0 ? 0 : width, -xDiff * reflect));
         samples.push({time: performance.now(), offset});
         if(samples.length > 20) samples.shift();
 
@@ -140,7 +144,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
           setNoTransition(true);
         }
 
-        setTranslate(`${-startIndex * width + offset}px`);
+        setTranslate(`${(-startIndex * width + offset) * reflect}px`);
       },
       onReset: () => {
         if(!dragging) return;
@@ -193,7 +197,7 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
 
   const applyIndex = (i: number) => {
     if(itemsContainer) {
-      setTranslate(`${-i * 100}%`);
+      setTranslate(`calc(${-i * 100}% * var(--reflect))`);
     }
   };
 
@@ -207,13 +211,14 @@ export default function Slideshow<T>(props: SlideshowProps<T>) {
     if(findUpClassName(target, styles.Arrow)) return;
 
     const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const isLeft = x < (rect.width / 3);
-    const isRight = x > (rect.width * 2 / 3);
+    // * from the inline start: the previous item is on the right in RTL
+    const x = isElementRTL(container) ? rect.right - e.clientX : e.clientX - rect.left;
+    const isStart = x < (rect.width / 3);
+    const isEnd = x > (rect.width * 2 / 3);
 
-    if(isLeft) {
+    if(isStart) {
       handlePrev(e);
-    } else if(isRight) {
+    } else if(isEnd) {
       handleNext(e);
     } else {
       props.onClick?.(index());

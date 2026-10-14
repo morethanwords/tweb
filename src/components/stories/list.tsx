@@ -165,7 +165,8 @@ function _StoriesList(props: {
       }
 
       const translateX = distanceX * value;
-      const translate = `translateX(calc(var(--stories-additional-offset, 0px) * ${value} + ${translateX * (I18n.getIsRTL() ? -1 : 1)}px))`;
+      // * the distance is measured towards the inline end, the extra offset with it: both turn in RTL
+      const translate = `translateX(calc((var(--stories-additional-offset, 0px) * ${value} + ${translateX}px) * var(--reflect)))`;
       const scaleValue = 1 - (value * (1 - _scale));
       const scale = `scale(${scaleValue})`;
       cssProperties.transform = `${translate} ${scale}`;

@@ -51,11 +51,11 @@ $corner-button-size: 2.5rem;
 }
 
 .closeButton {
-  left: $corner-button-inset;
+  inset-inline-start: $corner-button-inset;
 }
 
 .themeButton {
-  right: $corner-button-inset;
+  inset-inline-end: $corner-button-inset;
 }
 
 // `toIm()` sets `.leaving` on the host when the IM page takes over: the cards
@@ -318,7 +318,7 @@ $corner-button-size: 2.5rem;
 .hostEnter {
   transition: 0.4s;
   opacity: 0;
-  transform: translateX(100px);
+  transform: translateX(calc(100px * var(--reflect)));
 }
 
 .hostEntering {
@@ -347,7 +347,7 @@ $corner-button-size: 2.5rem;
 
 .cardEnter {
   opacity: 0;
-  transform: translateX(24px);
+  transform: translateX(calc(24px * var(--reflect)));
 }
 
 .cardEnterTo {
@@ -362,5 +362,5 @@ $corner-button-size: 2.5rem;
 
 .cardExitTo {
   opacity: 0;
-  transform: translateX(-24px);
+  transform: translateX(calc(-24px * var(--reflect)));
 }

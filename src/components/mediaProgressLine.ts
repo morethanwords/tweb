@@ -61,7 +61,9 @@ export default class MediaProgressLine extends RangeSelector {
       min: 0,
       max: 1,
       withTransition: options.withTransition,
-      useTransform: options.useTransform
+      useTransform: options.useTransform,
+      // * a playback bar follows the tape, not the line
+      keepLTR: true
     }, 0);
   }
 

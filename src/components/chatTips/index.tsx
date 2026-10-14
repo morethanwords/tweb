@@ -103,10 +103,11 @@ function ChatTipsDeck() {
   };
 
   // Where a card waits while it isn't the one showing: its side is its cyclic position relative to
-  // the current tip — next waits on the right, previous on the left. That makes a step animate
-  // correctly both ways without tracking which way we went, because the card being left behind
-  // becomes "previous" and leaves to the left while the arriving one was "next" and comes in from
-  // the right (mirrored when stepping back).
+  // the current tip — next waits at the inline end, previous at the start (right and left in LTR;
+  // the stylesheet turns the offset with `--reflect`). That makes a step animate correctly both
+  // ways without tracking which way we went, because the card being left behind becomes "previous"
+  // and leaves toward the start while the arriving one was "next" and comes in from the end
+  // (mirrored when stepping back).
   const offsetOf = (i: number) =>
     (i - index() + TIPS.length) % TIPS.length === 1 ? `${SLIDE}px` : `${-SLIDE}px`;
 

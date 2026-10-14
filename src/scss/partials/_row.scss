@@ -196,7 +196,7 @@ $row-border-radius: $border-radius-medium;
 
       .input-clear {
         color: inherit;
-        text-align: right;
+        text-align: end;
         pointer-events: all;
         cursor: text;
       }
@@ -205,7 +205,7 @@ $row-border-radius: $border-radius-medium;
     &-row {
       &.with-delimiter {
         .row-title:first-child {
-          border-right: 1px solid var(--border-color);
+          border-inline-end: 1px solid var(--border-color);
         }
       }
     }

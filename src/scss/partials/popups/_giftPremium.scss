@@ -28,6 +28,9 @@
     line-height: 20px;
     font-weight: var(--font-weight-bold);
     font-size: var(--font-size-13);
+    // * "-20%" keeps its sign in front in RTL: no strong character, so the run is laid out
+    // * left to right, while `direction` (and so the inline-end margin) stays the UI's
+    unicode-bidi: plaintext;
 
     // the contrast-checked fill, with the a11y layer (Increase Contrast is part of it)
     :where(.a11y) & {
