@@ -88,6 +88,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import isVideoStalled from '@helpers/dom/isVideoStalled';
 import {getMoverTransform, MOVER_TRANSFORM_PROPERTY, MOVER_TRANSFORM_SYNCED_CLASS, setMoverTransform} from '@components/mediaViewer/moverTransform';
+import createSourceFloatings from '@components/mediaViewer/sourceFloatings';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1028,7 +1029,7 @@ export default class AppMediaViewerBase<
     this.removeGlobalListeners();
 
     promise.finally(() => {
-      this.revealHiddenFloatings();
+      this.sourceFloatings.reveal();
       this.wholeDiv.remove();
       this.toggleOverlay(false);
       this.middlewareHelper.destroy();
@@ -1480,7 +1481,7 @@ export default class AppMediaViewerBase<
     // let borderRadius = '0px 0px 0px 0px';
 
     if(!closing && sourceTarget) {
-      this.hideFloatings(sourceTarget);
+      this.sourceFloatings.hide(sourceTarget);
     }
 
     if(rotatedClose) {
@@ -1709,7 +1710,7 @@ export default class AppMediaViewerBase<
         mover.style.cssText = 'visibility: hidden; width: 1px; height: 1px;';
         wrapper.style.transition = 'none';
         wrapper.style.clipPath = '';
-        this.revealHiddenFloatings();
+        this.sourceFloatings.reveal();
 
         deferred.resolve();
       });
@@ -2105,73 +2106,7 @@ export default class AppMediaViewerBase<
   // Floating overlays on the source/target bubble (e.g. .video-time, .time.is-floating) should
   // not show during the open/close animation — they'd overlap the mover's silhouette
   // at the thumb position. On open: hide instantly. On close: animate them back.
-  protected hiddenFloatings = new Set<HTMLElement>();
-
-  // Floating overlays we hide while the viewer animates open / reveal back on close.
-  // Each context is keyed by a `trigger` class found in the target's ancestry; the
-  // matching context's layers each pick their own ancestor (containerClass) and run
-  // a querySelectorAll inside it for the floating selectors. This lets a single
-  // context hide elements at multiple DOM levels — e.g. profile avatars need to
-  // hide both the info/gradient overlays inside .profile-avatars-container AND the
-  // .sidebar-header that's a sibling of .sidebar-content several levels up.
-  protected static readonly FLOATING_CONTEXTS: ReadonlyArray<{
-    readonly trigger: string,
-    readonly layers: ReadonlyArray<{readonly containerClass: string, readonly selectors: string}>
-  }> = [{
-      trigger: 'profile-avatars-container',
-      layers: [
-        {containerClass: 'profile-avatars-container', selectors: '.profile-avatars-info, .profile-avatars-gradient, .profile-music-container'},
-        {containerClass: 'sidebar-slider-item', selectors: ':scope > .sidebar-header'}
-      ]
-    }, {
-      trigger: 'bubble',
-      layers: [{containerClass: 'bubble', selectors: '.video-time, .time.is-floating, .video-play'}]
-    }, {
-      trigger: 'grid-item',
-      layers: [{containerClass: 'grid-item', selectors: '.video-time, .time.is-floating, .video-play'}]
-    }];
-
-  protected hideFloatings(target: HTMLElement) {
-    if(!target) return;
-    const context = AppMediaViewerBase.FLOATING_CONTEXTS.find(({trigger}) => findUpClassName(target, trigger));
-    if(!context) return;
-    // In an album each item carries its own floating overlays (.video-time, .video-play),
-    // but the container query spans the whole bubble. Only the clicked item's mover
-    // animates, so skip overlays that belong to a sibling album item. Bubble-level
-    // floatings (e.g. .time.is-floating, which has no .album-item ancestor) are still hidden.
-    const targetAlbumItem = findUpClassName(target, 'album-item');
-    for(const {containerClass, selectors} of context.layers) {
-      const container = findUpClassName(target, containerClass);
-      if(!container) continue;
-      container.querySelectorAll<HTMLElement>(selectors).forEach((el) => {
-        if(this.hiddenFloatings.has(el)) return;
-        const albumItem = findUpClassName(el, 'album-item');
-        if(albumItem && albumItem !== targetAlbumItem) return;
-        el.style.transition = 'none';
-        el.style.opacity = '0';
-        this.hiddenFloatings.add(el);
-      });
-    }
-  }
-
-  protected revealHiddenFloatings() {
-    if(!this.hiddenFloatings.size) return;
-    const elements = Array.from(this.hiddenFloatings);
-    this.hiddenFloatings.clear();
-    // Called from the mover's real transition completion, so the source is no longer
-    // obscured and can fade back immediately.
-    elements.forEach((el) => {
-      // Literal duration: --open-duration is scoped to .media-viewer-whole and these
-      // floating overlays live in the chat bubble (outside that scope).
-      el.style.transition = `opacity ${OPEN_TRANSITION_TIME}ms`;
-      el.style.opacity = '';
-    });
-    setTimeout(() => {
-      elements.forEach((el) => {
-        el.style.transition = '';
-      });
-    }, OPEN_TRANSITION_TIME);
-  }
+  protected sourceFloatings = createSourceFloatings(OPEN_TRANSITION_TIME);
 
   // Resize listener: viewport changed → re-fit content.media + mover, then
   // re-apply center positioning. Open-path callers should use applyLayoutPadding

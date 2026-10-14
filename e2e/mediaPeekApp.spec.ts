@@ -1,5 +1,5 @@
 import {expect, Page, test} from '@playwright/test';
-import {findMessage, openMessage, PAGE_MEDIA, Point} from './chatMedia.helpers';
+import {findMessage, MESSAGE_MEDIA, openMessage, PAGE_MEDIA, Point} from './chatMedia.helpers';
 
 /*
  * Holding the mouse button on a photo or video peeks at it (`components/mediaPeek`): in a chat, in a
@@ -17,6 +17,8 @@ import {findMessage, openMessage, PAGE_MEDIA, Point} from './chatMedia.helpers';
 const PEEK = 'div[aria-hidden="true"][class*="_MediaPeek_"]';
 const PEEK_ITEM = '[class*="_MediaPeekItem_"]';
 const VIEWER = '.media-viewer-whole.active';
+// * what a bubble floats over its media: the message's time, a video's duration, its play button
+const FLOATINGS = '.video-time, .time.is-floating, .video-play';
 
 test.describe('the media peek', () => {
   test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'needs an authorized preview (PLAYWRIGHT_BASE_URL)');
@@ -86,6 +88,60 @@ test.describe('the media peek', () => {
     await page.waitForTimeout(800);
     await page.keyboard.press('Escape');
     await expect(page.locator(VIEWER)).toHaveCount(0);
+  });
+
+  // * the media viewer takes those overlays away for as long as the media is out of the bubble; a
+  // * peek does the same, and they fade back once it has flown home
+  test('takes the time the bubble floats over its media away, and fades it back', async({page}) => {
+    await openMessage(page, found);
+    const target = await page.evaluate(({mediaSelector, floatings}) => {
+      // * the chat's own answer to what a peek shows: not a round video, a self-destructing or an
+      // * unbought one, all of which look the same here
+      const bubbles = (window as any).appImManager.chat.bubbles;
+      const bubble = Array.from(document.querySelectorAll<HTMLElement>('#column-center .bubble'))
+      // * one item only: an album's siblings keep their own overlays, which is a case of its own
+      .find((bubble) => {
+        const media = bubble.querySelector<HTMLElement>(mediaSelector);
+        return media && bubble.querySelector(floatings) && bubble.querySelectorAll('.album-item').length < 2 &&
+          !bubble.querySelector('.media-spoiler-container') && !!bubbles.getMediaPeekSource(media);
+      });
+      const media = bubble?.querySelector(mediaSelector);
+      if(!media) return;
+      media.scrollIntoView({block: 'center'});
+      const rect = media.getBoundingClientRect();
+      return {mid: bubble.dataset.mid, x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+    }, {mediaSelector: MESSAGE_MEDIA, floatings: FLOATINGS});
+    test.skip(!target, 'no bubble floating its time over a photo or video in this chat');
+
+    const opacities = () => page.evaluate(({mid, floatings}) => Array.from(
+      document.querySelector(`#column-center .bubble[data-mid="${mid}"]`)?.querySelectorAll<HTMLElement>(floatings) || [],
+      (el) => getComputedStyle(el).opacity
+    ), {mid: target.mid, floatings: FLOATINGS});
+    const lit = await opacities();
+    expect(lit.length, 'the bubble lost its floating overlays before the peek').toBeGreaterThan(0);
+    const shown = lit.map(() => '1');
+    expect(lit, 'they are not lit to begin with').toEqual(shown);
+
+    await page.mouse.move(target.x, target.y);
+    await page.mouse.down();
+    await expect(page.locator(PEEK)).toHaveClass(/_visible_/);
+    await page.waitForTimeout(400);
+    expect(await opacities(), 'they stay lit over the dimmed bubble while the peek has the media')
+    .toEqual(lit.map(() => '0'));
+
+    // * the fade itself, caught as it runs rather than by the clock - with every animation off they
+    // * are simply back
+    const fades = await page.evaluate(() => (window as any).liteMode.isAvailable('animations'));
+    await page.evaluate(({mid, floatings}) => {
+      const el = document.querySelector(`#column-center .bubble[data-mid="${mid}"]`).querySelector(floatings);
+      (window as any).__peekFade = [];
+      el.addEventListener('transitionend', (e) => (window as any).__peekFade.push((e as TransitionEvent).propertyName));
+    }, {mid: target.mid, floatings: FLOATINGS});
+    await page.mouse.up();
+    await expect.poll(opacities, {timeout: 5000}).toEqual(shown);
+    if(fades) {
+      expect(await page.evaluate(() => (window as any).__peekFade), 'they came back without a fade').toContain('opacity');
+    }
   });
 
   test('opens on the media of a rich message', async({page}) => {

@@ -117,7 +117,8 @@ export function moveAppBack(): void {
   placeholderScreen.remove();
   setAppWindow(window); // rebind metrics to the tab before the move so it reflows for the real viewport
   moved.forEach(({node, placeholder}) => placeholder.replaceWith(node));
-  transientNodes.forEach((node) => document.body.append(node));
+  // only what is still there: a root torn down by the window change above (a closing peek) stays gone
+  transientNodes.forEach((node) => node.isConnected && document.body.append(node));
 
   // Same as on the way out — the wallpaper canvas didn't survive moving back; rebuild it in the tab.
   appChatBackground.reRender();

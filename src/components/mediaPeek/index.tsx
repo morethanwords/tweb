@@ -9,7 +9,7 @@ import type {MyPhoto} from '@appManagers/appPhotosManager';
 import {Accessor, createRoot, createSignal, For, JSX, onCleanup, onMount, Setter, Show} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
+import {getAppWindow, getOverlayRoot, onAppWindowChange} from '@helpers/appWindow';
 import toArray from '@helpers/array/toArray';
 import deferredPromise, {bindPromiseToDeferred, CancellablePromise} from '@helpers/cancellablePromise';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -35,6 +35,7 @@ import {getMediaSourceClip} from '@components/mediaViewer/clipPath';
 import getEffectiveCornerRadii from '@components/mediaViewer/cornerRadii';
 import shouldSnapshotImage from '@components/mediaViewer/shouldSnapshotImage';
 import snapshotRenderedMedia, {copyRenderedImage} from '@components/mediaViewer/snapshotRenderedMedia';
+import createSourceFloatings from '@components/mediaViewer/sourceFloatings';
 import {STICKER_EFFECT_MULTIPLIER} from '@components/wrappers/sticker';
 import styles from '@components/mediaPeek/mediaPeek.module.scss';
 
@@ -420,6 +421,10 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
   // arrive, so it sticks open and can't switch.
   const activeWindow = getAppWindow();
   const activeDocument = activeWindow.document;
+  // * what the place it is opened from floats over its media - the message's time, a video's
+  // * duration and play button - goes while the peek has it, and fades back once it has landed, as
+  // * it does for the media viewer
+  const floatings = createSourceFloatings(TRANSITION_DURATION);
   // * alive while the button is held
   const gestureHelper = getMiddleware();
   const gesture = gestureHelper.get();
@@ -498,6 +503,7 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
       entry.setOrigin(getEntryOrigin(entry));
     }
 
+    floatings.hide(entry.element);
     peek.show();
     activeWindow.setTimeout(() => startPlaying(entry), TRANSITION_DURATION);
     listenerSetter.add(activeDocument)('mousemove', onMouseMove);
@@ -526,6 +532,9 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
 
     const previous = shown;
     shown = entry;
+    // * the one dragged onto keeps its own overlays hidden too: nothing flies back onto the one
+    // * left behind, so they all come back together when the peek closes
+    floatings.hide(entry.element);
     previous.setState('leaving');
     previous.playback.mute?.();
     entry.setState('switching');
@@ -565,6 +574,26 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
     }
   };
 
+  // * what is left once the peek has flown back, or at once when there is nothing to fly back
+  let finished = false, closeTimeout: number;
+  const finish = () => {
+    if(finished) {
+      return;
+    }
+
+    finished = true;
+    activeWindow.clearTimeout(closeTimeout);
+    stopFollowingWindow();
+    peek?.dispose();
+    floatings.reveal();
+    if(lockedGroups) {
+      animationIntersector.setOnlyOnePlayableGroup(previousGroup);
+      animationIntersector.checkAnimations2(false);
+    }
+
+    isBusy = false;
+  };
+
   const onRelease = () => {
     if(!gesture()) {
       return;
@@ -579,8 +608,7 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
 
     // * let go before the peek showed anything: the press was a click after all
     if(!shown) {
-      peek?.dispose();
-      isBusy = false;
+      finish();
       return;
     }
 
@@ -595,16 +623,16 @@ function startMediaPeek(element: HTMLElement, options: MediaPeekOptions & Requir
     releaseSingleMedia?.();
 
     peek.close();
-    activeWindow.setTimeout(() => {
-      peek.dispose();
-      if(lockedGroups) {
-        animationIntersector.setOnlyOnePlayableGroup(previousGroup);
-        animationIntersector.checkAnimations2(false);
-      }
-
-      isBusy = false;
-    }, TRANSITION_DURATION);
+    closeTimeout = activeWindow.setTimeout(finish, TRANSITION_DURATION);
   };
+
+  // * the app moving between the tab and its Document PiP window: a closed window's timers and
+  // * listeners never fire, so the press ends there and what was left to do is done at once - or
+  // * the overlays would stay hidden and no peek would open again
+  const stopFollowingWindow = onAppWindowChange(() => {
+    onRelease();
+    finish();
+  });
 
   const timeout = activeWindow.setTimeout(open, HOLD_DELAY);
   // * the message got deleted, the chat got closed
