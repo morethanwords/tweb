@@ -29,7 +29,8 @@ export type ReferenceContext =
   ReferenceContext.referenceContextStickerSet |
   ReferenceContext.referenceContextAvailableEffects |
   ReferenceContext.referenceContextStickerSearch |
-  ReferenceContext.referenceContextSavedMusic;
+  ReferenceContext.referenceContextSavedMusic |
+  ReferenceContext.referenceContextDraft;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -150,6 +151,13 @@ export namespace ReferenceContext {
     type: 'savedMusic',
     userId: UserId,
     docId: DocId
+  };
+
+  /** The media of a rich draft: a topic's, or a monoforum thread's, under `threadId` */
+  export type referenceContextDraft = {
+    type: 'draft',
+    peerId: PeerId,
+    threadId?: number
   };
 }
 
@@ -328,6 +336,9 @@ export class ReferencesStorage extends AppManager {
         // Ask for the exact document rather than re-reading page 0 — a track that sits deeper in
         // the playlist would never be covered by the first page.
         return this.appSavedMusicManager.getSavedMusicByIds(context.userId, [context.docId]);
+
+      case 'draft':
+        return this.appDraftsManager.refreshRichMessageMedia();
 
       default: {
         this.log.warn('not implemented context', context);

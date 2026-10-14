@@ -222,8 +222,9 @@ export class RichMessageInputController {
     });
   }
 
-  public insertMedia(files: File[], selection: Selection, action?: RichMediaItemInsertAction) {
-    return this.media?.insert(files, selection, action) || Promise.resolve(false);
+  /** `asFile`: attached as files (the attach menu's File) — each one a file block, music an audio. */
+  public insertMedia(files: File[], selection: Selection, action?: RichMediaItemInsertAction, asFile?: boolean) {
+    return this.media?.insert(files, selection, action, asFile) || Promise.resolve(false);
   }
 
   public sync() {

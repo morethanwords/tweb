@@ -193,7 +193,13 @@ export type UploadedRichMessageMedia = {
   document?: Document.document,
   photo?: Photo.photo,
   spoiler?: boolean,
-  type: 'audio' | 'photo' | 'video'
+  type: 'audio' | 'document' | 'photo' | 'video'
+};
+
+/** A rich message's media before the server's: the local file, as a sent message's is until then. */
+export type PreparedRichMessageMedia = {
+  document?: MyDocument,
+  photo?: MyPhoto
 };
 
 export type HistoryStorageKey = `${HistoryStorage['type']}_${PeerId}` | `replies_${PeerId}_${number}` | `search_${PeerId}_${SearchStorageFilterKey}_${number}`;
@@ -570,6 +576,8 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
 > & {
   mediaTempId: number;
   isDocument: boolean;
+  // a file whatever it holds: no audio branch either (a rich message's file block)
+  forceFile?: boolean;
 };
 
 type EditMessageMediaArgs = {
@@ -768,6 +776,11 @@ export class AppMessagesManager extends AppManager {
   private batchUpdatesDebounced: () => Promise<void>;
 
   private uploadFilePromises: {[fileName: string]: CancellablePromise<any>};
+  // a rich message's media between its preparation and the end of its upload, by `uploadingFileName`
+  private preparedRichMessageMedia: Map<string, {
+    metadata: ReturnType<AppMessagesManager['makeDocumentAndMetaForSendingFile']>,
+    deferred: CancellablePromise<void>
+  }> = new Map();
 
   private tempMids: {[peerId: PeerId]: number} = {};
 
@@ -2784,12 +2797,19 @@ export class AppMessagesManager extends AppManager {
     return inputMedia;
   }
 
-  public async uploadRichMessageMedia(options: {
-    peerId: PeerId,
+  /**
+   * A rich message's media before its upload, as a sent message's is: the file at hand, so what
+   * was uploaded is never downloaded back, and the upload registered where a message's is — the
+   * composer draws the media from this and shows its upload as a bubble shows one.
+   */
+  public prepareRichMessageMedia(options: {
     sendFileDetails: SendFileDetails,
-    uploadingFileName?: string
-  }): Promise<UploadedRichMessageMedia> {
-    const {sendFileDetails, peerId} = options;
+    uploadingFileName: string,
+    // a file block: any file, sent as a file (force_file, its name and nothing else of it) — the
+    // way the other clients send one; music stays an audio block all the same
+    asFile?: boolean
+  }): PreparedRichMessageMedia {
+    const {sendFileDetails, uploadingFileName, asFile} = options;
     const {file} = sendFileDetails;
     if(!(file instanceof File) && !(file instanceof Blob)) {
       throw makeError('UNKNOWN', 'RICH_MESSAGE_MEDIA_FILE_REQUIRED');
@@ -2799,8 +2819,11 @@ export class AppMessagesManager extends AppManager {
       mediaTempId: this.mediaTempId++,
       isDocument: false,
       file,
+      objectURLBlob: file,
       entities: [],
-      isMedia: true,
+      isMedia: !asFile,
+      // what the composer made a file block stays one, an audio/wav too
+      forceFile: asFile,
       ...pickKeys(sendFileDetails, [
         'strippedBytes',
         'width',
@@ -2814,47 +2837,152 @@ export class AppMessagesManager extends AppManager {
     if(
       metadata.attachType !== 'audio' &&
       metadata.attachType !== 'photo' &&
-      metadata.attachType !== 'video'
+      metadata.attachType !== 'video' &&
+      !(asFile && metadata.attachType === 'document')
     ) {
       throw makeError('UNKNOWN', 'RICH_MESSAGE_MEDIA_TYPE_UNSUPPORTED');
     }
 
-    const inputMedia = await this.uploadMediaFile({
-      peerId,
-      file,
-      uploadingFileName: options.uploadingFileName || getFileNameForUpload(file),
-      ...pickKeys(sendFileDetails, ['objectURL', 'thumb']),
-      spoiler: metadata.attachType === 'audio' ? undefined : sendFileDetails.spoiler,
-      ...pickKeys(metadata, [
-        'fileType',
-        'apiFileName',
-        'attachType',
-        'attributes',
-        'actionName'
-      ])
-    });
-    const uploaded = await this.apiManager.invokeApi('messages.uploadMedia', {
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      media: inputMedia
-    });
+    this.failRichMessageMedia(uploadingFileName, makeError('UPLOAD_CANCELED'));
+    const deferred = deferredPromise<void>();
+    // settled for whoever asked about it; a rejection nobody asked about is no error
+    deferred.catch(noop);
+    this.uploadFilePromises[uploadingFileName] = deferred;
+    this.preparedRichMessageMedia.set(uploadingFileName, {metadata, deferred});
+    return {document: metadata.document, photo: metadata.photo};
+  }
 
-    if(metadata.attachType === 'photo' && uploaded._ === 'messageMediaPhoto') {
+  /** The composer's cancel of a rich message's media, uploading or only prepared. */
+  public cancelRichMessageMedia(uploadingFileName: string) {
+    this.apiFileManager.cancelDownload(uploadingFileName);
+  }
+
+  /**
+   * A cancel that found no transfer to stop (`apiFileManager.cancelDownload`, which the upload's ring
+   * calls too): a rich message's media only prepared, or past its bytes and still waiting for
+   * `messages.uploadMedia`, is given up here.
+   */
+  public cancelPreparedRichMessageMedia(uploadingFileName: string) {
+    if(!this.preparedRichMessageMedia.has(uploadingFileName)) return false;
+    this.failRichMessageMedia(uploadingFileName, makeError('UPLOAD_CANCELED'));
+    return true;
+  }
+
+  private forgetRichMessageMedia(uploadingFileName: string) {
+    const prepared = this.preparedRichMessageMedia.get(uploadingFileName);
+    if(!prepared) return;
+    this.preparedRichMessageMedia.delete(uploadingFileName);
+    if(this.uploadFilePromises[uploadingFileName] === prepared.deferred) {
+      delete this.uploadFilePromises[uploadingFileName];
+    }
+
+    return prepared;
+  }
+
+  private failRichMessageMedia(uploadingFileName: string, error: ApiError) {
+    const prepared = this.forgetRichMessageMedia(uploadingFileName);
+    if(!prepared) return;
+    prepared.deferred.reject(error);
+    // nothing takes the local file over now
+    const {document, photo} = prepared.metadata;
+    if(document) {
+      this.thumbsStorage.deleteCacheContext(document);
+      this.thumbsStorage.deleteCacheContext(document, 'local-thumb');
+    } else if(photo) {
+      this.thumbsStorage.deleteCacheContext(photo, THUMB_TYPE_FULL);
+    }
+  }
+
+  public async uploadRichMessageMedia(options: {
+    peerId: PeerId,
+    sendFileDetails: SendFileDetails,
+    uploadingFileName?: string,
+    asFile?: boolean
+  }): Promise<UploadedRichMessageMedia> {
+    const {sendFileDetails, peerId, asFile} = options;
+    const file = sendFileDetails.file as File | Blob;
+    const uploadingFileName = options.uploadingFileName ||
+      (file instanceof Blob ? getFileNameForUpload(file) : undefined);
+    if(!this.preparedRichMessageMedia.has(uploadingFileName)) {
+      this.prepareRichMessageMedia({sendFileDetails, uploadingFileName, asFile});
+    }
+
+    const {metadata, deferred} = this.preparedRichMessageMedia.get(uploadingFileName);
+    const isCurrent = () => this.preparedRichMessageMedia.get(uploadingFileName)?.deferred === deferred;
+    // cancelled once its bytes were sent (cancelPreparedRichMessageMedia): nothing completes
+    const assertCurrent = () => {
+      if(!isCurrent()) throw makeError('UPLOAD_CANCELED');
+    };
+    try {
+      const inputMedia = await this.uploadMediaFile({
+        peerId,
+        file,
+        uploadingFileName,
+        ...pickKeys(sendFileDetails, ['objectURL', 'thumb']),
+        spoiler: metadata.attachType === 'photo' || metadata.attachType === 'video' ? sendFileDetails.spoiler : undefined,
+        ...pickKeys(metadata, [
+          'fileType',
+          'apiFileName',
+          'attachType',
+          'attributes',
+          'actionName'
+        ]),
+        // its progress goes where a sent message's does
+        onUploadDeferred: (uploadFileDeferred) => {
+          this.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file});
+        }
+      });
+      assertCurrent();
+      const uploaded = await this.apiManager.invokeApi('messages.uploadMedia', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        media: inputMedia
+      });
+      assertCurrent();
+      // the server's media takes the local file over, as a sent message's does
+      if(uploaded._ === 'messageMediaPhoto' && uploaded.photo?._ === 'photo' && metadata.photo) {
+        this.updatePhoto(uploaded.photo, '' + metadata.photo.id);
+      } else if(uploaded._ === 'messageMediaDocument' && uploaded.document?._ === 'document' && metadata.document) {
+        this.updateDocument(uploaded.document, '' + metadata.document.id);
+      }
+
+      const result = this.getUploadedRichMessageMedia(metadata.attachType, uploaded, sendFileDetails.spoiler);
+      this.forgetRichMessageMedia(uploadingFileName);
+      deferred.resolve();
+      return result;
+    } catch(error) {
+      if(isCurrent()) this.failRichMessageMedia(uploadingFileName, error as ApiError);
+      throw error;
+    }
+  }
+
+  private getUploadedRichMessageMedia(
+    attachType: string,
+    uploaded: MessageMedia,
+    spoiler?: boolean
+  ): UploadedRichMessageMedia {
+    if(attachType === 'photo' && uploaded._ === 'messageMediaPhoto') {
       return {
         type: 'photo',
         photo: this.appPhotosManager.savePhoto(uploaded.photo),
-        spoiler: sendFileDetails.spoiler || undefined
+        spoiler: spoiler || undefined
       };
     }
-    if(metadata.attachType === 'video' && uploaded._ === 'messageMediaDocument') {
+    if(attachType === 'video' && uploaded._ === 'messageMediaDocument') {
       return {
         type: 'video',
         document: this.appDocsManager.saveDoc(uploaded.document),
-        spoiler: sendFileDetails.spoiler || undefined
+        spoiler: spoiler || undefined
       };
     }
-    if(metadata.attachType === 'audio' && uploaded._ === 'messageMediaDocument') {
+    if(attachType === 'audio' && uploaded._ === 'messageMediaDocument') {
       return {
         type: 'audio',
+        document: this.appDocsManager.saveDoc(uploaded.document)
+      };
+    }
+    if(attachType === 'document' && uploaded._ === 'messageMediaDocument') {
+      return {
+        type: 'document',
         document: this.appDocsManager.saveDoc(uploaded.document)
       };
     }
@@ -3799,7 +3927,7 @@ export class AppMessagesManager extends AppManager {
     if(isDocument) { // maybe it's a sticker or gif
       attachType = 'document';
       apiFileName = '';
-    } else if(fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0) {
+    } else if(!args.forceFile && (fileType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(fileType) >= 0)) {
       attachType = 'audio';
       apiFileName = 'audio.' + (fileType.split('/')[1] === 'ogg' ? 'ogg' : 'mp3');
       actionName = 'sendMessageUploadAudioAction';
@@ -3819,7 +3947,7 @@ export class AppMessagesManager extends AppManager {
       };
 
       attributes.push(attribute);
-    } else if(!args.isMedia) {
+    } else if(!args.isMedia || args.forceFile) {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadDocumentAction';

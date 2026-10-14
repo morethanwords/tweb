@@ -86,20 +86,20 @@ export type ChatInputEditorBrowserHarness = {
   redo(): boolean,
   toggleList(type: 'bulletList' | 'orderedList' | 'taskList'): boolean,
   pasteHTML(html: string): boolean,
-  setCaret(position: number): boolean,
-  setCaretInNode(type: string, occurrence?: number, offset?: number | 'end'): boolean,
-  setCaretInTextblock(index: number, edge?: 'end' | 'start' | number): boolean,
+  setCaret(position: number): boolean | Promise<boolean>,
+  setCaretInNode(type: string, occurrence?: number, offset?: number | 'end'): boolean | Promise<boolean>,
+  setCaretInTextblock(index: number, edge?: 'end' | 'start' | number): boolean | Promise<boolean>,
   setDirection(direction: 'ltr' | 'rtl'): void,
   setEditable(editable: boolean): void,
   setExpanded(expanded: boolean): void,
-  setCaretInTrailingPlaceholder(): boolean,
+  setCaretInTrailingPlaceholder(): boolean | Promise<boolean>,
   setNodeAttributes(
     type: string,
     occurrence: number,
     attributes: Record<string, unknown>
   ): boolean,
-  setNodeSelection(type: string, occurrence?: number): boolean,
-  setTextSelection(from: number, to: number, backward?: boolean): boolean,
+  setNodeSelection(type: string, occurrence?: number): boolean | Promise<boolean>,
+  setTextSelection(from: number, to: number, backward?: boolean): boolean | Promise<boolean>,
   setDocument(document: JSONContent): boolean,
   textRanges(): TextRangeDescriptor[],
   textblocks(): TextblockDescriptor[]
@@ -156,10 +156,32 @@ function matchingNode(
   return match;
 }
 
+// On the editor's first focus ProseMirror puts its own selection back into the DOM 20 ms later if the
+// DOM's differs from the last one it read (a browser may have put the caret at the start). A key
+// pressed inside that window has its native move undone before the editor hears of it, as WebKit
+// sends `selectionchange` later than that: the first arrow of a test went nowhere. Nobody presses a key
+// that soon after focusing; a test does. So a call that focuses the editor for the first time
+// resolves only once that check has run.
+const PROSEMIRROR_FIRST_FOCUS_CHECK = 20;
+function afterFirstFocus<T>(wasFocused: boolean, result: T): T | Promise<T> {
+  if(wasFocused) return result;
+  return new Promise((resolve) => {
+    // set after ProseMirror's own timer, so it fires after it
+    const settle = () => setTimeout(() => resolve(result), PROSEMIRROR_FIRST_FOCUS_CHECK);
+    // Tiptap's focus command focuses in the next frame
+    if(tiptap.view.hasFocus()) settle();
+    else requestAnimationFrame(settle);
+  });
+}
+
 function setCaret(position: number) {
+  const wasFocused = tiptap.view.hasFocus();
   chatEditor.restoreSelection({from: position, to: position}, false);
   tiptap.view.focus();
-  return tiptap.state.selection.from === position && tiptap.state.selection.empty;
+  return afterFirstFocus(
+    wasFocused,
+    tiptap.state.selection.from === position && tiptap.state.selection.empty
+  );
 }
 
 function insertTestPhoto(previewUrl: string) {
@@ -481,16 +503,23 @@ window.chatInputEditorHarness = {
   setNodeSelection: (type, occurrence = 0) => {
     const match = matchingNode(type, occurrence);
     if(!match || !NodeSelection.isSelectable(match.node)) return false;
+    const wasFocused = tiptap.view.hasFocus();
     tiptap.view.dispatch(tiptap.state.tr.setSelection(
       NodeSelection.create(tiptap.state.doc, match.position)
     ));
     tiptap.view.focus();
-    return tiptap.state.selection instanceof NodeSelection &&
-      tiptap.state.selection.from === match.position;
+    return afterFirstFocus(
+      wasFocused,
+      tiptap.state.selection instanceof NodeSelection && tiptap.state.selection.from === match.position
+    );
   },
   setTextSelection: (from, to, backward) => {
+    const wasFocused = tiptap.view.hasFocus();
     chatEditor.restoreSelection({from, to, ...(backward ? {backward: true as const} : {})});
-    return tiptap.state.selection.from === from && tiptap.state.selection.to === to;
+    return afterFirstFocus(
+      wasFocused,
+      tiptap.state.selection.from === from && tiptap.state.selection.to === to
+    );
   },
   textRanges: textRangeDescriptors,
   textblocks: textblockDescriptors

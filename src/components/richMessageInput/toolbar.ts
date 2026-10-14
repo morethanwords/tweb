@@ -477,7 +477,7 @@ export default class EditorToolbar {
         onClick: () => runPlusCommand((editor) => editor.insertFooter())
       }), (editor) => editor.canApplyFormatting('footer')],
       [{
-        icon: 'quote_filled',
+        icon: 'quote',
         text: 'Quote',
         onClick: () => runPlusCommand((editor) => editor.applyMarkup({type: 'quote'}))
       }, (editor) => editor.canApplyMarkup('quote')],

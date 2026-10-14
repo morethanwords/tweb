@@ -100,6 +100,7 @@ export function inputPageBlock(block: PageBlock): PageBlock {
         caption: inputPageCaption(block.caption)
       };
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
       return {...block, caption: inputPageCaption(block.caption)};
     case 'pageBlockCollage':
     case 'pageBlockSlideshow':

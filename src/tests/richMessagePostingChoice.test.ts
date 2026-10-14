@@ -25,7 +25,7 @@ function makeDependencies(confirm = vi.fn().mockResolvedValue(undefined)) {
 }
 
 describe('rich message posting choice', () => {
-  test('builds the Premium confirmation with a close button and exactly two actions', async() => {
+  test('builds the Premium confirmation with a close button and two footer actions, Premium first', async() => {
     const dependencies = makeDependencies();
     const choice = await getRichMessagePostingChoice(makeManagers({
       allowed: false,
@@ -40,11 +40,16 @@ describe('rich message posting choice', () => {
       titleLangKey: 'RichMessage.PremiumRequired.Title',
       descriptionLangKey: 'RichMessage.PremiumRequired.Text',
       closable: true,
-      button: {langKey: 'RichMessage.SendWithoutFormatting'},
-      cancelButton: {langKey: 'RichMessage.SubscribeToPremium'}
+      footer: true,
+      button: {langKey: 'RichMessage.SendWithoutFormatting', isSecondary: true},
+      buttons: [
+        {langKey: 'RichMessage.SubscribeToPremium', isCancel: true},
+        {langKey: 'RichMessage.SendWithoutFormatting', isSecondary: true}
+      ]
     });
+    expect(options.buttons[1]).toBe(options.button);
 
-    options.cancelButton.callback(new MouseEvent('click'));
+    options.buttons[0].callback(new MouseEvent('click'));
     expect(dependencies.showPremium).toHaveBeenCalledOnce();
     expect(lang['RichMessage.PremiumRequired.Title']).toBe('Remove Formatting?');
     expect(lang['RichMessage.PremiumRequired.Text']).toBe(
@@ -89,7 +94,7 @@ describe('rich message posting choice', () => {
     expect(choice).toBe('cancel');
   });
 
-  test('uses the existing unavailable flow for a disabled rollout', async() => {
+  test('offers sending without formatting in a footer when the rollout is disabled', async() => {
     const dependencies = makeDependencies();
     const choice = await getRichMessagePostingChoice(makeManagers({
       allowed: false,
@@ -101,7 +106,9 @@ describe('rich message posting choice', () => {
     expect(dependencies.confirm).toHaveBeenCalledWith({
       titleLangKey: 'RichMessage.Unavailable.Title',
       descriptionLangKey: 'RichMessage.Unavailable.Text',
-      button: {langKey: 'RichMessage.SendWithoutFormatting'}
+      footer: true,
+      button: {langKey: 'RichMessage.SendWithoutFormatting'},
+      cancelButton: {langKey: 'Cancel', isSecondary: true}
     });
   });
 });

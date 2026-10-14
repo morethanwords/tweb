@@ -101,6 +101,21 @@ describe('getRichMessagePreview', () => {
     expect(preview.entities).toEqual([{_: 'messageEntityIcon', offset: 0, length: 2, icon: 'note_filled'}]);
   });
 
+  it('writes a file by its name, and by its kind when it has none', () => {
+    const preview = getRichMessagePreview(richMessage([
+      {_: 'pageBlockDocument', document_id: 8, caption},
+      {_: 'pageBlockDocument', document_id: 9, caption}
+    ], {
+      documents: [
+        {_: 'document', id: 8, file_name: 'report.pdf', attributes: []} as any,
+        {_: 'document', id: 9, attributes: []} as any
+      ]
+    }));
+
+    expect(preview.text).toBe(`📎 report.pdf${_}📎 File`);
+    expect(preview.entities.map((entity) => entity._ === 'messageEntityIcon' && entity.icon)).toEqual(['document', 'document']);
+  });
+
   it('drops the blank the text starts with, its entities moving along', () => {
     const preview = getRichMessagePreview(richMessage([
       {_: 'pageBlockParagraph', text: {_: 'textConcat', texts: [text('\n  '), {_: 'textBold', text: text('Hi')}]}}

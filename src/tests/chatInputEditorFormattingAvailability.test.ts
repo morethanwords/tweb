@@ -136,10 +136,14 @@ describe('Tiptap chat input editor: formatting availability', () => {
   test.each([
     ['paragraph', MARKUP],
     ['tableCell', MARKUP.filter((type) => type !== 'quote')],
-    // a header cell draws its text bold already
+    // a header cell, a table's title and a details' summary draw their text bold already, a
+    // pullquote italic
     ['tableHeader', MARKUP.filter((type) => type !== 'quote' && type !== 'bold')],
-    ['detailsSummary', MARKUP.filter((type) => type !== 'quote')],
-    ['codeBlock', ['quote']],
+    ['tableTitle', MARKUP.filter((type) => type !== 'quote' && type !== 'bold')],
+    ['pullquote', MARKUP.filter((type) => type !== 'quote' && type !== 'italic')],
+    ['detailsSummary', MARKUP.filter((type) => type !== 'quote' && type !== 'bold')],
+    // plain text: a quote of it would split the block or wrap it whole
+    ['codeBlock', []],
     ['listItem', MARKUP]
   ] as const)('the selection tooltip offers in a %s only %j', (context, expected) => {
     const {editor} = mountContext(context);
@@ -147,14 +151,14 @@ describe('Tiptap chat input editor: formatting availability', () => {
   });
 });
 
-// The editor with the first text of `block` (the word SELECTED) selected.
+// The editor with the word SELECTED of `block` selected.
 function mountSelected(mountEditor: ReturnType<typeof useChatInputEditorHarness>['mountEditor'], block: JSONContent) {
   const {editor} = mountEditor();
   const tiptap = (editor as TiptapEditorInternals).editor;
   editor.setDocument({type: 'doc', content: [block, {type: 'paragraph'}]});
   let from = -1;
   tiptap.state.doc.descendants((node: ProseMirrorNode, position: number) => {
-    if(from < 0 && node.isText) from = position;
+    if(from < 0 && node.text === SELECTED) from = position;
   });
   tiptap.view.dispatch(tiptap.state.tr.setSelection(
     TextSelection.create(tiptap.state.doc, from, from + SELECTED.length)
@@ -162,26 +166,39 @@ function mountSelected(mountEditor: ReturnType<typeof useChatInputEditorHarness>
   return {editor, tiptap};
 }
 
-describe('Tiptap chat input editor: bold in a header cell', () => {
+// What a block's style already draws is offered neither by the tooltip nor by a shortcut, even over
+// text that carries the mark (pasted). Which blocks those are is measured in a browser
+// (e2e/popupSandboxRichTextMarkup.spec.ts); this holds the editor's side of it.
+describe('Tiptap chat input editor: a mark a block draws already', () => {
   const {mountEditor} = useChatInputEditorHarness();
-  const header = (marks?: JSONContent['marks']): JSONContent => ({type: 'chatTableWrapper', content: [
-    {type: 'chatTableTitle'},
-    {type: 'table', content: [{type: 'tableRow', content: [
-      {type: 'tableHeader', content: [{type: 'paragraph', content: [{type: 'text', text: SELECTED, marks}]}]}
-    ]}]}
-  ]});
+  const word = (marks?: JSONContent['marks']): JSONContent[] => [{type: 'text', text: SELECTED, marks}];
+  const BLOCKS: [string, 'bold' | 'italic', (marks?: JSONContent['marks']) => JSONContent][] = [
+    ['header cell', 'bold', (marks) => ({type: 'chatTableWrapper', content: [
+      {type: 'chatTableTitle'},
+      {type: 'table', content: [{type: 'tableRow', content: [
+        {type: 'tableHeader', content: [{type: 'paragraph', content: word(marks)}]}
+      ]}]}
+    ]})],
+    ['heading', 'bold', (marks) => ({type: 'heading', attrs: {level: 3}, content: word(marks)})],
+    ['details summary', 'bold', (marks) => ({type: 'details', attrs: {open: true}, content: [
+      {type: 'detailsSummary', content: word(marks)},
+      {type: 'detailsBody', content: [paragraph('body')]}
+    ]})],
+    ['quote author', 'bold', (marks) => ({type: 'blockquote', content: [paragraph('quote'), {type: 'blockquoteCaption', content: word(marks)}]})],
+    ['pullquote author', 'bold', (marks) => ({type: 'pullquote', content: [{type: 'pullquoteText', content: text('quote')}, {type: 'pullquoteCaption', content: word(marks)}]})],
+    ['pullquote', 'italic', (marks) => ({type: 'pullquote', content: [{type: 'pullquoteText', content: word(marks)}]})]
+  ];
 
-  test.each([
-    ['plain', undefined],
-    ['pasted bold', [{type: 'bold'}]]
-  ] as const)('offers no Bold over %s header text, from the tooltip or the shortcut', (_name, marks) => {
-    const {editor, tiptap} = mountSelected(mountEditor, header(marks ? [...marks] : undefined));
-    const before = tiptap.state.doc;
-    expect(editor.canApplyMarkup('bold')).toBe(false);
-    expect(editor.applyMarkup({type: 'bold'})).toBe(false);
-    expect(tiptap.state.doc.eq(before)).toBe(true);
-    expect(editor.applyMarkup({type: 'italic'})).toBe(true);
-  });
+  for(const [name, mark, block] of BLOCKS) for(const pasted of [false, true]) {
+    test(`offers no ${mark} in a ${name}${pasted ? ', over pasted text that has it' : ''}`, () => {
+      const {editor, tiptap} = mountSelected(mountEditor, block(pasted ? [{type: mark}] : undefined));
+      const before = tiptap.state.doc;
+      expect(editor.canApplyMarkup(mark)).toBe(false);
+      expect(editor.applyMarkup({type: mark})).toBe(false);
+      expect(tiptap.state.doc.eq(before)).toBe(true);
+      expect(editor.applyMarkup({type: 'underline'})).toBe(true);
+    });
+  }
 });
 
 describe('Tiptap chat input editor: markup over marked text', () => {

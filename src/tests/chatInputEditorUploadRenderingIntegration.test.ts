@@ -13,7 +13,7 @@ import {
 } from '@components/chat/inputEditor/mediaPreviewUrl';
 import type {ChatInputEditorInputEvent} from '@components/chat/inputEditor/types';
 import slideshowStyles from '@components/slideshow.module.scss';
-import type {Document, PageBlock, Photo} from '@layer';
+import type {Document, Message, MessageMedia, PageBlock, Photo} from '@layer';
 import I18n from '@lib/langPack';
 
 describe('Tiptap chat input editor: UploadRendering', () => {
@@ -164,19 +164,25 @@ describe('Tiptap chat input editor: UploadRendering', () => {
     expect(editor.getDocument()).toEqual(completedDocument);
   });
 
-  test('shows a pending audio player and updates its upload progress without remounting it', async() => {
-    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
-    const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  test('draws a pending audio from its local document, its upload left to the row, and keeps the row once done', async() => {
     const {editor, input} = mountEditor();
     const uploadId = 'upload-audio';
+    // the document the upload was prepared with, from the local file
+    const localDocument = {
+      _: 'document', id: '7', access_hash: '0', file_reference: new Uint8Array(), pFlags: {}, type: 'audio',
+      file_name: 'Track.mp3', size: 1024, mime_type: 'audio/mpeg', duration: 42,
+      attributes: [{_: 'documentAttributeAudio', pFlags: {}, duration: 42}]
+    } as Document.document;
     const uploadItem = {
+      document: localDocument,
       fileName: 'Track.mp3',
       fileSize: 1024,
       id: `${uploadId}-0`,
       mimeType: 'audio/mpeg',
       progress: 0,
-      state: 'preparing' as const,
-      type: 'audio' as const
+      state: 'uploading' as const,
+      type: 'audio' as const,
+      uploadingFileName: 'track-upload'
     };
 
     expect(editor.beginRichMediaUpload({
@@ -188,28 +194,23 @@ describe('Tiptap chat input editor: UploadRendering', () => {
     })).toBe(true);
     expect(editor.getRichMessage().input.blocks).toEqual([]);
 
+    type Row = HTMLElement & {message: Message.message, uploadingFileName?: string};
     await vi.waitFor(() => {
       expect(input.querySelector('audio-element.audio')).not.toBeNull();
     });
     const media = input.querySelector<HTMLElement>('.chat-input-rich-media')!;
-    const audio = media.querySelector('audio-element.audio');
-    const overlay = media.querySelector<HTMLElement>('.chat-input-rich-media-upload');
-    const progress = media.querySelector('[role="progressbar"]');
+    const audio = media.querySelector<Row>('audio-element.audio');
     expect(media.dataset.richMediaType).toBe('pageBlockAudio');
-    expect(overlay?.dataset.state).toBe('preparing');
+    // drawn as an outgoing message's is, the upload its own
+    expect((audio.message.media as MessageMedia.messageMediaDocument).document).toBe(localDocument);
+    expect(audio.uploadingFileName).toBe('track-upload');
+    expect(media.querySelector('.audio-time')?.textContent).toBe('0:42');
+    expect(media.querySelector('.chat-input-rich-media-upload')).toBeNull();
 
-    expect(editor.updateRichMediaUpload(uploadId, [{
-      ...uploadItem,
-      duration: 42,
-      progress: .64,
-      state: 'uploading'
-    }])).toBe(true);
+    expect(editor.updateRichMediaUpload(uploadId, [{...uploadItem, progress: .64}])).toBe(true);
     await Promise.resolve();
     expect(media.querySelector('audio-element.audio')).toBe(audio);
-    expect(media.querySelector('.chat-input-rich-media-upload')).toBe(overlay);
-    expect(media.querySelector('[role="progressbar"]')).toBe(progress);
-    expect(progress?.getAttribute('aria-valuenow')).toBe('64');
-    expect(media.querySelector('.audio-time')?.textContent).toBe('0:42');
+    expect(media.querySelector('.chat-input-rich-media-upload')).toBeNull();
 
     const tiptap = (editor as TiptapEditorInternals).editor;
     editor.focusAtEnd(false);
@@ -245,11 +246,11 @@ describe('Tiptap chat input editor: UploadRendering', () => {
     expect(tiptap.state.selection.$from.parent.type.name).toBe(caretParentBeforeCompletion);
     expect(tiptap.state.selection.$from.parentOffset).toBe(caretOffsetBeforeCompletion);
     expect(tiptap.state.selection.$from.parent.textContent).toBe('Keep typing');
-    expect(input.querySelector('.chat-input-rich-media-upload')).toBeNull();
-    expect(pause).toHaveBeenCalledOnce();
-    expect(load).toHaveBeenCalledOnce();
-    pause.mockRestore();
-    load.mockRestore();
+    // the row goes on as drawn, as a bubble's does once sent: the server's document swapped in, the
+    // message no longer an upload
+    expect(media.querySelector('audio-element.audio')).toBe(audio);
+    expect((audio.message.media as MessageMedia.messageMediaDocument).document).toBe(document);
+    expect(audio.message.uploadingFileName).toBeUndefined();
   });
 
   test('inserts split visual and audio uploads atomically', () => {

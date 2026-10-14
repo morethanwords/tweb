@@ -50,6 +50,28 @@ defineStories('Rich editor', [
     }
   },
   {
+    id: 'richEditor/removeFormatting',
+    title: 'Remove formatting (no Premium)',
+    open: async() => {
+      const [{default: confirmationPopup}, {createRichMessagePremiumConfirmation}] = await Promise.all([
+        import('@components/confirmationPopup'),
+        import('@components/chat/inputEditor/richMessagePostingChoice')
+      ]);
+      void confirmationPopup(createRichMessagePremiumConfirmation(noop)).catch(noop);
+    }
+  },
+  {
+    id: 'richEditor/richTextUnavailable',
+    title: 'Rich text is unavailable',
+    open: async() => {
+      const [{default: confirmationPopup}, {createRichMessageUnavailableConfirmation}] = await Promise.all([
+        import('@components/confirmationPopup'),
+        import('@components/chat/inputEditor/richMessagePostingChoice')
+      ]);
+      void confirmationPopup(createRichMessageUnavailableConfirmation()).catch(noop);
+    }
+  },
+  {
     id: 'richEditor/location',
     title: 'Insert a map',
     open: async() => {

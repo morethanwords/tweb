@@ -534,18 +534,42 @@
 
     }
 
-    &-item-audio {
+    // a file or an audio: a row drawn as a bubble draws one, its upload included; a failed one offers
+    // its actions at the row's end, in the interface's colours rather than over a picture
+    &-item-row {
+      // the row's gutter: an audio's play button sits in from the audio's own edge, so an audio's
+      // gutter is that much narrower and the button lines up with a file's icon and the text around
+      --rich-media-row-padding: var(--padding-horizontal, 0px);
+      // the menu at the row's end, in the middle of its height, with the row's text kept clear of it
+      --rich-media-row-more-inset: 1rem;
       min-height: 3rem;
+      padding-inline: var(--rich-media-row-padding) calc(var(--rich-media-row-more-inset) + 3rem);
+
+      &[data-media-type="pageBlockAudio"] {
+        --rich-media-row-padding: calc(var(--padding-horizontal, 0px) - .5rem);
+      }
+
+      // a file not sent yet does nothing on a click but what a photo's click does
+      &[data-media-type="pageBlockDocument"] > .document {
+        cursor: inherit;
+      }
+
+      // centred whatever size the composer gives its buttons
+      > .chat-input-rich-media-more {
+        right: auto;
+        inset-inline-end: var(--rich-media-row-more-inset);
+        top: 50%;
+        transform: translateY(-50%);
+      }
 
       > .chat-input-rich-media-upload {
-        border-radius: 50%;
-        inset: 0 auto 0 0;
-        width: 3rem;
+        justify-content: flex-end;
+        padding-inline-end: calc(var(--padding-horizontal, 0px) + 2.5rem);
 
-        &[data-state="error"] {
-          border-radius: 0;
-          inset-inline-end: 0;
-          width: auto;
+        .chat-input-rich-media-upload-action {
+          background-color: var(--surface-color);
+          border-color: var(--primary-color);
+          color: var(--primary-color);
         }
       }
     }
@@ -586,6 +610,12 @@
 
       .preloader-container {
         pointer-events: auto;
+
+        // the progress gives way to the actions once the upload failed; the container's own display
+        // outweighs the attribute
+        &[hidden] {
+          display: none;
+        }
       }
 
       &-progress {
@@ -651,17 +681,6 @@
       color: var(--secondary-text-color);
       font-size: .875rem;
       padding: 2rem;
-    }
-
-    &[data-rich-media-type="pageBlockAudio"] {
-      .chat-input-rich-media-preview {
-        user-select: auto;
-
-        .document {
-          flex: 1 1 auto;
-          min-width: 0;
-        }
-      }
     }
   }
 

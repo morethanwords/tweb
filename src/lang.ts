@@ -494,7 +494,6 @@ const lang = {
   'RichMessage.Error.TooLarge': 'This rich text message is too large (%1$d of %2$d bytes).',
   'RichMessage.Error.MediaUnsupported': 'Rich text can\'t be combined with attachment media. Send it as a separate message.',
   'RichMessage.Error.UnsupportedContent': 'This rich text message contains content that this editor can\'t safely edit yet.',
-  'RichMessage.Error.FileUnsupported': 'Files can\'t be embedded in rich text. Collapse the editor to send them separately.',
   'RichMessage.Error.InsertTargetChanged': 'The message changed before the file could be inserted. Try again.',
   'AiEditor.MessageChanged': 'The message has changed. Reopen the AI editor to apply a result to the current message.',
   'RichMessage.Error.ResourcesUnavailable': 'Some referenced rich text content is no longer available. Insert it again before sending.',

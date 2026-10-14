@@ -83,23 +83,19 @@ export function dragEventHasFiles(event: DragEvent) {
   return types.contains ? types.contains('Files') : types.indexOf('Files') >= 0;
 }
 
+// Any file goes into the expanded editor: a photo or a video as media, music as an audio, the rest —
+// and whatever is attached as a file — as a file block.
 export function shouldInsertRichMediaFiles<T>(
   files: T[],
-  target: ChatInputEditorSelection | undefined,
-  attachType: 'media' | 'document' | undefined,
-  isRichMedia: (file: T) => boolean
+  target: ChatInputEditorSelection | undefined
 ) {
-  return !!(
-    target &&
-    attachType !== 'document' &&
-    files.length &&
-    files.every(isRichMedia)
-  );
+  return !!(target && files.length);
 }
 
 const EMBEDDED_RICH_MEDIA_BLOCKS = new Set([
   'inputPageBlockMap',
   'pageBlockAudio',
+  'pageBlockDocument',
   'pageBlockCollage',
   'pageBlockMap',
   'pageBlockPhoto',

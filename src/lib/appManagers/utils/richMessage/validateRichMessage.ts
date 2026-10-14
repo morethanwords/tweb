@@ -313,6 +313,7 @@ const INPUT_BLOCKS = new Set<PageBlock['_']>([
   'pageBlockPhoto',
   'pageBlockVideo',
   'pageBlockAudio',
+  'pageBlockDocument',
   'pageBlockCollage',
   'pageBlockSlideshow',
   'pageBlockTable',
@@ -563,6 +564,7 @@ function validateBlockStructure(
     case 'pageBlockPhoto':
     case 'pageBlockVideo':
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
       return validateCaption(block.caption);
     case 'inputPageBlockMap':
       return validInputMap(block) ? validateCaption(block.caption) : 'invalid';

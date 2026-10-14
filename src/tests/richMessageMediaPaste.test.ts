@@ -12,7 +12,6 @@ import {
   shouldPreventDefaultFilePaste,
   shouldInsertRichMediaFiles
 } from '@components/chat/inputEditor/mediaPaste';
-import {isRichMessageMediaMimeType} from '@helpers/files/richMessageMediaInsertPolicy';
 import type {Document, PageBlock, Photo} from '@layer';
 
 function clipboardEvent(items: Array<{
@@ -36,7 +35,6 @@ function clipboardEvent(items: Array<{
 
 describe('rich-message media paste and drop routing', () => {
   const target = {from: 4, to: 4};
-  const supported = (file: File) => isRichMessageMediaMimeType(file.type);
 
   test('routes Attach photo/video into the expanded rich editor at the saved selection', () => {
     expect(getAttachRichMediaTarget(true, target)).toBe(target);
@@ -71,19 +69,17 @@ describe('rich-message media paste and drop routing', () => {
     expect(isRichMediaInsertSelectionCurrent({from: 4, to: 4}, 8)).toBe(true);
   });
 
-  test('uses the captured target only for an all-media paste or drop', () => {
+  // what is no photo, video or music goes in as a file block (the other clients do the same)
+  test('takes any file into the editor at the captured target', () => {
     const image = new File(['image'], 'image.png', {type: 'image/png'});
-    const video = new File(['video'], 'video.mp4', {type: 'video/mp4'});
     const audio = new File(['audio'], 'audio.mp3', {type: 'audio/mpeg'});
     const document = new File(['document'], 'notes.txt', {type: 'text/plain'});
 
-    expect(shouldInsertRichMediaFiles([image, video], target, undefined, supported)).toBe(true);
-    expect(shouldInsertRichMediaFiles([audio], target, undefined, supported)).toBe(true);
-    expect(shouldInsertRichMediaFiles([image, audio], target, 'media', supported)).toBe(true);
-    expect(shouldInsertRichMediaFiles([image], target, 'media', supported)).toBe(true);
-    expect(shouldInsertRichMediaFiles([image], target, 'document', supported)).toBe(false);
-    expect(shouldInsertRichMediaFiles([image], undefined, 'media', supported)).toBe(false);
-    expect(shouldInsertRichMediaFiles([image, document], target, 'media', supported)).toBe(false);
+    expect(shouldInsertRichMediaFiles([image, audio], target)).toBe(true);
+    expect(shouldInsertRichMediaFiles([image, document], target)).toBe(true);
+    expect(shouldInsertRichMediaFiles([document], target)).toBe(true);
+    expect(shouldInsertRichMediaFiles([image], undefined)).toBe(false);
+    expect(shouldInsertRichMediaFiles([], target)).toBe(false);
   });
 
   test('does not offer a lossy plain fallback for embedded rich media', () => {

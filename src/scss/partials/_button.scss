@@ -551,7 +551,8 @@ $btn-menu-z-index: 4;
         flex: 1 1 auto;
       }
 
-      .tgico {
+      // the arrow only: a label's text may hold icons of its own (a premium star)
+      &-arrow {
         font-size: 20px;
         transform: rotate(-90deg);
         color: var(--secondary-color);

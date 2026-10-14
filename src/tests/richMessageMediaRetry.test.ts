@@ -48,6 +48,8 @@ function setup() {
         authorize: async() => true,
         cancel,
         isCurrent: () => true,
+        // photos only here: a row's preparation is not asked for
+        prepare: vi.fn(),
         upload
       })
     }

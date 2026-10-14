@@ -24,18 +24,32 @@ const DEFAULT_DEPENDENCIES: RichMessagePostingChoiceDependencies = {
 export function createRichMessagePremiumConfirmation(
   showPremium: () => void
 ): PopupConfirmationOptions {
+  // as the other clients have it: Premium is the offer, sending without formatting the way out
   const sendWithoutFormattingButton: PopupConfirmationOptions['button'] = {
-    langKey: 'RichMessage.SendWithoutFormatting'
+    langKey: 'RichMessage.SendWithoutFormatting',
+    isSecondary: true
   };
   return {
     titleLangKey: 'RichMessage.PremiumRequired.Title',
     descriptionLangKey: 'RichMessage.PremiumRequired.Text',
     closable: true,
+    footer: true,
     button: sendWithoutFormattingButton,
-    cancelButton: {
+    buttons: [{
       langKey: 'RichMessage.SubscribeToPremium',
+      isCancel: true,
       callback: showPremium
-    }
+    }, sendWithoutFormattingButton]
+  };
+}
+
+export function createRichMessageUnavailableConfirmation(): PopupConfirmationOptions {
+  return {
+    titleLangKey: 'RichMessage.Unavailable.Title',
+    descriptionLangKey: 'RichMessage.Unavailable.Text',
+    footer: true,
+    button: {langKey: 'RichMessage.SendWithoutFormatting'},
+    cancelButton: {langKey: 'Cancel', isSecondary: true}
   };
 }
 
@@ -61,11 +75,7 @@ export default async function getRichMessagePostingChoice(
   try {
     await dependencies.confirm(state.mode === 'premium' ?
       createRichMessagePremiumConfirmation(dependencies.showPremium) :
-      {
-        titleLangKey: 'RichMessage.Unavailable.Title',
-        descriptionLangKey: 'RichMessage.Unavailable.Text',
-        button: {langKey: 'RichMessage.SendWithoutFormatting'}
-      });
+      createRichMessageUnavailableConfirmation());
     return 'plain';
   } catch{
     return 'cancel';

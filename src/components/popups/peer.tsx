@@ -15,7 +15,9 @@ export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
 export type PopupPeerButtonCallback = (e: MouseEvent, checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{
   callback: PopupPeerButtonCallback,
-  onlyWithCheckbox: PopupPeerCheckboxOptions
+  onlyWithCheckbox: PopupPeerCheckboxOptions,
+  /** In a footer (see `footer`): the transparent one under the filled. */
+  isSecondary: boolean
 }>;
 // the caption belongs to the row the popup builds around the checkbox, not to the checkbox itself;
 // `text` doubles as the checkbox's identity in the button callbacks
@@ -44,6 +46,8 @@ export type PopupPeerOptions = PopupOptions & Partial<{
   descriptionLangKey: LangPackKey,
   descriptionLangArgs: any[],
   buttons: Array<PopupPeerButton>,
+  /** The buttons as a footer's: full width, one under another, in the order given. */
+  footer: boolean,
   checkboxes: Array<PopupPeerCheckboxOptions>,
   inputField: InputField,
   /** Anything the confirmation itself is about — a radio list, a preview — under the description. */
@@ -101,35 +105,50 @@ export default function showPeerPopup(className: string, options: PopupPeerOptio
       // an input field speaks for the button that acts on it, never for Cancel
       const inputButton = inputField && buttons.find((button) => !button.isCancel);
 
-      return (
-        <PopupElement.Buttons class={buttons.length >= 3 ? 'is-vertical-layout' : undefined}>
-          <For each={buttons}>{(button) => {
-            const gate = button.onlyWithCheckbox;
-            const [gateChecked, setGateChecked] = createSignal(!gate);
-            if(gate) {
-              onMount(() => {
-                setGateChecked(gate.checkboxField.checked);
-                subscribeOn(gate.checkboxField.input)('change', () => setGateChecked(gate.checkboxField.checked));
-              });
-            }
+      const renderButton = (button: PopupPeerButton) => {
+        const gate = button.onlyWithCheckbox;
+        const [gateChecked, setGateChecked] = createSignal(!gate);
+        if(gate) {
+          onMount(() => {
+            setGateChecked(gate.checkboxField.checked);
+            subscribeOn(gate.checkboxField.input)('change', () => setGateChecked(gate.checkboxField.checked));
+          });
+        }
 
-            return (
-              <PopupElement.Button
-                langKey={button.langKey}
-                langArgs={button.langArgs}
-                danger={button.isDanger}
-                cancel={button.isCancel}
-                noRipple={button.noRipple}
-                iconLeft={button.iconLeft}
-                iconRight={button.iconRight}
-                disabled={!gateChecked() || (button === inputButton && !inputValid())}
-                confirm={button === confirmButton}
-                ref={(element) => button.element = element}
-                // read at click time: a caller can swap the callback while the popup is up
-                callback={(e) => button.callback?.(e, checkboxes && checkedSet())}
-              >{button.text}</PopupElement.Button>
-            );
-          }}</For>
+        const props: Omit<Parameters<typeof PopupElement.Button>[0], 'danger'> = {
+          langKey: button.langKey,
+          langArgs: button.langArgs,
+          cancel: button.isCancel,
+          noRipple: button.noRipple,
+          iconLeft: button.iconLeft,
+          iconRight: button.iconRight,
+          get disabled() {
+            return !gateChecked() || (button === inputButton && !inputValid());
+          },
+          confirm: button === confirmButton,
+          ref: (element) => button.element = element,
+          // read at click time: a caller can swap the callback while the popup is up
+          callback: (e) => button.callback?.(e, checkboxes && checkedSet()),
+          children: button.text
+        };
+
+        return options.footer ? (
+          <PopupElement.FooterButton
+            {...props}
+            color={button.isDanger ? 'danger' : button.isSecondary ? 'secondary' : 'primary'}
+          />
+        ) : (
+          <PopupElement.Button {...props} danger={button.isDanger} />
+        );
+      };
+
+      return options.footer ? (
+        <PopupElement.Footer>
+          <For each={buttons}>{renderButton}</For>
+        </PopupElement.Footer>
+      ) : (
+        <PopupElement.Buttons class={buttons.length >= 3 ? 'is-vertical-layout' : undefined}>
+          <For each={buttons}>{renderButton}</For>
         </PopupElement.Buttons>
       );
     };

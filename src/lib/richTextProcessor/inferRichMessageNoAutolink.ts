@@ -94,6 +94,7 @@ function inspectAutolinkBlock(block: PageBlock, state: {auto: boolean, candidate
     case 'pageBlockPhoto':
     case 'pageBlockVideo':
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
     case 'pageBlockMap':
     case 'inputPageBlockMap':
       inspectCaption(block.caption);

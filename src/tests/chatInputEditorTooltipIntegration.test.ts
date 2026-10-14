@@ -107,14 +107,16 @@ describe('Tiptap chat input editor: Tooltip', () => {
     internals.input = input;
     internals.init();
 
+    // a code block is plain text: no mark, and no quote either
     editor.restoreSelection({from: 1, to: 5}, false);
     tooltip.setActiveMarkupButton();
     expect(internals.buttons.bold.disabled).toBe(true);
-    expect(internals.buttons.quote.disabled).toBe(false);
+    expect(internals.buttons.quote.disabled).toBe(true);
 
     editor.restoreSelection({from: 7, to: 11}, false);
     tooltip.setActiveMarkupButton();
     expect(internals.buttons.bold.disabled).toBe(false);
+    expect(internals.buttons.quote.disabled).toBe(false);
   });
 
   test.each([

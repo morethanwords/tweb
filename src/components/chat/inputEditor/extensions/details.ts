@@ -1,5 +1,5 @@
 import {Node, mergeAttributes} from '@tiptap/core';
-import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
+import {DOMSerializer, type Node as ProseMirrorNode} from '@tiptap/pm/model';
 import type {Transaction} from '@tiptap/pm/state';
 import {TextSelection} from '@tiptap/pm/state';
 import {createComponent} from 'solid-js';
@@ -277,6 +277,22 @@ export const ChatDetailsBody = Node.create({
       }, 0]
       ]
     ];
+  },
+
+  // The details' view opens and closes the content (`updateDisclosure`): those classes and
+  // attributes are no part of the document. Read as a change of it, every one redrew the body, and
+  // the redraw called the details' view to write them anew — in WebKit without end: a details open
+  // and one closed, loaded with the field, froze the page.
+  addNodeView() {
+    return ({node}) => {
+      const {dom, contentDOM} = DOMSerializer.renderSpec(document, node.type.spec.toDOM(node));
+      const content = (dom as HTMLElement).firstElementChild;
+      return {
+        dom,
+        contentDOM,
+        ignoreMutation: (mutation) => mutation.type === 'attributes' && mutation.target === content
+      };
+    };
   }
 });
 
@@ -360,11 +376,6 @@ export const ChatDetails = Node.create({
           if(target.classList.contains('chat-input-details-toggle')) {
             return mutation.attributeName === 'aria-expanded' ||
               mutation.attributeName === 'aria-label' ||
-              mutation.attributeName === 'class';
-          }
-          if(target.classList.contains(instantViewStyles.DetailsContent)) {
-            return mutation.attributeName === 'aria-hidden' ||
-              mutation.attributeName === 'inert' ||
               mutation.attributeName === 'class';
           }
           return false;

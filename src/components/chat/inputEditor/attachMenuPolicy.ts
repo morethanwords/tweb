@@ -14,6 +14,7 @@ export type RichMessageAttachMenuAction =
 const RICH_MESSAGE_ATTACH_MENU_ACTIONS = new Set<RichMessageAttachMenuAction>([
   'visualMedia',
   'audio',
+  'document',
   'location',
   'groupCollage',
   'groupSlideshow'

@@ -70,6 +70,16 @@ function getElementWidth(element: HTMLElement) {
     return size.width;
   }
 
+  // an inline one is only as wide as its text, so it would always find itself too narrow: what it
+  // may take is the room its line leaves it after whatever precedes it
+  const line = element.parentElement;
+  if(line && getComputedStyle(element).display === 'inline') {
+    const preceding = document.createRange();
+    preceding.setStart(line, 0);
+    preceding.setEndBefore(element);
+    return line.getBoundingClientRect().width - preceding.getBoundingClientRect().width;
+  }
+
   return element.getBoundingClientRect().width;
 }
 

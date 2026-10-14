@@ -1,5 +1,6 @@
 import {openEditor, settleNativeSelection, setEditorDocument as setDocument} from './fixtures/chatInputEditorTest';
-import {devices, expect, test, type Page} from '@playwright/test';
+import {devices, expect, type Page} from '@playwright/test';
+import {test} from './workerContext';
 import type {JSONContent} from '@tiptap/core';
 import {CHAT_INPUT_EDITOR_TEST_MEDIA_URL} from '@components/chat/inputEditor/testData';
 import type {ChatInputEditorBrowserHarness, TextblockDescriptor} from './fixtures/chatInputEditor';

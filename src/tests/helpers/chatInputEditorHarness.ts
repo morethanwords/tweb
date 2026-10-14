@@ -10,7 +10,7 @@ import type {ChatInputEditor, ChatInputEditorOptions} from '@components/chat/inp
 import InputField from '@components/inputField';
 import slideshowStyles from '@components/slideshow.module.scss';
 import type {MarkdownType} from '@helpers/dom/getRichElementValue';
-import type {Document, MessageEntity, PageBlock, Photo} from '@layer';
+import type {Document, Message, MessageEntity, MessageMedia, PageBlock, Photo} from '@layer';
 import I18n from '@lib/langPack';
 import {setAppSettingsSilent} from '@stores/appSettings';
 
@@ -93,13 +93,25 @@ vi.mock('@components/chat/markupTooltip', () => ({
   }
 }));
 
+// the row as the wrapper makes it: its document from the message, as a bubble's; the message, and with
+// it the document, replaced once the upload is done, as a bubble's is once sent
 vi.mock('@components/wrappers/document', () => ({
-  default: vi.fn(async({doc}: {doc: {duration?: number}}) => {
+  default: vi.fn(async({doc: docOverride, message, uploadingFileName}: {
+    doc?: Document.document,
+    message?: Message.message,
+    uploadingFileName?: string
+  }) => {
+    const doc = docOverride ?? (message?.media as MessageMedia.messageMediaDocument)?.document as Document.document;
     const element = document.createElement('audio-element') as HTMLElement & {
-      doc?: unknown
+      doc?: unknown,
+      replaceMessage?: (message: Message.message) => void,
+      uploadingFileName?: string
     };
     element.classList.add('audio');
     element.doc = doc;
+    element.message = message;
+    element.uploadingFileName = uploadingFileName ?? message?.uploadingFileName?.[0];
+    element.replaceMessage = (message) => element.message = message;
     const time = document.createElement('span');
     const duration = Math.max(0, Math.floor(doc.duration || 0));
     time.className = 'audio-time';

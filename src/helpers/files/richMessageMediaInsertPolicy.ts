@@ -9,7 +9,7 @@ import type {ChatRights} from '@appManagers/appChatsManager';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
 import getFileMimeType, {normalizeFileMimeType} from '@helpers/files/getFileMimeType';
 
-export type RichMessageMediaFileType = 'audio' | 'photo' | 'video';
+export type RichMessageMediaFileType = 'audio' | 'document' | 'photo' | 'video';
 const RICH_MESSAGE_AUDIO_FILE_EXTENSIONS = new Set<string>(
   RICH_MESSAGE_AUDIO_FILE_EXTENSIONS_SUPPORTED
 );
@@ -76,38 +76,36 @@ export function normalizeRichMessageMediaFile(inputFile: File) {
   });
 }
 
+/**
+ * What a file becomes in a rich message, as the other clients decide it: music is an audio, a photo
+ * or a video is media unless it is attached as a file, and anything else is a file block.
+ */
 export function getRichMessageMediaFileType(
   mimeType: string,
-  fileName?: string
-): RichMessageMediaFileType | undefined {
+  fileName?: string,
+  asFile?: boolean
+): RichMessageMediaFileType {
   mimeType = normalizedMimeType(mimeType);
-  if(isRichMessageAudioMimeType(mimeType)) return 'audio';
+  if(isAudioRichMessageMimeType(mimeType, fileName)) return 'audio';
+  if(asFile) return 'document';
   if(mimeType === 'image/gif' || isVideoMimeType(mimeType) ||
     mimeType === 'video/quicktime') {
     return 'video';
   }
   if(IMAGE_MIME_TYPES_SUPPORTED.has(mimeType)) return 'photo';
-  if(isAudioRichMessageMimeType(mimeType, fileName)) return 'audio';
-}
-
-export function isRichMessageMediaMimeType(
-  mimeType: string,
-  fileName?: string
-) {
-  return getRichMessageMediaFileType(mimeType, fileName) !== undefined;
+  return 'document';
 }
 
 export function getRichMessageMediaRequiredRight(
   mimeType: string,
-  fileName?: string
-): ChatRights | undefined {
-  const type = getRichMessageMediaFileType(mimeType, fileName);
-  if(type === 'audio') return 'send_audios';
-  if(type === 'photo') return 'send_photos';
-  if(type === 'video') {
-    return normalizedMimeType(mimeType) === 'image/gif' ?
-      'send_gifs' :
-      'send_videos';
+  fileName?: string,
+  asFile?: boolean
+): ChatRights {
+  switch(getRichMessageMediaFileType(mimeType, fileName, asFile)) {
+    case 'audio': return 'send_audios';
+    case 'photo': return 'send_photos';
+    case 'video': return normalizedMimeType(mimeType) === 'image/gif' ? 'send_gifs' : 'send_videos';
+    default: return 'send_docs';
   }
 }
 
@@ -115,13 +113,15 @@ export function groupRichMessageMediaEntries<T extends {
   type: RichMessageMediaFileType
 }>(entries: T[]) {
   const groups: T[][] = [];
+  // photos and videos make an album; a file and an audio stand alone
+  const visual = ({type}: T) => type === 'photo' || type === 'video';
   entries.forEach((entry) => {
     const previous = groups[groups.length - 1];
     if(
-      entry.type !== 'audio' &&
+      visual(entry) &&
       previous &&
       previous.length < MESSAGES_ALBUM_MAX_SIZE &&
-      previous.every(({type}) => type !== 'audio')
+      previous.every(visual)
     ) {
       previous.push(entry);
     } else {

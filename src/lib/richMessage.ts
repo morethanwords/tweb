@@ -108,6 +108,20 @@ function isFullWidthBlock(block: PageBlock): boolean {
   }
 }
 
+/**
+ * A file or an audio of a rich message: one document drawn as the document row a message's own
+ * file or audio is, with its caption under it — never in a collage or a slideshow.
+ */
+export type DocumentRowBlock = PageBlock.pageBlockAudio | PageBlock.pageBlockDocument;
+
+export function isDocumentRowBlock(block: PageBlock | undefined): block is DocumentRowBlock {
+  return block?._ === 'pageBlockAudio' || block?._ === 'pageBlockDocument';
+}
+
+export function getDocumentRowBlockId(block: DocumentRowBlock) {
+  return block._ === 'pageBlockAudio' ? block.audio_id : block.document_id;
+}
+
 /** The number an ordered list shows for its item, the one it carries or the one its place gives. */
 export function getOrderedListItemNumber(block: PageBlock.pageBlockOrderedList, index: number) {
   const start = block.start ?? (block.pFlags.reversed ? block.items.length : 1);
@@ -197,6 +211,9 @@ function appendBlock(summary: Summary, block: PageBlock, prefix = '', includeFal
       break;
     case 'pageBlockAudio':
       appendCaptionOrFallback(summary, block.caption, 'Audio', prefix, includeFallbacks);
+      break;
+    case 'pageBlockDocument':
+      appendCaptionOrFallback(summary, block.caption, 'File', prefix, includeFallbacks);
       break;
     case 'pageBlockMap':
       appendCaptionOrFallback(summary, block.caption, 'Location', prefix, includeFallbacks);

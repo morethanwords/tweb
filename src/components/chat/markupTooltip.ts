@@ -49,6 +49,7 @@ export default class MarkupTooltip {
   private scrollContainer: HTMLDivElement;
   private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
   private buttonIcons: Partial<{[type in MarkupTooltipTypes]: {inactive: Icon, active: Icon}}> = {};
+  private quoteIcon: Icon = 'quote';
   private dateLinkDelimiter: HTMLElement;
   private extendedDelimiter: HTMLElement;
   private aiButton: HTMLElement;
@@ -113,7 +114,7 @@ export default class MarkupTooltip {
       'italic',
       'underline',
       'strikethrough',
-      ['quote', 'blockquote'],
+      'quote',
       ['date', 'calendar'],
       'link',
       'monospace',
@@ -409,6 +410,16 @@ export default class MarkupTooltip {
       if(icons && wasActive !== isActive) {
         replaceButtonIcon(button, isActive ? icons.active : icons.inactive);
       }
+    }
+
+    // a collapsed field quotes as a message does; the expanded one, a pullquote and a quote with an
+    // author quote as a block
+    const quoteIcon: Icon = editor && (editor.isExpanded() || editor.isRichQuoteSelected()) ?
+      'blockquote' :
+      'quote';
+    if(quoteIcon !== this.quoteIcon) {
+      this.quoteIcon = quoteIcon;
+      replaceButtonIcon(this.buttons.quote, quoteIcon);
     }
   }
 

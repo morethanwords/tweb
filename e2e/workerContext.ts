@@ -1,4 +1,4 @@
-import {BrowserContext, BrowserContextOptions, test as base} from '@playwright/test';
+import {BrowserContext, BrowserContextOptions, Page, test as base} from '@playwright/test';
 
 /**
  * One browser context per worker instead of one per test.
@@ -14,9 +14,22 @@ import {BrowserContext, BrowserContextOptions, test as base} from '@playwright/t
  * (idb.ts ignores `versionchange`), so a service worker holding one would stall the next test. A test
  * that boots the real client, where that state does matter, asks for a context of its own with
  * `test.use({freshContext: true})`.
+ *
+ * `samePage` goes further, for a suite whose every test opens its page by navigating (the composer's):
+ * the worker keeps one page and each test navigates it again. A navigation still gives the test a new
+ * document, but in the same renderer, which serves the modules from its memory cache and keeps their
+ * compiled code — a fixture page opened in 220 ms instead of 780. What a test sets on the page itself
+ * rather than in its document (listeners, routes, the viewport, where the mouse is) is put back after
+ * it, and a failed test takes its worker, and the page, down with it. What stays is the session
+ * history: a document that went back further than it pushed would land in the previous test's, where
+ * a new page would have gone nowhere.
  */
-export const test = base.extend<{freshContext: boolean}, {workerContext: BrowserContext}>({
+export const test = base.extend<
+  {freshContext: boolean},
+  {workerContext: BrowserContext, samePage: boolean, workerPage: {get(): Promise<Page>}}
+>({
   freshContext: [false, {option: true}],
+  samePage: [false, {option: true, scope: 'worker'}],
 
   workerContext: [async({browser}, use, workerInfo) => {
     const {viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, baseURL, locale, colorScheme} = workerInfo.project.use;
@@ -28,14 +41,21 @@ export const test = base.extend<{freshContext: boolean}, {workerContext: Browser
     await context.close();
   }, {scope: 'worker'}],
 
+  // made by the first test that asks for it, so a suite without `samePage` gets no page it never uses
+  workerPage: [async({workerContext}, use) => {
+    let page: Promise<Page>;
+    await use({get: () => page ??= workerContext.newPage()});
+  }, {scope: 'worker'}],
+
   context: async({context, freshContext, workerContext}, use) => {
     await use(freshContext ? context : workerContext);
   },
 
   // Not built on the stock `page`, which would leave a blank page behind in the shared context on
   // every test (it counts on the context closing).
-  page: async({context, freshContext}, use) => {
-    const own = await context.newPage();
+  page: async({context, freshContext, samePage, workerPage, viewport}, use) => {
+    const shared = samePage && !freshContext;
+    const own = shared ? await workerPage.get() : await context.newPage();
     await use(own);
     if(freshContext) return; // the context goes, and the page with it
 
@@ -44,6 +64,18 @@ export const test = base.extend<{freshContext: boolean}, {workerContext: Browser
       sessionStorage.clear();
     }).catch(() => {}); // still on about:blank, or the page is gone
     await context.clearCookies();
-    await own.close();
+    if(!shared) {
+      await own.close();
+      return;
+    }
+
+    await own.removeAllListeners();
+    await own.unrouteAll({behavior: 'ignoreErrors'});
+    const size = own.viewportSize();
+    if(viewport && (size?.width !== viewport.width || size?.height !== viewport.height)) {
+      await own.setViewportSize(viewport);
+    }
+    // the next document would open under a pointer left hovering whatever this test pointed at
+    await own.mouse.move(0, 0);
   }
 });

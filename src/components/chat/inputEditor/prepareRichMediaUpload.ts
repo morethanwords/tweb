@@ -13,7 +13,8 @@ import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import {
   getRichMessageMediaFileType,
   isVisualRichMessageMimeType,
-  normalizeRichMessageMediaFile
+  normalizeRichMessageMediaFile,
+  type RichMessageMediaFileType
 } from '@helpers/files/richMessageMediaInsertPolicy';
 
 function convertedVideoFile(file: File, blob: Blob) {
@@ -160,11 +161,14 @@ async function prepareImage(file: File): Promise<SendFileDetails> {
 }
 
 export default async function prepareRichMediaUpload(
-  inputFile: File
+  inputFile: File,
+  type?: RichMessageMediaFileType
 ): Promise<SendFileDetails> {
+  // a file block goes as it is: nothing converted, nothing scaled down
+  if(type === 'document') return {file: inputFile};
   const file = normalizeRichMessageMediaFile(inputFile);
   const mimeType = getFileMimeType(file);
-  if(getRichMessageMediaFileType(mimeType, file.name) === 'audio') {
+  if((type || getRichMessageMediaFileType(mimeType, file.name)) === 'audio') {
     return prepareAudio(file);
   }
   if(!isVisualRichMessageMimeType(mimeType)) {

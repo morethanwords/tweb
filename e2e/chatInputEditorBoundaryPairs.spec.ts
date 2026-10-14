@@ -1,5 +1,6 @@
 import {openEditor, settleNativeSelection} from './fixtures/chatInputEditorTest';
-import {expect, test, type Page} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
+import {test} from './workerContext';
 import type {JSONContent} from '@tiptap/core';
 import type {ChatInputEditorBrowserHarness, TextblockDescriptor} from './fixtures/chatInputEditor';
 
@@ -213,38 +214,38 @@ test.beforeEach(async({page}) => {
   await openEditor(page);
 });
 
-test('crosses every ordered pair of top-level block classes in both directions', async({page}) => {
-  test.setTimeout(180_000);
-  for(const source of BLOCKS) {
-    for(const target of BLOCKS) {
-      const sourceLabel = `source-${source.key}`;
-      const targetLabel = `target-${target.key}`;
-      await test.step(`${source.key} → ${target.key}`, async() => {
-        expect(await page.evaluate((document) => (
-          window.chatInputEditorHarness.setDocument(document)
-        ), {
-          type: 'doc',
-          content: [source.node(sourceLabel), target.node(targetLabel)]
-        })).toBe(true);
-        await settleNativeSelection(page);
-        const targetOccurrence = source.atomType === target.atomType && !!target.atomType ? 1 : 0;
+// A test per source block rather than one walking all the pairs: one such test alone took longer
+// than the rest of the suite run side by side.
+for(const source of BLOCKS) test(`crosses every ordered pair of top-level block classes in both directions, from ${source.key}`, async({page}) => {
+  test.setTimeout(60_000);
+  for(const target of BLOCKS) {
+    const sourceLabel = `source-${source.key}`;
+    const targetLabel = `target-${target.key}`;
+    await test.step(`${source.key} → ${target.key}`, async() => {
+      expect(await page.evaluate((document) => (
+        window.chatInputEditorHarness.setDocument(document)
+      ), {
+        type: 'doc',
+        content: [source.node(sourceLabel), target.node(targetLabel)]
+      })).toBe(true);
+      await settleNativeSelection(page);
+      const targetOccurrence = source.atomType === target.atomType && !!target.atomType ? 1 : 0;
 
-        await setBoundary(page, source, sourceLabel, 'exit', 0);
-        await page.keyboard.press('ArrowRight');
-        await settleNativeSelection(page);
-        await expectBoundary(page, target, targetLabel, 'entry', targetOccurrence);
+      await setBoundary(page, source, sourceLabel, 'exit', 0);
+      await page.keyboard.press('ArrowRight');
+      await settleNativeSelection(page);
+      await expectBoundary(page, target, targetLabel, 'entry', targetOccurrence);
 
-        await setBoundary(page, target, targetLabel, 'entry', targetOccurrence);
-        await page.keyboard.press('ArrowLeft');
-        await settleNativeSelection(page);
-        await expectBoundary(page, source, sourceLabel, 'exit', 0);
-      });
-    }
+      await setBoundary(page, target, targetLabel, 'entry', targetOccurrence);
+      await page.keyboard.press('ArrowLeft');
+      await settleNativeSelection(page);
+      await expectBoundary(page, source, sourceLabel, 'exit', 0);
+    });
   }
 });
 
-test('preserves text and history when deleting boundaries between every block pair', async({page}) => {
-  test.setTimeout(240_000);
+for(const source of BLOCKS) test(`preserves text and history when deleting boundaries between every block pair, from ${source.key}`, async({page}) => {
+  test.setTimeout(60_000);
   const textContent = (node: JSONContent): string => (
     node.text || node.content?.map(textContent).join('') || ''
   );
@@ -253,44 +254,42 @@ test('preserves text and history when deleting boundaries between every block pa
     return window.chatInputEditorHarness.document();
   });
 
-  for(const source of BLOCKS) {
-    for(const target of BLOCKS) {
-      for(const key of ['Backspace', 'Delete']) {
-        const active = key === 'Backspace' ? target : source;
-        if(active.atomType) continue;
-        await test.step(`${key}: ${source.key} → ${target.key}`, async() => {
-          const sourceLabel = `source-${source.key}`;
-          const targetLabel = `target-${target.key}`;
-          expect(await page.evaluate((document) => (
-            window.chatInputEditorHarness.setDocument(document)
-          ), {
-            type: 'doc',
-            content: [source.node(sourceLabel), target.node(targetLabel)]
-          })).toBe(true);
-          await settleNativeSelection(page);
-          await setBoundary(
-            page,
-            active,
-            key === 'Backspace' ? targetLabel : sourceLabel,
-            key === 'Backspace' ? 'entry' : 'exit',
-            0
-          );
-          const before = await documentSnapshot();
-          await page.keyboard.press(key);
-          await settleNativeSelection(page);
-          const after = await documentSnapshot();
-          expect(textContent(after)).toBe(textContent(before));
+  for(const target of BLOCKS) {
+    for(const key of ['Backspace', 'Delete']) {
+      const active = key === 'Backspace' ? target : source;
+      if(active.atomType) continue;
+      await test.step(`${key}: ${source.key} → ${target.key}`, async() => {
+        const sourceLabel = `source-${source.key}`;
+        const targetLabel = `target-${target.key}`;
+        expect(await page.evaluate((document) => (
+          window.chatInputEditorHarness.setDocument(document)
+        ), {
+          type: 'doc',
+          content: [source.node(sourceLabel), target.node(targetLabel)]
+        })).toBe(true);
+        await settleNativeSelection(page);
+        await setBoundary(
+          page,
+          active,
+          key === 'Backspace' ? targetLabel : sourceLabel,
+          key === 'Backspace' ? 'entry' : 'exit',
+          0
+        );
+        const before = await documentSnapshot();
+        await page.keyboard.press(key);
+        await settleNativeSelection(page);
+        const after = await documentSnapshot();
+        expect(textContent(after)).toBe(textContent(before));
 
-          if(JSON.stringify(after) !== JSON.stringify(before)) {
-            await page.keyboard.press('ControlOrMeta+z');
-            await settleNativeSelection(page);
-            expect(await documentSnapshot()).toEqual(before);
-            await page.keyboard.press('ControlOrMeta+Shift+z');
-            await settleNativeSelection(page);
-            expect(await documentSnapshot()).toEqual(after);
-          }
-        });
-      }
+        if(JSON.stringify(after) !== JSON.stringify(before)) {
+          await page.keyboard.press('ControlOrMeta+z');
+          await settleNativeSelection(page);
+          expect(await documentSnapshot()).toEqual(before);
+          await page.keyboard.press('ControlOrMeta+Shift+z');
+          await settleNativeSelection(page);
+          expect(await documentSnapshot()).toEqual(after);
+        }
+      });
     }
   }
 });

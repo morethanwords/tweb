@@ -1,5 +1,6 @@
 import {openEditor, settleNativeSelection as settle} from './fixtures/chatInputEditorTest';
-import {expect, test} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './workerContext';
 import type {ChatInputEditorBrowserHarness} from './fixtures/chatInputEditor';
 import {createChatInputEditorTestData} from '@components/chat/inputEditor/testData';
 

@@ -73,7 +73,8 @@ export default async function wrapDocument({
   customAudioToTextButton,
   globalMedia,
   doc: docOverride,
-  slot
+  slot,
+  draft
 }: {
   message: Message.message,
   middleware: Middleware,
@@ -111,7 +112,12 @@ export default async function wrapDocument({
    * AudioElement / `appMediaPlaybackController.addMedia`. See
    * `AddMediaArgs.slot`.
    */
-  slot?: number
+  slot?: number,
+  /**
+   * A file of a draft, as the composer shows one: the user's own, not sent yet. Its upload shows and
+   * cancels as an outgoing message's does; nothing else opens or downloads it.
+   */
+  draft?: boolean
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -163,8 +169,9 @@ export default async function wrapDocument({
   // return docDiv;
 
   const canActivate = !(!uploadingFileName && message.pFlags.is_outgoing && !message.mid);
-  const icoDiv = canActivate && Modes.a11y ? Button('', {noRipple: true}) : document.createElement('div');
-  if(canActivate && Modes.a11y) icoDiv.setAttribute('aria-label', I18n.format('AccDescr.OpenDocument', true, [doc.file_name || 'Unknown.file']));
+  const canOpen = canActivate && !draft;
+  const icoDiv = canOpen && Modes.a11y ? Button('', {noRipple: true}) : document.createElement('div');
+  if(canOpen && Modes.a11y) icoDiv.setAttribute('aria-label', I18n.format('AccDescr.OpenDocument', true, [doc.file_name || 'Unknown.file']));
   icoDiv.classList.add('document-ico');
   let icoTextEl: HTMLElement;
 
@@ -233,12 +240,13 @@ export default async function wrapDocument({
     descriptionParts.push(await wrapSenderToPeer(message));
   }
 
+  // the room the download's progress takes ("1 MB / 2 MB") kept when nothing follows the size: after
+  // the parts rather than one of them, or their separator stood before an empty place
+  let progressRoom: HTMLElement;
   if(!withTime && !showSender) {
-    const b = document.createElement('span');
-    const bytesMaxEl = formatBytes(doc.size);
-    b.append(bytesJoiner, bytesMaxEl);
-    b.style.visibility = 'hidden';
-    descriptionParts.push(b);
+    progressRoom = document.createElement('span');
+    progressRoom.append(bytesJoiner, formatBytes(doc.size));
+    progressRoom.style.visibility = 'hidden';
   }
 
   docDiv.innerHTML = `
@@ -269,6 +277,7 @@ export default async function wrapDocument({
 
   const sizeDiv = docDiv.querySelector('.document-size') as HTMLElement;
   bytesContainer.append(...joinElementsWith(descriptionParts, ' · '));
+  if(progressRoom) bytesContainer.append(progressRoom);
   sizeDiv.append(bytesContainer);
 
   docDiv.prepend(icoDiv);
@@ -318,7 +327,8 @@ export default async function wrapDocument({
     const _bytesContainer = formatBytes(doc.size);
     sizeContainer.style.position = 'absolute';
     sizeContainer.style.left = '0';
-    promise.then(onLoad, noop).finally(() => {
+    // a transfer that failed or was cancelled leaves the row as it was, as a failed download does
+    promise.then(onLoad, () => docDiv.classList.remove('downloading')).finally(() => {
       // sizeContainer.replaceWith(bytesContainer);
       bytesContainer.style.visibility = '';
       sizeContainer.remove();
@@ -346,7 +356,7 @@ export default async function wrapDocument({
     const doc = (docDiv as any).doc;
     // const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
     let download: CancellablePromise<any>;
-    const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
+    const queueId = appImManager.chat?.bubbles?.lazyLoadQueue.queueId;
     if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
     } else if(ext === 'md' || ext === 'markdown' || /^text\/(x-)?markdown\b/i.test(doc.mime_type || '')) {
@@ -437,7 +447,7 @@ export default async function wrapDocument({
 
     if(preloader) {
       preloader.onClick(e);
-    } else {
+    } else if(canOpen) {
       load(e);
     }
   });

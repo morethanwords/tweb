@@ -2,7 +2,8 @@ import type {Node as ProseMirrorNode, NodeType} from '@tiptap/pm/model';
 import {NodeSelection, Selection, TextSelection} from '@tiptap/pm/state';
 import type {EditorState, Transaction} from '@tiptap/pm/state';
 import type {Document, PageBlock, Photo} from '@layer';
-import type {ChatInputRichMediaLayout, ChatInputRichMediaUploadItem} from '@components/chat/inputEditor/types';
+import type {ChatInputRichMediaLayout, ChatInputRichMediaType, ChatInputRichMediaUploadItem} from '@components/chat/inputEditor/types';
+import {getDocumentRowBlockId, type DocumentRowBlock} from '@lib/richMessage';
 import {MESSAGES_ALBUM_MAX_SIZE} from '@appManagers/constants';
 
 export function withoutRichMediaUpload<T extends Record<string, unknown>>(attrs: T) {
@@ -51,12 +52,26 @@ function emptyRichText() {
   return {_: 'textEmpty' as const};
 }
 
-function emptyPageCaption() {
+export function emptyPageCaption() {
   return {
     _: 'pageCaption' as const,
     text: emptyRichText(),
     credit: emptyRichText()
   };
+}
+
+/** The block a media item of the composer is, by its type, around the photo or document `id`. */
+export function richMediaItemBlock(
+  type: ChatInputRichMediaType,
+  id: Long
+): DocumentRowBlock | VisualRichMediaBlock {
+  const caption = emptyPageCaption();
+  switch(type) {
+    case 'audio': return {_: 'pageBlockAudio', audio_id: id, caption};
+    case 'document': return {_: 'pageBlockDocument', document_id: id, caption};
+    case 'video': return {_: 'pageBlockVideo', pFlags: {}, video_id: id, caption};
+    default: return {_: 'pageBlockPhoto', pFlags: {}, photo_id: id, caption};
+  }
 }
 
 function visualRichMediaBlock(block: unknown): block is VisualRichMediaBlock {
@@ -205,9 +220,10 @@ function resourcesForBlock(
         photos: [] as Photo.photo[]
       };
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
       return {
         documents: documents.filter((document) => (
-          String(document.id) === String(block.audio_id)
+          String(document.id) === String(getDocumentRowBlockId(block))
         )),
         photos: [] as Photo.photo[]
       };

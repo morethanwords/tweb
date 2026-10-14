@@ -147,7 +147,7 @@ describe('formatting MarkupTooltip layout', () => {
       'heading_6',
       'text_block',
       'text_add',
-      'quote_filled',
+      'quote',
       'pull_quote',
       'toggle',
       'slash',

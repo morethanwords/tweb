@@ -13,7 +13,23 @@ import {resolve} from 'node:path';
 
 vi.mock('@components/chat/input', () => ({default: class {constructor() {throw new Error('A field must not construct ChatInput');}}}));
 vi.mock('@lib/appImManager', () => ({AppImManager: class {}, APP_TABS: {}, default: {}}));
-vi.mock('@components/chat/inputEditor/prepareRichMediaUpload', () => ({default: async(file: File) => ({file})}));
+// what a test holds the file's metadata back with, while a row is prepared
+const preparing = vi.hoisted(() => ({gate: undefined as Promise<void>}));
+vi.mock('@components/chat/inputEditor/prepareRichMediaUpload', () => ({default: async(file: File) => {
+  await preparing.gate;
+  return {file};
+}}));
+// a photo or video preview that fails to load, for the test that needs one
+const previewFailure = vi.hoisted(() => ({current: undefined as Error}));
+vi.mock('@components/richMessageInput/mediaPreview', async(importOriginal) => {
+  const original = await importOriginal<typeof import('@components/richMessageInput/mediaPreview')>();
+  return {
+    ...original,
+    loadRichMediaPreview: (...args: Parameters<typeof original.loadRichMediaPreview>) => previewFailure.current ?
+      Promise.reject(previewFailure.current) :
+      original.loadRichMediaPreview(...args)
+  };
+});
 
 const disposers: VoidFunction[] = [];
 let previewId = 0;
@@ -23,6 +39,8 @@ beforeEach(() => {
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 });
 afterEach(() => {
+  previewFailure.current = undefined;
+  preparing.gate = undefined;
   disposers.splice(0).forEach(dispose => dispose());
   document.body.replaceChildren();
   vi.restoreAllMocks();
@@ -133,13 +151,16 @@ test('engine reload preserves the mounted field, selection and toolbar commands'
   expect(field.editor.getMarkupState('bold').fully).toBe(true);
 });
 
+// the local document an audio's row is drawn from while it uploads
+const prepareRow = vi.fn(async() => ({document: {_: 'document', id: 'local', file_name: 'audio.mp3', attributes: []} as any}));
+
 test.each(['context', 'destroy'] as const)('pending media authorization cannot enter a different %s', async(interruption) => {
   let current = true;
   const allowed = deferredPromise<boolean>();
   const upload = vi.fn();
   const {field, destroy} = mount({
     captureContext: () => () => current,
-    media: {capture: () => ({isCurrent: () => true, authorize: () => allowed, upload, cancel: vi.fn()})}
+    media: {capture: () => ({isCurrent: () => true, authorize: () => allowed, prepare: prepareRow, upload, cancel: vi.fn()})}
   });
   field.setExpanded(true);
   const operation = field.insertMedia([new File(['audio'], 'audio.mp3', {type: 'audio/mpeg'})], field.editor.captureSelection());
@@ -151,11 +172,56 @@ test.each(['context', 'destroy'] as const)('pending media authorization cannot e
   expect(field.media.pendingTasks).toBe(0);
 });
 
+// a broken preview gives the insertion up while a row of it is still being prepared: that row's
+// upload, prepared after the cleanup, is cancelled all the same
+test('an insertion given up for a broken preview cancels a row prepared after it', async() => {
+  previewFailure.current = new Error('corrupt');
+  const prepared = deferredPromise<{document: any}>();
+  const prepare = vi.fn(() => prepared);
+  const cancel = vi.fn();
+  const {field} = mount({media: {capture: () => ({isCurrent: () => true, authorize: async() => true, prepare, upload: vi.fn(), cancel})}});
+  field.setExpanded(true);
+  const operation = field.insertMedia([
+    new File(['audio'], 'audio.mp3', {type: 'audio/mpeg'}),
+    new File(['video'], 'video.mp4', {type: 'video/mp4'})
+  ], field.editor.captureSelection());
+  await vi.waitFor(() => expect(prepare).toHaveBeenCalledOnce());
+  prepared.resolve({document: {_: 'document', id: 'local'}});
+  expect(await operation).toBe(false);
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(field.media.pendingTasks).toBe(0);
+});
+
+// a retry prepares the row's upload again; cleared before that is done, the composer had no upload
+// name to cancel yet, so the preparation lets its own upload go
+test('a row prepared again for a retry is let go when the composer is cleared meanwhile', async() => {
+  let prepared = 0;
+  const prepare = vi.fn(async(_details: unknown, _fileName: string) => ({document: {_: 'document', id: `local-${++prepared}`} as any}));
+  const upload = vi.fn().mockRejectedValueOnce(new Error('network')).mockReturnValue(new Promise(() => {}));
+  const cancel = vi.fn();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const {field} = mount({media: {capture: () => ({isCurrent: () => true, authorize: async() => true, prepare, upload, cancel})}});
+  field.setExpanded(true);
+  expect(await field.insertMedia([new File(['audio'], 'audio.mp3', {type: 'audio/mpeg'})], field.editor.captureSelection())).toBe(true);
+  await vi.waitFor(() => expect(console.error).toHaveBeenCalledWith('rich message media upload error', expect.anything()));
+  const uploadId = field.editor.getDocument().content.find((node) => node.attrs?.uploadId)?.attrs.uploadId;
+
+  let release: VoidFunction;
+  preparing.gate = new Promise((resolve) => release = resolve);
+  field.media.handleAction('retry', uploadId);
+  field.media.clear();
+  expect(cancel).not.toHaveBeenCalled();
+  release();
+  await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(cancel).toHaveBeenCalledWith(prepare.mock.calls[1][1]));
+  expect(field.media.pendingTasks).toBe(0);
+});
+
 test('pending upload completes into the new engine after reload and disposal cancels remaining work', async() => {
   const pending = deferredPromise<ChatInputRichMedia>();
   const upload = vi.fn(() => pending);
   const cancel = vi.fn();
-  const {field, destroy} = mount({media: {capture: () => ({isCurrent: () => true, authorize: async() => true, upload, cancel})}});
+  const {field, destroy} = mount({media: {capture: () => ({isCurrent: () => true, authorize: async() => true, prepare: prepareRow, upload, cancel})}});
   field.setExpanded(true);
   expect(await field.insertMedia([new File(['audio'], 'audio.mp3', {type: 'audio/mpeg'})], field.editor.captureSelection())).toBe(true);
   await vi.waitFor(() => expect(upload).toHaveBeenCalledOnce());

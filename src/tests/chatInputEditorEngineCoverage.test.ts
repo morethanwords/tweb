@@ -572,9 +572,10 @@ describe('chat input editor rich engine coverage', () => {
       from: captionTextPosition,
       to: captionTextPosition + 'Edited source'.length
     }, false);
-    expect(editor.applyMarkup({type: 'bold'})).toBe(true);
+    // italic: an author is drawn bold, so Bold is not offered there
+    expect(editor.applyMarkup({type: 'italic'})).toBe(true);
     expect((editor.getRichMessage().output.blocks[0] as PageBlock.pageBlockBlockquote).caption).toEqual({
-      _: 'textBold',
+      _: 'textItalic',
       text: {
         _: 'textPlain',
         text: 'Edited source'

@@ -15,6 +15,7 @@ import {
   RichText
 } from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
+import {getDocumentRowBlockId} from '@lib/richMessage';
 import {
   applyInstantViewMediaSize,
   getMaximumHeightMediaSize,
@@ -1508,7 +1509,7 @@ function Block(props: {
     case 'pageBlockAudio':
       return (
         <>
-          <PageDocument documentId={block._ === 'pageBlockAudio' ? block.audio_id : block.document_id} />
+          <PageDocument documentId={getDocumentRowBlockId(block)} />
           <CaptionC caption={block.caption} />
         </>
       );

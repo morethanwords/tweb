@@ -23,8 +23,23 @@ async function openLinkStory(page: Page) {
   await page.waitForFunction(() => document.querySelector('.popup')
   .getAnimations({subtree: true})
   .every((animation) => animation.playState !== 'running'));
+  await fontsLoaded(page);
   await installRippleProbe(page);
   return link;
+}
+
+/**
+ * The text is measured, so the fonts it is set in have to be in first: Firefox can still be loading
+ * the link's when the popup has stopped, and the link widens and moves under a press already
+ * measured (a ripple 1.5px off where it was a moment ago). Laying the page out is what starts them
+ * loading. Each face is asked rather than `document.fonts.status`, which WebKit leaves at "loading"
+ * for good once one of them has failed.
+ */
+async function fontsLoaded(page: Page) {
+  await page.evaluate(() => {
+    document.body.getBoundingClientRect();
+  });
+  await page.waitForFunction(() => [...document.fonts].every((face) => face.status !== 'loading'));
 }
 
 /** the press is what is checked: the link must not act on it (a touch acts on mousedown) */
@@ -251,6 +266,7 @@ test('a name in a bubble ripples past its text, as far as its line lets it', asy
     host.addEventListener('click', (e) => e.preventDefault());
     document.body.append(host);
   });
+  await fontsLoaded(page);
   await installRippleProbe(page);
   // WebKit has no clip margin: there the plate stops at the line's edge
   const clipMargin = await page.evaluate(() => CSS.supports('overflow-clip-margin', '2px'));

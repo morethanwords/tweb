@@ -376,9 +376,9 @@
   }
 }
 
-.btn-menu-item-text,
-.submenu-label-text {
-  > .message-input-editor-premium-star {
+// a submenu trigger's label sits deeper: .btn-menu-item-text > .submenu-label > .submenu-label-text > label
+.btn-menu-item-text {
+  .message-input-editor-premium-star {
     margin-inline-start: .25rem;
     vertical-align: text-top;
   }

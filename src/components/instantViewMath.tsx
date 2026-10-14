@@ -111,13 +111,15 @@ function typesetWithinFrameAllowance(typeset: () => number, immediate?: boolean)
 // Render LaTeX `source` into `element` as MathML. Shows the raw source until Temml loads and its
 // turn comes, and as a fallback if the library fails to load, the source doesn't parse (matches
 // WebA's behaviour) or the formula is over budget. `immediate` is for the composer: see
-// `typesetWithinFrameAllowance`.
+// `typesetWithinFrameAllowance`. `onReplaced` runs right after the source gives way to the formula
+// (or to the fallback), in the same task: before anything observing the DOM hears of it.
 export function renderLatexInto(
   element: HTMLElement,
   source: string,
   isBlock: boolean,
   middleware?: Middleware,
-  immediate?: boolean
+  immediate?: boolean,
+  onReplaced?: () => void
 ) {
   element.textContent = source;
   return loadTemml().then((temml) => typesetWithinFrameAllowance(() => {
@@ -135,10 +137,13 @@ export function renderLatexInto(
     } catch{
       element.textContent = source;
       return 0;
+    } finally {
+      onReplaced?.();
     }
   }, immediate), () => {
     if(middleware && !middleware()) return;
     element.textContent = source;
+    onReplaced?.();
   });
 }
 

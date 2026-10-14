@@ -38,6 +38,10 @@ $section-rounded-border-radius: $border-radius-big;
 $section-rounded-padding: 1rem;
 
 $fonts-path: "assets/fonts" !default;
+// Roboto Serif (italic text and the serif style, ~290 KB) and Merriweather (rich headings, ~450 KB)
+// weigh more than what they set is worth for now: off, those styles take the app's own font
+// (`--font-serif` and `--font-heading` in base.scss)
+$serif-fonts: false !default;
 $tgico-font-family: "tgico" !default;
 $tgico-font-path: $fonts-path;
 

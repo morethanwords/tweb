@@ -712,6 +712,9 @@ export default async function createAudioElement(options: AudioElementOptions): 
     }
 
     if(ctx.readyPromise) {
+      // whatever waits for the row to be ready never runs now; a row gone before its track loaded is
+      // no error for anyone to hear about
+      ctx.readyPromise.catch(noop);
       ctx.readyPromise.reject();
     }
 
@@ -982,6 +985,10 @@ export default async function createAudioElement(options: AudioElementOptions): 
       setTimeout(() => {
         downloadDiv.remove();
       }, 200);
+    }, () => {
+      // failed or cancelled: the row as it was, as a file's is left
+      setState('downloading', false);
+      downloadDiv.remove();
     });
   }
 

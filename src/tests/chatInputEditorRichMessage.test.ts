@@ -1,5 +1,5 @@
 import type {JSONContent} from '@tiptap/core';
-import type {Document, PageBlock, Photo, RichMessage, RichText} from '@layer';
+import type {Document, PageBlock, PageCaption, Photo, RichMessage, RichText} from '@layer';
 import {
   richMessageToTiptap,
   tiptapToRichMessage
@@ -226,8 +226,13 @@ describe('Tiptap rich-message conversion', () => {
     expect(slideshow.content?.[0].attrs?.block.items).toHaveLength(items.length);
   });
 
-  test('round-trips audio as editable rich media with its document and formatted caption', () => {
-    const audio = {
+  const listenCaption: PageCaption = {
+    _: 'pageCaption',
+    text: {_: 'textBold', text: {_: 'textPlain', text: 'Listen'}},
+    credit: {_: 'textItalic', text: {_: 'textPlain', text: 'Artist'}}
+  };
+  test.each<[string, Document.document, PageBlock]>([
+    ['an audio', {
       _: 'document',
       id: '151',
       access_hash: '251',
@@ -240,22 +245,22 @@ describe('Tiptap rich-message conversion', () => {
         title: 'Track',
         performer: 'Artist'
       }]
-    } as Document.document;
-    const block: PageBlock.pageBlockAudio = {
-      _: 'pageBlockAudio',
-      audio_id: audio.id,
-      caption: {
-        _: 'pageCaption',
-        text: {_: 'textBold', text: {_: 'textPlain', text: 'Listen'}},
-        credit: {_: 'textItalic', text: {_: 'textPlain', text: 'Artist'}}
-      }
-    };
+    } as Document.document, {_: 'pageBlockAudio', audio_id: '151', caption: listenCaption}],
+    ['a file', {
+      _: 'document',
+      id: '152',
+      access_hash: '252',
+      file_reference: new Uint8Array([4, 5, 6]),
+      mime_type: 'application/pdf',
+      attributes: [{_: 'documentAttributeFilename', file_name: 'report.pdf'}]
+    } as Document.document, {_: 'pageBlockDocument', document_id: '152', caption: listenCaption}]
+  ])('round-trips %s as editable rich media with its document and formatted caption', (_, file, block) => {
     const message: RichMessage.richMessage = {
       _: 'richMessage',
       pFlags: {},
       blocks: [block],
       photos: [],
-      documents: [audio]
+      documents: [file]
     };
 
     const document = richMessageToTiptap(message);
@@ -263,8 +268,8 @@ describe('Tiptap rich-message conversion', () => {
       type: 'richMedia',
       attrs: {
         block,
-        captionCredit: block.caption.credit,
-        documents: [audio],
+        captionCredit: listenCaption.credit,
+        documents: [file],
         photos: []
       },
       content: [{
@@ -278,12 +283,12 @@ describe('Tiptap rich-message conversion', () => {
     expect(converted.input.blocks).toEqual([block]);
     expect(converted.input.documents).toEqual([{
       _: 'inputDocument',
-      id: audio.id,
-      access_hash: audio.access_hash,
-      file_reference: audio.file_reference
+      id: file.id,
+      access_hash: file.access_hash,
+      file_reference: file.file_reference
     }]);
     expect(converted.output.blocks).toEqual([block]);
-    expect(converted.output.documents).toEqual([audio]);
+    expect(converted.output.documents).toEqual([file]);
   });
 
   test.each([

@@ -1,6 +1,7 @@
 import hasRichTextContent from '@lib/richTextProcessor/hasRichTextContent';
 import concatRichText from '@lib/richTextProcessor/concatRichText';
 import {inputPageBlock, inputRichText} from '@lib/richTextProcessor/inputRichMessageBlocks';
+import {getDocumentRowBlockId, isDocumentRowBlock, type DocumentRowBlock} from '@lib/richMessage';
 import type {JSONContent} from '@tiptap/core';
 import type {
   Document,
@@ -513,7 +514,7 @@ function richMediaPageBlock(node: JSONContent): PageBlock | undefined {
   if(!source || typeof(source) !== 'object') return;
   const block = inputPageBlock(source as PageBlock);
   if(
-    block._ !== 'pageBlockAudio' &&
+    !isDocumentRowBlock(block) &&
     block._ !== 'pageBlockPhoto' &&
     block._ !== 'pageBlockVideo' &&
     block._ !== 'pageBlockCollage' &&
@@ -1269,7 +1270,8 @@ function collectMediaBlockIds(
       documentIds.add(String(block.video_id));
       break;
     case 'pageBlockAudio':
-      documentIds.add(String(block.audio_id));
+    case 'pageBlockDocument':
+      documentIds.add(String(getDocumentRowBlockId(block)));
       break;
     case 'pageBlockCollage':
     case 'pageBlockSlideshow':
@@ -1279,7 +1281,7 @@ function collectMediaBlockIds(
 }
 
 function richMediaToTiptap(
-  block: PageBlock.pageBlockAudio |
+  block: DocumentRowBlock |
     PageBlock.pageBlockPhoto |
     PageBlock.pageBlockVideo |
     PageBlock.pageBlockCollage |
@@ -1438,6 +1440,7 @@ function pageBlockToTiptapContent(
         richMediaToTiptap(item, message)
       ));
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
     case 'pageBlockPhoto':
     case 'pageBlockVideo':
     case 'pageBlockSlideshow':

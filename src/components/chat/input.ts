@@ -296,16 +296,17 @@ export default class ChatInput {
         const isCurrent = this.captureMessageInputContext();
         return {
           isCurrent,
-          authorize: async(files) => {
-            const rights = [...new Set(files.map(file => getRichMessageMediaRequiredRight(getFileMimeType(file), file.name)).filter(Boolean))];
+          authorize: async(files, asFile) => {
+            const rights = [...new Set(files.map(file => getRichMessageMediaRequiredRight(getFileMimeType(file), file.name, asFile)))];
             const allowed = await Promise.all(rights.map(right => this.chat.canSend(right)));
             if(!isCurrent()) return false;
             const denied = rights.find((_right, index) => !allowed[index]);
             if(denied) toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[denied]});
             return !denied;
           },
-          upload: (sendFileDetails, uploadingFileName) => this.managers.appMessagesManager.uploadRichMessageMedia({peerId, sendFileDetails, uploadingFileName}),
-          cancel: (fileName) => {void this.managers.apiFileManager.cancelDownload(fileName);}
+          prepare: (sendFileDetails, uploadingFileName, asFile) => this.managers.appMessagesManager.prepareRichMessageMedia({sendFileDetails, uploadingFileName, asFile}),
+          upload: (sendFileDetails, uploadingFileName, asFile) => this.managers.appMessagesManager.uploadRichMessageMedia({peerId, sendFileDetails, uploadingFileName, asFile}),
+          cancel: (fileName) => {void this.managers.appMessagesManager.cancelRichMessageMedia(fileName);}
         };
       },
       subscribeProgress: (listener) => {
@@ -353,9 +354,9 @@ export default class ChatInput {
 
   public setMessageInputExpanded(expanded: boolean, animate = false) {this.richMessageInput?.setExpanded(expanded, animate);}
   public captureRichMediaPasteTarget(event: ClipboardEvent | DragEvent) {return this.richMessageInput?.captureMediaTarget(event);}
-  public insertRichMediaFiles(files: File[], selection: ReturnType<ChatInputEditor['captureSelection']>) {
+  public insertRichMediaFiles(files: File[], selection: ReturnType<ChatInputEditor['captureSelection']>, asFile?: boolean) {
     if(!files.length || !selection) return Promise.resolve(false);
-    return this.richMessageInput?.insertMedia(files, selection) || Promise.resolve(false);
+    return this.richMessageInput?.insertMedia(files, selection, undefined, asFile) || Promise.resolve(false);
   }
   public isRichMessageEditorExpanded() {return !!this.richMessageInput?.expanded;}
 
@@ -1975,7 +1976,7 @@ export default class ChatInput {
 
     const newMediaPopup = getCurrentNewMediaPopup();
     if(selection) {
-      void this.richMessageInput.insertMedia(files, selection, action);
+      void this.richMessageInput.insertMedia(files, selection, action, this.willAttachType === 'document');
     } else if(newMediaPopup) {
       newMediaPopup.addFiles(files);
     } else {
@@ -2033,12 +2034,12 @@ export default class ChatInput {
     const isCurrent = () => middleware() && this.chat.peerId === peerId && this.chat.threadId === threadId &&
       this.editMsgId === editMsgId && this.messageInputEditor === editor && this.inputValueGeneration === inputGeneration;
     const initialEphemeralSnapshot = this.getEphemeralSendingSnapshot();
+    // the expanded editor takes what is picked where the caret is: files as file blocks too
     if(
       !richMediaInsertSelection &&
       this.messageInputExpanded &&
       this.messageInputEditor &&
-      !documents &&
-      !!(photos || videos || audios)
+      !!(documents || photos || videos || audios)
     ) {
       richMediaInsertSelection = this.messageInputEditor.captureSelection();
     }
@@ -2710,6 +2711,10 @@ export default class ChatInput {
             });
           });
         } else if(fromUpdate && !this.saveDraftDebounced.isDebounced()) {
+          // A composer that holds no draft has nothing to clear — most often
+          // the cleared draft is its own save of the emptied field coming
+          // back, and resetting the field would drop its undo history.
+          if(!this.getCurrentInputAsDraft()) return fromUpdate;
           // This is an authoritative clear, not a local edit or a request to
           // restore the draft again while another remote update is arriving.
           this.clearInput(false, false);

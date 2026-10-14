@@ -120,8 +120,15 @@
   --section-box-shadow-big: 0px 1px 8px 0px var(--section-box-shadow-big-color);
   --column-box-shadow: 0px 0px 4px 0px var(--column-box-shadow-color);
   --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-  --font-serif: "Roboto Serif", Georgia, "Times New Roman", serif;
-  --font-heading: "Merriweather", "Roboto Serif", Georgia, "Times New Roman", serif;
+  @if $serif-fonts {
+    --font-serif: "Roboto Serif", Georgia, "Times New Roman", serif;
+    --font-heading: "Merriweather", "Roboto Serif", Georgia, "Times New Roman", serif;
+  } @else {
+    // without the serif web fonts italic and headings are the app's own font, as before them -
+    // a system serif (Georgia) in their place still reads as the fonts that were turned off
+    --font-serif: var(--font-regular);
+    --font-heading: var(--font-regular);
+  }
   --font-monospace: 'Roboto Mono', monospace;
   --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
   --font-weight-bold: 500;

@@ -3,7 +3,7 @@ import {Editor, getMarkRange, JSONContent, selectionToInsertionEnd} from '@tipta
 import {detectCodeLanguage} from '@/codeLanguages';
 import {closeHistory, redoNoScroll, undoNoScroll} from '@tiptap/pm/history';
 import {Fragment, Slice} from '@tiptap/pm/model';
-import type {Node as ProseMirrorNode} from '@tiptap/pm/model';
+import type {Node as ProseMirrorNode, ResolvedPos} from '@tiptap/pm/model';
 import {
   AllSelection,
   EditorState,
@@ -56,10 +56,12 @@ import {
   getRichMediaPreviewUrls,
   groupRichMediaNodes,
   preserveRichMediaSelection,
+  richMediaItemBlock,
   richMediaSiblingInsertionPosition,
   ungroupRichMediaNode,
   withoutRichMediaUpload
 } from '@components/chat/inputEditor/richMedia';
+import type {DocumentRowBlock} from '@lib/richMessage';
 import {RICH_MEDIA_ACTION_SETTLED_META} from '@components/chat/inputEditor/mediaUploadHistory';
 import {richReplacementSlice, selectedRichContent, withCopiedOrderedListStarts} from '@components/chat/inputEditor/selectionSlice';
 import {
@@ -728,7 +730,7 @@ function replacedRichMediaNodeAttrs(
 
 type RichMediaEntry = {
   block:
-    PageBlock.pageBlockAudio |
+    DocumentRowBlock |
     PageBlock.pageBlockCollage |
     PageBlock.pageBlockPhoto |
     PageBlock.pageBlockVideo,
@@ -751,13 +753,9 @@ function richMediaJSONContent(
     const visual = visualRichMediaEntry(item);
     if(visual) {
       entries.push(visual);
-    } else if(item.type === 'audio' && item.document) {
+    } else if((item.type === 'audio' || item.type === 'document') && item.document) {
       entries.push({
-        block: {
-          _: 'pageBlockAudio',
-          audio_id: item.document.id,
-          caption: emptyRichMediaCaption()
-        },
+        block: richMediaItemBlock(item.type, item.document.id) as DocumentRowBlock,
         photos: [],
         documents: [item.document],
         previewUrls: [item.previewUrl || '']
@@ -835,30 +833,9 @@ function pendingRichMediaBlock(
   items: ChatInputRichMediaUploadItem[],
   grouped: boolean
 ) {
-  type PendingRichMediaBlock =
-    PageBlock.pageBlockAudio |
-    VisualRichMediaBlock;
-  const blocks = items.map((item, index): PendingRichMediaBlock => {
-    const resourceId = `upload-${uploadId}-${index}` as Long;
-    if(item.type === 'audio') {
-      return {
-        _: 'pageBlockAudio',
-        audio_id: resourceId,
-        caption: emptyRichMediaCaption()
-      };
-    }
-    return item.type === 'video' ? {
-      _: 'pageBlockVideo',
-      pFlags: {},
-      video_id: resourceId,
-      caption: emptyRichMediaCaption()
-    } : {
-      _: 'pageBlockPhoto',
-      pFlags: {},
-      photo_id: resourceId,
-      caption: emptyRichMediaCaption()
-    };
-  });
+  const blocks = items.map((item, index) => (
+    richMediaItemBlock(item.type, `upload-${uploadId}-${index}` as Long)
+  ));
   const visualBlocks = blocks.filter(visualRichMediaBlock);
   if(grouped && visualBlocks.length > MESSAGES_ALBUM_MAX_SIZE) return;
   if(grouped && blocks.length > 1 && visualBlocks.length === blocks.length) {
@@ -1272,23 +1249,43 @@ function selectionAllowsMark(state: EditorState, name: string) {
   });
 }
 
-/** Whether all the selected text sits in header cells, which draw it bold already. */
-function isSelectionInHeaderCells(state: EditorState) {
-  const {from, to} = state.selection;
+/**
+ * The marks a block's own style draws on all of its text: a heading, a header cell, a table's title,
+ * a details' summary and an author (a quote's, a pullquote's) are bold, a pullquote is italic. There
+ * a mark changes nothing the reader sees, so neither the tooltip nor a shortcut offers it. The
+ * styles are what decide: e2e/popupSandboxRichTextMarkup.spec.ts measures every text block against
+ * this.
+ */
+const BLOCK_DRAWN_MARKS: {[name: string]: readonly string[]} = {
+  heading: ['bold'],
+  tableHeader: ['bold'],
+  chatTableTitle: ['bold'],
+  detailsSummary: ['bold'],
+  blockquoteCaption: ['bold'],
+  pullquoteCaption: ['bold'],
+  pullquoteText: ['italic']
+};
+
+/** Whether `test` holds for every text block the selection touches (`$inside` points into it). */
+function everySelectedTextblock(state: EditorState, test: ($inside: ResolvedPos) => boolean) {
+  const {from, to, empty, $from} = state.selection;
+  if(empty) return $from.parent.isTextblock && test($from);
   let textblocks = 0;
-  let inHeaders = true;
+  let every = true;
   state.doc.nodesBetween(from, to, (node, position) => {
-    if(!inHeaders || !node.isTextblock) return inHeaders;
+    if(!every || !node.isTextblock) return every;
     ++textblocks;
-    const $inside = state.doc.resolve(position + 1);
-    let header = false;
-    for(let depth = $inside.depth; depth > 0 && !header; --depth) {
-      header = $inside.node(depth).type.name === 'tableHeader';
-    }
-    inHeaders = header;
+    every = test(state.doc.resolve(position + 1));
     return false;
   });
-  return inHeaders && textblocks > 0;
+  return every && textblocks > 0;
+}
+
+function isMarkDrawnAt($inside: ResolvedPos, name: string) {
+  for(let depth = $inside.depth; depth > 0; --depth) {
+    if(BLOCK_DRAWN_MARKS[$inside.node(depth).type.name]?.includes(name)) return true;
+  }
+  return false;
 }
 
 /**
@@ -1329,6 +1326,16 @@ function selectedTopLevelTextblocks(state: EditorState) {
     if(selected) blocks.push({node, position});
   });
   return blocks;
+}
+
+/** A quote's author: its caption block, or the caption kept in its attributes while it has none. */
+function blockquoteCaptionText(quote: ProseMirrorNode) {
+  const caption = quote.lastChild?.type.name === 'blockquoteCaption' ?
+    quote.lastChild :
+    undefined;
+  return caption ?
+    caption.textBetween(0, caption.content.size, '\n') :
+    `${quote.attrs.caption || ''}`;
 }
 
 class TiptapChatInputEditor implements ChatInputEditor {
@@ -2749,10 +2756,13 @@ class TiptapChatInputEditor implements ChatInputEditor {
 
   public canApplyMarkup(type: MarkdownType) {
     if(!this.editor.isEditable || !this.supportsMarkup(type)) return false;
-    if(type === 'quote') return canInsertBlockAtSelection(this.editor.state, 'blockquote');
-    // a header cell's text is bold already
-    if(type === 'bold' && isSelectionInHeaderCells(this.editor.state)) return false;
-    return selectionAllowsMark(this.editor.state, markupName(type));
+    const {state} = this.editor;
+    // a code block holds plain text: nothing of the tooltip applies to it, a quote included
+    if(everySelectedTextblock(state, ($inside) => !!$inside.parent.type.spec.code)) return false;
+    if(type === 'quote') return canInsertBlockAtSelection(state, 'blockquote');
+    const name = markupName(type);
+    if(everySelectedTextblock(state, ($inside) => isMarkDrawnAt($inside, name))) return false;
+    return selectionAllowsMark(state, name);
   }
 
   public undo() {
@@ -3122,7 +3132,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
         !Number.isInteger(activeIndex) ||
         activeIndex < 0 ||
         activeIndex >= visualItems.length ||
-        items.some(({type}) => type === 'audio') ||
+        // a file and an audio go in no collage or slideshow
+        items.some(({type}) => type !== 'photo' && type !== 'video') ||
         (action === 'replace' && items.length !== 1) ||
         (action === 'add' &&
           block?._ !== 'pageBlockSlideshow' &&
@@ -3616,14 +3627,24 @@ class TiptapChatInputEditor implements ChatInputEditor {
     const {$from} = this.editor.state.selection;
     for(let depth = $from.depth; depth >= 0; --depth) {
       const node = $from.node(depth);
-      if(node.type.name !== 'blockquote') continue;
-      const caption = node.lastChild?.type.name === 'blockquoteCaption' ?
-        node.lastChild :
-        undefined;
-      return caption ?
-        caption.textBetween(0, caption.content.size, '\n') :
-        `${node.attrs.caption || ''}`;
+      if(node.type.name === 'blockquote') return blockquoteCaptionText(node);
     }
+  }
+
+  public isRichQuoteSelected() {
+    const {doc, selection: {$from, from, to}} = this.editor.state;
+    const isRichQuote = (node: ProseMirrorNode) => node.type.name === 'pullquote' ||
+      node.type.name === 'blockquote' && !!blockquoteCaptionText(node).trim();
+    for(let depth = $from.depth; depth > 0; --depth) {
+      if(isRichQuote($from.node(depth))) return true;
+    }
+
+    let found = false;
+    doc.nodesBetween(from, to, (node) => {
+      if(!found && isRichQuote(node)) found = true;
+      return !found;
+    });
+    return found;
   }
 
   public setBlockquoteCaption(caption: string) {
@@ -4001,8 +4022,8 @@ class TiptapChatInputEditor implements ChatInputEditor {
     href?: string,
     dateSuffix?: string
   }) {
-    // the shortcut too: the tooltip dims Bold there (`canApplyMarkup`)
-    if(type === 'bold' && isSelectionInHeaderCells(this.editor.state)) return false;
+    // a shortcut does nothing the tooltip does not offer
+    if(!this.canApplyMarkup(type)) return false;
     if(type === 'quote') {
       const {$from, $to, empty} = this.editor.state.selection;
       if(!empty && $from.sameParent($to) &&
@@ -4201,6 +4222,10 @@ class TiptapChatInputEditor implements ChatInputEditor {
   public setEditable(editable: boolean) {
     this.editor.setEditable(editable, false);
     this.scheduleStateChange();
+  }
+
+  public isExpanded() {
+    return !!this.expanded;
   }
 
   public setExpanded(expanded: boolean) {

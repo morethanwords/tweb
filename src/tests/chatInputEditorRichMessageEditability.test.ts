@@ -51,6 +51,12 @@ describe('rich-message editability', () => {
       caption: {_: 'pageCaption', text: empty, credit: empty}
     }]))).toBe(true);
     expect(canSafelyEditRichMessage(richMessage([{_: 'pageBlockDivider'}]))).toBe(true);
+    // a file, as the composer puts one in
+    expect(canSafelyEditRichMessage(richMessage([{
+      _: 'pageBlockDocument',
+      document_id: 2,
+      caption: {_: 'pageCaption', text: {_: 'textBold', text: text('Report')}, credit: empty}
+    }]))).toBe(true);
   });
 
   test('accepts mixed checkboxes and lossless ordered-list attributes', () => {

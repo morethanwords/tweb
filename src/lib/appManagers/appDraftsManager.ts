@@ -5,7 +5,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity, DraftMessage, MessagesSaveDraft, InputReplyTo, InputRichMessage} from '@layer';
+import {MessageEntity, DraftMessage, MessagesSaveDraft, InputReplyTo, InputRichMessage, Update} from '@layer';
+import type {ReferenceContext} from '@lib/storages/references';
 import tsNow from '@helpers/tsNow';
 import assumeType from '@helpers/assumeType';
 import {AppManager} from '@appManagers/manager';
@@ -59,15 +60,9 @@ export class AppDraftsManager extends AppManager {
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
-        const peerId = this.appPeersManager.getPeerId(update.peer);
-        const isNotMe = peerId !== this.rootScope.myId;
-
-        const {draft, threadId} = update;
-
-        let monoforumThreadId: PeerId;
-        if(isNotMe && update.saved_peer_id && draft._ === 'draftMessage') {
-          monoforumThreadId = this.appPeersManager.getPeerId(update.saved_peer_id);
-
+        const {draft} = update;
+        const {peerId, threadId, monoforumThreadId} = this.getUpdateDraftTarget(update);
+        if(monoforumThreadId && draft._ === 'draftMessage') {
           if(draft.reply_to?._ === 'inputReplyToMessage' || draft.reply_to?._ === 'inputReplyToMonoForum') {
             draft.reply_to.monoforum_peer_id = monoforumThreadId;
           } else if(!draft.reply_to) {
@@ -78,7 +73,7 @@ export class AppDraftsManager extends AppManager {
           }
         }
 
-        const key = this.getKey(peerId, monoforumThreadId || threadId || update.top_msg_id);
+        const key = this.getKey(peerId, monoforumThreadId || threadId);
         if(this.isDraftSyncProtected(key)) {
           // Another session may have written this draft while our own save was
           // in flight. Dropping the update keeps the local text, but the server
@@ -89,7 +84,7 @@ export class AppDraftsManager extends AppManager {
 
         this.saveDraft({
           peerId,
-          threadId: threadId || update.top_msg_id,
+          threadId,
           monoforumThreadId,
           draft,
           notify: true
@@ -100,7 +95,8 @@ export class AppDraftsManager extends AppManager {
     /* return  */this.appStateManager.storage.get('drafts').then((drafts) => {
       this.drafts = drafts || {};
       for(const key in this.drafts) {
-        this.saveRichMessageMedia(this.drafts[key]);
+        const [peerId, threadId] = key.split('_');
+        this.saveRichMessageMedia(this.drafts[key], this.getReferenceContext(peerId.toPeerId(), +threadId));
       }
     });
   }
@@ -126,6 +122,20 @@ export class AppDraftsManager extends AppManager {
 
   private getKey(peerId: PeerId, threadId?: number) {
     return '' + peerId + (threadId ? '_' + threadId : '');
+  }
+
+  /** Whose draft an update carries: a peer's, a topic's or a monoforum thread's */
+  private getUpdateDraftTarget(update: Update.updateDraftMessage) {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const monoforumThreadId = peerId !== this.rootScope.myId && update.saved_peer_id && update.draft._ === 'draftMessage' ?
+      this.appPeersManager.getPeerId(update.saved_peer_id) :
+      undefined;
+    return {peerId, threadId: update.threadId || update.top_msg_id, monoforumThreadId};
+  }
+
+  /** Where a draft's media came from, for its file references to be renewed from there */
+  private getReferenceContext(peerId: PeerId, threadId?: number): ReferenceContext.referenceContextDraft {
+    return {type: 'draft', peerId, threadId: threadId || undefined};
   }
 
   private isDraftSyncProtected(key: string) {
@@ -256,7 +266,7 @@ export class AppDraftsManager extends AppManager {
     notify?: boolean,
     force?: boolean
   }) {
-    const draft = this.processApiDraft(apiDraft, peerId);
+    const draft = this.processApiDraft(apiDraft, peerId, this.getReferenceContext(peerId, monoforumThreadId || threadId));
 
     const key = this.getKey(peerId, monoforumThreadId || threadId);
     if(draft) {
@@ -303,12 +313,12 @@ export class AppDraftsManager extends AppManager {
     return false;
   }
 
-  private processApiDraft(draft: DraftMessage, peerId: PeerId): MyDraftMessage {
+  private processApiDraft(draft: DraftMessage, peerId: PeerId, context: ReferenceContext): MyDraftMessage {
     if(draft?._ !== 'draftMessage') {
       return undefined;
     }
 
-    this.saveRichMessageMedia(draft);
+    this.saveRichMessageMedia(draft, context);
 
     const replyTo = draft.reply_to as InputReplyTo.inputReplyToMessage;
     if(replyTo?.reply_to_msg_id) {
@@ -322,15 +332,35 @@ export class AppDraftsManager extends AppManager {
     return draft;
   }
 
-  private saveRichMessageMedia(draft: DraftMessage) {
+  private saveRichMessageMedia(draft: DraftMessage, context: ReferenceContext) {
     if(draft?._ === 'draftMessage' && draft.rich_message) {
       draft.rich_message.documents = (draft.rich_message.documents || [])
-      .map((document) => this.appDocsManager.saveDoc(document))
+      .map((document) => this.appDocsManager.saveDoc(document, context))
       .filter(Boolean);
       draft.rich_message.photos = (draft.rich_message.photos || [])
-      .map((photo) => this.appPhotosManager.savePhoto(photo))
+      .map((photo) => this.appPhotosManager.savePhoto(photo, context))
       .filter(Boolean);
     }
+  }
+
+  /**
+   * A draft lives long, and comes back from storage after a reload, so the file references of its
+   * media expire. The drafts fetched anew renew them in place; the drafts themselves are left as
+   * they are, since applying them again would redraw a composer whose media is loading right then.
+   */
+  public refreshRichMessageMedia() {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getAllDrafts',
+      processResult: (updates) => {
+        if(updates._ !== 'updates' && updates._ !== 'updatesCombined') return;
+        this.appPeersManager.saveApiPeers(updates);
+        for(const update of updates.updates) {
+          if(update._ !== 'updateDraftMessage') continue;
+          const {peerId, threadId, monoforumThreadId} = this.getUpdateDraftTarget(update);
+          this.saveRichMessageMedia(update.draft, this.getReferenceContext(peerId, monoforumThreadId || threadId));
+        }
+      }
+    });
   }
 
   public syncDraft({peerId, threadId, monoforumThreadId, localDraft, inputRichMessage, saveOnServer = true, force = false}: SyncDraftArgs) {

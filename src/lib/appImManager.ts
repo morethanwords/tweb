@@ -137,7 +137,6 @@ import {
   shouldPreventDefaultFilePaste,
   shouldInsertRichMediaFiles
 } from '@components/chat/inputEditor/mediaPaste';
-import {isRichMessageMediaMimeType} from '@helpers/files/richMessageMediaInsertPolicy';
 import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';
@@ -2911,18 +2910,8 @@ export class AppImManager extends EventListenerBase<{
       const richMediaPasteTarget = mount && richMessageEditorExpanded ?
         this.chat.input?.captureRichMediaPasteTarget(e) :
         undefined;
-      const canInsertAsRichMedia = !!(
-        richMediaPasteTarget &&
-        (
-          !types.length ||
-          types.every((mimeType) => (
-            !mimeType ||
-            mimeType === 'application/octet-stream' ||
-            isRichMessageMediaMimeType(mimeType) ||
-            mimeType === 'video/quicktime'
-          ))
-        )
-      );
+      // any file goes in: what is no photo, video or music becomes a file block
+      const canInsertAsRichMedia = !!richMediaPasteTarget;
       if(mount) {
         if(
           !isFiles ||
@@ -3204,18 +3193,8 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    const insertAsRichMedia = shouldInsertRichMediaFiles(
-      files,
-      richMediaPasteTarget,
-      attachType,
-      (file) => (
-        isRichMessageMediaMimeType(getFileMimeType(file), file.name)
-      )
-    );
-    if(richMessageEditorExpanded && !insertAsRichMedia) {
-      toastNew({langPackKey: 'RichMessage.Error.FileUnsupported'});
-      return;
-    }
+    const insertAsRichMedia = shouldInsertRichMediaFiles(files, richMediaPasteTarget);
+    if(richMessageEditorExpanded && !insertAsRichMedia) return;
     if(!(
       await this.canDrag(
         insertAsRichMedia,
@@ -3240,7 +3219,8 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(insertAsRichMedia) {
-      await chatInput.insertRichMediaFiles(files as File[], richMediaPasteTarget);
+      // dropped on "Send as a file": file blocks, music an audio
+      await chatInput.insertRichMediaFiles(files as File[], richMediaPasteTarget, attachType === 'document');
       return;
     }
 

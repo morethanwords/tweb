@@ -148,12 +148,15 @@ export type ChatInputMapOptions = {
   zoom?: number
 };
 
+// a file is a document row, as an audio is: one per block, never in a collage
+export type ChatInputRichMediaType = 'audio' | 'document' | 'photo' | 'video';
+
 export type ChatInputRichMedia = {
   document?: Document.document,
   photo?: Photo.photo,
   previewUrl?: string,
   spoiler?: boolean,
-  type: 'audio' | 'photo' | 'video'
+  type: ChatInputRichMediaType
 };
 
 export type ChatInputRichMediaLayout = 'collage' | 'slideshow';
@@ -165,6 +168,8 @@ export type ChatInputRichMediaOptions = {
 };
 
 export type ChatInputRichMediaUploadItem = {
+  /** A file's or an audio's document as prepared for its upload, from the local file: its row's */
+  document?: Document.document,
   duration?: number,
   fileName?: string,
   fileSize?: number,
@@ -173,7 +178,9 @@ export type ChatInputRichMediaUploadItem = {
   mimeType?: string,
   progress: number,
   state: 'error' | 'preparing' | 'processing' | 'ready' | 'uploading',
-  type: 'audio' | 'photo' | 'video',
+  type: ChatInputRichMediaType,
+  /** The upload the row shows, as an outgoing message's (`appDownloadManager.getUpload`) */
+  uploadingFileName?: string,
   width?: number
 };
 
@@ -249,6 +256,8 @@ export interface ChatInputEditor {
   getMarkupState(type: MarkdownType): ChatInputMarkupState;
   getOrderedListState(): ChatInputOrderedListState | undefined;
   getBlockquoteCaption(): string | undefined;
+  /** A pullquote, or a quote with an author, around or in the selection. */
+  isRichQuoteSelected(): boolean;
   getPendingRichMediaUploadIds(): string[];
   getReferencedRichMediaUploadIds(): string[] | undefined;
   getRichMessage(options?: {draft?: boolean}): ChatInputRichMessage;
@@ -313,6 +322,7 @@ export interface ChatInputEditor {
   setBlockquoteCaption(caption: string): boolean;
   setDocument(document: JSONContent): boolean;
   setEditable(editable: boolean): void;
+  isExpanded(): boolean;
   setExpanded(expanded: boolean): void;
   setNoAutolink(noAutolink: boolean): void;
   setRichMessage(message: RichMessage): boolean;

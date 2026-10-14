@@ -217,6 +217,7 @@ function requiresProtocolIdentity(block: PageBlock) {
     case 'pageBlockPhoto':
     case 'pageBlockVideo':
     case 'pageBlockAudio':
+    case 'pageBlockDocument':
     case 'pageBlockChannel':
     case 'pageBlockEmbed':
     case 'pageBlockEmbedPost':
@@ -238,6 +239,8 @@ function pageBlockIdentity(block: PageBlock): string | undefined {
       return `${block._}:${block.video_id}`;
     case 'pageBlockAudio':
       return `${block._}:${block.audio_id}`;
+    case 'pageBlockDocument':
+      return `${block._}:${block.document_id}`;
     case 'pageBlockChannel':
       return `${block._}:${block.channel.id}`;
     case 'pageBlockEmbed':

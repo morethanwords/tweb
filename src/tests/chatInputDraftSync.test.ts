@@ -130,6 +130,32 @@ test('clears an untouched received draft without restoring or echoing it', async
   expect(syncDraft).not.toHaveBeenCalled();
 });
 
+test('keeps the undo history of an emptied composer when its own cleared draft comes back', async() => {
+  const {host, editor, syncDraft} = setup();
+  editor.setTextWithEntities('Typed and saved');
+  host.saveDraft();
+  // Cmd+A, Backspace
+  mounted.tiptap.chain().selectAll().deleteSelection().run();
+  expect(editor.isEmpty()).toBe(true);
+  host.saveDraft();
+  expect(syncDraft).toHaveBeenCalledTimes(2);
+  expect(syncDraft.mock.calls[1][0].localDraft).toBeUndefined();
+  // the drafts manager announces the cleared draft to every composer, this one included
+  expect(await host.setDraft(undefined, true)).toBe(true);
+  expect(host.clearInput).not.toHaveBeenCalled();
+  expect(editor.undo()).toBe(true);
+  expect(editor.getRichValue().value).toBe('Typed and saved');
+});
+
+test('a cleared draft still takes a reply off an otherwise empty composer', async() => {
+  const {host} = setup();
+  host.replyToMsgId = 9;
+  host.getReplyTo = () => ({replyToMsgId: 9});
+  await host.setDraft(undefined, true);
+  expect(host.clearInput).toHaveBeenCalledWith(false, false);
+  expect(host.clearHelper).toHaveBeenCalled();
+});
+
 test('treats a programmatic local replacement as a new draft', async() => {
   const {host, apply, flush, syncDraft} = setup();
   await apply('Remote');
