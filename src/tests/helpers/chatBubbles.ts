@@ -41,7 +41,7 @@ vi.mock('@stores/contentSettings', () => ({
     sensitiveCanChange: () => false,
     needAgeVerification: () => false,
     ageVerified: () => false,
-    ignoreRestrictionReasons: (): string[] => []
+    ignoredRestrictionReasons: () => new Set<string>()
   })
 }));
 vi.mock('@stores/stars', () => ({default: () => () => 0}));

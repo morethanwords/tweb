@@ -122,7 +122,7 @@ export class AppPeersManager extends AppManager {
 
   public getPeerPhoto(peerId: PeerId) {
     const peer = this.getPeer(peerId) as User.user | Chat;
-    return getPeerPhoto(peer);
+    return getPeerPhoto(peer, this.appPrivacyManager.getIgnoredRestrictionReasons());
   }
 
   public getPeerMigratedTo(peerId: PeerId) {
@@ -263,7 +263,11 @@ export class AppPeersManager extends AppManager {
 
   public isPeerRestricted(peerId: PeerId) {
     return callbackify(this.appPrivacyManager.getContentSettings(), (settings) => {
-      return isPeerRestricted(this.getPeer(peerId), !!settings.pFlags.sensitive_can_change);
+      return isPeerRestricted(
+        this.getPeer(peerId),
+        !this.appPrivacyManager.isSensitiveBlocked(settings),
+        this.appPrivacyManager.getIgnoredRestrictionReasons()
+      );
     });
   }
 

@@ -159,12 +159,21 @@ async function onSensitiveMediaSpoilerClick(options: {
   if(!mediaSpoiler.isConnected || !mediaSpoiler.dataset.isSensitive) return;
   const contentSettings = useContentSettings();
 
-  if(!contentSettings.sensitiveCanChange()) {
-    toastNew({langPackKey: 'SensitiveContentUnavailable'});
+  // * drawn before the switch was turned on, in this tab or another one: there is nothing left to ask
+  if(contentSettings.sensitiveEnabled()) {
+    clearSensitiveSpoilers();
     return;
   }
 
-  if(contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
+  const canChange = contentSettings.sensitiveCanChange();
+  // * the age comes first, by the server's word (a mark kept on this device could be set by anyone), and only an
+  // * account that may turn the filter off can get past it
+  if(contentSettings.needAgeVerification()) {
+    if(!canChange) {
+      toastNew({langPackKey: 'SensitiveContentUnavailable'});
+      return;
+    }
+
     createAgeVerification().then((verified) => {
       if(verified) {
         clearSensitiveSpoilers();
@@ -173,22 +182,29 @@ async function onSensitiveMediaSpoilerClick(options: {
     return;
   }
 
+  // * an account that may not turn the filter off still opens one media at a time, with nothing to remember
   confirmationPopup({
     titleLangKey: '18Plus',
     descriptionLangKey: 'SensitiveContentDesc',
     button: {
       langKey: 'SensitiveContentConfirm'
     },
-    checkbox: {
+    checkbox: canChange ? {
       text: 'SensitiveContentRemember'
-    }
-  }).then((remember) => {
+    } : undefined
+  }).then(async(remember) => {
     if(remember) {
-      rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
-      clearSensitiveSpoilers();
-      return;
+      // * all of them only once the server has accepted the switch: it may refuse it
+      try {
+        await rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
+        clearSensitiveSpoilers();
+        return;
+      } catch(err) {
+        toastNew({langPackKey: 'Error.AnError'});
+      }
     }
 
+    // * this one was asked for either way
     delete mediaSpoiler.dataset.isSensitive;
     onMediaSpoilerClick(options);
   });

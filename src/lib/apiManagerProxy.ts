@@ -41,6 +41,8 @@ import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
 import {forgetLoadedURL} from '@helpers/dom/loadedUrlCache';
 import type {SharedObjectURLUpdate} from '@helpers/objectUrlUtils';
 import {setAppStateSilent} from '@stores/appState';
+// * keeps the page's ignored restriction reasons in step with the mirrored state from the start
+import '@stores/contentSettings';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import {reconcilePeer, reconcilePeers} from '@stores/peers';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';

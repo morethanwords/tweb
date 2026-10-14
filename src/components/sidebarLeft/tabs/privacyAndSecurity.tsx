@@ -603,7 +603,7 @@ const PrivacyAndSecurity: Component = () => {
             return;
           }
 
-          if(newEnabled && contentSettings.needAgeVerification() && !contentSettings.ageVerified()) {
+          if(newEnabled && contentSettings.needAgeVerification()) {
             sensitiveSignal[1](false);
             createAgeVerification().then((verified) => {
               if(verified) {
@@ -618,7 +618,11 @@ const PrivacyAndSecurity: Component = () => {
 
           tab.managers.appPrivacyManager.setContentSettings({
             sensitive_enabled: newEnabled
-          }).catch(() => {
+          }).then(() => {
+            if(newEnabled) {
+              clearSensitiveSpoilers();
+            }
+          }, () => {
             toastNew({langPackKey: 'Error.AnError'});
             sensitiveSignal[1](!newEnabled);
           }).finally(() => {

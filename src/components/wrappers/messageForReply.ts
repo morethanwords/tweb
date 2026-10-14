@@ -2,14 +2,13 @@ import partition from '@helpers/array/partition';
 import assumeType from '@helpers/assumeType';
 import {formatDate} from '@helpers/date';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
-import {getRestrictionReason} from '@helpers/restrictions';
 import limitSymbols from '@helpers/string/limitSymbols';
 import {Message, MessageMedia, Document, Photo} from '@layer';
 import getAudioAttribute from '@appManagers/utils/docs/getAudioAttribute';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {MyDraftMessage} from '@appManagers/appDraftsManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
-import isMessageRestricted from '@appManagers/utils/messages/isMessageRestricted';
+import isMessageRestricted, {getMessageRestrictionReason} from '@appManagers/utils/messages/isMessageRestricted';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '@lib/langPack';
 import getLoginCodeEntity from '@appManagers/utils/messages/getLoginCodeEntity';
@@ -375,7 +374,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   }
 
   if(isRestricted) {
-    options.text = getRestrictionReason((message as Message.message).restriction_reason).text;
+    options.text = getMessageRestrictionReason(message as Message.message).text;
     entities = [];
     isRichPreview = false;
   }

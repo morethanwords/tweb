@@ -1,6 +1,5 @@
 import ctx from '@environment/ctx';
 import callbackify from '@helpers/callbackify';
-import {ignoreRestrictionReasons} from '@helpers/restrictions';
 import {Config, DataJSON, HelpAppConfig, HelpPeerColors, MethodDeclMap, User} from '@layer';
 import {InvokeApiOptions} from '@types';
 import {AppManager} from '@appManagers/manager';
@@ -326,7 +325,6 @@ export default abstract class ApiManagerMethods extends AppManager {
 
   private applyAppConfig(appConfig: MTAppConfig, save?: boolean) {
     this.appConfig = appConfig;
-    ignoreRestrictionReasons(appConfig.ignore_restriction_reasons ?? []);
 
     if(save) {
       appConfig.cachedTime = Date.now();
