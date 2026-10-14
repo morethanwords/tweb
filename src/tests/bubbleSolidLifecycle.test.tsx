@@ -467,6 +467,7 @@ test.each([
   let rejectRender: (error: Error) => void;
   let queuedRender: Promise<unknown>;
   const bubbleGroups = {
+    getItemByBubble: (): undefined => undefined,
     changeBubbleByBubble: vi.fn((from: HTMLElement, to: HTMLElement) => {
       if(itemBubble === from) itemBubble = to;
     })
@@ -529,7 +530,7 @@ test.each([
   liveBubble.dataset.mid = '100';
   if(replacement.cancelled) {
     liveBubble.dataset.timestamp = '' + serverMessage.date;
-    harness.repositionMessageBubblePreservingScroll(liveBubble, serverMessage);
+    harness.updateGroupedMessage(liveBubble, serverMessage, {regroup: true});
   }
   harness.updateSolidMessageBodyIdentity(liveBubble, serverMessage, tempId);
   rejectRender(new Error('late replacement failure'));
@@ -582,6 +583,7 @@ test('fully regroups the live source when message_sent cancels a structural cand
   };
   let itemBubble: HTMLElement = candidate;
   const bubbleGroups = {
+    getItemByBubble: (): undefined => undefined,
     changeBubbleByBubble: vi.fn((from: HTMLElement, to: HTMLElement) => {
       if(itemBubble === from) itemBubble = to;
     })
@@ -616,7 +618,7 @@ test('fully regroups the live source when message_sent cancels a structural cand
   liveBubble.dataset.mid = '100';
   if(replacement.cancelled) {
     liveBubble.dataset.timestamp = '' + finalMessage.date;
-    harness.repositionMessageBubblePreservingScroll(liveBubble, finalMessage);
+    harness.updateGroupedMessage(liveBubble, finalMessage, {regroup: true});
   }
 
   expect(replacement.cancelled).toBe(true);

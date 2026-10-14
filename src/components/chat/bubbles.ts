@@ -194,6 +194,7 @@ import {usePeer} from '@stores/peers';
 import {setAppSettings} from '@stores/appSettings';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import findAndSplice from '@helpers/array/findAndSplice';
+import partition from '@helpers/array/partition';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
 import icon from '@components/icon';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
@@ -1015,7 +1016,7 @@ export default class ChatBubbles {
     }
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, tempId, message}) => {
+    this.listenerSetter.add(rootScope)('history_update', async({storageKey, tempId, message}) => {
       if(this.chat.messagesStorageKey !== storageKey || this.chat.type === ChatType.Scheduled) {
         return;
       }
@@ -1085,76 +1086,11 @@ export default class ChatBubbles {
         return;
       }
 
-      if(sequential) {
-        const group = item.group;
-        const newItem = this.bubbleGroups.createItem(bubble, message, item.reverse);
-        // newItem.mid = item.mid;
-        const _items = this.bubbleGroups.itemsArr.slice();
-        indexOfAndSplice(_items, item);
-        const foundItem = this.bubbleGroups.findGroupSiblingByItem(newItem, _items);
-        if(
-          group === foundItem?.group ||
-          (group === this.bubbleGroups.lastGroup && group.items.length === 1 && newItem.dateTimestamp === item.dateTimestamp) ||
-          (this.peerId === rootScope.myId && sequential && newItem.dateTimestamp === item.dateTimestamp)
-        ) {
-          log && log('item has correct position', item);
-          this.bubbleGroups.changeBubbleMessage(bubble, message);
-          return;
-        }
-      }
-
-      // return;
-
-      // await fastRafPromise();
-      // if(this.bubbles[mid] !== bubble) return;
-
-      // const groupIndex = this.bubbleGroups.groups.indexOf(group);
-      this.bubbleGroups.removeAndUnmountBubble(bubble);
-      // if(!group.items.length) { // group has collapsed, next message can have higher mid so have to reposition them too
-      //   log && log('group has collapsed', item);
-
-      //   const siblingGroups = this.bubbleGroups.groups.slice(0, groupIndex + 1);
-      //   for(let length = siblingGroups.length, i = length - 2; i >= 0; --i) {
-      //     const siblingGroup = siblingGroups[i];
-      //     const siblingItems = siblingGroup.items;
-      //     const nextGroup = siblingGroups[i + 1];
-      //     const nextItems = nextGroup.items;
-
-      //     let _break = false, moved = false;
-      //     for(let j = siblingItems.length - 1; j >= 0; --j) {
-      //       const siblingItem = siblingItems[j];
-      //       const foundItem = this.bubbleGroups.findGroupSiblingByItem(siblingItem, nextItems);
-      //       if(!foundItem) {
-      //         _break = true;
-      //         break;
-      //       }
-
-      //       log('will move item', siblingItem, nextGroup);
-      //       this.bubbleGroups.removeAndUnmountBubble(siblingItem.bubble);
-      //       this.bubbleGroups.addItemToGroup(siblingItem, nextGroup);
-      //       moved = true;
-      //     }
-
-      //     if(moved) {
-      //       nextGroup.mount();
-      //     }
-
-      //     if(_break) {
-      //       break;
-      //     }
-      //   }
-      // }
-
-      const {groups} = this.groupBubbles([{bubble, message, reverse: item.reverse}]);
-      this.bubbleGroups.mountUnmountGroups(groups);
-
-      if(this.scrollingToBubble) {
+      if(this.updateGroupedMessage(bubble, message, {preserveScroll: false}) && this.scrollingToBubble) {
         this.scrollToEnd();
       }
 
       log && log('end');
-
-      // this.bubbleGroups.findIncorrentPositions();
     });
 
     this.listenerSetter.add(rootScope)('dialog_flush', ({peerId}) => {
@@ -1197,9 +1133,9 @@ export default class ChatBubbles {
           // grouping snapshot. Rebuild from the server message now; changing only `mid/message`
           // would leave date/from/single/group membership from the temporary item.
           bubble.dataset.timestamp = '' + message.date;
-          this.repositionMessageBubblePreservingScroll(bubble, message);
+          this.updateGroupedMessage(bubble, message, {regroup: true});
         } else if(this.chat.type === ChatType.Scheduled) {
-          this.bubbleGroups.changeBubbleMessage(bubble, message);
+          this.updateGroupedMessage(bubble, message);
         }
 
         const context = this.contexts.get(bubble);
@@ -6998,9 +6934,11 @@ export default class ChatBubbles {
       });
     }
 
-    items.forEach(({bubble, message, reverse}) => {
+    // an ephemeral message takes its place from the history around it, so that history goes in first
+    const [ephemeralItems, historyItems] = partition(items, ({message}) => isEphemeralMessage(message));
+    for(const {bubble, message, reverse} of historyItems.concat(ephemeralItems)) {
       this.bubbleGroups.prepareForGrouping(bubble, message, reverse);
-    });
+    }
 
     const groups = this.bubbleGroups.groupUngrouped();
 
@@ -7726,18 +7664,78 @@ export default class ChatBubbles {
     const item = this.bubbleGroups.getItemByBubble(bubble);
     if(item) {
       if(identityChanged || item.mid !== message.mid) {
-        this.bubbleGroups.changeBubbleMessage(bubble, message);
+        // runs in `flushBubbleModifications`, which keeps the view in place around it
+        this.updateGroupedMessage(bubble, message, {preserveScroll: false});
       } else {
         item.message = message;
       }
     }
   }
 
-  private repositionMessageBubble(bubble: HTMLElement, message: Message.message, mount = true) {
+  /**
+   * Gives a bubble's grouping item its message's new identity, regrouping the bubble when that identity no
+   * longer fits where it stands. When it is a send taking its server id, the sends made after it go first
+   * (`BubbleGroups.raiseLaterSends`). Returns whether the bubble was regrouped.
+   *
+   * @param preserveScroll keep the view in place: saved once, before the first bubble moves. Off where the
+   * caller already keeps it (`flushBubbleModifications`)
+   * @param regroup regroup the bubble even when the new identity would fit in place
+   */
+  private updateGroupedMessage(
+    bubble: HTMLElement,
+    message: MyMessage,
+    {preserveScroll = true, regroup = false}: {preserveScroll?: boolean, regroup?: boolean} = {}
+  ) {
+    const scroll: {preserve: boolean, saver?: ScrollSaver} = {preserve: preserveScroll};
+    const regrouped = this.applyGroupedMessage(bubble, message, regroup, scroll);
+    scroll.saver?.restore();
+    return regrouped;
+  }
+
+  private applyGroupedMessage(
+    bubble: HTMLElement,
+    message: MyMessage,
+    regroup: boolean,
+    scroll: {preserve: boolean, saver?: ScrollSaver}
+  ) {
+    const before = this.bubbleGroups.getItemByBubble(bubble)?.timelineKey;
+    // the later sends go first, so that this one has nothing to step past on its way
+    if(before?.pending && !message.pending) {
+      for(const item of this.bubbleGroups.raiseLaterSends(before, message.mid)) {
+        this.applyGroupedMessage(item.bubble, item.message as MyMessage, false, scroll);
+      }
+    }
+
+    if(!regroup && this.bubbleGroups.changeBubbleMessage(bubble, message)) {
+      return false;
+    }
+
+    // a replacement still being staged keeps the visible bubble's place until its batch commits it, and
+    // the commit regroups it with the identity it has by then
+    const transaction = this.bubblesToReplace.get(bubble);
+    if(transaction && message._ === 'message') {
+      transaction.regroupMessage = message;
+      return false;
+    }
+
+    if(scroll.preserve && !scroll.saver) {
+      scroll.saver = this.createScrollSaver(false);
+      scroll.saver.save();
+    }
+
+    this.repositionMessageBubble(bubble, message);
+    return true;
+  }
+
+  /**
+   * Regroups a bubble by its message's identity. The ephemeral messages filed right after it go along
+   * (`BubbleGroups.takeEphemeralFollowers`), on every path that changes an identity this way.
+   */
+  private repositionMessageBubble(bubble: HTMLElement, message: MyMessage, mount = true) {
     const item = this.bubbleGroups.getItemByBubble(bubble);
     if(!item) return [];
 
-    const {reverse} = item;
+    const {reverse, timelineKey: before} = item;
     const deferredGroups = mount ? undefined :
       new Set<Parameters<BubbleGroups['mountUnmountGroups']>[0][number]>();
     this.bubbleGroups.removeAndUnmountBubble(bubble, deferredGroups);
@@ -7748,10 +7746,20 @@ export default class ChatBubbles {
       }
     }
     if(mount) this.bubbleGroups.mountUnmountGroups(groups);
+
+    const after = this.bubbleGroups.getItemByBubble(bubble)?.timelineKey;
+    if(after && after.position !== before.position) {
+      for(const follower of this.bubbleGroups.takeEphemeralFollowers(before.position, after.position, message.date)) {
+        for(const group of this.repositionMessageBubble(follower.bubble, follower.message as MyMessage, mount)) {
+          if(!groups.includes(group)) groups.push(group);
+        }
+      }
+    }
+
     return groups;
   }
 
-  private repositionMessageBubblePreservingScroll(bubble: HTMLElement, message: Message.message) {
+  private repositionMessageBubblePreservingScroll(bubble: HTMLElement, message: MyMessage) {
     const scrollSaver = this.createScrollSaver(false);
     scrollSaver.save();
     this.repositionMessageBubble(bubble, message);
@@ -13735,8 +13743,10 @@ export default class ChatBubbles {
           if(this.getBubble(fullMid) === result.bubble) {
             // `changeBubbleByBubble` moves the existing item to the replacement before the batch
             // mounts it, but deliberately keeps its old message identity for rollback. Commit the
-            // final identity now so grouping/history observe the final mid during that same batch.
-            this.bubbleGroups.changeBubbleMessage(result.bubble, message);
+            // final identity now so grouping/history observe the final mid during that same batch —
+            // in place when it fits there; when it does not, the batch's regroup gives it the
+            // final identity and place at once.
+            this.updateGroupedMessage(result.bubble, message);
             const transaction = this.bubblesToReplace.get(result.bubble);
             if(transaction) transaction.regroupMessage = message;
             if(this.bubbles[fullTempMid] === bubble) delete this.bubbles[fullTempMid];
