@@ -1,7 +1,7 @@
 import type {MediaSearchContext} from '@components/appMediaPlaybackController';
 import type {SearchSuperContext} from '@components/appSearchSuper';
 import type {Message} from '@layer';
-import type {MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
+import type {MessagesStorageKey, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import {AppManagers} from '@lib/managers';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -9,6 +9,7 @@ import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import forEachReverse from '@helpers/array/forEachReverse';
 import filterChatPhotosMessages from '@helpers/filterChatPhotosMessages';
 import ListLoader, {ListLoaderOptions} from '@helpers/listLoader';
+import getSearchType from '@appManagers/utils/messages/getSearchType';
 
 // * the filters whose every result the media viewer shows: a document search also has files it skips
 const POSITIONED_FILTERS: Set<MediaSearchContext['inputFilter']['_']> = new Set([
@@ -46,19 +47,31 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     super({
       ...options,
       loadMore: async(anchor, older, loadCount) => {
-        const backLimit = older ? 0 : loadCount;
+        const peerId = this.searchContext.peerId || anchor?.peerId;
+        // * A search inside one peer is read back out of the storage's slices, and a window lying
+        // * wholly above an id the storage does not hold cannot be cut out of it again once the request
+        // * has filled it: every newer result is dropped and the loader marks itself as having read
+        // * everything. So the newer side reads from the anchor itself, which the storage does hold,
+        // * and the anchor - with whatever older came along when there was not enough newer to fill the
+        // * window - is dropped from the results below.
+        const fromAnchor = !older &&
+          anchor?.mid !== undefined &&
+          !(this.searchContext as RequestHistoryOptions).isCacheableSearch &&
+          getSearchType({...this.searchContext, peerId}) === 'cached';
+        // * the window read from the anchor holds the anchor itself, which is dropped below: one place
+        // * more is asked for, or a full page of newer results comes back one short and the loader
+        // * latches "read everything" with more of them still there
+        const backLimit = older ? 0 : loadCount + (fromAnchor ? 1 : 0);
         let offsetId = anchor?.mid ?? this.searchContext.maxId;
 
-        if(!older) offsetId = await this.managers.appMessagesIdsManager.incrementMessageId(offsetId, 1);
-
-        const peerId = this.searchContext.peerId || anchor?.peerId;
+        if(!older && !fromAnchor) offsetId = await this.managers.appMessagesIdsManager.incrementMessageId(offsetId, 1);
 
         return this.managers.appMessagesManager.getHistory({
           ...this.searchContext,
           peerId,
           offsetId,
           offsetPeerId: !peerId ? anchor?.peerId : undefined,
-          limit: backLimit ? 0 : loadCount,
+          limit: backLimit ? (fromAnchor ? 1 : 0) : loadCount,
           backLimit
         }).then((value) => {
           /* if(DEBUG) {
@@ -83,7 +96,11 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
             this.searchContext.nextRate = value.nextRate;
           }
 
-          return {count: value.count, items: value.messages};
+          const items = fromAnchor ?
+            value.messages.filter((message) => !message || message.mid > anchor.mid) :
+            value.messages;
+
+          return {count: value.count, items};
         });
       },
       processItem: async(message) => {

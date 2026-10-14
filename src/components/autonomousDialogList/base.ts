@@ -1,6 +1,6 @@
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import DialogsPlaceholder from '@helpers/dialogsPlaceholder';
-import crossfadeContent from '@helpers/dom/crossfadeContent';
+import crossfadeContent, {STATUS_CROSSFADE_DURATION} from '@helpers/dom/crossfadeContent';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import attachPinnedDialogsReorder from '@components/dialogsPinnedReorder';
@@ -50,9 +50,12 @@ export async function setDialogTyping({dom, peerId, threadId, animate}: {
       crossfadeContent(
         dom.lastMessageSpan,
         newTypingElement,
-        getTypingElement() ? 'update' : animate ? 'crossfade' : 'replace'
+        getTypingElement() ? 'update' : animate ? 'crossfade' : 'replace',
+        {duration: STATUS_CROSSFADE_DURATION}
       );
       dom.lastMessageSpan.classList.add('user-typing');
+      // * what keeps the subtitle off the row while the activity lasts
+      dom.showsActivity = true;
     }
 
     return false;
@@ -365,7 +368,10 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
       return;
     }
 
-    // * the last message takes the activity's place, and its `user-typing` (`setDialogSubtitle`)
+    // * the last message takes the activity's place, and its `user-typing` (`setDialogSubtitle`).
+    // * The flag goes first, so a dialog update that cuts this render short renders the subtitle
+    // * itself instead of leaving the row on an activity that is over
+    dialogElement.dom.showsActivity = false;
     this.appDialogsManager.setLastMessageN({
       dialog,
       lastMessage: null,

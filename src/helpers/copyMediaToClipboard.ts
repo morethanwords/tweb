@@ -9,7 +9,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 
 const CLIPBOARD_MIME_TYPE = 'image/png';
 
-type CopyableMedia = MyPhoto | MyDocument;
+export type CopyableMedia = MyPhoto | MyDocument;
 
 export function canCopyMediaToClipboard(media: CopyableMedia) {
   if(!media || (

@@ -9,9 +9,16 @@ import sequentialDom from '@helpers/sequentialDom';
 export const CROSS_FADE_KEYFRAMES: Keyframe[] = [{opacity: 0}, {opacity: 1}];
 
 /** the timing of `Animated`, whatever it animates */
-export function getAnimatedOptions(): KeyframeAnimationOptions {
-  return {duration: 200, easing: getTransition('standard').easing};
+export function getAnimatedOptions(duration = 200): KeyframeAnimationOptions {
+  return {duration, easing: getTransition('standard').easing};
 }
+
+/**
+ * A status taking the place of another one - an activity coming or going above all. Shorter than the
+ * default: a fade has no distance for the eye to follow, and the word under the chat's name changes
+ * often enough that the default reads as the line lagging behind
+ */
+export const STATUS_CROSSFADE_DURATION = 120;
 
 type Crossfade = {
   leaving: HTMLElement,
@@ -21,6 +28,8 @@ type Crossfade = {
   /** the text put in, wrapped for the crossfade - a text node has no box to fade */
   wrappers: HTMLElement[],
   fadingIn: Animation[],
+  /** how long this one takes, the default or what the caller asked for */
+  duration: number,
   /** from the width of what it held to the width of what it holds (`resize`) */
   resizing?: {animation: Animation, from: number, to: number},
   /** of the resize last asked for: a frame starts only the last one */
@@ -80,7 +89,7 @@ function enter(crossfade: Crossfade, nodes: (Node | string)[]) {
   crossfade.nodes = nodes;
   crossfade.wrappers = wrappers;
 
-  const options = getAnimatedOptions();
+  const options = getAnimatedOptions(crossfade.duration);
   const {currentTime} = crossfade.fadingOut;
   crossfade.fadingIn = entering.map((node) => {
     const animation = node.animate(CROSS_FADE_KEYFRAMES, options);
@@ -137,7 +146,7 @@ function resize(element: HTMLElement, crossfade: Crossfade) {
       return;
     }
 
-    const options = getAnimatedOptions();
+    const options = getAnimatedOptions(crossfade.duration);
     crossfade.resizing = {
       from,
       to,
@@ -165,13 +174,13 @@ function resize(element: HTMLElement, crossfade: Crossfade) {
  *
  * An element as wide as its content - next to something its width moves - can be given `resize`:
  * its width then goes from the old content's to the new one's in step with the crossfade, read
- * and started a frame later (`resize`)
+ * and started a frame later (`resize`) - and `duration`, when the default length is not its own
  */
 export default function crossfadeContent(
   element: HTMLElement,
   content: Node | string | (Node | string)[],
   mode: 'crossfade' | 'update' | 'replace' = 'crossfade',
-  {resize: shouldResize}: {resize?: boolean} = {}
+  {resize: shouldResize, duration}: {resize?: boolean, duration?: number} = {}
 ) {
   const nodes = Array.isArray(content) ? content : [content];
   const canAnimate = element.isConnected && !document.hidden && liteMode.isAvailable('animations');
@@ -201,13 +210,15 @@ export default function crossfadeContent(
   element.classList.add('is-crossfading');
   element.append(leaving);
 
+  const options = getAnimatedOptions(duration);
   const crossfade: Crossfade = {
     leaving,
     // * faded out it stays so: it is dropped only once `finished` comes, which can be a frame later
-    fadingOut: leaving.animate(CROSS_FADE_KEYFRAMES.slice().reverse(), {...getAnimatedOptions(), fill: 'forwards'}),
+    fadingOut: leaving.animate(CROSS_FADE_KEYFRAMES.slice().reverse(), {...options, fill: 'forwards'}),
     nodes,
     wrappers: [],
-    fadingIn: []
+    fadingIn: [],
+    duration: options.duration as number
   };
 
   enter(crossfade, nodes);

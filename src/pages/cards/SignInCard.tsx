@@ -24,6 +24,7 @@ import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import {continueLogin} from '@/pages/continueLogin';
 import styles from '@/pages/authFlow.module.scss';
+import {preloadTrackingMonkey} from '@components/monkeys/tracking';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -119,6 +120,9 @@ export default function SignInCard(_props: {spec: Spec}) {
     );
 
     const phone_number = telInputField.value;
+    // * the code card's sticker is fetched alongside the code itself, not when that card mounts: by
+    // * then the card is already open, and the monkey turns up in it a moment later
+    preloadTrackingMonkey().catch(() => {});
     managers.apiManager.invokeApi('auth.sendCode', {
       phone_number,
       api_id: App.id,

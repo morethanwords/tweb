@@ -342,7 +342,9 @@ function MediaPeekItem(props: {
             class={styles.MediaPeekMedia}
             classList={{
               [styles.clip]: entry.clip,
-              [styles.gif]: entry.kind === 'gif'
+              [styles.gif]: entry.kind === 'gif',
+              // * a sticker fades as it is put away, rather than landing opaque on the small one
+              [styles.fading]: entry.kind === 'sticker'
             }}
             style={{
               'width': entry.size.width + 'px',

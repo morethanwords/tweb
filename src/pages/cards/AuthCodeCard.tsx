@@ -5,7 +5,7 @@ import Button from '@components/buttonTsx';
 import CodeInputFieldCompat from '@components/codeInputField';
 import Icon from '@components/icon';
 import InputField, {InputState} from '@components/inputField';
-import TrackingMonkey from '@components/monkeys/tracking';
+import TrackingMonkey, {preloadTrackingMonkey} from '@components/monkeys/tracking';
 import {wrapEmailPattern} from '@components/emailVerification';
 import simpleConfirmation from '@components/popups/simpleConfirmation';
 import MediaHeader from '@components/mediaHeader';
@@ -48,6 +48,11 @@ import {
   withPhoneNumber
 } from '@/pages/sentCode';
 import styles from '@/pages/authFlow.module.scss';
+import whenDetached from '@helpers/dom/whenDetached';
+
+// * the card's chunk is fetched as soon as the flow heads here, a card's exit animation before this
+// * one mounts: start the sticker's own fetch with it, or it arrives after the card has opened
+preloadTrackingMonkey().catch(() => {});
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -575,9 +580,17 @@ export default function AuthCodeCard(props: {spec: Spec}) {
     cancelFocus?.();
     if(resetEmailTimer) clearTimeout(resetEmailTimer);
     stopResendTimer();
-    monkey?.remove();
-    player?.remove();
     disposeInput();
+
+    // * the card outlives this scope: <Transition mode="outin"> keeps it for its exit animation, and
+    // * an offscreen lottie canvas blanks the moment its player is destroyed - the sticker would go
+    // * while the card is still fading. It is let go once the card has left
+    const leaving = monkey, leavingPlayer = player;
+    monkey = player = undefined;
+    whenDetached(stickerHost.closest<HTMLElement>('.' + styles.card), () => {
+      leaving?.remove();
+      leavingPlayer?.remove();
+    });
   });
 
   return (

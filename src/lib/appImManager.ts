@@ -33,7 +33,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import disableTransition from '@helpers/dom/disableTransition';
 import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
-import crossfadeContent from '@helpers/dom/crossfadeContent';
+import crossfadeContent, {STATUS_CROSSFADE_DURATION} from '@helpers/dom/crossfadeContent';
 import whichChild from '@helpers/dom/whichChild';
 import singleInstance from '@lib/singleInstance';
 import {hideToast, toast, toastNew} from '@components/toast';
@@ -3933,7 +3933,7 @@ export class AppImManager extends EventListenerBase<{
           element,
           content,
           needClear !== false ? 'replace' : isReworded ? 'crossfade' : 'update',
-          {resize}
+          {resize, duration: STATUS_CROSSFADE_DURATION}
         );
       };
     };

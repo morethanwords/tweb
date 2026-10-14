@@ -36,7 +36,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import replaceContent from '@helpers/dom/replaceContent';
-import crossfadeContent, {getCrossfadingTo} from '@helpers/dom/crossfadeContent';
+import crossfadeContent, {getCrossfadingTo, STATUS_CROSSFADE_DURATION} from '@helpers/dom/crossfadeContent';
 import highlightText, {TextHighlight} from '@helpers/dom/textHighlight';
 import ConnectionStatusComponent from '@components/connectionStatus';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
@@ -185,6 +185,13 @@ export type DialogDom = {
   lastMessageRenderParts?: HTMLElement[],
   /** search-result rows: the query lit up inside the rendered message text */
   textHighlight?: TextHighlight,
+  /**
+   * The row shows an activity ("typing…", `setDialogTyping`) and the subtitle leaves it alone until
+   * it is over. Not read off `user-typing`: the class only goes when the subtitle is rendered back
+   * in, and that render can be cut short by the next dialog update - which would then see the class
+   * and skip its own render too, leaving the row typing for good.
+   */
+  showsActivity?: boolean,
 
   setLastMessagePromise?: CancellablePromise<void>,
   setUnreadMessagePromise?: CancellablePromise<void>
@@ -219,7 +226,13 @@ function setDialogSubtitle(dom: DialogDom, nodes: Node[]) {
   const {lastMessageSpan} = dom;
   const wasTyping = lastMessageSpan.classList.contains('user-typing');
   lastMessageSpan.classList.remove('user-typing');
-  crossfadeContent(lastMessageSpan, nodes, wasTyping ? 'crossfade' : 'update');
+  dom.showsActivity = false;
+  crossfadeContent(
+    lastMessageSpan,
+    nodes,
+    wasTyping ? 'crossfade' : 'update',
+    wasTyping ? {duration: STATUS_CROSSFADE_DURATION} : undefined
+  );
 }
 
 /**
@@ -2731,13 +2744,21 @@ export class AppDialogsManager {
     delete dom.lastMessageRenderKey;
     delete dom.lastMessageRenderParts;
 
+    // * as in tdesktop, the row's activity holds the line: a message arriving, an edit or a draft
+    // * does not push "typing…" out of the row. The subtitle it would have shown is rendered once the
+    // * activity is over, by the `unsetTyping` that clears the flag before asking for this render
+    const keepTyping = dom.showsActivity;
+
     if(!lastMessage && !draftMessage && !subtitlePeerId/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
       // * not guarded by the key: the placeholder also depends on the peer being a
       // * botforum / community dialog, and rendering it costs a single element
       const emptySubtitle = this.getEmptySubtitle(peerId, dom.listEl);
 
-      disposeTextHighlight(dom);
-      setDialogSubtitle(dom, emptySubtitle ? [emptySubtitle] : []);
+      if(!keepTyping) {
+        disposeTextHighlight(dom);
+        setDialogSubtitle(dom, emptySubtitle ? [emptySubtitle] : []);
+      }
+
       dom.lastTimeSpan.replaceChildren();
       delete dom.listEl.dataset.mid;
       delete dom.listEl.dataset.searchQuery;
@@ -2763,7 +2784,7 @@ export class AppDialogsManager {
 
     let renderedParts = canSkipRender ? previousRenderParts : undefined;
 
-    /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ if(!canSkipRender) {
+    if(!canSkipRender && !keepTyping) {
       let mediaContainer: HTMLElement;
       const mediaParts: (Promise<HTMLElement> | HTMLElement)[] = [];
 
@@ -2854,8 +2875,12 @@ export class AppDialogsManager {
       replaceContent(dom.lastTimeSpan, formatDateAccordingToTodayNew(new Date(date * 1000)));
     } else dom.lastTimeSpan.textContent = '';
 
-    dom.lastMessageRenderKey = renderKey;
-    dom.lastMessageRenderParts = renderedParts;
+    // * nothing was rendered under the activity, so there is no key to skip the next render by
+    if(!keepTyping) {
+      dom.lastMessageRenderKey = renderKey;
+      dom.lastMessageRenderParts = renderedParts;
+    }
+
     promise.resolve();
   }
 

@@ -21,6 +21,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
+import whenDetached from '@helpers/dom/whenDetached';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -162,8 +163,8 @@ export default function PasswordCard(_props: {spec: Spec}) {
             clearInterval(getStateInterval);
             getStateInterval = undefined;
           }
+          // * the monkey stays until the card is gone (`onCleanup`): the client fades in over it
           toIm();
-          monkey?.remove();
           break;
         default:
           setSubmitting(false);
@@ -213,11 +214,16 @@ export default function PasswordCard(_props: {spec: Spec}) {
 
   onCleanup(() => {
     cancelFocus?.();
-    monkey?.remove();
     if(getStateInterval) {
       clearInterval(getStateInterval);
       getStateInterval = undefined;
     }
+
+    // * as in the code card: the card is kept for its exit animation after this scope is gone, and a
+    // * destroyed offscreen lottie canvas blanks at once
+    const leaving = monkey;
+    monkey = undefined;
+    whenDetached(monkeyContainer.closest<HTMLElement>('.' + styles.card), () => leaving?.remove());
   });
 
   return (

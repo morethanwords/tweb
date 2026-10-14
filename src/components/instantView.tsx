@@ -2002,7 +2002,10 @@ function Block(props: {
           maxWidth: layoutWidth() || (ref.isConnected && ref.clientWidth) || 400,
           minWidth: 100,
           spacing: ALBUM_ITEM_SPACING,
-          maxHeight: INSTANT_VIEW_MEDIA_MAX_HEIGHT
+          maxHeight: INSTANT_VIEW_MEDIA_MAX_HEIGHT,
+          // * the items are blocks of the page, not messages of an album: the chat's selection and its
+          // * context menu read a mid off a `grouped-item`, and these have none
+          noGroupedItem: true
         });
         _onMediaResult(ref, width, height, props.paddings);
         // console.warn('collage map', map, ref.childElementCount);

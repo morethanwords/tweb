@@ -299,11 +299,10 @@
       }
     }
 
-    &.is-unread {
-
-      &:not(.is-out) .audio-toggle:not(.playing) + .audio-waveform-container .audio-waveform-background .audio-waveform-bar {
-        opacity: 1;
-      }
+    // the waveform of an unread voice stands out whole, until it is played - the state is read off
+    // the row itself, the waveform being no sibling of the play button since the row became a `Row`
+    &.is-unread:not(.is-out):not(.is-playing) .audio-waveform-background .audio-waveform-bar {
+      opacity: 1;
     }
 
     .audio-title {

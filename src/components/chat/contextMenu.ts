@@ -95,7 +95,8 @@ import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLin
 import {getPollVoteRestrictionPeerId} from '@appManagers/utils/polls/pollVoteRestriction';
 import {getPollVoteRestrictionText} from './bubbleParts/pollMessageContent/pollVoteRestriction';
 import {canViewPollStatistics as canViewPollStatisticsForMessage} from './bubbleParts/pollMessageContent/pollStatistics';
-import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
+import {canCopyMediaToClipboard, CopyableMedia} from '@helpers/copyMediaToClipboard';
+import {findRegisteredMediaPeekElement, getRegisteredMediaPeekSource} from '@components/mediaPeek/sources';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
@@ -198,6 +199,11 @@ export default class ChatContextMenu {
   private isSelected: boolean;
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
+  /**
+   * The media the pressed element shows when it belongs to a page rather than to the message - a rich
+   * message's photos and videos are its page's blocks, and `message.media` holds nothing of them.
+   */
+  private richMedia: CopyableMedia;
   private isTextSelected: boolean;
   private isTextFromMultipleMessagesSelected: boolean;
   private isAnchorTarget: boolean;
@@ -504,13 +510,16 @@ export default class ChatContextMenu {
 
       this.avatarPeerId = avatar && avatar.dataset.peerId.toPeerId();
 
+      // * an album item in the chat carries the mid of its own message; anything else wearing the class
+      // * (a rich message's collage, whose items are blocks of a page) has none and the menu is the
+      // * whole message's - `+undefined` as a mid left it with no message at all, and nothing opened
       const groupedItem = findUpClassName(this.target, 'grouped-item');
-      this.isTargetAGroupedItem = !!groupedItem;
-      if(groupedItem) {
-        this.mid = +groupedItem.dataset.mid;
-      } else {
-        this.mid = mid;
-      }
+      const groupedItemMid = groupedItem && +groupedItem.dataset.mid;
+      this.isTargetAGroupedItem = !!groupedItemMid;
+      this.mid = groupedItemMid || mid;
+
+      // * what the page registered for the element pressed, when a rich message's media was pressed
+      this.richMedia = this.getTargetRichMedia();
 
       this.isLegacy = this.messagePeerId && this.messagePeerId !== this.peerId;
       this.isSelected = this.chat.selection.isMidSelected(this.messagePeerId, this.mid);
@@ -1108,12 +1117,14 @@ export default class ChatContextMenu {
       text: 'MediaViewer.Context.Copy',
       welcome: true,
       onClick: this.onCopyMediaClick,
-      verify: () => ChatContextMenu.canCopyMedia(
-        this.message,
-        this.target,
-        this.contentNoForwards,
-        this.chat.container
-      ),
+      verify: () => this.richMedia ?
+        !this.contentNoForwards && canCopyMediaToClipboard(this.richMedia) :
+        ChatContextMenu.canCopyMedia(
+          this.message,
+          this.target,
+          this.contentNoForwards,
+          this.chat.container
+        ),
       keepOpen: true
     }, {
       icon: 'search',
@@ -1244,17 +1255,21 @@ export default class ChatContextMenu {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       welcome: true,
-      onClick: () => ChatContextMenu.onDownloadClick(
-        this.message,
-        this.contentNoForwards,
-        this.chat.container
-      ),
-      verify: () => ChatContextMenu.canDownload(
-        this.message,
-        this.target,
-        this.contentNoForwards,
-        this.chat.container
-      )
+      onClick: () => this.richMedia ?
+        appDownloadManager.downloadToDisc({media: this.richMedia}) :
+        ChatContextMenu.onDownloadClick(
+          this.message,
+          this.contentNoForwards,
+          this.chat.container
+        ),
+      verify: () => this.richMedia ?
+        !this.contentNoForwards :
+        ChatContextMenu.canDownload(
+          this.message,
+          this.target,
+          this.contentNoForwards,
+          this.chat.container
+        )
     }, {
       icon: 'note_filled',
       text: 'SavedMusic.AddToProfile',
@@ -2218,9 +2233,17 @@ export default class ChatContextMenu {
   private onCopyMediaClick = () => {
     copyMessageMediaWithFeedback({
       message: this.message,
+      media: this.richMedia,
       button: this.copyMediaButton
     });
   };
+
+  /** What the page said the pressed element shows (`mediaPeek/sources`), for a rich message's media */
+  private getTargetRichMedia() {
+    const element = this.target && findRegisteredMediaPeekElement(this.target);
+    const media = element && getRegisteredMediaPeekSource(element)?.media;
+    return media as CopyableMedia;
+  }
 
   private onCopyAnchorLinkClick = () => {
     let href = (this.target as HTMLAnchorElement).href;

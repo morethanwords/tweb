@@ -170,3 +170,75 @@ describe('SearchListLoader places', () => {
     expect(loader.getPosition(loader.current)).toBeUndefined();
   });
 });
+
+// * The newer side of a search inside one chat: it is read from the item the list already holds, and
+// * not from the id after it - a window lying wholly above an id the search storage does not hold
+// * cannot be cut out of that storage again, and every result is dropped. The anchor comes back among
+// * them, so the window asks for one place more: a full page that came back one short would latch
+// * "read everything" and end a voice playlist, or the viewer's paging, where the page happened to end.
+describe('SearchListLoader loading newer', () => {
+  const LOAD_COUNT = 10;
+
+  function createNewerLoader() {
+    const requests: {offsetId: number, limit: number, backLimit?: number}[] = [];
+    const newestFirst = RESULTS.slice().reverse();
+    const managers = {
+      appMessagesIdsManager: {incrementMessageId: async(mid: number, increment: number) => mid + increment},
+      appMessagesManager: {
+        getHistory: async(options: {offsetId: number, limit: number, backLimit?: number}) => {
+          requests.push(options);
+          // * the results the window covers, as the storage's slice gives them back: the ones closest
+          // * above the offset, the offset itself among them when it is a result of its own
+          const mids = newestFirst.filter((mid) => mid >= options.offsetId).slice(-options.backLimit);
+          return {count: RESULTS.length, history: mids, messages: mids.map(message)};
+        },
+        filterMessagesByInputFilterFromStorage: async(_filter: string, mids: number[]) =>
+          mids.filter((mid) => !LEFT_OUT.has(mid)).map(message)
+      }
+    };
+
+    const loader = new SearchListLoader<Item>({
+      managers: managers as any,
+      loadCount: LOAD_COUNT,
+      processItem: (item) => ({mid: item.mid, peerId: item.peerId})
+    });
+    loader.setSearchContext({peerId: PEER_ID, inputFilter: {_: 'inputMessagesFilterPhotoVideo'}} as any);
+    loader.setTargets([], [], true);
+    loader.current = message(OPENED);
+    return {loader, requests};
+  }
+
+  it('reads from the item itself and leaves it out of the results', async() => {
+    const {loader, requests} = createNewerLoader();
+    await loader.load(false);
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0].offsetId).toBe(OPENED);
+    expect(loader.next.map(({mid}) => mid)).not.toContain(OPENED);
+    expect(loader.next.every(({mid}) => mid > OPENED)).toBe(true);
+  });
+
+  it('fills a whole page, so there is more to read after it', async() => {
+    const {loader} = createNewerLoader();
+    await loader.load(false);
+
+    // * a whole page of results, of which the list keeps the ones it does not leave out - the page is
+    // * full either way, so there is more to read
+    const page = RESULTS.filter((mid) => mid > OPENED).slice(0, LOAD_COUNT);
+    const expected = page.filter((mid) => !LEFT_OUT.has(mid));
+    expect(loader.next.map(({mid}) => mid)).toEqual(expected);
+    expect((loader as any).loadedAllUp).toBe(false);
+
+    await loader.load(false);
+    expect(loader.next.length).toBeGreaterThan(expected.length);
+  });
+
+  it('says it has read everything once the newer results run out', async() => {
+    const {loader} = createNewerLoader();
+    loader.current = message(RESULTS[RESULTS.length - 2]); // * the one before the newest
+    await loader.load(false);
+
+    expect(loader.next.map(({mid}) => mid)).toEqual([RESULTS[RESULTS.length - 1]]);
+    expect((loader as any).loadedAllUp).toBe(true);
+  });
+});

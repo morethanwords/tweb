@@ -160,6 +160,8 @@ type AudioRowState = {
   isOut: boolean,
   canTranscribe: boolean,
   isUnread: boolean,
+  /** Its own media is running: an unread voice gives up its filled waveform while it plays. */
+  isPlaying: boolean,
   isOutgoing: boolean,
   withThumb: boolean,
   cornerDownload: boolean,
@@ -223,6 +225,7 @@ function AudioRow(props: {
         'is-out': props.state.isOut,
         'can-transcribe': props.state.canTranscribe,
         'is-unread': props.state.isUnread,
+        'is-playing': props.state.isPlaying,
         'is-outgoing': props.state.isOutgoing,
         'audio-with-thumb': props.state.withThumb,
         'corner-download': props.state.cornerDownload,
@@ -619,6 +622,7 @@ export default async function createAudioElement(options: AudioElementOptions): 
     isOut: !!options.isOut,
     canTranscribe: false,
     isUnread: !!(doc.type !== 'audio' && options.message && options.message.pFlags.media_unread),
+    isPlaying: false,
     isOutgoing: !!uploadingFileName,
     withThumb: false,
     cornerDownload: false,
@@ -690,7 +694,9 @@ export default async function createAudioElement(options: AudioElementOptions): 
    */
   const syncPlayState = (animate?: boolean) => {
     const playing = !!el.audio && !el.audio.paused;
-    toggle.classList.toggle('playing', playing);
+    // * the row wears it, not the button: the waveform it dims while playing is no sibling of the
+    // * button since the row became a `Row`, and nothing else read the button's own class
+    setState('isPlaying', playing);
     toggle.setAttribute('aria-label', I18n.format(playing ? 'Pause' : 'Play', true));
     setPlayIcon(playing, animate);
   };

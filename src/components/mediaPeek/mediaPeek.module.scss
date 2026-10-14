@@ -183,6 +183,10 @@ $switch-transition: .2s cubic-bezier(.12, 1.1, .56, 1.2);
     opacity: 1;
   }
 
+  // * a sticker or a custom emoji is put away the way the sticker viewer put it away: it fades while
+  // * it shrinks. Its big render is not the small one it came from - it has its own padding, and a
+  // * video sticker its own frame - so landing on it opaque shows the swap
+  &.closing &Media.fading,
   &.closing &Frame.inPlace &Media {
     opacity: 0;
   }
