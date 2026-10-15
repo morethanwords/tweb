@@ -1,7 +1,5 @@
-import {Bold} from '@tiptap/extension-bold';
 import {Document} from '@tiptap/extension-document';
 import {HardBreak} from '@tiptap/extension-hard-break';
-import {Italic} from '@tiptap/extension-italic';
 import {BulletList, OrderedList} from '@tiptap/extension-list';
 import {Strike} from '@tiptap/extension-strike';
 import {Text} from '@tiptap/extension-text';
@@ -48,7 +46,9 @@ import {
   ChatTaskItem
 } from '@components/chat/inputEditor/extensions/listNodes';
 import {
+  ChatBold,
   ChatInlineCode,
+  ChatItalic,
   ChatSpoiler,
   ChatHighlight,
   ChatFormattedDate,
@@ -90,12 +90,12 @@ const LIST_HTML_ATTRIBUTES = (ordered: boolean) => ({
  * default block type.
  */
 export const TIPTAP_BASE_EXTENSIONS = [
-  Bold,
+  ChatBold,
   BulletList.configure({HTMLAttributes: LIST_HTML_ATTRIBUTES(false), keepMarks: true}),
   Document,
   HardBreak,
   UndoRedo.configure({newGroupDelay: CHAT_INPUT_HISTORY_NEW_GROUP_DELAY}),
-  Italic,
+  ChatItalic,
   ChatLink,
   OrderedList.configure({HTMLAttributes: LIST_HTML_ATTRIBUTES(true), keepMarks: true}),
   Strike,
