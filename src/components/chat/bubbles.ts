@@ -147,6 +147,7 @@ import {modifyAckedPromise} from '@helpers/modifyAckedResult';
 import callbackify from '@helpers/callbackify';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
 import Icon from '@components/icon';
+import SendingStatusIcon, {SendingStatusIconState, setSendingStatusIconState} from '@components/sendingStatusIcon';
 import wrapCallBubble from '@components/wrappers/callBubble';
 import {FullMid, makeFullMid, splitFullMid} from '@appManagers/utils/messages/fullMid';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -7478,26 +7479,26 @@ export default class ChatBubbles {
     return result;
   }
 
-  private setBubbleSendingStatus(bubble: HTMLElement, status?: 'sending' | 'error' | 'sent' | 'read', first?: boolean) {
+  private setBubbleSendingStatus(bubble: HTMLElement, status?: SendingStatusIconState, first?: boolean) {
     !first && bubble.classList.remove('is-sending', 'is-error', 'is-sent', 'is-read');
     status && bubble.classList.add('is-' + status);
     bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
       // * the status is not necessarily the first child anymore (the replies counter can be
       // * prepended after it), so look up the previous status itself instead of assuming
       // * its position - otherwise the new icon replaces a foreign element and the old status stays
-      const previous = element.querySelector(':scope > .time-sending-status');
+      const previous = element.querySelector<HTMLElement>(':scope > .time-sending-status');
       if(!status) {
         previous?.remove();
         return;
       }
 
-      let icon: Icon;
-      if(status === 'error') icon = 'sendingerror_filled';
-      else if(status === 'sending') icon = 'sending';
-      else if(status === 'sent') icon = 'check';
-      else icon = 'checks';
+      // * the icon that is there grows into the new status (the clock into a check and so on); the copy
+      // * in .time only holds the place (visibility: hidden), the one in .time-inner is the one seen
+      if(previous && setSendingStatusIconState(previous, status, !first && element.classList.contains('time-inner'))) {
+        return;
+      }
 
-      const newIcon = Icon(icon, 'time-sending-status');
+      const newIcon = SendingStatusIcon(status, 'time-sending-status');
       if(previous) {
         previous.replaceWith(newIcon);
       } else {

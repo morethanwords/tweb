@@ -1,9 +1,6 @@
-import {_tgico} from '@helpers/tgico';
 import {Message} from '@layer';
 import Icon from '@components/icon';
-/* import findUpClassName from "@helpers/dom/findUpClassName";
-import rootScope from "@lib/rootScope";
-import Transition from "@components/transition"; */
+import SendingStatusIcon, {getSendingStatusIconState, SendingStatusIconState, setSendingStatusIconState} from '@components/sendingStatusIcon';
 
 export enum SENDING_STATUS {
   Error = -1,
@@ -21,66 +18,58 @@ export function getSendingStatus(message: Message.message | Message.messageServi
     );
 }
 
-type C = 'check' | 'checks' | 'sending' | 'sendingerror_filled' | 'premium_lock';
+type C = SendingStatusIconState | 'premium_lock';
 export function setSendingStatus(
   container: HTMLElement,
   message?: C | Message.message | Message.messageService,
-  disableAnimationIfRippleFound?: boolean
+  animate?: boolean
 ) {
-  let className: C;
+  let state: C;
   if(typeof(message) === 'string') {
-    className = message;
+    state = message;
   } else if(message?.pFlags.out) {
     if(message.error) {
-      className = 'sendingerror_filled';
+      state = 'error';
     } else if(message.pFlags.is_outgoing) {
-      className = 'sending';
+      state = 'sending';
     } else if(message.pFlags.unread) {
-      className = 'check';
+      state = 'sent';
     } else {
-      className = 'checks';
+      state = 'read';
     }
   }
 
-  if(!className) {
+  if(!state) {
     container.textContent = '';
     container.classList.add('hide');
     return;
   }
 
-  const lastElement = container.lastElementChild as HTMLElement;
-  if(lastElement && lastElement.classList.contains(_tgico(className))) {
-    return;
-  }
-
-  const statusClassName = className === 'sendingerror_filled' ? 'sendingerror' : className;
-  const element = Icon(className, 'sending-status-icon', 'sending-status-icon-' + statusClassName/* 'transition-item', */);
-  container.append(element);
   container.classList.remove('hide');
+  const lastElement = container.lastElementChild as HTMLElement;
+  if(state === 'premium_lock') {
+    if(!lastElement?.classList.contains('sending-status-icon-premium_lock')) {
+      container.replaceChildren(Icon('premium_lock', 'sending-status-icon', 'sending-status-icon-premium_lock'));
+    }
 
-  lastElement?.remove();
-
-  /* if(!lastElement) {
-    element.classList.add('active');
     return;
   }
 
-  const select = Transition(container, undefined, 350, () => {
-    lastElement.remove();
-  }, false, true, false);
-
-  let animate = rootScope.settings.animationsEnabled && className !== 'sending' && !lastElement.classList.contains('tgico-sending');
-  if(disableAnimationIfRippleFound && animate) {
-    const parent = findUpClassName(container, 'rp');
-    if(parent.querySelector('.c-ripple__circle') || parent.matches(':hover')) {
-      animate = false;
+  // the icon that is there grows into the new status
+  const current = lastElement && getSendingStatusIconState(lastElement);
+  if(current) {
+    if(current !== state) {
+      lastElement.classList.toggle('sending-status-icon-sendingerror', state === 'error');
+      setSendingStatusIconState(lastElement, state, animate);
     }
+
+    return;
   }
 
-  select(element, animate, lastElement); */
+  const element = SendingStatusIcon(state, 'sending-status-icon');
+  if(state === 'error') {
+    element.classList.add('sending-status-icon-sendingerror');
+  }
 
-  /* SetTransition(lastElement, 'is-visible', false, 350, () => {
-    // lastElement.remove();
-  }, 2);
-  SetTransition(element, 'is-visible', true, 350, undefined, 2); */
+  container.replaceChildren(element);
 }

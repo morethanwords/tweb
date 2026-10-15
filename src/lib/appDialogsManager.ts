@@ -2971,7 +2971,7 @@ export class AppDialogsManager {
 
     dom.listEl.classList.toggle('no-unmuted-topic', !isMuted && hasUnmutedTopic !== undefined && !hasUnmutedTopic);
 
-    setSendingStatus(dom.statusSpan, isTopic && dialog.pFlags.closed ? 'premium_lock' : setStatusMessage, true);
+    setSendingStatus(dom.statusSpan, isTopic && dialog.pFlags.closed ? 'premium_lock' : setStatusMessage, !isBatch);
 
     // if(isTopic) {
     //   dom.statusSpan.parentElement.classList.toggle('is-closed', !!dialog.pFlags.closed);
