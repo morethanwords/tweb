@@ -1798,6 +1798,8 @@ const lang = {
   'Allow': 'Allow',
   'HistoryCleared': 'History was cleared',
   'Archive': 'Archive',
+  'ArchiveSearchFilter': 'Archive',
+  'Search.RemoveFilter': 'Remove filter',
   'Unarchive': 'Unarchive',
   'Delete': 'Delete',
   'Reply': 'Reply',

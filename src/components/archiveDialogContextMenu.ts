@@ -49,6 +49,13 @@ export const getArchiveContextMenuButtons = (): ButtonMenuItemOptionsVerifiable[
 
   return [
     {
+      icon: 'search',
+      text: 'Search',
+      onClick: () => {
+        appSidebarLeft.openArchiveSearch();
+      }
+    },
+    {
       icon: 'movetomenu',
       text: 'Archive.HideFromChatList',
       onClick: () => {

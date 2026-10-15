@@ -1,4 +1,4 @@
-import {createEffect, createRoot, createSignal, on} from 'solid-js';
+import {createEffect, createRoot, createSignal, createUniqueId, on} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
@@ -29,6 +29,7 @@ import sessionStorage from '@lib/sessionStorage';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import isLastInputPointer from '@helpers/dom/inputModality';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
+import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
@@ -36,6 +37,7 @@ import {replaceButtonIcon} from '@components/button';
 import noop from '@helpers/noop';
 import ripple from '@components/ripple';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import lastItem from '@helpers/array/lastItem';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
 import {AppManagers} from '@lib/managers';
@@ -105,6 +107,7 @@ import useHasFoldersSidebar, {
 import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
 import {useCollapsedCommunityDialogsKey} from '@stores/communities';
+import isCommunity from '@appManagers/utils/communities/isCommunity';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
@@ -114,8 +117,12 @@ export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 type SearchInitResult = {
   open: (focus?: boolean) => void;
   openWithPeerId: (peerId: PeerId) => void;
+  openWithArchive: () => void;
   close: () => void;
 }
+
+// * the key of the search chip that keeps the search inside the archive
+const ARCHIVE_SEARCH_KEY = 'archive';
 
 export class AppSidebarLeft extends SidebarSlider {
   private chatListContainer: HTMLElement;
@@ -461,6 +468,12 @@ export class AppSidebarLeft extends SidebarSlider {
 
     addShortcutListener(['ctrl+f', 'alt+f', 'meta+f'], () => {
       if(appNavigationController.findItemByType('popup')) return;
+      // * from inside the archive the search stays in it
+      if(lastItem(this.getHistory()) instanceof AppArchivedTab) {
+        this.openArchiveSearch();
+        return;
+      }
+
       this.initSearch().open();
     });
 
@@ -1292,7 +1305,30 @@ export class AppSidebarLeft extends SidebarSlider {
     let selectedCommunityId: ChatId;
     let selectedMinDate = 0;
     let selectedMaxDate = 0;
+    let selectedArchive = false;
+    // * a screen reader hears what the search is narrowed to along with the field
+    let describingIds: string[] = [];
+    const describePicked = () => {
+      const input = this.inputSearch.input;
+      const ids = pickedElements.map((element) => {
+        const title = element.querySelector('.selector-user-title');
+        if(title) title.id ||= createUniqueId();
+        return title?.id;
+      }).filter(Boolean);
+      const describedBy = (input.getAttribute('aria-describedby') || '')
+      .split(/\s+/)
+      .filter((id) => id && !describingIds.includes(id))
+      .concat(describingIds = ids);
+
+      if(describedBy.length) {
+        input.setAttribute('aria-describedby', describedBy.join(' '));
+      } else {
+        input.removeAttribute('aria-describedby');
+      }
+    };
+
     const updatePicked = () => {
+      describePicked();
       // (this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
       this.inputSearch.container.classList.toggle('is-picked-twice', pickedElements.length === 2);
       this.inputSearch.container.classList.toggle('is-picked', !!pickedElements.length);
@@ -1301,9 +1337,14 @@ export class AppSidebarLeft extends SidebarSlider {
         element.classList.add(idx === 0 ? 'is-first' : 'is-last');
       });
 
-      if(pickedElements.length) {
+      // * a search inside the archive can still be narrowed by chat type
+      if(pickedElements.some((element) => element.dataset.key !== ARCHIVE_SEARCH_KEY)) {
         pause(0).then(() => chatTypeMenu.props.hidden = true);
+      } else {
+        chatTypeMenu.props.hidden = false;
+      }
 
+      if(pickedElements.length) {
         // * how far the last chip reaches into the field from its inline start (`padding-inline-start`)
         const pickedRect = pickedElements[pickedElements.length - 1].getBoundingClientRect();
         const inputRect = this.inputSearch.input.getBoundingClientRect();
@@ -1312,9 +1353,24 @@ export class AppSidebarLeft extends SidebarSlider {
           (I18n.getIsRTL() ? inputRect.right - pickedRect.left : pickedRect.right - inputRect.left) + 'px'
         );
       } else {
-        chatTypeMenu.props.hidden = false;
         this.inputSearch.input.style.removeProperty('--paddingLeft');
       }
+    };
+
+    // * a chip is a button that takes its filter off, by keyboard too under the a11y layer
+    const pickEntity = (element: HTMLElement) => {
+      ensureButtonSemantics(element);
+      const removeLabel = document.createElement('span');
+      removeLabel.classList.add('sr-only');
+      removeLabel.append(i18n('Search.RemoveFilter'), ' ');
+      element.querySelector('.selector-user-title')?.before(removeLabel);
+      attachClickEvent(element, () => {
+        unselectEntity(element);
+      });
+
+      // * before the field, where it is drawn, for the focus order
+      this.inputSearch.input.before(element);
+      pickedElements.push(element);
     };
 
     const helperMiddlewareHelper = this.middlewareHelper.get().create();
@@ -1337,29 +1393,25 @@ export class AppSidebarLeft extends SidebarSlider {
         selectedCommunityId = undefined;
       }
 
-      target.addEventListener('click', () => {
-        unselectEntity(target);
-      });
-
-      this.inputSearch.container.append(target);
+      pickEntity(target);
       this.inputSearch.onChange(this.inputSearch.value = '');
-      pickedElements.push(target);
       updatePicked();
     });
 
     searchSuper.nav.parentElement.append(helper);
 
+    // * only a community: a forum or a monoforum is searched as the chat it is
     const getCommunityByPeerId = (peerId: PeerId) => {
-      return peerId.isAnyChat() ?
-        apiManagerProxy.getChat(peerId.toChatId()) :
-        undefined;
+      const chat = peerId.isAnyChat() ? apiManagerProxy.getChat(peerId.toChatId()) : undefined;
+      return isCommunity(chat) ? chat : undefined;
     };
     const renderEntity = (key: PeerId | string, title?: string | HTMLElement) => {
       const peerId = key.isPeerId() ? key.toPeerId() : undefined;
       const community = peerId && getCommunityByPeerId(peerId);
+      const isArchive = key === ARCHIVE_SEARCH_KEY;
       const rendered = AppSelectPeers.renderEntity({
         key,
-        title: title ?? community?.title,
+        title: title ?? (isArchive ? i18n('ArchiveSearchFilter') : community?.title),
         middleware: helperMiddlewareHelper.get(),
         avatarSize: 30,
         fallbackIcon: 'calendarfilter',
@@ -1370,6 +1422,9 @@ export class AppSidebarLeft extends SidebarSlider {
           peerId,
           peer: community as any
         });
+      } else if(isArchive) {
+        // * the archive row's own picture
+        rendered.avatar.set({icon: 'archive_filled', color: 'blue'});
       }
 
       return rendered.element;
@@ -1379,14 +1434,19 @@ export class AppSidebarLeft extends SidebarSlider {
       const key = target.dataset.key;
       if(key.indexOf('date_') === 0) {
         selectedMinDate = selectedMaxDate = 0;
+      } else if(key === ARCHIVE_SEARCH_KEY) {
+        selectedArchive = false;
       } else {
         selectedPeerId = ''.toPeerId();
         selectedCommunityId = undefined;
       }
 
+      // * a chip taken off by keyboard leaves the focus where the typing goes on
+      const hadFocus = target.contains(document.activeElement);
       target.middlewareHelper.destroy();
       target.remove();
       indexOfAndSplice(pickedElements, target);
+      if(hadFocus) this.inputSearch.input.focus({preventScroll: true});
 
       setTimeout(() => {
         updatePicked();
@@ -1442,13 +1502,14 @@ export class AppSidebarLeft extends SidebarSlider {
         'apps',
         'posts'
       ];
+      const hideGlobalOnlyTabs = !!selectedCommunityId || selectedArchive;
       for(const type of globalOnlyTabs) {
         searchSuper.mediaTabsMap
         .get(type)
-        ?.menuTab.classList.toggle('hide', !!selectedCommunityId);
+        ?.menuTab.classList.toggle('hide', hideGlobalOnlyTabs);
       }
       if(
-        selectedCommunityId &&
+        hideGlobalOnlyTabs &&
         globalOnlyTabs.includes(searchSuper.mediaTab.type)
       ) {
         searchSuper.selectTab(
@@ -1467,7 +1528,7 @@ export class AppSidebarLeft extends SidebarSlider {
       searchSuper.setQuery({
         peerId: selectedPeerId,
         communityId: selectedCommunityId,
-        folderId: selectedPeerId || selectedCommunityId ? undefined : 0,
+        folderId: selectedPeerId || selectedCommunityId ? undefined : (selectedArchive ? FOLDER_ID_ARCHIVE : 0),
         query: value,
         chatType,
         minDate: selectedMinDate,
@@ -1491,7 +1552,8 @@ export class AppSidebarLeft extends SidebarSlider {
         promises.push(elements);
       }
 
-      if(!selectedPeerId && !selectedCommunityId && value.trim()) {
+      // * no chat chips next to the archive one: a chat would leave it nothing to narrow
+      if(!selectedPeerId && !selectedCommunityId && !selectedArchive && value.trim()) {
         const middleware = searchSuper.middleware.get();
         const promise = Promise.all([
           this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
@@ -1544,6 +1606,7 @@ export class AppSidebarLeft extends SidebarSlider {
         el.remove();
       });
       pickedElements.length = 0;
+      describePicked();
 
       this.inputSearch.value = '';
       this.inputSearch.container.classList.remove('is-picked', 'is-picked-twice');
@@ -1652,8 +1715,9 @@ export class AppSidebarLeft extends SidebarSlider {
       this.searchEnteredWithKeyboard = undefined;
       const claimed = (): boolean => {
         const focused = document.activeElement;
+        // * the field holds its chips and clear button too
         return !!focused && focused !== document.body && focused !== this.backBtn &&
-          focused !== this.inputSearch.input && !searchContainer.contains(focused);
+          !this.inputSearch.container.contains(focused) && !searchContainer.contains(focused);
       };
       if(Modes.a11y && enteredWithKeyboard && !claimed()) focusWhenSettled(this.toolsBtn, () => !claimed());
 
@@ -1683,15 +1747,27 @@ export class AppSidebarLeft extends SidebarSlider {
       this.inputSearch.input.focus({preventScroll: true});
     };
 
+    const openWithEntity = (key: PeerId | string) => {
+      // * opened from a control that goes away with the tab it was in: a keyboard user is given a place on close
+      this.searchEnteredWithKeyboard ??= !isLastInputPointer();
+      onFocus();
+      focusInput();
+
+      this.inputSearch.onChange(this.inputSearch.value = '');
+      pickEntity(renderEntity(key));
+      // * the chip is measured a frame later, but must not be painted over the placeholder before that
+      this.inputSearch.container.classList.add('is-picked');
+      fastRaf(() => {
+        updatePicked();
+      });
+    };
+
     return this.searchInitResult = {
       open: (focus = true) => {
         onFocus();
         if(focus) focusInput();
       },
       openWithPeerId: (peerId: PeerId) => {
-        onFocus();
-        focusInput();
-
         selectedCommunityId = getCommunityByPeerId(peerId) ?
           peerId.toChatId() :
           undefined;
@@ -1699,19 +1775,11 @@ export class AppSidebarLeft extends SidebarSlider {
           ''.toPeerId() :
           peerId;
 
-        this.inputSearch.onChange(this.inputSearch.value = '');
-
-        const element = renderEntity(peerId);
-        this.inputSearch.container.append(element);
-
-        element.addEventListener('click', () => {
-          unselectEntity(element);
-        });
-
-        pickedElements.push(element);
-        fastRaf(() => {
-          updatePicked();
-        });
+        openWithEntity(peerId);
+      },
+      openWithArchive: () => {
+        selectedArchive = true;
+        openWithEntity(ARCHIVE_SEARCH_KEY);
       },
       close: () => {
         close();
@@ -1733,9 +1801,10 @@ export class AppSidebarLeft extends SidebarSlider {
 
       if(!this.searchSuper) return;
       const channelsTab = this.searchSuper.mediaTabs.find((tab) => tab.type === 'channels');
+      const {communityId, folderId} = this.searchSuper.searchContext;
       channelsTab.menuTab?.classList.toggle(
         'hide',
-        !hasChannels || !!this.searchSuper.searchContext.communityId
+        !hasChannels || !!communityId || folderId === FOLDER_ID_ARCHIVE
       );
     };
 
@@ -1790,6 +1859,15 @@ export class AppSidebarLeft extends SidebarSlider {
   public openArchiveTab() {
     this.closeTabsBefore(() => {
       this.createTab(AppArchivedTab).open();
+    });
+  }
+
+  // * the search lives on the chat list, so the archive gives way to it. A menu that asks for it
+  // * closes only after its click, giving the focus back to its trigger, so the search opens after that
+  public async openArchiveSearch() {
+    await pause(0);
+    this.closeTabsBefore(() => {
+      this.initSearch().openWithArchive();
     });
   }
 

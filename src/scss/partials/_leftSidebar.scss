@@ -370,7 +370,7 @@
         position: absolute !important;
         inset-inline-start: 6px;
         top: 6px;
-        z-index: 1;
+        z-index: 2; // * over the field, which follows it for the focus order
         margin-inline-start: 0;
       }
 

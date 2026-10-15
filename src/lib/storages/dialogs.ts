@@ -9,6 +9,7 @@ import type {Chat, Dialog as MTDialog, ForumTopic as MTForumTopic, DialogPeer, M
 import type {AppMessagesManager, Dialog, ForumTopic, MyMessage, SavedDialog} from '@appManagers/appMessagesManager';
 import type {AccountDatabase} from '@config/databases/state';
 import tsNow from '@helpers/tsNow';
+import noop from '@helpers/noop';
 import SearchIndex from '@lib/searchIndex';
 import {SliceEnd} from '@helpers/slicedArray';
 import {MyDialogFilter} from '@lib/storages/filters';
@@ -1958,6 +1959,36 @@ export default class DialogsStorage extends AppManager {
         isEnd: result.isEnd && curDialogStorage[curDialogStorage.length - 1] === dialogs[dialogs.length - 1]
       };
     });
+  }
+
+  /**
+   * The chats of a real folder whose titles match `query`. Only the loaded part of a folder is
+   * indexed, so until it is loaded in full the server's own matches are taken too, once their
+   * dialogs tell which folder they are in.
+   */
+  public async searchFolderDialogs(query: string, folderId: REAL_FOLDER_ID, limit = 20): Promise<PeerId[]> {
+    const loadedAll = this.isDialogsLoaded(folderId);
+    const [{dialogs}, serverPeerIds] = await Promise.all([
+      this.getDialogs({query, filterId: folderId, limit}),
+      loadedAll ? [] as PeerId[] : this.appUsersManager.searchContacts(query, limit).then(
+        ({my_results}) => my_results,
+        () => [] as PeerId[]
+      )
+    ]);
+
+    const peerIds = new Set(dialogs.map((dialog) => dialog.peerId));
+    // * a dialog older than the loaded part of its folder is not kept, so its folder is read off the answer
+    const serverDialogs = await Promise.all(serverPeerIds.map((peerId) => {
+      return this.getDialogOnly(peerId) ?? this.appMessagesManager.reloadConversation(peerId).catch(noop);
+    }));
+
+    for(const dialog of serverDialogs) {
+      if(dialog && (dialog.folder_id ?? FOLDER_ID_ALL) === folderId) {
+        peerIds.add(dialog.peerId);
+      }
+    }
+
+    return [...peerIds].slice(0, limit);
   }
 
   public async markFolderAsRead(

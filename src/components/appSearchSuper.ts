@@ -68,7 +68,7 @@ import wrapMediaSpoiler, {hasMediaSpoiler, hasSensitiveSpoiler, onMediaSpoilerCl
 import filterAsync from '@helpers/array/filterAsync';
 import ChatContextMenu, {getSponsoredMessageButtons} from '@components/chat/contextMenu';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
-import {NULL_PEER_ID} from '@appManagers/constants';
+import {FOLDER_ID_ARCHIVE, NULL_PEER_ID} from '@appManagers/constants';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
@@ -1636,6 +1636,7 @@ export default class AppSearchSuper {
     }
 
     const query = this.searchContext.query;
+    const isArchive = this.searchContext.folderId === FOLDER_ID_ARCHIVE;
     if(query && !this.searchContext.peerId && !this.searchContext.communityId) {
       const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
         const peer = await this.managers.appPeersManager.getPeer(peerId);
@@ -1710,6 +1711,17 @@ export default class AppSearchSuper {
 
         return arg;
       };
+
+      // * inside the archive only its own chats are found: no contacts, global or sponsored results
+      if(isArchive) {
+        return this.managers.dialogsStorage.searchFolderDialogs(query, FOLDER_ID_ARCHIVE)
+        .then(onLoad)
+        .then((peerIds) => {
+          if(peerIds) {
+            setResults(peerIds, this.searchGroups.contacts, true);
+          }
+        });
+      }
 
       return Promise.all([
         this.managers.appUsersManager.getContactsPeerIds(query, true, undefined, 10)
@@ -1798,7 +1810,7 @@ export default class AppSearchSuper {
           }
         })
       ]);
-    } else if(!this.searchContext.peerId && !this.searchContext.communityId && !this.searchContext.minDate) {
+    } else if(!this.searchContext.peerId && !this.searchContext.communityId && !this.searchContext.minDate && !isArchive) {
       const [appState] = useAppState();
       const renderRecentSearch = (setActive = true) => {
         if(!middleware()) {
@@ -2600,7 +2612,8 @@ export default class AppSearchSuper {
         !this.searchContext.query.trim() &&
         !this.searchContext.peerId &&
         !this.searchContext.communityId &&
-        !this.searchContext.minDate
+        !this.searchContext.minDate &&
+        this.searchContext.folderId !== FOLDER_ID_ARCHIVE
       ) {
         this.loaded[type] = true;
         return Promise.resolve();
