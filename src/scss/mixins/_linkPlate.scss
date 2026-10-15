@@ -1,5 +1,6 @@
-// The plate a held text link's ripple fills (helpers/dom/linkPress.ts): rounded, around every line
-// of the link, in the link's own colour.
+// A text link's plate (helpers/dom/linkPress.ts): rounded, around every line of the link, in the
+// link's own colour — the tint a held link's ripple fills it with; half of it while a menu opened
+// from the link is open.
 $link-plate-color: color-mix(in srgb, currentColor 20%, transparent);
 // on a service message's plate (white text over the wallpaper's tint) it darkens instead, as iOS
 // does: a white tint is lost there. Handed down as `--link-plate-color`

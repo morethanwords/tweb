@@ -32,6 +32,7 @@ import positionMenu, {MenuPositionPadding, positionFloatingMenu} from '@helpers/
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import contextMenuController from '@helpers/contextMenuController';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import {getLinkFirstChild, holdLinkPlate} from '@helpers/dom/linkPress';
 import filterAsync from '@helpers/array/filterAsync';
 import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
 import {SERVICE_PEER_ID} from '@appManagers/constants';
@@ -594,6 +595,8 @@ export default class ChatContextMenu {
       // * the menu belongs to a message, not to an avatar — highlight it the way it gets selected
       const activeElement = bubble && getSelectionElementFromTarget(e.target);
       activeElement && this.chat.bubbles.toggleActiveBubble(activeElement, true);
+      // * and a link it was opened on lights its plate while it is open
+      const releaseLinkPlate = holdLinkPlate(e.target);
 
       // if(reactionsMenu) {
       //   reactionsMenu.widthContainer.style.top = element.style.top;
@@ -607,6 +610,7 @@ export default class ChatContextMenu {
         reactionsCallbacks?.onClose();
         cleanupHighlight?.();
         activeElement && this.chat.bubbles.toggleActiveBubble(activeElement, false);
+        releaseLinkPlate?.();
 
         this.mid = 0;
         this.peerId = undefined;
@@ -1007,7 +1011,7 @@ export default class ChatContextMenu {
         (this.chat.bubbles.canForward(this.message) || this.chat.canSend()) &&
         (() => {
           const {date} = getMarkupInSelection(['date'], true);
-          return !date.elements[0] || isNodeFullyInsideRange(getAppWindow().getSelection().getRangeAt(0), date.elements[0].firstChild);
+          return !date.elements[0] || isNodeFullyInsideRange(getAppWindow().getSelection().getRangeAt(0), getLinkFirstChild(date.elements[0]));
         })()
     }, {
       icon: 'reply',

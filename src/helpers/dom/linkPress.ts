@@ -5,9 +5,10 @@
  */
 
 /**
- * A text link held under the pointer gets a ripple that fills a rounded plate of its own colour
- * on every line of it (`scss/mixins/_linkPlate.scss`, `scss/partials/_linkPress.scss`). For every
- * link in the text of the app: messages, captions, bios, Instant View, popups, the names in
+ * A text link held under the pointer gets a ripple that fills a rounded plate of its own colour on
+ * every line of it (`scss/mixins/_linkPlate.scss`, `scss/partials/_linkPress.scss`), and the plate
+ * stays, lightly, while a menu opened from the link is open; under the mouse the link is underlined.
+ * For every link in the text of the app: messages, captions, bios, Instant View, popups, the names in
  * messages (PeerTitle `link`) — and for what acts as one without being an `<a>`
  * (`TEXT_LINK_ATTRIBUTE`).
  *
@@ -23,10 +24,17 @@ import {startRippleWave} from '@components/ripple';
 /** marks an element that is pressed as a link is without being one: "via @bot" starts a draft */
 export const TEXT_LINK_ATTRIBUTE = 'data-text-link';
 
-/** a held link (tinted while held when no ripple can run) */
-const PRESSED_CLASS = 'is-link-pressed';
-/** a link with a ripple's wave in it, which is placed against the link */
-const RIPPLE_CLASS = 'is-link-rippling';
+const LINK_SELECTOR = `a, [${TEXT_LINK_ATTRIBUTE}]`;
+/** a link with its plate in it, which is placed against the link */
+const PLATE_CLASS = 'has-link-plate';
+/** a link under the mouse: underlined, as links are on the web (`scss/partials/_linkPress.scss`) */
+const HOVERED_CLASS = 'is-link-hovered';
+/** the plate lit: a menu opened from the link is open */
+const LIT_CLASS = 'is-lit';
+/** the plate filled for a press no ripple can show (animations off) */
+const PRESSED_CLASS = 'is-pressed';
+/** how long a lit plate takes to fade (`.link-plate:before`), after which it goes */
+const FADE_OUT_DURATION = 150;
 /**
  * A finger that lands on a link to scroll must not light it up: a touch takes the ripple only once
  * it has held still this long (Android's tap timeout), or when it is lifted as a tap.
@@ -34,6 +42,37 @@ const RIPPLE_CLASS = 'is-link-rippling';
 const TOUCH_DELAY = 100;
 /** a finger that moves this far before then is passing over the link (Android's touch slop) */
 const MOVE_SLOP = 8;
+
+/**
+ * A link's plate, mounted while anything draws on it and gone after. The link's own box is left
+ * alone — padding there would re-wrap a balanced caption under the finger — so the plate is a box
+ * laid over the link, a little larger than its lines and cut to them.
+ */
+type Plate = {
+  link: HTMLElement,
+  inline: boolean,
+  container: HTMLElement,
+  /** where the container is placed against the link (`left`, `top`) */
+  x: number,
+  y: number,
+  /** its shape is measured: it shows nothing before */
+  laidOut: boolean,
+  /** menus opened from the link that are still open */
+  holds: number,
+  /** held with no ripple to show it (animations off) */
+  pressed: boolean,
+  /** waves still fading in it */
+  waves: number,
+  unmountTimeout?: number
+};
+
+type PlateShape = {
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  clipPath: string
+};
 
 type Press = {
   link: HTMLElement,
@@ -43,15 +82,20 @@ type Press = {
   y: number,
   shown: boolean,
   timeout?: number,
+  plate?: Plate,
   releaseRipple?: () => void
 };
 
 let press: Press;
-/** waves still fading in a link */
-const rippleWaves: WeakMap<HTMLElement, number> = new WeakMap();
+/**
+ * the text link under the mouse, the link (text or not) the pointer was last seen in, and whether it
+ * came into that one with a button down
+ */
+let hovered: HTMLElement, hoverTarget: HTMLElement, hoverDragged: boolean;
+const plates: Map<HTMLElement, Plate> = new Map();
 
 function getPressableLink(target: EventTarget) {
-  const link = (target as Element).closest?.<HTMLElement>(`a, [${TEXT_LINK_ATTRIBUTE}]`);
+  const link = (target as Element).closest?.<HTMLElement>(LINK_SELECTOR);
   if(
     !link ||
     // the composer: a press places the caret there
@@ -93,51 +137,75 @@ function isUnderHiddenSpoiler(link: HTMLElement) {
   return !link.closest('.is-spoiler-visible');
 }
 
-function show(current: Press) {
-  current.shown = true;
-  // from now on only letting the link go ends the press, wherever the pointer goes meanwhile
-  current.link.removeEventListener('pointermove', onPointerMove);
-  current.link.classList.add(PRESSED_CLASS);
-  ripple(current);
+/**
+ * The link's plate, mounted unless it is there already. A link gets one only while something draws
+ * on it, rather than carrying one all the time as a button does its ripple: there are links in
+ * every message.
+ */
+function mountPlate(link: HTMLElement, inline: boolean) {
+  let plate = plates.get(link);
+  if(!plate) {
+    const container = link.ownerDocument.createElement('span');
+    container.classList.add('c-ripple', 'link-plate');
+    plate = {link, inline, container, x: 0, y: 0, laidOut: false, holds: 0, pressed: false, waves: 0};
+    plates.set(link, plate);
+  }
+
+  clearTimeout(plate.unmountTimeout);
+  // first, as a button's ripple goes: placed after the text, Chromium gives the link an empty piece
+  // on a line of its own past a balanced caption's last. (The link's content can be set anew under
+  // it, a name renamed, which takes the plate away)
+  if(plate.container.parentElement !== link) {
+    link.classList.add(PLATE_CLASS);
+    link.prepend(plate.container);
+    plate.laidOut = false;
+  }
+
+  return plate;
 }
 
-/**
- * The press's ripple. A link gets its ripple when it is pressed and loses it once the wave has
- * faded, rather than carrying one all the time as a button does: there are links in every message.
- * Without animations there is none, and the link is simply tinted while it is held.
- *
- * The link's own box is left alone — padding there would re-wrap a balanced caption under the
- * finger — so its plates, a little larger than its lines, are drawn by the ripple's clip alone.
- */
-function ripple(current: Press) {
-  const {link, inline, x, y} = current;
-  if(!liteMode.isAvailable('animations')) {
+function unmountPlate(plate: Plate) {
+  clearTimeout(plate.unmountTimeout);
+  plates.delete(plate.link);
+  plate.container.remove();
+  plate.link.classList.remove(PLATE_CLASS);
+}
+
+/** draws what the plate is for now, and lets it go once it is for nothing */
+function updatePlate(plate: Plate) {
+  const {container} = plate;
+  const wasLit = container.classList.contains(LIT_CLASS);
+  container.classList.toggle(LIT_CLASS, plate.laidOut && plate.holds > 0);
+  container.classList.toggle(PRESSED_CLASS, plate.laidOut && plate.pressed);
+  clearTimeout(plate.unmountTimeout);
+  if(plate.holds || plate.pressed || plate.waves) {
     return;
   }
 
+  if(wasLit && liteMode.isAvailable('animations')) {
+    plate.unmountTimeout = window.setTimeout(() => unmountPlate(plate), FADE_OUT_DURATION);
+  } else {
+    unmountPlate(plate);
+  }
+}
+
+/** shapes the plate at once: for a press or a menu, once per action */
+function layoutPlate(plate: Plate) {
+  const shape = measurePlate(plate);
+  applyPlate(plate, shape);
+  return !!shape;
+}
+
+/**
+ * The plate's shape: a rounded plate a little larger than each line of the link, as far as what
+ * clips the link lets it show. Reads only.
+ */
+function measurePlate(plate: Plate): PlateShape {
+  const {link, inline, container} = plate;
   const lines = Array.from(link.getClientRects()).filter((rect) => rect.width && rect.height);
   if(!lines.length) {
     return;
   }
-
-  const container = link.ownerDocument.createElement('span');
-  container.classList.add('c-ripple', 'link-press-ripple');
-  link.classList.add(RIPPLE_CLASS);
-  rippleWaves.set(link, (rippleWaves.get(link) || 0) + 1);
-  // first, as a button's ripple goes: placed after the text, Chromium gives the link an empty piece
-  // on a line of its own past a balanced caption's last
-  link.prepend(container);
-  const unmount = () => {
-    container.remove();
-    const waves = rippleWaves.get(link) - 1;
-    if(waves) {
-      rippleWaves.set(link, waves);
-      return;
-    }
-
-    rippleWaves.delete(link);
-    link.classList.remove(RIPPLE_CLASS);
-  };
 
   // how far a plate reaches past its line, in the link's own font: the container's padding says
   // (a box laid out as one, a name beside its rank, is as tall as its plate already)
@@ -161,7 +229,6 @@ function ripple(current: Press) {
     return new DOMRect(left, top, right - left, bottom - top);
   }).filter((rect) => rect.width > 0 && rect.height > 0);
   if(!rects.length) {
-    unmount();
     return;
   }
 
@@ -169,17 +236,36 @@ function ripple(current: Press) {
   const top = Math.min(...rects.map((rect) => rect.top));
   const width = Math.max(...rects.map((rect) => rect.right)) - left;
   const height = Math.max(...rects.map((rect) => rect.bottom)) - top;
-
-  // where an absolutely placed child of an inline box starts depends on the box's lines: measured
-  const placed = container.getBoundingClientRect();
-  container.style.left = left - placed.left + 'px';
-  container.style.top = top - placed.top + 'px';
-  container.style.width = width + 'px';
-  container.style.height = height + 'px';
   const plates = rects.map((rect) => roundedRectPath(rect.left - left, rect.top - top, rect.width, rect.height, radius));
-  container.style.clipPath = `path('${plates.join(' ')}')`;
 
-  current.releaseRipple = startRippleWave(container, x, y, {onEnd: unmount});
+  // where an absolutely placed child of an inline box starts depends on the box's lines: measured,
+  // against where the container stands now
+  const placed = container.getBoundingClientRect();
+  return {
+    x: plate.x + left - placed.left,
+    y: plate.y + top - placed.top,
+    width,
+    height,
+    clipPath: `path('${plates.join(' ')}')`
+  };
+}
+
+/** writes only; a plate with no shape (nothing of the link shows) is cut away whole */
+function applyPlate(plate: Plate, shape: PlateShape) {
+  const {style} = plate.container;
+  plate.laidOut = true;
+  if(!shape) {
+    style.clipPath = 'inset(50%)';
+    return;
+  }
+
+  plate.x = shape.x;
+  plate.y = shape.y;
+  style.left = shape.x + 'px';
+  style.top = shape.y + 'px';
+  style.width = shape.width + 'px';
+  style.height = shape.height + 'px';
+  style.clipPath = shape.clipPath;
 }
 
 /**
@@ -211,6 +297,33 @@ function roundedRectPath(x: number, y: number, width: number, height: number, ra
     `V${y + r}A${r},${r} 0 0 1 ${x + r},${y}Z`;
 }
 
+/**
+ * The press's ripple, run in the link's plate. Without animations there is none: the plate is
+ * simply filled while the link is held.
+ */
+function show(current: Press) {
+  current.shown = true;
+  // from now on only letting the link go ends the press, wherever the pointer goes meanwhile
+  current.link.removeEventListener('pointermove', onPointerMove);
+  // shaped anew: the text may have moved under a plate still fading from the last press
+  const plate = current.plate = mountPlate(current.link, current.inline);
+  if(layoutPlate(plate)) {
+    if(liteMode.isAvailable('animations')) {
+      ++plate.waves;
+      current.releaseRipple = startRippleWave(plate.container, current.x, current.y, {
+        onEnd: () => {
+          --plate.waves;
+          updatePlate(plate);
+        }
+      });
+    } else {
+      plate.pressed = true;
+    }
+  }
+
+  updatePlate(plate);
+}
+
 /** `tap`: the press ended as a press does, so one that has not lit up yet ripples now */
 function release(tap: boolean) {
   if(!press) {
@@ -230,7 +343,8 @@ function release(tap: boolean) {
   }
 
   current.releaseRipple?.();
-  current.link.classList.remove(PRESSED_CLASS);
+  current.plate.pressed = false;
+  updatePlate(current.plate);
 }
 
 function onPointerDown(e: PointerEvent) {
@@ -262,9 +376,82 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function onPointerEnd(e: PointerEvent) {
+  if(hoverDragged && e.type === 'pointerup') {
+    hoverDragged = false;
+    setHovered(getPressableLink(hoverTarget)?.link);
+  }
+
   if(press?.pointerId === e.pointerId) {
     release(e.type === 'pointerup');
   }
+}
+
+/** underlines the text link under the mouse, and no other */
+function setHovered(link: HTMLElement) {
+  hovered?.classList.remove(HOVERED_CLASS);
+  hovered = link;
+  link?.classList.add(HOVERED_CLASS);
+}
+
+/** a mouse or a pen over a text link underlines it (a finger hovers over nothing) */
+function onPointerOver(e: PointerEvent) {
+  if(e.pointerType === 'touch') {
+    return;
+  }
+
+  // the link the pointer is in: asked about once, not for every element of it the pointer crosses
+  const link = (e.target as Element).closest?.<HTMLElement>(LINK_SELECTOR);
+  if(link === hoverTarget) {
+    return;
+  }
+
+  hoverTarget = link;
+  // a pointer brought over the link with a button down is dragging something past it, a selection:
+  // the link is underlined once the button is let go over it
+  hoverDragged = !!link && !!e.buttons;
+  setHovered(link && !e.buttons ? getPressableLink(link)?.link : undefined);
+}
+
+/** the pointer leaving the window, or into a frame */
+function onPointerOut(e: PointerEvent) {
+  if(!e.relatedTarget) {
+    hoverTarget = undefined;
+    hoverDragged = false;
+    setHovered(undefined);
+  }
+}
+
+/** the first of the link's own nodes, past the plate a press or a menu may have put in it */
+export function getLinkFirstChild(link: Element) {
+  const first = link.firstChild;
+  return first && first === plates.get(link as HTMLElement)?.container ? first.nextSibling : first;
+}
+
+/**
+ * Keeps the plate of the link `target` is in lit while a menu opened from it stays open, so that the
+ * menu shows what it was opened on. Returns what lets it go, or nothing when `target` is in no link.
+ */
+export function holdLinkPlate(target: EventTarget) {
+  const pressable = getPressableLink(target);
+  if(!pressable) {
+    return;
+  }
+
+  const plate = mountPlate(pressable.link, pressable.inline);
+  if(!plate.laidOut) {
+    layoutPlate(plate);
+  }
+
+  ++plate.holds;
+  updatePlate(plate);
+  let held = true;
+  return () => {
+    if(held) {
+      held = false;
+      --plate.holds;
+      updatePlate(plate);
+    }
+  };
 }
 
 export default function listenForLinkPress() {
@@ -273,10 +460,17 @@ export default function listenForLinkPress() {
   bindActiveWindowListener((w) => w.document, 'pointerdown', onPointerDown, options);
   bindActiveWindowListener((w) => w.document, 'pointerup', onPointerEnd, options);
   bindActiveWindowListener((w) => w.document, 'pointercancel', onPointerEnd, options);
+  bindActiveWindowListener((w) => w.document, 'pointerover', onPointerOver, options);
+  bindActiveWindowListener((w) => w.document, 'pointerout', onPointerOut, options);
   // a dragged link takes the pointer away without a pointerup in some engines; a context menu (a
   // Ctrl+click on macOS, a long press) may swallow it; the client moving into or out of a Document
-  // PiP window leaves it in the other document
+  // PiP window leaves it in the other document, and the mouse over nothing of it
   bindActiveWindowListener((w) => w.document, 'dragstart', () => release(false), options);
   bindActiveWindowListener((w) => w.document, 'contextmenu', () => release(false), options);
-  onAppWindowChange(() => release(false));
+  onAppWindowChange(() => {
+    release(false);
+    hoverTarget = undefined;
+    hoverDragged = false;
+    setHovered(undefined);
+  });
 }

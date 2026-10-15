@@ -115,6 +115,8 @@
   --line-height: var(--messages-line-height);
   --primary-color: var(--message-primary-color);
   --primary-color-rgb: var(--message-primary-color-rgb);
+  // links are in the accent colour: an outgoing message's own one
+  --link-color: var(--primary-color);
   --secondary-text-color: var(--message-status-color);
   --peer-color-rgb: var(--message-primary-color-rgb);
   --peer-border-background: rgb(var(--peer-color-rgb));
@@ -1084,13 +1086,6 @@
     }
   }
 
-  .anchor-url:not(.reply-markup-button):not(.rich-button-link),
-  .mention {
-    @include hover() {
-      text-decoration: underline !important;
-    }
-  }
-
   &-first {
     --border-start-start-radius: #{$bubble-border-radius-big};
     --border-start-end-radius: #{$bubble-border-radius-big};
@@ -1978,6 +1973,12 @@
     text-decoration: underline;
   }
 
+  // in a dark theme an outgoing message's links are as white as its text: every kind of them is told
+  // apart by its underline, as iOS does it
+  .night &.is-out .message a:not(.peer-title):not(.rich-button-link) {
+    text-decoration: underline;
+  }
+
   .video-play {
     background-color: var(--message-time-background);
     color: #fff;
@@ -2852,7 +2853,8 @@
   &-name {
     display: block;
 
-    .anchor-url {
+    // a site's name is no underlined link, until the mouse is over it (helpers/dom/linkPress.ts)
+    .anchor-url:not(.is-link-hovered) {
       text-decoration: none !important;
     }
 
@@ -3542,14 +3544,12 @@
   --light-filled-message-background-color: var(--light-filled-message-out-background-color);
   --dark-message-background-color: var(--dark-message-out-background-color);
   --message-icon-text-color: var(--message-out-icon-text-color);
-  --link-color: var(--message-out-link-color);
   --message-primary-color: var(--message-out-primary-color);
   --message-primary-color-rgb: var(--message-out-primary-color-rgb);
   --light-filled-message-primary-color: var(--light-filled-message-out-primary-color);
   --selection-background-color: var(--message-out-selection-background-color);
   --message-time-color: var(--message-out-time-color);
   --message-status-color: var(--message-out-status-color);
-  --link-color: var(--message-primary-color);
   --peer-color-rgb: var(--message-primary-color-rgb);
   --peer-border-background: var(--message-out-peer-border-background);
   --message-reaction-tag-dot-color: var(--message-out-reaction-tag-dot-color);

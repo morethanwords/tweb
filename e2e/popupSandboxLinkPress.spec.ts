@@ -4,11 +4,13 @@ import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
 /*
  * A text link held under the pointer gets a ripple that fills a rounded plate of its own colour
- * (helpers/dom/linkPress.ts), anywhere in the app — here a link in a popup's text. What the eye
- * checks, measured: the ripple is mounted with the press, stays wherever the pointer goes until the
- * link is let go and is gone once its wave has faded; the link itself does not move for it; a link a
- * button carries leaves the press to the button; a finger that only passes over a link (a scroll, a
- * swipe) never lights it up; and without animations the link is simply tinted.
+ * (helpers/dom/linkPress.ts), anywhere in the app — here a link in a popup's text; the plate stays,
+ * lightly, while a menu opened from the link is open, and under the mouse the link is underlined.
+ * What the eye checks, measured: the plate is mounted for the press or the menu, its ripple stays
+ * wherever the pointer goes until the link is let go, and the plate is gone once nothing draws on
+ * it; the link itself does not move for it; a link a button carries leaves the press to the button;
+ * a finger that only passes over a link (a scroll, a swipe) never lights it up; and without
+ * animations the plate is simply filled.
  */
 
 const LINK = '.popup-body a';
@@ -24,7 +26,7 @@ async function openLinkStory(page: Page) {
   .getAnimations({subtree: true})
   .every((animation) => animation.playState !== 'running'));
   await fontsLoaded(page);
-  await installRippleProbe(page);
+  await installPlateProbe(page);
   return link;
 }
 
@@ -51,16 +53,16 @@ function keepFromActing(link: Locator) {
 }
 
 /**
- * Installs `window.rippleOverPlates(link, inline)` in the page: the ripple a held link holds, and where
- * it should be — around all the link's lines, each grown by the plate's reach (the ripple's padding,
- * `.125rem` past the text at its sides, `.0625em` above and below a line of text).
+ * Installs `window.plateOverLines(link, inline)` in the page: the plate a link wears, and where it
+ * should be — around all the link's lines, each grown by the plate's reach (its padding, `.125rem`
+ * past the text at its sides, `.0625em` above and below a line of text).
  */
-function installRippleProbe(page: Page) {
+function installPlateProbe(page: Page) {
   return page.evaluate(() => {
-    (window as any).rippleOverPlates = (link: Element, inline = true) => {
-      const ripple = link.querySelector<HTMLElement>('.link-press-ripple');
-      if(!ripple) return null;
-      const style = getComputedStyle(ripple);
+    (window as any).plateOverLines = (link: Element, inline = true) => {
+      const plate = link.querySelector<HTMLElement>('.link-plate');
+      if(!plate) return null;
+      const style = getComputedStyle(plate);
       const bleedX = parseFloat(style.paddingLeft), bleedY = inline ? parseFloat(style.paddingTop) : 0;
       const lines = [...link.getClientRects()].filter((rect) => rect.width && rect.height);
       const round = (values: number[]) => values.map((value) => Math.round(value));
@@ -68,13 +70,13 @@ function installRippleProbe(page: Page) {
       const top = Math.min(...lines.map((rect) => rect.top)) - bleedY;
       const right = Math.max(...lines.map((rect) => rect.right)) + bleedX;
       const bottom = Math.max(...lines.map((rect) => rect.bottom)) + bleedY;
-      const rect = ripple.getBoundingClientRect();
+      const rect = plate.getBoundingClientRect();
       return {
         bleed: style.paddingLeft,
-        ripple: round([rect.left, rect.top, rect.width, rect.height]),
-        plates: round([left, top, right - left, bottom - top]),
-        // a plate per line the wave is cut to
-        cuts: ripple.style.clipPath.match(/M/g)?.length,
+        plate: round([rect.left, rect.top, rect.width, rect.height]),
+        around: round([left, top, right - left, bottom - top]),
+        // a plate per line it is cut to
+        cuts: plate.style.clipPath.match(/M/g)?.length,
         lines: lines.length
       };
     };
@@ -93,23 +95,30 @@ function readLink(page: Page) {
       text.push(...range.getClientRects());
     }
 
-    const circle = a.querySelector('.link-press-ripple .c-ripple__circle');
+    const plate = a.querySelector('.link-plate');
+    const circle = plate?.querySelector('.c-ripple__circle');
+    const tint = plate && getComputedStyle(plate, '::before');
     return {
-      pressed: a.classList.contains('is-link-pressed'),
+      // a plate is mounted in the link, lit (a menu open from it), filled for a press with no ripple
+      plated: a.classList.contains('has-link-plate'),
+      lit: !!plate?.classList.contains('is-lit'),
+      pressed: !!plate?.classList.contains('is-pressed'),
+      waves: plate ? plate.querySelectorAll('.c-ripple__circle').length : 0,
+      tint: tint && {color: tint.backgroundColor, opacity: +tint.opacity},
+      decoration: style.textDecorationLine,
       color: style.color,
       background: style.backgroundColor,
       radius: parseFloat(style.borderTopLeftRadius),
       paddingLeft: style.paddingLeft,
       text: text.map((rect) => [rect.left, rect.top, rect.width, rect.height].map(Math.round)),
-      // the press's ripple, mounted for it: its box
-      ripples: [...a.querySelectorAll('.link-press-ripple')].map((ripple) => {
-        const rect = ripple.getBoundingClientRect();
+      // the plate, mounted for the hover or the press: its box
+      plates: [...a.querySelectorAll('.link-plate')].map((plate) => {
+        const rect = plate.getBoundingClientRect();
         return [rect.left, rect.top, rect.width, rect.height].map(Math.round);
       }),
       lines: [...a.getClientRects()].map((rect) => [rect.left, rect.top, rect.width, rect.height].map(Math.round)),
-      rippling: a.classList.contains('is-link-rippling'),
       wave: circle && getComputedStyle(circle).backgroundColor,
-      over: (window as any).rippleOverPlates(a)
+      over: (window as any).plateOverLines(a)
     };
   });
 }
@@ -126,28 +135,27 @@ test('a held text link fills with a ripple of its colour, gone once its wave has
   const link = await openLinkStory(page);
   const idle = await readLink(page);
   expect(parseColor(idle.background)[3]).toBe(0);
-  // no link carries a ripple before it is pressed
-  expect(idle.ripples).toEqual([]);
+  // no link carries a plate before the pointer comes to it
+  expect(idle.plates).toEqual([]);
 
   const box = await link.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   const held = await readLink(page);
-  expect(held.pressed).toBe(true);
+  expect(held.plated).toBe(true);
   expect(held.radius).toBeGreaterThan(0);
-  // the ripple alone, no plate under it
-  expect(held.rippling).toBe(true);
+  // the plate is laid over the link, which is not painted itself
   expect(held.background).toBe(idle.background);
-  // over the plate, which is a little wider than the text — and the text stays put
-  expect(held.ripples).toHaveLength(1);
+  // a little wider than the text — and the text stays put
+  expect(held.plates).toHaveLength(1);
   expect(held.over.bleed).toBe('2px');
-  expect(held.over.ripple).toEqual(held.over.plates);
+  expect(held.over.plate).toEqual(held.over.around);
   // the link itself does not change: its box would re-wrap a balanced caption
   expect(held.paddingLeft).toBe(idle.paddingLeft);
   expect(held.lines).toEqual(idle.lines);
   expect(held.text, 'the text moved under the plate').toEqual(idle.text);
   // a wave of the link's own colour, tinted
-  await expect.poll(async() => (await readLink(page)).wave).toBeTruthy();
+  await expect.poll(async() => (await readLink(page)).waves).toBe(1);
   const [r, g, b, alpha] = parseColor((await readLink(page)).wave);
   const [cr, cg, cb] = parseColor(held.color);
   // 20% of it: no colour of what the link sits in (`.primary` here) takes the wave over
@@ -155,14 +163,200 @@ test('a held text link fills with a ripple of its colour, gone once its wave has
   expect([r, g, b].map((v) => Math.round(v * 255))).toEqual([cr, cg, cb].map((v) => Math.round(v * 255)));
 
   await page.mouse.up();
-  // the wave fades over the plate's shape, which stays with it (the ripple would jump aside without)
+  // the wave fades over the plate's shape, which stays with it (the ripple would jump aside without),
+  // and goes with it, the mouse over the link still
   const fading = await readLink(page);
-  expect(fading.pressed).toBe(false);
-  expect(fading.ripples).toEqual(held.ripples);
+  expect(fading.plates).toEqual(held.plates);
   await expect.poll(async() => {
-    const {pressed, background, ripples, rippling} = await readLink(page);
-    return {pressed, background, ripples, rippling};
-  }).toEqual({pressed: false, background: idle.background, ripples: [], rippling: false});
+    const {plated, background, plates} = await readLink(page);
+    return {plated, background, plates};
+  }).toEqual({plated: false, background: idle.background, plates: []});
+});
+
+test('the mouse over a link underlines it, and draws no plate', async({page}) => {
+  const link = await openLinkStory(page);
+  const idle = await readLink(page);
+  const box = await link.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // underlined, as links are on the web, and nothing else: the plate is for a press or a menu
+  expect(idle.decoration).toBe('none');
+  await expect.poll(async() => (await readLink(page)).decoration).toBe('underline');
+  await page.waitForTimeout(100);
+  const hovered = await readLink(page);
+  expect({plated: hovered.plated, plates: hovered.plates}).toEqual({plated: false, plates: []});
+  // nothing of the link moves for it
+  expect(hovered.lines).toEqual(idle.lines);
+  expect(hovered.text, 'the text moved under the underline').toEqual(idle.text);
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height + 60);
+  expect((await readLink(page)).decoration).toBe('none');
+
+  // a pointer dragged over the link with its button down (a selection from the text before it) does
+  // not underline it — until the button is let go over it
+  await page.mouse.move(box.x - 40, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {steps: 4});
+  await page.waitForTimeout(100);
+  expect((await readLink(page)).decoration).toBe('none');
+  await page.mouse.up();
+  expect((await readLink(page)).decoration).toBe('underline');
+});
+
+test('every kind of link in a message is underlined under the mouse, a name is not', async({page}) => {
+  await preparePopupSandbox(page, false);
+  // the app's own bubble styles, and the links a message's text is made of (wrapRichText)
+  await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.style.cssText = 'position: fixed; left: 100px; top: 100px; width: 420px; z-index: 10000';
+    host.innerHTML = '<div class="bubble is-in is-group-first"><div class="bubble-content">' +
+      '<div class="name colored-name"><a id="link-name" class="peer-title" href="#1">Sender name</a></div>' +
+      '<div class="message spoilers-container">' +
+      '<a id="link-url" class="anchor-url" href="https://example.com">example.com</a> ' +
+      '<a id="link-hashtag" class="anchor-hashtag" href="#">#hashtag</a> ' +
+      '<a id="link-mention" class="mention" href="#">@mention</a> ' +
+      '<a id="link-command" href="tg://bot_command?command=start">/start</a> ' +
+      '<a id="link-email" href="mailto:a@example.com">a@example.com</a>' +
+      '</div></div></div>';
+    host.addEventListener('click', (e) => e.preventDefault());
+    document.body.append(host);
+  });
+
+  const decoration = (id: string) => page.locator(`#${id}`).evaluate((a) => getComputedStyle(a).textDecorationLine);
+  for(const id of ['link-hashtag', 'link-mention', 'link-command', 'link-email', 'link-url', 'link-name']) {
+    const idle = await decoration(id);
+    const box = await page.locator(`#${id}`).boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // a name is drawn as a name; every other link is underlined (a URL in a message is all the time)
+    expect(await decoration(id), id).toBe(id === 'link-name' ? 'none' : 'underline');
+    await page.mouse.move(box.x + box.width / 2, box.y + 200);
+    expect(await decoration(id), id).toBe(idle);
+  }
+});
+
+test('in a dark theme every link of an outgoing message is underlined: it is as white as the text', async({page}) => {
+  await preparePopupSandbox(page, false);
+  await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.className = 'night';
+    host.style.cssText = 'position: fixed; left: 100px; top: 100px; width: 420px; z-index: 10000';
+    const message = (side: string) => `<div class="bubble is-${side} is-group-first"><div class="bubble-content">` +
+      '<div class="message spoilers-container">' +
+      `<a class="anchor-hashtag" href="#">#hashtag</a> <a class="mention" href="#">@mention</a> ` +
+      `<a href="tg://bot_command?command=start">/start</a> <a class="anchor-url" href="#">example.com</a>` +
+      '</div></div></div>';
+    host.innerHTML = message('out') + message('in');
+    document.body.append(host);
+  });
+
+  const read = (side: string) => page.locator(`.night .bubble.is-${side} .message a`)
+  .evaluateAll((links) => links.map((a) => getComputedStyle(a).textDecorationLine));
+  expect(await read('out')).toEqual(['underline', 'underline', 'underline', 'underline']);
+  // an incoming one's links are in the accent colour: only a URL is underlined, as in a day theme
+  expect(await read('in')).toEqual(['none', 'none', 'none', 'underline']);
+});
+
+/** what a menu does for the link it was opened from (the chat's context menu, a date's menu) */
+function holdPlate(link: Locator) {
+  return link.evaluate(async(a) => {
+    const load = (path: string) => import('/src/' + path);
+    const {holdLinkPlate} = await load('helpers/dom/linkPress.ts');
+    (window as any).releaseLinkPlate = holdLinkPlate(a);
+  });
+}
+
+test('a menu opened from a link keeps its plate lit until it closes', async({page}) => {
+  const link = await openLinkStory(page);
+  const idle = await readLink(page);
+  const box = await link.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  // the menu shows what it was opened on: the press's plate, at half its tint
+  await holdPlate(link);
+  await expect.poll(async() => (await readLink(page)).tint?.opacity).toBe(.5);
+  const held = await readLink(page);
+  expect({lit: held.lit, waves: held.waves}).toEqual({lit: true, waves: 0});
+  expect(held.over.plate).toEqual(held.over.around);
+  const [r, g, b, alpha] = parseColor(held.tint.color);
+  const [cr, cg, cb] = parseColor(held.color);
+  expect(alpha).toBeCloseTo(.2, 2);
+  expect([r, g, b].map((v) => Math.round(v * 255))).toEqual([cr, cg, cb].map((v) => Math.round(v * 255)));
+  // nothing of the link moves for it
+  expect(held.lines).toEqual(idle.lines);
+  expect(held.text, 'the text moved under the plate').toEqual(idle.text);
+
+  // the menu's overlay takes the mouse away: the plate stays as it was
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height + 60);
+  await page.waitForTimeout(300);
+  const away = await readLink(page);
+  expect({lit: away.lit, plates: away.plates}).toEqual({lit: true, plates: held.plates});
+
+  // closed, it fades before it goes
+  await page.evaluate(() => (window as any).releaseLinkPlate());
+  expect((await readLink(page)).lit).toBe(false);
+  await expect.poll(async() => (await readLink(page)).plates).toEqual([]);
+  expect((await readLink(page)).plated).toBe(false);
+});
+
+test('a date in a message is a link: underlined under the mouse, lit while its menu is open', async({page}) => {
+  await preparePopupSandbox(page, false);
+  // a formatted date as a message's text renders it
+  await page.evaluate(async() => {
+    const load = (path: string) => import('/src/' + path);
+    const {default: wrapRichText} = await load('lib/richTextProcessor/wrapRichText.ts');
+    const host = document.createElement('div');
+    host.id = 'date-host';
+    host.style.cssText = 'position: fixed; left: 100px; top: 100px; width: 400px; font: 16px sans-serif; z-index: 10000; background: #fff';
+    host.append(wrapRichText('Meet at noon', {
+      entities: [{_: 'messageEntityFormattedDate', offset: 8, length: 4, date: 1760000000, pFlags: {}}]
+    }));
+    document.body.append(host);
+  });
+
+  const date = page.locator('#date-host .formatted-date');
+  await expect(date).toHaveText('noon');
+  const box = await date.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => date.evaluate((element) => element.classList.contains('is-link-hovered'))).toBe(true);
+
+  await holdPlate(date);
+  expect(await date.evaluate((element) => element.querySelector('.link-plate')?.classList.contains('is-lit'))).toBe(true);
+  await page.evaluate(() => (window as any).releaseLinkPlate());
+  await expect.poll(() => date.evaluate((element) => !!element.querySelector('.link-plate'))).toBe(false);
+});
+
+test('a relative date keeps its lit plate as it ticks, and its text is still found past it', async({page}) => {
+  await preparePopupSandbox(page, false);
+  // "N seconds ago": it is rewritten every second
+  await page.evaluate(async() => {
+    const load = (path: string) => import('/src/' + path);
+    const [{default: wrapRichText}, {getMiddleware}] = await Promise.all([
+      load('lib/richTextProcessor/wrapRichText.ts'),
+      load('helpers/middleware.ts')
+    ]);
+    const host = document.createElement('div');
+    host.id = 'date-host';
+    host.style.cssText = 'position: fixed; left: 100px; top: 100px; width: 400px; font: 16px sans-serif; z-index: 10000; background: #fff';
+    host.append(wrapRichText('Sent now', {
+      entities: [{_: 'messageEntityFormattedDate', offset: 5, length: 3, date: Math.floor(Date.now() / 1000) - 5, pFlags: {relative: true}}],
+      middleware: getMiddleware().get()
+    }));
+    document.body.append(host);
+  });
+
+  const date = page.locator('#date-host .formatted-date');
+  await holdPlate(date);
+  const before = await date.textContent();
+  await expect.poll(() => date.textContent(), {timeout: 5000}).not.toBe(before);
+  // the tick rewrote the text, not the date: the plate is there and lit
+  expect(await date.evaluate((element) => element.querySelector('.link-plate')?.classList.contains('is-lit'))).toBe(true);
+  // what reads the date's text (the Quote item's check of a selection) finds it past the plate
+  expect(await date.evaluate(async(element) => {
+    const load = (path: string) => import('/src/' + path);
+    const {getLinkFirstChild} = await load('helpers/dom/linkPress.ts');
+    const first = getLinkFirstChild(element);
+    return first.nodeType === Node.TEXT_NODE && first.textContent === element.textContent;
+  })).toBe(true);
+  await page.evaluate(() => (window as any).releaseLinkPlate());
 });
 
 test('a link over several lines ripples over all of them, whichever is pressed', async({page}) => {
@@ -175,8 +369,8 @@ test('a link over several lines ripples over all of them, whichever is pressed',
     document.body.append(host);
   });
 
-  await installRippleProbe(page);
-  const read = () => page.evaluate(() => (window as any).rippleOverPlates(document.getElementById('long-link')));
+  await installPlateProbe(page);
+  const read = () => page.evaluate(() => (window as any).plateOverLines(document.getElementById('long-link')));
 
   const last = await page.evaluate(() => {
     const rects = [...document.getElementById('long-link').getClientRects()];
@@ -187,26 +381,32 @@ test('a link over several lines ripples over all of them, whichever is pressed',
   await page.mouse.down();
   const held = await read();
   expect(held.lines).toBeGreaterThan(2);
-  expect(held.ripple).toEqual(held.plates);
+  expect(held.plate).toEqual(held.around);
   expect(held.cuts).toBe(held.lines);
   await page.mouse.up();
 });
 
-test('without animations the held link is simply tinted', async({page}) => {
+test('without animations the held link\'s plate is simply filled', async({page}) => {
   const link = await openLinkStory(page);
   const idle = await readLink(page);
-  await page.evaluate(() => (window as any).liteMode.isAvailable = () => false);
+  await page.evaluate(() => {
+    (window as any).liteMode.isAvailable = () => false;
+    // and the body's classes tell the stylesheet (the sandbox runs no `appImManager` to put them on)
+    document.body.classList.remove('animation-level-1', 'animation-level-2');
+    document.body.classList.add('animation-level-0');
+  });
   const box = await link.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   const held = await readLink(page);
   expect(held.pressed).toBe(true);
-  expect(held.ripples).toEqual([]);
-  expect(parseColor(held.background)[3]).toBeGreaterThan(0);
+  expect(held.waves).toBe(0);
+  expect(held.tint.opacity).toBe(1);
+  expect(held.over.plate).toEqual(held.over.around);
+  expect(held.background).toBe(idle.background);
   await page.mouse.up();
-  const released = await readLink(page);
-  expect(released.pressed).toBe(false);
-  expect(released.background).toBe(idle.background);
+  // gone at once: there is no fade to wait for
+  expect((await readLink(page)).plates).toEqual([]);
 });
 
 test('a held link keeps its ripple wherever the pointer goes, until it is let go', async({page}) => {
@@ -215,23 +415,23 @@ test('a held link keeps its ripple wherever the pointer goes, until it is let go
   const y = box.y + box.height / 2;
   await page.mouse.move(box.x + 4, y);
   await page.mouse.down();
+  await expect.poll(async() => (await readLink(page)).waves).toBe(1);
   const held = await readLink(page);
-  expect(held.pressed).toBe(true);
 
   // along the link (a selection made from it), then off it onto the text before it — and well past
-  // the wave's own life
+  // the wave's own life: the hover is gone, the wave stays
   await page.mouse.move(box.x + 28, y, {steps: 4});
   await page.mouse.move(box.x - 40, y, {steps: 4});
   await page.waitForTimeout(1000);
   const moved = await readLink(page);
-  expect(moved.pressed).toBe(true);
-  expect(moved.ripples).toEqual(held.ripples);
+  expect({waves: moved.waves, lit: moved.lit}).toEqual({waves: 1, lit: false});
+  expect(moved.plates).toEqual(held.plates);
 
   await page.mouse.up();
   await expect.poll(async() => {
-    const {pressed, rippling, ripples} = await readLink(page);
-    return {pressed, rippling, ripples};
-  }).toEqual({pressed: false, rippling: false, ripples: []});
+    const {plated, plates} = await readLink(page);
+    return {plated, plates};
+  }).toEqual({plated: false, plates: []});
 });
 
 test('a context menu over a held link lets it go', async({page}) => {
@@ -239,13 +439,10 @@ test('a context menu over a held link lets it go', async({page}) => {
   const box = await link.boundingBox();
   await page.mouse.move(box.x + 4, box.y + box.height / 2);
   await page.mouse.down();
-  expect((await readLink(page)).pressed).toBe(true);
+  await expect.poll(async() => (await readLink(page)).waves).toBe(1);
   // a Ctrl+click on macOS: the menu takes the pointer, and no pointerup need follow
   await link.evaluate((a) => a.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true})));
-  await expect.poll(async() => {
-    const {pressed, rippling} = await readLink(page);
-    return {pressed, rippling};
-  }).toEqual({pressed: false, rippling: false});
+  await expect.poll(async() => (await readLink(page)).waves).toBe(0);
   await page.mouse.up();
 });
 
@@ -267,7 +464,7 @@ test('a name in a bubble ripples past its text, as far as its line lets it', asy
     document.body.append(host);
   });
   await fontsLoaded(page);
-  await installRippleProbe(page);
+  await installPlateProbe(page);
   // WebKit has no clip margin: there the plate stops at the line's edge
   const clipMargin = await page.evaluate(() => CSS.supports('overflow-clip-margin', '2px'));
 
@@ -278,15 +475,15 @@ test('a name in a bubble ripples past its text, as far as its line lets it', asy
     const held = await page.evaluate((id) => {
       const link = document.getElementById(id);
       return {
-        over: (window as any).rippleOverPlates(link, getComputedStyle(link).display === 'inline'),
+        over: (window as any).plateOverLines(link, getComputedStyle(link).display === 'inline'),
         lineLeft: Math.round(link.closest('.name').getBoundingClientRect().left)
       };
     }, id);
     expect(held.over, id).toBeTruthy();
     if(clipMargin) {
-      expect(held.over.ripple, id).toEqual(held.over.plates);
+      expect(held.over.plate, id).toEqual(held.over.around);
     } else {
-      expect(held.over.ripple[0], id).toBe(held.lineLeft);
+      expect(held.over.plate[0], id).toBe(held.lineLeft);
     }
 
     await page.mouse.up();
@@ -302,7 +499,9 @@ test('a link a button carries leaves the press to the button', async({page}) => 
   const box = await anchor.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  expect(await anchor.evaluate((a) => a.className)).not.toContain('is-link-pressed');
+  await page.waitForTimeout(100);
+  // neither the hover nor the press gives it a plate
+  expect(await anchor.evaluate((a) => a.className)).not.toContain('has-link-plate');
   await page.mouse.up();
 });
 
@@ -323,7 +522,7 @@ test('a name is pressed as a link, and nothing beside it moves', async({page}) =
     document.body.append(host);
   });
 
-  await installRippleProbe(page);
+  await installPlateProbe(page);
   const read = () => page.evaluate(() => {
     const textPosition = (element: Element) => {
       const range = document.createRange();
@@ -335,8 +534,8 @@ test('a name is pressed as a link, and nothing beside it moves', async({page}) =
       const element = document.getElementById(id);
       const style = getComputedStyle(element);
       return {
-        pressed: element.classList.contains('is-link-pressed'),
-        over: (window as any).rippleOverPlates(element, style.display === 'inline'),
+        plated: element.classList.contains('has-link-plate'),
+        over: (window as any).plateOverLines(element, style.display === 'inline'),
         paddingLeft: style.paddingLeft,
         text: textPosition(element)
       };
@@ -355,8 +554,8 @@ test('a name is pressed as a link, and nothing beside it moves', async({page}) =
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     const held = await read();
-    expect(held[id].pressed, id).toBe(true);
-    expect(held[id].over?.ripple, id).toEqual(held[id].over?.plates);
+    expect(held[id].plated, id).toBe(true);
+    expect(held[id].over?.plate, id).toEqual(held[id].over?.around);
     // a plate a little wider than the name, which stays put (as does the rank beside it)
     expect(held[id].over.bleed, id).toBe('2px');
     expect(held[id].paddingLeft, id).toBe(idle[id].paddingLeft);
@@ -388,10 +587,10 @@ test.describe('by touch', () => {
 
     await touch('touchStart', x, y);
     await touch('touchEnd');
-    await expect.poll(takeLog).toEqual(expect.arrayContaining([expect.stringContaining('is-link-rippling')]));
+    await expect.poll(takeLog).toEqual(expect.arrayContaining([expect.stringContaining('has-link-plate')]));
 
-    // the tap's wave gone, and the plate's shape with it
-    await expect.poll(() => link.evaluate((a) => a.className)).not.toMatch(/is-link-(pressed|rippling)/);
+    // the tap's wave gone, and the plate with it: a finger hovers over nothing
+    await expect.poll(() => link.evaluate((a) => a.className)).not.toContain('has-link-plate');
     await takeLog();
     await touch('touchStart', x, y);
     for(let step = 1; step <= 5; ++step) {
@@ -403,10 +602,10 @@ test.describe('by touch', () => {
 
     // a finger held still: the ripple comes before it is lifted, and stays until then
     await touch('touchStart', x, y);
-    await expect.poll(() => link.evaluate((a) => a.className)).toContain('is-link-rippling');
+    await expect.poll(() => link.evaluate((a) => a.className)).toContain('has-link-plate');
     await page.waitForTimeout(800);
-    expect(await link.evaluate((a) => a.className)).toContain('is-link-pressed');
+    expect(await link.evaluate((a) => a.querySelectorAll('.link-plate .c-ripple__circle:not(.hiding)').length)).toBe(1);
     await touch('touchEnd');
-    await expect.poll(() => link.evaluate((a) => a.className)).not.toMatch(/is-link-(pressed|rippling)/);
+    await expect.poll(() => link.evaluate((a) => a.className)).not.toContain('has-link-plate');
   });
 });

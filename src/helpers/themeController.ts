@@ -122,7 +122,6 @@ const colorMap: {
     'body-background-color': '#ffffff',
     'border-color': '#dfe1e5',
     'secondary-color': '#c4c9cc',
-    'link-color': '#00488f',
     'input-search-background-color': '#ffffff'
   },
   night: {
@@ -140,7 +139,6 @@ const colorMap: {
     'body-background-color': '#181818',
     'border-color': '#0f0f0f',
     'secondary-color': '#707579',
-    'link-color': '#8774E1', // SCSS resolves to var(--primary-color)
     'input-search-background-color': '#181818'
   },
   tinted: {
@@ -159,12 +157,11 @@ const colorMap: {
     'saved-color': '#3685FA',
     'green-color': '#61D36B',
     // background / body-bg ← windowBackgroundGray, border ← divider (alpha-stripped),
-    // input-search-bg ← chat_messagePanelBackground, link ← windowBackgroundWhiteLinkText
+    // input-search-bg ← chat_messagePanelBackground
     'background-color': '#151E27',
     'body-background-color': '#151E27',
     'border-color': '#0F151B',
     'secondary-color': '#7D8B99',
-    'link-color': '#5EABE1',
     'input-search-background-color': '#212D3B'
   },
   light: {
@@ -184,7 +181,6 @@ const colorMap: {
     'body-background-color': '#FFFFFF',
     'border-color': '#DFE1E5',
     'secondary-color': '#C4C9CC',
-    'link-color': '#238AE3', // windowBackgroundWhiteBlueText
     'input-search-background-color': '#FFFFFF'
   }
 };
@@ -852,6 +848,12 @@ export class ThemeController {
       name: 'primary-color',
       hex: newAccentHex,
       darkenAlpha: 0.04
+    });
+
+    // links are in the accent colour, whichever it is
+    applyAppColor({
+      name: 'link-color',
+      hex: newAccentHex
     });
 
     applyAppColor({

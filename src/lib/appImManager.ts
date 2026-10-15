@@ -30,6 +30,7 @@ import PeerTitle from '@components/peerTitle';
 import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {holdLinkPlate} from '@helpers/dom/linkPress';
 import disableTransition from '@helpers/dom/disableTransition';
 import type {TextHighlightMatch} from '@helpers/dom/textHighlight';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
@@ -783,7 +784,10 @@ export class AppImManager extends EventListenerBase<{
 
       getOverlayRoot().append(menu);
       positionMenu(e, menu);
+      // the date lights its plate while its menu is open
+      const releaseLinkPlate = holdLinkPlate(element);
       contextMenuController.openBtnMenu(menu, () => {
+        releaseLinkPlate?.();
         setTimeout(() => {
           menu.remove();
         }, 300);

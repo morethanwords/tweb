@@ -33,6 +33,7 @@ import formatRelativeTime from '@helpers/date/formatRelativeTime';
 import tsNow from '@helpers/tsNow';
 import filterDisabledEntities, {markMessageLinkEntity} from '@lib/richTextProcessor/filterDisabledEntities';
 import {RICH_TEXT_BUTTON_SELECTOR, setRichTextButton} from '@lib/richTextProcessor/richTextButtons';
+import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
 import type {Middleware} from '@helpers/middleware';
 
 export type WrapRichTextOptions = Partial<{
@@ -825,6 +826,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         } else {
           element.classList.add('formatted-date');
           element.setAttribute('onclick', 'onFormattedDateClick(this, event)');
+          // pressed as a link is, and its menu lights it (helpers/dom/linkPress.ts)
+          element.setAttribute(TEXT_LINK_ATTRIBUTE, '');
         }
 
         ENTITY_ELEMENT_MAP.set(element, entity);
@@ -832,9 +835,13 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         if(Object.keys(entity.pFlags).length && !options.wrappingDraft) {
           usedText = true;
           element.dataset.originalText = fullEntityText;
+          // a text node of its own, set anew: a relative date ticks while its menu may have lit it, and
+          // the plate in it (helpers/dom/linkPress.ts) must stay
+          const textNode = document.createTextNode('');
+          element.append(textNode);
           const updateText = (text: string) => {
             element.dataset.fakeText = text;
-            element.textContent = text;
+            textNode.data = text;
           };
           if(entity.pFlags.relative) {
             if(options.middleware) {
