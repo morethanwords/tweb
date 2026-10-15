@@ -2,7 +2,7 @@
 name: codex-review
 description: "Code review by Codex (GPT) instead of reviewing your own change: hand the change and what it is for to `scripts/codex-review.sh` (Codex at xhigh effort), check every finding against the code, then fix or report it. Review in this session only when Codex is unavailable. Use whenever a code review is asked for — \"сделай ревью\", \"проверь изменения\", \"ревью и поправь\", \"review this\", \"review before committing\" — unless the request names another reviewer."
 user-invocable: true
-argument-hint: "[--fast] [--about <text>] [--commit <sha> | --base <branch> | --paths <path>... | --patch <file>]"
+argument-hint: "[--fast] [--about <text>] [--since <sha>] [--commit <sha> | --base <branch> | --paths <path>... | --patch <file>]"
 ---
 
 # /codex-review — Codex reviews, this session checks
@@ -59,8 +59,9 @@ purpose. Forum topics are left as they are." --paths src/components/foo.tsx src/
   few hundred lines takes 5–10 minutes, and the script stops each model after 20.
 - Do not start a second review of the same change while one runs.
 - **Fast mode only when asked.** Add `--fast` only when the user explicitly asks
-  for it ("в fast-режиме", "fast", "быстрый кодекс"). It runs about twice as fast
-  but spends noticeably more of the ChatGPT plan's limits, so never on your own.
+  for it ("в fast-режиме", "fast", "быстрый кодекс"). It spends noticeably more of
+  the ChatGPT plan's limits and speeds a review up by only 0–20% on `gpt-6.1-sol`,
+  so never on your own.
 - **Do not review the change yourself while you wait.** Your part starts when
   Codex answers, and it is checking Codex's findings.
 
@@ -88,11 +89,37 @@ from Codex means the review is done.
 
 ## 6. Fix only when asked
 
-- **Asked to fix** ("ревью и поправь"):
-  - Fix the confirmed findings.
-  - Review the fixed change once more, as a new target.
-  - Stop after two Codex rounds. Whatever is still open goes into the report.
 - **Asked only for a review:** report, and leave the code as it is.
+- **Asked to fix** ("ревью и поправь", `/finalize`): review in rounds, and fix
+  after every one.
+  - After each round, check every finding (step 5), and its level too. A P2 that
+    is really a nit is a P3; the report says which ones were moved down, and why.
+  - Fix every confirmed finding in what the change touches. A finding about code
+    the change does not touch goes into the report, not into the fix.
+  - Then review again, but only if the round's fixes changed the code. A round
+    that confirmed nothing, or only findings about untouched code, ends the
+    review.
+    - **Rounds 2 and 3:** the whole fixed change, with the same `--about`, and
+      `--fast` if it was asked for. A change reviewed as `--commit <sha>`
+      stays as it was, with the fixes uncommitted on top: from round 2, review
+      the fixes, since round 1 reviewed the commit. Use `--paths <the fixed
+      files>`, or `--patch` with only your hunks when other sessions changed
+      those files too (step 1).
+    - **Rounds 4 and 5,** only while the round before them confirmed a P0–P2
+      finding that you fixed: only the fixes since that round. Add
+      `--since <sha>` to the same target, where `<sha>` is the commit the round
+      before reviewed (its output names it "(as <sha>)"). If the script refuses
+      because HEAD, or the merge base for `--base`, has moved, review the whole
+      change.
+  - If round 3 or later confirmed only P3 findings, fix them without another
+    round, and say in the report that those fixes went unreviewed.
+  - **Five reviews at most.** Stop and ask the user, showing what is still open,
+    when any of these happens:
+    - round 5 still confirms a P0–P2 finding;
+    - a finding comes back after its fix;
+    - the fixes go in circles.
+
+    More rounds will not settle these.
 
 Tests stay with this session, because Codex cannot run them. Run what AGENTS.md's
 final review calls for.
@@ -105,4 +132,5 @@ final review calls for.
   - confirmed and fixed;
   - confirmed but not fixed, and why;
   - rejected, and why.
+- **Rounds:** how many, and which findings were moved down a level, and why.
 - **What was tested.**

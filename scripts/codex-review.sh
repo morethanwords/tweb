@@ -9,7 +9,7 @@
 # it cannot touch a tree other sessions work in — and cannot run the tests
 # either, those stay with the agent.
 #
-# Usage: bash scripts/codex-review.sh [--fast] [--about <text>] <what>
+# Usage: bash scripts/codex-review.sh [--fast] [--about <text>] [--since <sha>] <what>
 #
 # What is reviewed — exactly one of:
 #   --commit <sha>      what a commit changes
@@ -33,13 +33,23 @@
 # already has a message, so --about is optional for --commit and --base and
 # required for the rest.
 #
+# --since <sha> reviews only what changed after an earlier review of the same
+# change: <sha> is the commit that review was given, printed as "(as <sha>)", and
+# it becomes the parent, so the diff Codex sees is just the fixes made since; the
+# code around them is all there to read. For every target but --commit, and only
+# while the base of the review — HEAD, or the merge base for --base — is still the
+# one that review was built on: every commit built here names it in a
+# "Built-by: scripts/codex-review.sh on <sha>" line.
+#
 # The models are tried in order until one answers: CODEX_REVIEW_MODELS (default
 # "gpt-6.1-sol gpt-6-astra"), each at CODEX_REVIEW_EFFORT (default xhigh), each
 # attempt for at most CODEX_REVIEW_TIMEOUT minutes (default 20).
 #
-# --fast runs them in Codex's fast mode (the "priority" service tier): about twice
-# as fast, and it spends more of the plan's limits — only when the user asks for it.
-# A model that does not offer the tier runs at normal speed, and the script says so.
+# --fast runs them in Codex's fast mode (the "priority" service tier), which spends
+# more of the plan's limits — only when the user asks for it. It speeds up the
+# model's output, not its thinking: measured on gpt-6.1-sol in 2026-10, a review got
+# 0–20% faster. A model that does not offer the tier runs at normal speed, and the
+# script says so.
 #
 # Prints the review and keeps it, with Codex's event log, in tmp/codex-review/.
 # Exit status:
@@ -54,18 +64,21 @@ set -uo pipefail
 
 say() { echo "[codex-review] $*" >&2; }
 die() { local code=$1; shift; say "$*"; exit "$code"; }
-USAGE='usage: bash scripts/codex-review.sh [--fast] [--about <text>] --commit <sha> | --base <branch> | --uncommitted | --paths <path>... | --patch <file>'
+USAGE='usage: bash scripts/codex-review.sh [--fast] [--about <text>] [--since <sha>] --commit <sha> | --base <branch> | --uncommitted | --paths <path>... | --patch <file>'
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die 2 "not inside a git checkout"
 
-about= fast=0
-while :; do
-  case "${1:-}" in
+# the options may stand anywhere, before the target or after it
+about= fast=0 since= rest=()
+while [ $# -gt 0 ]; do
+  case "$1" in
     --about) [ $# -ge 2 ] || die 2 "$USAGE"; about=$2; shift 2;;
     --fast) fast=1; shift;;
-    *) break;;
+    --since) [ $# -ge 2 ] || die 2 "$USAGE"; since=$2; shift 2;;
+    *) rest+=("$1"); shift;;
   esac
 done
+set -- "${rest[@]}"
 mode=${1:-}
 [ $# -gt 0 ] && shift
 case "$mode" in
@@ -80,6 +93,11 @@ case "$mode" in
 esac
 # HEAD is read once: another session may commit while this runs
 head=$(git rev-parse --verify -q HEAD) || die 2 "no commit to review against"
+if [ -n "$since" ]; then
+  [ "$mode" != --commit ] || die 2 "--since goes with every target but --commit"
+  sha=$(git rev-parse --verify -q "$since^{commit}") || die 2 "no such commit: $since"
+  since=$sha
+fi
 case "$mode" in
   --commit)
     sha=$(git rev-parse --verify -q "$1^{commit}") || die 2 "no such commit: $1"
@@ -90,6 +108,22 @@ case "$mode" in
     [ -s "$1" ] || die 2 "no such patch, or it is empty: $1"
     patch=$(realpath "$1");;
 esac
+# What the change is built on: HEAD, or the merge base for --base. The rounds' commits stand one on
+# top of the other on it, and each names it in its Built-by line; an earlier round built on another
+# base, moved forward or back, would bring whatever lies between the two into the diff.
+anchor=$head anchor_name=HEAD
+if [ "$mode" = --base ]; then anchor=$base anchor_name='the merge base'; fi
+BUILT_BY="Built-by: scripts/codex-review.sh on"
+if [ -n "$since" ]; then
+  built_on=$(git log -1 --format=%B "$since" | grep -xE "$BUILT_BY [0-9a-f]{40}" | tail -1 | awk '{print $NF}')
+  [ -n "$built_on" ] || die 2 "${since:0:9} is not a commit this script built for a review"
+  [ "$built_on" = "$anchor" ] ||
+    die 2 "$anchor_name has moved since the review of ${since:0:9}: the fixes cannot be told apart from what lies between, review the whole change"
+fi
+# tells Codex that only the fixes since an earlier round are under review
+since_note() {
+  [ -z "$since" ] || printf '\n\nOnly the fixes made since an earlier review of this change (%s) are under review\nhere; the change as a whole was reviewed then.' "${since:0:9}"
+}
 cd "$ROOT" || die 2 "cannot enter $ROOT"
 
 # the standalone installer puts it here, and a non-login shell may not have it on PATH
@@ -135,7 +169,7 @@ review_commit() {
     rm -rf "$OUT"
     die 2 "nothing to review: no changes"
   fi
-  printf '%s\n' "$message" | git commit-tree "$tree" -p "$parent" || die 2 "cannot build the commit"
+  printf '%s\n\n%s %s\n' "$message" "$BUILT_BY" "$anchor" | git commit-tree "$tree" -p "$parent" || die 2 "cannot build the commit"
 }
 
 case "$mode" in
@@ -143,6 +177,7 @@ case "$mode" in
     what="commit $(git log -1 --format='%h %s' "$sha")"
     if [ -n "$about" ]; then
       message=$(printf '%s\n\nThe commit'"'"'s own message:\n\n%s' "$about" "$(git log -1 --format=%B "$sha")")
+      anchor=$(git rev-parse "$sha^")
       sha=$(review_commit "$(git rev-parse "$sha^{tree}")" "$sha^") || exit
     fi;;
   --base)
@@ -150,17 +185,20 @@ case "$mode" in
     message=${about:-The changes of $what}
     commits=$(git log --reverse --format='- %s' "$base..$head")
     [ -z "$commits" ] || message=$(printf '%s\n\nThe commits on the branch:\n%s' "$message" "$commits")
+    message="$message$(since_note)"
+    [ -z "$since" ] || what="$what, the fixes since ${since:0:9}"
     tree=$(tree_of_changes) || exit
-    sha=$(review_commit "$tree" "$base") || exit;;
+    sha=$(review_commit "$tree" "${since:-$base}") || exit;;
   *)
     case "$mode" in
       --paths) what="the changes to $*";;
       --patch) what="the patch $1";;
       *) what='the uncommitted changes';;
     esac
-    message=$about
+    message="$about$(since_note)"
+    [ -z "$since" ] || what="$what, the fixes since ${since:0:9}"
     tree=$(tree_of_changes "$@") || exit
-    sha=$(review_commit "$tree" "$head") || exit;;
+    sha=$(review_commit "$tree" "${since:-$head}") || exit;;
 esac
 # a commit built here gets named
 [ "$mode" = --commit ] && [ -z "$about" ] || what="$what (as ${sha:0:9})"
