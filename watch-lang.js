@@ -36,7 +36,8 @@ const getStringsHash = () => {
   return hash.digest('hex');
 };
 
-// the strings format-lang last failed on: they are tried again once they change, or in a new process
+// the strings format-lang last failed on: skipped while they stay, tried again once other strings are
+// seen - even if the edit later goes back to them - or in a new process
 let failedHash;
 
 // Regenerates langPack.strings and bumps the version when the strings differ from the last bump.
@@ -46,6 +47,10 @@ const updateVersionIfChanged = () => {
   let hash;
   try {
     hash = getStringsHash();
+    if(hash !== failedHash) {
+      failedHash = undefined;
+    }
+
     const {version, hash: lastHash} = readVersionFile();
     if(hash === lastHash) {
       return false;
@@ -56,9 +61,13 @@ const updateVersionIfChanged = () => {
     }
 
     execSync(`${npmCmd} run format-lang`);
-    fs.writeFileSync(EDIT_FILE_PATH, `const langPackLocalVersion = ${version + 1};export default langPackLocalVersion;
+    // written whole, then renamed into place: the dev server reloads on this file and must never read
+    // it half-written
+    const tmpPath = EDIT_FILE_PATH + '.tmp';
+    fs.writeFileSync(tmpPath, `const langPackLocalVersion = ${version + 1};export default langPackLocalVersion;
 ${HASH_PREFIX}${hash}
 `, 'utf8');
+    fs.renameSync(tmpPath, EDIT_FILE_PATH);
     console.log(`✅ Version updated to ${version + 1}`);
     return true;
   } catch(error) {
