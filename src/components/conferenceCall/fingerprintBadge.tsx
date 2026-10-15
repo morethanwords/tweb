@@ -16,7 +16,9 @@ import Modes from '@config/modes';
  * panel, the emoji grown into a row over a title and what they are for. A click on the card or the
  * dim, or Escape, folds it back; no button for it (as on iOS, and tdesktop only has a tooltip): the
  * card is the one control, and a button inside it could only have pretended to be another. Until
- * the participants agree on a key, every emoji spins like a slot machine's reel.
+ * the participants agree on a key, every emoji spins like a slot machine's reel. In a wide panel a
+ * track as big as the panel carries the pill over the participants' column, or into the header
+ * beside its buttons while the column is hidden (the styles move it, by transform).
  *
  * It is one element changing its shape, and only transforms and opacity move, so the compositor
  * runs it all: a size animated with it waited for the main thread, and stuttered whenever the call
@@ -93,6 +95,7 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
     return list ? `${titleText()}: ${list.join(' ')}` : titleText();
   };
 
+  let track: HTMLDivElement;
   let card: HTMLElement;
   let surface: HTMLElement;
   const pieces = {} as {[piece in SurfacePiece]: HTMLElement};
@@ -112,6 +115,11 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
   // only the morph's own: the press's scale transition carries on under it
   const running: Animation[] = [];
   let morphEnd: () => void;
+  // the card's surface takes over its fill, and what carries it holds still
+  const setMorphing = (morphing: boolean) => {
+    card.classList.toggle('is-morphing', morphing);
+    track.classList.toggle('is-morphing', morphing);
+  };
   const morph = (expand: boolean) => {
     if(expanded() === expand) {
       return;
@@ -153,6 +161,12 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
     morphEnd?.();
     running.splice(0).forEach((animation) => animation.cancel());
 
+    // before the new shape's style is computed: what carries the pill in a wide panel would start
+    // a transition of its own there, carrying the card away from what is measured below
+    if(animate) {
+      setMorphing(true);
+    }
+
     setExpanded(expand);
 
     if(!animate) {
@@ -168,7 +182,6 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
     const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius);
     surface.style.width = open.width + 'px';
     surface.style.height = open.height + 'px';
-    card.classList.add('is-morphing');
 
     // every place it goes to, read before anything starts moving
     const to = card.getBoundingClientRect();
@@ -229,7 +242,7 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
 
     morphEnd = () => {
       morphEnd = undefined;
-      card.classList.remove('is-morphing');
+      setMorphing(false);
       if(detailsFrom) {
         details.removeAttribute('style');
       }
@@ -266,38 +279,40 @@ export default function FingerprintBadge(props: FingerprintBadgeProps) {
   return (
     <div class={classNames('conference-encryption', expanded() && 'is-expanded', props.class)}>
       <div class="conference-encryption-overlay" onClick={() => morph(false)} />
-      <A11yButton
-        ref={(element) => card = element}
-        // static, the state in classList: a reactive class would drop the `is-morphing` the morph
-        // adds, if the key landed mid-way
-        class="conference-encryption-card"
-        classList={{'is-expanded': expanded(), 'is-syncing': !emojis()}}
-        aria-label={label()}
-        // no key yet: the same words, but not yet a key to compare
-        aria-busy={emojis() ? undefined : 'true'}
-        aria-expanded={expanded()}
-        aria-describedby={expanded() ? infoId : undefined}
-        onClick={() => morph(!expanded())}
-        onFocusOut={(e: FocusEvent) => {
-          // a keyboard leaving the open card leaves it closed behind
-          if(expanded() && !card.contains(e.relatedTarget as Node)) morph(false);
-        }}
-      >
-        <span class="conference-encryption-surface" ref={surface} aria-hidden="true">
-          <For each={SURFACE_PIECES}>
-            {(piece) => <span class={'conference-encryption-surface-' + piece} ref={(element) => pieces[piece] = element} />}
-          </For>
-        </span>
-        {slot(0)}
-        {slot(1)}
-        <span class="conference-encryption-label" ref={labelEl} aria-hidden="true">{titleText()}</span>
-        {slot(2)}
-        {slot(3)}
-        <span class="conference-encryption-details" ref={details} aria-hidden="true">
-          <span class="conference-encryption-title">{titleText()}</span>
-          <span class="conference-encryption-info" id={infoId}>{i18n('ConferenceEncryptedInfo')}</span>
-        </span>
-      </A11yButton>
+      <div class="conference-encryption-track" ref={track}>
+        <A11yButton
+          ref={(element) => card = element}
+          // static, the state in classList: a reactive class would drop the `is-morphing` the morph
+          // adds, if the key landed mid-way
+          class="conference-encryption-card"
+          classList={{'is-expanded': expanded(), 'is-syncing': !emojis()}}
+          aria-label={label()}
+          // no key yet: the same words, but not yet a key to compare
+          aria-busy={emojis() ? undefined : 'true'}
+          aria-expanded={expanded()}
+          aria-describedby={expanded() ? infoId : undefined}
+          onClick={() => morph(!expanded())}
+          onFocusOut={(e: FocusEvent) => {
+            // a keyboard leaving the open card leaves it closed behind
+            if(expanded() && !card.contains(e.relatedTarget as Node)) morph(false);
+          }}
+        >
+          <span class="conference-encryption-surface" ref={surface} aria-hidden="true">
+            <For each={SURFACE_PIECES}>
+              {(piece) => <span class={'conference-encryption-surface-' + piece} ref={(element) => pieces[piece] = element} />}
+            </For>
+          </span>
+          {slot(0)}
+          {slot(1)}
+          <span class="conference-encryption-label" ref={labelEl} aria-hidden="true">{titleText()}</span>
+          {slot(2)}
+          {slot(3)}
+          <span class="conference-encryption-details" ref={details} aria-hidden="true">
+            <span class="conference-encryption-title">{titleText()}</span>
+            <span class="conference-encryption-info" id={infoId}>{i18n('ConferenceEncryptedInfo')}</span>
+          </span>
+        </A11yButton>
+      </div>
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">{label()}</span>
     </div>
   );

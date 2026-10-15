@@ -162,8 +162,9 @@ test('the rows under someone who leaves slide up, and the first fill just appear
   await expect.poll(() => glidesBut(inView.left)).toEqual(inView.below);
 });
 
-// The call's key opens into a card in the middle of the dimmed panel (fingerprintBadge.tsx) and
-// folds back into its pill on Escape, which leaves the panel open, or on a click on the dim.
+// The call's key opens into a card in the middle of the dimmed panel (fingerprintBadge.tsx), a
+// narrow one here, and folds back into its pill on Escape, which leaves the panel open, or on a
+// click on the dim.
 test('the encryption key opens into a card and folds back on Escape or a click outside', async({page}) => {
   await preparePopupSandbox(page, false);
   expect(await openStory(page, 'call/conference')).toBeNull();
@@ -201,6 +202,118 @@ test('the encryption key opens into a card and folds back on Escape or a click o
   await expect(card).toHaveAttribute('aria-expanded', 'true');
   await overlay.click({position: {x: 10, y: 10}});
   await expect(card).toHaveAttribute('aria-expanded', 'false');
+});
+
+// A wide panel has the video beside the participants' column (at the inline end: on the left right
+// to left). The key's pill sits at the top of the column, over the participants rather than over
+// the video, and goes into the header beside its buttons while the column is hidden — by a
+// transform, its own layout staying as it was; the card it opens into is in the middle of the
+// panel all the same.
+for(const dir of ['ltr', 'rtl'] as const) test(`the encryption key's pill sits over the participants' column of a wide panel (${dir})`, async({page}) => {
+  await preparePopupSandbox(page, false);
+  await page.evaluate((dir) => window.popupSandbox.setDirection(dir), dir);
+  expect(await openStory(page, 'call/conference')).toBeNull();
+  await page.locator('.group-call-header .btn-icon[aria-label="Enter full screen"]').first().click();
+  const panel = page.locator('.group-call');
+  await expect(panel).toHaveClass(/is-big-layout/);
+  await expect(panel).toHaveClass(/is-right-column-shown/);
+  const card = page.locator('.conference-encryption-card');
+  const column = page.locator('.group-call > .popup-body');
+  const settled = async() => {
+    const before = await card.boundingBox();
+    await page.waitForTimeout(100);
+    const after = await card.boundingBox();
+    return before.x === after.x && before.y === after.y && before.width === after.width;
+  };
+  const centre = (box: {x: number, y: number, width: number, height: number}) => ({
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2
+  });
+  const expectOverColumn = async() => {
+    await expect.poll(settled).toBe(true);
+    const [pill, columnBox, header, firstRow, stage] = await Promise.all([
+      card.boundingBox(),
+      column.boundingBox(),
+      column.locator('> .group-call-header').boundingBox(),
+      column.locator('.group-call-participant').first().boundingBox(),
+      page.locator('.group-call-stage').boundingBox()
+    ]);
+    expect(pill.x).toBeGreaterThanOrEqual(columnBox.x);
+    expect(pill.x + pill.width).toBeLessThanOrEqual(columnBox.x + columnBox.width);
+    expect(Math.abs(centre(pill).x - centre(columnBox).x)).toBeLessThan(1);
+    // between the column's header and its first participant
+    expect(pill.y).toBeGreaterThanOrEqual(header.y + header.height);
+    expect(pill.y + pill.height).toBeLessThanOrEqual(firstRow.y);
+    // and the video has no row kept for it above
+    expect(stage.y).toBeLessThan(pill.y);
+  };
+  await expectOverColumn();
+  const layout = () => card.evaluate((element: HTMLElement) => [element.offsetLeft, element.offsetTop]);
+  const columnLayout = await layout();
+
+  await card.click();
+  await expect(card).toHaveAttribute('aria-expanded', 'true');
+  await expect(card).not.toHaveClass(/is-morphing/);
+  const [open, panelBox] = await Promise.all([card.boundingBox(), panel.boundingBox()]);
+  expect(Math.abs(centre(open).x - centre(panelBox).x)).toBeLessThan(1);
+  expect(Math.abs(centre(open).y - centre(panelBox).y)).toBeLessThan(2);
+
+  // folding, the pill is carried back by the morph alone: no transition of the track's own on top
+  await page.evaluate(() => {
+    const track = document.querySelector('.conference-encryption-track');
+    track.querySelector('.conference-encryption-card').addEventListener('click', () => setTimeout(() => {
+      (window as any).groupCallTestTransitions = track.getAnimations()
+        .filter((animation) => animation instanceof CSSTransition)
+        .map((animation) => (animation as CSSTransition).transitionProperty);
+    }), {once: true});
+  });
+  await card.click();
+  await expect(card).toHaveAttribute('aria-expanded', 'false');
+  expect(await page.waitForFunction(() => (window as any).groupCallTestTransitions).then((handle) => handle.jsonValue())).toEqual([]);
+  await expectOverColumn();
+
+  const header = panel.locator('> .group-call-header');
+  const expectInHeader = async() => {
+    await expect.poll(settled).toBe(true);
+    const [pill, panelNow, stage, title, button] = await Promise.all([
+      card.boundingBox(),
+      panel.boundingBox(),
+      page.locator('.group-call-stage').boundingBox(),
+      header.locator('.group-call-header-info').boundingBox(),
+      // the one button at the header's far end in full screen
+      header.locator('.btn-icon[aria-label="Show participants"]').boundingBox()
+    ]);
+    // in the middle of the band over the video, from the panel's top to where the stage begins
+    expect(Math.abs(centre(pill).y - (panelNow.y + stage.y) / 2)).toBeLessThan(.5);
+    // right before the button, and after the title, which keeps some room of its own
+    const [beforeButton, afterTitle] = dir === 'ltr' ?
+      [button.x - (pill.x + pill.width), pill.x - (title.x + title.width)] :
+      [pill.x - (button.x + button.width), title.x - (pill.x + pill.width)];
+    expect(beforeButton).toBeGreaterThanOrEqual(0);
+    expect(beforeButton).toBeLessThanOrEqual(8);
+    expect(afterTitle).toBeGreaterThanOrEqual(0);
+    expect(title.width).toBeGreaterThanOrEqual(60);
+  };
+
+  await page.locator('.popup-body .btn-icon[aria-label="Hide participants"]').click();
+  await expect(panel).not.toHaveClass(/is-right-column-shown/);
+  await expectInHeader();
+  expect(await layout()).toEqual(columnLayout);
+
+  await page.locator('.btn-icon[aria-label="Show participants"]').click();
+  await expect(panel).toHaveClass(/is-right-column-shown/);
+  await expectOverColumn();
+
+  // a full screen too narrow for the widest pill and the title: the title keeps its first letters
+  await page.locator('.popup-body .btn-icon[aria-label="Hide participants"]').click();
+  await expect(panel).not.toHaveClass(/is-right-column-shown/);
+  // a window in full screen cannot be resized
+  await header.locator('.btn-icon[aria-label="Exit full screen"]').click();
+  await expect(panel).not.toHaveClass(/is-full-screen/);
+  await page.setViewportSize({width: 480, height: 600});
+  await header.locator('.btn-icon[aria-label="Enter full screen"]').click();
+  await expect(panel).toHaveClass(/is-big-layout/);
+  await expectInHeader();
 });
 
 // A press holds the pill at `scale: .97`, which eases back to 1 while the card opens. Its boxes, read
