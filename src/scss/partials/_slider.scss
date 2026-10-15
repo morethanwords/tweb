@@ -63,6 +63,11 @@
 
       @include hover-background-effect();
 
+      // * a tab whose context menu is open keeps the hover plate, as a row or a menu toggle does
+      &.menu-open {
+        background-color: var(--light-secondary-text-color);
+      }
+
       .c-ripple {
         display: none;
       }
