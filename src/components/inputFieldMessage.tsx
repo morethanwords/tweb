@@ -217,7 +217,6 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
             canSend={false}
             inputField={inputField}
             onApply={(text) => inputField.setValueSilently(text)}
-            shouldShowFromHeight={100}
           />
         </SolidJSHotReloadGuardProvider>
       )}

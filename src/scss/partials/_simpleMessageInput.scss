@@ -17,6 +17,11 @@
     overflow: hidden;
     box-shadow: var(--section-box-shadow);
 
+    // * the AI button stands over Send from the third line, where the field alone is too short for the two
+    &.has-ai-editor-button {
+      min-height: 5.75rem;
+    }
+
     // &:before {
     //   content: " ";
     //   position: absolute;
@@ -40,7 +45,8 @@
   &-inputs {
     --imc-padding-inline-start: .125rem;
     --imc-padding-inline-end: .125rem;
-    min-height: inherit;
+    // * not the container's: grown for the AI button, it would keep the field tall enough to keep it
+    min-height: var(--height);
     max-height: inherit;
   }
 
@@ -69,18 +75,20 @@
     }
   }
 
+  // * round, as the chat's Send; a price widens it into a pill
   &-confirm {
+    --size: 2.5rem;
     flex: 0 0 auto;
     width: auto;
-    min-width: 4.125rem;
+    min-width: var(--size);
     padding: 0 .5rem;
-    height: 2.625rem;
-    line-height: 2.5rem;
+    height: var(--size);
+    line-height: var(--size);
     text-transform: uppercase;
-    margin-block: 0 .1875rem;
-    margin-inline: 0 .1875rem;
+    margin-block: 0 .25rem;
+    margin-inline: 0 .25rem;
     overflow: unset;
-    border-radius: inherit;
+    border-radius: calc(var(--size) / 2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -95,9 +103,11 @@
       }
     }
 
+    // * the chat's Send plane: its size and the nudge that centres it by eye
     &-icon {
-      font-size: 1.5625rem;
-      margin-inline-start: -.125rem;
+      font-size: 1.375rem;
+      margin-inline-start: -3px;
+      margin-bottom: -1px;
     }
 
     &-inner {
@@ -113,11 +123,12 @@
 
   &-emoji {
     margin-bottom: .25rem;
-    margin-inline-start: .5rem;
-    color: var(--input-placeholder-color);
+    margin-inline-start: .25rem;
   }
 
+  // * in the corner, over Send
   &-ai-button {
-    inset-inline-end: 1rem;
+    top: .25rem;
+    inset-inline-end: .25rem;
   }
 }
