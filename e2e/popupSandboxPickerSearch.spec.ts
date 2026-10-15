@@ -56,3 +56,18 @@ test('a picker\'s rows keep their layout while a search is on its way', async({p
   await page.evaluate(() => window.releasePickerSearch());
   await expect.poll(async() => (await shown()).connected).toBe(0);
 });
+
+test('a picker\'s search leaves no gap where the top peers were', async({page}) => {
+  await preparePopupSandbox(page, false);
+  expect(await openStory(page, 'forward')).toBeNull();
+  await expect(page.locator('.popup-forward-top-peers .chatlist-chat').first()).toBeVisible();
+
+  await page.locator('.popup-forward .input-search input').fill('a');
+  // * the top peers fold up under the search field, and the results follow it as if they were never there
+  await expect.poll(() => page.evaluate(() => {
+    const selector = document.querySelector('.popup-forward .selector.active');
+    const search = selector.querySelector('.selector-search-section-container').getBoundingClientRect();
+    const list = selector.querySelector('.selector-list-section-container').getBoundingClientRect();
+    return Math.round(list.top - search.bottom);
+  })).toBe(0);
+});
