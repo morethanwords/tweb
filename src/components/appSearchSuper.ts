@@ -2193,7 +2193,7 @@ export default class AppSearchSuper {
       const anchor = anchorCallback(onClick);
       attachClickEvent(btn, onClick);
       anchor.classList.add('primary');
-      const subtitle = i18n('SimilarChannels.Unlock', [anchor, limit]);
+      const subtitle = i18n('SimilarChannels.Unlock', [limit, anchor]);
       subtitle.classList.add('similar-channels-paywall-subtitle');
       wall.append(btn, subtitle);
       return wall;

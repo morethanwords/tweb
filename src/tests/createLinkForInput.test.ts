@@ -47,7 +47,8 @@ describe('Create Link popup bridge for formatted inputs', () => {
       getSelectedText: vi.fn(() => 'text'),
       replaceSelection: vi.fn(() => true),
       requestLinkEditor: vi.fn(() => false),
-      restoreSelection: vi.fn()
+      restoreSelection: vi.fn(),
+      supportsMarkup: vi.fn(() => true)
     } as unknown as ChatInputEditor;
     const unregister = registerChatInputEditor(input, editor);
     mocks.showCreateLinkPopup.mockResolvedValue({

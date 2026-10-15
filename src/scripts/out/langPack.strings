@@ -791,8 +791,8 @@
 "RequestPeer.Title.Users" = "Choose Users";
 "RequestPeer.Title.Groups" = "Choose Groups";
 "RequestPeer.Title.Channels" = "Choose Channels";
-"SimilarChannels.Unlock_one" = "Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channel.";
-"SimilarChannels.Unlock_other" = "Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channels.";
+"SimilarChannels.Unlock_one" = "Subscribe to **[Telegram Premium]()** to unlock up to **%1$d** similar channel.";
+"SimilarChannels.Unlock_other" = "Subscribe to **[Telegram Premium]()** to unlock up to **%1$d** similar channels.";
 "SharedMedia.SavedDialogs" = "Chats";
 "AuthorHidden" = "Author Hidden";
 "AuthorHiddenShort" = "Anonymous";
@@ -4465,10 +4465,10 @@
 "CopyRestricted.Channel" = "Sorry, copying from this channel is disabled by its admins.";
 "CopyRestricted.Group" = "Sorry, copying from this group is disabled by its admins.";
 "CopyRestricted.User" = "Copying is restricted in this chat.";
-"Chat.DownloadLimit.Text_one" = "Subscribe to [Telegram Premium]() to increase download speeds %d time.";
-"Chat.DownloadLimit.Text_other" = "Subscribe to [Telegram Premium]() to increase download speeds %d times.";
-"Chat.UploadLimit.Text_one" = "Subscribe to [Telegram Premium]() to increase upload speeds %d time.";
-"Chat.UploadLimit.Text_other" = "Subscribe to [Telegram Premium]() to increase upload speeds %d times.";
+"Chat.DownloadLimit.Text_one" = "Subscribe to [Telegram Premium]() to increase download speeds %1$d time.";
+"Chat.DownloadLimit.Text_other" = "Subscribe to [Telegram Premium]() to increase download speeds %1$d times.";
+"Chat.UploadLimit.Text_one" = "Subscribe to [Telegram Premium]() to increase upload speeds %1$d time.";
+"Chat.UploadLimit.Text_other" = "Subscribe to [Telegram Premium]() to increase upload speeds %1$d times.";
 "Chat.Service.Refund" = "%@ refunded %@";
 "EnableDarkMode" = "Enable Dark Mode";
 "DisableDarkMode" = "Disable Dark Mode";

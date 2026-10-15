@@ -466,15 +466,19 @@ namespace I18n {
 
           // A string whose link carries its own placeholder ("[x](%1$@)", the shape the macOS
           // packs use) makes the index scan above start past the argument the anchor was passed
-          // in, so there is nothing here to hang the link on. Render the label rather than
-          // throwing: one malformed string used to take down everything around it.
-          if(a && typeof(a) !== 'string') {
+          // in, so there is nothing here to hang the link on; a text whose arguments are ordered
+          // differently from the call (a stored pack from before a reorder) hands it a number.
+          // Render the label rather than throwing: one malformed string used to take down
+          // everything around it.
+          if(typeof(a) !== 'object') {
+            a = undefined;
+          } else if(a) {
             a.textContent = ''; // reset content
           }
         }
 
         const formatted = superFormatter(text, args, indexHolder) as any;
-        if(!a || typeof(a) === 'string') {
+        if(!a) {
           out.push(...formatted);
         } else {
           a.append(...formatted);

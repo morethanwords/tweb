@@ -276,8 +276,8 @@ export default function SimilarChannels(props: {
         textElement: i18n(
           'SimilarChannels.Unlock',
           [
-            anchor,
-            premiumLimit
+            premiumLimit,
+            anchor
           ]
         ),
         icon: 'star'

@@ -628,11 +628,11 @@ export class AppImManager extends EventListenerBase<{
         icon: 'premium_speed_filled',
         title: i18n(isUpload ? 'UploadSpeedLimited' : 'DownloadSpeedLimited'),
         textElement: i18n(isUpload ? 'Chat.UploadLimit.Text' : 'Chat.DownloadLimit.Text', [
+          increaseTimes,
           anchorCallback(() => {
             hide();
             showPremiumPopup({feature: 'faster_download'});
-          }),
-          increaseTimes
+          })
         ]),
         duration: 10000
       });

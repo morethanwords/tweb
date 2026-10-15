@@ -886,8 +886,8 @@ const lang = {
   'RequestPeer.Title.Groups': 'Choose Groups',
   'RequestPeer.Title.Channels': 'Choose Channels',
   'SimilarChannels.Unlock': {
-    'one_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channel.',
-    'other_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channels.'
+    'one_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%1$d** similar channel.',
+    'other_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%1$d** similar channels.'
   },
   'SharedMedia.SavedDialogs': 'Chats',
   'AuthorHidden': 'Author Hidden',
@@ -5070,12 +5070,12 @@ const lang = {
   'CopyRestricted.Group': 'Sorry, copying from this group is disabled by its admins.',
   'CopyRestricted.User': 'Copying is restricted in this chat.',
   'Chat.DownloadLimit.Text': {
-    'one_value': 'Subscribe to [Telegram Premium]() to increase download speeds %d time.',
-    'other_value': 'Subscribe to [Telegram Premium]() to increase download speeds %d times.'
+    'one_value': 'Subscribe to [Telegram Premium]() to increase download speeds %1$d time.',
+    'other_value': 'Subscribe to [Telegram Premium]() to increase download speeds %1$d times.'
   },
   'Chat.UploadLimit.Text': {
-    'one_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d time.',
-    'other_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d times.'
+    'one_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %1$d time.',
+    'other_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %1$d times.'
   },
   'Chat.Service.Refund': '%@ refunded %@',
   'EnableDarkMode': 'Enable Dark Mode',
