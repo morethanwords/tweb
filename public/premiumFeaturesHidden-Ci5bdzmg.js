@@ -1,2 +1,0 @@
-import{t as e}from"./apiManagerProxy-_b0Ln0ui.js";import{S as t}from"./solid-NBrjMhfa.js";import{Co as n}from"./buttonMenu-B5-qDUHl.js";function r(){let r=n(),[i,a]=t(!0);return Promise.resolve(e.isPremiumPurchaseBlocked()).then(a),()=>i()&&!r()}export{r as t};
-//# sourceMappingURL=premiumFeaturesHidden-Ci5bdzmg.js.map

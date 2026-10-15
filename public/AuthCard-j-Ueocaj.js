@@ -1,0 +1,2 @@
+import{f as e,s as t,v as n}from"./solid-NBrjMhfa.js";import{c as r,h as i,o as a}from"./web-Cng6oOKJ.js";import{t as o}from"./classNames-hZG6twJP.js";import{r as s}from"./bootstrapIm-CN5TTab5.js";var c=i(`<div class=input-wrapper>`),l=i(`<div>`);function u(i){let u=()=>i.inputWrapper!==!1;return(()=>{var d=l();return r(d,()=>i.header,null),r(d,e(t,{get when(){return u()},get fallback(){return i.children},get children(){var e=c();return r(e,()=>i.children),e}}),null),n(()=>a(d,o(s.card,i.class))),d})()}export{u as t};
+//# sourceMappingURL=AuthCard-j-Ueocaj.js.map
