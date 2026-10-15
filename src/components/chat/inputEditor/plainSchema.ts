@@ -43,7 +43,8 @@ export const PLAIN_MESSAGE_MARK_NAMES = new Set([
  * Schemaless extensions the plain field keeps. Plugins carry no node to classify
  * them by, so they are listed: everything driving lists, rich blocks, tables,
  * media uploads or block reordering is left out, and what remains is caret and
- * emoji behaviour, pasted lists kept as text, plus history.
+ * emoji behaviour, pasted lists kept as text, pasted text kept line by line,
+ * plus history.
  */
 const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
   'chatCustomEmojiText',
@@ -53,6 +54,7 @@ const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
   'chatInputPlaceholders',
   'chatPlainListPaste',
   'chatRichMessageAttributes',
+  'chatTextPaste',
   'undoRedo'
 ]);
 

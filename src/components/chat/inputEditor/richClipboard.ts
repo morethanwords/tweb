@@ -1,6 +1,7 @@
 import {Extension} from '@tiptap/core';
-import {DOMParser as ProseMirrorDOMParser, DOMSerializer, type Node as ProseMirrorNode, type Schema} from '@tiptap/pm/model';
+import {DOMParser as ProseMirrorDOMParser, DOMSerializer, type Node as ProseMirrorNode, type ResolvedPos, type Schema} from '@tiptap/pm/model';
 import {Plugin} from '@tiptap/pm/state';
+import type {EditorView} from '@tiptap/pm/view';
 import {listItemMarkers} from '@components/chat/inputEditor/orderedList';
 
 function directListItems(list: HTMLOListElement | HTMLUListElement) {
@@ -178,6 +179,38 @@ export const ChatPlainListPaste = Extension.create<{richSchema: () => Schema}>({
         transformPastedHTML: (html, view) => view.state.schema.nodes.listItem ?
           html :
           pastedListsAsText(html, richSchema(), view.dom.ownerDocument)
+      }
+    })];
+  }
+});
+
+/**
+ * ProseMirror's own reader of pasted plain text, without its folding of a run of line breaks into
+ * one: every line stays a line, a blank one an empty paragraph — as typing it makes one, and as a
+ * message is spaced out.
+ */
+function parseClipboardTextLines(text: string, $context: ResolvedPos, view: EditorView) {
+  const {schema} = view.state;
+  const ownerDocument = view.dom.ownerDocument;
+  const serializer = DOMSerializer.fromSchema(schema);
+  const marks = $context.marks();
+  const dom = ownerDocument.createElement('div');
+  text.split(/\r\n?|\n/).forEach((line) => {
+    const paragraph = dom.appendChild(ownerDocument.createElement('p'));
+    if(line) paragraph.append(serializer.serializeNode(schema.text(line, marks), {document: ownerDocument}));
+  });
+  const parser = view.someProp('clipboardParser') || view.someProp('domParser') || ProseMirrorDOMParser.fromSchema(schema);
+  return parser.parseSlice(dom, {preserveWhitespace: true, context: $context});
+}
+
+/** Listed before `ChatTableClipboard`, so its plugin reads only what is not a table. */
+export const ChatTextPaste = Extension.create({
+  name: 'chatTextPaste',
+
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      props: {
+        clipboardTextParser: (text, $context, _plain, view) => parseClipboardTextLines(text, $context, view)
       }
     })];
   }

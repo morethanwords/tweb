@@ -15,6 +15,7 @@ import type {
 } from '@components/chat/inputEditor/types';
 import type {Document, Photo, RichMessage} from '@layer';
 import MarkupTooltip from '@components/chat/markupTooltip';
+import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import '@/materialize.scss';
 import '@/scss/style.scss';
 import './chatInputEditor.scss';
@@ -55,6 +56,8 @@ export type ChatInputEditorBrowserHarness = {
   beginManagedUpload(action?: 'add' | 'replace'): string | undefined,
   completeManagedUpload(id: string): boolean,
   clipboard(): {html: string, text: string},
+  /** What a message's Copy puts on the clipboard */
+  messageClipboard(...args: Parameters<typeof prepareTextWithEntitiesForCopying>): {html: string, text: string},
   deleteBackward(): boolean,
   destroy(): void,
   enableMarkupTooltip(): void,
@@ -86,6 +89,9 @@ export type ChatInputEditorBrowserHarness = {
   redo(): boolean,
   toggleList(type: 'bulletList' | 'orderedList' | 'taskList'): boolean,
   pasteHTML(html: string): boolean,
+  /** A paste as the browser delivers it, the editor reading the clipboard's types itself */
+  pasteClipboard(clipboard: {html?: string, text?: string}): boolean,
+  value(): ReturnType<ChatInputEditor['getRichValue']>,
   setCaret(position: number): boolean | Promise<boolean>,
   setCaretInNode(type: string, occurrence?: number, offset?: number | 'end'): boolean | Promise<boolean>,
   setCaretInTextblock(index: number, edge?: 'end' | 'start' | number): boolean | Promise<boolean>,
@@ -308,6 +314,7 @@ window.chatInputEditorHarness = {
     const result = tiptap.view.serializeForClipboard(tiptap.state.selection.content());
     return {html: result.dom.innerHTML, text: result.text};
   },
+  messageClipboard: (...args) => prepareTextWithEntitiesForCopying(...args),
   beginManagedUpload: (action) => {
     const id = `fixture-upload-${++nextManagedUploadId}`;
     const inserted = chatEditor.beginRichMediaUpload({
@@ -353,6 +360,17 @@ window.chatInputEditorHarness = {
   toggleList: (type) => type === 'bulletList' ? chatEditor.toggleBulletList() :
     type === 'orderedList' ? chatEditor.toggleOrderedList() : chatEditor.toggleTaskList(),
   pasteHTML: (html) => tiptap.view.pasteHTML(html),
+  pasteClipboard: ({html = '', text = ''}) => {
+    const event = new Event('paste', {bubbles: true, cancelable: true});
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' || type === 'Text' ? text : ''
+      }
+    });
+    input.dispatchEvent(event);
+    return event.defaultPrevented;
+  },
+  value: () => chatEditor.getRichValue(true),
   revision: () => chatEditor.captureSelection().revision,
   roundTripSelection: (remount) => {
     if(remount) {

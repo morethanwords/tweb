@@ -144,3 +144,29 @@ for(const kind of ['photo', 'video', 'audio', 'collage', 'slideshow', 'map']) te
   expect(await page.evaluate(html => window.chatInputEditorHarness.pasteHTML(html), copied.html)).toBe(true);
   expect(await page.evaluate(() => window.chatInputEditorHarness.richMessage())).toEqual(before);
 });
+
+for(const linebreak of ['\n', '\r\n']) test(`pasted plain text keeps every line, blank ones too (${JSON.stringify(linebreak)})`, async({page}) => {
+  const lines = ['Order', '', '', '', 'Here:', '', 'Cash on delivery'];
+  expect(await page.evaluate((text) => window.chatInputEditorHarness.pasteClipboard({text}), lines.join(linebreak))).toBe(true);
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).value).toBe(lines.join('\n'));
+});
+
+test('a message copied from the chat pastes back with its lines and spaces', async({page}) => {
+  const text = 'Order !!!\n\n\n\nHere:  two spaces\n  indented\nCash on delivery';
+  const copied = await page.evaluate((text) => window.chatInputEditorHarness.messageClipboard({text, entities: []}), text);
+  expect(copied.text).toBe(text);
+  expect(await page.evaluate((copied) => window.chatInputEditorHarness.pasteClipboard(copied), copied)).toBe(true);
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).value).toBe(text);
+});
+
+test('messages copied together paste back as their plain text says, a sender\'s name as text', async({page}) => {
+  const copied = await page.evaluate(() => window.chatInputEditorHarness.messageClipboard([
+    {text: 'One\nTwo', entities: []},
+    {text: 'Three', entities: []}
+  ], ['<b>Ann</b>, [01.02.26 10:00]', 'Bob, [01.02.26 10:01]']));
+  expect(copied.text).toBe('<b>Ann</b>, [01.02.26 10:00]\nOne\nTwo\n\nBob, [01.02.26 10:01]\nThree');
+  expect(await page.evaluate((copied) => window.chatInputEditorHarness.pasteClipboard(copied), copied)).toBe(true);
+  const pasted = await page.evaluate(() => window.chatInputEditorHarness.value());
+  expect(pasted.value).toBe(copied.text);
+  expect(pasted.entities).toEqual([]);
+});

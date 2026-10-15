@@ -1016,18 +1016,7 @@ test('imports spreadsheet TSV as a real table in the browser', async({page}) => 
       type: 'doc',
       content: [{type: 'paragraph'}]
     });
-    const editor = document.querySelector('#editor');
-    if(!editor) return false;
-    const event = new Event('paste', {bubbles: true, cancelable: true});
-    Object.defineProperty(event, 'clipboardData', {
-      value: {
-        getData: (type: string) => (
-          type === 'text/plain' || type === 'Text' ? 'A\tB\nC\tD' : ''
-        )
-      }
-    });
-    editor.dispatchEvent(event);
-    return true;
+    return window.chatInputEditorHarness.pasteClipboard({text: 'A\tB\nC\tD'});
   })).toBe(true);
   await settleNativeSelection(page);
 

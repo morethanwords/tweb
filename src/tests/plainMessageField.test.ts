@@ -14,6 +14,15 @@ import {typeTextThroughEditorView, useChatInputEditorHarness, type TiptapEditorI
 vi.mock('@environment/webpSupport', () => ({default: true}));
 vi.mock('@components/toast', () => ({toastNew: vi.fn()}));
 
+/** A paste whose clipboard holds `text` as plain text, nothing else */
+function createPasteEvent(text = '') {
+  const event = new Event('paste', {bubbles: true, cancelable: true}) as ClipboardEvent;
+  Object.defineProperty(event, 'clipboardData', {
+    value: {getData: (type: string) => type === 'text/plain' ? text : ''}
+  });
+  return event;
+}
+
 /**
  * What a caption, a forward comment, a poll description or a fact check hands to
  * the manager on send. Every one of them reads its field with
@@ -185,8 +194,7 @@ describe('plain message field', () => {
         schema.nodes.paragraph.create(null, schema.text('first')),
         schema.nodes.paragraph.create(null, schema.text('second'))
       ]), 0, 0);
-      const event = new Event('paste', {bubbles: true, cancelable: true}) as ClipboardEvent;
-      Object.defineProperty(event, 'clipboardData', {value: {getData: () => ''}});
+      const event = createPasteEvent();
 
       expect(tiptap.view.someProp('handlePaste')?.(tiptap.view, event, slice)).toBe(true);
 
@@ -201,8 +209,7 @@ describe('plain message field', () => {
       const slice = new Slice(Fragment.fromArray([
         schema.nodes.paragraph.create(null, schema.text('bold', [schema.marks.bold.create()]))
       ]), 0, 0);
-      const event = new Event('paste', {bubbles: true, cancelable: true}) as ClipboardEvent;
-      Object.defineProperty(event, 'clipboardData', {value: {getData: () => ''}});
+      const event = createPasteEvent();
 
       tiptap.view.someProp('handlePaste')?.(tiptap.view, event, slice);
 
@@ -255,6 +262,15 @@ describe('plain message field', () => {
 
     expect(getRichValueWithCaret(inputField.input, true, false).value).toBe('c. three\n  - nested\nd. [x] done\nafter');
     expect(editor.getMode()).toBe('plain');
+  });
+
+  test('keeps every line of pasted text, blank ones too', () => {
+    const {inputField} = mountCaption();
+    const event = createPasteEvent('one\r\n\r\n\r\ntwo');
+    inputField.input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(getRichValueWithCaret(inputField.input, true, false).value).toBe('one\n\n\ntwo');
   });
 
   test('keeps the markers of a list copied out of the composer, as the list is sent', () => {
