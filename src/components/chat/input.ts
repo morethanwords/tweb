@@ -45,6 +45,7 @@ import SendMenu from '@components/chat/sendContextMenu';
 import rootScope from '@lib/rootScope';
 import showPinMessagePopup from '@components/popups/unpinMessage';
 import tsNow from '@helpers/tsNow';
+import mediaSizes from '@helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
@@ -1654,10 +1655,8 @@ export default class ChatInput {
       // outside the menu just dismisses the menu, no action fires.
       onToggle: (open) => this.recordingController.setVoiceRecordingMenuGuard(open),
       canSendWhenOnline: this.canSendWhenOnline,
-      onRef: (element) => {
-        this.btnSendContainer.append(element);
-      },
       withEffects: () => this.chat.peerId.isUser() && this.chat.peerId !== rootScope.myId,
+      effectsWithinMenu: () => mediaSizes.isLessThanFloatingLeftSidebar,
       effect: this.effect,
       onEffect: this.setEffect
     });

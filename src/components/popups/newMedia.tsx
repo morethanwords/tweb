@@ -11,7 +11,7 @@ import type {
 import type {ChatRights} from '@appManagers/appChatsManager';
 import PopupElement, {createPopup, PopupContext, PopupContextValue} from './indexTsx';
 import {toastNew} from '@components/toast';
-import SendContextMenu from '@components/chat/sendContextMenu';
+import SendContextMenu, {mountSendMenu} from '@components/chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '@helpers/createPoster';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
@@ -502,6 +502,7 @@ export default function showNewMediaPopup(
         callback: async(e) => {
           cancelEvent(e);
 
+          const middleware = context.middlewareHelper.get();
           const element = await ButtonMenu({
             buttons: [{
               text: 'MessageScheduleEditTime',
@@ -517,16 +518,22 @@ export default function showNewMediaPopup(
             }],
             listenerSetter: listenerSetter
           });
+          if(!middleware()) return;
           element.classList.add('menu-send', 'top-left');
 
-          containerEl.append(element);
+          mountSendMenu(element, btnConfirm, 'top-left', middleware);
 
           await fastRafPromise();
+          if(!middleware()) {
+            element.remove();
+            return;
+          }
+
           contextMenuController.openBtnMenu(element, () => {
             setTimeout(() => {
               element.remove();
             }, 400);
-          });
+          }, btnConfirm);
         },
         listenerSetter: listenerSetter
       });
@@ -560,11 +567,9 @@ export default function showNewMediaPopup(
         onContextElement: btnConfirm,
         middleware: context.middlewareHelper.get(),
         canSendWhenOnline: chat.input.canSendWhenOnline,
-        onRef: (element) => {
-          containerEl.append(element);
-        },
         onOpen: () => !ephemeralComposer,
         withEffects: () => chat.peerId.isUser() && chat.peerId !== rootScope.myId,
+        effectsWithinMenu: () => true,
         effect: effectAccessor,
         onEffect: setEffectAccessor
       });

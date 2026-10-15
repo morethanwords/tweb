@@ -33,11 +33,6 @@
     padding-top: 12px;
 	}
 
-	.menu-send {
-		top: auto;
-    bottom: calc(100% + .5rem);
-	}
-
   .chat-input-secondary-button {
     padding: 0;
   }
@@ -122,22 +117,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-
-    .btn-menu-overlay {
-			z-index: 3;
-		}
-
-    @include respond-to(until-floating-left-sidebar) {
-      .btn-menu-reactions {
-        &-container {
-          --bubble-side-offset: 0;
-        }
-
-        &-bubble {
-          display: none;
-        }
-      }
-    }
 	}
 
 	.btn-icon {
@@ -890,6 +869,18 @@
         }
       }
     }
+  }
+}
+
+// * a send menu (sendContextMenu.ts) with no room past its end keeps the effects bar over itself,
+// * with no bubble pointing at the button
+.menu-send.effects-within-menu .btn-menu-reactions {
+  &-container {
+    --bubble-side-offset: 0;
+  }
+
+  &-bubble {
+    display: none;
   }
 }
 

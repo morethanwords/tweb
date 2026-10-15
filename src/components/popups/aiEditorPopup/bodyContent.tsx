@@ -217,7 +217,6 @@ export const AiEditorPopupBodyContent = () => {
                   onContextElement: sendButton,
                   middleware: createMiddleware().get(),
                   canSendWhenOnline,
-                  onRef: (element) => sendButton.parentElement.append(element),
                   withEffects,
                   effect,
                   onEffect: setEffect

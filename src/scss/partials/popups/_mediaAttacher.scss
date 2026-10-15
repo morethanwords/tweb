@@ -41,24 +41,9 @@
   .scrollable {
     position: relative;
   }
-
-  .btn-menu-overlay {
-    z-index: 3;
-  }
-
-  .menu-send {
-    z-index: 4;
-    top: calc(100% + .25rem);
-  }
 }
 
 .popup-new-media.popup-send-photo {
-  .menu-send {
-    top: unset;
-    bottom: 4.5rem;
-    inset-inline-end: var(--section-padding-inline);
-  }
-
   .popup-body {
     position: relative;
   }
@@ -201,16 +186,6 @@
     &-size {
       color: var(--input-placeholder-color);
       margin-top: .125rem;
-    }
-  }
-
-  .btn-menu-reactions {
-    &-container {
-      --bubble-side-offset: 0;
-    }
-
-    &-bubble {
-      display: none;
     }
   }
 

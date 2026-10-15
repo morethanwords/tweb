@@ -120,7 +120,6 @@ export default async function showForwardPopup(
   const listenerSetter = new ListenerSetter();
   const sendMenuMiddleware = getMiddleware();
   let sendMenu: SendMenu | undefined;
-  let sendMenuElement: HTMLElement | undefined;
   let silent = false;
   let scheduleDate: number | undefined;
   let scheduleRepeatPeriod: number | undefined;
@@ -242,11 +241,7 @@ export default async function showForwardPopup(
 
   const setupSendMenu = (btn: HTMLElement) => {
     if(!btn) return;
-    sendMenuElement?.remove();
-    sendMenuElement = undefined;
     sendMenuMiddleware.clean();
-
-    if(!popupContainerEl) return;
 
     sendMenu = new SendMenu({
       onSilentClick: () => {
@@ -289,10 +284,6 @@ export default async function showForwardPopup(
       onOpen: () => {
         const peerIds = (handle?.selector?.getSelected() ?? []).filter((k) => k.isPeerId());
         return peerIds.length > 0;
-      },
-      onRef: (element) => {
-        sendMenuElement = element;
-        popupContainerEl.appendChild(element);
       }
     });
 
@@ -356,10 +347,9 @@ export default async function showForwardPopup(
     };
   }
 
-  let btnRef: HTMLElement, inputField: InputFieldAnimated, popupContainerEl: HTMLElement;
+  let btnRef: HTMLElement, inputField: InputFieldAnimated;
   handle = showPickUserPopup({
     peerType: ['dialogs', 'contacts'],
-    containerProps: {ref: (el) => popupContainerEl = el},
     onSelect,
     onChange: () => {
       const selected = handle.selector.getSelected() ?? [];
@@ -426,7 +416,6 @@ export default async function showForwardPopup(
     },
     onClose: () => {
       listenerSetter.removeAll();
-      sendMenuElement?.remove();
       sendMenuMiddleware.destroy();
       starsStateDispose?.();
       handle.selector && (handle.selector.onStarsAmountUpdate = undefined);

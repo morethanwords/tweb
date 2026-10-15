@@ -223,6 +223,7 @@ export default function createChatAudio(
   function toggle(hide?: boolean): void {
     const current = !plate.container.classList.contains('is-visible');
     if((hide ??= !current) === current) return;
+    if(hide) playbackRateButton.closeMenu();
 
     SetTransition({
       element: plate.container,
@@ -325,6 +326,7 @@ export default function createChatAudio(
   return {
     container: plate.container,
     destroy: () => {
+      playbackRateButton.closeMenu();
       progressLine?.removeListeners();
       listenerSetter.removeAll();
       mediaListenerSetter.removeAll();

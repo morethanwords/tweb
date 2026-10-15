@@ -31,12 +31,6 @@
     margin: 0;
   }
 
-  .menu-send {
-    top: unset;
-    bottom: calc(var(--popup-footer-padding) + 3rem + .25rem);
-    inset-inline-end: calc(var(--popup-footer-padding) + .25rem);
-  }
-
   &-auto-height {
     height: auto !important;
 

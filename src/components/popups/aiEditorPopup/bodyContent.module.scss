@@ -246,11 +246,6 @@
   flex: 64px 0;
   display: flex;
 
-  :global(.menu-send) {
-    inset-block: auto calc(100% + 0.5rem);
-    inset-inline: auto 0;
-  }
-
   :global(.btn-send-effect-container) {
     bottom: -0.25rem;
   }

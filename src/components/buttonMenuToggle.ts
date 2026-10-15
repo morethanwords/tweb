@@ -111,7 +111,8 @@ export default function ButtonMenuToggle({
   icon = 'more',
   appendTo,
   floatingDirection,
-  positionPadding
+  positionPadding,
+  canOpen
 }: {
   buttonOptions?: Parameters<typeof ButtonIcon>[1],
   listenerSetter?: ListenerSetter,
@@ -126,7 +127,9 @@ export default function ButtonMenuToggle({
   onCloseAfter?: () => void,
   noIcon?: boolean,
   icon?: (string & {}) | Icon,
-  positionPadding?: MenuPositionPadding
+  positionPadding?: MenuPositionPadding,
+  // * asked once more right before the menu shows: false drops an open its trigger outlived
+  canOpen?: () => boolean
 }) {
   const resolvedButtonOptions = buttonOptions ? {...buttonOptions} : {};
   // Without the a11y layer a toggle given button options is a <div>, as it was
@@ -235,6 +238,11 @@ export default function ButtonMenuToggle({
       await doubleRaf();
       if(_tempId !== tempId) {
         _element.remove();
+      }
+
+      if(canOpen && !canOpen()) {
+        _element.remove();
+        return;
       }
 
       return _element
