@@ -65,10 +65,22 @@ export default class EditorToolbar {
   private listenerSetter = new ListenerSetter();
   private middlewareHelper = getMiddleware();
   private destroyed = false;
+  private premiumIndicators = new Set<HTMLElement>();
+  private premiumRequired = false;
 
   constructor(private options: EditorToolbarOptions) {this.construct();}
   private get editor() {return this.options.getEditor();}
   private get expandButton() {return this.options.expandButton;}
+
+  // a star on what the expanded editor offers, shown while posting it needs Premium; it stays
+  // hidden without the expand button, where nothing keeps it up to date
+  public createPremiumIndicator() {
+    const indicator = generatePremiumIcon();
+    indicator.classList.add('message-input-editor-premium-star');
+    indicator.hidden = !this.premiumRequired;
+    this.premiumIndicators.add(indicator);
+    return indicator;
+  }
 
   private captureContext(editor: ChatInputEditor) {
     const contextIsCurrent = this.options.captureContext();
@@ -322,18 +334,10 @@ export default class EditorToolbar {
   private construct() {
     if(!this.expandButton) return;
 
-    const premiumIndicators = new Set<HTMLElement>();
     let premiumIndicatorGeneration = 0;
-    const createPremiumIndicator = () => {
-      const indicator = generatePremiumIcon();
-      indicator.classList.add('message-input-editor-premium-star');
-      indicator.hidden = true;
-      premiumIndicators.add(indicator);
-      return indicator;
-    };
     const createPremiumLabel = (key: LangPackKey) => {
       const label = i18n(key);
-      label.append(createPremiumIndicator());
+      label.append(this.createPremiumIndicator());
       return label;
     };
     const withPremiumIndicator = (
@@ -348,14 +352,14 @@ export default class EditorToolbar {
     };
     const updatePremiumIndicators = async() => {
       const generation = ++premiumIndicatorGeneration;
+      let visible = false;
       try {
-        const visible = await this.options.getPremiumRequired?.() ?? false;
-        if(this.destroyed || generation !== premiumIndicatorGeneration) return;
-        premiumIndicators.forEach((indicator) => indicator.hidden = !visible);
-      } catch{
-        if(generation !== premiumIndicatorGeneration) return;
-        premiumIndicators.forEach((indicator) => indicator.hidden = true);
-      }
+        visible = await this.options.getPremiumRequired?.() ?? false;
+        if(this.destroyed) return;
+      } catch{}
+      if(generation !== premiumIndicatorGeneration) return;
+      this.premiumRequired = visible;
+      this.premiumIndicators.forEach((indicator) => indicator.hidden = !visible);
     };
     const unsubscribe = this.options.subscribeCapabilities?.(() => void updatePremiumIndicators());
     if(unsubscribe) this.middlewareHelper.onDestroy(unsubscribe);
@@ -430,9 +434,9 @@ export default class EditorToolbar {
       'formula',
       'Chat.Input.Editor.Toolbar.Math'
     );
-    listButton.append(createPremiumIndicator());
-    tableButton.append(createPremiumIndicator());
-    mathButton.append(createPremiumIndicator());
+    listButton.append(this.createPremiumIndicator());
+    tableButton.append(this.createPremiumIndicator());
+    mathButton.append(this.createPremiumIndicator());
 
     attachClickEvent(aiButton, () => {
       this.options.onAi?.();

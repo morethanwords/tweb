@@ -60,11 +60,12 @@ import {
   ungroupRichMediaNode,
   withoutRichMediaUpload
 } from '@components/chat/inputEditor/richMedia';
-import type {DocumentRowBlock} from '@lib/richMessage';
+import {richMessageToPlainMessage, type DocumentRowBlock} from '@lib/richMessage';
 import {RICH_MEDIA_ACTION_SETTLED_META} from '@components/chat/inputEditor/mediaUploadHistory';
 import {richReplacementSlice, selectedRichContent, withCopiedOrderedListStarts} from '@components/chat/inputEditor/selectionSlice';
 import {
   clampSelectionOutsideTrailingPlaceholder,
+  entitiesFittingPlainMessage,
   entitiesFittingSchema,
   isTrailingPlaceholderNode,
   normalizeBlockOnlyQuotes,
@@ -2202,6 +2203,17 @@ class TiptapChatInputEditor implements ChatInputEditor {
     });
   }
 
+  public getPlainMessage() {
+    if(this.getLegacyValueIfLossless()) return;
+    const {text, entities} = richMessageToPlainMessage(this.getRichMessage().output);
+    return {text, entities: entitiesFittingPlainMessage(entities)};
+  }
+
+  public convertToPlainMessage() {
+    const plain = this.getPlainMessage();
+    return !!plain && this.replaceAllText(plain.text, plain.entities);
+  }
+
   public async resolveAutoCodeLanguages() {
     const pending = new Map<string, Promise<string | undefined>>();
     this.editor.state.doc.descendants((node) => {
@@ -2802,9 +2814,10 @@ class TiptapChatInputEditor implements ChatInputEditor {
     const {state} = this.editor;
     const can = this.editor.can();
     switch(type) {
-      case 'bulletList': return can.toggleBulletList();
-      case 'orderedList': return can.toggleOrderedList();
-      case 'taskList': return can.toggleTaskList();
+      // a plain field's schema holds no list, so it has no command to ask either
+      case 'bulletList': return !!can.toggleBulletList?.();
+      case 'orderedList': return !!can.toggleOrderedList?.();
+      case 'taskList': return !!can.toggleTaskList?.();
       // Not `can().setNode`: without a dispatch Tiptap skips the `clearNodes`
       // that lets the real command convert a list item.
       case 'heading': return canInsertBlockAtSelection(state, 'heading');

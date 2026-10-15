@@ -32,14 +32,16 @@ export function isDecimalOrderedListType(value: unknown) {
  * A list item written as text — what stands for a list where a message carries
  * none: a rich list sent without formatting, a list pasted into a caption.
  */
-export function formatListItemMarker({ordered, value, type, checkbox, checked}: {
+export function formatListItemMarker({ordered, value, type, num, checkbox, checked}: {
   ordered: boolean,
   value?: number,
   type?: unknown,
+  /** The marker as an ordered item carries it (`num`), instead of one made of value and type. */
+  num?: string,
   checkbox?: boolean,
   checked?: boolean
 }) {
-  const marker = ordered ? `${formatOrderedListMarker(value, type)}. ` : '- ';
+  const marker = ordered ? `${num || formatOrderedListMarker(value, type)}. ` : '- ';
   return checkbox ? `${marker}[${checked ? 'x' : ' '}] ` : marker;
 }
 

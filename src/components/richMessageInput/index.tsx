@@ -35,6 +35,12 @@ type Selection = ReturnType<ChatInputEditor['captureSelection']>;
 export type RichMessageInputOptions = Pick<EditorToolbarOptions, 'canInsertMap' | 'getPremiumRequired' | 'subscribeCapabilities'> & {
   field?: InputFieldOptions,
   expandable?: boolean,
+  /**
+   * Whether rich text may be written now; checked again on every `subscribeCapabilities` update.
+   * Where not, the field is a plain message's, as a caption is: no expanded editor, and what only a
+   * rich message carries is written out as text (`richMessageToPlainMessage`).
+   */
+  canWriteRich?: () => Promise<boolean>,
   /** Optional outer element whose height participates in the application's layout. */
   layoutElement?: HTMLElement,
   tabIndex?: number,
@@ -73,6 +79,14 @@ export class RichMessageInputController {
   public expanded: boolean;
   private readonly layout: HTMLElement;
   private readonly expandButton: HTMLButtonElement;
+  /** Settles once the first answer on rich text is in and the editor runs on the schema it calls for. */
+  public readonly richReady: Promise<void>;
+  private richAvailable = true;
+  private richAvailableGeneration = 0;
+  // a rich message being edited is edited as one, wherever rich text may not be written anew
+  private richRequired = false;
+  private plainEditor = false;
+  private fieldHeight = 0;
   private readonly listenerSetter = new ListenerSetter();
   private readonly middlewareHelper = getMiddleware();
   private readonly reloadScheduler: ReturnType<typeof createChatInputEditorReloadScheduler>;
@@ -105,7 +119,8 @@ export class RichMessageInputController {
     this.content.append(this.field.heightWrapper, this.field.placeholder);
     this.row.append(this.content);
     this.field.onChangeHeight = (height) => {
-      this.row.classList.toggle('has-message-input-expand-button', !!this.expandButton && height >= 72);
+      this.fieldHeight = height;
+      this.syncExpandButton();
       if(!options.layoutElement) this.layout.style.setProperty('--message-input-collapsed-height', Math.max(48, height + 8) + 'px');
       options.onHeightChange?.(height);
     };
@@ -160,6 +175,11 @@ export class RichMessageInputController {
     this.listenerSetter.add(mediaSizes)('resize', () => this.syncHeight());
     this.syncHeight();
     this.setExpanded(false);
+    this.richReady = options.canWriteRich ? this.updateRichAvailable() : Promise.resolve();
+    if(options.canWriteRich) {
+      const unsubscribe = options.subscribeCapabilities?.(() => void this.updateRichAvailable());
+      if(unsubscribe) this.middlewareHelper.onDestroy(unsubscribe);
+    }
     const [uiRevision, setUiRevision] = createSignal(0);
     this.refreshAiVisibility = () => setUiRevision(value => value + 1);
     if(options.ai) useAiEditorButton({
@@ -181,6 +201,7 @@ export class RichMessageInputController {
   private editorOptions(): ChatInputEditorOptions {
     return {
       enableBlockSelection: false,
+      plainOnly: this.plainEditor || undefined,
       isNewLineShortcutPressed,
       onCodeBlockLanguagePicker: (element: HTMLElement) => this.toolbar?.openCodeLanguage(element),
       onLinkEditor: (selection: Selection) => void this.toolbar?.insertLink(selection),
@@ -210,16 +231,18 @@ export class RichMessageInputController {
   }
 
   public reloadEditor(create: CreateChatInputEditor, snapshot?: ChatInputEditorSnapshot) {
-    this.reloadScheduler.run(() => {
-      if(this.destroyed) return;
-      MarkupTooltip.getInstance().hide();
-      this.toolbar.close();
-      this.editor = reloadChatInputEditor(this.editor, create, this.editorOptions(), snapshot || this.editor.snapshot());
-      this.editor.setExpanded(!!this.expanded);
-      this.media?.rebindEditor();
-      this.field.syncFromInput();
-      this.toolbar.update();
-    });
+    this.reloadScheduler.run(() => this.replaceEditor(create, snapshot));
+  }
+
+  private replaceEditor(create: CreateChatInputEditor, snapshot?: ChatInputEditorSnapshot) {
+    if(this.destroyed) return;
+    MarkupTooltip.getInstance().hide();
+    this.toolbar.close();
+    this.editor = reloadChatInputEditor(this.editor, create, this.editorOptions(), snapshot || this.editor.snapshot());
+    this.editor.setExpanded(!!this.expanded);
+    this.media?.rebindEditor();
+    this.field.syncFromInput();
+    this.toolbar.update();
   }
 
   /** `asFile`: attached as files (the attach menu's File) — each one a file block, music an audio. */
@@ -264,10 +287,7 @@ export class RichMessageInputController {
   }
 
   private installListeners() {
-    this.listenerSetter.add(this.input)('input', (event) => {
-      this.media?.reconcile();
-      this.options.onInput?.(event);
-    });
+    this.listenerSetter.add(this.input)('input', (event) => this.onInput(event));
     this.listenerSetter.add(this.input)('chat-input-rich-media-upload-action', (event: Event) => {
       const {action, uploadId} = (event as CustomEvent<{action: 'remove' | 'retry', uploadId: string}>).detail;
       this.media?.handleAction(action, uploadId);
@@ -408,10 +428,68 @@ export class RichMessageInputController {
     }
   }
 
-  public get expandable() {return !!this.expandButton;}
+  public get expandable() {return !!this.expandButton && !this.shouldBePlain;}
+  public get canWriteRich() {return this.richAvailable;}
+
+  /**
+   * Editing a rich message: the field holds one, expanded editor included, even where rich text may
+   * not be written anew — as Android opens its rich editor for such an edit.
+   */
+  public requireRich(required: boolean) {
+    this.richRequired = required;
+    this.syncRichState();
+  }
+
+  private syncExpandButton() {
+    this.row.classList.toggle('has-message-input-expand-button', this.expandable && this.fieldHeight >= 72);
+  }
+
+  // where rich text may not be written, the expanded editor's button goes, an open one folds back
+  // and the field turns plain
+  private async updateRichAvailable() {
+    const generation = ++this.richAvailableGeneration;
+    let available: boolean;
+    try {
+      available = await this.options.canWriteRich();
+    } catch{
+      return;
+    }
+    if(this.destroyed || generation !== this.richAvailableGeneration) return;
+    this.richAvailable = available;
+    this.syncRichState();
+  }
+
+  private syncRichState() {
+    if(!this.expandable) this.setExpanded(false);
+    this.syncExpandButton();
+    this.syncEditorSchema();
+  }
+
+  private onInput(event: Event) {
+    this.media?.reconcile();
+    this.options.onInput?.(event);
+  }
+
+  private get shouldBePlain() {return !this.richAvailable && !this.richRequired;}
+
+  // a plain field runs on a plain message's schema, as a caption does; what it held that only a rich
+  // message carries is written out as text first, the way Remove Formatting does it
+  private syncEditorSchema() {
+    if(this.shouldBePlain === this.plainEditor) return;
+    this.reloadScheduler.run(() => {
+      const plain = this.shouldBePlain;
+      if(this.destroyed || plain === this.plainEditor) return;
+      const value = plain ? this.editor.getPlainMessage() : undefined;
+      if(value) this.editor.setTextWithEntities(value.text, value.entities);
+      this.plainEditor = plain;
+      this.replaceEditor(createEditor);
+      // the text was set silently: the host learns of it as of any edit (its send button, counters)
+      if(value) this.onInput(new Event('input'));
+    });
+  }
 
   public setExpanded(expanded: boolean, animate = false) {
-    if(!this.expandButton) return;
+    if(!this.expandButton || (expanded && !this.expandable)) return;
     if(this.expanded === expanded) {
       this.editor?.setExpanded(expanded);
       if(!animate) this.finishResize();

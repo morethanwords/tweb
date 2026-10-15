@@ -74,6 +74,15 @@ describe('plain message field', () => {
     expect(read.entities).toEqual(expect.arrayContaining(entities));
   });
 
+  // a chat input turns into a plain field where rich posting is off, and its toolbar keeps asking
+  test('answers that a list cannot be made, rather than throwing for the command it lacks', () => {
+    const {editor} = mountCaption();
+    editor.setTextWithEntities('caption');
+    for(const type of ['bulletList', 'orderedList', 'taskList'] as const) {
+      expect(editor.canApplyFormatting(type)).toBe(false);
+    }
+  });
+
   test('applies formatting through the same entry point as the chat input', () => {
     const {editor, inputField} = mountCaption();
     editor.setTextWithEntities('caption');

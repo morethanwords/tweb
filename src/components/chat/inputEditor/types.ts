@@ -267,6 +267,13 @@ export interface ChatInputEditor {
   getPendingRichMediaUploadIds(): string[];
   getReferencedRichMediaUploadIds(): string[] | undefined;
   getRichMessage(options?: {draft?: boolean}): ChatInputRichMessage;
+  /**
+   * The content as a plain message (`richMessageToPlainMessage`), where it holds what only a rich
+   * message carries; undefined where it is a plain message already.
+   */
+  getPlainMessage(): {text: string, entities: MessageEntity[]} | undefined;
+  /** Leaves only what a plain message carries, as one step undo takes back: Android's Remove Formatting. */
+  convertToPlainMessage(): boolean;
   getSelectedRichMessage(): ChatInputRichMessage | undefined;
   getSelectedLink(): ChatInputSelectedLink | undefined;
   getSelectedMap(): ChatInputMapOptions | undefined;

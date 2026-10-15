@@ -1,5 +1,7 @@
-import {MessageEntity, Page, PageBlock, PageCaption, RichMessage, RichText, TextWithEntities} from '@layer';
+import {MessageEntity, Page, PageBlock, PageCaption, PageListOrderedItem, RichMessage, RichText, TextWithEntities} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
+import sortEntities from '@lib/richTextProcessor/sortEntities';
+import {formatListItemMarker} from '@lib/richTextProcessor/orderedList';
 import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
 
 const emptyRichText: RichText = {_: 'textEmpty'};
@@ -380,9 +382,12 @@ function appendEntities(summary: Summary, entities: MessageEntity[], offset: num
 }
 
 function joinRichTexts(texts: RichText[], separator: string): TextWithEntities {
+  return joinTexts(texts.map(wrapSummaryRichText), separator);
+}
+
+function joinTexts(texts: TextWithEntities[], separator: string): Summary {
   const joined = emptySummary();
-  for(const [index, text] of texts.entries()) {
-    const textWithEntities = wrapSummaryRichText(text);
+  for(const [index, textWithEntities] of texts.entries()) {
     const offset = joined.text.length + (index ? separator.length : 0);
     if(index) {
       joined.text += separator;
@@ -393,4 +398,141 @@ function joinRichTexts(texts: RichText[], separator: string): TextWithEntities {
   }
 
   return joined;
+}
+
+const PLAIN_MESSAGE_DIVIDER = '——————————';
+const PLAIN_MESSAGE_TABLE_CELL_SEPARATOR = '  |  ';
+
+/**
+ * A rich message as a plain one, for a sender who may not post rich text. What a plain message
+ * carries stays — bold, links, code, a quote with its author; a heading turns bold and a formula
+ * code, a list and a table are written out as text, and a picture leaves its caption. Android's
+ * conversion (RichMessageConvert) does the same. Entities only a rich message carries (a highlight,
+ * an index) are left for the receiving field to drop.
+ */
+export function richMessageToPlainMessage(richMessage: RichMessage): Summary {
+  const plain = joinTexts(plainMessageBlocks(richMessage.blocks || []), '\n');
+  sortEntities(plain.entities);
+  return plain;
+}
+
+function plainMessageBlocks(blocks: PageBlock[], depth = 0) {
+  return blocks.map((block) => plainMessageBlock(block, depth)).filter(Boolean);
+}
+
+function plainMessageBlock(block: PageBlock, depth: number): Summary | undefined {
+  switch(block._) {
+    case 'pageBlockParagraph':
+    case 'pageBlockFooter':
+    case 'pageBlockKicker':
+    case 'pageBlockThinking':
+      return wrapSummaryRichText(block.text);
+    case 'pageBlockTitle':
+    case 'pageBlockSubtitle':
+    case 'pageBlockHeader':
+    case 'pageBlockSubheader':
+    case 'pageBlockHeading1':
+    case 'pageBlockHeading2':
+    case 'pageBlockHeading3':
+    case 'pageBlockHeading4':
+    case 'pageBlockHeading5':
+    case 'pageBlockHeading6':
+      return withWholeEntity(wrapSummaryRichText(block.text), (length) => ({_: 'messageEntityBold', offset: 0, length}));
+    case 'pageBlockPreformatted':
+      return withWholeEntity(wrapSummaryRichText(block.text), (length) => ({_: 'messageEntityPre', offset: 0, length, language: block.language || ''}));
+    case 'pageBlockMath':
+      return withWholeEntity(plainText(block.source), (length) => ({_: 'messageEntityCode', offset: 0, length}));
+    case 'pageBlockDivider':
+      return plainText(PLAIN_MESSAGE_DIVIDER);
+    case 'pageBlockBlockquote':
+    case 'pageBlockPullquote':
+      return quotedPlainMessage(wrapSummaryRichText(block.text), block.caption);
+    case 'pageBlockBlockquoteBlocks':
+      return quotedPlainMessage(joinTexts(plainMessageBlocks(block.blocks, depth), '\n'), block.caption);
+    case 'pageBlockDetails':
+      return joinTexts(nonEmpty([wrapSummaryRichText(block.title), ...plainMessageBlocks(block.blocks, depth)]), '\n');
+    case 'pageBlockList':
+    case 'pageBlockOrderedList':
+      return joinTexts(block.items.map((item, index) => {
+        const content = 'text' in item ?
+          wrapSummaryRichText(item.text) :
+          joinTexts(plainMessageBlocks(item.blocks, depth + 1), '\n');
+        return prefixedText('  '.repeat(depth) + plainMessageListMarker(block, index), content);
+      }), '\n');
+    case 'pageBlockTable':
+      return joinTexts(nonEmpty([
+        wrapSummaryRichText(block.title),
+        ...block.rows.map((row) => joinRichTexts(row.cells.map((cell) => cell.text || emptyRichText), PLAIN_MESSAGE_TABLE_CELL_SEPARATOR))
+      ]), '\n');
+    case 'pageBlockAuthorDate':
+      return wrapSummaryRichText(block.author);
+    case 'pageBlockCover':
+      return plainMessageBlock(block.cover, depth);
+    case 'pageBlockPhoto':
+    case 'pageBlockVideo':
+    case 'pageBlockAudio':
+    case 'pageBlockDocument':
+    case 'pageBlockMap':
+    case 'inputPageBlockMap':
+    case 'pageBlockEmbed':
+    case 'pageBlockEmbedPost':
+    case 'pageBlockCollage':
+    case 'pageBlockSlideshow': {
+      const caption = joinTexts(nonEmpty([block.caption?.text, block.caption?.credit].map((text) => wrapSummaryRichText(text || emptyRichText))), '\n');
+      return caption.text ? caption : undefined;
+    }
+  }
+}
+
+function plainMessageListMarker(block: PageBlock.pageBlockList | PageBlock.pageBlockOrderedList, index: number) {
+  const item = block.items[index];
+  const {checkbox, checked} = item.pFlags;
+  if(block._ === 'pageBlockList') {
+    return formatListItemMarker({ordered: false, checkbox, checked});
+  }
+
+  const number = getOrderedListItemNumber(block, index);
+  const value = Number(number);
+  return formatListItemMarker({
+    ordered: true,
+    ...(Number.isInteger(value) ?
+      {value, type: (item as PageListOrderedItem).type || block.type} :
+      {num: number}),
+    checkbox,
+    checked
+  });
+}
+
+function quotedPlainMessage(body: Summary, author: RichText) {
+  const authorText = wrapSummaryRichText(author || emptyRichText);
+  const quote = joinTexts(nonEmpty([
+    body,
+    authorText.text ? prefixedText('— ', authorText) : undefined
+  ]), '\n');
+  if(!quote.text) return;
+  return withWholeEntity(quote, (length) => ({_: 'messageEntityBlockquote', offset: 0, length, pFlags: {}}));
+}
+
+// the entity over the whole text takes in the ones of its kind inside it: a bold heading's own bold
+// would be a second bold over the same letters, a quote in a quote one a plain message cannot hold
+function withWholeEntity(textWithEntities: TextWithEntities, entity: (length: number) => MessageEntity): Summary | undefined {
+  if(!textWithEntities.text) return;
+  const whole = entity(textWithEntities.text.length);
+  return {
+    _: 'textWithEntities',
+    text: textWithEntities.text,
+    entities: [whole, ...textWithEntities.entities.filter((inner) => inner._ !== whole._)]
+  };
+}
+
+function prefixedText(prefix: string, textWithEntities: TextWithEntities): Summary {
+  return joinTexts([plainText(prefix), textWithEntities], '');
+}
+
+function plainText(text: string): Summary {
+  return {_: 'textWithEntities', text: text || '', entities: []};
+}
+
+function nonEmpty(texts: TextWithEntities[]) {
+  return texts.filter((text) => text?.text);
 }

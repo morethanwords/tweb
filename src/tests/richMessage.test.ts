@@ -1,6 +1,7 @@
-import {PageBlock, RichMessage, RichText} from '@layer';
+import {PageBlock, PageCaption, RichMessage, RichText} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
-import {flattenRichMessageContent, flattenRichMessageSummary, isRichMessageFullWidth, richMessageToPage} from '@lib/richMessage';
+import {flattenRichMessageContent, flattenRichMessageSummary, isRichMessageFullWidth, richMessageToPage, richMessageToPlainMessage} from '@lib/richMessage';
+import {entitiesFittingPlainMessage} from '@components/chat/inputEditor/model';
 
 const text = (value: string): RichText => ({_: 'textPlain', text: value});
 
@@ -381,5 +382,131 @@ describe('isRichMessageFullWidth', () => {
     expect(isRichMessageFullWidth([{_: 'pageBlockList', items: [{_: 'pageListItemText', pFlags: {}, text: text('item')}]} as PageBlock])).toBe(false);
     expect(isRichMessageFullWidth([{_: 'pageBlockList', items: [{_: 'pageListItemBlocks', pFlags: {}, blocks: [buttonRow]}]} as PageBlock])).toBe(true);
     expect(isRichMessageFullWidth([{_: 'pageBlockOrderedList', pFlags: {}, items: [{_: 'pageListOrderedItemBlocks', pFlags: {}, num: '1', blocks: [table]}]} as PageBlock])).toBe(true);
+  });
+});
+
+// Android's RichMessageConvert is the reference: what a plain message carries stays, a heading turns
+// bold, a formula code, lists and tables are written out, a picture leaves its caption
+describe('richMessageToPlainMessage', () => {
+  const caption = (value: string, credit = ''): PageCaption => ({_: 'pageCaption', text: text(value), credit: text(credit)});
+
+  test('keeps the formatting a plain message carries', () => {
+    const plain = richMessageToPlainMessage(richMessage([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textConcat', texts: [
+        {_: 'textBold', text: text('Bold')},
+        text(' '),
+        {_: 'textUrl', text: text('link'), url: 'https://telegram.org', webpage_id: '0'}
+      ]}
+    }]));
+
+    expect(plain.text).toBe('Bold link');
+    expect(plain.entities).toEqual([
+      {_: 'messageEntityBold', offset: 0, length: 4},
+      expect.objectContaining({_: 'messageEntityTextUrl', offset: 5, length: 4, url: 'https://telegram.org'})
+    ]);
+  });
+
+  test('turns headings bold, formulas into code and a divider into a line', () => {
+    const plain = richMessageToPlainMessage(richMessage([
+      {_: 'pageBlockHeading2', text: text('Title')},
+      {_: 'pageBlockMath', source: 'x^2'},
+      {_: 'pageBlockDivider'},
+      {_: 'pageBlockPreformatted', text: text('let a;'), language: 'js'}
+    ]));
+
+    expect(plain.text).toBe('Title\nx^2\n——————————\nlet a;');
+    expect(plain.entities).toEqual([
+      {_: 'messageEntityBold', offset: 0, length: 5},
+      {_: 'messageEntityCode', offset: 6, length: 3},
+      {_: 'messageEntityPre', offset: 21, length: 6, language: 'js'}
+    ]);
+  });
+
+  // a document holds one bold over a letter: a second one would make the field refuse the text
+  test('keeps one bold over a heading that is bold in part already', () => {
+    const plain = richMessageToPlainMessage(richMessage([{
+      _: 'pageBlockHeading1',
+      text: {_: 'textConcat', texts: [{_: 'textBold', text: text('Big')}, text(' news')]}
+    }]));
+
+    expect(plain.entities).toEqual([{_: 'messageEntityBold', offset: 0, length: 8}]);
+  });
+
+  test('writes lists out with the markers a pasted list gets', () => {
+    const plain = richMessageToPlainMessage(richMessage([
+      {_: 'pageBlockList', items: [
+        {_: 'pageListItemText', pFlags: {checkbox: true, checked: true}, text: text('done')},
+        {_: 'pageListItemBlocks', pFlags: {}, blocks: [
+          {_: 'pageBlockParagraph', text: text('outer')},
+          {_: 'pageBlockOrderedList', pFlags: {}, items: [
+            {_: 'pageListOrderedItemText', pFlags: {}, text: text('inner')}
+          ]}
+        ]}
+      ]},
+      {_: 'pageBlockOrderedList', pFlags: {}, start: 3, type: 'a', items: [
+        {_: 'pageListOrderedItemText', pFlags: {}, text: text('third')}
+      ]}
+    ]));
+
+    expect(plain.text).toBe('- [x] done\n- outer\n  1. inner\nc. third');
+  });
+
+  test('writes a table out row by row under its title', () => {
+    const cell = (value: string) => ({_: 'pageTableCell' as const, pFlags: {}, text: text(value)});
+    const plain = richMessageToPlainMessage(richMessage([{
+      _: 'pageBlockTable',
+      pFlags: {},
+      title: text('Prices'),
+      rows: [
+        {_: 'pageTableRow', cells: [cell('Tea'), cell('2')]},
+        {_: 'pageTableRow', cells: [cell('Coffee'), cell('3')]}
+      ]
+    }]));
+
+    expect(plain.text).toBe('Prices\nTea  |  2\nCoffee  |  3');
+  });
+
+  test('quotes a quote with its author, and a quote inside it is not quoted twice', () => {
+    const plain = richMessageToPlainMessage(richMessage([{
+      _: 'pageBlockBlockquoteBlocks',
+      caption: text('Author'),
+      blocks: [
+        {_: 'pageBlockParagraph', text: text('Words')},
+        {_: 'pageBlockBlockquote', pFlags: {}, text: text('Inner'), caption: {_: 'textEmpty'}}
+      ]
+    }]));
+
+    expect(plain.text).toBe('Words\nInner\n— Author');
+    expect(plain.entities).toEqual([
+      {_: 'messageEntityBlockquote', offset: 0, length: plain.text.length, pFlags: {}}
+    ]);
+  });
+
+  test('leaves a picture its caption and drops one without', () => {
+    const plain = richMessageToPlainMessage(richMessage([
+      {_: 'pageBlockPhoto', pFlags: {}, photo_id: '1', caption: caption('Sunset', 'Photo: me')},
+      {_: 'pageBlockVideo', pFlags: {}, video_id: '2', caption: caption('')},
+      {_: 'pageBlockParagraph', text: text('After')}
+    ]));
+
+    expect(plain.text).toBe('Sunset\nPhoto: me\nAfter');
+  });
+
+  test('leaves out what only a rich message carries once fitted to a plain one', () => {
+    const plain = richMessageToPlainMessage(richMessage([{
+      _: 'pageBlockParagraph',
+      text: {_: 'textConcat', texts: [
+        {_: 'textMarked', text: text('marked')},
+        text(' '),
+        {_: 'textSubscript', text: text('2')},
+        text(' '),
+        {_: 'textItalic', text: text('kept')}
+      ]}
+    }]));
+
+    expect(entitiesFittingPlainMessage(plain.entities)).toEqual([
+      {_: 'messageEntityItalic', offset: 9, length: 4}
+    ]);
   });
 });

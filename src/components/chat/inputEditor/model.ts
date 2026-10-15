@@ -10,6 +10,7 @@ import {
 } from '@components/chat/inputEditor/tableSchema';
 import {listItemMarkers} from '@components/chat/inputEditor/orderedList';
 import {getEffectiveCodeBlockLanguage} from '@components/chat/inputEditor/codeLanguage';
+import {PLAIN_MESSAGE_MARK_NAMES, PLAIN_MESSAGE_NODE_NAMES} from '@components/chat/inputEditor/plainSchema';
 
 type ProseMirrorNode = Editor['state']['doc'];
 type ProseMirrorMark = ProseMirrorNode['marks'][number];
@@ -409,14 +410,45 @@ function splitInlineQuotes(node: JSONContent): JSONContent[] {
  * document invalid, and the field showed nothing at all.
  */
 export function entitiesFittingSchema(entities: MessageEntity[], schema: Schema) {
+  return entitiesFitting(entities, (name) => !!schema.nodes[name], (name) => !!schema.marks[name]);
+}
+
+// what a plain message detects in its text by itself; every other entity with no mark is a rich one's
+const PLAIN_MESSAGE_UNMARKED_ENTITIES = new Set<MessageEntity['_']>([
+  'messageEntityBankCard',
+  'messageEntityBotCommand',
+  'messageEntityCashtag',
+  'messageEntityEmail',
+  'messageEntityHashtag',
+  'messageEntityMention',
+  'messageEntityPhone',
+  'messageEntityUrl'
+]);
+
+/** The entities of a value that a plain message can carry — a rich message's text sent as one. */
+export function entitiesFittingPlainMessage(entities: MessageEntity[]) {
+  return entitiesFitting(
+    entities,
+    (name) => PLAIN_MESSAGE_NODE_NAMES.has(name),
+    (name) => PLAIN_MESSAGE_MARK_NAMES.has(name),
+    (entity) => PLAIN_MESSAGE_UNMARKED_ENTITIES.has(entity._)
+  );
+}
+
+function entitiesFitting(
+  entities: MessageEntity[],
+  hasNode: (name: string) => boolean,
+  hasMark: (name: string) => boolean,
+  keepUnmarked: (entity: MessageEntity) => boolean = () => true
+) {
   return entities.filter((entity) => {
     switch(entity._) {
-      case 'messageEntityBlockquote': return !!schema.nodes.blockquote;
-      case 'messageEntityPre': return !!schema.nodes.codeBlock;
-      case 'messageEntityCustomEmoji': return !!schema.nodes.customEmoji;
+      case 'messageEntityBlockquote': return hasNode('blockquote');
+      case 'messageEntityPre': return hasNode('codeBlock');
+      case 'messageEntityCustomEmoji': return hasNode('customEmoji');
     }
     const mark = entityToMark(entity);
-    return !mark || !!schema.marks[mark.type];
+    return mark ? hasMark(mark.type) : keepUnmarked(entity);
   });
 }
 

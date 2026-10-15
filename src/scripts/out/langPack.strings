@@ -490,8 +490,8 @@
 "RichMessage.PremiumRequired.Text" = "This message uses rich formatting, which requires Telegram Premium.";
 "RichMessage.SubscribeToPremium" = "Subscribe to Premium";
 "RichMessage.Unavailable.Title" = "Rich Text Is Unavailable";
-"RichMessage.Unavailable.Text" = "Rich text posting is currently disabled. You can send this message without rich formatting instead.";
-"RichMessage.SendWithoutFormatting" = "Send Without Formatting";
+"RichMessage.Unavailable.Text" = "Rich text posting is currently disabled. You can remove the rich formatting and send this message as plain text.";
+"RichMessage.RemoveFormatting" = "Remove Formatting";
 "Checkbox.Enabled" = "Enabled";
 "Checkbox.Disabled" = "Disabled";
 "Error.PreviewSender.CaptionTooLong" = "Caption is too long.";

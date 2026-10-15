@@ -186,7 +186,9 @@ import createChatInputState, {ChatInputState} from './inputState';
 import {ChatInputEditor, ChatInputEditorInputEvent, ChatInputRichMessage} from './inputEditor';
 import {getChatInputEditor} from './inputEditor/registry';
 import canSafelyEditRichMessage from './inputEditor/richMessageEditability';
-import {canFallbackRichMessageToPlain, getAttachRichMediaTarget, RichMediaItemInsertAction} from '@components/chat/inputEditor/mediaPaste';
+import {getAttachRichMediaTarget, RichMediaItemInsertAction} from '@components/chat/inputEditor/mediaPaste';
+import {entitiesFittingPlainMessage} from '@components/chat/inputEditor/model';
+import {richMessageToPlainMessage} from '@lib/richMessage';
 import {canShowAttachMenuAction} from '@components/chat/inputEditor/attachMenuPolicy';
 import type {RichMessageAttachMenuAction} from '@components/chat/inputEditor/attachMenuPolicy';
 import {getRichMessageMediaRequiredRight} from '@helpers/files/richMessageMediaInsertPolicy';
@@ -335,9 +337,15 @@ export default class ChatInput {
         const state = await this.managers.appMessagesManager.getRichMessagePostingState();
         return state.mode === 'premium' && !state.allowed;
       },
+      // as Android has it: where the server turned rich messages off, the field is a plain one
+      canWriteRich: async() => (await this.managers.appMessagesManager.getRichMessagePostingState()).available,
       subscribeCapabilities: (update) => {
         rootScope.addEventListener('premium_toggle', update);
-        return () => rootScope.removeEventListener('premium_toggle', update);
+        rootScope.addEventListener('app_config', update);
+        return () => {
+          rootScope.removeEventListener('premium_toggle', update);
+          rootScope.removeEventListener('app_config', update);
+        };
       },
       onSubmit: () => {void this.sendMessage();},
       onInput: this.onMessageInput,
@@ -1271,8 +1279,14 @@ export default class ChatInput {
 
     const inputThis = this;
     let attachMenuEditorSelection: ReturnType<ChatInputEditor['captureSelection']>;
-    const createAttachPremiumLabel = (key: LangPackKey) => {
+    const createAttachPremiumLabel = (key: LangPackKey, richMessage?: boolean) => {
       const label = i18n(key);
+      // what only the expanded editor offers takes the editor's own star, which follows
+      // rich_message_posting like its toolbar; the rest show it without Premium
+      if(richMessage) {
+        label.append(this.richMessageInput.toolbar.createPremiumIndicator());
+        return label;
+      }
       const indicator = generatePremiumIcon();
       indicator.classList.add('message-input-editor-premium-star');
       indicator.hidden = rootScope.premium;
@@ -1311,7 +1325,7 @@ export default class ChatInput {
     }, {
       icon: 'note',
       richMessageAction: 'audio',
-      textElement: createAttachPremiumLabel('Chat.Input.Editor.Toolbar.Audio'),
+      textElement: createAttachPremiumLabel('Chat.Input.Editor.Toolbar.Audio', true),
       onClick: () => this.onAttachClick(
         false,
         false,
@@ -1367,16 +1381,18 @@ export default class ChatInput {
       richMessageAction: 'location',
       textElement: createAttachPremiumLabel('AttachLocation'),
       onClick: () => void this.richMessageInput.showMap(attachMenuEditorSelection),
+      // a map is a rich message's block: none in a plain field
       verify: () => (
         !this.editMsgId &&
         !!this.messageInputEditor &&
+        !!this.richMessageInput?.canWriteRich &&
         this.managers.appMessagesManager.isRichMessageMapAvailable()
       )
     }, {
       // opens the expanded editor even when it is empty, where the expand button is not shown yet
       icon: 'text_add',
       richMessageAction: 'article',
-      text: 'Chat.Input.Attach.Article',
+      textElement: createAttachPremiumLabel('Chat.Input.Attach.Article', true),
       onClick: () => {
         this.setMessageInputExpanded(true, true);
         // the menu's focus trap would pull the caret back and then hand it to the attach button
@@ -1390,7 +1406,7 @@ export default class ChatInput {
     }, {
       icon: 'group',
       richMessageAction: 'groupCollage',
-      textElement: createAttachPremiumLabel('Chat.Input.Editor.Media.GroupAsCollage'),
+      textElement: createAttachPremiumLabel('Chat.Input.Editor.Media.GroupAsCollage', true),
       onClick: () => runAttachEditorCommand((editor) => (
         editor.groupSelectedRichMedia('collage')
       )),
@@ -1401,7 +1417,7 @@ export default class ChatInput {
     }, {
       icon: 'flip',
       richMessageAction: 'groupSlideshow',
-      textElement: createAttachPremiumLabel('Chat.Input.Editor.Media.GroupAsSlideshow'),
+      textElement: createAttachPremiumLabel('Chat.Input.Editor.Media.GroupAsSlideshow', true),
       onClick: () => runAttachEditorCommand((editor) => (
         editor.groupSelectedRichMedia('slideshow')
       )),
@@ -2698,6 +2714,10 @@ export default class ChatInput {
 
     const middleware = this.getMiddleware();
     const generation = this.inputValueGeneration;
+    // the field settles on the schema rich posting calls for first: an editor replaced while the
+    // draft is fetched would drop it as stale, and an untouched rich draft would be converted
+    await this.richMessageInput?.richReady;
+    if(!middleware() || generation !== this.inputValueGeneration) return false;
     const contentIsCurrent = captureInputContent(this.messageInput, this.messageInputEditor);
     const isCurrent = () => middleware() && generation === this.inputValueGeneration && contentIsCurrent(this.messageInputEditor);
 
@@ -2752,6 +2772,13 @@ export default class ChatInput {
     const draftReplyToMsgId = replyTo?.reply_to_msg_id;
     if(draftsAreEqual(draft, currentDraft)) {
       this.suppressDraftSyncForUnsupportedRichMessage = false;
+      return false;
+    }
+
+    // as Android has it: where rich text may not be written, a rich draft is not shown, and it stays
+    // on the server until something of the field's own replaces it
+    if(draft.rich_message && this.richMessageInput && !this.richMessageInput.canWriteRich) {
+      this.suppressDraftSyncForUnsupportedRichMessage = true;
       return false;
     }
 
@@ -4756,10 +4783,13 @@ export default class ChatInput {
     slowModeParams,
     paidMessageInterceptor,
     ephemeral,
-    text
+    text,
+    collapseInputField
   }: {
     sendingParams: MessageSendingParams,
     inputField?: InputFieldAnimated,
+    /** Folds the field's expanded editor, where a quote is always a rich one. */
+    collapseInputField?: () => void,
     chatType?: ChatType,
     forwarding?: ChatInput['forwarding'],
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
@@ -4794,23 +4824,33 @@ export default class ChatInput {
       value = legacyValue.value;
       entities = legacyValue.entities;
     }
-    const trimmedValue = value.trim();
     let richMessage = sendTextParams.richMessage || (
       editorHasContent && !legacyValue ?
         editor.getRichMessage() :
         undefined
     );
     if(richMessage) {
-      const postingChoice = await getRichMessagePostingChoice(
-        rootScope.managers,
-        canFallbackRichMessageToPlain(richMessage)
-      );
+      const postingChoice = await getRichMessagePostingChoice(rootScope.managers);
       if(postingChoice === 'cancel') return false;
       if(postingChoice === 'plain') {
+        // as Android has it: the formatting goes in the field, where the result can be read and
+        // undone, and nothing is sent yet
+        // in the folded field, since the expanded editor would make a quote rich again
+        if(!sendTextParams.richMessage) {
+          if(contentIsCurrent(getChatInputEditor(inputField.input))) {
+            collapseInputField?.();
+            getChatInputEditor(inputField.input).convertToPlainMessage();
+          }
+          return false;
+        }
+
+        const plain = richMessageToPlainMessage(richMessage.output);
+        value = plain.text;
+        entities = entitiesFittingPlainMessage(plain.entities);
         richMessage = undefined;
-        entities = [];
       }
     }
+    const trimmedValue = value.trim();
     if(richMessage && sendingParams.suggestedPost?.hasMedia) {
       toastNew({langPackKey: 'RichMessage.Error.MediaUnsupported'});
       return false;
@@ -4942,6 +4982,7 @@ export default class ChatInput {
       const isEphemeral = !!sendingParams.ephemeral;
       const result = await ChatInput.sendMessageWithForward({
         inputField: this.messageInputField,
+        collapseInputField: () => this.setMessageInputExpanded(false, true),
         sendingParams,
         chatType: chat.type,
         forwarding: this.forwarding,
@@ -5606,6 +5647,9 @@ export default class ChatInput {
 
   public clearHelper(type?: ChatInputHelperType, willHaveHelper?: boolean) {
     if(type !== 'edit' || !willHaveHelper) ++this.messageEditingGeneration;
+    // the field takes its plain schema back before it is cleared and the draft is restored: a
+    // restore begun in the editor that is about to be replaced would be dropped as stale
+    this.richMessageInput?.requireRich(false);
     if(this.helperType === 'edit' && type !== 'edit') {
       this.clearInput();
     }
@@ -5800,6 +5844,7 @@ export default class ChatInput {
     }
 
     if(input !== undefined || richMessage) {
+      if(isEditing) this.richMessageInput?.requireRich(!!richMessage);
       this.setInputValue(input || '', true, true, undefined, richMessage);
     }
 

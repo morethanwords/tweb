@@ -1,8 +1,5 @@
-import type {
-  ChatInputEditorSelection,
-  ChatInputRichMessage
-} from '@components/chat/inputEditor/types';
-import type {Document, PageBlock, Photo} from '@layer';
+import type {ChatInputEditorSelection} from '@components/chat/inputEditor/types';
+import type {Document, Photo} from '@layer';
 
 type RichMediaItemActionBase = {
   activeIndex: number,
@@ -90,31 +87,4 @@ export function shouldInsertRichMediaFiles<T>(
   target: ChatInputEditorSelection | undefined
 ) {
   return !!(target && files.length);
-}
-
-const EMBEDDED_RICH_MEDIA_BLOCKS = new Set([
-  'inputPageBlockMap',
-  'pageBlockAudio',
-  'pageBlockDocument',
-  'pageBlockCollage',
-  'pageBlockMap',
-  'pageBlockPhoto',
-  'pageBlockSlideshow',
-  'pageBlockVideo'
-]);
-
-export function canFallbackRichMessageToPlain(
-  richMessage: ChatInputRichMessage
-) {
-  const hasMedia = (block: PageBlock): boolean => {
-    if(EMBEDDED_RICH_MEDIA_BLOCKS.has(block._)) return true;
-    if(block._ === 'pageBlockDetails' || block._ === 'pageBlockBlockquoteBlocks') {
-      return block.blocks.some(hasMedia);
-    }
-    if(block._ === 'pageBlockList' || block._ === 'pageBlockOrderedList') {
-      return block.items.some(item => 'blocks' in item && item.blocks.some(hasMedia));
-    }
-    return false;
-  };
-  return !richMessage.input.blocks.some(hasMedia);
 }

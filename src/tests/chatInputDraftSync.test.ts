@@ -3,6 +3,8 @@ import '@helpers/peerIdPolyfill';
 import ChatInput from '@components/chat/input';
 import {ChatType} from '@components/chat/chatType';
 import {mountChatInputEditor} from '@/tests/helpers/chatInputEditor';
+import createChatInputEditor from '@components/chat/inputEditor';
+import reloadChatInputEditor from '@components/chat/inputEditor/reload';
 import type {DraftMessage} from '@layer';
 
 vi.mock('@lib/appImManager', () => ({AppImManager: class {}, APP_TABS: {}, default: {}}));
@@ -32,7 +34,7 @@ const unsupportedDraft = (): DraftMessage.draftMessage => ({
 let mounted: ReturnType<typeof mountChatInputEditor>;
 afterEach(() => {mounted?.editor.destroy(); mounted?.input.remove(); frames.length = 0;});
 
-function setup() {
+function setup({canWriteRich = true} = {}) {
   mounted = mountChatInputEditor();
   const {editor, input} = mounted;
   let effect: string;
@@ -42,7 +44,8 @@ function setup() {
     messageInput: input,
     richMessageInput: {
       editor,
-      field: {input, syncFromInput() {}, setValueSilently: (value: string | Node) => editor.setContent(value)}
+      canWriteRich,
+      field: {input, syncFromInput() {}, setValueSilently: (value: string | Node) => host.richMessageInput.editor.setContent(value)}
     },
     inputValueGeneration: 0,
     managers: {appDraftsManager: {syncDraft, getDraft: async(): Promise<undefined> => undefined}},
@@ -54,7 +57,7 @@ function setup() {
     clearInput: vi.fn(async(_restore: boolean, _emit: boolean, value = '') => {
       ++host.inputValueGeneration;
       host.appliedInputDraft = undefined;
-      editor.setTextWithEntities(value);
+      host.richMessageInput.editor.setTextWithEntities(value);
     }),
     onMessageInput: vi.fn((_event?: Event, suppressDraftSync?: boolean) => {
       if(!suppressDraftSync && !host.processingDraftMessage) host.saveDraft();
@@ -190,4 +193,47 @@ test('saves what is typed over a rich draft the composer could not load', async(
   host.saveDraft();
   expect(syncDraft).toHaveBeenCalledTimes(1);
   expect(syncDraft.mock.calls[0][0].localDraft.message).toBe('My own text');
+});
+
+// as Android has it: where rich text may not be written, a rich draft is not shown, and it stays on
+// the server until something of the field's own replaces it
+test('keeps a rich draft out of a field that may not write rich text', async() => {
+  const {host, editor, syncDraft} = setup({canWriteRich: false});
+  toastNew.mockClear();
+  expect(await host.setDraft(richDraft('Remote'), true)).toBe(false);
+  expect(editor.getRichValue().value).toBe('');
+  expect(toastNew).not.toHaveBeenCalled();
+
+  host.saveDraft();
+  expect(syncDraft).not.toHaveBeenCalled();
+
+  editor.setTextWithEntities('My own text');
+  host.acceptUserEditOverUnsupportedRichMessageDraft();
+  host.saveDraft();
+  expect(syncDraft).toHaveBeenCalledTimes(1);
+  expect(syncDraft.mock.calls[0][0].localDraft.message).toBe('My own text');
+});
+
+// the field picks its schema once rich posting's answer is in, replacing the editor: a draft fetched
+// meanwhile must land in the new one, not be dropped as stale and then saved over as an empty field
+test('restores a draft into the editor the field settles on', async() => {
+  const {host, editor, syncDraft, flush} = setup();
+  let settle: () => void;
+  host.richMessageInput.richReady = new Promise<void>((resolve) => settle = resolve);
+  let answer: (draft: DraftMessage.draftMessage) => void;
+  host.managers.appDraftsManager.getDraft = () => new Promise((resolve) => answer = resolve);
+
+  const restoring = host.setDraft(undefined, false);
+  const replacement = reloadChatInputEditor(editor, createChatInputEditor, {});
+  host.richMessageInput.editor = replacement;
+  mounted.editor = replacement;
+  settle();
+  await Promise.resolve();
+  answer(richDraft('Saved'));
+  expect(await restoring).toBe(true);
+  flush();
+
+  expect(replacement.getRichValue().value).toBe('Saved');
+  host.saveDraft();
+  expect(syncDraft).not.toHaveBeenCalled();
 });

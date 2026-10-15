@@ -2,7 +2,6 @@ vi.mock('@environment/webpSupport', () => ({default: false}));
 vi.mock('@environment/videoSupport', () => ({IS_MOV_SUPPORTED: false}));
 
 import {
-  canFallbackRichMessageToPlain,
   canStartRichMediaUpload,
   clipboardHasFile,
   clipboardHasMatchingFile,
@@ -12,7 +11,6 @@ import {
   shouldPreventDefaultFilePaste,
   shouldInsertRichMediaFiles
 } from '@components/chat/inputEditor/mediaPaste';
-import type {Document, PageBlock, Photo} from '@layer';
 
 function clipboardEvent(items: Array<{
   file?: File,
@@ -80,64 +78,6 @@ describe('rich-message media paste and drop routing', () => {
     expect(shouldInsertRichMediaFiles([document], target)).toBe(true);
     expect(shouldInsertRichMediaFiles([image], undefined)).toBe(false);
     expect(shouldInsertRichMediaFiles([], target)).toBe(false);
-  });
-
-  test('does not offer a lossy plain fallback for embedded rich media', () => {
-    const richMessage = (block: PageBlock) => ({
-      input: {
-        _: 'inputRichMessage' as const,
-        pFlags: {},
-        blocks: [block]
-      },
-      output: {
-        _: 'richMessage' as const,
-        pFlags: {},
-        blocks: [block],
-        documents: [] as Document.document[],
-        photos: [] as Photo.photo[]
-      }
-    });
-
-    expect(canFallbackRichMessageToPlain(richMessage({
-      _: 'pageBlockParagraph',
-      text: {_: 'textPlain', text: 'Text'}
-    }))).toBe(true);
-    expect(canFallbackRichMessageToPlain(richMessage({
-      _: 'pageBlockAudio',
-      audio_id: '10',
-      caption: {
-        _: 'pageCaption',
-        credit: {_: 'textEmpty'},
-        text: {_: 'textEmpty'}
-      }
-    }))).toBe(false);
-    expect(canFallbackRichMessageToPlain(richMessage({
-      _: 'inputPageBlockMap',
-      geo: {_: 'inputGeoPoint', lat: 1, long: 2},
-      zoom: 10,
-      w: 400,
-      h: 200,
-      caption: {
-        _: 'pageCaption',
-        credit: {_: 'textEmpty'},
-        text: {_: 'textEmpty'}
-      }
-    }))).toBe(false);
-    const media: PageBlock = {
-      _: 'pageBlockPhoto', pFlags: {}, photo_id: '10',
-      caption: {_: 'pageCaption', text: {_: 'textEmpty'}, credit: {_: 'textEmpty'}}
-    };
-    const wrappers: Array<(block: PageBlock) => PageBlock> = [
-      block => ({_: 'pageBlockDetails', pFlags: {}, title: {_: 'textEmpty'}, blocks: [block]}),
-      block => ({_: 'pageBlockBlockquoteBlocks', caption: {_: 'textEmpty'}, blocks: [block]}),
-      block => ({_: 'pageBlockList', items: [{_: 'pageListItemBlocks', pFlags: {}, blocks: [block]}]}),
-      block => ({_: 'pageBlockOrderedList', pFlags: {}, items: [{_: 'pageListOrderedItemBlocks', pFlags: {}, blocks: [block]}]})
-    ];
-    for(const wrap of wrappers) {
-      expect(canFallbackRichMessageToPlain(richMessage(wrap(media)))).toBe(false);
-      expect(canFallbackRichMessageToPlain(richMessage(wrap(wrappers[0](media))))).toBe(false);
-      expect(canFallbackRichMessageToPlain(richMessage(wrap({_: 'pageBlockParagraph', text: {_: 'textPlain', text: 'Text'}})))).toBe(true);
-    }
   });
 
   test('distinguishes a media clipboard item from a text-only ProseMirror paste', () => {
