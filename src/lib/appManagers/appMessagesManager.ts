@@ -509,6 +509,7 @@ type DoFlushHistoryArgs = {
 
 type SendContactArgs = {
   peerId: PeerId,
+  threadId?: number,
   monoforumThreadId?: PeerId,
   contactPeerId: PeerId,
   confirmedPaymentResult?: ConfirmedPaymentResult
@@ -4474,9 +4475,10 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendContact({peerId, contactPeerId, monoforumThreadId, confirmedPaymentResult}: SendContactArgs) {
+  public sendContact({peerId, threadId, contactPeerId, monoforumThreadId, confirmedPaymentResult}: SendContactArgs) {
     return this.sendOther({
       peerId,
+      threadId,
       inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId),
       replyToMonoforumPeerId: monoforumThreadId,
       confirmedPaymentResult

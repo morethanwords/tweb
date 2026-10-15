@@ -119,7 +119,8 @@ export class InternalLinkProcessor {
         const {command, bot} = uriParams;
         const chat = appImManager.chat;
         let sendingParams = chat.input?.getEphemeralSendingSnapshot() || {
-          peerId: chat.peerId
+          peerId: chat.peerId,
+          threadId: chat.threadId
         };
         const bubble = findUpClassName(element, 'bubble');
         if(

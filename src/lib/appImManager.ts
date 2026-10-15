@@ -3971,7 +3971,7 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public requestPhone(peerId: PeerId) {
+  public requestPhone(options: {peerId: PeerId, threadId?: number}) {
     return confirmationPopup({
       titleLangKey: 'ShareYouPhoneNumberTitle',
       button: {
@@ -3979,7 +3979,7 @@ export class AppImManager extends EventListenerBase<{
       },
       descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
     }).then(() => {
-      return this.managers.appMessagesManager.sendContact({peerId, contactPeerId: rootScope.myId});
+      return this.managers.appMessagesManager.sendContact({...options, contactPeerId: rootScope.myId});
     });
   }
 

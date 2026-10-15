@@ -201,7 +201,7 @@ function getButtonTypeHandler({
       result.classNames.push('is-request-phone');
 
       result.onClick = () => {
-        chat.appImManager.requestPhone(peerId);
+        chat.appImManager.requestPhone({peerId, threadId: chat.threadId});
       };
       break;
     }
@@ -369,13 +369,16 @@ function getButtonTypeHandler({
       if(!message) {
         // a keyboard an ephemeral message brought answers its bot privately: the press replies
         // to that message, which makes the send an ephemeral reply (desktop replies to the
-        // keyboard's message in groups for the same reason)
+        // keyboard's message in groups for the same reason). The text goes where the keyboard
+        // was shown: in a topic that is the topic — without it a group's General gets it, and a
+        // bot's private chat with topics opens a new one for it
         const replyToEphemeral = isEphemeralMessageId(messageMid) ? {replyToMsgId: messageMid} : undefined;
         result.onClick = () => {
           rootScope.managers.appMessagesManager.sendText({
             ...chat.input?.getEphemeralSendingSnapshot(),
             ...replyToEphemeral,
             peerId,
+            threadId: chat.threadId,
             text: label
           });
         };

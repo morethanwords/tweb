@@ -630,13 +630,13 @@ export default class ChatTopbar {
         const contactPeerId = this.peerId;
         showSharingPickerPopup({
           onSelect: async(chosen) => {
-            const {peerId, monoforumThreadId} = chosen[0];
+            const {peerId, threadId, monoforumThreadId} = chosen[0];
             const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
             if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 
             const send = () => {
-              this.managers.appMessagesManager.sendContact({peerId, contactPeerId, confirmedPaymentResult: preparedPaymentResult, monoforumThreadId});
-              this.chat.appImManager.setInnerPeer({peerId});
+              this.managers.appMessagesManager.sendContact({peerId, threadId, contactPeerId, confirmedPaymentResult: preparedPaymentResult, monoforumThreadId});
+              this.chat.appImManager.setInnerPeer({peerId, threadId});
             };
 
             if(preparedPaymentResult) return void send();
@@ -701,7 +701,7 @@ export default class ChatTopbar {
       text: 'Settings',
       onClick: () => {
         // [ ] Bot with paid stars?
-        this.managers.appMessagesManager.sendText({peerId: this.peerId, text: '/settings'});
+        this.managers.appMessagesManager.sendText({peerId: this.peerId, threadId: this.chat.threadId, text: '/settings'});
       },
       verify: async() => {
         try {

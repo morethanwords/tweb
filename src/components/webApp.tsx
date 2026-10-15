@@ -1158,7 +1158,7 @@ export default class WebApp {
         try {
           const botId = this.webViewOptions.botId;
           await this.managers.appMessagesManager.unblockBot(botId);
-          await appImManager.requestPhone(botId.toPeerId(false));
+          await appImManager.requestPhone({peerId: botId.toPeerId(false)});
         } catch(err) {
           status.status = 'cancelled';
         }

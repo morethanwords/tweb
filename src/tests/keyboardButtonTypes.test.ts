@@ -1,12 +1,13 @@
 import '@helpers/peerIdPolyfill';
 import {IntersectionObserverMock} from '@/tests/mocks/intersectionObserver';
-import type {KeyboardButton, KeyboardInlineButton, PageButton} from '@layer';
+import type {KeyboardButton, KeyboardInlineButton, PageButton, ReplyMarkup} from '@layer';
 
 const mocks = vi.hoisted(() => ({
   setInnerPeer: vi.fn(),
   toggleSidebar: vi.fn(),
   copyTextToClipboard: vi.fn(),
-  toastNew: vi.fn()
+  toastNew: vi.fn(),
+  sendText: vi.fn()
 }));
 
 vi.mock('@environment/webpSupport', () => ({default: false}));
@@ -18,7 +19,7 @@ vi.mock('@components/toast', () => ({toast: vi.fn(), toastNew: mocks.toastNew}))
 vi.mock('@components/wrappers/customEmoji', () => ({default: vi.fn()}));
 vi.mock('@components/chat/bubbleParts/replyMarkupLayout', () => ({default: {Button: vi.fn()}}));
 vi.mock('@lib/solidjs/hotReloadGuardProvider', () => ({default: class {}}));
-vi.mock('@lib/rootScope', () => ({default: {managers: {}, addEventListener: vi.fn(), dispatchEvent: vi.fn()}}));
+vi.mock('@lib/rootScope', () => ({default: {managers: {appMessagesManager: {sendText: mocks.sendText}}, addEventListener: vi.fn(), dispatchEvent: vi.fn()}}));
 vi.mock('@helpers/clipboard', () => ({copyTextToClipboard: mocks.copyTextToClipboard}));
 vi.mock('@lib/appImManager', () => ({default: {setInnerPeer: mocks.setInnerPeer}}));
 vi.mock('@components/sidebarRight', () => ({default: {toggleSidebar: mocks.toggleSidebar}}));
@@ -33,12 +34,12 @@ beforeAll(async() => {
   ({getKeyboardButtonHandler, getRichPageButtonHandler} = await import('@components/wrappers/keyboardButton'));
 });
 
-function makeChat() {
+function makeChat(threadId?: number) {
   return {
     peerId: (5 as UserId).toPeerId(false),
-    threadId: undefined as number,
-    input: {openPollCreation: vi.fn()},
-    appImManager: {requestLocation: vi.fn()}
+    threadId,
+    input: {openPollCreation: vi.fn(), getEphemeralSendingSnapshot: (): undefined => undefined},
+    appImManager: {requestLocation: vi.fn(), requestPhone: vi.fn()}
   };
 }
 
@@ -105,5 +106,37 @@ describe('layer 229 button types that used to fall through to plain text', () =>
     const callbackHandler = getRichPageButtonHandler({button: callback, label: 'Press'});
     expect(callbackHandler.unavailable).toBe(true);
     expect(callbackHandler.onClick).toBeUndefined();
+  });
+});
+
+describe('a reply keyboard shown in a topic answers in that topic', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const replyMarkup: ReplyMarkup.replyKeyboardMarkup = {_: 'replyKeyboardMarkup', pFlags: {}, rows: [], mid: 77};
+
+  test('a plain button sends its text to the topic, not to the chat', () => {
+    const chat = makeChat(42);
+    getKeyboardButtonHandler({
+      button: replyButton({_: 'buttonTypeDefault'}, 'Hello'),
+      chat: chat as any,
+      replyMarkup
+    }).onClick(new MouseEvent('click'));
+
+    expect(mocks.sendText).toHaveBeenCalledWith({
+      peerId: chat.peerId,
+      threadId: 42,
+      text: 'Hello'
+    });
+  });
+
+  test('a phone request shares the contact in the topic', () => {
+    const chat = makeChat(42);
+    getKeyboardButtonHandler({
+      button: replyButton({_: 'buttonTypeRequestPhone'}),
+      chat: chat as any,
+      replyMarkup
+    }).onClick(new MouseEvent('click'));
+
+    expect(chat.appImManager.requestPhone).toHaveBeenCalledWith({peerId: chat.peerId, threadId: 42});
   });
 });
