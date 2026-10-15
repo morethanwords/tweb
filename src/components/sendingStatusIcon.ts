@@ -5,9 +5,12 @@
  * centre — the clock's, which is the check's and the error disk's too: the old icon shrinks towards
  * half its size and fades while the new one grows from half its size, a touch past 1 and back, and
  * shows, so something stands there all the way through. Read moves the check 3 units left, to where the
- * `checks` glyph has its first check, and the second one comes beside it. While a message is being sent
- * the clock's hands go round, the minute hand once in 1.5 s and the hour hand in 4.5 s, as in Telegram
- * for Android (MsgClockDrawable).
+ * `checks` glyph has its first check, and the second one comes beside it. An icon put where no status
+ * was comes in the same way, alone. A status asked for while a change plays follows once it is over,
+ * from where it ended — cut short, the icon would jump to where it was going — so the clock of a message
+ * confirmed at once is still seen to come and go. While a message is being sent the clock's hands go
+ * round, the minute hand once in 1.5 s and the hour hand in 4.5 s, as in Telegram for Android
+ * (MsgClockDrawable).
  *
  * What it costs: at rest, what the glyph cost — the span with the glyph in it. The glyph keeps the box
  * the font gives the icon everywhere it is used, but is not painted; the icon is the span's ::before
@@ -209,11 +212,18 @@ function createLayer(host: HTMLElement, drawing: SendingStatusIconState | typeof
   return layer;
 }
 
-type Change = {end: () => void};
+type Change = {
+  to: SendingStatusIconState,
+  // the status last asked for while this one plays
+  next?: SendingStatusIconState,
+  // `follow`: the next status comes as a change of its own; otherwise it is simply there
+  end: (follow?: boolean) => void
+};
 const changes: WeakMap<HTMLElement, Change> = new WeakMap();
 
-// `colourBefore`: to or from an error, the colour the icon had, which the old drawing keeps as it goes
-function change(host: HTMLElement, from: SendingStatusIconState, to: SendingStatusIconState, level: Level, colourBefore: string) {
+// `from`: none for an icon put where no status was; `colourBefore`: to or from an error, the colour the
+// icon had, which the old drawing keeps as it goes
+function change(host: HTMLElement, from: SendingStatusIconState | undefined, to: SendingStatusIconState, level: Level, colourBefore: string) {
   // the span's own layers wait out of sight, already of the new state; both icons are layers meanwhile
   host.classList.add(styles.moving);
   let layers: HTMLElement[], animations: Animation[];
@@ -228,6 +238,10 @@ function change(host: HTMLElement, from: SendingStatusIconState, to: SendingStat
   } else if(level === 2 && from === 'read' && to === 'sent') {
     const [check, second] = layers = [createLayer(host, 'sent'), createLayer(host, SECOND_CHECK_CLASS)];
     animations = [shift(check, true), goAway(second, level, READ_DURATION)];
+  } else if(!from) {
+    const coming = createLayer(host, to);
+    layers = [coming];
+    animations = [come(coming, level)];
   } else {
     const [going, coming] = layers = [createLayer(host, from), createLayer(host, to)];
     if(colourBefore) {
@@ -238,7 +252,8 @@ function change(host: HTMLElement, from: SendingStatusIconState, to: SendingStat
   }
 
   const record: Change = {
-    end: () => {
+    to,
+    end: (follow) => {
       if(changes.get(host) !== record) {
         return;
       }
@@ -247,12 +262,17 @@ function change(host: HTMLElement, from: SendingStatusIconState, to: SendingStat
       host.classList.remove(styles.moving);
       layers.forEach((layer) => layer.remove());
       animations.forEach((animation) => animation.cancel());
+      if(record.next) {
+        // the status asked for meanwhile comes from here, before the frame is drawn - or, cut short,
+        // is simply there, and only lets go of the colour held for it
+        requestChange(host, to, record.next, follow ? liteMode.getAnimationLevel() : 0);
+      }
     }
   };
 
   changes.set(host, record);
   // finishing resolves before the frame is drawn, so the span's own layers take over in the same frame
-  Promise.all(animations.map((animation) => animation.finished)).then(record.end, () => {});
+  Promise.all(animations.map((animation) => animation.finished)).then(() => record.end(true), () => {});
 }
 
 /* ── changes asked for in one task start together ── */
@@ -264,8 +284,13 @@ function change(host: HTMLElement, from: SendingStatusIconState, to: SendingStat
 // computed one, and it is let go of once read. Everything asked for in a task is read in one go, then
 // written in one go - a style recalculation for the lot, not one per icon - before the frame is drawn.
 // level 0: asked again in the task without animation - the change only lets go of its hold
-type Pending = {from: SendingStatusIconState, to: SendingStatusIconState, level: Level | 0};
+type Pending = {from: SendingStatusIconState | undefined, to: SendingStatusIconState, level: Level | 0};
 const pending: Map<HTMLElement, Pending> = new Map();
+
+// a tab that is not shown draws nothing
+function getShownLevel(host: HTMLElement) {
+  return host.isConnected && host.ownerDocument.visibilityState !== 'hidden' ? liteMode.getAnimationLevel() : 0;
+}
 
 function startPending() {
   const batch = [...pending];
@@ -283,8 +308,7 @@ function startPending() {
   batch.forEach(([host, {from, to, level}], i) => {
     holds[i].forEach((transition) => transition.finish());
     host.classList.remove(styles.hold);
-    // a tab that is not shown draws nothing
-    if(level && from !== to && host.isConnected && host.ownerDocument.visibilityState !== 'hidden') {
+    if(level && from !== to && getShownLevel(host)) {
       change(host, from, to, level, colours[i]);
       started.push(host);
     }
@@ -310,16 +334,23 @@ function settleUnseen(hosts: HTMLElement[]) {
   });
 }
 
-function requestChange(host: HTMLElement, from: SendingStatusIconState, to: SendingStatusIconState, level: Level) {
+// the place changes the colour before it tells the icon, so this has to come before anything is read
+function holdColour(host: HTMLElement, from: SendingStatusIconState, to: SendingStatusIconState) {
+  if(from === 'error' || to === 'error') {
+    host.classList.add(styles.hold);
+  }
+}
+
+function requestChange(host: HTMLElement, from: SendingStatusIconState | undefined, to: SendingStatusIconState, level: Level | 0) {
   const earlier = pending.get(host);
   if(!pending.size) {
     queueMicrotask(startPending);
   }
 
   // asked twice in a task: from where the first started to where the last goes
-  pending.set(host, {from: earlier?.from ?? from, to, level});
-  if(from === 'error' || to === 'error') {
-    host.classList.add(styles.hold);
+  pending.set(host, {from: earlier ? earlier.from : from, to, level});
+  if(level) {
+    holdColour(host, from, to);
   }
 }
 
@@ -342,13 +373,13 @@ export default function SendingStatusIcon(state: SendingStatusIconState, ...clas
  * is not such an icon.
  */
 export function setSendingStatusIconState(host: HTMLElement, state: SendingStatusIconState, animated = true) {
-  // a change still under way ends where it was going, and the new one starts from there
-  changes.get(host)?.end();
   const current = getRestingState(host);
   if(!current) {
     return false;
   }
 
+  // told the state it already has (a bubble does so whenever its time is drawn again): what is under
+  // way goes on
   if(current === state) {
     return true;
   }
@@ -357,14 +388,35 @@ export function setSendingStatusIconState(host: HTMLElement, state: SendingStatu
   // the one that icon would have
   setState(host, current, state);
   host.firstChild.nodeValue = getIconContent(GLYPHS[state]);
-  const level = animated && host.isConnected ? liteMode.getAnimationLevel() : 0;
-  if(level) {
+  const level = animated ? getShownLevel(host) : 0;
+  const running = changes.get(host);
+  if(level && running) {
+    // what is under way plays to its end, and this follows from there; the colour stays as it is till then
+    running.next = state;
+    holdColour(host, current, state);
+  } else if(level) {
     requestChange(host, current, state, level);
-  } else if(pending.has(host)) {
-    pending.get(host).level = 0;
+  } else {
+    // not shown: what is under way ends where it was going, and the icon is simply in its new state
+    running?.end();
+    if(pending.has(host)) {
+      pending.get(host).level = 0;
+    }
   }
 
   return true;
+}
+
+/**
+ * Lets an icon made by SendingStatusIcon, just put where no status was shown, come in the way a status
+ * follows another.
+ */
+export function showSendingStatusIcon(host: HTMLElement) {
+  const state = getRestingState(host);
+  const level = state ? getShownLevel(host) : 0;
+  if(level && !changes.has(host) && !pending.has(host)) {
+    requestChange(host, undefined, state, level);
+  }
 }
 
 export function getSendingStatusIconState(host: HTMLElement) {

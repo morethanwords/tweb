@@ -1,6 +1,6 @@
 import {Message} from '@layer';
 import Icon from '@components/icon';
-import SendingStatusIcon, {getSendingStatusIconState, SendingStatusIconState, setSendingStatusIconState} from '@components/sendingStatusIcon';
+import SendingStatusIcon, {getSendingStatusIconState, SendingStatusIconState, setSendingStatusIconState, showSendingStatusIcon} from '@components/sendingStatusIcon';
 
 export enum SENDING_STATUS {
   Error = -1,
@@ -45,6 +45,8 @@ export function setSendingStatus(
     return;
   }
 
+  // no status was shown: a draft in its place, or a message that came in
+  const wasHidden = container.classList.contains('hide');
   container.classList.remove('hide');
   const lastElement = container.lastElementChild as HTMLElement;
   if(state === 'premium_lock') {
@@ -72,4 +74,9 @@ export function setSendingStatus(
   }
 
   container.replaceChildren(element);
+  // where none was shown it comes in, as one status gives way to another (a row being built is not
+  // hidden yet: its icon is simply there)
+  if(animate && wasHidden) {
+    showSendingStatusIcon(element);
+  }
 }
