@@ -9,7 +9,7 @@ import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
 import {createHash} from 'crypto';
-import {ServerOptions} from 'vite';
+import {Plugin, ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import {watchScssTypes} from './scss-types.js';
 import {vitestWorkers} from './scripts/testQueue';
@@ -183,6 +183,40 @@ if(USE_OWN_SOLID) {
   console.log('using original solid');
 }
 
+// V8 compiles a function the first time it runs, so the first opening of a chat, a sidebar tab or
+// a popup compiled its code in the middle of its animation — after every page load, since the code
+// cache holds only what ran at startup. This comment makes Chrome 136+ compile every function of a
+// chunk off the main thread while the chunk streams in (other browsers ignore it), for ~20 MB more
+// of JS heap. V8 reads it only above the first line of code, and vite:build-import-analysis puts
+// `__vite__mapDeps` in front of a chunk in its generateBundle, so it goes on after that — not as
+// output.banner / postBanner. Workers have their own build and stay without it.
+function compileHintsPlugin(): Plugin {
+  const hint = '//# allFunctionsCalledOnLoad\n';
+  return {
+    name: 'compile-hints',
+    apply: 'build',
+    // the hint goes on after the file names are hashed, and the service worker serves a cached
+    // file by its name without asking the server: a chunk must change its name with the hint
+    augmentChunkHash: () => hint,
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        for(const chunk of Object.values(bundle)) {
+          if(chunk.type !== 'chunk') continue;
+          chunk.code = hint + chunk.code;
+          // the code moved one line down, and so does every mapping
+          const mapAsset = bundle[chunk.fileName + '.map'];
+          if(mapAsset?.type === 'asset') {
+            const map = JSON.parse(String(mapAsset.source));
+            map.mappings = ';' + map.mappings;
+            mapAsset.source = JSON.stringify(map);
+          }
+        }
+      }
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
     // devtools({
@@ -194,6 +228,7 @@ export default defineConfig({
     watchTransformCache(),
     solidPlugin(),
     handlebarsPlugin as any,
+    compileHintsPlugin(),
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
     // Only emit the bundle treemap (stats.html) when explicitly analyzing (ANALYZE=1):
     // it adds build time and writes a ~1.3MB file that otherwise gets globbed into the
