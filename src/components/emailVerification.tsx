@@ -1,8 +1,9 @@
 import {CodeInputField} from '@components/codeInputField';
-import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, JSX, onCleanup, onMount, Show} from 'solid-js';
 
 import styles from '@components/emailVerification.module.scss';
 import MediaHeader from '@components/mediaHeader';
+import Section from '@components/section';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import I18n, {LangPackKey} from '@lib/langPack';
@@ -29,7 +30,7 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
  *   and a login email has to be added before the account can be signed into.
  *
  * The steps only own their own layout; the shell around them (popup, sidebar
- * tab, auth card) passes `class` / `footerClass` to fit them into its own.
+ * tab, auth card) picks it with `variant` and passes `class` to fit them in.
  *
  * The `purpose` is what makes the same pair work in all three places:
  * `emailVerifyPurposeLoginChange` for an existing account,
@@ -43,14 +44,35 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
  * Which surface the step is drawn on. `popup` — its own look, a pill button on a
  * fixed-height sheet. `card` — the sign-in shell, where the design system's button
  * radius, the cards' sticker size and their grey subtitle already rule, so the
- * step stops being the odd one out next to the other auth cards.
+ * step stops being the odd one out next to the other auth cards. `tab` — a settings
+ * tab, drawn the way the other tabs are: the header on the tab's background, the
+ * field and its button in a section of their own.
  */
-export type StepVariant = 'popup' | 'card';
+export type StepVariant = 'popup' | 'card' | 'tab';
 
-/** Auth cards size their sticker with the screen; the popup's is fixed. */
+const VARIANT_CLASSES: {[variant in StepVariant]?: string} = {
+  card: styles.onCard,
+  tab: styles.onTab
+};
+
+/** Auth cards size their sticker with the screen; the popup's is fixed, a tab's the tabs' own. */
 function stickerSize(variant: StepVariant) {
+  if(variant === 'tab') return 130;
   if(variant !== 'card') return 120;
   return mediaSizes.isMobile ? 100 : 130;
+}
+
+/** A tab holds the step's field and its button in a section, the way the other settings tabs hold theirs. */
+function StepForm(props: {variant?: StepVariant, children: JSX.Element}) {
+  if(props.variant !== 'tab') {
+    return props.children;
+  }
+
+  return (
+    <Section>
+      <div class="input-wrapper">{props.children}</div>
+    </Section>
+  );
 }
 
 /**
@@ -114,7 +136,6 @@ let emailVerificationErrorIdSeed = 0;
 export function EnterEmailStep(props: {
   isInitialSetup?: boolean
   class?: string
-  footerClass?: string
   purpose: EmailVerifyPurpose
   onCodeSent: (code: AccountSentEmailCode.accountSentEmailCode) => void
   /** Return `true` to take the error over — the step then shows nothing itself. */
@@ -183,8 +204,8 @@ export function EnterEmailStep(props: {
   });
 
   return (
-    <div class={classNames(styles.page, props.variant === 'card' && styles.onCard, props.class)}>
-      <MediaHeader>
+    <div class={classNames(styles.page, VARIANT_CLASSES[props.variant], props.class)}>
+      <MediaHeader marginBottom={props.variant === 'tab'}>
         <MediaHeader.Sticker name="Mailbox" size={stickerSize(props.variant)} />
         <MediaHeader.Title>
           <I18nTsx key={props.isInitialSetup ? 'EmailSetup.Title' : 'EmailSetup.ChangeTitle'} />
@@ -194,42 +215,44 @@ export function EnterEmailStep(props: {
         </MediaHeader.Subtitle>
       </MediaHeader>
 
-      <InputFieldTsx
-        instanceRef={ref => inputRef = ref}
-        class={styles.input}
-        label="EmailSetup.InputCaption"
-        disabled={loading()}
-        value={email()}
-        errorLabel={error() ? null : undefined}
-        errorDescriptionId={error() ? errorDescriptionId : undefined}
-        onRawInput={(val) => {
-          setEmail(val);
-          setError(undefined);
-          inputRef.setState(InputState.Neutral);
-        }}
-      />
+      <StepForm variant={props.variant}>
+        <InputFieldTsx
+          instanceRef={ref => inputRef = ref}
+          class={styles.input}
+          label="EmailSetup.InputCaption"
+          disabled={loading()}
+          value={email()}
+          errorLabel={error() ? null : undefined}
+          errorDescriptionId={error() ? errorDescriptionId : undefined}
+          onRawInput={(val) => {
+            setEmail(val);
+            setError(undefined);
+            inputRef.setState(InputState.Neutral);
+          }}
+        />
 
-      <div class={classNames(styles.footer, props.footerClass)}>
-        <Animated type="cross-fade">
-          <Show
-            when={!error()}
-            fallback={(
-              <div id={errorDescriptionId} class={styles.error} role="alert">
-                <I18nTsx key={error()} />
+        <div class={styles.footer}>
+          <Animated type="cross-fade">
+            <Show
+              when={!error()}
+              fallback={(
+                <div id={errorDescriptionId} class={styles.error} role="alert">
+                  <I18nTsx key={error()} />
+                </div>
+              )}
+            >
+              <div class={styles.buttonContainer}>
+                <ButtonTsx
+                  class={classNames(styles.button, 'btn-primary btn-color-primary')}
+                  text="Continue"
+                  disabled={loading()}
+                  onClick={onSubmit}
+                />
               </div>
-            )}
-          >
-            <div class={styles.buttonContainer}>
-              <ButtonTsx
-                class={classNames(styles.button, 'btn-primary btn-color-primary')}
-                text="Continue"
-                disabled={loading()}
-                onClick={onSubmit}
-              />
-            </div>
-          </Show>
-        </Animated>
-      </div>
+            </Show>
+          </Animated>
+        </div>
+      </StepForm>
 
       <SecondaryButton action={props.secondaryAction} />
     </div>
@@ -238,7 +261,6 @@ export function EnterEmailStep(props: {
 
 export function EnterCodeStep(props: {
   class?: string
-  footerClass?: string
   visible?: boolean
   purpose: EmailVerifyPurpose
   sentCode: AccountSentEmailCode.accountSentEmailCode
@@ -303,8 +325,8 @@ export function EnterCodeStep(props: {
   }
 
   return (
-    <div class={classNames(styles.page, props.variant === 'card' && styles.onCard, props.class)}>
-      <MediaHeader>
+    <div class={classNames(styles.page, VARIANT_CLASSES[props.variant], props.class)}>
+      <MediaHeader marginBottom={props.variant === 'tab'}>
         <MediaHeader.Sticker name="LoveLetter" size={stickerSize(props.variant)} />
         <MediaHeader.Title>
           <I18nTsx key="EmailSetup.CheckEmail" />
@@ -317,39 +339,41 @@ export function EnterCodeStep(props: {
         </MediaHeader.Subtitle>
       </MediaHeader>
 
-      <CodeInputField
-        label="AccDescr.EmailCode"
-        ref={inputRef}
-        valueSignal={codeSignal}
-        class={styles.input}
-        length={props.sentCode.length}
-        disabled={loading()}
-        onFill={onSubmit}
-        error={error() != null}
-        onChange={() => setError(undefined)}
-      />
+      <StepForm variant={props.variant}>
+        <CodeInputField
+          label="AccDescr.EmailCode"
+          ref={inputRef}
+          valueSignal={codeSignal}
+          class={styles.input}
+          length={props.sentCode.length}
+          disabled={loading()}
+          onFill={onSubmit}
+          error={error() != null}
+          onChange={() => setError(undefined)}
+        />
 
-      <div class={classNames(styles.footer, props.footerClass)}>
-        <Animated type="cross-fade">
-          <Show
-            when={!error()}
-            fallback={(
-              <div class={styles.error} role="alert">
-                <I18nTsx key={error()} />
+        <div class={styles.footer}>
+          <Animated type="cross-fade">
+            <Show
+              when={!error()}
+              fallback={(
+                <div class={styles.error} role="alert">
+                  <I18nTsx key={error()} />
+                </div>
+              )}
+            >
+              <div class={styles.buttonContainer}>
+                <ButtonTsx
+                  class={classNames(styles.button, 'btn-primary btn-color-primary')}
+                  text="Continue"
+                  disabled={loading() || codeSignal[0]().length !== props.sentCode.length}
+                  onClick={onSubmit}
+                />
               </div>
-            )}
-          >
-            <div class={styles.buttonContainer}>
-              <ButtonTsx
-                class={classNames(styles.button, 'btn-primary btn-color-primary')}
-                text="Continue"
-                disabled={loading() || codeSignal[0]().length !== props.sentCode.length}
-                onClick={onSubmit}
-              />
-            </div>
-          </Show>
-        </Animated>
-      </div>
+            </Show>
+          </Animated>
+        </div>
+      </StepForm>
 
       <SecondaryButton action={props.secondaryAction} />
     </div>

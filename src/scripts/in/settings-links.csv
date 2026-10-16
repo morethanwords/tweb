@@ -44,6 +44,7 @@ tg://settings/privacy/2sv,Chat List > Hamburger > Settings > Privacy and Securit
 tg://settings/privacy/2sv/change,Chat List > Hamburger > Settings > Privacy and Security > Two-Step Verification > Change Password
 tg://settings/privacy/2sv/disable,Chat List > Hamburger > Settings > Privacy and Security > Two-Step Verification > Disable Password
 tg://settings/privacy/2sv/change-email,Chat List > Hamburger > Settings > Two-Step Verification > Change Recovery Email
+tg://settings/login_email,Chat List > Hamburger > Settings > Privacy and Security > Login Email
 tg://settings/privacy/phone-number/,Chat List > Hamburger > Settings > Privacy and Security > Who can see my phone number
 tg://settings/privacy/phone-number/never,Chat List > Hamburger > Settings > Privacy and Security > Who can see my phone number > Exceptions > Never
 tg://settings/privacy/phone-number/always,Chat List > Hamburger > Settings > Privacy and Security > Who can see my phone number > Exceptions > Always

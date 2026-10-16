@@ -927,6 +927,16 @@ export class InternalLinkProcessor {
           case 'ton':
             return showStarsPopup({ton: true});
 
+          // tdesktop, Android and iOS open the change-email screen itself, which
+          // is what the Login Email row does — not the row to point at
+          case 'login_email':
+            return Promise.all([
+              this.managers.passwordManager.getState(),
+              import('@components/sidebarLeft/tabs/changeLoginEmail')
+            ]).then(([passwordState, {openChangeLoginEmailTab}]) => {
+              return openChangeLoginEmailTab(appSidebarLeft, passwordState);
+            });
+
           default:
             // Every section the settings search indexes is addressable — see
             // @lib/settingsSearch/link. Imported lazily to keep the index out of

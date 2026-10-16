@@ -465,6 +465,7 @@ const generated: GeneratedSettingsSearchData = {
     {path: 'language/do-not-translate', sectionId: 'AppLanguageTab', highlight: 'DoNotTranslate'},
     {path: 'language/show-button', sectionId: 'AppLanguageTab', highlight: 'ShowTranslateButton'},
     {path: 'language/translate-chats', sectionId: 'AppLanguageTab', highlight: 'ShowTranslateChatButton'},
+    {path: 'login_email', sectionId: 'AppPrivacyAndSecurityTab', highlight: 'LoginEmail'},
     {path: 'notifications', sectionId: 'AppNotificationsTab'},
     {path: 'notifications/accounts', sectionId: 'AppNotificationsTab', highlight: 'MultiAccount.AllAccounts'},
     {path: 'notifications/channels', sectionId: 'AppNotificationsTab', highlight: 'NotificationsChannels'},

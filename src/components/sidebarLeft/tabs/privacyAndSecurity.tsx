@@ -41,7 +41,7 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import createAgeVerification from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
-import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
+import {openChangeLoginEmailTab} from '@components/sidebarLeft/tabs/changeLoginEmail';
 import {wrapEmailPattern} from '@components/emailVerification';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
 import showPasskeyPopup from '@components/popups/passkey';
@@ -277,9 +277,7 @@ const PrivacyAndSecurity: Component = () => {
               <Show when={!emailHidden()}>
                 <Row clickable={() => {
                   if(emailFrozen()) return;
-                  tab.slider.createTab(ChangeLoginEmailTab).open({
-                    isInitialSetup: passwordState.login_email_pattern.includes(' ')
-                  });
+                  openChangeLoginEmailTab(tab.slider, passwordState);
                 }}>
                   <Row.Icon icon="email_filled" />
                   <Row.Title>{i18n('LoginEmail')}</Row.Title>
