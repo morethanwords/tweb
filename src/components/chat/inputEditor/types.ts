@@ -214,6 +214,8 @@ export type ChatInputRichMessage = {
 export interface ChatInputEditor {
   readonly input: HTMLElement;
   readonly isComposing: boolean;
+  /** Runs on a plain message's schema (`plainOnly` or `singleLine`): no rich block fits it. */
+  readonly plainOnly: boolean;
 
   applyMarkup(options: {
     type: MarkdownType,
@@ -279,6 +281,8 @@ export interface ChatInputEditor {
   getSelectedMap(): ChatInputMapOptions | undefined;
   getSelectedMath(): ChatInputSelectedMath | undefined;
   getSelectedText(): string;
+  /** The selection as `getRichValue` gives the whole field: its text, with the entities cut to it */
+  getSelectedRichValue(): {value: string, entities: MessageEntity[]};
   getTableTitle(): string | undefined;
   hasPendingRichMediaUploads(): boolean;
   getRichValue(withEntities?: boolean, withCaret?: boolean): {

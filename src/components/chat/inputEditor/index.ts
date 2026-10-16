@@ -1343,6 +1343,7 @@ function blockquoteCaptionText(quote: ProseMirrorNode) {
 
 class TiptapChatInputEditor implements ChatInputEditor {
   public readonly input: HTMLElement;
+  public readonly plainOnly: boolean;
   // * the field's own `dir` while the draft's direction stands in for it (see `syncDirection`)
   private inputDir: string | null;
   public isComposing = false;
@@ -1603,13 +1604,14 @@ class TiptapChatInputEditor implements ChatInputEditor {
     snapshot?: ChatInputEditorSnapshot
   ) {
     this.input = input;
+    this.plainOnly = !!(this.options.plainOnly || this.options.singleLine);
     this.expanded = !!input.closest('.is-message-input-expanded');
     this.richMessageOptions = {...snapshot?.richMessageOptions};
     input.dataset.chatInputEditor = 'tiptap';
     // A plain field builds its schema so rich blocks cannot exist in it, rather
     // than letting them in and reporting `rich` afterwards — a caption has no way
     // to carry them.
-    const composerExtensions = this.options.singleLine || this.options.plainOnly ?
+    const composerExtensions = this.plainOnly ?
       getPlainMessageExtensions(!!this.options.singleLine, this.options.formatting ?? 'all') :
       [...TIPTAP_BASE_EXTENSIONS, ...(this.options.enableBlockSelection === false ?
         CHAT_INPUT_EXTENSIONS.filter((extension) => extension.name !== 'chatBlockReorder') :
@@ -1639,7 +1641,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
             instantViewStyles.RichMessage,
             instantViewStyles.RichText,
             instantViewStyles.Blocks,
-            (this.options.plainOnly || this.options.singleLine) && 'chat-input-plain-field'
+            this.plainOnly && 'chat-input-plain-field'
           ),
           'data-chat-input-editor': 'tiptap'
         },
@@ -2271,6 +2273,17 @@ class TiptapChatInputEditor implements ChatInputEditor {
     return from === to ? '' : this.editor.state.doc.textBetween(from, to, ' ');
   }
 
+  public getSelectedRichValue() {
+    const {state} = this.editor;
+    const {selection} = state;
+    const all = selection instanceof AllSelection;
+    // a part of one line keeps its line's kind: a code block's lines are still code
+    const document = all ? state.doc :
+      inlineSelectionDocument(state) || state.schema.topNodeType.create(null, selection.content().content);
+    const {text, entities} = tiptapToTelegram(document, all && this.trailingPlaceholder);
+    return {value: text, entities};
+  }
+
   public getSelectedLink() {
     const {doc, schema, selection} = this.editor.state;
     const linkType = schema.marks.link;
@@ -2504,7 +2517,7 @@ class TiptapChatInputEditor implements ChatInputEditor {
    * would leave the field empty. The composer's own schema holds every entity.
    */
   private textToDocument(text: string, entities: MessageEntity[] = []) {
-    if(this.options.plainOnly || this.options.singleLine) {
+    if(this.plainOnly) {
       entities = entitiesFittingSchema(entities, this.editor.schema);
     }
 
