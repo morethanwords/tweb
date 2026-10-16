@@ -464,6 +464,11 @@ import {Message, Chat, User, InputPeer} from '@layer';
   constants, search the codebase for an existing implementation and reuse or
   extend it. Every final review must explicitly check the completed change for
   duplicated code and remove any duplication found.
+- **A fix is as small and as local as what it is for.** A one-off need — one
+  item, one case, one rename — never goes into a mechanism shared by everything
+  (a loop over every item, a global stylesheet, a shared helper): there it is
+  paid on every pass and drags guards in after it. If it fits nowhere else, say
+  where it belongs (the server, a config) and ask.
 - **Every final review also checks the change's performance** — above all
   animations and anything that touches style or layout:
   - A forced synchronous layout — reading `offsetWidth`, `clientWidth`,
