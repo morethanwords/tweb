@@ -1584,7 +1584,10 @@ export class AppImManager extends EventListenerBase<{
       }
 
       const originalUrl = element.dataset.originalUrl ??= element.href;
-      if(appConfig.autologin_domains.includes(url.hostname)) {
+      if(appConfig.autologin_domains.includes(url.hostname) && (url.protocol === 'https:' || url.protocol === 'http:')) {
+        // the token signs the user in, so it never travels in plaintext: an http link goes out as https,
+        // the way tdesktop and tdlib upgrade it, and no other scheme gets the token at all
+        url.protocol = 'https:';
         url.searchParams.set('autologin_token', autologinToken);
         element.href = url.toString();
 
