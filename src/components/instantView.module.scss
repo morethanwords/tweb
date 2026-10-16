@@ -32,8 +32,9 @@
     --padding-horizontal: .5rem;
   }
 
-  // a link button is a link too, but it paints itself (.PageButton)
-  a:not(:global(.rich-button-link)) {
+  // a link button is a link too, but it paints itself (.PageButton), and so do a related article
+  // and the footer's "Wrong layout?"
+  a:not(:global(.rich-button-link)):not(.RelatedArticle):not(.WrongLayout) {
     color: var(--primary-color);
   }
 
@@ -685,6 +686,9 @@
     // regular horizontal gutter.
     padding-inline-end:
       calc(var(--padding-horizontal) + 6.25rem + 1rem * var(--iv-scale));
+    // the thumbnail is out of the flow: a short article stays as tall as it, or it runs into the
+    // next one
+    min-height: calc(6.25rem + 1.5rem * var(--iv-scale));
   }
 
   &Title {
