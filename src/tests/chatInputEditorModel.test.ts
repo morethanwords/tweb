@@ -168,6 +168,14 @@ describe('chat input editor Telegram entity model', () => {
     expect(serialized.entities).toEqual(source);
   });
 
+  test.each(['code\n\nnext', 'code\n\n\nnext', 'code\n\n'])('keeps the empty lines after a pre covering its trailing newline: %j', (text) => {
+    const source: MessageEntity[] = [{_: 'messageEntityPre', offset: 0, length: 5, language: ''}];
+    const serialized = tiptapToTelegram(makeEditor(text, source).state.doc);
+
+    expect(serialized.text).toBe(text);
+    expect(serialized.entities).toEqual(source);
+  });
+
   test.each([
     {
       code: 'code',

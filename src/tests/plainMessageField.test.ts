@@ -6,6 +6,7 @@ import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import InputField from '@components/inputField';
 import draftTextWithEntities from '@lib/richTextProcessor/draftTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
+import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import type {DraftMessage, MessageEntity} from '@layer';
 import type {Editor} from '@tiptap/core';
 import {Fragment, Slice} from '@tiptap/pm/model';
@@ -280,6 +281,24 @@ describe('plain message field', () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(getRichValueWithCaret(inputField.input, true, false).value).toBe('one\n\n\ntwo');
+  });
+
+  test('keeps the formatting of a message copied out of a chat', () => {
+    const text = 'bold\nquote\na = 1';
+    const entities: MessageEntity[] = [
+      {_: 'messageEntityBold', offset: 0, length: 4},
+      {_: 'messageEntityBlockquote', offset: 5, length: 5, pFlags: {}},
+      {_: 'messageEntityPre', offset: 11, length: 5, language: 'js'}
+    ];
+    const {html} = prepareTextWithEntitiesForCopying({text, entities});
+
+    const {editor, inputField} = mountCaption();
+    const {editor: caption} = editor as unknown as {editor: Editor};
+    caption.view.pasteHTML(html, new Event('paste', {cancelable: true}) as ClipboardEvent);
+
+    const value = getRichValueWithCaret(inputField.input, true, false);
+    expect(value.value).toBe(text);
+    expect(value.entities).toEqual(entities);
   });
 
   test('keeps the markers of a list copied out of the composer, as the list is sent', () => {

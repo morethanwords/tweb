@@ -47,6 +47,7 @@ export const PLAIN_MESSAGE_MARK_NAMES = new Set([
  * plus history.
  */
 const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
+  'chatCopiedMessagePaste',
   'chatCustomEmojiText',
   'chatEmojiImages',
   'chatEmptyDocumentSelection',

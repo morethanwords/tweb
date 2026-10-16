@@ -16,7 +16,7 @@ import ChatRichMediaUploadHistory from '@components/chat/inputEditor/mediaUpload
 import {ChatListBehavior, ChatListKeymap} from '@components/chat/inputEditor/listExtension';
 import {ChatInputPlaceholders} from '@components/chat/inputEditor/placeholders';
 import {ChatTableClipboard} from '@components/chat/inputEditor/tableClipboard';
-import {ChatInputRichClipboard, ChatPlainListPaste, ChatTextPaste} from '@components/chat/inputEditor/richClipboard';
+import {ChatCopiedMessagePaste, ChatInputRichClipboard, ChatPlainListPaste, ChatTextPaste} from '@components/chat/inputEditor/richClipboard';
 import {ChatHeading, ChatParagraph} from '@components/chat/inputEditor/extensions/textBlocks';
 import {
   ChatBlockquote,
@@ -134,6 +134,7 @@ export const CHAT_INPUT_EXTENSIONS: AnyExtension[] = [
   ChatPlainListPaste.configure({richSchema: () => richSchema ??= getSchema([...TIPTAP_BASE_EXTENSIONS, ...CHAT_INPUT_EXTENSIONS])}),
   ChatTextPaste,
   ChatTableClipboard,
+  ChatCopiedMessagePaste,
   ChatListBackspace,
   ChatListKeymap,
   ChatListBehavior,

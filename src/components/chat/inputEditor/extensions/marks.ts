@@ -164,7 +164,13 @@ export const ChatMentionName = Mark.create({
   parseHTML() {
     return [{
       tag: 'a.follow[data-follow]',
-      getAttrs: (element) => ({userId: element.getAttribute('data-follow')})
+      // ahead of the link's `a[href]`: a mention's href is the user id, and as a link it would be one to "#42"
+      priority: 51,
+      getAttrs: (element) => {
+        // any pasted HTML can bring `data-follow`: only a user id makes a mention
+        const follow = element.getAttribute('data-follow');
+        return /^\d+$/.test(follow) && +follow ? {userId: follow} : false;
+      }
     }];
   },
 

@@ -1,8 +1,10 @@
 import {Extension} from '@tiptap/core';
-import {DOMParser as ProseMirrorDOMParser, DOMSerializer, type Node as ProseMirrorNode, type ResolvedPos, type Schema} from '@tiptap/pm/model';
+import {DOMParser as ProseMirrorDOMParser, DOMSerializer, Fragment, type Node as ProseMirrorNode, type ResolvedPos, type Schema} from '@tiptap/pm/model';
 import {Plugin} from '@tiptap/pm/state';
 import type {EditorView} from '@tiptap/pm/view';
 import {listItemMarkers} from '@components/chat/inputEditor/orderedList';
+import {entitiesFittingSchema, telegramTextToTiptap} from '@components/chat/inputEditor/model';
+import {getCopiedTextWithEntities} from '@helpers/prepareTextWithEntitiesForCopying';
 
 function directListItems(list: HTMLOListElement | HTMLUListElement) {
   return Array.from(list.children).filter(
@@ -179,6 +181,62 @@ export const ChatPlainListPaste = Extension.create<{richSchema: () => Schema}>({
         transformPastedHTML: (html, view) => view.state.schema.nodes.listItem ?
           html :
           pastedListsAsText(html, richSchema(), view.dom.ownerDocument)
+      }
+    })];
+  }
+});
+
+/**
+ * A message copied out of a chat (its menu's Copy, a profile note, a translation) carries its text
+ * and entities beside the HTML, and becomes what this field would show it as when editing it: a
+ * quote, a code block with its language, a date with its format, which that HTML cannot hold. It is
+ * handed on as the field's own markup, marked the way ProseMirror marks its own clipboard (with
+ * the slice's open depths), so the parse keeps the whitespace as it is, a line's trailing spaces
+ * too. Not through `serializeForClipboard`: the field's copy hooks look at its own selection.
+ * Only a paragraph's edge is open, to join the line the copy is pasted into: a quote or a code
+ * block at an edge stays whole, rather than becoming that line's plain text or taking in its rest.
+ * Into a quote's text, a copied quote is its paragraphs: quotes do not nest, and the rest of the
+ * copy stays in the quote it lands in too. Not into its author line, the quote's last: what follows
+ * a line there goes after the quote, and a copied quote stays one.
+ */
+function pastedMessageAsFieldHTML(html: string, view: EditorView) {
+  const {schema} = view.state;
+  const ownerDocument = view.dom.ownerDocument;
+  const template = ownerDocument.createElement('template');
+  template.innerHTML = html;
+  const copied = getCopiedTextWithEntities(template.content);
+  if(!copied) return html;
+
+  try {
+    const doc = schema.nodeFromJSON(telegramTextToTiptap(copied.text, entitiesFittingSchema(copied.entities, schema)));
+    const {$from} = view.state.selection;
+    const intoQuote = $from.parent.type !== schema.nodes.blockquoteCaption &&
+      Array.from({length: $from.depth}, (_, depth) => $from.node(depth + 1))
+      .some((node) => node.type === schema.nodes.blockquote);
+    const nodes: ProseMirrorNode[] = [];
+    doc.forEach((node) => {
+      if(intoQuote && node.type === schema.nodes.blockquote) node.forEach((child) => nodes.push(child));
+      else nodes.push(node);
+    });
+    const content = Fragment.fromArray(nodes);
+    const isOpen = (node: ProseMirrorNode) => node.type === schema.nodes.paragraph ? 1 : 0;
+    const fragment = DOMSerializer.fromSchema(schema).serializeFragment(content, {document: ownerDocument});
+    (fragment.firstChild as Element).setAttribute('data-pm-slice', `${isOpen(content.firstChild)} ${isOpen(content.lastChild)} []`);
+    copied.element.replaceWith(fragment);
+  } catch(err) {
+    return html;
+  }
+
+  return template.innerHTML;
+}
+
+export const ChatCopiedMessagePaste = Extension.create({
+  name: 'chatCopiedMessagePaste',
+
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      props: {
+        transformPastedHTML: pastedMessageAsFieldHTML
       }
     })];
   }

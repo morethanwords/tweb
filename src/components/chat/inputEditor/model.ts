@@ -303,7 +303,8 @@ function parsePreformattedLine(
     }
 
     const end = entityEnd(pre);
-    while(index + 1 < lines.length && lines[index + 1].start <= end) ++index;
+    // a code block's own last line break ends its line: the line after it, an empty one too, is not its
+    while(index + 1 < lines.length && lines[index + 1].start < end) ++index;
     const endLine = lines[index];
     content.push({
       type: 'codeBlock',

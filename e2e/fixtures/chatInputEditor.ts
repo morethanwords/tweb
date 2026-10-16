@@ -13,9 +13,14 @@ import type {
   ChatInputRichMedia,
   ChatInputRichMessage
 } from '@components/chat/inputEditor/types';
-import type {Document, Photo, RichMessage} from '@layer';
+import type {Document, MessageEntity, Photo, RichMessage} from '@layer';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
+import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {getMiddleware} from '@helpers/middleware';
+import {setMessageTextSource} from '@components/chat/messageTextCopy';
 import '@/materialize.scss';
 import '@/scss/style.scss';
 import './chatInputEditor.scss';
@@ -58,6 +63,16 @@ export type ChatInputEditorBrowserHarness = {
   clipboard(): {html: string, text: string},
   /** What a message's Copy puts on the clipboard */
   messageClipboard(...args: Parameters<typeof prepareTextWithEntitiesForCopying>): {html: string, text: string},
+  /** Puts it on the system clipboard as the app's Copy does */
+  copyToClipboard(clipboard: {html: string, text: string}): Promise<void>,
+  /**
+   * Draws a message's text as a bubble does (#message-text), the time after it; `reply` is the HTML
+   * of a reply before it, `shown` what is drawn in place of the text (a translation)
+   */
+  drawMessage(
+    message: {text: string, entities: MessageEntity[]},
+    options?: {reply?: string, shown?: {text: string, entities: MessageEntity[]}}
+  ): void,
   deleteBackward(): boolean,
   destroy(): void,
   enableMarkupTooltip(): void,
@@ -314,7 +329,40 @@ window.chatInputEditorHarness = {
     const result = tiptap.view.serializeForClipboard(tiptap.state.selection.content());
     return {html: result.dom.innerHTML, text: result.text};
   },
-  messageClipboard: (...args) => prepareTextWithEntitiesForCopying(...args),
+  // what the chat's Copy hands over: a message's entities and those its text has by itself (totalEntities)
+  messageClipboard: (messages, meta) => prepareTextWithEntitiesForCopying(
+    (Array.isArray(messages) ? messages : [messages]).map(({text, entities}) => {
+      const wrapped = wrapMessageEntities(text, entities);
+      return {text: wrapped.message, entities: wrapped.totalEntities};
+    }),
+    meta
+  ),
+  copyToClipboard: ({html, text}) => copyTextToClipboard(text, html, {rethrow: true}),
+  drawMessage: ({text, entities}, {reply, shown} = {}) => {
+    const wrapped = wrapMessageEntities(text, entities);
+    const drawn = shown ? wrapMessageEntities(shown.text, shown.entities) : wrapped;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    const message = document.createElement('div');
+    message.className = 'message spoilers-container';
+    const body = document.createElement('div');
+    body.id = 'message-text';
+    // what the bubble's message body draws (solidMessageBody.tsx)
+    setMessageTextSource(body, () => ({text: wrapped.message, entities: wrapped.totalEntities}));
+    body.append(wrapRichText(drawn.message, {entities: drawn.totalEntities, middleware: getMiddleware().get()}));
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = '10:27';
+    message.append(body, time);
+    if(reply) {
+      const replyElement = document.createElement('div');
+      replyElement.className = 'reply';
+      replyElement.innerHTML = reply;
+      message.prepend(replyElement);
+    }
+    bubble.append(message);
+    document.body.append(bubble);
+  },
   beginManagedUpload: (action) => {
     const id = `fixture-upload-${++nextManagedUploadId}`;
     const inserted = chatEditor.beginRichMediaUpload({
