@@ -4,4 +4,6 @@ import ContinueLastTopicReplyMarkupContent from '@components/chat/bubbleParts/co
 export type BubbleElementAddons = {
   chatThreadSeparator?: InstanceType<typeof ChatThreadSeparator>;
   continueLastTopicReplyMarkup?: InstanceType<typeof ContinueLastTopicReplyMarkupContent>;
+  /** how many items of its album the bubble was rendered with */
+  groupedLength?: number;
 };

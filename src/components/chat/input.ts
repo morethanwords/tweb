@@ -82,6 +82,7 @@ import {putPreloader} from '@components/putPreloader';
 import SetTransition from '@components/singleTransition';
 import PeerTitle from '@components/peerTitle';
 import {fastRaf} from '@helpers/schedulers';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '@helpers/dom/fixSafariStickyInputFocusing';
 import showPeerPopup from '@components/popups/peer';
@@ -259,6 +260,12 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 
 type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward' | 'stop';
+/** what one send goes with, besides the field: Send Without Sound, Schedule Message */
+type SendingFlags = Pick<ChatInput, 'scheduleDate' | 'scheduleRepeatPeriod' | 'sendSilent'>;
+/** a message that left the field as it went, until the draft clears its send asks for are back (`takeOwnDraftUpdate`) */
+type OwnSend = {clears: number, until: number};
+/** how long an own send's draft clears are waited for */
+const OWN_DRAFT_CLEAR_TIMEOUT = 30e3;
 type ChatInputAttachMenuButton = ButtonMenuItemOptionsVerifiable & {
   richMessageAction?: RichMessageAttachMenuAction
 };
@@ -463,6 +470,10 @@ export default class ChatInput {
   public editMessage: Message.message;
   private messageEditingGeneration = 0;
   private inputValueGeneration = 0;
+  /** a message whose checks run before it leaves the field: a press meanwhile does nothing */
+  private sendingMessage: Promise<void>;
+  /** messages that left the field whose draft clears have not come back yet */
+  private ownSends: OwnSend[] = [];
   private appliedInputDraft?: {value?: DraftMessage.draftMessage};
   private noWebPage: true;
   public scheduleDate: number;
@@ -1890,6 +1901,12 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
+      // a message that left the field is on its way: what is there now is the next message's, for neither its
+      // draft clear nor a draft saved before it went to touch
+      if(this.takeOwnDraftUpdate(peerId, threadId, monoforumThreadId, !!draft, force)) {
+        return;
+      }
+
       // A local media placeholder cannot be represented in a server draft yet.
       // Keep it authoritative until the upload resolves instead of letting an
       // echo of the partial/empty draft remove the visible preview.
@@ -2687,6 +2704,9 @@ export default class ChatInput {
 
   public cleanup(helperToo = true) {
     this.setMessageInputExpanded(false);
+    // what is under way in the chat left goes on there, and holds up nothing in the next one
+    this.sendingMessage = undefined;
+    this.ownSends = [];
 
     if(this.chat && !this.chat.peerId) {
       this.chatInput.classList.add('hide');
@@ -4739,27 +4759,11 @@ export default class ChatInput {
 
     this.resetSendingFlags();
     this.suppressDraftSyncForUnsupportedRichMessage = false;
-
-    const {totalEntities} = this.getValueAndEntities(this.messageInput);
-    let nextOffset = 0;
-    const emojiEntities: (MessageEntity.messageEntityEmoji | MessageEntity.messageEntityCustomEmoji)[] = totalEntities.filter((entity) => {
-      if(entity._ === 'messageEntityEmoji' || entity._ === 'messageEntityCustomEmoji') {
-        const endOffset = entity.offset + entity.length;
-        return endOffset <= nextOffset ? false : (nextOffset = endOffset, true);
-      }
-
-      return false;
-    }) as any;
-    emojiEntities.forEach((entity) => {
-      const emoji: AppEmoji = entity._ === 'messageEntityEmoji' ? {emoji: emojiFromCodePoints(entity.unicode)} : {docId: entity.document_id, emoji: ''};
-      this.managers.appEmojiManager.pushRecentEmoji(emoji);
-    });
+    this.pushRecentEmoji(this.getValueAndEntities(this.messageInput).totalEntities);
 
     if(clearInput) {
       this.richMessageInput?.cancelMedia();
-      this.lastUrl = '';
-      delete this.noWebPage;
-      this.willSendWebPage = null;
+      this.forgetWebPage();
       this.clearInput();
     }
 
@@ -4773,6 +4777,29 @@ export default class ChatInput {
     this.onMessageSent2?.();
   }
 
+  private pushRecentEmoji(totalEntities: MessageEntity[]) {
+    let nextOffset = 0;
+    const emojiEntities: (MessageEntity.messageEntityEmoji | MessageEntity.messageEntityCustomEmoji)[] = totalEntities.filter((entity) => {
+      if(entity._ === 'messageEntityEmoji' || entity._ === 'messageEntityCustomEmoji') {
+        const endOffset = entity.offset + entity.length;
+        return endOffset <= nextOffset ? false : (nextOffset = endOffset, true);
+      }
+
+      return false;
+    }) as any;
+    emojiEntities.forEach((entity) => {
+      const emoji: AppEmoji = entity._ === 'messageEntityEmoji' ? {emoji: emojiFromCodePoints(entity.unicode)} : {docId: entity.document_id, emoji: ''};
+      this.managers.appEmojiManager.pushRecentEmoji(emoji);
+    });
+  }
+
+  /** the link preview chosen for what the field held */
+  private forgetWebPage() {
+    this.lastUrl = '';
+    delete this.noWebPage;
+    this.willSendWebPage = null;
+  }
+
   public static async sendMessageWithForward({
     sendingParams,
     inputField,
@@ -4784,12 +4811,15 @@ export default class ChatInput {
     paidMessageInterceptor,
     ephemeral,
     text,
-    collapseInputField
+    collapseInputField,
+    onSending
   }: {
     sendingParams: MessageSendingParams,
     inputField?: InputFieldAnimated,
     /** Folds the field's expanded editor, where a quote is always a rich one. */
     collapseInputField?: () => void,
+    /** once the checks are through, right before anything goes: its text as `textMessages` messages */
+    onSending?: (textMessages: number) => void,
     chatType?: ChatType,
     forwarding?: ChatInput['forwarding'],
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
@@ -4873,7 +4903,8 @@ export default class ChatInput {
     const config = await rootScope.managers.apiManager.getConfig();
     const MAX_LENGTH = config.message_length_max;
     const textOverflow = !richMessage && value.length > MAX_LENGTH;
-    messageCount += richMessage ? 1 : trimmedValue ? splitStringByLength(value, MAX_LENGTH).length : 0;
+    const textMessageCount = richMessage ? 1 : trimmedValue ? splitStringByLength(value, MAX_LENGTH).length : 0;
+    messageCount += textMessageCount;
 
     // Queued sends still need an accurate result so their composer is cleared,
     // while retaining the scheduled view's existing payment/slow-mode policy.
@@ -4895,7 +4926,26 @@ export default class ChatInput {
     if(preparedPaymentResult === PAYMENT_REJECTED) return false;
     sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-    if(richMessage || trimmedValue || sendingParams.suggestedPost?.hasMedia) {
+    // looked up before anything goes, so that all of it goes at once, before what is sent next
+    const forwardedAlone = new Map<string, Message.message>();
+    const lookups: Promise<void>[] = [];
+    for(const fromPeerId in forwarding) {
+      const mids = forwarding[fromPeerId];
+      if(mids.length !== 1) continue;
+      lookups.push(Promise.resolve(
+        rootScope.managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0])
+      ).then((message) => {
+        forwardedAlone.set(fromPeerId, message as Message.message);
+      }));
+    }
+    await Promise.all(lookups);
+
+    const sendsText = !!(richMessage || trimmedValue || sendingParams.suggestedPost?.hasMedia);
+    if(sendsText || messageCount) {
+      onSending?.(sendsText ? textMessageCount || 1 : 0);
+    }
+
+    if(sendsText) {
       rootScope.managers.appMessagesManager.sendText({
         ...sendTextParams,
         ...sendingParams,
@@ -4911,12 +4961,9 @@ export default class ChatInput {
 
     for(const fromPeerId in forwarding) {
       const mids = forwarding[fromPeerId];
-      if(mids.length === 1) {
-        const msg = await rootScope.managers.appMessagesManager.getMessageByPeer(
-          fromPeerId.toPeerId(),
-          mids[0]
-        ) as Message.message;
-        if(msg?.pFlags?.fakeForSavedMusic) {
+      const msg = forwardedAlone.get(fromPeerId);
+      if(msg) {
+        if(msg.pFlags?.fakeForSavedMusic) {
           const doc = (msg.media as MessageMedia.messageMediaDocument).document as MyDocument;
           rootScope.managers.appMessagesManager.sendOther({
             ...sendingParams,
@@ -4948,17 +4995,197 @@ export default class ChatInput {
     return {value, messageCount};
   }
 
+  /**
+   * As Android has it: the field is read as it is pressed and let go of whole as the message goes, once the checks
+   * before the send (slow mode, payment) are through; one the checks stop stays where it was. A press while a
+   * message is checked, before it leaves the field, does nothing.
+   */
   public async sendMessage(force = false, ephemeralCommandReceiverId?: UserId) {
+    if(this.editMsgId) {
+      return this.saveEditedMessage();
+    }
+
+    const flags = this.takeSendingFlags();
+    if(this.sendingMessage) {
+      return;
+    }
+
+    const sending = this.sendingMessage = this.sendFieldMessage(force, ephemeralCommandReceiverId, flags);
+    try {
+      await sending;
+    } finally {
+      if(this.sendingMessage === sending) this.sendingMessage = undefined;
+    }
+  }
+
+  /**
+   * Send Without Sound and Schedule Message set their flag right before they send, at once: the flags belong to
+   * that press alone, and never stay on the field for the next message
+   */
+  private takeSendingFlags(): SendingFlags {
+    const {scheduleDate, scheduleRepeatPeriod, sendSilent} = this;
+    this.resetSendingFlags();
+    return {scheduleDate, scheduleRepeatPeriod, sendSilent};
+  }
+
+  private async sendFieldMessage(force: boolean, ephemeralCommandReceiverId: UserId, flags: SendingFlags) {
+    const {chat} = this;
+    if(!ephemeralCommandReceiverId && !this.verifyEphemeralCommand()) {
+      return;
+    }
+
+    if(chat.type === ChatType.Scheduled && !force) {
+      // the press goes on in the schedule picker: the send it makes goes without sound if this press did
+      this.scheduleSending(() => {
+        this.sendSilent = flags.sendSilent;
+        this.sendMessage(true);
+      });
+      return;
+    }
+
+    const middleware = this.getMiddleware();
+    const contentIsCurrent = captureInputContent(this.messageInputField.input, this.messageInputEditor);
+    const inputGeneration = this.inputValueGeneration;
+    const isCurrent = () => middleware() && !this.editMsgId &&
+      this.inputValueGeneration === inputGeneration && contentIsCurrent(this.messageInputEditor);
+    if(!(await this.checkWelcomeMessagesLimit()) || !isCurrent()) {
+      return;
+    }
+
+    const sendingParams: MessageSendingParams = {
+      ...chat.getMessageSendingParams(),
+      scheduleDate: flags.scheduleDate,
+      scheduleRepeatPeriod: flags.scheduleRepeatPeriod,
+      silent: flags.sendSilent,
+      ...(ephemeralCommandReceiverId ? {
+        ephemeral: true,
+        ephemeralReceiverId: ephemeralCommandReceiverId
+      } : {})
+    };
+    const {forwarding} = this;
+    const ephemeral = !!sendingParams.ephemeral;
+    // the welcome composer keeps no draft, and the one it would clear is the group's own
+    const clearDraft = !this.isWelcomeComposer;
+    // what goes, as it is read right below
+    const {totalEntities} = this.getValueAndEntities(this.messageInput);
+    let left = false;
+    const result = await ChatInput.sendMessageWithForward({
+      inputField: this.messageInputField,
+      collapseInputField: () => this.setMessageInputExpanded(false, true),
+      sendingParams,
+      chatType: chat.type,
+      forwarding,
+      forwardParams: forwarding ? {
+        dropAuthor: !this.forwardingHasProtectedRichMessages &&
+          this.forwardElements &&
+          this.forwardElements.hideSender.checkboxField.checked,
+        dropCaptions: !this.forwardingHasProtectedRichMessages && this.isDroppingCaptions()
+      } : undefined,
+      sendTextParams: {
+        noWebPage: this.noWebPage,
+        webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+        webPageOptions: this.webPageOptions,
+        invertMedia: this.willSendWebPage ? this.invertMedia : undefined,
+        clearDraft
+      },
+      slowModeParams: this.getDefaultParamsForSlowModeTooltip(),
+      paidMessageInterceptor: this.paidMessageInterceptor,
+      ephemeral,
+      onSending: (textMessages) => {
+        // the field goes whole, with what was typed or chosen while it was checked, as Android has it; one gone with
+        // its chat, or holding an edit by now, is left alone
+        if(!middleware() || this.editMsgId) {
+          return;
+        }
+
+        left = true;
+        // the next press has a field of its own now, while the rest of this one goes
+        this.sendingMessage = undefined;
+        // the draft clears its text asks for come back after the field moved on to the next message
+        if(textMessages && clearDraft && !ephemeral && !PEER_EXCEPTIONS.has(chat.type)) {
+          this.ownSends.push({clears: textMessages, until: Date.now() + OWN_DRAFT_CLEAR_TIMEOUT});
+        }
+
+        this.forgetWebPage();
+        this.clearInput(false);
+        // a suggested post's helper goes once it is sent, as before
+        if(!this.suggestedPost) {
+          this.clearHelper();
+        }
+        this.setMessageInputExpanded(false, true);
+        this.updateSendBtn();
+      }
+    });
+
+    if(!result || !result.messageCount || !left || !middleware()) {
+      return;
+    }
+
+    if(!ephemeral && !PEER_EXCEPTIONS.has(chat.type)) {
+      this.managers.appMessagesManager.readAllHistory(chat.peerId, chat.threadId, true);
+    }
+
+    this.suppressDraftSyncForUnsupportedRichMessage = false;
+    this.pushRecentEmoji(totalEntities);
+    if(sendingParams.suggestedPost && this.suggestedPost === sendingParams.suggestedPost) {
+      this.clearHelper();
+    }
+
+    this.updateSendBtn();
+    this.onMessageSent2?.();
+  }
+
+  private forgetOwnSend(ownSend: OwnSend) {
+    indexOfAndSplice(this.ownSends, ownSend);
+  }
+
+  /**
+   * A draft update of this chat while messages that left the field are on their way (a global monoforum chat
+   * sends into its threads): the clear one of their sends asks for, or a draft that would fill the field —
+   * saved before it went, or from another device meanwhile. Both are what was there before it went.
+   */
+  private takeOwnDraftUpdate(
+    peerId: PeerId,
+    threadId: number,
+    monoforumThreadId: PeerId,
+    hasDraft: boolean,
+    force: boolean
+  ) {
+    const {chat} = this;
+    const now = Date.now();
+    this.ownSends = this.ownSends.filter(({until}) => until > now);
+    if(
+      !this.ownSends.length ||
+      chat.peerId !== peerId ||
+      chat.threadId !== threadId ||
+      (chat.monoforumThreadId !== monoforumThreadId && !(chat.isMonoforum && !chat.monoforumThreadId))
+    ) {
+      return false;
+    }
+
+    if(hasDraft) {
+      // one forced on the field (a link that fills it) still does
+      return !force;
+    }
+
+    if(!force) {
+      return true;
+    }
+
+    const ownSend = this.ownSends.find(({clears}) => clears);
+    if(!ownSend) {
+      return false;
+    }
+
+    if(!--ownSend.clears) {
+      this.forgetOwnSend(ownSend);
+    }
+
+    return true;
+  }
+
+  private async saveEditedMessage() {
     const {editMsgId, chat} = this;
-    if(!editMsgId && !ephemeralCommandReceiverId && !this.verifyEphemeralCommand()) {
-      return;
-    }
-
-    if(chat.type === ChatType.Scheduled && !force && !editMsgId) {
-      this.scheduleSending();
-      return;
-    }
-
     const {peerId} = chat;
     const middleware = this.getMiddleware();
     const contentIsCurrent = captureInputContent(this.messageInputField.input, this.messageInputEditor);
@@ -4970,62 +5197,6 @@ export default class ChatInput {
     }
 
     const {noWebPage} = this;
-    const sendingParams = {
-      ...this.chat.getMessageSendingParams(),
-      ...(ephemeralCommandReceiverId ? {
-        ephemeral: true,
-        ephemeralReceiverId: ephemeralCommandReceiverId
-      } : {})
-    };
-
-    if(!editMsgId) {
-      const isEphemeral = !!sendingParams.ephemeral;
-      const result = await ChatInput.sendMessageWithForward({
-        inputField: this.messageInputField,
-        collapseInputField: () => this.setMessageInputExpanded(false, true),
-        sendingParams,
-        chatType: chat.type,
-        forwarding: this.forwarding,
-        forwardParams: this.forwarding ? {
-          dropAuthor: !this.forwardingHasProtectedRichMessages &&
-            this.forwardElements &&
-            this.forwardElements.hideSender.checkboxField.checked,
-          dropCaptions: !this.forwardingHasProtectedRichMessages && this.isDroppingCaptions()
-        } : undefined,
-        sendTextParams: {
-          noWebPage,
-          webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
-          webPageOptions: this.webPageOptions,
-          invertMedia: this.willSendWebPage ? this.invertMedia : undefined,
-          // the welcome composer keeps no draft, and the one it would clear is the group's own
-          clearDraft: !this.isWelcomeComposer
-        },
-        slowModeParams: this.getDefaultParamsForSlowModeTooltip(),
-        paidMessageInterceptor: this.paidMessageInterceptor,
-        ephemeral: isEphemeral
-      });
-
-      if(!result || !result.messageCount || !isCurrent()) {
-        return;
-      }
-
-      if(isEphemeral) {
-        this.onMessageSent(true, true, true);
-      } else if(PEER_EXCEPTIONS.has(this.chat.type)) {
-        this.onMessageSent(true);
-      } else {
-        this.onMessageSent(false, false);
-      }
-      if(this.suggestedPost) this.clearHelper();
-      // this.onMessageSent();
-
-      if(!result.value) {
-        this.onMessageSent();
-      }
-
-      return;
-    }
-
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     const message = this.editMessage;
     const canUseRichMessage = !message.media || message.media._ === 'messageMediaWebPage';

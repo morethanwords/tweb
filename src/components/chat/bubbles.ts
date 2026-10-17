@@ -4,6 +4,7 @@ import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPe
 import type {HistoryResult, MyEphemeralMessage, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type Chat from '@components/chat/chat';
+import type {BubbleElementAddons} from '@components/chat/types';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
@@ -760,6 +761,8 @@ export default class ChatBubbles {
 
   private solidMessageBodies = new Map<HTMLElement, Map<number, SolidMessageBodyEntry>>();
   private pendingStreamedMessageUpdates = new Map<FullMid, Message.message>();
+  /** an update of a bubble that came while its message was being rendered, the latest one (`safeRenderMessage`) */
+  private pendingRerenders = new Map<FullMid, Omit<Parameters<ChatBubbles['safeRenderMessage']>[0], 'bubble'>>();
   private streamedMessageFinals = new Map<FullMid, StreamedMessageFinalMarker>();
   /**
    * Android's `welcomeTemplateFirst`: new members read the chat's welcome messages from the
@@ -993,7 +996,7 @@ export default class ChatBubbles {
 
     this.batchProcessor = new BatchProcessor({
       log: this.log,
-      process: this.processBatch,
+      process: (...args) => this.processBatch(...args),
       possibleError: PEER_CHANGED_ERROR
     });
     this.preloader = new ProgressivePreloader({
@@ -1458,14 +1461,8 @@ export default class ChatBubbles {
         return;
       }
 
-      delete this.bubbles[wasFullMid];
       const mainMid = getMainMidForGrouped(mids);
-      const message = messages.find((message) => message.mid === mainMid);
-      this.safeRenderMessage({
-        message,
-        reverse: true,
-        bubble
-      });
+      this.rerenderGroupedBubble(bubble, wasFullMid, messages.find((message) => message.mid === mainMid));
     });
 
     // this.listenerSetter.add(rootScope)('peer_title_edit', async(peerId) => {
@@ -4371,6 +4368,57 @@ export default class ChatBubbles {
     }
   }
 
+  /**
+   * An album comes one message at a time when its items come in updates of their own: an item whose album
+   * already has a bubble, on screen or on its way there, renders that bubble again with the items there are by
+   * now. Returns that render, false when the bubble has the item already, nothing when the item is not one
+   * of a rendered album.
+   */
+  private renderGroupedItem(message: MyMessage) {
+    const groupedId = (message as Message.message).grouped_id;
+    // the pinned list renders an album's items one by one
+    if(!groupedId || this.chat.type === ChatType.Pinned) {
+      return;
+    }
+
+    const messages = apiManagerProxy.getMessagesByGroupedId(groupedId);
+    for(const {mid} of messages) {
+      const fullMid = makeFullMid(message.peerId, mid);
+      const bubble = this.getBubble(fullMid);
+      if(!bubble || this.skippedMids.has(fullMid)) {
+        continue;
+      }
+
+      // by count: a send of one's own keeps its items while their temporary ids become the server's
+      if((bubble as BubbleElementAddons).groupedLength >= messages.length) {
+        return false;
+      }
+
+      return this.rerenderGroupedBubble(bubble, fullMid, getMainGroupedMessage(messages));
+    }
+  }
+
+  /**
+   * Renders an album's bubble, registered under `fullMid`, again with the items the album has now. When its
+   * first item is another one than before, the bubble goes by that one from now on, its grouping item too
+   * (one still on its way to a group gets it from the render below).
+   */
+  private rerenderGroupedBubble(bubble: HTMLElement, fullMid: FullMid, mainMessage: Message.message) {
+    if(fullMid !== makeFullMid(mainMessage)) {
+      if(this.bubbles[fullMid] === bubble) {
+        delete this.bubbles[fullMid];
+      }
+
+      this.updateGroupedMessage(bubble, mainMessage);
+    }
+
+    return this.safeRenderMessage({
+      message: mainMessage,
+      reverse: true,
+      bubble
+    });
+  }
+
   public getBubbleGroupedItems(bubble: HTMLElement) {
     return Array.from(bubble.querySelectorAll('.grouped-item')) as HTMLElement[];
   }
@@ -5217,6 +5265,11 @@ export default class ChatBubbles {
     if(this.getBubble(fullMid)) {
       return;
     }
+
+    const groupedBubbleRender = this.renderGroupedItem(message);
+    if(groupedBubbleRender === false) {
+      return;
+    }
     // ! should scroll even without new messages
     /* if(!mids.length) {
       return;
@@ -5249,7 +5302,9 @@ export default class ChatBubbles {
       this.chat.cancelPreservePaddingScroll();
     }
 
-    const promise = this.performHistoryResult({history: [message]}, false);
+    const promise = groupedBubbleRender ?
+      groupedBubbleRender.then(() => this.messagesQueuePromise) :
+      this.performHistoryResult({history: [message]}, false);
     if(scrolledDown) {
       promise.then(() => {
         if(!middleware()) return;
@@ -5808,6 +5863,7 @@ export default class ChatBubbles {
     this.releaseChatInnerMiddleware();
     this.solidMessageBodies.clear();
     this.pendingStreamedMessageUpdates.clear();
+    this.pendingRerenders.clear();
     this.hiddenLinksPendingBubbles.forEach((bubble) => {
       setBubbleHiddenLinksPending(bubble, false);
       setBubbleHiddenLinksFallback(bubble, true);
@@ -6699,15 +6755,35 @@ export default class ChatBubbles {
     });
   }
 
-  private processBatch = async(...args: Parameters<ChatBubbles['batchProcessor']['process']>) => {
+  private async processBatch(...args: Parameters<ChatBubbles['batchProcessor']['process']>) {
     let [loadQueue, m, log] = args;
 
     const filterQueue = (queue: typeof loadQueue) => {
       return queue.filter((details) => {
-        // message can be deleted during rendering
-        return details &&
-          this.getBubble(this.makeFullMid(details.message)) === details.bubble &&
-          !this.changedMids.has(getMid(details.message));
+        if(!details) {
+          return false;
+        }
+
+        // message can be deleted during rendering, or sent: `message_sent` has moved a send confirmed while
+        // it was rendering to its server id, and `history_update` gives its item that identity once this
+        // batch is done. Dropping it here left its bubble out of every group, unseen until the chat reopened
+        const {message} = details;
+        const sentMid = this.changedMids.get(getMid(message));
+        if(sentMid === undefined || !isMessage(message)) {
+          return this.getBubble(this.makeFullMid(message)) === details.bubble;
+        }
+
+        if(this.getBubble(makeFullMid(message.peerId, sentMid)) !== details.bubble) {
+          return false;
+        }
+
+        // a scheduled chat has no `history_update`, nor an item yet for `message_sent` to give the id to: it is
+        // grouped by the message it has become
+        if(this.chat.type === ChatType.Scheduled) {
+          details.message = this.chat.getMessageByPeer(message.peerId, sentMid) as MyMessage || message;
+        }
+
+        return true;
       });
     };
 
@@ -6841,7 +6917,7 @@ export default class ChatBubbles {
     }).catch(noop);
 
     // this.setStickyDateManually();
-  };
+  }
 
   public renderMessagesQueue(options: ReturnType<ChatBubbles['safeRenderMessage']>) {
     return this.batchProcessor.addToQueue(options);
@@ -7272,7 +7348,21 @@ export default class ChatBubbles {
     canAnimateLadder?: boolean
   }) {
     const fullMid = this.makeFullMid(message);
-    if(!message || this.renderingMessages.has(fullMid) || (this.getBubble(fullMid) && !bubble)) {
+    if(!message) {
+      return;
+    }
+
+    if(this.renderingMessages.has(fullMid)) {
+      // an update of a message still being rendered (an edit, the next items of an album) is not dropped: it
+      // runs on that render's bubble once it is done, the latest one only
+      if(bubble) {
+        this.pendingRerenders.set(fullMid, {message, reverse, updatePosition, processResult, canAnimateLadder});
+      }
+
+      return;
+    }
+
+    if(this.getBubble(fullMid) && !bubble) {
       return;
     }
 
@@ -7476,7 +7566,40 @@ export default class ChatBubbles {
 
     this.renderingMessages.delete(fullMid);
     this.reconcilePendingStreamedMessageUpdate(fullMid);
+    this.renderPendingRerender(fullMid);
     return result;
+  }
+
+  private renderPendingRerender(fullMid: FullMid) {
+    const options = this.pendingRerenders?.get(fullMid);
+    if(!options) return;
+    this.pendingRerenders.delete(fullMid);
+
+    const bubble = this.getBubble(fullMid);
+    if(!bubble) {
+      return;
+    }
+
+    // an edit applied in place meanwhile (`updateSolidMessageBody`) is newer than the one that waited
+    const {message} = options;
+    void this.safeRenderMessage({
+      ...options,
+      message: isMessage(message) ? this.getMessageAsItIsNow(message as MyMessage) : message,
+      bubble
+    });
+  }
+
+  /**
+   * A message as the mirror has it now, by `mid` (its server id when its send was confirmed meanwhile); as it
+   * was passed when the mirror holds no such message of that chat. A local one is what it is.
+   */
+  private getMessageAsItIsNow(message: MyMessage, mid = message.mid) {
+    if(message.pFlags.local) {
+      return message;
+    }
+
+    const current = this.chat.getMessageByPeer(message.peerId, mid) as MyMessage;
+    return current?.peerId === message.peerId && current.mid === mid ? current : message;
   }
 
   private setBubbleSendingStatus(bubble: HTMLElement, status?: SendingStatusIconState, first?: boolean) {
@@ -8012,6 +8135,7 @@ export default class ChatBubbles {
 
     const maxBubbleMid = groupedMids ? Math.max(...groupedMids) : message.mid;
     (bubble as any).maxBubbleMid = maxBubbleMid;
+    (bubble as BubbleElementAddons).groupedLength = groupedMids?.length;
 
     if(hasReactions) {
       reactionsMessage = groupedId ? getMainGroupedMessage(groupedMessages) : message;
@@ -11806,6 +11930,14 @@ export default class ChatBubbles {
     }
 
     const cb = (message: Message.message | Message.messageService | AdminLog) => {
+      // rendered as it is by now: the events of one batch are handled before any render starts, so an edit that
+      // came with the message found no bubble to go to, and a send the server has taken found none to give its
+      // id to (`message_sent`)
+      if(message && isMessage(message)) {
+        const {mid} = message as MyMessage;
+        message = this.getMessageAsItIsNow(message as MyMessage, this.changedMids.get(mid) ?? mid);
+      }
+
       if(!message) {
         return;
       } else if(isMessage(message) && message.pFlags.local) {
