@@ -35,6 +35,7 @@ export function FoldersSidebarContent(props: {
   const {
     rootScope,
     appSidebarLeft,
+    appDialogsManager,
     AppChatFoldersTab,
     AppEditFolderTab,
     i18n,
@@ -88,6 +89,7 @@ export function FoldersSidebarContent(props: {
   onMount(() => {
     contextMenu = createFolderContextMenu({
       appSidebarLeft,
+      appDialogsManager,
       AppChatFoldersTab,
       AppEditFolderTab,
       managers: rootScope.managers,

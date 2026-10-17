@@ -1,0 +1,40 @@
+.container {
+  margin: .5rem;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  height: 2.5rem;
+  padding-inline: .75rem .25rem;
+  border-radius: 1.25rem;
+  background-color: var(--light-filled-primary-color);
+  color: var(--primary-color);
+}
+
+.icon {
+  flex: 0 0 auto;
+  font-size: 1.5rem;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: var(--font-weight-bold);
+}
+
+.close {
+  flex: 0 0 auto;
+  padding: .375rem;
+  font-size: 1.25rem;
+  color: inherit;
+}
+
+// * the column narrowed to its avatars keeps the way back to every chat, as an icon
+.collapsedIcon {
+  color: var(--primary-color);
+}

@@ -19,6 +19,7 @@ import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 import {createEffect, createMemo, createSignal, onCleanup, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 import styles from '@components/sidebarLeft/newAuthorization.module.scss';
+import collapsedPanelStyles from '@components/sidebarLeft/collapsedPanelButton.module.scss';
 
 export function formatAuthorizationOrigin(authorization: UnconfirmedAuthorization) {
   return [authorization.device, authorization.location].filter(Boolean).join(', ');
@@ -239,7 +240,7 @@ export function NewAuthorization(props: {
       <RippleElement
         component="button"
         type="button"
-        class={classNames(styles.collapsed, 'hover-effect')}
+        class={classNames(collapsedPanelStyles.button, 'hover-effect')}
         onClick={showActionsPopup}
         aria-label={getAuthorizationAccessibleLabel(props.authorization, props.total)}
       >

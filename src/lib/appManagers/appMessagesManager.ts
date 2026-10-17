@@ -696,6 +696,7 @@ export class AppMessagesManager extends AppManager {
   private pendingByMessageId: {[mid: string]: Long} = {};
   private pendingAfterMsgs: {[peerId: PeerId]: PendingAfterMsg} = {};
   public pendingTopMsgs: {[peerId in PeerId | `${PeerId}_${number}`]: number} = {};
+  private fillConversationsPromises: {[folderId: string]: Promise<void>} = {};
   private tempFinalizeCallbacks: {
     [tempId: string]: {
       [callbackName: string]: Partial<{
@@ -1054,6 +1055,7 @@ export class AppMessagesManager extends AppManager {
       this.uploadFilePromises = {};
     }
 
+    this.fillConversationsPromises = {};
     this.messagesStorageByPeerId = {};
     this.groupedMessagesStorage = {};
     this.scheduledMessagesStorage = {};
@@ -5632,14 +5634,23 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async fillConversations(folderId = GLOBAL_FOLDER_ID): Promise<void> {
-    const middleware = this.middleware.get();
-    while(!this.dialogsStorage.isDialogsLoaded(folderId)) {
-      const result = await this.getTopMessages({limit: 100, folderId});
-      if(!middleware() || !result || result.isEnd) {
-        break;
+  // * a second caller waits for the loading that is already going on instead of paging alongside it.
+  // * One cut short by a state reset (`clear`) is not waited for: the reset starts the map anew, and
+  // * the old loading lets go of its own map only
+  public fillConversations(folderId = GLOBAL_FOLDER_ID): Promise<void> {
+    const key = '' + folderId;
+    const promises = this.fillConversationsPromises;
+    return promises[key] ??= (async() => {
+      const middleware = this.middleware.get();
+      while(!this.dialogsStorage.isDialogsLoaded(folderId)) {
+        const result = await this.getTopMessages({limit: 100, folderId});
+        if(!middleware() || !result || result.isEnd) {
+          break;
+        }
       }
-    }
+    })().finally(() => {
+      delete promises[key];
+    });
   }
 
   /* public async getConversationsAll(query = '', folderId = 0) {

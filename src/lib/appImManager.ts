@@ -1807,7 +1807,8 @@ export class AppImManager extends EventListenerBase<{
         this.managers.dialogsStorage.getNextDialog(
           this.chat.peerId,
           key === 'ArrowDown',
-          appDialogsManager.filterId
+          appDialogsManager.filterId,
+          appDialogsManager.xd?.getShownPeerIds()
         ).then((dialog) => {
           if(dialog) {
             this.setPeer({peerId: dialog.peerId});

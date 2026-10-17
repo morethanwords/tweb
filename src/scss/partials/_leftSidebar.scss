@@ -336,6 +336,17 @@
     // the tabs just stacks instead of overlapping.
   }
 
+  // * what the list fades through while it is built again (`appDialogsManager.refillListFaded`):
+  // * the column's colour laid over the rows, under the panel - the rows themselves are never
+  // * animated, so the fade starts at once however long the list is. Mounted for the fade only
+  .chatlist-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background-color: var(--surface-color);
+    pointer-events: none;
+  }
+
   .folders-tabs {
     &-scrollable {
       margin: .5rem;

@@ -416,10 +416,15 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     this.loadDialogsPromise = undefined;
   }
 
+  /**
+   * Builds the list again, and returns the loading of its first page - asked for at once, so the
+   * one going on when this returns
+   */
   public fullReset() {
     this.reset();
     this.clear();
-    return this.onChatsScroll();
+    this.onChatsScroll();
+    return this.loadDialogsDeferred;
   }
 
   /**

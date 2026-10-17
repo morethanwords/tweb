@@ -9,6 +9,7 @@ import createNotificationsSuggestion from '@components/sidebarLeft/notifications
 import createPasskeySetupSuggestion from '@components/sidebarLeft/passkeySetupSuggestion';
 import type {PendingSuggestionController} from '@components/sidebarLeft/pendingSuggestionController';
 import styles from '@components/sidebarLeft/pendingSuggestion.module.scss';
+import collapsedPanelStyles from '@components/sidebarLeft/collapsedPanelButton.module.scss';
 import selectPendingSuggestion, {PendingSuggestionType} from '@components/sidebarLeft/selectPendingSuggestion';
 import {toastNew} from '@components/toast';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
@@ -63,7 +64,7 @@ function BotConnectionReviewSuggestion() {
           <RippleElement
             component="button"
             type="button"
-            class={classNames(styles.collapsed, 'hover-danger-effect')}
+            class={classNames(collapsedPanelStyles.button, 'hover-danger-effect')}
             aria-label={I18n.format('ChatAutomation.ConnectionReview.Title', true)}
             onClick={() => setIsSidebarCollapsed(false)}
           >

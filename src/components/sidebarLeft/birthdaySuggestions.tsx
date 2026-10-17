@@ -8,6 +8,7 @@ import birthdayStyles from '@components/sidebarLeft/birthdaySuggestions.module.s
 import type {PendingSuggestionController} from '@components/sidebarLeft/pendingSuggestionController';
 import {PendingSuggestion, SimpleSuggestion} from '@components/sidebarLeft/pendingSuggestionItem';
 import suggestionStyles from '@components/sidebarLeft/pendingSuggestion.module.scss';
+import collapsedPanelStyles from '@components/sidebarLeft/collapsedPanelButton.module.scss';
 import {StackedAvatarsTsx} from '@components/stackedAvatars';
 import {toastNew} from '@components/toast';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -197,7 +198,7 @@ function BirthdayContactsSuggestion(props: {
     >
       <RippleElement
         component="div"
-        class={classNames(suggestionStyles.collapsed, birthdayStyles.collapsed, 'hover-effect')}
+        class={classNames(collapsedPanelStyles.button, birthdayStyles.collapsed, 'hover-effect')}
         onClick={onClick}
       >
         <div class={birthdayStyles.avatars}>

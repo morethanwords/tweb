@@ -36,11 +36,12 @@ import appSidebarLeft from '@components/sidebarLeft';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import replaceContent from '@helpers/dom/replaceContent';
-import crossfadeContent, {getCrossfadingTo, STATUS_CROSSFADE_DURATION} from '@helpers/dom/crossfadeContent';
+import crossfadeContent, {getAnimatedOptions, getCrossfadingTo, STATUS_CROSSFADE_DURATION} from '@helpers/dom/crossfadeContent';
+import liteMode from '@helpers/liteMode';
 import highlightText, {TextHighlight} from '@helpers/dom/textHighlight';
 import ConnectionStatusComponent from '@components/connectionStatus';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
-import {fastRafPromise} from '@helpers/schedulers';
+import {doubleRaf, fastRafPromise} from '@helpers/schedulers';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import {ChatlistContacts, createChatlistContacts} from '@components/sidebarLeft/chatlistContacts';
@@ -104,6 +105,8 @@ import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
 import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import {renderPendingSuggestion} from '@components/sidebarLeft/pendingSuggestion';
 import {renderNewAuthorization} from '@components/sidebarLeft/newAuthorization';
+import {renderUnreadOnlyBar} from '@components/sidebarLeft/unreadOnlyBar';
+import useChatListUnreadOnly from '@stores/chatListUnreadOnly';
 import {useHasFolders} from '@stores/foldersSidebar';
 import {useAppState} from '@stores/appState';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
@@ -120,7 +123,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
-import {children, createEffect, createRoot, createUniqueId, on, untrack} from 'solid-js';
+import {children, createEffect, createRoot, createSignal, createUniqueId, on, untrack} from 'solid-js';
 import useFolders from '@stores/folders';
 import FoldersTabs from '@components/foldersTabs';
 import clamp from '@helpers/number/clamp';
@@ -966,6 +969,15 @@ export class AppDialogsManager {
 
   public xd: AutonomousDialogList;
   public xds: {[filterId: number]: AutonomousDialogList} = {};
+  // * the fades the open list is built again behind (`refillListFaded`), and which change of the
+  // * mode they are of
+  private listRefillAnimations: Animation[] = [];
+  private listRefillGeneration = 0;
+  // * the bar over the list follows the rows it tells about, which change behind a fade - not the mode
+  private unreadOnlyBarShown = createSignal(false);
+  private unreadOnlyBarContainer: HTMLElement;
+  // * what the list fades through while it is built again (`refillListFaded`)
+  private listCover: HTMLElement;
 
   public cancelChatlistUpdatesFetching: () => void;
   public fetchChatlistUpdates: () => void;
@@ -1002,6 +1014,9 @@ export class AppDialogsManager {
     this.foldersOverlay = document.createElement('div');
     this.foldersOverlay.classList.add('chatlist-overlay');
     bottomPart.prepend(this.foldersOverlay);
+
+    this.listCover = document.createElement('div');
+    this.listCover.classList.add('chatlist-cover');
 
     // Surface the overlay's live height to the parent so the chatlist below can leave matching
     // top padding — .folders-scrollable reads var(--chatlist-overlay-height) for its padding-top.
@@ -1045,6 +1060,7 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('state_cleared', () => {
+      this.setUnreadOnly(false);
       const clearCurrent = REAL_FOLDERS.has(this.filterId);
       this.xd.loadedDialogsAtLeastOnce = false;
       this.isFirstDialogsLoad = true;
@@ -1090,6 +1106,14 @@ export class AppDialogsManager {
 
       const resolvedChildren = children(() => element).toArray();
       this.foldersOverlay.append(...resolvedChildren as any);
+    });
+
+    // * under the folder tabs, the last thing over the list
+    const unreadOnlyBarContainer = this.unreadOnlyBarContainer = document.createElement('div');
+    this.foldersOverlay.append(unreadOnlyBarContainer);
+    renderUnreadOnlyBar(unreadOnlyBarContainer, {
+      shown: this.unreadOnlyBarShown[0],
+      onShowAll: () => this.showAllChatsFrom(unreadOnlyBarContainer)
     });
 
     const [appState] = useAppState();
@@ -1147,21 +1171,7 @@ export class AppDialogsManager {
       const id = folderItems[index]?.filter.id ?? FOLDER_ID_ALL;
       const wasFilterId = this.filterId;
 
-      const available = wasFilterId === -1 ||
-        REAL_FOLDERS.has(id) ||
-        (await rootScope.managers.filtersStorage.isFilterIdAvailable(id) ?? true);
-      if(!available) {
-        showLimitPopup('folders');
-        return false;
-      }
-
-      // Switching folders clears whatever is open in the left sidebar — an open
-      // global search and any stacked tabs — mirroring how opening a left-sidebar
-      // tab does it (closeEverythingInside). Both folder UIs (horizontal tabs and
-      // the vertical folders sidebar) funnel through here. Tabs are closed the
-      // natural way (as if via the back arrow), so a tab that needs confirmation
-      // still asks; if the user declines, cancel the folder switch entirely.
-      if(!await appSidebarLeft.closeEverythingInsideNaturally()) {
+      if(!await this.canOpenFolder(id)) {
         return false;
       }
 
@@ -1221,12 +1231,211 @@ export class AppDialogsManager {
 
     createFolderContextMenu({
       appSidebarLeft,
+      appDialogsManager: this,
       AppChatFoldersTab,
       AppEditFolderTab,
       managers: this.managers,
       className: 'menu-horizontal-div-item',
       listenTo: this.folders.menu
     });
+  }
+
+  /**
+   * Shows only unread chats, or every chat again - of the open folder, or of `filterId`, which is
+   * then opened. A chat read while only unread ones are shown stays until the list is built again
+   */
+  public async setUnreadOnly(value: boolean, filterId = this.filterId) {
+    const [unreadOnly, setUnreadOnly] = useChatListUnreadOnly();
+    if(unreadOnly() === value && filterId === this.filterId) {
+      return;
+    }
+
+    // * nothing changes for a folder that cannot be opened. Opening one closes what is open in the
+    // * left sidebar first, and the archive closed gives the list back to the folder it was opened
+    // * from - which may be this very one, so whether a folder is opened is asked again after
+    if(filterId !== this.filterId && !await this.canOpenFolder(filterId)) {
+      return;
+    }
+
+    const opensFolder = filterId !== this.filterId;
+    if(unreadOnly() === value && !opensFolder) {
+      return;
+    }
+
+    const generation = ++this.listRefillGeneration;
+    setUnreadOnly(value);
+    // * the selection belongs to the list as it was when it was made, and the list is built again:
+    // * a chat it holds may be out of sight now, and still acted on
+    this.selection.cancelSelection();
+
+    // * a list that is not on screen is built again when it is opened. The archive is never filtered
+    for(const id in this.xds) {
+      if(+id !== FOLDER_ID_ARCHIVE && this.xds[id] !== this.xd) {
+        this.xds[id].clear();
+      }
+    }
+
+    if(!opensFolder && this.filterId !== FOLDER_ID_ARCHIVE) {
+      void this.refillListFaded(this.xd, value, generation);
+      return;
+    }
+
+    if(opensFolder) {
+      // * the list leaving for the folder keeps its place under the bar that comes, until it is
+      // * opened again (`onTabChange`)
+      const leaving = this.xd.scrollable.container;
+      leaving.style.paddingTop = getComputedStyle(leaving).paddingTop;
+      const {folderItems, onClick} = useFolders();
+      onClick()(folderItems.findIndex((item) => item.id === filterId));
+    }
+
+    // * the bar comes in place, over the list that slides away; a refill cut short ends here
+    const [isBarShown, setBarShown] = this.unreadOnlyBarShown;
+    const barComes = value && !isBarShown() && liteMode.isAvailable('animations');
+    setBarShown(value);
+    this.endListRefill();
+    if(barComes) {
+      this.fadeForRefill([[this.unreadOnlyBarContainer, 1]], 200);
+    }
+  }
+
+  /**
+   * Whether the folder can be opened - it may be over the limit, and whatever is open in the left
+   * sidebar (a global search, stacked tabs) is closed first, the natural way: a tab that needs
+   * confirmation still asks, and declined, the folder stays closed
+   */
+  private async canOpenFolder(filterId: number) {
+    const available = this.filterId === -1 ||
+      REAL_FOLDERS.has(filterId) ||
+      (await rootScope.managers.filtersStorage.isFilterIdAvailable(filterId) ?? true);
+    if(!available) {
+      showLimitPopup('folders');
+      return false;
+    }
+
+    return appSidebarLeft.closeEverythingInsideNaturally();
+  }
+
+  /**
+   * Builds the open list again behind a fade through: what it showed fades out, and what it shows
+   * now fades in as soon as its first page is there. It fades through the column's colour laid
+   * over the rows (`.chatlist-cover`), not the rows' own opacity: an opacity animation on the
+   * list makes the browser lift all of it into a layer of its own first, and a long list started
+   * its fade late and then jumped. The bar over the list changes in between, at its full height,
+   * so the rows are never seen moving down or up for it. A first page that takes its time (every
+   * dialog is still being loaded) brings the skeleton of a loading list in
+   */
+  private async refillListFaded(xd: AutonomousDialogList, unreadOnly: boolean, generation: number) {
+    const [isBarShown, setBarShown] = this.unreadOnlyBarShown;
+    const bar = this.unreadOnlyBarContainer;
+    const cover = this.listCover;
+    if(!liteMode.isAvailable('animations')) {
+      this.endListRefill();
+      setBarShown(unreadOnly);
+      await this.rebuildList(xd, generation);
+      return;
+    }
+
+    if(!cover.isConnected) {
+      this.bottomPart.append(cover);
+    }
+
+    // * the bar leaves with the rows it tells about; staying, it is brought back from a fade cut short
+    const fadingOut = this.fadeForRefill(isBarShown() ? [[cover, 1], [bar, unreadOnly ? 1 : 0]] : [[cover, 1]], 150);
+    try {
+      await Promise.all(fadingOut.map((animation) => animation.finished));
+    } catch{ // * cancelled by the next one
+      return;
+    }
+
+    // * a bar that comes is held unseen while the rows load, to fade in with them
+    if(unreadOnly && !isBarShown()) {
+      this.fadeForRefill([[cover, 1], [bar, 0]], 0);
+    }
+
+    setBarShown(unreadOnly);
+    // * another folder was opened meanwhile - in the mode already, and this list has left
+    if(this.xd !== xd) {
+      this.endListRefill();
+      return;
+    }
+
+    await this.rebuildList(xd, generation);
+    if(generation !== this.listRefillGeneration) {
+      return;
+    }
+
+    // * the new rows are painted first: a fade started under their rendering is seen half done
+    await doubleRaf();
+    if(generation !== this.listRefillGeneration) {
+      return;
+    }
+
+    const fadingIn = this.fadeForRefill(unreadOnly ? [[cover, 0], [bar, 1]] : [[cover, 0]], 200);
+    try {
+      await Promise.all(fadingIn.map((animation) => animation.finished));
+    } catch{
+      return;
+    }
+
+    if(generation === this.listRefillGeneration) {
+      this.endListRefill();
+    }
+  }
+
+  /**
+   * Builds the list again, and waits for its first page - or, when that takes its time (every
+   * dialog is still being loaded), brings the skeleton of a loading list in and waits no more
+   */
+  private async rebuildList(xd: AutonomousDialogList, generation: number) {
+    let isLoaded = false;
+    const loading = xd.fullReset()?.then(() => isLoaded = true, () => isLoaded = true);
+    const isSlow = await Promise.race([
+      loading?.then(() => false),
+      pause(200).then(() => true)
+    ]);
+
+    // * the loading lets go of the skeleton when it ends, so it is never left over the list
+    if(isSlow && !isLoaded && generation === this.listRefillGeneration) {
+      xd.loadedDialogsAtLeastOnce = false;
+      xd.checkForDialogsPlaceholder();
+    }
+  }
+
+  // * nothing held by a refill any more: the cover goes, and the bar is at its own opacity
+  private endListRefill() {
+    this.listCover.remove();
+    this.fadeForRefill([], 0);
+  }
+
+  /**
+   * Fades each element to its opacity - from where a fade cut short has left it, or else from the
+   * other end - and ends the fades that are not asked for any more. A fade to nothing holds at its
+   * end: the cover and the bar rest at full opacity
+   */
+  private fadeForRefill(targets: [HTMLElement, number][], duration: number) {
+    const fading = new Set(this.listRefillAnimations.map((animation) => (animation.effect as KeyframeEffect).target));
+    const from = targets.map(([element, to]) => fading.has(element) ? +getComputedStyle(element).opacity : 1 - to);
+    this.listRefillAnimations.forEach((animation) => animation.cancel());
+    return this.listRefillAnimations = targets.map(([element, to], idx) => element.animate(
+      [{opacity: from[idx]}, {opacity: to}],
+      {...getAnimatedOptions(duration), fill: to ? 'none' : 'forwards'}
+    ));
+  }
+
+  /**
+   * Every chat again, from a control that leaves with the unread ones: the focus it had goes to
+   * the open folder, in whichever of the two places folders are, or else to the list
+   */
+  private showAllChatsFrom(control: HTMLElement) {
+    const hadFocus = Modes.a11y && control.contains(document.activeElement);
+    this.setUnreadOnly(false);
+    if(!hadFocus) {
+      return;
+    }
+
+    const folders = document.querySelectorAll<HTMLElement>('#folders-tabs .menu-horizontal-div-item.active, .folders-sidebar__folder-item--selected');
+    (Array.from(folders).find((element) => element.offsetParent) || this.xd.scrollable.container).focus();
   }
 
   private _renderStories() {
@@ -1589,6 +1798,8 @@ export class AppDialogsManager {
     const {filterId} = this;
     this.xd = this.xds[filterId];
     this.xd.reset();
+    // * held where it was while it left under a bar that came (`setUnreadOnly`)
+    this.xd.scrollable.container.style.paddingTop = '';
 
     this.cancelChatlistUpdatesFetching?.();
     this.cancelChatlistUpdatesFetching = undefined;
@@ -1848,23 +2059,26 @@ export class AppDialogsManager {
     // const needPlaceholder = this.xd.scrollable.loadedAll.bottom && !chatList.childElementCount || true;
     const needPlaceholder = !this.xd.sortedList.itemsLength();
     // chatList.style.display = 'none';
+    const type: 'dialogs' | 'folder' | 'unread' = useChatListUnreadOnly()[0]() ?
+      'unread' :
+      this.filterId ? 'folder' : 'dialogs';
 
-    if(needPlaceholder && placeholderContainer) {
-      return;
-    } else if(!needPlaceholder) {
-      if(placeholderContainer) {
-        part.classList.remove('with-placeholder');
-        placeholderContainer.remove();
-      }
+    // * the list may have switched between every chat and unread ones under its placeholder
+    if(placeholderContainer && (!needPlaceholder || part.dataset.placeholderType !== type)) {
+      part.classList.remove('with-placeholder');
+      placeholderContainer.remove();
+      placeholderContainer = undefined;
+    }
 
+    if(!needPlaceholder || placeholderContainer) {
       return;
     }
 
-    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder';
-    if(!this.filterId) {
+    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>;
+    if(type === 'dialogs') {
       placeholder = this.generateEmptyPlaceholder({
         title: 'ChatList.Main.EmptyPlaceholder.Title',
-        classNameType: type = 'dialogs'
+        classNameType: type
       });
 
       placeholderContainer = placeholder.container;
@@ -1887,10 +2101,12 @@ export class AppDialogsManager {
 
       placeholderContainer.prepend(img);
     } else {
+      // * no unread chats looks exactly like an empty folder: only what it says and its button differ
+      const isUnread = type === 'unread';
       placeholder = this.generateEmptyPlaceholder({
-        title: 'FilterNoChatsToDisplay',
-        subtitle: 'FilterNoChatsToDisplayInfo',
-        classNameType: type = 'folder'
+        title: isUnread ? 'ChatList.UnreadOnly.Empty' : 'FilterNoChatsToDisplay',
+        subtitle: isUnread ? 'ChatList.UnreadOnly.EmptyInfo' : 'FilterNoChatsToDisplayInfo',
+        classNameType: 'folder'
       });
 
       placeholderContainer = placeholder.container;
@@ -1907,12 +2123,14 @@ export class AppDialogsManager {
 
       placeholderContainer.prepend(div);
 
-      const button = Button('btn-primary btn-color-primary btn-control', {
+      const button = Button('btn-primary btn-color-primary btn-control', isUnread ? {
+        text: 'ChatList.ShowAllChats'
+      } : {
         text: 'FilterHeaderEdit',
         icon: 'settings'
       });
 
-      attachClickEvent(button, async() => {
+      attachClickEvent(button, isUnread ? () => this.showAllChatsFrom(button) : async() => {
         const filter = await this.managers.filtersStorage.getFilter(this.filterId);
         appSidebarLeft.createTab(AppEditFolderTab).open({...AppEditFolderTab.getInitArgs(), initFilter: filter});
       });
@@ -1983,7 +2201,8 @@ export class AppDialogsManager {
     // return;
     const count = this.xd?.sortedList.itemsLength() || 0;
 
-    if(count >= MIN_DIALOGS_WITHOUT_CONTACTS) {
+    // * a short list of unread chats is not a short list of chats: no contacts to start one with
+    if(count >= MIN_DIALOGS_WITHOUT_CONTACTS || useChatListUnreadOnly()[0]()) {
       if(this.contactsPlaceholder) {
         this.removeContactsPlaceholder();
       }

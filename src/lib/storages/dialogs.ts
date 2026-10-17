@@ -525,8 +525,17 @@ export default class DialogsStorage extends AppManager {
     return skipMigrated ? folder.dialogs.filter((dialog) => (dialog as Dialog).migratedTo === undefined) : folder.dialogs;
   }
 
-  public getNextDialog(currentPeerId: PeerId, next: boolean, filterId: number) {
-    const folder = this.getFolderDialogs(filterId, true);
+  /**
+   * The chat next to `currentPeerId` in the folder - among `shownPeerIds` only when the list
+   * shows only some of its chats (unread ones), the current chat counted wherever it is
+   */
+  public getNextDialog(currentPeerId: PeerId, next: boolean, filterId: number, shownPeerIds?: PeerId[]) {
+    let folder = this.getFolderDialogs(filterId, true);
+    if(shownPeerIds) {
+      const shown = new Set(shownPeerIds);
+      folder = folder.filter(({peerId}) => peerId === currentPeerId || shown.has(peerId));
+    }
+
     let dialog: Folder['dialogs'][0];
     if(!currentPeerId) {
       if(next) {
@@ -1798,6 +1807,50 @@ export default class DialogsStorage extends AppManager {
     }
   }
 
+  /**
+   * A custom folder is tested against contacts and holds peers that may still be missing - both
+   * have to be there before its dialogs are read
+   */
+  private prepareFolderForFilter(filterId: number) {
+    if(this.isVirtualFilter(filterId) || REAL_FOLDERS.has(filterId)) {
+      return;
+    }
+
+    const promises: Promise<any>[] = [];
+
+    const fillContactsResult = this.appUsersManager.fillContacts();
+    if(!fillContactsResult.cached) {
+      promises.push(fillContactsResult.promise);
+    }
+
+    const reloadMissingDialogsPromise = this.filtersStorage.reloadMissingPeerIds(filterId);
+    if(reloadMissingDialogsPromise) {
+      promises.push(reloadMissingDialogsPromise);
+    }
+
+    return promises.length ? Promise.all(promises) : undefined;
+  }
+
+  /**
+   * Where the page below `offsetIndex` starts in dialogs sorted by `indexKey`
+   */
+  private getOffsetByIndex(
+    dialogs: Folder['dialogs'],
+    offsetIndex: number,
+    indexKey: ReturnType<typeof getDialogIndexKey>
+  ) {
+    let offset = 0;
+    if(offsetIndex > 0) {
+      for(const length = dialogs.length; offset < length; ++offset) {
+        if(offsetIndex > this.getDialogIndex(dialogs[offset], indexKey)) {
+          break;
+        }
+      }
+    }
+
+    return offset;
+  }
+
   public getDialogs(options: {
     query?: string,
     offsetIndex?: number,
@@ -1827,24 +1880,11 @@ export default class DialogsStorage extends AppManager {
     const isForum = this.isFilterIdForForum(filterId);
     const isBotforum = this.appPeersManager.isBotforum(filterId);
     const isVirtualFilter = this.isVirtualFilter(filterId);
-    if(!isVirtualFilter && !REAL_FOLDERS.has(filterId)) {
-      const promises: Promise<any>[] = [];
-
-      const fillContactsResult = this.appUsersManager.fillContacts();
-      if(!fillContactsResult.cached) {
-        promises.push(fillContactsResult.promise);
-      }
-
-      const reloadMissingDialogsPromise = this.filtersStorage.reloadMissingPeerIds(filterId);
-      if(reloadMissingDialogsPromise) {
-        promises.push(reloadMissingDialogsPromise);
-      }
-
-      if(promises.length) {
-        return Promise.all(promises).then(() => {
-          return this.getDialogs(options);
-        });
-      }
+    const preparePromise = this.prepareFolderForFilter(filterId);
+    if(preparePromise) {
+      return preparePromise.then(() => {
+        return this.getDialogs(options);
+      });
     }
 
     // let's load only first pages by certain folderId. next pages will load without folder filtering
@@ -1893,14 +1933,7 @@ export default class DialogsStorage extends AppManager {
       this.cachedResults.query = '';
     }
 
-    let offset = 0;
-    if(offsetIndex > 0) {
-      for(const length = curDialogStorage.length; offset < length; ++offset) {
-        if(offsetIndex > this.getDialogIndex(curDialogStorage[offset], indexKey)) {
-          break;
-        }
-      }
-    }
+    let offset = this.getOffsetByIndex(curDialogStorage, offsetIndex, indexKey);
 
     const loadedAll = this.isDialogsLoaded(realFolderId);
     const isEnoughDialogs = curDialogStorage.length >= (offset + limit);
@@ -1939,14 +1972,7 @@ export default class DialogsStorage extends AppManager {
         curDialogStorage = this.getFolderDialogs(filterId, skipMigrated);
       }
 
-      offset = 0;
-      if(offsetIndex > 0) {
-        for(const length = curDialogStorage.length; offset < length; ++offset) {
-          if(offsetIndex > this.getDialogIndex(curDialogStorage[offset], indexKey)) {
-            break;
-          }
-        }
-      }
+      offset = this.getOffsetByIndex(curDialogStorage, offsetIndex, indexKey);
 
       // this.log.warn(offset, offset + limit, curDialogStorage.dialogs.length, this.dialogs.length);
 
@@ -1989,6 +2015,46 @@ export default class DialogsStorage extends AppManager {
     }
 
     return [...peerIds].slice(0, limit);
+  }
+
+  /**
+   * A page of the folder's unread dialogs - the ones its unread counter counts, so a forum is
+   * unread by its topics and a chat marked as unread is too - and of `keepPeerIds`, the ones a
+   * list keeps since it was built although they are read now. Unread dialogs can be anywhere in
+   * the folder, so it waits for every dialog to be loaded; `unreadPeerIds` is the whole folder's.
+   */
+  public async getUnreadDialogs({
+    filterId,
+    offsetIndex,
+    limit = 20,
+    skipMigrated = true,
+    keepPeerIds
+  }: {
+    filterId: number,
+    offsetIndex?: number,
+    limit?: number,
+    skipMigrated?: boolean,
+    keepPeerIds?: PeerId[]
+  }) {
+    await Promise.all([
+      this.prepareFolderForFilter(filterId),
+      this.appMessagesManager.fillConversations()
+    ]);
+
+    const {unreadPeerIds} = this.getFolder(filterId);
+    const kept = new Set(keepPeerIds);
+    const unreadDialogs = this.getFolderDialogs(filterId, skipMigrated).filter((dialog) => {
+      const key = getDialogKey(dialog);
+      return unreadPeerIds.has(key) || kept.has(key);
+    });
+
+    const offset = this.getOffsetByIndex(unreadDialogs, offsetIndex, this.getDialogIndexKeyByFilterId(filterId));
+    return {
+      dialogs: unreadDialogs.slice(offset, offset + limit),
+      count: unreadDialogs.length,
+      isEnd: offset + limit >= unreadDialogs.length,
+      unreadPeerIds: [...unreadPeerIds]
+    };
   }
 
   public async markFolderAsRead(
