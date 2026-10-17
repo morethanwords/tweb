@@ -54,6 +54,9 @@ export class AppDownloadManager {
   private resolvedBytes = 0;
   // private downloadsToDisc: {[fileName: string]: Download} = {};
   private progress: {[fileName: string]: Progress} = {};
+  // * A download to disc whose service worker handshake fails goes on as a plain download, under the
+  // * file name without '_download': its progress is for the deferred kept under the streamed name
+  private progressAliases: {[fileName: string]: string} = {};
   // private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
   private managers: AppManagers;
 
@@ -68,10 +71,12 @@ export class AppDownloadManager {
       //   callbacks.forEach((callback) => callback(details));
       // }
 
-      const download = this.downloads[details.fileName];
-      if(download?.main?.notifyAll) {
-        this.progress[details.fileName] = details;
-        download.main.notifyAll(details);
+      for(const fileName of [details.fileName, this.progressAliases[details.fileName]]) {
+        const download = fileName && this.downloads[fileName];
+        if(download?.main?.notifyAll) {
+          this.progress[fileName] = details;
+          download.main.notifyAll(details);
+        }
       }
     });
   }
@@ -292,7 +297,15 @@ export class AppDownloadManager {
           return cb(options);
         }, () => {
           delete options.downloadId;
-          return cb(options);
+          const {fileName: plainFileName} = getDownloadMediaDetails(options);
+          this.progressAliases[plainFileName] = fileName;
+          const promise = cb(options);
+          promise.catch(noop).finally(() => {
+            if(this.progressAliases[plainFileName] === fileName) {
+              delete this.progressAliases[plainFileName];
+            }
+          });
+          return promise;
         });
       }
 

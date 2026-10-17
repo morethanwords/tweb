@@ -219,7 +219,8 @@ test('a file\'s and an audio\'s upload fade out over the very row they drew, and
     !!row.querySelector('.document-ico .preloader-container.is-visible, .audio-download .preloader-container.is-visible')
   )))).toEqual([true, true]);
 
-  // as in the chat: the row stays as it was drawn, and its ring fades out over it
+  // as in the chat: the row stays as it was drawn, and its ring fades out over it once its line has come
+  // round to the end (a second at most)
   for(const [index, file] of [
     [0, PDF],
     [1, {name: 'track.mp3', size: 3456, mimeType: 'audio/mpeg', type: 'audio' as const}]
@@ -236,7 +237,7 @@ test('a file\'s and an audio\'s upload fade out over the very row they drew, and
         fading ||= !!ring?.getAnimations().some((animation) => (
           (animation as CSSTransition).transitionProperty === 'opacity' && animation.playState === 'running'
         ));
-        if(performance.now() - start < 800) requestAnimationFrame(sample);
+        if(performance.now() - start < 1600) requestAnimationFrame(sample);
         else resolve({sameRow: row.isConnected, fading, gone: !ring, animations: document.body.classList.contains('animation-level-2')});
       };
       requestAnimationFrame(sample);

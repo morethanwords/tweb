@@ -227,6 +227,102 @@ $transition: .2s ease-in-out;
   }
 }
 
+// the cancelable progress: a ring of dots that a line goes round, and the download arrow that turns
+// into it (preloaderRing.ts); the disc under it is .preloader-circular, as before. A progress that
+// cannot be cancelled has the share done in the middle instead (.preloader-percent).
+.preloader-dots {
+  container-type: size;
+
+  .preloader-dots-spin,
+  .preloader-dots-ring,
+  .preloader-arrow,
+  .preloader-cross {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  // "100%" fits inside the ring
+  .preloader-percent {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color);
+    font-size: 22cqmin;
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  // a small one (a file's icon, an audio button, a thumbnail) has no room for the ring's margin: the
+  // whole drawing grows together, the J still meeting the ring, to put the ring at the box's edge where
+  // the old one was
+  @container (width < 50px) {
+    .preloader-dots-spin,
+    .preloader-arrow,
+    .preloader-cross {
+      scale: 1.263;
+    }
+
+    // the drawing is larger, so the number is too
+    .preloader-percent {
+      font-size: 25cqmin;
+    }
+  }
+
+  .preloader-dot,
+  .preloader-dots-rest {
+    fill: var(--color);
+  }
+
+  .preloader-line,
+  .preloader-arrow,
+  .preloader-cross {
+    fill: none;
+    stroke: var(--color);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  // as wide as a dot, so a dot the line reaches becomes part of it
+  .preloader-line {
+    stroke-width: 3;
+  }
+
+  .preloader-arrow {
+    stroke-width: 2;
+  }
+
+  .preloader-cross {
+    stroke-width: 1.8;
+  }
+
+  // at rest the state says what is seen; at the full animation level a change is drawn by the script,
+  // at the reduced one these crossfade
+  &.manual .preloader-dots-spin,
+  &.is-going .preloader-dots-spin,
+  &.manual .preloader-cross,
+  &:not(.manual) .preloader-arrow {
+    opacity: 0;
+  }
+
+  @include animation-level(1) {
+    .preloader-dots-spin,
+    .preloader-arrow,
+    .preloader-cross {
+      transition: opacity .2s ease-in-out;
+    }
+
+    // it says the download is going on, so it keeps turning with reduced animations, as a spinner does
+    &.is-spinning .preloader-dots-spin {
+      animation: rotate 8s linear infinite;
+    }
+  }
+}
+
 @keyframes rotate {
   100% {
     transform: rotate(360deg);

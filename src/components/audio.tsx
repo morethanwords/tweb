@@ -480,7 +480,8 @@ function constructDownloadPreloader(tryAgainOnFail = true) {
   const preloader = new ProgressivePreloader({cancelable: true, tryAgainOnFail});
   preloader.construct();
 
-  if(!tryAgainOnFail) {
+  // * the old spinner's circle a little smaller; the ring of dots keeps its own
+  if(!tryAgainOnFail && preloader.circle) {
     preloader.circle.setAttributeNS(null, 'r', '23');
     preloader.totalLength = 143.58203125;
   }
@@ -954,12 +955,15 @@ export default async function createAudioElement(options: AudioElementOptions): 
       setState('downloading', true);
 
       ctx.readyPromise.then(() => {
+        // * the progress comes round to the end before it goes; the playing does not wait for it
         if(UNMOUNT_PRELOADER) {
-          setState('downloading', false);
-          downloadDiv.classList.add('downloaded');
-          setTimeout(() => {
-            downloadDiv.remove();
-          }, 200);
+          Promise.resolve(preloader?.whenCaughtUp()).then(() => {
+            setState('downloading', false);
+            downloadDiv.classList.add('downloaded');
+            setTimeout(() => {
+              downloadDiv.remove();
+            }, 200);
+          });
         }
 
         // release loaded audio
@@ -986,7 +990,7 @@ export default async function createAudioElement(options: AudioElementOptions): 
     preloader.attachPromise(promise);
     el.dataset.isOutgoing = '1';
     preloader.attach(downloadDiv, false);
-    promise.then(() => {
+    promise.then(() => preloader.whenCaughtUp()).then(() => {
       setState('downloading', false);
       downloadDiv.classList.add('downloaded');
       setTimeout(() => {

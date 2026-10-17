@@ -1,35 +1,33 @@
-import {Signal} from 'solid-js';
-import {ProgressCircleSVG} from '@components/progressCircleSVG';
+import {createEffect, onCleanup, onMount, Signal} from 'solid-js';
+import PreloaderRing from '@components/preloaderRing';
+import classNames from '@helpers/string/classNames';
 import I18n from '@lib/langPack';
+import styles from '@components/mediaEditor/renderProgressCircle.module.scss';
 
-export default function RenderProgressCircle(props: {creationProgress: Signal<number>}) {
+// A video or a GIF being made: the ring of dots a download has, with the share done in its middle.
+// `fill`: over the whole of a small preview that is dimmed already, rather than a disc in its middle.
+export default function RenderProgressCircle(props: {creationProgress: Signal<number>, fill?: boolean}) {
   const [progress] = props.creationProgress;
 
-  return (
+  let ringElement: HTMLDivElement;
+  const element = (
     <div
+      class={classNames(styles.wrap, props.fill && styles.fill)}
       role="progressbar"
       aria-label={I18n.format('Loading', true)}
       aria-valuenow={Math.round(progress() * 100)}
       aria-valuemin={0}
       aria-valuemax={100}
-      style={{
-        display: 'flex',
-        position: 'absolute',
-        left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '64px',
-        ...{
-          'background-color': 'rgba(0, 0, 0, .25)',
-          'border-radius': '64px',
-          'max-width': '80%',
-          'max-height': '80%',
-          'aspect-ratio': '1 / 1',
-          'z-index': 2
-        }
-      }}
     >
-      <ProgressCircleSVG progress={progress()} strokeThickness={1 / 10} withText stroke='white' />
+      <div ref={ringElement} class={styles.ring} />
     </div>
   );
+
+  const ring = new PreloaderRing(ringElement, {percent: true});
+  createEffect(() => ring.setTarget(progress()));
+  // watched from the start: out of the document it waits to be put in
+  onMount(() => ring.onAttach());
+  onCleanup(() => ring.halt());
+
+  return element;
 }

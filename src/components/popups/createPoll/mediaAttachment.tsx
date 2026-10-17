@@ -5,8 +5,8 @@ import type {ButtonMenuSync} from '@components/buttonMenu';
 import {IconTsx} from '@components/iconTsx';
 import {EditingMediaState} from '@components/mediaEditor/context';
 import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
+import RenderProgressCircle from '@components/mediaEditor/renderProgressCircle';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
-import {ProgressCircleSVG} from '@components/progressCircleSVG';
 import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {animateImageToTarget} from '@helpers/animateImageToTarget';
@@ -49,7 +49,6 @@ type PersistingState = {
 type CreatingVideoState = {
   previewObjectUrl: string;
   editorResult: MediaEditorFinalResult;
-  progress: () => number;
 };
 
 export const MediaAttachment = (props: {
@@ -430,12 +429,9 @@ export const MediaAttachment = (props: {
       return;
     }
 
-    const [progress] = editorResult.creationProgress;
-
     setCreatingVideoState({
       previewObjectUrl,
-      editorResult,
-      progress
+      editorResult
     });
 
     // Block submit while video render is in progress.
@@ -854,16 +850,7 @@ export const MediaAttachment = (props: {
               class={styles.videoCreatingPreview}
             />
             <div class={styles.videoCreatingOverlay}>
-              <div class={styles.videoCreatingProgress}>
-                <ProgressCircleSVG
-                  progress={state.progress()}
-                  strokeThickness={1 / 8}
-                  stroke='white'
-                />
-              </div>
-              <div role='button' class={styles.videoCreatingCancel}>
-                <IconTsx icon='close' class={styles.videoCreatingCancelIcon} />
-              </div>
+              <RenderProgressCircle creationProgress={state.editorResult.creationProgress} fill />
             </div>
           </div>
         )}
