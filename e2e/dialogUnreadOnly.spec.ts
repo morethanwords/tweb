@@ -8,9 +8,11 @@ import {openChatList} from './chatList.helpers';
  * button brings every chat back, the archive among them. Either way the rows are swapped behind a
  * fade, never in a frame of the list that can be seen.
  *
- * It needs unread chats, so it marks two read chats of All chats as unread, the way "Mark as
- * unread" does, and takes the marks back at the end. Like the other signed-in specs it runs
- * against an authorized preview, and skips rather than reporting a pass it never made:
+ * It needs unread chats, so it marks two read plain chats of All chats as unread, the way "Mark as
+ * unread" does (never a forum: marking one reads its topics), and takes the marks back at the end,
+ * a failure half-way included - only where the mark alone makes a chat unread. It needs the
+ * folder tabs too, so an account without folders is skipped. Like the other signed-in specs it
+ * runs against an authorized preview, and skips rather than reporting a pass it never made:
  *
  *   bash scripts/start-preview.sh --detach    # prints the URL, say http://localhost:9001
  *   PLAYWRIGHT_BASE_URL=http://localhost:9001 pnpm exec playwright test e2e/dialogUnreadOnly.spec.ts
@@ -50,11 +52,18 @@ function getUnreadPeerIds(page: Page, filterId: number) {
   }, filterId);
 }
 
-function markUnread(page: Page, peerIds: number[], unread: boolean) {
+/**
+ * Puts the unread mark on plain chats, or takes it off - only where it is the mark alone that
+ * makes a chat unread: taking it off a chat with unread messages would read them
+ */
+function setUnreadMark(page: Page, peerIds: number[], unread: boolean) {
   return page.evaluate(async({peerIds, unread}) => {
-    const w = window as any;
+    const managers = (window as any).rootScope.managers;
     for(const peerId of peerIds) {
-      await w.rootScope.managers.appMessagesManager.markDialogUnread({peerId, read: !unread});
+      const dialog = await managers.appMessagesManager.getDialogOnly(peerId);
+      if(unread || (dialog?.pFlags.unread_mark && !dialog.unread_count)) {
+        await managers.appMessagesManager.markDialogUnread({peerId, read: !unread});
+      }
     }
   }, {peerIds, unread});
 }
@@ -120,20 +129,41 @@ function expectRowsSwappedUnseen(frames: Frame[]) {
 
 test('shows the unread chats only, keeps one read meanwhile until the list is built again, and takes every chat back', async({page}) => {
   await openChatList(page, {minRows: 5});
+  test.skip(
+    !await page.locator('#folders-tabs .menu-horizontal-div-item').first().isVisible(),
+    'the account has no folders, so no folder tabs to choose the mode in'
+  );
 
-  // * from the top of All chats, so that among its unread chats they are on the first page
+  // * from the top of All chats, so that among its unread chats they are on the first page. Plain
+  // * chats only, read by the client's own measure: a forum is unread by its topics, and marking
+  // * one unread reads them instead
   const marked = await page.evaluate(async() => {
     const w = window as any;
-    const {dialogs} = await w.rootScope.managers.dialogsStorage.getDialogs({filterId: 0, limit: 15});
-    return (dialogs as any[])
-    .filter((dialog) => dialog.peerId !== w.rootScope.myId && !dialog.pFlags.pinned && !dialog.unread_count && !dialog.pFlags.unread_mark)
-    .slice(0, 2)
-    .map((dialog) => dialog.peerId as number);
+    const managers = w.rootScope.managers;
+    const {dialogs} = await managers.dialogsStorage.getDialogs({filterId: 0, limit: 15});
+    const candidates: number[] = [];
+    for(const dialog of dialogs as any[]) {
+      if(
+        dialog.peerId === w.rootScope.myId ||
+        dialog.pFlags.pinned ||
+        await managers.appPeersManager.isForum(dialog.peerId) ||
+        await managers.appMessagesManager.isDialogUnread(dialog)
+      ) {
+        continue;
+      }
+
+      candidates.push(dialog.peerId);
+      if(candidates.length === 2) {
+        break;
+      }
+    }
+
+    return candidates;
   });
   test.skip(marked.length < 2, 'All chats has no two read chats to mark');
 
-  await markUnread(page, marked, true);
   try {
+    await setUnreadMark(page, marked, true);
     await expect.poll(async() => {
       const unreadPeerIds = await getUnreadPeerIds(page, 0);
       return marked.every((peerId) => unreadPeerIds.includes(peerId));
@@ -157,7 +187,7 @@ test('shows the unread chats only, keeps one read meanwhile until the list is bu
     // * the chat read now stays where it is: it is the one just opened. And it stays through the
     // * updates that come after the counter has let go of it - the next message in the open chat
     const [read] = marked;
-    await markUnread(page, [read], false);
+    await setUnreadMark(page, [read], false);
     await expect.poll(async() => (await getUnreadPeerIds(page, 0)).includes(read)).toBe(false);
     await page.waitForTimeout(1000);
     await page.evaluate(async(peerId) => {
@@ -189,7 +219,7 @@ test('shows the unread chats only, keeps one read meanwhile until the list is bu
     const list = await getList(page);
     expect(list.hasArchive).toBe(await page.evaluate(() => (window as any).appDialogsManager.xd.archiveDialogState?.hasArchiveDialog() ?? false));
   } finally {
-    await markUnread(page, marked, false);
+    await setUnreadMark(page, marked, false);
     await page.evaluate(() => (window as any).appDialogsManager.setUnreadOnly(false));
   }
 });
