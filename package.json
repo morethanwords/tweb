@@ -26,6 +26,7 @@
     "test:idle:app": "playwright test e2e/profileSidebarIdle.spec.ts",
     "test:peek:app": "playwright test e2e/mediaPeekApp.spec.ts",
     "test:viewer:app": "playwright test e2e/mediaViewerApp.spec.ts",
+    "test:memory:app": "playwright test e2e/memorySoakApp.spec.ts",
     "whybundled": "pnpm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
     "generate-changelog": "node ./src/scripts/generate_changelog.js",

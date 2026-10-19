@@ -54,7 +54,10 @@ const Modes = {
   a11y: location.search.indexOf('a11y=1') > 0,
   // Lays the app out right to left in whatever language is loaded, to check a layout in RTL
   // without switching to Arabic, Persian or Hebrew; the real switch follows the language.
-  rtl: location.search.indexOf('rtl=1') > 0
+  rtl: location.search.indexOf('rtl=1') > 0,
+  // Keeps a memory history of this tab (lib/debug/memoryWatch) for as long as the URL carries it -
+  // a developer's own long-lived tab, never anyone else's.
+  memoryWatch: location.search.indexOf('memoryWatch=1') > 0
 };
 
 if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {

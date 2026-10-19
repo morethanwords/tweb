@@ -28,7 +28,7 @@ import {observeResize, unobserveResize} from '@components/resizeObserver';
 import {CUSTOM_EMOJI_FADE_IN_DURATION, CUSTOM_EMOJI_FRAME_INTERVAL, PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import StickerType from '@config/stickerType';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, on, Setter} from 'solid-js';
 import readValue from '@helpers/solid/readValue';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
@@ -1502,12 +1502,13 @@ export class CustomEmojiRendererElement extends HTMLElement {
     createRoot((dispose) => {
       renderer.textColor = createMemo(() => renderer._textColor() || readValue(options.textColor));
 
+      // * only the renderer's own color: nothing global may observe this root (the lite-mode fade is
+      // * followed for every renderer at once, next to theme_changed below)
       if(renderer.offscreen) {
         createEffect(() => {
           const property = renderer.textColor();
           renderer.sendCompositor('configRenderer', {
-            color: property ? customProperties.getProperty(property) : undefined,
-            fadeEnabled: liteMode.isAvailable('emoji_appear') // reads the reactive appSettings store - re-runs on lite-mode change
+            color: property ? customProperties.getProperty(property) : undefined
           });
         });
       }
@@ -1625,19 +1626,35 @@ compositorMessagePort.addEventListener('groupPainted', ({rendererId, groupId}) =
   renderer.clearPlaceholders(elements);
 });
 
-// CSS-var resolution is not reactive to theme swaps - re-resolve and re-ship the color.
-rootScope.addEventListener('theme_changed', () => {
+const forEachOffscreenRenderer = (callback: (renderer: CustomEmojiRendererElement) => void) => {
   for(const rendererId of Array.from(offscreenRenderers.keys())) {
     const renderer = getOffscreenRenderer(rendererId);
-    const property = renderer?.textColor();
-    if(!property) {
-      continue;
+    if(renderer) {
+      callback(renderer);
     }
-
-    renderer.sendCompositor('configRenderer', {
-      color: customProperties.getProperty(property)
-    });
   }
+};
+
+// CSS-var resolution is not reactive to theme swaps - re-resolve and re-ship the color.
+rootScope.addEventListener('theme_changed', () => {
+  forEachOffscreenRenderer((renderer) => {
+    const property = renderer.textColor();
+    if(property) {
+      renderer.sendCompositor('configRenderer', {
+        color: customProperties.getProperty(property)
+      });
+    }
+  });
+});
+
+// * The fade follows the lite-mode setting through ONE subscription that walks the
+// * weak registry. A per-renderer effect reading the settings store put every renderer on that store's
+// * observer list, so one its owner never destroyed - a chat list row whose subtitle was redrawn -
+// * stayed reachable from the store for good, and the whole detached row with it.
+createRoot(() => {
+  createEffect(on(() => liteMode.isAvailable('emoji_appear'), (fadeEnabled) => {
+    forEachOffscreenRenderer((renderer) => renderer.sendCompositor('configRenderer', {fadeEnabled}));
+  }, {defer: true}));
 });
 
 export const renderEmojis = (renderers: CustomEmojiRenderer[] = liveEmojiRenderers()) => {

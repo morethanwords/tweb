@@ -618,7 +618,7 @@ lottieMessagePort.addMultipleEventsListeners({
       wasmAsleep: wasm.animations - wasm.awake,
       wasmWakes: wasm.wakes,
       wasmRecycles: wasm.recycles
-    });
+    }, wasm.events);
   },
 
   resumeTab: (_, source) => {

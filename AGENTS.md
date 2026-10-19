@@ -35,7 +35,7 @@ pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 
-Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left").
+Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left"), `?memoryWatch=1` (keeps a memory history of the tab — see "Memory").
 
 ### Preview
 
@@ -127,6 +127,26 @@ Either way every `rootScope.managers` call is answered from
   cannot land without one. It also fails when a story builds its popup out of a
   fixture without being marked `fixtureOnly` — that mark is what keeps live mode
   from quietly showing made-up data.
+
+### Memory
+
+What a tab costs, and where it went. Chrome charges a tab for every SharedWorker
+it hosts (MTProto, the crypto and lottie pools) and for memory no JS heap shows,
+so `performance.memory` alone says little.
+
+- `await memoryReport()` in the console: this thread's structures plus a round
+  trip to every worker of the tab, and the records those workers set.
+- `?memoryWatch=1` (off otherwise — a developer's own tab, never every user's):
+  a sample every 15 minutes into localStorage, with what the tab was doing
+  (`ctx.*`) and the records kept beside them, for as long as the URL carries the
+  flag (a reload and a restored tab keep it). `memoryWatch()` in the console
+  does the same until `memoryWatchStop()`. Read it with `memoryWatchSummary()`,
+  `downloadMemoryWatch()`, or inside `downloadLogs()` in line with the logs.
+- A worker remembers the moment a holder of its sets a record, with what it held
+  then (`createPeakRecorder` in `@lib/debug/memoryStats`; the lottie heap uses it).
+- From outside the page, `MemoryProbe` (`e2e/memory.helpers.ts`) reads what the
+  page cannot: every isolate's heap, the renderer by allocator (a memory-infra
+  dump) and the DOM's counters. `test:memory:app` is built on it.
 
 ## Directory Structure
 
@@ -510,7 +530,8 @@ import {Message, Chat, User, InputPeer} from '@layer';
   variants the signed-in client, `test:editor:e2e` the composer, `test:peek:app`
   the hold-to-peek on photos (`components/mediaPeek`), `test:viewer:app` the
   media viewer's paging (`components/mediaViewer`), `test:calls` the calls'
-  noise suppressor (`lib/calls/noiseSuppression`). A change none
+  noise suppressor (`lib/calls/noiseSuppression`), `test:memory:app` what a long
+  session leaves in memory (caches, players, registries, the workers). A change none
   of them exercises (chat-only styling, a manager fix) skips them. Report what
   ran, and what was skipped and why.
 - **Heavy runs wait their turn on a shared machine.** Every Playwright run and a
@@ -735,6 +756,7 @@ pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT
 pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
 pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
 pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
+pnpm test:memory:app # a session played several times: no isolate's heap, DOM or renderer allocator keeps growing, idle lottie heaps go back (needs PLAYWRIGHT_BASE_URL of a --static preview; ~7 min)
 ```
 
 `test:a11y` runs against a plain unauthenticated server, so everything past the

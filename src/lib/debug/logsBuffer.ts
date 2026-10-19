@@ -23,7 +23,8 @@ const WANTS_STACK = LEVEL_ERROR | LEVEL_WARN;
 // them so the exported file stays plain text.
 const ANSI = /\x1b\[[0-9;]*m/g;
 
-export type LogSource = 'main' | 'mtproto' | 'sw';
+// * 'memory': memoryWatch's samples and records, merged in only by the export
+export type LogSource = 'main' | 'mtproto' | 'sw' | 'memory';
 
 export type LogEntry = {
   t: number; // Date.now() — absolute, so entries from different contexts merge

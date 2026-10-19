@@ -20,7 +20,7 @@
  */
 
 import {MOUNT_CLASS_TO} from '@config/debug';
-import {canvasBytes, formatBytes, ThreadMemoryStats, withMemoryStatsTimeout} from '@lib/debug/memoryStats';
+import {canvasBytes, formatBytes, MemoryEvent, ThreadMemoryStats, withMemoryStatsTimeout} from '@lib/debug/memoryStats';
 
 type Counted = {total: number, detached: number};
 
@@ -236,8 +236,10 @@ export default async function memoryReport(options?: {quiet?: boolean}) {
 
   const threads = await Promise.all(threadPromises);
   const byThread: Record<string, any> = {};
+  const events: MemoryEvent[] = [];
   for(const stats of threads) {
     byThread[stats.thread] = formatThreadRow(stats);
+    stats.events?.forEach((event) => events.push({...event, thread: stats.thread}));
 
     // * one flat key per figure so a sample is charted without knowing which isolates answered
     const prefix = stats.thread.replace(/[^a-z0-9]+/gi, '_');
@@ -261,9 +263,20 @@ export default async function memoryReport(options?: {quiet?: boolean}) {
       console.warn('[memoryReport] detached animation items by group:');
       console.table(byGroup);
     }
+
+    if(events.length) {
+      console.log('[memoryReport] records the threads set, with what they held at that moment:');
+      console.table(events.map(({t, thread, name, value, details}) => ({
+        at: new Date(t).toLocaleString(),
+        thread,
+        name,
+        value: /Heap|Bytes/.test(name) ? formatBytes(value) : value,
+        ...details
+      })));
+    }
   }
 
-  return {...report, threads: byThread, metrics};
+  return {...report, threads: byThread, metrics, events};
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.memoryReport = memoryReport);

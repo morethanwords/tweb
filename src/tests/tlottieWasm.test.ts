@@ -418,6 +418,25 @@ describe('tlottie memory', () => {
     expect(tlottie.heapBytes).toBeLessThan(grownHeap / 4);
   });
 
+  test('with nothing awake a modest heap is given back too - it costs nothing', () => {
+    const json = readAsset('UtyanSearch.json');
+    const handles = Array.from({length: 3}, () => tlottie.createAnimation(json).handle);
+    handles.forEach((handle) => tlottie.render(handle, 0, 512, 512));
+    const heap = tlottie.heapBytes;
+    expect(heap).toBeGreaterThan(8 * MB);
+    expect(heap).toBeLessThan(32 * MB);
+
+    // * one still awake: below the size where re-creating it would pay
+    handles.slice(1).forEach((handle) => tlottie.destroyAnimation(handle));
+    vi.advanceTimersByTime(5000);
+    expect(tlottie.stats.recycles).toBe(0);
+
+    tlottie.destroyAnimation(handles[0]);
+    vi.advanceTimersByTime(5000);
+    expect(tlottie.stats.recycles).toBe(1);
+    expect(tlottie.heapBytes).toBeLessThan(heap / 4);
+  });
+
   test('no fresh instance while what is awake would be costly to re-create', () => {
     // * five animations of ~300 KB of JSON each, playing: well past the re-parse cap
     const playing = Array.from({length: 5}, () => tlottie.createAnimation(readAsset('Gift12.json')).handle);
@@ -429,6 +448,20 @@ describe('tlottie memory', () => {
 
     expect(tlottie.heapBytes).toBeGreaterThan(64 * MB);
     expect(tlottie.stats.recycles).toBe(0);
+  });
+
+  test('remembers when the heap set a record and what was awake then, and again after a fresh instance', () => {
+    expect(tlottie.peaks.events).toHaveLength(0);
+    growHeap(8);
+    const [first] = tlottie.peaks.events;
+    expect(first.value).toBeGreaterThanOrEqual(16 * MB);
+    expect(first.details).toMatchObject({frameBytes: 1024 * 1024 * 4});
+    expect(first.details.awake).toBeGreaterThan(0);
+    const recorded = tlottie.peaks.events.length;
+
+    tlottie.recycle();
+    growHeap(8);
+    expect(tlottie.peaks.events.length).toBeGreaterThan(recorded);
   });
 
   test('wakes from the Blob it was given, read back synchronously', () => {

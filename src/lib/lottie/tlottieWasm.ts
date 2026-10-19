@@ -1,3 +1,5 @@
+import {createPeakRecorder, MemoryEvent} from '@lib/debug/memoryStats';
+
 export type TLottieHandle = number;
 export type TLottieFitzModifier = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -108,6 +110,8 @@ const BUDGET_DELAY = 1000;
 const RECYCLE_DELAY = 5000;
 // * a fresh instance is only worth it from this size, and when the heap is this many times the estimate
 const RECYCLE_MIN_HEAP = 32 * 1024 * 1024;
+// * ...but with nothing awake it costs nothing at all - nothing to re-create - so a smaller heap goes too
+const RECYCLE_MIN_HEAP_ASLEEP = 8 * 1024 * 1024;
 const RECYCLE_RATIO = 4;
 // * ...and only while what is awake re-parses in a few milliseconds
 const RECYCLE_MAX_AWAKE_SOURCE = 256 * 1024;
@@ -160,6 +164,8 @@ export class TLottieWasm {
   private maintenanceTimeout: ReturnType<typeof setTimeout>;
   private maintenanceAt = Infinity;
   private recycledAt = -Infinity;
+  // * the moments the heap set a record, with what was awake then - a sample minutes later cannot say
+  public peaks = createPeakRecorder('wasmHeap', {min: 16 * 1024 * 1024});
   public wakes = 0;
   public recycles = 0;
 
@@ -268,6 +274,8 @@ export class TLottieWasm {
       throw new Error('tlottie frame render failed');
     }
 
+    this.noteHeap(animation);
+
     // tlottie_render can grow memory, and a fresh instance replaces it. Always derive the view after
     // the call and do not retain it beyond the immediate copy into ImageData/output buffers.
     return new Uint8Array(this.exports.memory.buffer, pointer, width * height * 4);
@@ -292,6 +300,7 @@ export class TLottieWasm {
 
     this.awake = this.awakeBytes = 0;
     this.recycledAt = performance.now();
+    this.peaks.reset();
     ++this.recycles;
     return true;
   }
@@ -308,8 +317,19 @@ export class TLottieWasm {
   private onWoken(animation: TLottieLiveAnimation) {
     ++this.awake;
     this.awakeBytes += estimateBytes(animation);
+    this.noteHeap(animation);
     this.checkBudget();
     this.requestMaintenance(SWEEP_INTERVAL);
+  }
+
+  private noteHeap(animation: TLottieLiveAnimation) {
+    this.peaks.observe(this.heapBytes, () => ({
+      animations: this.animations.size,
+      awake: this.awake,
+      awakeEstimateBytes: this.awakeBytes,
+      frameBytes: animation.renderBytes,
+      sourceBytes: animation.sourceBytes
+    }));
   }
 
   private sleep(animation: TLottieLiveAnimation) {
@@ -391,7 +411,8 @@ export class TLottieWasm {
 
   private isRecycleWorthIt() {
     const heapBytes = this.heapBytes;
-    if(heapBytes < RECYCLE_MIN_HEAP || heapBytes < RECYCLE_RATIO * this.awakeBytes) {
+    const minHeap = this.awake ? RECYCLE_MIN_HEAP : RECYCLE_MIN_HEAP_ASLEEP;
+    if(heapBytes < minHeap || heapBytes < RECYCLE_RATIO * this.awakeBytes) {
       return false;
     }
 
@@ -413,14 +434,17 @@ const loadedWasms = new Set<TLottieWasm>();
 // * not in its JS heap, and it is invisible to performance.memory.
 export function getTLottieMemoryStats() {
   const total = {heapBytes: 0, animations: 0, awake: 0, wakes: 0, recycles: 0};
+  const events: MemoryEvent[] = [];
   for(const wasm of loadedWasms) {
     const stats = wasm.stats;
     for(const key in total) {
       total[key as keyof typeof total] += stats[key as keyof typeof total];
     }
+
+    events.push(...wasm.peaks.events);
   }
 
-  return total;
+  return {...total, events};
 }
 
 export default function loadTLottieWasm(wasmUrl: string) {
