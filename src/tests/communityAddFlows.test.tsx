@@ -211,6 +211,14 @@ import {
   AppNewChannelTab,
   AppNewGroupTab
 } from '@components/solidJsTabs/tabs';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  tabs: {...mocked1} as any
+});
+
 
 const communityChatId = 30 as ChatId;
 const communityPeerId = communityChatId.toPeerId(true);

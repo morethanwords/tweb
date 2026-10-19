@@ -1,165 +1,46 @@
 import {ParentProps} from 'solid-js';
+import {SolidJSHotReloadGuardContext, SolidJSHotReloadGuardContextValue} from '@lib/solidjs/hotReloadGuard';
 
-import AppMediaViewer, {onMediaCaptionClick} from '@components/mediaViewer';
-import AppMediaViewerStatic from '@components/mediaViewer/static';
-import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
-import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
-import BusinessHours from '@components/businessHours';
-import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
-import {ChatType} from '@components/chat/chatType';
-import PaidMessagesInterceptor from '@components/chat/paidMessagesInterceptor';
-import {pickLanguage} from '@components/chat/translation';
-import CommunityLinkSection from '@components/communities/communityLinkSection';
-import confirmationPopup from '@components/confirmationPopup';
-import confirmOpenGoogleMaps from '@components/confirmOpenGoogleMaps';
-import createEmojiDropdownButton, {useEmojiDropdown} from '@components/emojiDropdownButton';
-import {EmoticonsDropdown} from '@components/emoticonsDropdown';
-import EmoticonsSearch from '@components/emoticonsDropdown/search';
-import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
-import {InputFieldTsx} from '@components/inputFieldTsx';
-import PasswordMonkey from '@components/monkeys/password';
-import PasswordInputField from '@components/passwordInputField';
-import PeerProfileAvatars from '@components/peerProfileAvatars';
-import {PeerTitleTsx} from '@components/peerTitleTsx';
-import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
-import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
-import showLimitPopup from '@components/popups/limit';
-import showMyQrCodePopup from '@components/popups/myQrCode';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
-import showPremiumPopup from '@components/popups/premium';
-import showSendGiftPopup from '@components/popups/sendGift';
-import showStarsRatingPopup from '@components/popups/starsRating';
-import showToggleReadDatePopup from '@components/popups/toggleReadDate';
-import {setQuizHint} from '@components/quizHint';
-import Row from '@components/rowTsx';
-import appSidebarLeft from '@components/sidebarLeft';
-import appSidebarRight from '@components/sidebarRight';
-import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
-import Slideshow from '@components/slideshow';
-import {AppChatFoldersTab, AppEditFolderTab} from '@components/solidJsTabs/tabs';
-import {StoriesProvider, useStories} from '@components/stories/store';
-import {hideToast, toast, toastNew} from '@components/toast';
-import {TranslatableMessageTsx} from '@components/translatableMessage';
-import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
-import DocumentTsx from '@components/wrappers/documentTsx';
-import wrapFolderTitle from '@components/wrappers/folderTitle';
-import wrapGeo from '@components/wrappers/geo';
-import getPeerTitle from '@components/wrappers/getPeerTitle';
-import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
-import wrapPhoto from '@components/wrappers/photo';
-import PhotoTsx from '@components/wrappers/photoTsx';
-import wrapReply from '@components/wrappers/reply';
-import wrapSticker from '@components/wrappers/sticker';
-import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
-import wrapTopicNameButton from '@components/wrappers/topicNameButton';
-import VideoTsx from '@components/wrappers/videoTsx';
-import {formatDate} from '@helpers/date';
-import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
-import themeController from '@helpers/themeController';
-import usePeerTranslation from '@hooks/usePeerTranslation';
-import apiManagerProxy from '@lib/apiManagerProxy';
-import appDialogsManager from '@lib/appDialogsManager';
-import appImManager from '@lib/appImManager';
-import I18n, {i18n, join} from '@lib/langPack';
-import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import lottieLoader from '@lib/lottie/lottieLoader';
-import rootScope from '@lib/rootScope';
-import {SolidJSHotReloadGuardContext} from '@lib/solidjs/hotReloadGuard';
-import uiNotificationsManager from '@lib/uiNotificationsManager';
-import {useAppSettings} from '@stores/appSettings';
-import {useAppConfig} from '@stores/appState';
-import usePremium from '@stores/premium';
+/**
+ * The app's top level — its singletons, and the popups and tabs that pull them in — for code below it, which must not
+ * import them: an import from there makes the whole app part of that module's graph (every test of it, every HMR
+ * update through it). Filled at startup: the singletons register themselves where they are made, the rest comes from
+ * @lib/solidjs/hotReloadGuardValue, which only the app's root imports. Components take it from the context
+ * (useHotReloadGuard), other code reads it here at call time — never while modules are still being evaluated.
+ */
+export const hotReloadGuard: SolidJSHotReloadGuardContextValue = import.meta.hot?.data?.value ?? ({} as SolidJSHotReloadGuardContextValue);
+let registered = !!hotReloadGuard.HotReloadGuard;
 
+export function registerHotReloadGuard(values: Partial<Omit<SolidJSHotReloadGuardContextValue, 'HotReloadGuard'>>) {
+  Object.assign(hotReloadGuard, values, {HotReloadGuard: SolidJSHotReloadGuardProvider});
+  registered = true;
+  if(import.meta.hot?.data) import.meta.hot.data.value = hotReloadGuard;
+}
+
+let load: () => Promise<unknown>;
+
+/** How the app's root fills the registry, for what may mount the provider before the app is up */
+export function setHotReloadGuardLoader(loader: () => Promise<unknown>) {
+  load = loader;
+}
+
+/**
+ * The registry filled, through the root's loader: the app's top level loaded, or loading for the first caller and
+ * shared with the others (`registered` would not tell - a singleton registers itself before the rest is in). For code
+ * that can run before the app is up and mounts the provider - the media editor, which the sign-up screen opens for the
+ * new account's photo.
+ */
+export async function hotReloadGuardReady() {
+  await load?.();
+}
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
+  if(!registered) {
+    throw new Error('SolidJSHotReloadGuardProvider: nothing registered, import @lib/solidjs/hotReloadGuardValue at startup');
+  }
+
   return (
-    <SolidJSHotReloadGuardContext.Provider value={{
-      HotReloadGuard: SolidJSHotReloadGuardProvider,
-      rootScope,
-      appSidebarLeft,
-      AppEditFolderTab,
-      AppChatFoldersTab,
-      EmoticonsSearch,
-      wrapStickerSetThumb,
-      showLimitPopup,
-      lottieLoader,
-      themeController,
-      appImManager,
-      apiManagerProxy,
-      setQuizHint,
-      InputFieldTsx,
-      PasswordInputField,
-      PasswordMonkey,
-      showPremiumPopup,
-      EmoticonsDropdown,
-      EmojiTab,
-      appDialogsManager,
-      AutonomousMonoforumThreadList,
-      uiNotificationsManager,
-      I18n,
-      i18n,
-      join,
-      showToggleReadDatePopup,
-      wrapSticker,
-      wrapTopicNameButton,
-      wrapRichText,
-      getPeerTitle,
-      wrapPeerTitle,
-      wrapPhoto,
-      wrapEmojiText,
-      wrapGeo,
-      wrapAdaptiveCustomEmoji,
-      confirmationPopup,
-      confirmOpenGoogleMaps,
-      PeerProfileAvatars,
-      showStarsRatingPopup,
-      toast,
-      toastNew,
-      BusinessHours,
-      avatarNew,
-      PeerTitleTsx,
-      showSendGiftPopup,
-      showBirthdayPopup,
-      saveMyBirthday,
-      showMyQrCodePopup,
-      useAppSettings,
-      ChatType,
-      wrapReply,
-      wrapTopicIcon,
-      VideoTsx,
-      Row,
-      PhotoTsx,
-      DocumentTsx,
-      Slideshow,
-      AppMediaViewer,
-      onMediaCaptionClick,
-      formatDate,
-      hideToast,
-      wrapFolderTitle,
-      ButtonMenu,
-      ButtonMenuSync,
-      StoriesProvider,
-      useStories,
-      StoriesSegments,
-      appSidebarRight,
-      createEmojiDropdownButton,
-      useEmojiDropdown,
-      useStickersDropdown,
-      getFileAndOpenEditor,
-      AvatarNewTsx,
-      AppMediaViewerStatic,
-      AppPollResultsTab,
-      TranslatableMessageTsx,
-      useAppConfig,
-      usePremium,
-      pickLanguage,
-      usePeerTranslation,
-      showSharingPickerPopup,
-      PaidMessagesInterceptor,
-      CommunityLinkSection
-    }}>
+    <SolidJSHotReloadGuardContext.Provider value={hotReloadGuard}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
   );

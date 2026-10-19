@@ -25,18 +25,16 @@ import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {wrapStoryMedia} from '@components/stories/preview';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import appDialogsManager from '@lib/appDialogsManager';
 import Button from '@components/buttonTsx';
 import themeController from '@helpers/themeController';
 import assumeType from '@helpers/assumeType';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import createContextMenu from '@helpers/dom/createContextMenu';
-import appImManager from '@lib/appImManager';
-import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {avatarNew} from '@components/avatarNew';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -522,7 +520,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
           topPeers = topPeers.slice();
 
-          const chatlist = appDialogsManager.createChatList();
+          const chatlist = hotReloadGuard.appDialogsManager.createChatList();
           chatlist.append(...topPeers.splice(0, 10).map(({container}) => container));
           const [moreButton, setMoreButton] = createSignal<JSX.Element>(!!topPeers.length && MoreButton({
             count: topPeers.length,
@@ -541,12 +539,12 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         {!!publicForwards().count && <Section name="PublicSharesCount" nameArgs={[publicForwards().count]}>
           <div
             ref={(el) => {
-              appDialogsManager.setListClickListener({
+              hotReloadGuard.appDialogsManager.setListClickListener({
                 list: el,
                 onFound: (target) => {
                   const storyId = target.dataset.storyId;
                   if(storyId) {
-                    createStoriesViewerWithPeer({
+                    hotReloadGuard.createStoriesViewerWithPeer({
                       target: () => target.querySelector('.avatar'),
                       peerId: target.dataset.peerId.toPeerId(),
                       id: +target.dataset.storyId
@@ -607,7 +605,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           icon: 'message',
           text: 'Message.Context.Goto',
           onClick: () => {
-            appImManager.setInnerPeer({
+            hotReloadGuard.appImManager.setInnerPeer({
               peerId: this.chatId.toPeerId(true),
               lastMsgId: (counters as PostInteractionCounters.postInteractionCountersMessage).msg_id
             });
@@ -617,7 +615,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           icon: 'stories',
           text: 'ViewStory',
           onClick: () => {
-            createStoriesViewerWithPeer({
+            hotReloadGuard.createStoriesViewerWithPeer({
               peerId: this.chatId.toPeerId(true),
               id: (counters as PostInteractionCounters.postInteractionCountersStory).story_id
             });
@@ -770,7 +768,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
   private renderPeer = async(peer: StatsGroupTopPoster | StatsGroupTopAdmin | StatsGroupTopInviter | Message.message) => {
     const peerId = peer._ === 'message' ? peer.peerId : peer.user_id.toPeerId(false);
     const loadPromises: Promise<any>[] = [];
-    const {dom} = appDialogsManager.addDialogNew({
+    const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
       peerId: peerId,
       container: false,
       rippleEnabled: true,

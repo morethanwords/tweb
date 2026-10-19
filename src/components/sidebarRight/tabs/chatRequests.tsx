@@ -6,7 +6,7 @@ import {formatFullSentTime} from '@helpers/date';
 import Button from '@components/button';
 import {i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import {DialogElement} from '@lib/appDialogsManager';
+import {DialogElement} from '@components/dialogElement';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';

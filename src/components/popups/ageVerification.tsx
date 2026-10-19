@@ -1,12 +1,12 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import deferredPromise from '@helpers/cancellablePromise';
-import appImManager from '@lib/appImManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import useContentSettings from '@stores/contentSettings';
 import Button from '@components/buttonTsx';
 import styles from '@components/popups/ageVerification.module.scss';
 import rootScope from '@lib/rootScope';
 import {createSignal} from 'solid-js';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export async function showAgeVerificationPopup(options: {
   onVerify: (verified: boolean) => void,
@@ -27,7 +27,7 @@ export async function showAgeVerificationPopup(options: {
     );
     switchedToWebApp = true;
     setShow(false);
-    appImManager.openWebApp({
+    hotReloadGuard.appImManager.openWebApp({
       botId: bot.id,
       main: true,
       noConfirmation: true,

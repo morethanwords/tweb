@@ -22,13 +22,13 @@ import {ChatType} from './chatType';
 import type {AppImManager} from '@lib/appImManager';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import appSidebarRight from '../sidebarRight';
 import {openSavedMusicTab} from '@components/savedMusicActions';
 import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';
 import Button from '@components/buttonTsx';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
 import classNames from '@helpers/string/classNames';
 import {setDirection} from '@helpers/dom/setInnerHTML';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type ChatAudioController = {
   container: HTMLElement,
@@ -205,7 +205,7 @@ export default function createChatAudio(
     const peerId = plate.container.dataset.peerId.toPeerId();
     const savedMusicDocId = plate.container.dataset.savedMusicDocId;
     if(savedMusicDocId) {
-      openSavedMusicTab(appSidebarRight, peerId);
+      openSavedMusicTab(hotReloadGuard.appSidebarRight, peerId);
       return;
     }
 

@@ -7,13 +7,6 @@ import Section from '@components/section';
 import {toastNew} from '@components/toast';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {
-  AppCommunityChatSettingsTab,
-  AppCreateCommunityTab,
-  AppEditChatTab,
-  AppEditCommunityTab,
-  CommunityChatVisibility
-} from '@components/solidJsTabs/tabs';
-import {
   CommunityAvatarEditor
 } from '@components/communities/communityAvatar';
 import type {CommunityAddMode} from '@appManagers/utils/communities/communityAddMode';
@@ -30,6 +23,8 @@ import {
 } from '@components/communities/communityShared';
 import CommunityPeerDialogList
 from '@components/communities/communityPeerDialogList';
+import type {AppCreateCommunityTab, CommunityChatVisibility} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function CreateCommunity() {
   const [tab] = useSuperTab<typeof AppCreateCommunityTab>();
@@ -50,7 +45,7 @@ export default function CreateCommunity() {
     setHasAvatarPreview(true);
   });
   const openVisibility = () => {
-    tab.slider.createTab(AppCommunityChatSettingsTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppCommunityChatSettingsTab).open({
       peerId,
       initialVisibility: sourceVisibility(),
       onSave: setSourceVisibility
@@ -172,10 +167,10 @@ export default function CreateCommunity() {
           'Community.Created'
       });
 
-      const editTab = tab.slider.createTab(AppEditCommunityTab);
+      const editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditCommunityTab);
       await editTab.open({communityId: createdCommunityId});
-      if(middleware() && tab.slider.getTab(AppEditChatTab)) {
-        tab.slider.sliceTabsUntilTab(AppEditChatTab, editTab);
+      if(middleware() && tab.slider.getTab(hotReloadGuard.tabs.AppEditChatTab)) {
+        tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppEditChatTab, editTab);
       }
     } catch(error) {
       if(!middleware()) {

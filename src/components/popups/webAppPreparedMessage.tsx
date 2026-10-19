@@ -20,10 +20,10 @@ import wrapDocument from '@components/wrappers/document';
 import {useAppSettings} from '@stores/appSettings';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {showPickUser2Popup} from '@components/popups/pickUser';
-import appImManager from '@lib/appImManager';
 import generateQId from '@appManagers/utils/inlineBots/generateQId';
 import rootScope from '@lib/rootScope';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function showWebAppPreparedMessagePopup(options: {
   message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage,
@@ -69,11 +69,11 @@ export default function showWebAppPreparedMessagePopup(options: {
       return false;
     }
 
-    await appImManager.setInnerPeer({peerId: chosenPeerId});
+    await hotReloadGuard.appImManager.setInnerPeer({peerId: chosenPeerId});
     const queryAndResultIds = generateQId(message.query_id, message.result.id);
     const sent = await rootScope.managers.appInlineBotsManager.sendInlineResult(chosenPeerId, botId, queryAndResultIds, {
       inlineResult: message.result,
-      ...appImManager.chat.getMessageSendingParams(),
+      ...hotReloadGuard.appImManager.chat.getMessageSendingParams(),
       clearDraft: true
     });
 

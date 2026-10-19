@@ -6,10 +6,8 @@ import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants'
 import CommunityChildBadge from '@components/communities/communityChildBadge';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {i18n} from '@lib/langPack';
-import type {
-  AppDialogsManager,
-  DialogElement
-} from '@lib/appDialogsManager';
+import type {AppDialogsManager} from '@lib/appDialogsManager';
+import type {DialogElement} from '@components/dialogElement';
 import formatNumber from '@helpers/number/formatNumber';
 import getDialogMentionBadgeState from '@helpers/dialogMentionBadgeState';
 import {

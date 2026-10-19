@@ -20,6 +20,14 @@ import {
 } from '@components/autonomousDialogList/communityDialogs';
 import {getMiddleware} from '@helpers/middleware';
 import rootScope from '@lib/rootScope';
+import * as mocked1 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appImManager: (mocked1 as any).default
+});
+
 
 const dialog = (
   peerId: PeerId,

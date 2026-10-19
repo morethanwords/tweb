@@ -1,20 +1,16 @@
 import I18n, {LangPackKey} from '@lib/langPack';
 import type LazyLoadQueueIntersector from '@components/lazyLoadQueueIntersector';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import {horizontalMenu} from '@components/horizontalMenu';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import Scrollable, {ScrollableX} from '@components/scrollable';
-import appSidebarRight from '@components/sidebarRight';
 import StickyIntersector from '@components/stickyIntersector';
 import EmojiTab, {EmojiTabCategory, getEmojiFromElement} from '@components/emoticonsDropdown/tabs/emoji';
 import GifsTab from '@components/emoticonsDropdown/tabs/gifs';
 import StickersTab from '@components/emoticonsDropdown/tabs/stickers';
 import {MOUNT_CLASS_TO} from '@config/debug';
-import {AppGifsTab} from '@components/solidJsTabs/tabs';
-import {AppStickersTab} from '@components/solidJsTabs/tabs';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -41,8 +37,9 @@ import StickersTabCategory from '@components/emoticonsDropdown/category';
 import {Middleware} from '@helpers/middleware';
 import {Accessor, createSignal, Setter} from 'solid-js';
 import {getChatInputEditor} from '@components/chat/inputEditor/registry';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {EMOJI_TEXT_COLOR, EMOTICONSSTICKERGROUP} from '@components/emoticonsDropdown/constants';
 
-export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
 export interface EmoticonsTab {
   content: HTMLElement;
@@ -96,7 +93,6 @@ const renderEmojiDropdownElement = (): HTMLDivElement => {
   return d;
 }
 
-export const EMOJI_TEXT_COLOR = 'primary-text-color';
 
 export class EmoticonsDropdown extends DropdownHover {
   public lazyLoadQueue = new LazyLoadQueue(1);
@@ -245,7 +241,7 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   public get chatInput() {
-    return this._chatInput || appImManager.chat.input;
+    return this._chatInput || hotReloadGuard.appImManager.chat.input;
   }
 
   public set chatInput(chatInput: ChatInput) {
@@ -300,12 +296,12 @@ export class EmoticonsDropdown extends DropdownHover {
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.listenerSetter.add(this.searchButton)('click', () => {
       if(this.tabId === this.getTab(StickersTab)?.tabId) {
-        if(!appSidebarRight.isTabExists(AppStickersTab)) {
-          appSidebarRight.createTab(AppStickersTab).open();
+        if(!hotReloadGuard.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppStickersTab)) {
+          hotReloadGuard.appSidebarRight.createTab(hotReloadGuard.tabs.AppStickersTab).open();
         }
       } else {
-        if(!appSidebarRight.isTabExists(AppGifsTab)) {
-          appSidebarRight.createTab(AppGifsTab).open();
+        if(!hotReloadGuard.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppGifsTab)) {
+          hotReloadGuard.appSidebarRight.createTab(hotReloadGuard.tabs.AppGifsTab).open();
         }
       }
     });
@@ -428,8 +424,8 @@ export class EmoticonsDropdown extends DropdownHover {
       this.checkRights();
     };
 
-    this.listenerSetter.add(appImManager)('peer_changing', onPeerChanging);
-    this.listenerSetter.add(appImManager)('peer_changed', onPeerChanged);
+    this.listenerSetter.add(hotReloadGuard.appImManager)('peer_changing', onPeerChanging);
+    this.listenerSetter.add(hotReloadGuard.appImManager)('peer_changed', onPeerChanged);
     onPeerChanged();
 
     const ret = super.init();

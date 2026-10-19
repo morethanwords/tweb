@@ -17,7 +17,7 @@ import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import classNames from '@helpers/string/classNames';
 import showCreateBotPopup from '@components/popups/createBot';
 import confirmationPopup from '@components/confirmationPopup';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {wrapFormattedDuration} from './wrapDuration';
 import formatDuration from '@helpers/formatDuration';
 import {
@@ -49,13 +49,9 @@ export type ButtonTypeHandler = Omit<KeyboardButtonHandler, 'text' | 'bg'> & {
   unavailable?: boolean
 };
 
-async function openUserProfile(peerId: PeerId) {
-  const [{default: appImManager}, {default: appSidebarRight}] = await Promise.all([
-    import('@lib/appImManager'),
-    import('@components/sidebarRight')
-  ]);
-  appImManager.setInnerPeer({peerId});
-  appSidebarRight.toggleSidebar(true);
+function openUserProfile(peerId: PeerId) {
+  hotReloadGuard.appImManager.setInnerPeer({peerId});
+  hotReloadGuard.appSidebarRight.toggleSidebar(true);
 }
 
 /**

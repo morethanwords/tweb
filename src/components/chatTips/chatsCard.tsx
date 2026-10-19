@@ -9,11 +9,11 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import {useAppState} from '@stores/appState';
 
-import appDialogsManager from '@lib/appDialogsManager';
 import {renderTopPeerItem} from '@components/topPeersList';
 
 import TipCard, {TipCardButton, useTipReady} from '@components/chatTips/tipCard';
 import styles from '@components/chatTips/chatTips.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** macOS lays the peers out as a 4×2 grid inside the content slot. */
 const PEERS_LIMIT = 8;
@@ -90,7 +90,7 @@ export default function ChatsTipCard() {
   // exists once there is something to put in it, the empty state replaces it.
   const bindPeersList = (el: HTMLDivElement) => {
     peersEl = el;
-    appDialogsManager.setListClickListener({list: el, autonomous: true});
+    hotReloadGuard.appDialogsManager.setListClickListener({list: el, autonomous: true});
   };
 
   createEffect(on(peerIds, (ids) => {

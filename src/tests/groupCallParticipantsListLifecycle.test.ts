@@ -34,6 +34,10 @@ vi.mock('@helpers/middleware', () => ({
   }
 }));
 
+vi.mock('@components/dialogElement', () => ({
+  DIALOG_AVATAR_SIZES: {bigger: 54, abitbigger: 42, small: 32}
+}));
+
 vi.mock('@lib/appDialogsManager', () => ({
   default: {
     createChatList: () => document.createElement('ul'),
@@ -76,6 +80,14 @@ vi.mock('@components/groupCall/participantStatus', () => ({
 }));
 
 import GroupCallParticipantsList from '@components/groupCall/participantsList';
+import * as mocked1 from '@lib/appDialogsManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked1 as any).default
+});
+
 
 const participant = {
   _: 'groupCallParticipant',

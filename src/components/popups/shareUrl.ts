@@ -3,9 +3,9 @@ import {LangPackKey} from '@lib/langPack';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import appImManager from '@lib/appImManager';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {createCopyLinkFooter, showSharingPickerPopup} from '@components/popups/pickUser';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 // Shared "send a URL via the standard sharing picker" helper. Subsumes the
 // near-identical onSelect handlers in giftLink.tsx, appMediaViewerRtmp.ts
@@ -77,7 +77,7 @@ export default function shareUrlToPeers(options: ShareUrlOptions): void {
       const single = chosen[0];
 
       if(!isMulti && options.openAfter) {
-        appImManager.setInnerPeer({peerId: single.peerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: single.peerId});
         return;
       }
 

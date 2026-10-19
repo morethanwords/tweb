@@ -11,7 +11,7 @@ import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import {I18nTsx} from '@helpers/solid/i18n';
 import Table, {TableButton, TableButtonWithTooltip, TableRow} from '@components/table';
 import {formatFullSentTime} from '@helpers/date';
-import {StarsStar} from '@components/popups/stars';
+import {StarsStar} from '@components/stars/starsAmount';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import bigInt from 'big-integer';
 import {i18n} from '@lib/langPack';

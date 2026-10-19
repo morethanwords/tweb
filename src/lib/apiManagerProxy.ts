@@ -50,14 +50,13 @@ import {ActiveAccountNumber} from '@lib/accounts/types';
 import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
 import noop from '@helpers/noop';
 import AccountController from '@lib/accounts/accountController';
-import getPeerTitle from '@components/wrappers/getPeerTitle';
+import getPeerTitleText from '@components/wrappers/getPeerTitleText';
 import I18n from '@lib/langPack';
 import {NOTIFICATION_BADGE_PATH} from '@config/notifications';
 import {createAppURLForAccount} from '@lib/accounts/createAppURLForAccount';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {batch} from 'solid-js';
 import createNotificationImage from '@helpers/createNotificationImage';
-import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
@@ -187,6 +186,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private allTabStates: TabState[];
 
   public share: ShareData;
+  /** what the worker's lock toggles: the lock screen's controller sets it, so that this module does not import UI */
+  public onToggleLock: (isLocked: boolean) => void;
 
   public serviceMessagePort: ServiceMessagePort<true>;
   private lastServiceWorker: ServiceWorker;
@@ -484,7 +485,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         const managers = createProxiedManagersForAccount(accountNumber);
         const peerId = payload.callerId.toPeerId();
         const peer = await managers.appPeersManager.getPeer(peerId);
-        const title = await getPeerTitle({peerId: peerId, managers, plainText: true, limitSymbols: 20, useManagers: true});
+        const title = await getPeerTitleText({peerId: peerId, managers, plainText: true, limitSymbols: 20, useManagers: true});
 
         const notification = new Notification(title, {
           body: I18n.format('Call.StatusCalling', true),
@@ -521,11 +522,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       toggleLock: (isLocked) => {
-        if(isLocked) {
-          PasscodeLockScreenController.lock();
-        } else {
-          PasscodeLockScreenController.unlock();
-        }
+        this.onToggleLock?.(isLocked);
       },
 
       toggleCacheStorage: (enabled) => {

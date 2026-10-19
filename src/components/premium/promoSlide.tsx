@@ -6,7 +6,6 @@ import {PremiumPromoData} from '@components/premium/types';
 import {PremiumSubscriptionOption} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
-import {onMediaCaptionClick} from '@components/mediaViewer';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import rootScope from '@lib/rootScope';
@@ -22,6 +21,7 @@ import PremiumOptionsForm from '@components/premium/premiumOptionsForm';
 import RowTsx from '@components/rowTsx';
 import PopupElement from '@components/popups/indexTsx';
 import MediaHeader from '@components/mediaHeader';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export function getGiftDetails(data: PremiumPromoData) {
   const gift = data.gift;
@@ -302,7 +302,7 @@ function StatusText(props: {
   let element!: HTMLDivElement;
 
   const onClick = (e: MouseEvent) => {
-    const callback = onMediaCaptionClick(element, e);
+    const callback = hotReloadGuard.onMediaCaptionClick(element, e);
     if(!callback) return;
 
     props.onClose(callback);

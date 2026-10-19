@@ -6,7 +6,6 @@ import maybe2x from '@helpers/maybe2x';
 import MediaHeader from '@components/mediaHeader';
 import getGiftAssetName from '@helpers/getGiftAssetName';
 import {InputInvoice, MessageMedia, PaymentsPaymentForm, PaymentsPaymentReceipt, StarsTransaction, Message, Photo, Document, Chat, WebDocument} from '@layer';
-import appImManager from '@lib/appImManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {i18n, LangPackKey} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -15,12 +14,12 @@ import {putPreloader} from '@components/putPreloader';
 import Table, {TablePeer} from '@components/table';
 import {toastNew} from '@components/toast';
 import type {PopupPaymentOptions, PopupPaymentResult} from '@components/popups/payment';
-import showStarsPopup, {STARS_POPUP_KIND, getStarsTransactionTitleAndMedia, StarsAmount, StarsBalance, StarsChange} from '@components/popups/stars';
+import {STARS_POPUP_KIND, getStarsTransactionTitleAndMedia} from '@components/popups/stars';
+import {StarsAmount, StarsBalance, StarsChange} from '@components/stars/starsAmount';
 import {createSignal, JSX} from 'solid-js';
 import partition from '@helpers/array/partition';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import AppMediaViewer from '@components/mediaViewer';
 import {NULL_PEER_ID, TON_CURRENCY} from '@appManagers/constants';
 import tsNow from '@helpers/tsNow';
 import classNames from '@helpers/string/classNames';
@@ -42,6 +41,8 @@ import paymentsWrapCurrencyAmount, {formatNanoton} from '@helpers/paymentsWrapCu
 import confirmationPopup from '@components/confirmationPopup';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {getMiddleware} from '@helpers/middleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import type AppMediaViewer from '@components/mediaViewer';
 
 const TEST_FIRST_TIME = DEBUG && false;
 
@@ -216,7 +217,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     } catch(err) {
       let shouldRetry = false;
       if((err as ApiError).type === 'BALANCE_TOO_LOW') {
-        showStarsPopup({
+        hotReloadGuard.showStarsPopup({
           itemPrice,
           paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars,
           ton: isTon,
@@ -369,7 +370,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
           try {
             await managers.appPaymentsManager.fulfillStarsSubscription(subscription.id);
             hidePopupsWithCallback(() => {
-              appImManager.setInnerPeer({peerId});
+              hotReloadGuard.appImManager.setInnerPeer({peerId});
             });
           } catch(err) {
             console.error('fulfill error', err);
@@ -482,7 +483,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
         const messagePeerId = transaction && getStarsTransactionMessagePeerId(transaction, ledgerPeerId || rootScope.myId, rootScope.myId);
         const messageMid = transaction && (transaction.giveaway_post_id || transaction.msg_id);
         const messageAnchor = messagePeerId && messageMid && anchorCallback((e) => {
-          hidePopupsWithCallback(() => appImManager.setInnerPeer({peerId: messagePeerId, lastMsgId: messageMid}), e);
+          hidePopupsWithCallback(() => hotReloadGuard.appImManager.setInnerPeer({peerId: messagePeerId, lastMsgId: messageMid}), e);
         });
         if(messageAnchor) messageAnchor.append(link || i18n('Message'));
 
@@ -490,7 +491,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
           peerId: tablePeerId,
           onClick: () => {
             hidePopupsWithCallback(() => {
-              appImManager.setInnerPeer({
+              hotReloadGuard.appImManager.setInnerPeer({
                 peerId: tablePeerId,
                 stack: message ? {
                   peerId: message.peerId,
@@ -535,7 +536,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
           if(gift) {
             const giftTitle = gift._ === 'starGiftUnique' ? `${gift.title} #${gift.num}` : gift.title || i18n('StarGiftTitle');
             const giftAnchor = gift._ === 'starGiftUnique' && anchorCallback(() => {
-              hidePopupsWithCallback(() => appImManager.openUrl(`https://t.me/nft/${gift.slug}`));
+              hidePopupsWithCallback(() => hotReloadGuard.appImManager.openUrl(`https://t.me/nft/${gift.slug}`));
             });
             if(giftAnchor) giftAnchor.append(giftTitle);
             tableContent.push(['StarGiftTitle', giftAnchor || giftTitle]);
@@ -640,7 +641,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
 
                     targets[0].element = avatar;
 
-                    new AppMediaViewer(true)
+                    new hotReloadGuard.AppMediaViewer(true)
                     .setSearchContext({peerId: 0, inputFilter: {_: 'inputMessagesFilterEmpty'}, useSearch: false})
                     .openMedia({
                       message: standaloneMessage,

@@ -8,11 +8,11 @@ import Chat from '@components/chat/chat';
 import ChatTopbar from '@components/chat/topbar';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import {ChatFull, GroupCall, InputGroupCall, Chat as MTChat} from '@layer';
-import appImManager from '@lib/appImManager';
 import {useChat} from '@stores/peers';
 import {useFullPeer} from '@stores/fullPeers';
 import {i18n} from '@lib/langPack';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type ChatLivePlate = TopbarPlateController & {
   setPeerId: (peerId: PeerId) => void
@@ -91,7 +91,7 @@ function LivePlateBody(props: {
         watching={watching()}
         actionButton={
           <TopbarPlate.ActionButton
-            onClick={() => appImManager.joinLiveStream(props.peerId())}
+            onClick={() => hotReloadGuard.appImManager.joinLiveStream(props.peerId())}
           >
             {i18n('Rtmp.Topbar.Join')}
           </TopbarPlate.ActionButton>

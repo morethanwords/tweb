@@ -11,10 +11,8 @@ import styles from '@components/chat/topbarSponsored.module.scss';
 import {I18nTsx} from '@helpers/solid/i18n';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import appImManager from '@lib/appImManager';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {MyPhoto} from '@appManagers/appPhotosManager';
-import showPremiumPopup from '@components/popups/premium';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {getSponsoredMessageButtons} from '@components/chat/contextMenu';
@@ -25,6 +23,7 @@ import RippleElement from '@components/rippleElement';
 import {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import I18n from '@lib/langPack';
 import A11yButton from '@components/a11yButton';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type ChatSponsoredPlate = TopbarPlateController & {
   setPeerId: (peerId: PeerId) => void
@@ -69,7 +68,7 @@ function SponsoredPlateBody(props: {
       <RippleElement
         component="div"
         class={/* @once */ classNames(styles.container, 'quote-like-hoverable', 'overflow-hidden')}
-        onClick={() => appImManager.onSponsoredMessageClick(message())}
+        onClick={() => hotReloadGuard.appImManager.onSponsoredMessageClick(message())}
         ref={(el) => {
           createContextMenu({
             listenTo: el,
@@ -117,7 +116,7 @@ function SponsoredPlateBody(props: {
         aria-label={I18n.format('Premium.Boarding.NoAds.Action', true)}
         onClick={(e) => {
           e.stopPropagation();
-          showPremiumPopup({feature: 'no_ads'});
+          hotReloadGuard.showPremiumPopup({feature: 'no_ads'});
         }}
       />
     </Show>

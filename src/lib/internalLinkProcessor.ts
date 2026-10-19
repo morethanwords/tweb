@@ -17,7 +17,7 @@ import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvit
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import {PHONE_NUMBER_REG_EXP} from '@lib/richTextProcessor';
 import {isWebAppNameValid} from '@lib/richTextProcessor/validators';
-import appImManager, {APP_TABS, JoinConferenceOptions} from '@lib/appImManager';
+import appImManager, {JoinConferenceOptions} from '@lib/appImManager';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from '@lib/internalLink';
 import {AppManagers} from '@lib/managers';
@@ -42,7 +42,7 @@ import appSidebarRight from '@components/sidebarRight';
 import pause from '@helpers/schedulers/pause';
 import namedPromises from '@helpers/namedPromises';
 import {openInstantViewInAppBrowser} from '@components/browser';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import appSidebarLeft from '@components/sidebarLeft';
 import {AppContactsTab} from '@components/solidJsTabs/tabs';
@@ -59,6 +59,7 @@ import parseBotAdminRights from '@appManagers/utils/bots/parseBotAdminRights';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
 import searchByTag from '@lib/richTextProcessor/searchByTag';
+import {APP_TABS} from '@lib/appColumns';
 
 /**
  * A link whose section we know but whose path we do not — the one thing worse
@@ -1708,4 +1709,5 @@ export class InternalLinkProcessor {
 
 const internalLinkProcessor = new InternalLinkProcessor();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.internalLinkProcessor = internalLinkProcessor);
+registerHotReloadGuard({internalLinkProcessor});
 export default internalLinkProcessor;

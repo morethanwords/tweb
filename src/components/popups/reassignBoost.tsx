@@ -3,7 +3,6 @@ import {formatFullSentTime} from '@helpers/date';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {MyBoost, PremiumMyBoosts} from '@layer';
-import appImManager from '@lib/appImManager';
 import {i18n} from '@lib/langPack';
 import AppSelectPeers from '@components/appSelectPeers';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -23,6 +22,7 @@ import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import {IconTsx} from '@components/iconTsx';
 import rootScope from '@lib/rootScope';
 import {createListTransition} from '@vendor/createListTransition';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const className = 'popup-boost';
 
@@ -214,7 +214,7 @@ export default async function showReassignBoostPopup(
             anchorCallback(() => {
               hideToast();
               hideWithCallback(() => {
-                appImManager.initGifting();
+                hotReloadGuard.appImManager.initGifting();
               });
             })
           ]
@@ -279,7 +279,7 @@ export default async function showReassignBoostPopup(
                 [
                   anchorCallback(() => {
                     hideWithCallback(() => {
-                      appImManager.initGifting();
+                      hotReloadGuard.appImManager.initGifting();
                     });
                   })
                 ]

@@ -1,6 +1,6 @@
 import {createMemo, For, onCleanup, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
-import {StarsStar} from '@components/popups/stars';
+import {StarsStar} from '@components/stars/starsAmount';
 import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import I18n, {i18n} from '@lib/langPack';
@@ -19,7 +19,6 @@ import formatNumber from '@helpers/number/formatNumber';
 import {changeBrightness, getRgbColorFromTelegramColor, rgbaToHexa, rgbIntToHex} from '@helpers/color';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {showSharingPicker2Popup} from '@components/popups/pickUser';
-import appImManager from '@lib/appImManager';
 import {StarGift, StarGiftCollection} from '@layer';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
@@ -33,6 +32,7 @@ import {openStarGiftWear} from '@components/popups/starGiftWear';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
@@ -66,7 +66,7 @@ function StarGiftGridItem(props: {
           onClick: () => {
             showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
               rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
-              appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
+              hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
             });
           }
         },

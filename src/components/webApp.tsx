@@ -6,9 +6,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import safeAssign from '@helpers/object/safeAssign';
 import themeController from '@helpers/themeController';
 import {AttachMenuBot, BotInfo, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage, Update} from '@layer';
-import appImManager from '@lib/appImManager';
 import {InternalLink, INTERNAL_LINK_TYPE} from '@lib/internalLink';
-import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {AppManagers} from '@lib/managers';
 import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import I18n, {LangPackKey} from '@lib/langPack';
@@ -32,10 +30,8 @@ import {attachClassName} from '@helpers/solid/classname';
 import showWebAppEmojiStatusAccessPopup from '@components/popups/webAppEmojiStatusAccess';
 import {toastNew} from '@components/toast';
 import tsNow from '@helpers/tsNow';
-import showPremiumPopup from '@components/popups/premium';
 import {MyDocument} from '@appManagers/appDocsManager';
 import showWebAppLocationAccessPopup from '@components/popups/webAppLocationAccess';
-import appSidebarRight from '@components/sidebarRight';
 import {IS_SAFARI} from '@environment/userAgent';
 import {Transition} from '@vendor/solid-transition-group';
 import {PreloaderTsx} from '@components/putPreloader';
@@ -53,6 +49,7 @@ import {openBotPrivacyPolicy} from '@helpers/getBotPrivacyPolicy';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
 import {showPeerReport} from '@components/popups/reportAd';
 import getWebViewTgLink from '@helpers/getWebViewTgLink';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -401,9 +398,9 @@ export default class WebApp {
       text: 'BotWebViewOpenBot',
       onClick: () => {
         this.forceHide();
-        appImManager.setInnerPeer({peerId: botPeerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: botPeerId});
       },
-      verify: () => this.webViewOptions.peerId !== botPeerId || appImManager.chat?.peerId !== botPeerId
+      verify: () => this.webViewOptions.peerId !== botPeerId || hotReloadGuard.appImManager.chat?.peerId !== botPeerId
     }, {
       icon: 'rotate_left',
       text: 'BotWebViewReloadPage',
@@ -441,7 +438,7 @@ export default class WebApp {
       text: 'BotPrivacyPolicy',
       onClick: () => openBotPrivacyPolicy(this.botInfo, () => {
         this.forceHide();
-        appImManager.setInnerPeer({peerId: botPeerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: botPeerId});
         this.managers.appMessagesManager.sendText({peerId: botPeerId, text: '/privacy'});
       }),
       verify: async() => !!(await this.getBotInfo())
@@ -456,7 +453,7 @@ export default class WebApp {
       icon: 'plusround',
       text: 'WebApp.InstallBot',
       onClick: () => {
-        appImManager.toggleBotInAttachMenu(botId, true).then(async(attachMenuBot) => {
+        hotReloadGuard.appImManager.toggleBotInAttachMenu(botId, true).then(async(attachMenuBot) => {
           this.attachMenuBot = attachMenuBot;
         });
       },
@@ -466,7 +463,7 @@ export default class WebApp {
       className: 'danger',
       text: 'BotWebViewDeleteBot',
       onClick: () => {
-        appImManager.toggleBotInAttachMenu(botId, false).then(async(attachMenuBot) => {
+        hotReloadGuard.appImManager.toggleBotInAttachMenu(botId, false).then(async(attachMenuBot) => {
           this.attachMenuBot = attachMenuBot;
           this.forceHide();
         });
@@ -539,14 +536,14 @@ export default class WebApp {
 
     this.forceHide();
 
-    const chat = appImManager.chat;
+    const chat = hotReloadGuard.appImManager.chat;
     let peerId = chat.peerId, threadId = chat.threadId;
     if(chat_types?.length) {
       const chosenPeerId = await showPickUser3Popup(chat_types, ['send_inline']);
       if(peerId !== chosenPeerId) {
         peerId = chosenPeerId;
         threadId = undefined;
-        await appImManager.setInnerPeer({peerId});
+        await hotReloadGuard.appImManager.setInnerPeer({peerId});
       }
     }
 
@@ -757,7 +754,7 @@ export default class WebApp {
       onFinish: async(result) => {
         if(result) {
           if(!(await managers.rootScope.getPremium())) {
-            showPremiumPopup({feature: 'emoji_status'});
+            hotReloadGuard.showPremiumPopup({feature: 'emoji_status'});
             telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SERVER_ERROR'});
             return;
           }
@@ -797,7 +794,7 @@ export default class WebApp {
       onFinish: async(result) => {
         if(result) {
           if(!(await managers.rootScope.getPremium())) {
-            showPremiumPopup({feature: 'emoji_status'});
+            hotReloadGuard.showPremiumPopup({feature: 'emoji_status'});
             telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'cancelled'});
             return;
           }
@@ -1100,7 +1097,7 @@ export default class WebApp {
         })
       },
       web_app_open_tg_link: ({path_full}) => {
-        appImManager.openUrl(getWebViewTgLink(path_full));
+        hotReloadGuard.appImManager.openUrl(getWebViewTgLink(path_full));
         // this.forceHide();
       },
       web_app_open_invoice: ({slug}) => {
@@ -1109,7 +1106,7 @@ export default class WebApp {
           slug
         };
 
-        internalLinkProcessor.processInvoiceLink(link).then((popupPayment) => {
+        hotReloadGuard.internalLinkProcessor.processInvoiceLink(link).then((popupPayment) => {
           popupPayment.addEventListener('finish', (result) => {
             telegramWebView.dispatchWebViewEvent('invoice_closed', {
               slug,
@@ -1158,7 +1155,7 @@ export default class WebApp {
         try {
           const botId = this.webViewOptions.botId;
           await this.managers.appMessagesManager.unblockBot(botId);
-          await appImManager.requestPhone({peerId: botId.toPeerId(false)});
+          await hotReloadGuard.appImManager.requestPhone({peerId: botId.toPeerId(false)});
         } catch(err) {
           status.status = 'cancelled';
         }
@@ -1270,8 +1267,8 @@ export default class WebApp {
       web_app_open_location_settings: async() => {
         const botPermission = await this.managers.appBotsManager.readBotInternalStorage(this.webViewOptions.botId, 'locationPermission');
         if(botPermission == null) return;
-        appImManager.setInnerPeer({peerId: this.webViewOptions.botId.toPeerId()});
-        appSidebarRight.toggleSidebar(true);
+        hotReloadGuard.appImManager.setInnerPeer({peerId: this.webViewOptions.botId.toPeerId()});
+        hotReloadGuard.appSidebarRight.toggleSidebar(true);
       },
       web_app_request_file_download: this.handleFileDownload,
       web_app_device_storage_save_key: async({req_id, key, value}) => {

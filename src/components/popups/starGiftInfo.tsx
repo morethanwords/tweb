@@ -3,11 +3,10 @@ import PopupElement, {createPopup, PopupContext} from './indexTsx';
 import {Peer, PaymentsUniqueStarGiftValueInfo, StarGift, StarGiftAttribute, StarGiftAttributeRarity} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
-import {StarsStar} from '@components/popups/stars';
+import {StarsStar} from '@components/stars/starsAmount';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Button from '@components/buttonTsx';
 import {formatDate, formatFullSentTime} from '@helpers/date';
-import appImManager from '@lib/appImManager';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -60,6 +59,7 @@ import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import {PreloaderTsx} from '@components/putPreloader';
 import {showCreateStarGiftOfferPopup} from '@components/popups/createStarGiftOffer';
 import {getCanManagePeerGifts} from '@components/stargifts/canManageGifts';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
   if(props.rarity._ !== 'starGiftAttributeRarity') {
@@ -591,7 +591,7 @@ export default function showStarGiftInfoPopup(options: {
     })
 
     const openPeer = (peerId: PeerId) => {
-      appImManager.setInnerPeer({peerId})
+      hotReloadGuard.appImManager.setInnerPeer({peerId})
       onClickAway?.()
       context.hide()
     }
@@ -959,7 +959,7 @@ export default function showStarGiftInfoPopup(options: {
     const handleShare = () => {
       showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
         rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (gift as StarGift.starGiftUnique).slug});
-        appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
         context.hide();
       });
     }

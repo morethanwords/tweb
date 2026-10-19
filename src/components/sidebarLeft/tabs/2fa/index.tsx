@@ -3,10 +3,9 @@ import Button from '@components/buttonTsx';
 import showPeerPopup from '@components/popups/peer';
 import Section from '@components/section';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
-import {AppSettingsTab} from '@components/solidJsTabs';
-import {AppTwoStepVerificationEmailTab, AppTwoStepVerificationEnterPasswordTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppTwoStepVerificationTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TwoStepVerification: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationTab>();
@@ -30,7 +29,7 @@ const TwoStepVerification: Component = () => {
         langKey: 'Disable',
         callback: () => {
           tab.managers.passwordManager.updateSettings({currentPassword: plainPassword}).then(() => {
-            tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
+            tab.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppSettingsTab, tab);
             tab.close();
           });
         },
@@ -55,7 +54,7 @@ const TwoStepVerification: Component = () => {
             <Button
               primaryFilled
               text="TwoStepVerificationSetPassword"
-              onClick={() => tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab).open({state})}
+              onClick={() => tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEnterPasswordTab).open({state})}
             />
           </div>
         }
@@ -64,7 +63,7 @@ const TwoStepVerification: Component = () => {
           class="btn-primary btn-transparent"
           icon="edit"
           text="TwoStepAuth.ChangePassword"
-          onClick={() => tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab).open({state, plainPassword})}
+          onClick={() => tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEnterPasswordTab).open({state, plainPassword})}
         />
         <Button
           class="btn-primary btn-transparent"
@@ -76,7 +75,7 @@ const TwoStepVerification: Component = () => {
           class="btn-primary btn-transparent"
           icon="email"
           text={state.pFlags.has_recovery ? 'TwoStepAuth.ChangeEmail' : 'TwoStepAuth.SetupEmail'}
-          onClick={() => tab.slider.createTab(AppTwoStepVerificationEmailTab).open({
+          onClick={() => tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEmailTab).open({
             state,
             hint: state.hint,
             plainPassword,

@@ -4,7 +4,7 @@ import {STARS_CURRENCY} from '@appManagers/constants';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {AppManager} from '@appManagers/manager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import {nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
+import {nanotonToJsNumber} from '@helpers/nanoton';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
 import {randomLong} from '@helpers/random';
 

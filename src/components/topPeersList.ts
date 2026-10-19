@@ -1,8 +1,8 @@
-import appDialogsManager from '@lib/appDialogsManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
 import {Middleware} from '@helpers/middleware';
 import {MyTopPeer} from '@lib/appManagers/appUsersManager';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /**
  * Renders one peer the way the left sidebar's search renders its top-peers row: a bigger avatar
@@ -17,7 +17,7 @@ export function renderTopPeerItem({peerId, container, middleware, autonomous = t
   autonomous?: boolean,
   noIcons?: boolean
 }) {
-  const dialog = appDialogsManager.addDialogNew({
+  const dialog = hotReloadGuard.appDialogsManager.addDialogNew({
     peerId,
     container,
     onlyFirstName: true,

@@ -3,7 +3,7 @@ import {ApiLimitType} from '@appManagers/apiManagerMethods';
 import rootScope from '@lib/rootScope';
 import showPeerPopup, {PopupPeerButton} from '@components/popups/peer';
 import LimitLine from '@components/limit';
-import showPremiumPopup from '@components/popups/premium';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const a: {[type in ApiLimitType]?: {
   title: LangPackKey,
@@ -88,7 +88,7 @@ export default async function showLimitPopup(
   }] : [{
     langKey: 'IncreaseLimit',
     callback: () => {
-      showPremiumPopup({feature});
+      hotReloadGuard.showPremiumPopup({feature});
     },
     iconRight: 'premium_double_filled'
   }, {

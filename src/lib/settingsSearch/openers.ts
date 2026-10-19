@@ -1,10 +1,10 @@
-import * as tabs from '@components/solidJsTabs/tabs';
 import type SidebarSlider from '@components/slider';
 import type SliderSuperTab from '@components/sliderTab';
 import type {SliderSuperTabConstructable} from '@components/sliderTab';
 import rootScope from '@lib/rootScope';
 import type {Middleware} from '@helpers/middleware';
 import type {ConnectedBot} from '@layer';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /**
  * Sections the search cannot open on its own: wizard steps and detail views that
@@ -48,7 +48,7 @@ export const A11Y_ONLY_ENTRIES = new Set([
 type SectionOpener = (slider: SidebarSlider, middleware?: Middleware) => Promise<SliderSuperTab> | SliderSuperTab;
 
 const getConstructor = (sectionId: string) => {
-  return (tabs as any)[sectionId] as SliderSuperTabConstructable & {getInitArgs?: (...args: any[]) => any};
+  return (hotReloadGuard.tabs as any)[sectionId] as SliderSuperTabConstructable & {getInitArgs?: (...args: any[]) => any};
 };
 
 /**
@@ -78,11 +78,11 @@ const openTab = async(
 const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
   AppPrivacyLastSeenTab: async(slider, middleware) => {
     const settings = await rootScope.managers.appPrivacyManager.getGlobalPrivacySettings();
-    return openTab(slider, tabs.AppPrivacyLastSeenTab, middleware, settings);
+    return openTab(slider, hotReloadGuard.tabs.AppPrivacyLastSeenTab, middleware, settings);
   },
   AppPrivacyGiftsTab: async(slider, middleware) => {
     const settings = await rootScope.managers.appPrivacyManager.getGlobalPrivacySettings();
-    return openTab(slider, tabs.AppPrivacyGiftsTab, middleware, settings);
+    return openTab(slider, hotReloadGuard.tabs.AppPrivacyGiftsTab, middleware, settings);
   },
   AppActiveSessionsTab: async(slider, middleware) => {
     const authorizations = await rootScope.managers.appAccountManager.getAuthorizations();
@@ -93,7 +93,7 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
       connectedBot = await rootScope.managers.appBusinessManager.getConnectedBot();
     } catch{}
 
-    return openTab(slider, tabs.AppActiveSessionsTab, middleware, {
+    return openTab(slider, hotReloadGuard.tabs.AppActiveSessionsTab, middleware, {
       authorizations: authorizations.authorizations,
       connectedBot,
       ttlDays: authorizations.authorization_ttl_days
@@ -101,7 +101,7 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
   },
   AppBlockedUsersTab: async(slider, middleware) => {
     const {peerIds} = await rootScope.managers.appUsersManager.getBlocked();
-    return openTab(slider, tabs.AppBlockedUsersTab, middleware, {peerIds});
+    return openTab(slider, hotReloadGuard.tabs.AppBlockedUsersTab, middleware, {peerIds});
   },
   AppChatAutomationTab: async(slider, middleware) => {
     // the bot is optional here too — the tab opens with an empty row without it
@@ -110,18 +110,18 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
       connectedBot = await rootScope.managers.appBusinessManager.getConnectedBot();
     } catch{}
 
-    return openTab(slider, tabs.AppChatAutomationTab, middleware, {connectedBot});
+    return openTab(slider, hotReloadGuard.tabs.AppChatAutomationTab, middleware, {connectedBot});
   },
   AppPrivacyMessagesTab: (slider, middleware) => {
     // opened on its own, so there is no privacy row waiting for the new value
-    return openTab(slider, tabs.AppPrivacyMessagesTab, middleware, {onSaved: () => {}});
+    return openTab(slider, hotReloadGuard.tabs.AppPrivacyMessagesTab, middleware, {onSaved: () => {}});
   },
   // a free account gets the Business promo instead, as it does from Edit Profile
-  AppBusinessHoursTab: (slider) => tabs.openBusinessEditorTab(slider, tabs.AppBusinessHoursTab),
-  AppBusinessLocationTab: (slider) => tabs.openBusinessEditorTab(slider, tabs.AppBusinessLocationTab),
+  AppBusinessHoursTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessHoursTab),
+  AppBusinessLocationTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessLocationTab),
   AppActiveWebSessionsTab: async(slider, middleware) => {
     const authorizations = await rootScope.managers.appSeamlessLoginManager.getWebAuthorizations();
-    return openTab(slider, tabs.AppActiveWebSessionsTab, middleware, authorizations);
+    return openTab(slider, hotReloadGuard.tabs.AppActiveWebSessionsTab, middleware, authorizations);
   }
 };
 

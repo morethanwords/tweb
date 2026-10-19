@@ -21,11 +21,11 @@ import themeController from '@helpers/themeController';
 import liteMode from '@helpers/liteMode';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import eachMinute from '@helpers/eachMinute';
-import {AppChatBackgroundTab, AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import ChatThemesPicker from '@components/chatThemesPicker';
 import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import appDownloadManager from '@lib/appDownloadManager';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — text size, chat background, animations toggle, lite mode entry
@@ -63,7 +63,7 @@ const SettingsSection = () => {
         maxValue={20}
         onChange={(value) => setAppSettings('messagesTextSize', value)}
       />
-      <Row clickable={() => tab.slider.createTab(AppChatBackgroundTab).open()}>
+      <Row clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppChatBackgroundTab).open()}>
         <Row.Icon icon="appearance_filled" />
         <Row.Title>{i18n('ChatBackground')}</Row.Title>
       </Row>
@@ -92,7 +92,7 @@ const SettingsSection = () => {
         </Row.CheckboxField>
         <Row.Title>{i18n('EnableAnimations')}</Row.Title>
       </Row> */}
-      <Row clickable={() => tab.slider.createTab(AppPowerSavingTab).open()}>
+      <Row clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppPowerSavingTab).open()}>
         <Row.Icon icon="sputnik_filled" />
         <Row.Title titleRight={liteModeStatusEl.element} titleRightSecondary>
           {i18n('LiteMode.EnableText')}

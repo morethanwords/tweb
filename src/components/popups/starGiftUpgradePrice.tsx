@@ -10,7 +10,7 @@ import {StarGiftUpgradePreview} from '@appManagers/appGiftsManager';
 import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
 import Table from '@components/table';
 import {formatDate, formatDateAccordingToTodayNew, formatFullSentTime, formatTime} from '@helpers/date';
-import {StarsStar} from '@components/popups/stars';
+import {StarsStar} from '@components/stars/starsAmount';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import I18n from '@lib/langPack';
 import toHHMMSS from '@helpers/string/toHHMMSS';

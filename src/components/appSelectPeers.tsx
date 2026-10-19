@@ -3,7 +3,8 @@ import Modes from '@config/modes';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {AppPeersManager, IsPeerType} from '@appManagers/appPeersManager';
-import appDialogsManager, {AppDialogsManager, DialogElement, DialogElementSize as DialogElementSize} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
+import {DialogElement, DialogElementSize as DialogElementSize} from '@components/dialogElement';
 import rootScope from '@lib/rootScope';
 import Scrollable from '@components/scrollable';
 import {FocusDirection} from '@helpers/fastSmoothScroll';
@@ -41,12 +42,12 @@ import {hideToast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import SelectorSearch from '@components/selectorSearch';
-import showPremiumPopup from '@components/popups/premium';
 import formatNumber from '@helpers/number/formatNumber';
 import namedPromises from '@helpers/namedPromises';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@lib/appManagers/constants';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** A row whose trailing checkbox is painted over it — the lane it takes is reserved in `_selector.scss`. */
 const ROW_WITH_CHECKBOX_CLASS = 'selector-row-with-checkbox';
@@ -58,7 +59,7 @@ export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>
 
 export default class AppSelectPeers {
   public container = document.createElement('div');
-  public list = appDialogsManager.createChatList(/* {
+  public list = hotReloadGuard.appDialogsManager.createChatList(/* {
     handheldsSize: 66,
     avatarSize: 48
   } */);
@@ -455,7 +456,7 @@ export default class AppSelectPeers {
               title,
               anchorCallback(() => {
                 hideToast();
-                showPremiumPopup();
+                hotReloadGuard.showPremiumPopup();
               })
             ]
           });
@@ -689,7 +690,7 @@ export default class AppSelectPeers {
       this.oldList = this.list;
       this.oldListMiddlewareHelper = this.listMiddlewareHelper;
     }
-    this.list = appDialogsManager.createChatList();
+    this.list = hotReloadGuard.appDialogsManager.createChatList();
     this.listMiddlewareHelper = this.middlewareHelper.get().create();
 
     this.promise = undefined;
@@ -1190,7 +1191,7 @@ export default class AppSelectPeers {
     const promises = peerIds.map(async(key) => {
       const additionalParams = this.additionalDialogParams?.(key);
       const dialogLoadPromises = additionalParams?.loadPromises || [];
-      const dialogElement = appDialogsManager.addDialogNew({
+      const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
         peerId: this.getPeerIdFromKey?.(key) ?? key,
         rippleEnabled: this.rippleEnabled,
         avatarSize: this.avatarSize,

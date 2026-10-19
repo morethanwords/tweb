@@ -8,7 +8,6 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import tsNow from '@helpers/tsNow';
 import {MessagesExportedChatInvite, MessagesExportedChatInvites} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {LangPackKey, i18n, joinElementsWith} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -18,16 +17,17 @@ import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
-import {StarsAmount} from '@components/popups/stars';
+import {StarsAmount} from '@components/stars/starsAmount';
 import Section, {appendSectionContent} from '@components/section';
 import UsernameRow from '@components/usernameRow';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import {ChatInvite, ChatInviteActions, ChatInviteLink, getChatInviteLinksInitArgs, isActiveInvite} from './chatInviteLinkShared';
-import {AppChatInviteLinkTab, AppChatInviteLinksTab, AppEditChatInviteLinkTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {mountSolidComponent, wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import type {AppChatInviteLinkTab, AppChatInviteLinksTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ChatInviteLinks: Component = () => {
   const [tab] = useSuperTab<typeof AppChatInviteLinksTab>();
@@ -88,7 +88,7 @@ const ChatInviteLinks: Component = () => {
       text: 'InviteLinks.Edit',
       onClick: actions.editLink = async() => {
         const _menuItem = menuItem;
-        const editTab = tab.slider.createTab(AppEditChatInviteLinkTab);
+        const editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditChatInviteLinkTab);
         editTab.eventListener.addEventListener('finish', (invite) => {
           _menuItem.destroy();
           _menuItem.row.container.replaceWith(createInviteRow(invite).container);
@@ -212,7 +212,7 @@ const ChatInviteLinks: Component = () => {
         const btn = Button('btn-primary btn-transparent primary', {icon: 'plus', text: 'CreateNewLink'});
 
         attachClickEvent(btn, () => {
-          const editTab = tab.slider.createTab(AppEditChatInviteLinkTab);
+          const editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditChatInviteLinkTab);
           editTab.eventListener.addEventListener('finish', (chatInvite) => {
             const row = createInviteRow(chatInvite);
             if(primaryInvite) {
@@ -247,11 +247,11 @@ const ChatInviteLinks: Component = () => {
           return;
         }
 
-        const chatlist = appDialogsManager.createChatList();
+        const chatlist = hotReloadGuard.appDialogsManager.createChatList();
         const loadPromises: Promise<any>[] = [];
         admins.forEach((admin) => {
           const peerId = admin.admin_id.toPeerId(false);
-          const {dom} = appDialogsManager.addDialogNew({
+          const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId,
             container: chatlist,
             rippleEnabled: true,
@@ -273,7 +273,7 @@ const ChatInviteLinks: Component = () => {
           }
 
           const peerId = target.dataset.peerId.toPeerId();
-          const adminTab = tab.slider.createTab(AppChatInviteLinksTab);
+          const adminTab = tab.slider.createTab(hotReloadGuard.tabs.AppChatInviteLinksTab);
           adminTab.open({
             chatId: chatId,
             adminId: peerId.toUserId()
@@ -336,7 +336,7 @@ const ChatInviteLinks: Component = () => {
     ].filter(Boolean));
 
     const openLink = (invite: ChatInvite) => {
-      const detailTab = chatInviteLinkTab = tab.slider.createTab(AppChatInviteLinkTab);
+      const detailTab = chatInviteLinkTab = tab.slider.createTab(hotReloadGuard.tabs.AppChatInviteLinkTab);
       detailTab.eventListener.addEventListener('close', () => {
         chatInviteLinkTab = menuItem = menuInvite = undefined;
       });

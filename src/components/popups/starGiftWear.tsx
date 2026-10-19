@@ -13,12 +13,12 @@ import styles from '@components/popups/starGiftWear.module.scss';
 import {AvatarNewTsx} from '@components/avatarNew';
 import FeatureRows from '@components/featureRows';
 import MediaHeader from '@components/mediaHeader';
-import showPremiumPopup from '@components/popups/premium';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import classNames from '@helpers/string/classNames';
 import {StickerTsx} from '@components/wrappers/sticker';
 import showBoostPopup from './boost';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function showStarGiftWearPopup(options: {
   gift: MyStarGift,
@@ -143,7 +143,7 @@ export default function showStarGiftWearPopup(options: {
 
 export function openStarGiftWear(gift: MyStarGift, peerId?: PeerId) {
   if(!rootScope.premium) {
-    showPremiumPopup();
+    hotReloadGuard.showPremiumPopup();
     return false;
   }
 

@@ -13,7 +13,8 @@ import {SliderSuperTabEventableConstructable} from '@components/sliderTab';
 import {useAppSettings} from '@stores/appSettings';
 import {StorageQuota, StorageQuotaControls} from './storageQuota';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import {AppAutoDownloadFileTab, AppAutoDownloadPhotoTab, AppAutoDownloadVideoTab, type AppDataAndStorageTab} from '@components/solidJsTabs/tabs';
+import {type AppDataAndStorageTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -99,15 +100,15 @@ const DataAndStorage: Component = () => {
           </Row.CheckboxFieldToggle>
           <Row.Title>{i18n('AutoDownloadMedia')}</Row.Title>
         </Row>
-        <Row disabled={!autoEnabled()} clickable={() => openTab(AppAutoDownloadPhotoTab)}>
+        <Row disabled={!autoEnabled()} clickable={() => openTab(hotReloadGuard.tabs.AppAutoDownloadPhotoTab)}>
           <Row.Title>{i18n('AutoDownloadPhotos')}</Row.Title>
           <Row.Subtitle>{getAutoDownloadSubtitle(appSettings.autoDownload.photo)}</Row.Subtitle>
         </Row>
-        <Row disabled={!autoEnabled()} clickable={() => openTab(AppAutoDownloadVideoTab)}>
+        <Row disabled={!autoEnabled()} clickable={() => openTab(hotReloadGuard.tabs.AppAutoDownloadVideoTab)}>
           <Row.Title>{i18n('AutoDownloadVideos')}</Row.Title>
           <Row.Subtitle>{getAutoDownloadSubtitle(appSettings.autoDownload.video)}</Row.Subtitle>
         </Row>
-        <Row disabled={!autoEnabled()} clickable={() => openTab(AppAutoDownloadFileTab)}>
+        <Row disabled={!autoEnabled()} clickable={() => openTab(hotReloadGuard.tabs.AppAutoDownloadFileTab)}>
           <Row.Title>{i18n('AutoDownloadFiles')}</Row.Title>
           <Row.Subtitle>{getAutoDownloadSubtitle(
             appSettings.autoDownload.file,

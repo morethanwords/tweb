@@ -19,7 +19,6 @@ import {logger} from '@lib/logger';
 import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import webPushApiManager from '@lib/webPushApiManager';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
-import appImManager from '@lib/appImManager';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import limitSymbols from '@helpers/string/limitSymbols';
 import apiManagerProxy, {NotificationBuildTaskPayload, NotificationBuildStoryTaskPayload, NotificationBuildStoryReactionTaskPayload} from '@lib/apiManagerProxy';
@@ -38,6 +37,7 @@ import {unwrap} from 'solid-js/store';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {createEffect, createRoot, on} from 'solid-js';
 import appNavigationController from '@components/appNavigationController';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -369,7 +369,7 @@ export class UiNotificationsManager {
           // * the server sends the story id as msg_id, our own notification as story_id
           const storyId = +(custom?.story_id || custom?.msg_id) || undefined;
           const self = await managers.appUsersManager.getSelf();
-          appImManager.openStoriesForPeer(self.id.toPeerId(), storyId);
+          hotReloadGuard.appImManager.openStoriesForPeer(self.id.toPeerId(), storyId);
           return;
         }
 
@@ -388,13 +388,13 @@ export class UiNotificationsManager {
         }
 
         if(custom.story_id) {
-          appImManager.openStoriesForPeer(peerId);
+          hotReloadGuard.appImManager.openStoriesForPeer(peerId);
           return;
         }
 
         const lastMsgId = await managers.appMessagesIdsManager.generateMessageId(+custom.msg_id, channelId);
 
-        appImManager.setInnerPeer({
+        hotReloadGuard.appImManager.setInnerPeer({
           peerId,
           lastMsgId
         });
@@ -520,7 +520,7 @@ export class UiNotificationsManager {
 
         window.open(url, '_blank');
       } else {
-        appImManager.setInnerPeer({peerId, lastMsgId: message.mid, threadId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId: message.mid, threadId});
       }
     };
 
@@ -578,7 +578,7 @@ export class UiNotificationsManager {
             const url = createAppURLForAccount(accountNumber, {p: '' + peerId, story: '1'});
             window.open(url, '_blank');
           } else {
-            appImManager.openStoriesForPeer(peerId);
+            hotReloadGuard.appImManager.openStoriesForPeer(peerId);
           }
         }
       },
@@ -638,7 +638,7 @@ export class UiNotificationsManager {
             });
             window.open(url, '_blank');
           } else {
-            appImManager.openStoriesForPeer(selfPeerId, storyId);
+            hotReloadGuard.appImManager.openStoriesForPeer(selfPeerId, storyId);
           }
         }
       },

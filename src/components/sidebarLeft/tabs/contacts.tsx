@@ -1,5 +1,4 @@
 import {Component, createEffect, createSignal, onCleanup, onMount} from 'solid-js';
-import appDialogsManager from '@lib/appDialogsManager';
 import InputSearch from '@components/inputSearch';
 import {IS_MOBILE} from '@environment/userAgent';
 import {canFocus} from '@helpers/dom/canFocus';
@@ -16,6 +15,7 @@ import {useAppSettings} from '@stores/appSettings';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppContactsTab, AppContactsTabOptions} from '@components/solidJsTabs/tabs';
 import {flashControl} from '@lib/settingsSearch/highlight';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const Contacts: Component = () => {
   const [tab] = useSuperTab<typeof AppContactsTab>();
@@ -40,7 +40,7 @@ const Contacts: Component = () => {
 
   const onList = (list: DialogsSelectionList) => {
     contactsList = list;
-    appDialogsManager.setListClickListener({
+    hotReloadGuard.appDialogsManager.setListClickListener({
       list: list.list,
       autonomous: true,
       selection

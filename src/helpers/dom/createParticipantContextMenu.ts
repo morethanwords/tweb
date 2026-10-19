@@ -3,13 +3,12 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {ChannelParticipant, Chat, ChatParticipant} from '@layer';
 import SidebarSlider from '@components/slider';
 import rootScope from '@lib/rootScope';
-import appImManager from '@lib/appImManager';
 import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
-import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import {Middleware} from '@helpers/middleware';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleMissingInvitees} from '@components/addChatUsers';
 import {isParticipantAdmin, isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type Participant = ChannelParticipant | ChatParticipant;
 
@@ -53,7 +52,7 @@ export default function createParticipantContextMenu(options: {
     canManageAdmins: boolean;
 
   const openPermissions = (isAdmin?: boolean) => {
-    openUserPermissionsTab(slider, chatId, participant, isAdmin);
+    hotReloadGuard.tabs.openUserPermissionsTab(slider, chatId, participant, isAdmin);
   };
 
   function getButtons(): ButtonMenuItemOptionsVerifiable[] {
@@ -61,7 +60,7 @@ export default function createParticipantContextMenu(options: {
       icon: 'message',
       text: 'SendMessage',
       onClick: () => {
-        appImManager.setInnerPeer({peerId: participantPeerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: participantPeerId});
       }
     }, {
       icon: 'adduser',

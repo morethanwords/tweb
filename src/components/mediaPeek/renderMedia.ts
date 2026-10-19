@@ -24,7 +24,7 @@ import rootScope from '@lib/rootScope';
 import {AnimationItemGroup} from '@components/animationIntersector';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import type ProgressivePreloader from '@components/preloader';
-import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
+import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 import wrapPhoto from '@components/wrappers/photo';
 import wrapSticker from '@components/wrappers/sticker';
 import wrapVideo from '@components/wrappers/video';

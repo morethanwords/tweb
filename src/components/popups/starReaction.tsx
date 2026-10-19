@@ -1,7 +1,7 @@
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {i18n} from '@lib/langPack';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {StarsBalance} from '@components/popups/stars';
+import {StarsBalance} from '@components/stars/starsAmount';
 import {DelimiterWithText} from '@components/chat/giveaway';
 import {createEffect, createMemo, createSignal, For, on, onCleanup} from 'solid-js';
 import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
@@ -14,7 +14,6 @@ import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {IconTsx} from '@components/iconTsx';
 import classNames from '@helpers/string/classNames';
-import appImManager from '@lib/appImManager';
 import {Ripple} from '@components/rippleTsx';
 import clamp from '@helpers/number/clamp';
 import {fastRaf} from '@helpers/schedulers';
@@ -31,6 +30,7 @@ import findAndSplice from '@helpers/array/findAndSplice';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {LimitLineTsx} from '@components/limitLineTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function showStarReactionPopup(peerId: PeerId, mid: number, chat: Chat) {
   // * cancel all pending paid reactions
@@ -162,7 +162,7 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
           class={classNames('popup-star-reaction-senders-item', !anonymous && 'is-clickable')}
           onClick={() => {
             if(anonymous) return;
-            appImManager.setInnerPeer({
+            hotReloadGuard.appImManager.setInnerPeer({
               peerId: senderPeerId,
               stack: {peerId, mid}
             });

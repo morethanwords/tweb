@@ -155,6 +155,18 @@ const walkNode = (node, visit) => {
   }
 };
 
+/**
+ * A tab constructor in code: the imported name, or the same tab read off the registry (`hotReloadGuard.tabs.X`),
+ * which is how code below the app's top level reaches the tabs.
+ */
+const tabNameOf = (node, knownTabs) => {
+  if(node?.type === 'Identifier') return knownTabs.has(node.name) ? node.name : undefined;
+  if(node?.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier' &&
+    node.object.type === 'MemberExpression' && node.object.property.name === 'tabs' && knownTabs.has(node.property.name)) {
+    return node.property.name;
+  }
+};
+
 const jsxName = (node) => {
   if(!node) return '';
   const n = node.type === 'JSXOpeningElement' ? node.name : node;
@@ -473,6 +485,11 @@ const analyzeFile = (file, knownTabs) => {
   };
 
   babel.traverse(ast, {
+    // in the order the file uses them: an import lists names in whatever order it was written
+    ImportDeclaration(p) {
+      p.skip();
+    },
+
     Identifier(p) {
       if(knownTabs.has(p.node.name)) referenced.add(p.node.name);
     },
@@ -485,7 +502,10 @@ const analyzeFile = (file, knownTabs) => {
       // `sliceTabsUntilTab(AppSettingsTab)` walks back up the stack and `getTab`
       // only looks one up — neither opens anything.
       if(calleeName === 'sliceTabsUntilTab' || calleeName === 'closeTabsUntilTab' || calleeName === 'getTab') {
-        for(const a of p.node.arguments) if(a.type === 'Identifier') backRefs.add(a.name);
+        for(const a of p.node.arguments) {
+          const name = tabNameOf(a, knownTabs);
+          if(name) backRefs.add(name);
+        }
         return;
       }
 

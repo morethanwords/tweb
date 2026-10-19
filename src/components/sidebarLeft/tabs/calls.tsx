@@ -24,8 +24,6 @@ import {ChatType} from '@components/chat/chatType';
 import {toastNew} from '@components/toast';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
-import {AppSpeakersAndCameraTab} from '@components/solidJsTabs';
-import {AppNewCallTab} from '@components/solidJsTabs/tabs';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -33,7 +31,6 @@ import classNames from '@helpers/string/classNames';
 import {formatFullSentTime, formatTime} from '@helpers/date';
 import noop from '@helpers/noop';
 import type {ActiveGroupCallEntry} from '@appManagers/appGroupCallsManager';
-import appImManager from '@lib/appImManager';
 import {i18n} from '@lib/langPack';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
@@ -45,6 +42,7 @@ import {
   isCallLogMessage
 } from '@lib/calls/helpers/callLog';
 import styles from '@components/sidebarLeft/tabs/calls.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 // tdesktop's constants are named `kFirstPageCount = 20` / `kPerPageCount = 100`
 // but its request uses them the other way round — the first page is the 100
@@ -98,18 +96,18 @@ function CallRow(props: {
       // the invite bubble does (bubbles.ts) and Android's call log does
       // (CallLogActivity.java:998) — tdesktop instead starts a plain 1-on-1
       // call with the inviter, which loses the call the row is about.
-      appImManager.joinConference({
+      hotReloadGuard.appImManager.joinConference({
         _: 'inputGroupCallInviteMessage',
         msg_id: group.conferenceMsgId
       }, {inviterPeerId: group.peerId}).catch(noop);
       return;
     }
 
-    appImManager.callUser(group.peerId.toUserId(), group.video ? 'video' : 'voice').catch(noop);
+    hotReloadGuard.appImManager.callUser(group.peerId.toUserId(), group.video ? 'video' : 'voice').catch(noop);
   };
 
   const showInChat = () => {
-    appImManager.setInnerPeer({
+    hotReloadGuard.appImManager.setInnerPeer({
       peerId: props.group.peerId,
       lastMsgId: props.group.mids[0]
     });
@@ -203,7 +201,7 @@ function ActiveGroupCalls() {
       <Section name="Calls.ActiveVideoChats" contentProps={{class: styles.list}}>
         <For each={calls()}>{(call) => (
           <Row
-            clickable={() => appImManager.setInnerPeer({peerId: call.peerId})}
+            clickable={() => hotReloadGuard.appImManager.setInnerPeer({peerId: call.peerId})}
             role="button"
             tabIndex={0}
           >
@@ -226,8 +224,8 @@ function ActiveGroupCalls() {
                   // A stream is watched through the RTMP viewer; only a real
                   // video chat is joined as a participant.
                   const join = call.rtmp ?
-                    appImManager.joinLiveStream(call.peerId) :
-                    appImManager.joinGroupCall(call.peerId);
+                    hotReloadGuard.appImManager.joinLiveStream(call.peerId) :
+                    hotReloadGuard.appImManager.joinGroupCall(call.peerId);
                   join.catch(noop);
                 }}
               />
@@ -360,7 +358,7 @@ const Calls = () => {
         icon: 'settings',
         text: 'AccountSettings.SpeakersAndCamera',
         onClick: () => {
-          tab.slider.createTab(AppSpeakersAndCameraTab).open();
+          tab.slider.createTab(hotReloadGuard.tabs.AppSpeakersAndCameraTab).open();
         }
       }, {
         icon: 'delete',
@@ -413,7 +411,7 @@ const Calls = () => {
           caption={appConfig.conference_call_size_limit ? 'ConferenceCall.Create.Description' : undefined}
           captionArgs={[appConfig.conference_call_size_limit]}
         >
-          <Row clickable={() => tab.slider.createTab(AppNewCallTab).open()} role="button" tabIndex={0}>
+          <Row clickable={() => tab.slider.createTab(hotReloadGuard.tabs.AppNewCallTab).open()} role="button" tabIndex={0}>
             <Row.Icon icon="phone_filled" />
             <Row.Title>{i18n('ConferenceCall.Create.Action')}</Row.Title>
           </Row>

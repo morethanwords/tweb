@@ -7,7 +7,7 @@ import Row from '@components/rowTsx';
 import SaveButton from '@components/saveButton';
 import Section from '@components/section';
 import {toastNew} from '@components/toast';
-import {AppBusinessHoursDayTab, AppTimezoneTab, type AppBusinessHoursTab} from '@components/solidJsTabs/tabs';
+import {type AppBusinessHoursTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {getWeekDays, ONE_DAY_MINUTES} from '@helpers/date';
@@ -24,6 +24,7 @@ import {
   copyBusinessDays,
   formatDayPeriods
 } from '@components/sidebarLeft/tabs/businessHoursShared';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type AppBusinessHoursTabType = typeof AppBusinessHoursTab;
 
@@ -140,7 +141,7 @@ const BusinessHoursForm = (props: {
     const nextDay = (day + 1) % 7;
     const nextDayMinTime = days[nextDay].reduce((min, period) => Math.min(min, period.start), ONE_DAY_MINUTES);
 
-    tab.slider.createTab(AppBusinessHoursDayTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppBusinessHoursDayTab).open({
       dayName: weekDays[day],
       periods: unwrap(days[day]).map((period) => ({...period})),
       min: Math.max(0, prevDayMaxTime + 1 - ONE_DAY_MINUTES),
@@ -154,7 +155,7 @@ const BusinessHoursForm = (props: {
   };
 
   const openTimezones = () => {
-    tab.slider.createTab(AppTimezoneTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppTimezoneTab).open({
       timezones: props.timezones,
       selected: timezoneId(),
       onSelect: setTimezoneId

@@ -23,12 +23,12 @@ import rootScope from '@lib/rootScope';
 import showGiftLinkPopup from '@components/popups/giftLink';
 import {toastNew} from '@components/toast';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import appImManager from '@lib/appImManager';
 import {createPaymentPopup} from '@components/popups/payment';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import showBoostPopup from '@components/popups/boost';
 import Tabs from '@components/tabs';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -253,7 +253,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
             const slug = boost.used_gift_slug;
             const peerId = boost.user_id?.toPeerId(false);
             if(peerId && !boost.pFlags.gift && !boost.pFlags.unclaimed && !boost.pFlags.giveaway) {
-              appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
+              hotReloadGuard.appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
             } else if(peerId && peerId !== rootScope.myId) {
               showGiftLinkPopup(
                 slug,

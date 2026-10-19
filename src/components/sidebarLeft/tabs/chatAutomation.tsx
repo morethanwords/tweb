@@ -11,7 +11,7 @@ import Row from '@components/rowTsx';
 import SaveButton from '@components/saveButton';
 import {SearchEmpty, SearchLoading} from '@components/searchStatus';
 import Section from '@components/section';
-import {AppAddMembersTab, AppChatAutomationTab, type AppAddMembersExtraCategory} from '@components/solidJsTabs/tabs';
+import {type AppAddMembersExtraCategory} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {toastNew} from '@components/toast';
 import {FontFamily, FontWeightBold} from '@config/font';
@@ -22,8 +22,6 @@ import deepEqual from '@helpers/object/deepEqual';
 import isSameUserId from '@helpers/isSameUserId';
 import useIsConfirmationNeededOnClose from '@hooks/useIsConfirmationNeededOnClose';
 import {BusinessBotRecipients, BusinessBotRights, ConnectedBot} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
-import appImManager from '@lib/appImManager';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
 import {createEffect, createMemo, createSignal, For, on, onCleanup, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
@@ -42,6 +40,8 @@ import {
   makeChatAutomationRecipientsDraft,
   toBusinessBotRecipients
 } from '@components/sidebarLeft/tabs/chatAutomationRecipients';
+import type {AppChatAutomationTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type AppChatAutomationTabType = typeof AppChatAutomationTab;
 type RightKey = keyof BusinessBotRights.businessBotRights['pFlags'];
@@ -173,7 +173,7 @@ function BotDialog(props: {userId: UserId, onAdd?: () => void}) {
   const [tab] = useSuperTab<AppChatAutomationTabType>();
   const onAdd = props.onAdd;
   const peerId = props.userId.toPeerId(false);
-  const dialogElement = appDialogsManager.addDialogNew({
+  const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
     peerId,
     rippleEnabled: true,
     avatarSize: 'abitbigger',
@@ -185,7 +185,7 @@ function BotDialog(props: {userId: UserId, onAdd?: () => void}) {
     }
   });
   const removeDialogClickListener = attachClickEvent(dialogElement.container, () => {
-    appImManager.setInnerPeer({peerId});
+    hotReloadGuard.appImManager.setInnerPeer({peerId});
   });
   let active = true;
   const removeAddClickListener = onAdd && (() => {
@@ -231,7 +231,7 @@ function BotDialog(props: {userId: UserId, onAdd?: () => void}) {
 }
 
 function BotDialogList(props: {userIds: UserId[], onAdd?: (userId: UserId) => void}) {
-  const list = appDialogsManager.createChatList({ignoreClick: true});
+  const list = hotReloadGuard.appDialogsManager.createChatList({ignoreClick: true});
 
   return (
     <div class="chatlist-container">
@@ -534,7 +534,7 @@ export default function ChatAutomationTab() {
       categoryKeys.forEach((key) => store.categories[key] && selectedExtras.add(key));
     }
 
-    tab.slider.createTab(AppAddMembersTab).open({
+    tab.slider.createTab(hotReloadGuard.tabs.AppAddMembersTab).open({
       title: excludeUsersOnly ? 'ChatAutomation.ExcludedChats' :
         (store.excludeSelected ? 'ChatAutomation.ExcludeChats' : 'ChatAutomation.SelectChats'),
       placeholder: 'SearchPlaceholder',

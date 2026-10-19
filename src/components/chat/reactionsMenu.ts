@@ -31,13 +31,13 @@ import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import wrapSticker from '@components/wrappers/sticker';
 import {i18n} from '@lib/langPack';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import showPremiumPopup from '@components/popups/premium';
 import contextMenuController from '@helpers/contextMenuController';
 import callbackify from '@helpers/callbackify';
 import partition from '@helpers/array/partition';
 import {PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
-import {StarsStar} from '@components/popups/stars';
+import {StarsStar} from '@components/stars/starsAmount';
 import {cleanEmoji} from '@lib/richTextProcessor/fixEmoji';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -121,7 +121,7 @@ export class ChatReactionsMenu {
         [
           anchorCallback(() => {
             contextMenuController.close();
-            showPremiumPopup({feature: 'saved_tags'});
+            hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
           })
         ]
       );

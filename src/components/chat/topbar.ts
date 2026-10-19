@@ -1,7 +1,7 @@
 import type {Channel} from '@appManagers/appChatsManager';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import type Chat from '@components/chat/chat';
-import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
+import {RIGHT_COLUMN_ACTIVE_CLASSNAME, LEFT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import ButtonIcon from '@components/buttonIcon';
@@ -12,7 +12,6 @@ import ListenerSetter from '@helpers/listenerSetter';
 import showDeleteDialogPopup from '@components/popups/deleteDialog';
 import {showPeerReport} from '@components/popups/reportAd';
 import appNavigationController from '@components/appNavigationController';
-import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
 import PeerTitle from '@components/peerTitle';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -24,7 +23,6 @@ import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, User, UserFull} from '@layer';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
 import showPeerPopup, {PopupPeerCheckboxOptions} from '@components/popups/peer';
-import {AppEditBotTab, AppEditContactTab} from '@components/solidJsTabs/tabs';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import {CallType} from '@lib/calls/types';
@@ -56,13 +54,10 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMe
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import {createTopbarPlates, TopbarPlates} from '@components/chat/topbarPlates';
 import pause from '@helpers/schedulers/pause';
-import appImManager from '@lib/appImManager';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import namedPromises from '@helpers/namedPromises';
-import appDialogsManager from '@lib/appDialogsManager';
 import {createEffect, createRoot, on, untrack} from 'solid-js';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {setAppSettings} from '@stores/appSettings';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import liteMode from '@helpers/liteMode';
@@ -72,7 +67,6 @@ import {getCachedFullPeer} from '@stores/fullPeers';
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
-import showPremiumPopup from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import openBoosts from '@components/openBoosts';
@@ -571,9 +565,9 @@ export default class ChatTopbar {
       icon: 'message',
       text: 'ChannelDirectMessages.ViewChats',
       onClick: () => {
-        appDialogsManager.toggleForumTabByPeerId(this.peerId, true);
+        hotReloadGuard.appDialogsManager.toggleForumTabByPeerId(this.peerId, true);
       },
-      verify: () => this.chat.isMonoforum && !this.chat.monoforumThreadId && this.chat.canManageDirectMessages && !mediaSizes.isLessThanFloatingLeftSidebar && !appDialogsManager.hasForumOpenFor(this.peerId)
+      verify: () => this.chat.isMonoforum && !this.chat.monoforumThreadId && this.chat.canManageDirectMessages && !mediaSizes.isLessThanFloatingLeftSidebar && !hotReloadGuard.appDialogsManager.hasForumOpenFor(this.peerId)
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
@@ -760,7 +754,7 @@ export default class ChatTopbar {
       text: 'DisableSharing',
       onClick: () => {
         if(!rootScope.premium) {
-          showPremiumPopup({feature: 'pm_noforwards'});
+          hotReloadGuard.showPremiumPopup({feature: 'pm_noforwards'});
           return;
         }
 
@@ -831,7 +825,7 @@ export default class ChatTopbar {
 
         if(liteMode.isAvailable('animations')) await pause(100);
 
-        this.appSidebarRight.createTab(AppAdminRecentActionsTab).open({
+        this.appSidebarRight.createTab(hotReloadGuard.tabs.AppAdminRecentActionsTab).open({
           channelId: this.peerId.toChatId(),
           isBroadcast: this.chat.isBroadcast
         });
@@ -902,8 +896,8 @@ export default class ChatTopbar {
   }
 
   public addContact() {
-    if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
-      this.appSidebarRight.createTab(AppEditContactTab).open(this.peerId);
+    if(!this.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppEditContactTab)) {
+      this.appSidebarRight.createTab(hotReloadGuard.tabs.AppEditContactTab).open(this.peerId);
 
       this.appSidebarRight.toggleSidebar(true);
     }
@@ -911,8 +905,8 @@ export default class ChatTopbar {
 
   /** Bot we manage — opens the same tab as the profile's edit button. */
   public editBot() {
-    if(!this.appSidebarRight.isTabExists(AppEditBotTab)) {
-      this.appSidebarRight.createTab(AppEditBotTab).open(this.peerId);
+    if(!this.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppEditBotTab)) {
+      this.appSidebarRight.createTab(hotReloadGuard.tabs.AppEditBotTab).open(this.peerId);
 
       this.appSidebarRight.toggleSidebar(true);
     }
@@ -1213,7 +1207,7 @@ export default class ChatTopbar {
     const chat = this.chat.peer;
     if(chat._ !== 'channel') return;
 
-    appImManager.setInnerPeer({
+    hotReloadGuard.appImManager.setInnerPeer({
       peerId: chat.linked_monoforum_id.toPeerId(true)
     });
   };

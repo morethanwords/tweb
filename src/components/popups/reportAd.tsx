@@ -17,6 +17,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import Button from '@components/buttonTsx';
 import classNames from '@helpers/string/classNames';
 import Row from '@components/rowTsx';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const STICKER_EMOJI = '👮‍♀️';
 
@@ -408,8 +409,7 @@ export function showSelectedMessagesReport(
 }
 
 async function selectMessagesToReport(peerId: PeerId, option: Uint8Array, text?: string) {
-  const {default: appImManager} = await import('@lib/appImManager');
-  const chat = appImManager.chat;
+  const chat = hotReloadGuard.appImManager.chat;
   if(chat?.peerId !== peerId || chat.type !== ChatType.Chat) {
     return;
   }

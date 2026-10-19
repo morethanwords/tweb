@@ -4,7 +4,6 @@ import {LangPackKey, i18n} from '@lib/langPack';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {DelimiterWithText} from '@components/chat/giveaway';
-import showPremiumPopup from '@components/popups/premium';
 import wrapLocalSticker from '@components/wrappers/localSticker';
 import liteMode from '@helpers/liteMode';
 import {toastNew} from '@components/toast';
@@ -12,6 +11,7 @@ import toggleDisability from '@helpers/dom/toggleDisability';
 import rootScope from '@lib/rootScope';
 import {getMiddleware} from '@helpers/middleware';
 import MediaHeader from '@components/mediaHeader';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function showToggleReadDatePopup(peerId: PeerId, type: 'lastSeen' | 'readTime') {
   const managers = rootScope.managers;
@@ -149,7 +149,7 @@ export default async function showToggleReadDatePopup(peerId: PeerId, type: 'las
               buttonText={details.buttonText2}
               onClick={() => {
                 setShow(false);
-                showPremiumPopup();
+                hotReloadGuard.showPremiumPopup();
               }}
               isPremium
             />

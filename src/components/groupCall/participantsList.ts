@@ -5,7 +5,8 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import replaceContent from '@helpers/dom/replaceContent';
 import {fastRaf} from '@helpers/schedulers';
 import SortedList, {SortedElementBase} from '@helpers/sortedList';
-import appDialogsManager, {DialogDom, AppDialogsManager, DialogElementSize, DIALOG_AVATAR_SIZES} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
+import {DialogDom, DialogElementSize, DIALOG_AVATAR_SIZES} from '@components/dialogElement';
 import {GROUP_CALL_PARTICIPANT_MUTED_STATE, getColorByMutedState, getGroupCallParticipantMutedState} from '.';
 import GroupCallParticipantMutedIcon from '@components/groupCall/participantMutedIcon';
 import GroupCallAvatarBlobs from '@components/groupCall/avatarBlobs';
@@ -15,6 +16,7 @@ import type {GroupCallParticipant} from '@layer';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import liteMode from '@helpers/liteMode';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 interface SortedParticipant extends SortedElementBase<PeerId> {
   dom: DialogDom,
@@ -78,7 +80,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
       },
       onElementCreate: (base) => {
         const middlewareHelper = getMiddleware();
-        const {dom} = appDialogsManager.addDialogNew({
+        const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
           avatarSize: this.avatarSize,
@@ -117,7 +119,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
       updateElementWith: fastRaf
     });
 
-    this.list = appDialogsManager.createChatList(this.createChatListOptions);
+    this.list = hotReloadGuard.appDialogsManager.createChatList(this.createChatListOptions);
     this.glide = createListGlide(this.list, {
       movingClassName: 'is-moving',
       liftedClassName: 'is-lifted',

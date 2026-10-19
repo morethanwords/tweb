@@ -5,12 +5,11 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import tsNow from '@helpers/tsNow';
-import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
-import appImManager from '@lib/appImManager';
+import {DialogElement} from '@components/dialogElement';
 import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '@components/appSelectPeers';
-import {StarsAmount} from '@components/popups/stars';
+import {StarsAmount} from '@components/stars/starsAmount';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
@@ -19,6 +18,7 @@ import {ChatInviteLink, getImportersLoader} from './chatInviteLinkShared';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppChatInviteLinkTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ChatInviteLinkTab: Component = () => {
   const [tab] = useSuperTab<typeof AppChatInviteLinkTab>();
@@ -59,11 +59,11 @@ const ChatInviteLinkTab: Component = () => {
       const div = document.createElement('div');
       div.classList.add('chatlist-container');
 
-      const list = appDialogsManager.createChatList({new: true});
+      const list = hotReloadGuard.appDialogsManager.createChatList({new: true});
       div.append(list);
 
       const peerId = chatInvite.admin_id.toPeerId(false);
-      const {dom} = appDialogsManager.addDialogNew({
+      const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
         peerId,
         container: list,
         rippleEnabled: true,
@@ -76,7 +76,7 @@ const ChatInviteLinkTab: Component = () => {
 
       dom.titleSpan.classList.add('text-bold');
       attachClickEvent(dom.listEl, () => {
-        appImManager.setInnerPeer({peerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId});
       }, {listenerSetter: tab.listenerSetter});
 
       dom.lastMessageSpan.append(formatFullSentTime(chatInvite.date));
@@ -129,7 +129,7 @@ const ChatInviteLinkTab: Component = () => {
       const onResult = async(result: Awaited<ReturnType<typeof load>>) => {
         const loadPromises: Promise<any>[] = [];
         result.result.forEach((peerId) => {
-          const dialogElement = appDialogsManager.addDialogNew({
+          const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId,
             container: chatlist,
             rippleEnabled: true,
@@ -148,7 +148,7 @@ const ChatInviteLinkTab: Component = () => {
         return Promise.all(loadPromises);
       };
 
-      const chatlist = appDialogsManager.createChatList();
+      const chatlist = hotReloadGuard.appDialogsManager.createChatList();
       const section = wrapSolidComponent(() => (
         <Section name="JoinRequests" nameArgs={[chatInvite.requested]}>
           {chatlist}
@@ -213,7 +213,7 @@ const ChatInviteLinkTab: Component = () => {
         middleware: tab.middlewareHelper.get(),
         appendTo: tab.container,
         onSelect: (peerId) => {
-          appImManager.setInnerPeer({peerId});
+          hotReloadGuard.appImManager.setInnerPeer({peerId});
         },
         // onChange: this.onSelectChange,
         peerType: ['custom'],

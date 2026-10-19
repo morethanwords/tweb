@@ -6,11 +6,9 @@ import rootScope from '@lib/rootScope';
 import generateFakeIcon from '@components/generateFakeIcon';
 import generatePremiumIcon from '@components/generatePremiumIcon';
 import generateVerifiedIcon from '@components/generateVerifiedIcon';
-import showPremiumPopup from '@components/popups/premium';
-import showStarGiftInfoPopup from '@components/popups/starGiftInfo';
-import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import wrapEmojiStatus from '@components/wrappers/emojiStatus';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function generateTitleIcons({
   peerId,
@@ -59,7 +57,7 @@ export default async function generateTitleIcons({
         const detach = attachClickEvent(container, async(e) => {
           e.stopPropagation();
           if(peerId === rootScope.myId) {
-            openEmojiStatusPicker({
+            hotReloadGuard.openEmojiStatusPicker({
               managers: rootScope.managers,
               anchorElement: container
             });
@@ -67,10 +65,10 @@ export default async function generateTitleIcons({
             if(busy) return;
             busy = true;
             const gift = await rootScope.managers.appGiftsManager.getGiftBySlug(emojiStatus.slug);
-            showStarGiftInfoPopup({gift});
+            hotReloadGuard.showStarGiftInfoPopup({gift});
             busy = false;
           } else {
-            showPremiumPopup({
+            hotReloadGuard.showPremiumPopup({
               peerId,
               emojiStatusId: emojiStatus.document_id
             });
@@ -89,7 +87,7 @@ export default async function generateTitleIcons({
         premiumIcon.classList.add('clickable');
         const detach = attachClickEvent(premiumIcon, (e) => {
           e.stopPropagation();
-          showPremiumPopup({
+          hotReloadGuard.showPremiumPopup({
             peerId
           });
         });

@@ -14,12 +14,6 @@ import removeChatFromCommunityWithConfirmation
 from '@components/communities/removeChatFromCommunity';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import {
-  AppAddChatToCommunityTab,
-  AppChatAdministratorsTab,
-  AppEditCommunityTab,
-  AppRemovedUsersTab
-} from '@components/solidJsTabs/tabs';
 import type {CommunityPermission} from '@appManagers/appCommunitiesManager';
 import {
   type CommunityAddMode,
@@ -54,6 +48,8 @@ import openCommunityPendingRequests
 from '@components/communities/openCommunityPendingRequests';
 import openCommunityLinkedChat
 from '@components/communities/openCommunityLinkedChat';
+import type {AppEditCommunityTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function EditCommunity() {
   const [tab] = useSuperTab<typeof AppEditCommunityTab>();
@@ -148,11 +144,11 @@ function EditCommunityForm(props: {
     setHasAvatarPreview(true);
   });
   const openAddChat = () => {
-    tab.slider.createTab(AppAddChatToCommunityTab).open({communityId});
+    tab.slider.createTab(hotReloadGuard.tabs.AppAddChatToCommunityTab).open({communityId});
   };
 
   const openAdministrators = () => {
-    tab.slider.createTab(AppChatAdministratorsTab).open({communityId});
+    tab.slider.createTab(hotReloadGuard.tabs.AppChatAdministratorsTab).open({communityId});
   };
 
   const openPendingRequests = () => {
@@ -160,7 +156,7 @@ function EditCommunityForm(props: {
   };
 
   const openRemovedUsers = () => {
-    tab.slider.createTab(AppRemovedUsersTab).open({communityId});
+    tab.slider.createTab(hotReloadGuard.tabs.AppRemovedUsersTab).open({communityId});
   };
 
   const openPeer = (linkedPeer: CommunityPeer) => {

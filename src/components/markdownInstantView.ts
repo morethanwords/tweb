@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {openInstantViewInAppBrowser} from '@components/browser';
 import parseMarkdownToPage from '@lib/richTextProcessor/parseMarkdownToPage';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export function openMarkdownInstantView({
   raw,
@@ -21,5 +21,5 @@ export function openMarkdownInstantView({
   // * mark page as fully cached so openInstantViewInAppBrowser doesn't fetch
   // * 0 is falsy and hides the views row in InstantView footer
   page.views = 0;
-  openInstantViewInAppBrowser({cachedPage: page, HotReloadGuardProvider});
+  hotReloadGuard.openInstantViewInAppBrowser({cachedPage: page, HotReloadGuardProvider});
 }

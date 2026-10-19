@@ -6,7 +6,7 @@ import ReactionsElement from '@components/chat/reactions';
 import {horizontalMenu} from '@components/horizontalMenu';
 import Scrollable from '@components/scrollable';
 import ScrollableLoader from '@helpers/scrollableLoader';
-import appDialogsManager, {DialogDom, DialogElement} from '@lib/appDialogsManager';
+import {DialogDom, DialogElement} from '@components/dialogElement';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapSticker from '@components/wrappers/sticker';
 import ReactionElement, {ReactionLayoutType} from '@components/chat/reaction';
@@ -90,6 +90,7 @@ export async function processDialogElementForReaction({
 
 import {createSignal, onCleanup, onMount} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function showReactedListPopup(message$: Message.message, initialReaction?: Reaction) {
   const middlewareHelper = getMiddleware();
@@ -253,11 +254,11 @@ export default async function showReactedListPopup(message$: Message.message, in
     const scrollable = new Scrollable(undefined);
     scrollable.container.classList.add('tabs-tab');
 
-    const chatlist = appDialogsManager.createChatList({
+    const chatlist = hotReloadGuard.appDialogsManager.createChatList({
       dialogSize: 72
     });
 
-    appDialogsManager.setListClickListener({
+    hotReloadGuard.appDialogsManager.setListClickListener({
       list: chatlist,
       onFound: () => {
         setShow(false);
@@ -283,7 +284,7 @@ export default async function showReactedListPopup(message$: Message.message, in
         nextOffset = result.nextOffset;
 
         await Promise.all(result.combined.map(async({peerId, reaction, date, isMyReaction}) => {
-          const dialogElement = appDialogsManager.addDialogNew({
+          const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId: peerId,
             autonomous: true,
             container: chatlist,

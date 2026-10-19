@@ -7,13 +7,13 @@ import {NULL_PEER_ID} from '@appManagers/constants';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
-import appImManager from '@lib/appImManager';
 import {i18n} from '@lib/langPack';
 import {useChat} from '@stores/peers';
 import {useFullPeer} from '@stores/fullPeers';
 import {useCurrentGroupCall} from '@components/groupCall/hooks';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {TopbarGroupCall} from '@components/chat/topbarGroupCall/topbarGroupCall';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type ChatGroupCallPlate = TopbarPlateController & {
   setPeerId: (peerId: PeerId) => void
@@ -90,7 +90,7 @@ function GroupCallPlateBody(props: {
           participantPeerIds={preview()?.peerIds || []}
           actionButton={
             <TopbarPlate.ActionButton
-              onClick={() => appImManager.joinGroupCall(props.peerId())}
+              onClick={() => hotReloadGuard.appImManager.joinGroupCall(props.peerId())}
             >
               {i18n('VoiceChat.Topbar.Join')}
             </TopbarPlate.ActionButton>

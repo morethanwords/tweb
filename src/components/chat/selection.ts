@@ -7,7 +7,6 @@ import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import CheckboxField from '@components/checkboxField';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
-import showForwardPopup from '@components/popups/forward';
 import {showSelectedMessagesReport} from '@components/popups/reportAd';
 import SetTransition from '@components/singleTransition';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
@@ -34,7 +33,6 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import safeAssign from '@helpers/object/safeAssign';
 import {AppManagers} from '@lib/managers';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
-import appImManager from '@lib/appImManager';
 import {Message} from '@layer';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import flatten from '@helpers/array/flatten';
@@ -49,6 +47,7 @@ import {
 import {ChatType} from './chatType';
 import ChatInputPlate from '@components/chat/controlPlate';
 import isSameMessageSelectionGroup, {getMessageSelectionGroup} from '@components/chat/isSameMessageSelectionGroup';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const accumulateMapSet = <T extends {size: number}>(map: Map<any, T>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -803,7 +802,7 @@ export class SearchSelection extends AppSelection {
           const mid = [...this.selectedMids.get(peerId)][0];
           this.cancelSelection();
 
-          appImManager.setInnerPeer({
+          hotReloadGuard.appImManager.setInnerPeer({
             peerId,
             lastMsgId: mid,
             threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
@@ -817,7 +816,7 @@ export class SearchSelection extends AppSelection {
             obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
           }
 
-          showForwardPopup(obj, () => {
+          hotReloadGuard.showForwardPopup(obj, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);
@@ -1266,7 +1265,7 @@ export default class ChatSelection extends AppSelection {
               obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
             }
 
-            showForwardPopup(obj, () => {
+            hotReloadGuard.showForwardPopup(obj, () => {
               this.cancelSelection();
             });
           }, attachClickOptions);

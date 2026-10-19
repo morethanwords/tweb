@@ -31,10 +31,8 @@ import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {easeOutCubicApply} from '@helpers/easing/easeOutCubic';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
-import {onMediaCaptionClick} from '@components/mediaViewer';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import ChatInput from '@components/chat/input';
-import appImManager from '@lib/appImManager';
 import Chat from '@components/chat/chat';
 import {ChatType} from '@components/chat/chatType';
 import middlewarePromise from '@helpers/middlewarePromise';
@@ -64,7 +62,7 @@ import {processDialogElementForReaction} from '@components/popups/reactedList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import focusInput from '@helpers/dom/focusInput';
 import {wrapStoryMedia} from '@components/stories/preview';
-import {StoriesContextPeerState, useStories, StoriesProvider} from '@components/stories/store';
+import {StoriesContextPeerState, useStories, StoriesProvider, STORY_DURATION} from '@components/stories/store';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import liteMode from '@helpers/liteMode';
@@ -88,7 +86,6 @@ import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import wrapReply from '@components/wrappers/reply';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import appSidebarRight from '@components/sidebarRight';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import getStoryRepostInfo from '@appManagers/utils/stories/repostInfo';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -117,8 +114,8 @@ import StoryMusicPanel, {STORY_MUSIC_PANEL_CLASS} from '@components/stories/musi
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import A11yButton from '@components/a11yButton';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
-export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
 const STORIES_PRESERVE = 2;
@@ -292,7 +289,7 @@ const StoryInput = (props: {
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
-  const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
+  const chat = new Chat(hotReloadGuard.appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
   chat.setType(ChatType.Stories);
   chat.isStandalone = true;
 
@@ -317,7 +314,7 @@ const StoryInput = (props: {
     </ButtonIconTsx>
   );
 
-  const input = chat.input = new ChatInput(chat, appImManager, rootScope.managers, 'stories-input');
+  const input = chat.input = new ChatInput(chat, hotReloadGuard.appImManager, rootScope.managers, 'stories-input');
   input.noRipple = true;
   input.btnReaction = btnReactionEl;
   input.excludeParts = {
@@ -735,7 +732,7 @@ const StoryMediaArea = (props: {
     const openPost = () => {
       props.close(() => {
         const mediaArea = props.mediaArea as MediaArea.mediaAreaChannelPost;
-        appImManager.setInnerPeer({
+        hotReloadGuard.appImManager.setInnerPeer({
           peerId: mediaArea.channel_id.toPeerId(true),
           lastMsgId: mediaArea.msg_id
         });
@@ -754,7 +751,7 @@ const StoryMediaArea = (props: {
         const url = (props.mediaArea as MediaArea.mediaAreaUrl).url;
         if(wrapUrl(url).onclick) {
           props.close(() => {
-            appImManager.openUrl(url);
+            hotReloadGuard.appImManager.openUrl(url);
           });
         } else {
           safeWindowOpen(url);
@@ -2098,7 +2095,7 @@ const Stories = (props: {
       a.addEventListener('click', (e) => {
         cancelEvent(e);
         props.close(() => {
-          appImManager.setInnerPeer({peerId});
+          hotReloadGuard.appImManager.setInnerPeer({peerId});
         });
       }, {capture: true, passive: false});
       a.append(i18n('ViewInChat'));
@@ -2298,8 +2295,8 @@ const Stories = (props: {
         const storyId = currentStory().id;
         props.close(() => {
           setTimeout(() => {
-            appSidebarRight.createTab(AppStatisticsTab).open(peerId.toChatId(), undefined, storyId);
-            appSidebarRight.toggleSidebar(true);
+            hotReloadGuard.appSidebarRight.createTab(AppStatisticsTab).open(peerId.toChatId(), undefined, storyId);
+            hotReloadGuard.appSidebarRight.toggleSidebar(true);
           }, 0);
         });
       },
@@ -2477,7 +2474,7 @@ const Stories = (props: {
       },
       onSelect: ([obj]) => {
         props.close(() => {
-          appImManager.setInnerPeer(obj);
+          hotReloadGuard.appImManager.setInnerPeer(obj);
         });
       },
       placeholder: 'SearchPlaceholder',
@@ -2638,7 +2635,7 @@ const Stories = (props: {
 
     const peerId = props.state.peerId;
     props.close(() => {
-      appImManager.setInnerPeer({peerId});
+      hotReloadGuard.appImManager.setInnerPeer({peerId});
     });
   };
 
@@ -2746,7 +2743,7 @@ const Stories = (props: {
                   id: fwdFrom.story_id
                 });
               } else {
-                appImManager.setInnerPeer({
+                hotReloadGuard.appImManager.setInnerPeer({
                   peerId,
                   lastMsgId: mediaAreaChannelPost?.msg_id
                 });
@@ -3260,7 +3257,7 @@ export default function StoriesViewer(props: {
 
     const story = findUpClassName(e.target, styles.ViewerStory);
     const caption = story?.querySelector('.' + styles.ViewerStoryCaptionText) as HTMLElement;
-    const callback = caption && onMediaCaptionClick(caption, e);
+    const callback = caption && hotReloadGuard.onMediaCaptionClick(caption, e);
     if(!callback) {
       return;
     }

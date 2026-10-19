@@ -35,6 +35,10 @@ vi.mock('@lib/appDialogsManager', () => ({
   findDialogListElement: (target: HTMLElement) => target
 }));
 
+vi.mock('@components/dialogElement', () => ({
+  findDialogListElement: (target: HTMLElement) => target
+}));
+
 vi.mock('@lib/appImManager', () => ({
   default: {toggleViewAsMessages: vi.fn()}
 }));
@@ -88,6 +92,16 @@ vi.mock('@components/clearHistory', () => ({default: vi.fn()}));
 import DialogsContextMenu from '@components/dialogsContextMenu';
 import appDialogsManager from '@lib/appDialogsManager';
 import showChatPreviewPopup from '@components/popups/chatPreview';
+import * as mocked1 from '@lib/appDialogsManager';
+import * as mocked2 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked1 as any).default,
+  appImManager: (mocked2 as any).default
+});
+
 
 const communityId = 10 as ChatId;
 const communityPeerId = communityId.toPeerId(true);

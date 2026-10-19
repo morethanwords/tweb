@@ -11,10 +11,10 @@ import {useAppSettings} from '@stores/appSettings';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
 import ChatThemesPicker from '@components/chatThemesPicker';
-import {AppGeneralSettingsTab} from '@components/solidJsTabs/tabs';
 
 import TipCard, {openSettingsTab, TipCardButton, useTipReady} from '@components/chatTips/tipCard';
 import styles from '@components/chatTips/chatTips.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /**
  * Appearance tip — macOS' `WidgetAppearanceController`: System / Dark / Light in the button row,
@@ -85,7 +85,7 @@ export default function AppearanceTipCard() {
       buttons={buttons()}
       contentTitle={i18n('ColorTheme')}
       description={i18n('ChatTips.Appearance.Description', [
-        anchorCallback(() => openSettingsTab(appSidebarLeft, AppGeneralSettingsTab))
+        anchorCallback(() => openSettingsTab(appSidebarLeft, hotReloadGuard.tabs.AppGeneralSettingsTab))
       ])}
     >
       <ChatThemesPicker

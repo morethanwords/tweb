@@ -6,13 +6,12 @@ import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '@appManagers/appMessagesManager';
 import type Chat from '@components/chat/chat';
-import {AppImManager, APP_TABS} from '@lib/appImManager';
+import type {AppImManager} from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import Modes from '@config/modes';
 import ChatRecording from '@components/chat/recording/chatRecording';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
-import showForwardPopup from '@components/popups/forward';
 import showNewMediaPopup, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
 import {
@@ -146,7 +145,6 @@ import {setBadgeCount} from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import deepEqual from '@helpers/object/deepEqual';
 import MarkupTooltip from '@components/chat/markupTooltip';
-import showPremiumPopup from '@components/popups/premium';
 import {showReplyPickerPopup} from '@components/popups/pickUser';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
@@ -168,8 +166,7 @@ import showChecklistPopup from '@components/popups/checklist';
 import assumeType from '@helpers/assumeType';
 import {formatFullSentTime} from '@helpers/date';
 import useStars from '@stores/stars';
-import showStarsPopup from '@components/popups/stars';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {makeMessageMediaInputForSuggestedPost} from '@appManagers/utils/messages/makeMessageMediaInput';
 import showFrozenPopup from '@components/popups/frozen';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
@@ -204,6 +201,7 @@ import generatePremiumIcon from '@components/generatePremiumIcon';
 import deriveEditorDraftContent from '@components/chat/inputEditor/draftContent';
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import getRichMessagePostingChoice from '@components/chat/inputEditor/richMessagePostingChoice';
+import {APP_TABS} from '@lib/appColumns';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 let botCommandsListId = 0;
@@ -337,7 +335,7 @@ export default class ChatInput {
       canInsertMap: async() => {
         if(!await this.managers.appMessagesManager.isRichMessageMapAvailable()) return false;
         if(rootScope.premium) return true;
-        showPremiumPopup();
+        hotReloadGuard.showPremiumPopup();
         return false;
       },
       getPremiumRequired: async() => {
@@ -1485,7 +1483,7 @@ export default class ChatInput {
         }
 
         if(!rootScope.premium) {
-          showPremiumPopup();
+          hotReloadGuard.showPremiumPopup();
           return;
         }
 
@@ -1799,7 +1797,7 @@ export default class ChatInput {
     attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.onlyPremiumBtn, () => {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
     }, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.frozenBtn, () => {
       showFrozenPopup();
@@ -4513,7 +4511,7 @@ export default class ChatInput {
     this.clearHelper();
     this.updateSendBtn();
     let selected = false;
-    showForwardPopup(
+    hotReloadGuard.showForwardPopup(
       forwarding,
       () => {
         selected = true;
@@ -5311,7 +5309,7 @@ export default class ChatInput {
     }
 
     if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium && !ignoreNoPremium) {
-      showPremiumPopup({feature: 'premium_stickers'});
+      hotReloadGuard.showPremiumPopup({feature: 'premium_stickers'});
       return false;
     }
 
@@ -6045,7 +6043,7 @@ export default class ChatInput {
     showSuggestPostPopup({HotReloadGuard: SolidJSHotReloadGuardProvider, suggestChange: !!initial?.changeMid, initialStars: initial?.stars, initialTimestamp: initial?.timestamp, onFinish: (payload) => {
       const balance = +useStars()() || 0;
       if(!this.chat.canManageDirectMessages && payload.stars && payload.stars > balance) {
-        showStarsPopup({spendPurposePeerId: this.chat.peerId});
+        hotReloadGuard.showStarsPopup({spendPurposePeerId: this.chat.peerId});
         return;
       }
 

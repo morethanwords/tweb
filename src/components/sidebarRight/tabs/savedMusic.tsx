@@ -15,7 +15,6 @@ import Scrollable from '@components/scrollable';
 import {PreloaderTsx} from '@components/putPreloader';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import appDownloadManager from '@lib/appDownloadManager';
-import showForwardPopup from '@components/popups/forward';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import Sortable from '@helpers/dom/sortable';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -28,6 +27,7 @@ import Section from '@components/section';
 
 import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const DOC_ID_ATTRIBUTE = 'data-doc-id';
 
@@ -153,7 +153,7 @@ function SavedMusicContent(props: {
           const msg = contextMenuTarget?.message;
           if(!msg) return;
           await rootScope.managers.appMessagesManager.saveMessages([msg]);
-          showForwardPopup({[msg.peerId]: [msg.mid]});
+          hotReloadGuard.showForwardPopup({[msg.peerId]: [msg.mid]});
         },
         verify: () => !!contextMenuTarget?.message
       }, {

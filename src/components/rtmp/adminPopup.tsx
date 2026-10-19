@@ -8,7 +8,7 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {Ripple} from '@components/rippleTsx';
 import {RtmpData} from '@components/rtmp/rtmpData';
 import {i18n} from '@lib/langPack';
-import appImManager from '@lib/appImManager';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const cnPopup = (className = '') => `rtmp-popup${className}`;
 
@@ -60,7 +60,7 @@ export function showRtmpStartStreamPopup(props: RtmpAdminPopupProps) {
         undefined,
         true
       ).then(() => {
-        appImManager.joinLiveStream(peerId);
+        hotReloadGuard.appImManager.joinLiveStream(peerId);
       });
     };
 

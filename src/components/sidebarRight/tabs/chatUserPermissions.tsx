@@ -31,13 +31,13 @@ import tsNow from '@helpers/tsNow';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {formatDate, formatFullSentTime} from '@helpers/date';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import appImManager from '@lib/appImManager';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import limitBotAdminRights from '@appManagers/utils/bots/limitBotAdminRights';
 import attachAdminRightsCaption from './attachAdminRightsCaption';
 import appendPermissionsPeerDialog from './permissionsPeerDialog';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ChatUserPermissions: Component = () => {
   const [tab] = useSuperTab<typeof AppUserPermissionsTab>();
@@ -175,7 +175,7 @@ const ChatUserPermissions: Component = () => {
           let rights = p.takeOut();
           if(addingBot && !addAsAdmin) {
             await tab.managers.appMessagesManager.addBotToChat(userId, chatId, addingBot.startParam);
-            appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
+            hotReloadGuard.appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
             return;
           }
 
@@ -208,7 +208,7 @@ const ChatUserPermissions: Component = () => {
           }
 
           if(addingBot) {
-            appImManager.setInnerPeer({peerId: targetChatId.toPeerId(true)});
+            hotReloadGuard.appImManager.setInnerPeer({peerId: targetChatId.toPeerId(true)});
           }
         };
       } else {
@@ -503,7 +503,7 @@ const ChatUserPermissions: Component = () => {
 
       const restrictedByPeerId = (participant as ChannelParticipant.channelParticipantBanned)?.kicked_by?.toPeerId(false);
       const anchor = restrictedByPeerId ? anchorCallback(() => {
-        appImManager.setInnerPeer({peerId: restrictedByPeerId});
+        hotReloadGuard.appImManager.setInnerPeer({peerId: restrictedByPeerId});
       }) : undefined;
       if(restrictedByPeerId) anchor.append(await wrapPeerTitle({peerId: restrictedByPeerId}));
       let btnDeleteException: HTMLElement;

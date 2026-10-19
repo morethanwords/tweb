@@ -37,14 +37,12 @@ import SearchIndex from '@lib/searchIndex';
 import {useUser} from '@stores/peers';
 import {Game, Message, Page, User} from '@layer';
 import TelegramWebView from '@components/telegramWebView';
-import showForwardPopup from '@components/popups/forward';
 import {getOverlayRoot} from '@helpers/appWindow';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {INTERNAL_LINK_TYPE} from '@lib/internalLink';
 import {InstantView} from '@components/instantView';
 import {WebPage} from '@layer';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
@@ -766,7 +764,7 @@ export async function openGameInAppBrowser(options: {
 
   const shareMessage = async() => {
     const mids = await rootScope.managers.appMessagesManager.getMidsByMessage(message);
-    showForwardPopup({[message.peerId]: mids});
+    hotReloadGuard.showForwardPopup({[message.peerId]: mids});
   };
 
   const body = document.createElement('div');
@@ -968,7 +966,7 @@ export async function openCatalogueInAppBrowser() {
               }
 
               const botId = targets.get(target);
-              internalLinkProcessor.processWebAppLink({
+              hotReloadGuard.internalLinkProcessor.processWebAppLink({
                 _: INTERNAL_LINK_TYPE.WEB_APP,
                 appname: '',
                 domain: getPeerActiveUsernames(useUser(botId) as User.user)[0]

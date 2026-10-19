@@ -4,7 +4,7 @@ import {parseSync} from '@babel/core';
 import {describe, expect, it} from 'vitest';
 
 const rowControllerFiles = [
-  'src/lib/appDialogsManager.ts'
+  'src/components/dialogElement.ts'
 ].sort();
 
 const ignoredDirectories = new Set(['node_modules', 'solid', 'tests', 'vendor']);

@@ -5,7 +5,6 @@ import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {ReactionCount, SavedReactionTag} from '@layer';
-import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
@@ -16,6 +15,7 @@ import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACT
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import pause from '@helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 const CLASS_NAME = 'reactions';
@@ -431,7 +431,7 @@ export default class ReactionsElement extends HTMLElement {
   private async handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>, withDelay?: boolean) {
     await getHeavyAnimationPromise();
     // ! temp
-    if(this.context.peerId !== appImManager.chat.peerId) return;
+    if(this.context.peerId !== hotReloadGuard.appImManager.chat.peerId) return;
     if(withDelay) {
       waitPromise = (waitPromise || Promise.resolve()).then(() => pause(150));
     }

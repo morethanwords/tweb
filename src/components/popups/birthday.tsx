@@ -13,13 +13,12 @@ import {createButtonMenuSelect} from '@components/buttonMenuSelect';
 import {IconTsx} from '@components/iconTsx';
 
 import styles from '@components/popups/birthday.module.scss';
-import appSidebarLeft from '@components/sidebarLeft';
-import {AppPrivacyBirthdayTab} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import {doubleRaf} from '@helpers/schedulers';
 import {toastNew} from '@components/toast';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import MediaHeader from '@components/mediaHeader';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const MIN_YEAR = 1900;
 
@@ -207,7 +206,7 @@ export default async function showBirthdayPopup(props: {
     });
 
     function openPrivacySettings() {
-      appSidebarLeft.createTab(AppPrivacyBirthdayTab).open();
+      hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppPrivacyBirthdayTab).open();
       setShow(false);
     }
 

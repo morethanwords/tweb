@@ -1,7 +1,7 @@
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import type {Middleware} from '@helpers/middleware';
 import type {User} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function appendPermissionsPeerDialog(options: {
   /** The section's content element … */
@@ -16,10 +16,10 @@ export default function appendPermissionsPeerDialog(options: {
   container.classList.add('chatlist-container');
   options.content.insertBefore(container, options.title);
 
-  const list = appDialogsManager.createChatList({new: true});
+  const list = hotReloadGuard.appDialogsManager.createChatList({new: true});
   container.append(list);
 
-  const {dom} = appDialogsManager.addDialogNew({
+  const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
     peerId: options.userId.toPeerId(false),
     container: list,
     rippleEnabled: true,

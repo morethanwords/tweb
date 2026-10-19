@@ -1,4 +1,4 @@
-import appImManager, {APP_TABS} from '@lib/appImManager';
+import appImManager from '@lib/appImManager';
 import SidebarSlider from '@components/slider';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
@@ -9,9 +9,9 @@ import rootScope from '@lib/rootScope';
 import {installColumnWidthsUpdater} from '@helpers/updateColumnWidths';
 import installColumnResize from '@helpers/installColumnResize';
 import animationIntersector from '@components/animationIntersector';
+import {APP_TABS, RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@lib/appColumns';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
-
-export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 export class AppSidebarRight extends SidebarSlider {
   public sharedMediaTab: AppSharedMediaTab;
@@ -140,4 +140,5 @@ export class AppSidebarRight extends SidebarSlider {
 
 const appSidebarRight = new AppSidebarRight();
 MOUNT_CLASS_TO.appSidebarRight = appSidebarRight;
+registerHotReloadGuard({appSidebarRight});
 export default appSidebarRight;

@@ -329,6 +329,36 @@ rootScope.managers.appChatsManager.getChat(chatId);
 
 IMPORTANT: `rootScope.managers.*` are asynchronous proxies to a shared worker. Every manager method returns a `Promise`, even if the manager's own methods seem synchronous.
 
+### The app's top level: `hotReloadGuard`
+
+**Strict rule — code below the app's top level never imports it.** The top level is the singletons
+(`appImManager`, `appDialogsManager`, `appSidebarLeft`/`Right`, `internalLinkProcessor`), the tab registry
+(`solidJsTabs/tabs`) and the popups and viewers they open (`showPremiumPopup`, `showStarsPopup`, `showForwardPopup`,
+the stories viewer, `AppMediaViewer`, …). A component, popup, wrapper or tab reads them at call time from the
+registry instead — never while modules are still being evaluated:
+
+```typescript
+// ❌ wrong — the whole app becomes part of this module's import graph
+import appImManager from '@lib/appImManager';
+import {AppSettingsTab} from '@components/solidJsTabs/tabs';
+
+// ✅ right
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+hotReloadGuard.appImManager.setInnerPeer({peerId});
+slider.createTab(hotReloadGuard.tabs.AppSettingsTab).open();
+// in a Solid component, from the context:
+const {appImManager} = useHotReloadGuard();
+```
+
+An import from the top level puts the whole app into the importer's graph: every test of it reruns on any edit
+(`vitest --changed`), and a hot update through it re-runs the importer with fresh copies of the singletons — a
+second `appImManager` while the log says "hmr update" and the page looks fine. The singletons register themselves
+where they are made; everything else is registered by `@lib/solidjs/hotReloadGuardValue`, which only the app's root
+imports. A new entry: its type in `hotReloadGuard.ts`, its value in `hotReloadGuardValue.ts`. A test that mocks a
+top-level module hands the mock over with `registerHotReloadGuard({...})`. A value or helper that low-level code
+needs from a top-level module (a constant, a pure function, a small component) moves out into a module of its own
+(`@lib/appColumns`, `@components/dialogElement`, `@components/stars/starsAmount`).
+
 ### Media devices (camera / microphone)
 
 **Strict rule — never call `navigator.mediaDevices.getUserMedia` directly when you need a camera or microphone. Use `getStream` from `@lib/calls/helpers/getStream`.** It is the single chokepoint for every `getUserMedia` in the app (calls, voice notes, round-video notes), so two things happen for free:

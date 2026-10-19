@@ -1,5 +1,6 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
-import appDialogsManager, {AppDialogsManager, DialogDom, DialogElement, DialogElementSize} from '@lib/appDialogsManager';
+import {AppDialogsManager} from '@lib/appDialogsManager';
+import {DialogDom, DialogElement, DialogElementSize} from '@components/dialogElement';
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import isInDOM from '@helpers/dom/isInDOM';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -13,6 +14,7 @@ import getChatMembersString from '@components/wrappers/getChatMembersString';
 import wrapParticipantRank from '@components/wrappers/participantRank';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 interface SortedUser extends SortedElementBase<PeerId> {
   dom: DialogDom,
@@ -72,7 +74,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         }
       },
       onElementCreate: (base) => {
-        const dialogElement = appDialogsManager.addDialogNew({
+        const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
           avatarSize: this.avatarSize,
@@ -116,7 +118,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
 
     safeAssign(this, options);
 
-    this.list = appDialogsManager.createChatList(this.createChatListOptions);
+    this.list = hotReloadGuard.appDialogsManager.createChatList(this.createChatListOptions);
 
     let timeout: number;
     const doTimeout = () => {

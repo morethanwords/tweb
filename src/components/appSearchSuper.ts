@@ -1,6 +1,6 @@
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import {getOverlayRoot} from '@helpers/appWindow';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@lib/appDialogsManager';
+import {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@components/dialogElement';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup, SearchGroupType} from '@components/searchGroup';
@@ -16,22 +16,18 @@ import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
 import SortedUserList from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
-import appSidebarRight from '@components/sidebarRight';
 import mediaSizes from '@helpers/mediaSizes';
-import appImManager from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
-import showForwardPopup from '@components/popups/forward';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
 import {renderSearchWebPageRow} from '@components/searchWebPageRow';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {SearchSelection} from '@components/chat/selection';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import {MyDocument} from '@appManagers/appDocsManager';
-import AppMediaViewer from '@components/mediaViewer';
 import lockTouchScroll from '@helpers/dom/lockTouchScroll';
 import copy from '@helpers/object/copy';
 import safeAssign from '@helpers/object/safeAssign';
@@ -77,7 +73,6 @@ import {StoriesProfileList} from '@components/stories/profileList';
 import {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import showPremiumPopup from '@components/popups/premium';
 import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from '@components/slider';
@@ -113,6 +108,8 @@ import {SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import {getMediaTypeForProfileTab, orderMediaTabsByMain, ProfileTabMediaType} from '@components/sharedMediaProfileTab';
 import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
 import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import type appSidebarRight from '@components/sidebarRight';
 
 // The call log is searched by the Calls tab, never by shared media — and unlike
 // every other filter its constructor is not just its id (it carries `pFlags`),
@@ -341,7 +338,7 @@ class SearchContextMenu {
   }
 
   private onGotoClick = () => {
-    appImManager.setInnerPeer({
+    hotReloadGuard.appImManager.setInnerPeer({
       peerId: this.peerId,
       lastMsgId: this.mid,
       threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
@@ -359,7 +356,7 @@ class SearchContextMenu {
     if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionForwardBtn);
     } else {
-      showForwardPopup({
+      hotReloadGuard.showForwardPopup({
         [this.peerId]: [this.mid]
       });
     }
@@ -512,7 +509,7 @@ export default class AppSearchSuper {
       getProgress: (type) => this.getMediaTabProgress(type)
     });
 
-    this.slider ??= appSidebarRight;
+    this.slider ??= hotReloadGuard.appSidebarRight;
 
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
@@ -817,7 +814,7 @@ export default class AppSearchSuper {
       const idx = targets.findIndex((item) => item.mid === mid && item.peerId === peerId);
 
       const mediaTab = this.mediaTabs.find((mediaTab) => mediaTab.inputFilter === inputFilter);
-      new AppMediaViewer()
+      new hotReloadGuard.AppMediaViewer()
       .setSearchContext(this.copySearchContext(inputFilter, this.nextRates[mediaTab.type], skipSensitive))
       .openMedia({
         message,
@@ -1176,7 +1173,7 @@ export default class AppSearchSuper {
     const middleware = this.middleware.get();
 
     const loadPromises: Promise<any>[] = [];
-    const dialogElement = appDialogsManager.addDialogNew({
+    const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
       dontSetActive: true,
       peerId,
       container: searchGroup?.list || false,
@@ -1190,7 +1187,7 @@ export default class AppSearchSuper {
       autonomous: isSaved,
       fromName: !peerId ? getFwdFromName(message.fwd_from) : undefined
     });
-    const setLastMessagePromise = appDialogsManager.setLastMessageN({
+    const setLastMessagePromise = hotReloadGuard.appDialogsManager.setLastMessageN({
       dialog: {
         _: 'dialog',
         peerId
@@ -1574,10 +1571,10 @@ export default class AppSearchSuper {
       if(isSaved) {
         let chatlist = sharedMediaDiv.querySelector<HTMLElement>('.chatlist');
         if(!chatlist) {
-          chatlist = appDialogsManager.createChatList({new: true});
+          chatlist = hotReloadGuard.appDialogsManager.createChatList({new: true});
           container.append(chatlist);
 
-          appDialogsManager.setListClickListener({
+          hotReloadGuard.appDialogsManager.setListClickListener({
             list: chatlist,
             onFound: (el) => {
               if(this.selection.isSelecting) {
@@ -1686,7 +1683,7 @@ export default class AppSearchSuper {
 
           renderedPeerIds.add(peerId);
 
-          const {dom} = appDialogsManager.addDialogNew({
+          const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
             peerId: peerId,
             container: group.list,
             avatarSize: 'abitbigger',
@@ -1738,7 +1735,7 @@ export default class AppSearchSuper {
           if(!peers?.length) return;
 
           for(const peer of peers.reverse()) {
-            const {dom} = appDialogsManager.addDialogNew({
+            const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
               peerId: peer.peer,
               container: this.searchGroups.globalContacts.list,
               append: false,
@@ -1830,7 +1827,7 @@ export default class AppSearchSuper {
             },
             children: (peerId) => {
               const middlewareHelper = createMiddleware();
-              const {dom} = appDialogsManager.addDialogNew({
+              const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
                 peerId: peerId,
                 container: false,
                 meAsSaved: true,
@@ -1927,12 +1924,12 @@ export default class AppSearchSuper {
 
           const peerId = li.dataset.peerId.toPeerId();
           let promise: Promise<any> = Promise.resolve();
-          if(this.slider === appSidebarRight && mediaSizes.isMobile) {
+          if(this.slider === hotReloadGuard.appSidebarRight && mediaSizes.isMobile) {
             promise = (this.slider as typeof appSidebarRight).toggleSidebar(false);
           }
 
           promise.then(() => {
-            appImManager.setInnerPeer({peerId});
+            hotReloadGuard.appImManager.setInnerPeer({peerId});
           });
         });
         mediaTab.itemsTab.append(membersList.list);
@@ -2171,11 +2168,11 @@ export default class AppSearchSuper {
     const middlewareHelper = this.middleware.get().create();
 
     const renderChats = async(chats: Chat[], middleware: Middleware) => {
-      const chatlist = appDialogsManager.createChatList({new: true});
+      const chatlist = hotReloadGuard.appDialogsManager.createChatList({new: true});
 
       const promises = chats.map(async(chat) => {
         const loadPromises: Promise<any>[] = [];
-        const {dom} = appDialogsManager.addDialogNew({
+        const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId: chat.id.toPeerId(true),
           container: chatlist,
           avatarSize: 'abitbigger',
@@ -2190,7 +2187,7 @@ export default class AppSearchSuper {
         return Promise.all(loadPromises);
       });
 
-      appDialogsManager.setListClickListener({list: chatlist, autonomous: true});
+      hotReloadGuard.appDialogsManager.setListClickListener({list: chatlist, autonomous: true});
 
       await Promise.all(promises);
       return chatlist;
@@ -2201,7 +2198,7 @@ export default class AppSearchSuper {
       wall.classList.add('similar-channels-paywall');
       const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock_filled', text: 'UnlockSimilar'});
       btn.classList.add('similar-channels-paywall-button');
-      const onClick = () => showPremiumPopup();
+      const onClick = () => hotReloadGuard.showPremiumPopup();
       const anchor = anchorCallback(onClick);
       attachClickEvent(btn, onClick);
       anchor.classList.add('primary');
@@ -2264,10 +2261,10 @@ export default class AppSearchSuper {
       return this._loadSavedDialogs(side);
     }
 
-    const xd = new AutonomousSavedDialogList({appDialogsManager});
+    const xd = new AutonomousSavedDialogList({appDialogsManager: hotReloadGuard.appDialogsManager});
     xd.scrollable = this.scrollable;
     xd.sortedList = new SortedDialogList({
-      appDialogsManager,
+      appDialogsManager: hotReloadGuard.appDialogsManager,
       managers: this.managers,
       log: this.log,
       requestItemForIdx: xd.requestItemForIdx,
@@ -2281,7 +2278,7 @@ export default class AppSearchSuper {
 
     const list = xd.sortedList.list;
 
-    appDialogsManager.setListClickListener({
+    hotReloadGuard.appDialogsManager.setListClickListener({
       list,
       withContext: true,
       openInner: this.openSavedDialogsInner
@@ -2319,7 +2316,7 @@ export default class AppSearchSuper {
     if(!middleware()) return;
 
     for(const peerId of peerIds) {
-      const {dom} = appDialogsManager.addDialogNew({
+      const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
         peerId,
         container: group.list,
         avatarSize: 'abitbigger',
@@ -2405,7 +2402,7 @@ export default class AppSearchSuper {
       (async() => {
         const peerId = el.dataset.peerId.toPeerId();
         const userFull = await this.managers.appProfileManager.getProfile(peerId);
-        appImManager.openWebApp({
+        hotReloadGuard.appImManager.openWebApp({
           botId: peerId.toUserId(),
           url: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).url,
           buttonText: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).text,

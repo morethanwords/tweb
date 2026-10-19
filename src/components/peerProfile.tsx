@@ -67,6 +67,7 @@ import {showPeerReport} from '@components/popups/reportAd';
 import CommunityPeerDialogList
 from '@components/communities/communityPeerDialogList';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 keepMe(ripple);
 
@@ -1437,9 +1438,7 @@ PeerProfile.StoryPreviews = (props: {
 
     const onCircleClick = (e: MouseEvent) => {
       cancelEvent(e);
-      import('@components/stories/viewer').then(({createStoriesViewerWithPeer}) => {
-        createStoriesViewerWithPeer({peerId: context.peerId});
-      });
+      hotReloadGuard.createStoriesViewerWithPeer({peerId: context.peerId});
     };
 
     const middlewareHelper = createMiddleware();

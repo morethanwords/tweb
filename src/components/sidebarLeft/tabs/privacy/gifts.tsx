@@ -6,11 +6,11 @@ import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {DisallowedGiftsSettings, GlobalPrivacySettings} from '@layer';
 import rootScope from '@lib/rootScope';
-import showPremiumPopup from '@components/popups/premium';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppPrivacyGiftsTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type GiftTypeFlag = keyof DisallowedGiftsSettings.disallowedGiftsSettings['pFlags'];
 
@@ -37,7 +37,7 @@ const PrivacyGifts: Component = () => {
       langPackArguments: [
         anchorCallback(() => {
           hideToast();
-          showPremiumPopup();
+          hotReloadGuard.showPremiumPopup();
         })
       ]
     });

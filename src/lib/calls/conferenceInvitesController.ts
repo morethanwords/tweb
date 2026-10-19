@@ -35,6 +35,7 @@ import {CALL_REQUEST_TIMEOUT} from '@lib/calls/constants';
 import {getConferenceCallState} from '@lib/calls/helpers/conferenceCallAction';
 import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import {preloadNoiseSuppression} from '@lib/calls/noiseSuppression/noiseSuppression';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type InviteEntry = {
   peerId: PeerId,
@@ -303,13 +304,10 @@ export class ConferenceInvitesController extends EventListenerBase<{
     // The ringtone belongs to the invitation, not to the call being joined.
     this.audioAsset.stop();
 
-    // Dynamic import: `appImManager` statically imports the call UI, so a
-    // static import here would close a cycle. It owns the whole join policy —
-    // support gate, dead-link toast, leaving whatever call is current — and
-    // `confirmed` skips the "join this call?" prompt, which pressing Accept on
-    // a ringing invitation has already answered.
-    const {default: appImManager} = await import('@lib/appImManager');
-    await appImManager.joinConference({
+    // From the registry: `appImManager` imports the call UI, so importing it here would close a cycle. It owns the
+    // whole join policy — support gate, dead-link toast, leaving whatever call is current — and `confirmed` skips
+    // the "join this call?" prompt, which pressing Accept on a ringing invitation has already answered.
+    await hotReloadGuard.appImManager.joinConference({
       _: 'inputGroupCallInviteMessage',
       msg_id: instance.msgId
     }, {confirmed: true});

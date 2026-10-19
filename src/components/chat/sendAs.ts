@@ -18,9 +18,9 @@ import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Icon from '@components/icon';
 import PeerTitle from '@components/peerTitle';
-import showPremiumPopup from '@components/popups/premium';
 import SetTransition from '@components/singleTransition';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const SEND_AS_ANIMATION_DURATION = 300;
 
@@ -166,7 +166,7 @@ export default class ChatSendAs {
       return {
         onClick: idx ? async() => {
           if(sendAsPeer.needPremium && !rootScope.premium) {
-            showPremiumPopup();
+            hotReloadGuard.showPremiumPopup();
             return;
           }
 

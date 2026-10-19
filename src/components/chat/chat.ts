@@ -1,18 +1,16 @@
 import type {AdminLog, ChatRights} from '@appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';
-import {AppImManager, APP_TABS, ChatSetPeerOptions} from '@lib/appImManager';
+import type {AppImManager, ChatSetPeerOptions} from '@lib/appImManager';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {logger, LogTypes} from '@lib/logger';
 import rootScope from '@lib/rootScope';
-import appSidebarRight from '@components/sidebarRight';
 import ChatBubbles, {FullMid, splitFullMid} from '@components/chat/bubbles';
 import ChatContextMenu from '@components/chat/contextMenu';
 import ChatInput from '@components/chat/input';
 import ChatSelection from '@components/chat/selection';
 import ChatTopbar from '@components/chat/topbar';
 import {HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
-import {AppPrivateSearchTab} from '@components/solidJsTabs/tabs';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import ChatSearch from '@components/chat/search';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -46,7 +44,6 @@ import {unwrap} from 'solid-js/store';
 import callbackify from '@helpers/callbackify';
 import useIsNightTheme from '@hooks/useIsNightTheme';
 import useStars, {setReservedStars} from '@stores/stars';
-import showStarsPopup from '@components/popups/stars';
 import {getPendingPaidReactionKey, PENDING_PAID_REACTION_SENT_ABORT_REASON, PENDING_PAID_REACTIONS} from '@components/chat/reactions';
 import showUndoablePaidTooltip, {paidReactionLangKeys} from '@components/chat/undoablePaidTooltip';
 import namedPromises from '@helpers/namedPromises';
@@ -62,9 +59,9 @@ import useAutoDownloadSettings, {ChatAutoDownloadSettings} from '@hooks/useAutoD
 import usePeerTranslation from '@hooks/usePeerTranslation';
 import debounce from '@helpers/schedulers/debounce';
 import appNavigationController from '@components/appNavigationController';
-import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
+import {LEFT_COLUMN_ACTIVE_CLASSNAME, APP_TABS} from '@lib/appColumns';
 import {AckedResult} from '@lib/superMessagePort';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {ChatType} from '@components/chat/chatType';
 import {animateSingle} from '@helpers/animation';
@@ -619,7 +616,7 @@ export default class Chat extends EventListenerBase<{
   public init(/* peerId: PeerId */) {
     // this.initPeerId = peerId;
 
-    this.topbar = new ChatTopbar(this, appSidebarRight, this.managers);
+    this.topbar = new ChatTopbar(this, hotReloadGuard.appSidebarRight, this.managers);
     this.bubbles = new ChatBubbles(this, this.managers);
     this.input = new ChatInput(this, this.appImManager, this.managers, 'chat-input-main');
     this.contextMenu = new ChatContextMenu(this, this.managers);
@@ -905,7 +902,7 @@ export default class Chat extends EventListenerBase<{
     const {peerId, threadId} = options;
 
     if(!this.excludeParts.elements) {
-      const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
+      const searchTab = hotReloadGuard.appSidebarRight.getTab(hotReloadGuard.tabs.AppPrivateSearchTab);
       searchTab?.close();
     }
 
@@ -1011,7 +1008,7 @@ export default class Chat extends EventListenerBase<{
     // this.container && this.container.classList.toggle('no-forwards', this.noForwards);
 
     if(!this.excludeParts.sharedMedia) {
-      this.sharedMediaTab = appSidebarRight.createSharedMediaTab();
+      this.sharedMediaTab = hotReloadGuard.appSidebarRight.createSharedMediaTab();
       this.sharedMediaTabs.push(this.sharedMediaTab);
       const linkedMonoforumId = (chat?._ === 'channel' && chat.pFlags?.monoforum && chat.linked_monoforum_id)?.toPeerId?.(true);
       this.sharedMediaTab.setPeer(this.monoforumThreadId || linkedMonoforumId || peerId, threadId);
@@ -1131,13 +1128,13 @@ export default class Chat extends EventListenerBase<{
       }
 
       callbackify(promise, () => {
-        appSidebarRight.toggleSidebar(false);
+        hotReloadGuard.appSidebarRight.toggleSidebar(false);
         this.cleanup(true);
         this.bubbles.setPeer({peerId, samePeer: false, sameSearch: false});
         this.appImManager.dispatchEvent('peer_changed', this);
 
         if(!this.excludeParts.sharedMedia) {
-          appSidebarRight.replaceSharedMediaTab();
+          hotReloadGuard.appSidebarRight.replaceSharedMediaTab();
           this.destroySharedMediaTab();
           this.sharedMediaTab = undefined;
         }
@@ -1276,7 +1273,7 @@ export default class Chat extends EventListenerBase<{
     });
 
     if(sharedMediaTab) {
-      appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
+      hotReloadGuard.appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
       this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
     }
 
@@ -1549,7 +1546,7 @@ export default class Chat extends EventListenerBase<{
           pending.abortController.abort();
         }
 
-        showStarsPopup({
+        hotReloadGuard.showStarsPopup({
           itemPrice: count,
           onTopup: () => {
             this.sendReaction(options);

@@ -15,12 +15,12 @@ import classNames from '@helpers/string/classNames';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {IconTsx} from '@components/iconTsx';
 import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
-import showPremiumPopup from '@components/popups/premium';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export function ChecklistBubble(props: {
   out: boolean
@@ -81,7 +81,7 @@ export function ChecklistBubble(props: {
     }
 
     if(!rootScope.premium) {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
       return;
     }
 

@@ -10,7 +10,6 @@ import SearchListLoader from '@helpers/searchListLoader';
 import {Message, MessageMedia, WebPage} from '@layer';
 import confirmationPopup from '@components/confirmationPopup';
 import appDownloadManager from '@lib/appDownloadManager';
-import appImManager from '@lib/appImManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
 import {MyPhoto} from '@appManagers/appPhotosManager';
 import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia';
@@ -21,9 +20,7 @@ import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/mediaViewe
 import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
-import showForwardPopup from '@components/popups/forward';
 import Scrollable from '@components/scrollable';
-import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import {ChatType} from '@components/chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
@@ -38,6 +35,7 @@ import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
 import {setButtonLoader} from '@components/putPreloader';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import {canEditMessageMediaWithEditor, getEditMediaLangKey} from '@components/chat/editMessageMedia';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import AlbumThumbs, {AlbumThumbItem, ALBUM_THUMBS_CLASSNAME, getAlbumThumbsHeight} from '@components/mediaViewer/albumThumbs';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {batch, createSignal} from 'solid-js';
@@ -305,7 +303,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onEditClick = async() => {
     const {peerId, mid} = this.target;
-    const chat = appImManager.chat;
+    const chat = hotReloadGuard.appImManager.chat;
     if(chat?.peerId !== peerId) {
       return;
     }
@@ -325,7 +323,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const target = this.target;
     if(target.mid) {
       // appSidebarRight.forwardTab.open([target.mid]);
-      showForwardPopup({
+      hotReloadGuard.showForwardPopup({
         [target.peerId]: [target.mid]
       }, () => {
         return this.close();
@@ -342,13 +340,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       // .then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(async() => {
         if(mediaSizes.isMobile) {
-          const tab = appSidebarRight.getTab(AppSharedMediaTab);
+          const tab = hotReloadGuard.appSidebarRight.getTab(AppSharedMediaTab);
           if(tab) {
             tab.close();
           }
         }
 
-        appImManager.setInnerPeer({
+        hotReloadGuard.appImManager.setInnerPeer({
           peerId: message.peerId,
           lastMsgId: mid,
           threadId
@@ -360,13 +358,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   onDownloadClick = async(_: any, docId?: DocId) => {
     if(docId) {
       const doc = await this.managers.appDocsManager.getDoc(docId);
-      appDownloadManager.downloadToDisc({media: doc, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
+      appDownloadManager.downloadToDisc({media: doc, queueId: hotReloadGuard.appImManager.chat.bubbles.lazyLoadQueue.queueId});
       return;
     }
     const {message, index} = this.target;
     const media = getMediaFromMessage(message, true, index);
     if(!media) return;
-    appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
+    appDownloadManager.downloadToDisc({media, queueId: hotReloadGuard.appImManager.chat.bubbles.lazyLoadQueue.queueId});
   };
 
   onCopyMediaClick = () => {
@@ -415,7 +413,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
       attachClickEvent(button, () => {
         this.close().then(() => {
-          appImManager.onSponsoredBoxClick(message as Message.message);
+          hotReloadGuard.appImManager.onSponsoredBoxClick(message as Message.message);
         });
       });
     } else if(hasCaption = !!(message as Message.message).message) {
@@ -687,8 +685,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const canOpenEditor = !this.local &&
       !isSponsored &&
       canEditMessageMediaWithEditor(message as Message.message) &&
-      appImManager.chat?.peerId === message.peerId &&
-      !!appImManager.chat.input?.messageInput;
+      hotReloadGuard.appImManager.chat?.peerId === message.peerId &&
+      !!hotReloadGuard.appImManager.chat.input?.messageInput;
 
     // Start with a conservative state, but do not put worker-proxy permission checks
     // in front of the first animation frame. The controls reconcile as soon as all

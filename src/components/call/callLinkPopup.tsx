@@ -12,13 +12,13 @@ import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import {i18n} from '@lib/langPack';
-import appImManager from '@lib/appImManager';
 import confirmationPopup from '@components/confirmationPopup';
 import showLinkQrCodePopup from '@components/popups/linkQrCode';
 import rootScope from '@lib/rootScope';
 import noop from '@helpers/noop';
 import type {GroupCallId} from '@appManagers/appGroupCallsManager';
 import styles from '@components/call/callLinkPopup.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /**
  * The slug a conference invite link carries. tdesktop pulls it out of the link
@@ -140,7 +140,7 @@ export default function showCallLinkPopup(options: CallLinkPopupOptions) {
     // Pressing "be the first to join" IS the agreement to join this call —
     // tdesktop goes straight into it too (calls_group_common.cpp:462). Without
     // this the generic "join this call?" box would ask again.
-    appImManager.joinConference(
+    hotReloadGuard.appImManager.joinConference(
       {_: 'inputGroupCallSlug', slug},
       {confirmed: true}
     ).catch(noop);

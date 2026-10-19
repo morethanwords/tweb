@@ -8,7 +8,6 @@ import classNames from '@helpers/string/classNames';
 import showDatePickerPopup from '@components/popups/datePicker';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import appDialogsManager from '@lib/appDialogsManager';
 import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, ReactionCount, SavedReactionTag} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
@@ -16,7 +15,6 @@ import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import whichChild from '@helpers/dom/whichChild';
-import appImManager from '@lib/appImManager';
 import attachListNavigation from '@helpers/dom/attachListNavigation';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import I18n, {i18n} from '@lib/langPack';
@@ -44,7 +42,6 @@ import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import Icon from '@components/icon';
-import showPremiumPopup from '@components/popups/premium';
 import usePremium from '@stores/premium';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Animated from '@helpers/solid/animations';
@@ -56,6 +53,7 @@ import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
 import ButtonCorner from '@components/buttonCorner';
 import deferSideEffect from '@helpers/solid/deferSideEffect';
 import A11yButton from '@components/a11yButton';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type SearchType = RequestHistoryOptions['hashtagType'];
 const SEARCH_TYPES: SearchType[] = ['this', 'my', 'public'];
@@ -78,7 +76,7 @@ const renderHistoryResult = ({rowsMiddleware, peerId, fromSavedDialog, messages,
   const promises = messages.map(async(message) => {
     const fromPeerId = message.fromId;
     const loadPromises: Promise<any>[] = [];
-    const {dom} = appDialogsManager.addDialogAndSetLastMessage({
+    const {dom} = hotReloadGuard.appDialogsManager.addDialogAndSetLastMessage({
       peerId: fromSavedDialog ? rootScope.myId : (fromPeerId || peerId),
       container: false,
       avatarSize: 'abitbigger',
@@ -758,7 +756,7 @@ export default function TopbarSearch(props: {
   b.after(inputSearchTools);
 
   const updateChatSearchContext = (searchType: SearchType, query: string) => {
-    appImManager.chat.setMessageId({
+    hotReloadGuard.appImManager.chat.setMessageId({
       query: searchType && query || undefined,
       isPublicHashtag: searchType === 'public' || undefined,
       isCacheableSearch: !!searchType || undefined,
@@ -930,7 +928,7 @@ export default function TopbarSearch(props: {
         const message = messages()[idx];
         const query = value().trim();
         deferSideEffect(() => {
-          appImManager.chat.setMessageId({
+          hotReloadGuard.appImManager.chat.setMessageId({
             lastMsgId: message.mid,
             lastMsgPeerId: message.peerId,
             highlight: query ? {type: 'search', query} : undefined
@@ -1061,7 +1059,7 @@ export default function TopbarSearch(props: {
       }
 
       if(!isPremium()) {
-        showPremiumPopup({feature: 'saved_tags'});
+        hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
         return;
       }
 
@@ -1112,7 +1110,7 @@ export default function TopbarSearch(props: {
       }
 
       deferSideEffect(() => {
-        appImManager.chat.setMessageId({
+        hotReloadGuard.appImManager.chat.setMessageId({
           savedReaction: reaction ? [reaction as Reaction.reactionCustomEmoji | Reaction.reactionEmoji] : undefined
         });
       });
@@ -1126,7 +1124,7 @@ export default function TopbarSearch(props: {
     }
 
     deferSideEffect(() => {
-      appImManager.chat.setMessageId({
+      hotReloadGuard.appImManager.chat.setMessageId({
         lastMsgId: undefined,
         lastMsgPeerId: undefined,
         mediaTimestamp: undefined,
@@ -1137,7 +1135,7 @@ export default function TopbarSearch(props: {
 
   // * reset search on close
   onCleanup(() => {
-    if(appImManager.chat.type !== ChatType.Search) {
+    if(hotReloadGuard.appImManager.chat.type !== ChatType.Search) {
       return;
     }
 

@@ -1,6 +1,16 @@
 import '@helpers/peerIdPolyfill';
 import {IntersectionObserverMock} from '@/tests/mocks/intersectionObserver';
 import type {KeyboardButton, KeyboardInlineButton, PageButton, ReplyMarkup} from '@layer';
+import * as mocked1 from '@lib/appImManager';
+import * as mocked2 from '@components/sidebarRight';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appImManager: (mocked1 as any).default,
+  appSidebarRight: (mocked2 as any).default
+});
+
 
 const mocks = vi.hoisted(() => ({
   setInnerPeer: vi.fn(),
@@ -18,7 +28,6 @@ vi.mock('@components/confirmationPopup', () => ({default: vi.fn()}));
 vi.mock('@components/toast', () => ({toast: vi.fn(), toastNew: mocks.toastNew}));
 vi.mock('@components/wrappers/customEmoji', () => ({default: vi.fn()}));
 vi.mock('@components/chat/bubbleParts/replyMarkupLayout', () => ({default: {Button: vi.fn()}}));
-vi.mock('@lib/solidjs/hotReloadGuardProvider', () => ({default: class {}}));
 vi.mock('@lib/rootScope', () => ({default: {managers: {appMessagesManager: {sendText: mocks.sendText}}, addEventListener: vi.fn(), dispatchEvent: vi.fn()}}));
 vi.mock('@helpers/clipboard', () => ({copyTextToClipboard: mocks.copyTextToClipboard}));
 vi.mock('@lib/appImManager', () => ({default: {setInnerPeer: mocks.setInnerPeer}}));

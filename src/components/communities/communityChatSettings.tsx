@@ -7,18 +7,14 @@ import {toastNew} from '@components/toast';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {
-  AppCommunityChatSettingsTab,
-  AppEditChatTab,
-  AppEditCommunityTab,
-  CommunityChatVisibility
-} from '@components/solidJsTabs/tabs';
-import {
   CommunityRadioOption,
   communitySharedStyles
 } from '@components/communities/communityShared';
 import CommunityPeerDialogList
 from '@components/communities/communityPeerDialogList';
 import useCommunityTabGuard from '@components/communities/useCommunityTabGuard';
+import type {AppCommunityChatSettingsTab, CommunityChatVisibility} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default function CommunityChatSettings() {
   const [tab] = useSuperTab<typeof AppCommunityChatSettingsTab>();
@@ -116,10 +112,10 @@ export default function CommunityChatSettings() {
       }
 
       const returnTab = returnToEditChat ?
-        tab.slider.getTab(AppEditChatTab) :
+        tab.slider.getTab(hotReloadGuard.tabs.AppEditChatTab) :
         (
           returnToEditCommunity ?
-            tab.slider.getTab(AppEditCommunityTab) :
+            tab.slider.getTab(hotReloadGuard.tabs.AppEditCommunityTab) :
             undefined
         );
       if(returnTab && await tab.slider.closeTabsUntilTab(returnTab)) {

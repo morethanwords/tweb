@@ -8,9 +8,9 @@ import {IconTsx} from '@components/iconTsx';
 import I18n, {i18n} from '@lib/langPack';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import showPremiumPopup from '@components/popups/premium';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const DAY = 86400;
 const REPEAT_OPTIONS: {value: number, label: () => HTMLElement}[] = [
@@ -119,7 +119,7 @@ function RepeatRow(props: {initValue: number, onChange: (value: number) => void}
         langPackArguments: [
           anchorCallback(() => {
             hideToast();
-            showPremiumPopup();
+            hotReloadGuard.showPremiumPopup();
           })
         ]
       });

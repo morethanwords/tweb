@@ -2,13 +2,7 @@ import {createEffect, createMemo, createResource, createSignal, JSX, on, onClean
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {
-  AppBusinessHoursTab,
-  AppBusinessLocationTab,
-  AppChatAutomationTab,
-  openBusinessEditorTab,
-  type AppEditProfileTab
-} from '@components/solidJsTabs/tabs';
+import {type AppEditProfileTab} from '@components/solidJsTabs/tabs';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
@@ -30,6 +24,7 @@ import {BusinessWorkHours, ConnectedBot, User, UserFull} from '@layer';
 import OpeningHours from '@helpers/openingHours';
 import {trackAvatarUpload} from '@stores/avatarUpload';
 import usePremium from '@stores/premium';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type AppEditProfileTabType = typeof AppEditProfileTab;
 
@@ -225,7 +220,7 @@ const EditProfileForm = (props: {
       return;
     }
 
-    tab.slider.createTab(AppChatAutomationTab).open({connectedBot: connectedBot()});
+    tab.slider.createTab(hotReloadGuard.tabs.AppChatAutomationTab).open({connectedBot: connectedBot()});
   };
 
   const openPersonalChannelPicker = async() => {
@@ -408,7 +403,7 @@ const EditProfileForm = (props: {
         name="TelegramBusiness"
         caption={i18n(premium() ? 'TelegramBusinessSubscribedSubtitle' : 'TelegramBusinessSubtitle')}
       >
-        <Row clickable={() => openBusinessEditorTab(tab.slider, AppBusinessHoursTab)}>
+        <Row clickable={() => hotReloadGuard.tabs.openBusinessEditorTab(tab.slider, hotReloadGuard.tabs.AppBusinessHoursTab)}>
           <Row.Icon icon="time_filled" />
           <Row.Title
             titleRight={businessWorkHours() ? businessHoursSummary() : i18n('Off')}
@@ -417,7 +412,7 @@ const EditProfileForm = (props: {
             {i18n('BusinessHours')}
           </Row.Title>
         </Row>
-        <Row clickable={() => openBusinessEditorTab(tab.slider, AppBusinessLocationTab)}>
+        <Row clickable={() => hotReloadGuard.tabs.openBusinessEditorTab(tab.slider, hotReloadGuard.tabs.AppBusinessLocationTab)}>
           <Row.Icon icon="location_filled" />
           <Row.Title
             titleRight={businessLocation()?.address || i18n('Off')}

@@ -12,7 +12,6 @@ import noop from '@helpers/noop';
 import {Message, MessageMedia, WebPage} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager, {Progress} from '@lib/appDownloadManager';
-import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
 import getDownloadMediaDetails from '@appManagers/utils/download/getDownloadMediaDetails';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
@@ -36,7 +35,7 @@ import wrapSenderToPeer from '@components/wrappers/senderToPeer';
 import wrapSentTime from '@components/wrappers/sentTime';
 import {Middleware} from '@helpers/middleware';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {openMarkdownInstantView} from '@components/markdownInstantView';
 import isPlayableDocument from '@appManagers/utils/docs/isPlayableDocument';
 
@@ -357,7 +356,7 @@ export default async function wrapDocument({
     const doc = (docDiv as any).doc;
     // const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
     let download: CancellablePromise<any>;
-    const queueId = appImManager.chat?.bubbles?.lazyLoadQueue.queueId;
+    const queueId = hotReloadGuard.appImManager.chat?.bubbles?.lazyLoadQueue.queueId;
     if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
     } else if(ext === 'md' || ext === 'markdown' || /^text\/(x-)?markdown\b/i.test(doc.mime_type || '')) {

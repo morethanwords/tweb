@@ -4,7 +4,6 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import Modes from '@config/modes';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import showDeleteMessagesPopup from '@components/popups/deleteMessages';
-import showForwardPopup from '@components/popups/forward';
 import showPinMessagePopup from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import showSendNowPopup from '@components/popups/sendNow';
@@ -48,7 +47,6 @@ import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import Icon from '@components/icon';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
-import showPremiumPopup from '@components/popups/premium';
 import {ChatInputReplyTo} from '@components/chat/input';
 import {makeFullMid} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
@@ -62,7 +60,7 @@ import ReactionsElement from '@components/chat/reactions';
 import createReactionContextMenu from '@components/chat/reactionContextMenu';
 import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import {getMessageSourceText} from '@stores/peerLanguage';
@@ -151,7 +149,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'hand',
       text: 'HideAd',
       onClick: () => {
-        showPremiumPopup({feature: 'no_ads'});
+        hotReloadGuard.showPremiumPopup({feature: 'no_ads'});
       },
       verify: () => extraVerify() && !canReport,
       isSponsored: true
@@ -165,7 +163,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'crossround',
       text: 'RemoveAds',
       onClick: () => {
-        showPremiumPopup({feature: 'no_ads'});
+        hotReloadGuard.showPremiumPopup({feature: 'no_ads'});
       },
       verify: () => extraVerify() && !!canReport,
       isSponsored: true
@@ -477,7 +475,7 @@ export default class ChatContextMenu {
       this.reactionElement = tagReactionElement as ReactionElement;
 
       if(this.isTag && !rootScope.premium) {
-        showPremiumPopup({feature: 'saved_tags'});
+        hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
         return;
       }
 
@@ -1201,7 +1199,7 @@ export default class ChatContextMenu {
         const isTextSelected = this.isTextSelected;
 
         if(!this.chat.peerTranslation.canTranslate(true)) {
-          showPremiumPopup({feature: 'translations'});
+          hotReloadGuard.showPremiumPopup({feature: 'translations'});
         } else {
           let textWithEntities: TextWithEntities;
           if(isTextSelected) {
@@ -1887,7 +1885,7 @@ export default class ChatContextMenu {
           }
 
           if(!rootScope.premium && tags) {
-            showPremiumPopup({feature: 'saved_tags'});
+            hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
             return;
           }
 
@@ -2283,7 +2281,7 @@ export default class ChatContextMenu {
 
   private onAddTaskClick = async() => {
     if(!rootScope.premium) {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
       return;
     }
 
@@ -2300,7 +2298,7 @@ export default class ChatContextMenu {
     } else {
       const peerId = this.messagePeerId;
       const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(peerId, this.mid);
-      showForwardPopup({
+      hotReloadGuard.showForwardPopup({
         [peerId]: mids
       });
     }

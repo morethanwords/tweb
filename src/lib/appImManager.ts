@@ -5,8 +5,9 @@ import type {ApiLimitType} from '@appManagers/apiManagerMethods';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import type CallInstance from '@lib/calls/callInstance';
 import animationIntersector from '@components/animationIntersector';
-import appSidebarLeft, {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
-import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
+import appSidebarLeft from '@components/sidebarLeft';
+import {LEFT_COLUMN_ACTIVE_CLASSNAME, RIGHT_COLUMN_ACTIVE_CLASSNAME, APP_TABS} from '@lib/appColumns';
+import appSidebarRight from '@components/sidebarRight';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {logger, LogTypes} from '@lib/logger';
@@ -166,6 +167,7 @@ import positionMenu from '@helpers/positionMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import showDatePickerPopup from '@components/popups/datePicker';
 import noop from '@helpers/noop';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type ChatSavedPosition = {
   /**
@@ -217,12 +219,6 @@ export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
   peerId: PeerId,
   type?: ChatType
 }>;
-
-export enum APP_TABS {
-  CHATLIST,
-  CHAT,
-  PROFILE
-}
 
 type JoinChatFlow = {
   active: boolean,
@@ -4181,4 +4177,5 @@ export class AppImManager extends EventListenerBase<{
 
 const appImManager = new AppImManager();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appImManager = appImManager);
+registerHotReloadGuard({appImManager});
 export default appImManager;

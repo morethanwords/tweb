@@ -7,13 +7,13 @@ import rootScope from '@lib/rootScope';
 import usePremium from '@stores/premium';
 import {pickLanguage} from '@components/chat/translation';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
-import showPremiumPopup from '@components/popups/premium';
 import RadioFieldTsx from '@components/radioFieldTsx';
 import RowTsx from '@components/rowTsx';
 import Section from '@components/section';
 import {useAppSettings} from '@stores/appSettings';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — translation toggles + "Do not translate" picker
@@ -37,7 +37,7 @@ const TranslateSection = () => {
       name="TranslateMessages"
       caption={isPremium() ? 'Translation.DoNotShow' : 'Language.TranslateMessages.Channel.Premium'}
       captionArgs={[anchorCallback(() => {
-        showPremiumPopup({feature: 'translations'});
+        hotReloadGuard.showPremiumPopup({feature: 'translations'});
       })]}
     >
       <RowTsx>
@@ -56,7 +56,7 @@ const TranslateSection = () => {
         fakeDisabled={!isPremium()}
         clickable={!isPremium() ? (e) => {
           e.preventDefault();
-          showPremiumPopup({feature: 'translations'});
+          hotReloadGuard.showPremiumPopup({feature: 'translations'});
         } : undefined}
       >
         <RowTsx.CheckboxFieldToggle>

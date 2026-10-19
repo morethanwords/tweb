@@ -12,7 +12,6 @@ import {ChatBackground as ChatBackgroundLayer} from '@components/chat/bubbles/ch
 import {BaseTheme, Document, WallPaper, WebDocument} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager, {AppDownloadManager} from '@lib/appDownloadManager';
-import appImManager from '@lib/appImManager';
 import I18n from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {i18n} from '@lib/langPack';
@@ -23,7 +22,6 @@ import Row from '@components/rowTsx';
 import Button from '@components/buttonTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import ProgressivePreloader from '@components/preloader';
-import {AppBackgroundColorTab} from '@components/solidJsTabs/tabs';
 import {AppTheme, AppThemeSettings} from '@config/state';
 import {blendWallpaperForTinted} from '@config/themePresets';
 import themeController from '@helpers/themeController';
@@ -36,6 +34,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const needBlur = (wallPaper: WallPaper, respectPattern = true) => {
   const blur = (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur;
@@ -157,7 +156,7 @@ export class AppBackgroundTab {
     let download: Promise<void> | ReturnType<AppDownloadManager['downloadMediaURL']>;
     const downloadWallPaper = () => appDownloadManager.downloadMediaURL({
       media: doc,
-      queueId: appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0
+      queueId: hotReloadGuard.appImManager.chat.bubbles ? hotReloadGuard.appImManager.chat.bubbles.lazyLoadQueue.queueId : 0
     });
     if(doc) {
       download = downloadWallPaper();
@@ -219,7 +218,7 @@ export class AppBackgroundTab {
             themeController.setWallpaperForCurrentTheme(wallPaper, hsla);
           }
 
-          appImManager.applyCurrentTheme({
+          hotReloadGuard.appImManager.applyCurrentTheme({
             slug,
             backgroundUrl: url,
             broadcastEvent: true
@@ -578,7 +577,7 @@ const ChatBackground = () => {
           class="btn-primary btn-transparent"
           icon="colorize"
           text="SetColor"
-          onClick={() => tab.slider.createTab(AppBackgroundColorTab).open()}
+          onClick={() => tab.slider.createTab(hotReloadGuard.tabs.AppBackgroundColorTab).open()}
         />
         <Button
           class="btn-primary btn-transparent"

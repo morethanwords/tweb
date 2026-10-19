@@ -2,10 +2,10 @@ import {Show} from 'solid-js';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
 import {i18n} from '@lib/langPack';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
-export async function showPeerTransactionHistory(peerId: PeerId, ton = false) {
-  const {default: showStarsPopup} = await import('@components/popups/stars');
-  return showStarsPopup({historyPeerId: peerId, ton});
+export function showPeerTransactionHistory(peerId: PeerId, ton = false) {
+  return hotReloadGuard.showStarsPopup({historyPeerId: peerId, ton});
 }
 
 export default function TransactionHistorySection(props: {

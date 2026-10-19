@@ -4,6 +4,14 @@ import {For, JSX} from 'solid-js';
 import '@helpers/peerIdPolyfill';
 import ActiveSessions from '@components/sidebarLeft/tabs/activeSessions';
 import {Authorization, ConnectedBot} from '@layer';
+import * as mocked1 from '@components/solidJsTabs/tabs';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  tabs: {...mocked1} as any
+});
+
 
 type ContextMenu = {buttons: Array<{text: string, onClick: () => void}>};
 

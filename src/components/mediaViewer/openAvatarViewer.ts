@@ -1,8 +1,8 @@
 import isObject from '@helpers/object/isObject';
 import {Photo, MessageAction, Message} from '@layer';
 import rootScope from '@lib/rootScope';
-import AppMediaViewer from '@components/mediaViewer';
 import AppMediaViewerAvatar from '@components/mediaViewer/avatar';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type AvatarViewerItem = Photo.photo['id'] | Message.messageService;
 
@@ -48,7 +48,7 @@ export default async function openAvatarViewer(
         peerId: (el.item as Message.messageService).peerId
       }));
 
-      new AppMediaViewer()
+      new hotReloadGuard.AppMediaViewer()
       .setSearchContext({
         peerId,
         inputFilter: {_: inputFilter}

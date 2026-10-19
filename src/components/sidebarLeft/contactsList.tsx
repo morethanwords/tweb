@@ -1,7 +1,6 @@
 import {Accessor, createComputed, createEffect, createMemo, createRenderEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {User} from '@layer';
-import appDialogsManager from '@lib/appDialogsManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {AppManagers} from '@lib/managers';
@@ -23,6 +22,7 @@ import createListenerSetter from '@helpers/solid/createListenerSetter';
 import useElementSize from '@hooks/useElementSize';
 import {usePeers} from '@stores/peers';
 import styles from '@components/sidebarLeft/contactsList.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** An `abitbigger` chat row, which is what a contact is shown as */
 const ROW_HEIGHT = 56;
@@ -330,7 +330,7 @@ export default function ContactsList(props: {
   };
 
   const ContactRow = (rowProps: {peerId: PeerId, top: number}) => {
-    const dialogElement = appDialogsManager.addDialogNew({
+    const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
       peerId: rowProps.peerId,
       container: false,
       avatarSize: 'abitbigger',

@@ -1,4 +1,5 @@
-import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '.';
+import {EmoticonsTab, EmoticonsDropdown} from '.';
+import {EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 import createStickersContextMenu from '@helpers/dom/createStickersContextMenu';
 import customProperties from '@helpers/dom/customProperties';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';

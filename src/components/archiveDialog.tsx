@@ -26,7 +26,7 @@ import styles from './archiveDialog.module.scss';
 import Badge from './badge';
 import {IconTsx} from './iconTsx';
 import {createStoriesStore, StoriesContextValue} from './stories/store';
-import {createStoriesViewerWithProvider} from './stories/viewer';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 // if(import.meta.hot) import.meta.hot.accept(); // screw it
 
@@ -397,7 +397,7 @@ function useOpenArchiveStories(storiesContextValue: StoriesContextValue) {
       setViewerTarget(undefined);
     };
 
-    createStoriesViewerWithProvider({
+    hotReloadGuard.createStoriesViewerWithProvider({
       onExit,
       target: viewerTarget
     }, {

@@ -4,7 +4,6 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {fastRaf} from '@helpers/schedulers';
 import pause from '@helpers/schedulers/pause';
-import appImManager from '@lib/appImManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import {emojiFromCodePoints} from '@vendor/emoji';
@@ -60,6 +59,7 @@ import {
   getEmojiSkinToneVariants
 } from '@helpers/emojiSkinTone';
 import showEmojiTonePicker from '@components/emoticonsDropdown/emojiTonePicker';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 const loadedURLs: Set<string> = new Set();
@@ -1199,7 +1199,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       if(showToast) {
         const a = anchorCallback(() => {
           hideToast();
-          appImManager.openPremiumBot();
+          hotReloadGuard.appImManager.openPremiumBot();
         });
         toastNew({
           langPackKey: 'CustomEmoji.PremiumAlert',

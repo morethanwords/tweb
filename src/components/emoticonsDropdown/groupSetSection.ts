@@ -4,6 +4,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import I18n, {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {appSettings, setAppSettings} from '@stores/appSettings';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const hiddenKey = (isEmoji?: boolean) => isEmoji ? 'hiddenGroupEmojiSets' as const : 'hiddenGroupSets' as const;
 
@@ -34,12 +35,9 @@ export function getGroupSetTitle(set: StickerSet.stickerSet, isEmoji?: boolean) 
 }
 
 /** Takes an admin from the panel straight to the screen that configures the group's set. */
-export async function openGroupSetTab(chatId: ChatId, isEmoji: boolean) {
-  // imported at click time: the panel lives under the chat input, which the sidebar imports
-  const [{default: appSidebarRight}, {AppGroupStickersTab}] = await Promise.all([
-    import('@components/sidebarRight'),
-    import('@components/solidJsTabs/tabs')
-  ]);
+export function openGroupSetTab(chatId: ChatId, isEmoji: boolean) {
+  // from the registry: the panel lives under the chat input, which the sidebar imports
+  const {appSidebarRight, tabs: {AppGroupStickersTab}} = hotReloadGuard;
 
   // the panel stays usable with the tab open, so repeated taps must not stack copies of it.
   // The same tab serves both variants, hence the payload comparison rather than an

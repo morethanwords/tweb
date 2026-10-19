@@ -1,6 +1,5 @@
 import {JSX, createSignal, For, createEffect, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
 import Scrollable from '@components/scrollable2';
-import {createStoriesViewer} from '@components/stories/viewer';
 import styles from '@components/stories/list.module.scss';
 import mediaSizes from '@helpers/mediaSizes';
 import rootScope from '@lib/rootScope';
@@ -11,9 +10,6 @@ import I18n, {i18n} from '@lib/langPack';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {StoriesProvider, useStories} from '@components/stories/store';
-import appImManager from '@lib/appImManager';
-import appSidebarLeft from '@components/sidebarLeft';
-import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import removeStoriesFromRecent from '@components/stories/removeFromRecent';
@@ -26,6 +22,7 @@ import {PeerTitleTsx} from '@components/peerTitleTsx';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import Modes from '@config/modes';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TEST_COUNT = 0;
 const ITEM_MARGIN = 0;
@@ -95,7 +92,7 @@ function _StoriesList(props: {
       return item?.querySelector('.avatar');
     });
 
-    createStoriesViewer({onExit, target});
+    hotReloadGuard.createStoriesViewer({onExit, target});
   });
 
   const onItemClick = (peer: PeerStories, e?: MouseEvent) => {
@@ -375,21 +372,21 @@ function _StoriesList(props: {
         icon: 'stories',
         text: 'SavedStories',
         onClick: () => {
-          appSidebarLeft.createTab(AppMyStoriesTab).open(AppMyStoriesTab.getInitArgs());
+          hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppMyStoriesTab).open(hotReloadGuard.tabs.AppMyStoriesTab.getInitArgs());
         },
         verify: () => isSelf
       }, {
         icon: 'archive',
         text: 'ArchivedStories',
         onClick: () => {
-          appSidebarLeft.createTab(AppMyStoriesTab).open({...AppMyStoriesTab.getInitArgs(), isArchive: true});
+          hotReloadGuard.appSidebarLeft.createTab(hotReloadGuard.tabs.AppMyStoriesTab).open({...hotReloadGuard.tabs.AppMyStoriesTab.getInitArgs(), isArchive: true});
         },
         verify: () => isSelf
       }, {
         icon: 'message',
         text: 'SendMessage',
         onClick: () => {
-          appImManager.setInnerPeer({
+          hotReloadGuard.appImManager.setInnerPeer({
             peerId: peer.peerId,
             type: ChatType.Chat
           });
@@ -399,7 +396,7 @@ function _StoriesList(props: {
         icon: 'channel',
         text: 'OpenChannel2',
         onClick: () => {
-          appImManager.setInnerPeer({
+          hotReloadGuard.appImManager.setInnerPeer({
             peerId: peer.peerId,
             type: ChatType.Chat
           });

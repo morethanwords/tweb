@@ -9,10 +9,10 @@ import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import appMediaPlaybackController, {MediaSearchContext} from '@components/appMediaPlaybackController';
 import Icon from '@components/icon';
-import showPremiumPopup from '@components/popups/premium';
 import {hideToast, toastNew} from '@components/toast';
 import wrapDocument from '@components/wrappers/document';
 import {SpinnerElement} from '@components/spinner';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 type WrapRoundVideoBubbleOptions = {
@@ -206,7 +206,7 @@ export function wrapRoundVideoBubble({
         langPackKey: 'AudioAndVideoTranscription.PremiumAlert',
         langPackArguments: [anchorCallback(() => {
           hideToast();
-          showPremiumPopup({feature: 'voice_to_text'});
+          hotReloadGuard.showPremiumPopup({feature: 'voice_to_text'});
         })]
       });
       return;

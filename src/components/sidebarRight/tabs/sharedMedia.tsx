@@ -3,7 +3,6 @@ import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import AppSearchSuper, {isCounterDrivenMediaTab, SearchSuperMediaCounters, SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
 import {getSharedMediaFilters, getSharedMediaInputFilter, SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import TransitionSlider from '@components/transition';
-import {AppEditBotTab, AppEditChatTab, AppEditContactTab, AppEditTopicTab} from '@components/solidJsTabs/tabs';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
@@ -35,6 +34,8 @@ import {
   getMediaTypeForProfileTab,
   getProfileTabForMediaType
 } from '@components/sharedMediaProfileTab';
+import type {AppEditBotTab, AppEditChatTab, AppEditContactTab, AppEditTopicTab} from '@components/solidJsTabs/tabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -676,24 +677,24 @@ const SharedMedia: Component = () => {
     let editTab: InstanceType<typeof AppEditChatTab> | InstanceType<typeof AppEditContactTab> | InstanceType<typeof AppEditTopicTab> | InstanceType<typeof AppEditBotTab>;
     const {peerId, threadId} = tab;
     if(threadId && await tab.managers.appPeersManager.isForum(peerId)) {
-      editTab = tab.slider.createTab(AppEditTopicTab)
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditTopicTab)
     } else if(peerId.isAnyChat()) {
-      editTab = tab.slider.createTab(AppEditChatTab);
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditChatTab);
     } else if(await tab.managers.appUsersManager.isBot(peerId)) {
-      editTab = tab.slider.createTab(AppEditBotTab);
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditBotTab);
     } else {
-      editTab = tab.slider.createTab(AppEditContactTab);
+      editTab = tab.slider.createTab(hotReloadGuard.tabs.AppEditContactTab);
     }
 
     if(!editTab) {
       return;
     }
 
-    if(editTab instanceof AppEditTopicTab) {
+    if(editTab instanceof hotReloadGuard.tabs.AppEditTopicTab) {
       editTab.open({peerId, threadId: tab.threadId});
-    } else if(editTab instanceof AppEditBotTab) {
+    } else if(editTab instanceof hotReloadGuard.tabs.AppEditBotTab) {
       editTab.open(peerId);
-    } else if(editTab instanceof AppEditContactTab) {
+    } else if(editTab instanceof hotReloadGuard.tabs.AppEditContactTab) {
       editTab.open(peerId);
     } else {
       // all four edit tabs are scaffolds now; their structural types don't

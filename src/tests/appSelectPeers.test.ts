@@ -22,6 +22,16 @@ vi.mock('@richTextProcessor/wrapEmojiText', () => ({default: vi.fn()}));
 vi.mock('@helpers/dom/createContextMenu', () => ({default: vi.fn()}));
 
 import AppSelectPeers from '@components/appSelectPeers';
+import * as mocked1 from '@lib/appDialogsManager';
+import * as mocked2 from '@components/popups/premium';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appDialogsManager: (mocked1 as any).default,
+  showPremiumPopup: (mocked2 as any).default
+});
+
 
 describe('selector dialog readiness', () => {
   let selector: AppSelectPeers;

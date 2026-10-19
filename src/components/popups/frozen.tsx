@@ -2,9 +2,9 @@ import {i18n} from '@lib/langPack';
 import {useAppConfig} from '@stores/appState';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {formatDate} from '@helpers/date';
-import appImManager from '@lib/appImManager';
 import showFeatureDetailsPopup, {FeatureDetailsButton} from '@components/popups/featureDetails';
 import {FeatureRow} from '@components/featureRows';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const TEST = false;
 
@@ -14,7 +14,7 @@ export default function showFrozenPopup() {
   const untilDate = TEST ? Date.now() + 86400e3 : appConfig.freeze_until_date * 1000;
 
   const onClick = () => {
-    appImManager.openUrl(url);
+    hotReloadGuard.appImManager.openUrl(url);
   };
 
   const rows: FeatureRow[] = [

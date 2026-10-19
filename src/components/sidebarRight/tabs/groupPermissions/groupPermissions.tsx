@@ -4,14 +4,13 @@ import findUpTag from '@helpers/dom/findUpTag';
 import replaceContent from '@helpers/dom/replaceContent';
 import ScrollableLoader from '@helpers/scrollableLoader';
 import {ChannelParticipant, Chat, ChatBannedRights, ChatFull} from '@layer';
-import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '@components/dialogElement';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {i18n, join, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import showPickUserPopup from '@components/popups/pickUser';
 import RowTsx from '@components/rowTsx';
 import Section from '@components/section';
-import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import RangeStepsSelector from '@components/rangeStepsSelector';
@@ -26,6 +25,7 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type {AppGroupPermissionsTab} from '@components/solidJsTabs/tabs';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const GroupPermissions: Component = () => {
   const [tab] = useSuperTab<typeof AppGroupPermissionsTab>();
@@ -250,12 +250,12 @@ const GroupPermissions: Component = () => {
           }
         }
 
-        openUserPermissionsTab(tab.slider, chatId, participant);
+        hotReloadGuard.tabs.openUserPermissionsTab(tab.slider, chatId, participant);
       };
 
       exceptionsAdd.append(addExceptionRow);
 
-      const list = appDialogsManager.createChatList({new: true});
+      const list = hotReloadGuard.appDialogsManager.createChatList({new: true});
       exceptionsList.append(list);
 
       attachClickEvent(list, (e) => {
@@ -293,7 +293,7 @@ const GroupPermissions: Component = () => {
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
         const peerId = getPeerId(participant.peer);
-        const dialogElement = appDialogsManager.addDialogNew({
+        const dialogElement = hotReloadGuard.appDialogsManager.addDialogNew({
           peerId,
           container: list,
           rippleEnabled: true,

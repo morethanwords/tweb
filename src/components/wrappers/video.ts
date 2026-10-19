@@ -24,7 +24,6 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import {Message, PhotoSize, VideoSize} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager from '@lib/appDownloadManager';
-import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -46,6 +45,7 @@ import debounce from '@helpers/schedulers/debounce';
 import {isFullScreen} from '@helpers/dom/fullScreen';
 import overlayCounter from '@helpers/overlayCounter';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 export const USE_VIDEO_OBSERVER = false;
@@ -272,7 +272,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       }) as HTMLVideoElement;
       onGlobalMedia?.(globalVideo);
       const clear = () => {
-        (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
+        (hotReloadGuard.appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
           if(isInDOM(globalVideo)) {
             return;
           }

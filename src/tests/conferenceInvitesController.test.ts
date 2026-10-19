@@ -71,6 +71,14 @@ import CALL_STATE from '@lib/calls/callState';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import conferenceInvitesController from '@lib/calls/conferenceInvitesController';
 import type ConferenceInviteInstance from '@lib/calls/conferenceInviteInstance';
+import * as mocked1 from '@lib/appImManager';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+// the code under test reads the top level from the registry, not from the modules mocked above
+registerHotReloadGuard({
+  appImManager: (mocked1 as any).default
+});
+
 
 const MY_ID = 100;
 const INVITER_ID = 200;

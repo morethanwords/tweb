@@ -1,6 +1,5 @@
 import {Show, createEffect, createSignal, on, onCleanup} from 'solid-js';
 import {Message, Page, RichMessage} from '@layer';
-import {openInstantViewInAppBrowser} from '@components/browser';
 import {
   InstantViewBlocks,
   InstantViewRichTextOptions,
@@ -10,7 +9,7 @@ import {
 } from '@components/instantView';
 import {instantViewStyles as styles} from '@components/instantViewFormatting';
 import applyRichMessageChecklist from '@appManagers/utils/richMessage/toggleChecklist';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {isRichMessageFullWidth, isRichMessagePart, richMessageToPage} from '@lib/richMessage';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -128,7 +127,7 @@ export function RichMessageBubble(props: {
   });
 
   const openPage = (page: Page.page) => {
-    openInstantViewInAppBrowser({
+    hotReloadGuard.openInstantViewInAppBrowser({
       webPageId: message().mid,
       cachedPage: page,
       HotReloadGuardProvider: SolidJSHotReloadGuardProvider
@@ -266,7 +265,7 @@ export function RichMessageBubble(props: {
           </Show>
         }
         openNewPage={(url) => {
-          openInstantViewInAppBrowser({
+          hotReloadGuard.openInstantViewInAppBrowser({
             cachedPage: url,
             HotReloadGuardProvider: SolidJSHotReloadGuardProvider
           });

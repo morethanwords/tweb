@@ -3,12 +3,12 @@ import {i18n} from '@lib/langPack';
 import {useAppConfig} from '@stores/appState';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 import usePremium from '@stores/premium';
-import showPremiumPopup from '@components/popups/premium';
 import rootScope from '@lib/rootScope';
 import tsNow from '@helpers/tsNow';
 import {slowModeTimer} from '@components/chat/utils';
 import {onCleanup} from 'solid-js';
 import createFeatureDetailsIconSticker from '@components/featureDetailsIconSticker';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export default async function showStoriesStealthModePopup(props: {
   onActivate?: () => void,
@@ -25,7 +25,7 @@ export default async function showStoriesStealthModePopup(props: {
       return {
         text: i18n('Stories.StealthMode.Unlock'),
         onClick: () => {
-          showPremiumPopup({feature: 'stories'});
+          hotReloadGuard.showPremiumPopup({feature: 'stories'});
         }
       };
     } else if(getLeftCooldown() > 0) {

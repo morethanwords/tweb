@@ -7,9 +7,9 @@
 import {JSX} from 'solid-js';
 
 import classNames from '@helpers/string/classNames';
-import appImManager from '@lib/appImManager';
 
 import showTooltip from '@components/tooltip';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type CurrentToast = {
   hide: () => void,
@@ -45,7 +45,7 @@ export default function showChatToast(options: {
 
   if(!isListenerSet) {
     isListenerSet = true;
-    appImManager.addEventListener('peer_changed', () => {
+    hotReloadGuard.appImManager.addEventListener('peer_changed', () => {
       if(current?.closeOnPeerChange) {
         current.hide();
       }
@@ -55,9 +55,9 @@ export default function showChatToast(options: {
   options.title?.classList.add('text-bold');
 
   const {close} = showTooltip({
-    element: appImManager.chat.container,
-    container: appImManager.chat.container,
-    mountOn: appImManager.chat.container,
+    element: hotReloadGuard.appImManager.chat.container,
+    container: hotReloadGuard.appImManager.chat.container,
+    mountOn: hotReloadGuard.appImManager.chat.container,
     relative: true,
     vertical: 'top',
     class: classNames('chat-toast', `chat-toast--${options.animation ?? 'slide'}`, options.class),

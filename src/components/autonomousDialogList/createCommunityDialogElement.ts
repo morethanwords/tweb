@@ -1,8 +1,6 @@
 import noop from '@helpers/noop';
-import type {
-  AppDialogsManager,
-  DialogElement
-} from '@lib/appDialogsManager';
+import type {AppDialogsManager} from '@lib/appDialogsManager';
+import type {DialogElement} from '@components/dialogElement';
 
 type AddListDialogOptions = Parameters<
   AppDialogsManager['addListDialog']

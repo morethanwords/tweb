@@ -10,10 +10,7 @@ import {
 import {AvatarNewTsx} from '@components/avatarNew';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import type {Middleware} from '@helpers/middleware';
-import appDialogsManager, {
-  DialogElement,
-  DialogElementSize
-} from '@lib/appDialogsManager';
+import {DialogElement, DialogElementSize} from '@components/dialogElement';
 import createCommunityDialogElement
 from '@components/autonomousDialogList/createCommunityDialogElement';
 import {i18n} from '@lib/langPack';
@@ -30,6 +27,7 @@ import {
 import {insert, render} from 'solid-js/web';
 import styles from '@components/communities/communityPeerDialogList.module.scss';
 import sharedStyles from '@components/communities/communityShared.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type CommunityPeerDialogContextMenu = Omit<
   Parameters<typeof createContextMenu>[0],
@@ -82,7 +80,7 @@ function getClassTokens(value?: string) {
 export default function CommunityPeerDialogList<T>(
   props: CommunityPeerDialogListProps<T>
 ) {
-  const list = appDialogsManager.createChatList();
+  const list = hotReloadGuard.appDialogsManager.createChatList();
   const records = new Map<PeerId, DialogRecord<T>>();
   const rightActionRows = new Map<HTMLElement, HTMLElement>();
   let rightResizeObserver: ResizeObserver;
@@ -157,7 +155,7 @@ export default function CommunityPeerDialogList<T>(
   };
   list.addEventListener('click', onListClick, {capture: true});
 
-  appDialogsManager.setListClickListener({
+  hotReloadGuard.appDialogsManager.setListClickListener({
     list,
     onFound: () => false,
     withContext: props.withDialogContextMenu
@@ -199,7 +197,7 @@ export default function CommunityPeerDialogList<T>(
       }
       const peer = usePeer(() => peerId);
       const dialogElement = initialCommunity ?
-        appDialogsManager.addDialogNew({
+        hotReloadGuard.appDialogsManager.addDialogNew({
           peerId,
           container: false,
           autonomous: true,
@@ -214,7 +212,7 @@ export default function CommunityPeerDialogList<T>(
           }
         }) :
         createCommunityDialogElement(
-          appDialogsManager,
+          hotReloadGuard.appDialogsManager,
           peerId,
           {middleware: props.middleware},
           {

@@ -9,7 +9,7 @@ import animationIntersector, {AnimationItemGroup} from '@components/animationInt
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import wrapSticker from '@components/wrappers/sticker';
 import {Middleware} from '@helpers/middleware';
-import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
+import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';

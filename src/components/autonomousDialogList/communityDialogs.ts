@@ -15,21 +15,19 @@ import type {
 import type {Middleware} from '@helpers/middleware';
 import noop from '@helpers/noop';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
-import type {
-  AppDialogsManager,
-  DialogElement
-} from '@lib/appDialogsManager';
+import type {AppDialogsManager} from '@lib/appDialogsManager';
+import type {DialogElement} from '@components/dialogElement';
 import createCommunityDialogElement
 from '@components/autonomousDialogList/createCommunityDialogElement';
 import Icon from '@components/icon';
 import {
   getCommunityServiceTitle
 } from '@components/wrappers/getCommunityServiceMessageKey';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {useCommunity} from '@stores/communities';
 import {createEffect, createRoot, on} from 'solid-js';
 import styles from '@components/forumTab/communityChats.module.scss';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type CommunityDialogListKind = Extract<
   CommunityLinkedChat['kind'],
@@ -111,7 +109,7 @@ export class AutonomousCommunityDialogList
       });
     }
 
-    this.listenerSetter.add(appImManager)('peer_changed', (chat) => {
+    this.listenerSetter.add(hotReloadGuard.appImManager)('peer_changed', (chat) => {
       for(const [peerId, dialogElement] of this.dialogElements) {
         this.syncDialogActive(peerId, dialogElement, chat);
       }
@@ -307,10 +305,10 @@ export class AutonomousCommunityDialogList
   private syncDialogActive(
     peerId: PeerId,
     dialogElement: DialogElement,
-    chat = appImManager.chat
+    chat = hotReloadGuard.appImManager.chat
   ) {
     const active = !!chat &&
-      appImManager.isSamePeer(chat, {
+      hotReloadGuard.appImManager.isSamePeer(chat, {
         peerId,
         type: ChatType.Chat
       });

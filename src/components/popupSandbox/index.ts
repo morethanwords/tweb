@@ -175,6 +175,11 @@ export function setAllowWrites(value: boolean) {
 /** Mounts the panel. `onClose` is what turns it into a closeable overlay over a running app. */
 async function mountPanel(onClose?: () => void) {
   const restoreOnUninstall = await installSandboxEnvironment();
+  // The app's top level, which a popup's <SolidJSHotReloadGuardProvider> hands out — no bootstrapIm registers it
+  // here when the sandbox owns the page or opens over the sign-in screens. Before `ready()` resolves, since a
+  // fixture may open a popup without a story. Not a static import: the sandbox's own modules would then wait for
+  // the whole app's, and so would the service worker's install.
+  await import('@lib/solidjs/hotReloadGuardValue');
 
   const container = document.createElement('div');
   document.body.append(container);

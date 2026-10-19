@@ -3,7 +3,7 @@ import SidebarSlider, {SliderSuperTab} from '@components/slider';
 import {render} from 'solid-js/web';
 import {AccountPassword, AccountSentEmailCode} from '@layer';
 import {toastNew} from '@components/toast';
-import {AppSettingsTab} from '@components/solidJsTabs';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 class ChangeLoginEmailCodeTab extends SliderSuperTab {
   private dispose: VoidFunction
@@ -24,7 +24,7 @@ class ChangeLoginEmailCodeTab extends SliderSuperTab {
         }}
         onSuccess={() => {
           toastNew({langPackKey: args.isInitialSetup ? 'EmailSetup.SetupToast' : 'EmailSetup.ChangeToast'});
-          this.slider.sliceTabsUntilTab(AppSettingsTab, this);
+          this.slider.sliceTabsUntilTab(hotReloadGuard.tabs.AppSettingsTab, this);
           this.close()
         }}
       />

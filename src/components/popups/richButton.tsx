@@ -12,7 +12,6 @@ import Row from '@components/rowTsx';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import isLastInputPointer from '@helpers/dom/inputModality';
 import Section from '@components/section';
-import appDialogsManager from '@lib/appDialogsManager';
 import {SERVICE_PEER_ID} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
 import {getMiddleware} from '@helpers/middleware';
@@ -26,6 +25,7 @@ import type {
   ChatInputRichButtonAction,
   ChatInputRichButtonColor
 } from '@components/chat/inputEditor/types';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type RichButtonPopupOptions = {
   // the button being edited; a new one is made when absent
@@ -64,7 +64,7 @@ const COLOR_ROWS: [ChatInputRichButtonColor | '', LangPackKey][][] = [
  * pressed to choose another.
  */
 function MentionedUser(props: {userId: UserId, onClick: () => void}) {
-  const list = appDialogsManager.createChatList();
+  const list = hotReloadGuard.appDialogsManager.createChatList();
 
   createEffect(() => {
     const peerId = props.userId.toPeerId(false);
@@ -72,7 +72,7 @@ function MentionedUser(props: {userId: UserId, onClick: () => void}) {
     onCleanup(() => middlewareHelper.destroy());
     const middleware = middlewareHelper.get();
     list.replaceChildren();
-    const {dom} = appDialogsManager.addDialogNew({
+    const {dom} = hotReloadGuard.appDialogsManager.addDialogNew({
       peerId,
       container: list,
       rippleEnabled: true,

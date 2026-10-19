@@ -6,11 +6,10 @@ import Button from '@components/button';
 import {DelimiterWithText} from '@components/chat/giveaway';
 import showPeerPopup, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
 import showPickUserPopup from '@components/popups/pickUser';
-import showPremiumPopup from '@components/popups/premium';
-import {AppAddMembersTab} from '@components/solidJsTabs';
 import SidebarSlider from '@components/slider';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export async function handleMissingInvitees(chatId: ChatId, missingInvitees: MissingInvitee[]) {
   if(!missingInvitees.length) {
@@ -42,7 +41,7 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
   const cantSendMessages = premiumRequireIds.size === missingInviteeIds.length;
 
   const onPremiumClick = () => {
-    showPremiumPopup();
+    hotReloadGuard.showPremiumPopup();
     popup.hide();
   };
 
@@ -212,7 +211,7 @@ export default async function addChatUsers({
     }
   };
 
-  const tab = slider.createTab(AppAddMembersTab);
+  const tab = slider.createTab(hotReloadGuard.tabs.AppAddMembersTab);
   tab.open({
     type: 'channel',
     skippable,

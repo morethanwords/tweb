@@ -36,8 +36,8 @@ export async function bootstrapIm(): Promise<void> {
     Promise.resolve(null) :
     import('@vendor/recorder.min.js' as any);
 
-  const [{default: appDialogsManager}, recorder] = await Promise.all([
-    import('@lib/appDialogsManager'),
+  const [appDialogsManager, recorder] = await Promise.all([
+    importAppTopLevel(),
     recorderImport,
     loadFonts(),
     'requestVideoFrameCallback' in HTMLVideoElement.prototype ?
@@ -65,6 +65,25 @@ export async function bootstrapIm(): Promise<void> {
   setTimeout(() => {
     disposeActiveAuthFlow();
   }, 1000);
+}
+
+let topLevel: Promise<typeof import('@lib/appDialogsManager')['default']>;
+
+/**
+ * The app's top level, and what <SolidJSHotReloadGuardProvider> hands down of it registered (src/index.ts lets the
+ * provider fill it so before the app is up). Once, every caller waiting for the same load - and again after one that
+ * failed. One after the other: two graphs that enter the app's import cycle at once race for its evaluation order (a
+ * class can then be evaluated before the one it extends)
+ */
+export function importAppTopLevel() {
+  return topLevel ??= (async() => {
+    const {default: appDialogsManager} = await import('@lib/appDialogsManager');
+    await import('@lib/solidjs/hotReloadGuardValue');
+    return appDialogsManager;
+  })().catch((err) => {
+    topLevel = undefined;
+    throw err;
+  });
 }
 
 export default bootstrapIm;

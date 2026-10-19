@@ -12,7 +12,6 @@ import BubbleGroups from '@components/chat/bubbleGroups';
 import createDateBubble from '@components/chat/dateBubble';
 import showDatePickerPopup from '@components/popups/datePicker';
 import confirmationPopup from '@components/confirmationPopup';
-import showForwardPopup from '@components/popups/forward';
 import showStickersPopup from '@components/popups/stickers';
 import ProgressivePreloader from '@components/preloader';
 import Scrollable, {SliceSides} from '@components/scrollable';
@@ -55,7 +54,6 @@ import assumeType from '@helpers/assumeType';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
-import AppMediaViewer from '@components/mediaViewer';
 import SetTransition from '@components/singleTransition';
 import handleHorizontalSwipe from '@helpers/dom/handleHorizontalSwipe';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
@@ -134,12 +132,10 @@ import getSelectionElementFromTarget from '@components/chat/getSelectionElementF
 import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
 import wrapParticipantRank from '@components/wrappers/participantRank';
-import internalLinkProcessor from '@lib/internalLinkProcessor';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import SwipeHandler from '@components/swipeHandler';
 import getSelectedText from '@helpers/dom/getSelectedText';
-import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {render} from 'solid-js/web';
 import {createRoot, createEffect, createSignal, Signal, onCleanup, batch, on} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '@components/stories/preview';
@@ -158,7 +154,6 @@ import {formatDaysDuration, formatMonthsDuration} from '@helpers/date';
 import {JSX} from 'solid-js';
 import Giveaway, {getGiftAssetName, onGiveawayClick} from '@components/chat/giveaway';
 import showGiftLinkPopup from '@components/popups/giftLink';
-import showPremiumPopup from '@components/popups/premium';
 import getParents from '@helpers/dom/getParents';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
@@ -203,10 +198,9 @@ import icon from '@components/icon';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
 import {wrapRoundVideoBubble} from '@components/chat/bubbleParts/roundVideoBubble';
 import {createMessageSpoilerOverlay} from '@components/messageSpoilerOverlay';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {Sparkles} from '@components/sparkles';
-import showStarsPopup from '@components/popups/stars';
 import addPaidServiceMessage from '@components/chat/bubbleParts/paidServiceMessage';
 import namedPromises from '@helpers/namedPromises';
 import {getCurrentNewMediaPopup} from '@components/popups/newMedia';
@@ -240,7 +234,6 @@ import {renderComponent} from '@helpers/solid/renderComponent';
 import {NoneToVoidFunction} from '@types';
 import type {CommittedFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters';
 import deepEqual from '@helpers/object/deepEqual';
-import {openInstantViewInAppBrowser} from '@components/browser';
 import {setPeerColorToElement} from '@components/peerColors';
 import {showStarGiftOfferButtons, StarGiftOfferBubble, StarGiftOfferReplyMarkup} from '@components/chat/bubbles/starGiftOffer';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
@@ -279,6 +272,7 @@ import {
 import useReducedMotion from '@stores/reducedMotion';
 import wheelDeltaToPixels from '@helpers/dom/wheelDeltaToPixels';
 import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
+import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -534,8 +528,6 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
 
 // size (px) of the compact right-aligned sticker-set / custom-emoji preview grid in a webpage bubble
 const STICKER_SET_PREVIEW_BOX_SIZE = 56;
-// `text_color`-flagged custom-emoji sets are tinted with the message text color (= EMOJI_TEXT_COLOR)
-const STICKER_SET_EMOJI_TEXT_COLOR = 'primary-text-color';
 
 const serviceMessageActionsWithReply: (MessageAction['_'])[] = [
   'messageActionTodoAppendTasks',
@@ -3679,7 +3671,7 @@ export default class ChatBubbles {
 
       if(reactionsElement.getType() === ReactionLayoutType.Tag) {
         if(!rootScope.premium) {
-          showPremiumPopup({feature: 'saved_tags'});
+          hotReloadGuard.showPremiumPopup({feature: 'saved_tags'});
           return;
         }
 
@@ -3939,7 +3931,7 @@ export default class ChatBubbles {
         return;
       } else if(target.classList.contains('forward')) {
         const message = this.chat.getMessage(bubbleFullMid);
-        showForwardPopup({
+        hotReloadGuard.showForwardPopup({
           [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
         });
         // appSidebarRight.forwardTab.open([mid]);
@@ -3970,7 +3962,7 @@ export default class ChatBubbles {
         if(replyTo._ === 'messageReplyStoryHeader') {
           const target = bubble.querySelector('.reply-media');
           const peerId = getPeerId(replyTo.peer);
-          createStoriesViewerWithPeer({
+          hotReloadGuard.createStoriesViewerWithPeer({
             target: () => target,
             peerId,
             id: replyTo.story_id
@@ -4156,7 +4148,7 @@ export default class ChatBubbles {
         const container = findUpAttribute(target, 'data-story-peer-id');
         const storyPeerId = container.dataset.storyPeerId.toPeerId();
         const storyId = +container.dataset.storyId;
-        createStoriesViewerWithPeer({
+        hotReloadGuard.createStoriesViewerWithPeer({
           target: () => container.querySelector('.media-container-aspecter') || target,
           peerId: storyPeerId,
           id: storyId
@@ -4168,7 +4160,7 @@ export default class ChatBubbles {
       const isSingleMedia = bubble.classList.contains(SINGLE_MEDIA_CLASSNAME);
 
       const f = documentDiv ? (media: any) => {
-        return AppMediaViewer.isMediaCompatibleForDocumentViewer(media);
+        return hotReloadGuard.AppMediaViewer.isMediaCompatibleForDocumentViewer(media);
       } : (media: any) => {
         return media._ === 'photo' || ['video', 'gif'].includes(media.type);
       };
@@ -4276,7 +4268,7 @@ export default class ChatBubbles {
         return;
       }
 
-      new AppMediaViewer(undefined, isSponsored)
+      new hotReloadGuard.AppMediaViewer(undefined, isSponsored)
       .setSearchContext({
         threadId: this.chat.threadId,
         peerId: this.peerId,
@@ -8494,13 +8486,11 @@ export default class ChatBubbles {
             initialText: text,
             message: message as Message.messageService,
             onViewClick: () => {
-              void import('@lib/appDialogsManager').then(({default: appDialogsManager}) => {
-                return appDialogsManager.toggleForumTabByPeerId(
-                  communityId.toPeerId(true),
-                  true,
-                  false
-                );
-              });
+              hotReloadGuard.appDialogsManager.toggleForumTabByPeerId(
+                communityId.toPeerId(true),
+                true,
+                false
+              );
             },
             serviceContainer: s,
             wrapOptions
@@ -8521,7 +8511,7 @@ export default class ChatBubbles {
             const mediaEl = s.querySelector<HTMLElement>(
               '.bubble-service-media-avatar-container img, .bubble-service-media-avatar-container canvas, .bubble-service-media-avatar-container video'
             );
-            new AppMediaViewer()
+            new hotReloadGuard.AppMediaViewer()
             .setSearchContext({peerId: message.peerId, inputFilter: {_: cfg.filter}, useSearch: cfg.useSearch})
             .openMedia({message: message as Message.messageService, target: mediaEl || undefined});
           };
@@ -8588,11 +8578,11 @@ export default class ChatBubbles {
                   stack: this.chat.appImManager.getStackFromElement(bubble)
                 };
 
-                internalLinkProcessor.processGiftCodeLink(link);
+                hotReloadGuard.internalLinkProcessor.processGiftCodeLink(link);
                 return;
               }
 
-              showPremiumPopup({
+              hotReloadGuard.showPremiumPopup({
                 gift: action,
                 peerId: this.peerId,
                 isOut: !!message.pFlags.out
@@ -8848,7 +8838,7 @@ export default class ChatBubbles {
                   (container as HTMLElement).classList.add('bubble-story-mention-preview');
                   attachClickEvent(avatarContainer, (e) => {
                     cancelEvent(e);
-                    createStoriesViewerWithPeer({peerId: storyPeerId, id: storyId, target: () => container as HTMLElement});
+                    hotReloadGuard.createStoriesViewerWithPeer({peerId: storyPeerId, id: storyId, target: () => container as HTMLElement});
                   }, {listenerSetter: this.listenerSetter});
                   avatarContainer.append(container as HTMLElement);
                 }
@@ -9088,7 +9078,7 @@ export default class ChatBubbles {
           textElement: i18n('Summary.Limited.Text', [
             anchorCallback(() => {
               hide();
-              showPremiumPopup();
+              hotReloadGuard.showPremiumPopup();
             })
           ]),
           duration: 10000
@@ -9702,7 +9692,7 @@ export default class ChatBubbles {
                 }
 
                 cancelClickOrNextIfNotClick(e);
-                openInstantViewInAppBrowser({
+                hotReloadGuard.openInstantViewInAppBrowser({
                   webPageId: webPage.id,
                   cachedPage: webPage.cached_page,
                   anchor: new URL(wrapped.url).hash,
@@ -10013,7 +10003,7 @@ export default class ChatBubbles {
 
             const isEmoji = !!stickerSetAttribute.pFlags.emojis;
             // custom-emoji sets flagged `text_color` are tinted with the message text color
-            const textColor = isEmoji && stickerSetAttribute.pFlags.text_color ? STICKER_SET_EMOJI_TEXT_COLOR : undefined;
+            const textColor = isEmoji && stickerSetAttribute.pFlags.text_color ? EMOJI_TEXT_COLOR : undefined;
             for(let i = 0; i < side * side && i < stickers.length; ++i) {
               const cell = document.createElement('div');
               cell.classList.add('webpage-stickerset-cell');
@@ -10945,7 +10935,7 @@ export default class ChatBubbles {
       bubbleContainer.prepend(buttons);
       bubble.classList.add('with-beside-button');
       attachClickEvent(hideButton, () => {
-        showPremiumPopup({feature: 'no_ads'});
+        hotReloadGuard.showPremiumPopup({feature: 'no_ads'});
       });
     }
 
@@ -12511,7 +12501,7 @@ export default class ChatBubbles {
             [
               await wrapPeerTitle({peerId: message.peerId, onlyFirstName: true}),
               anchorCallback(() => {
-                showPremiumPopup();
+                hotReloadGuard.showPremiumPopup();
               })
             ]
           ));
@@ -12566,7 +12556,7 @@ export default class ChatBubbles {
 
       const button = Button('bubble-service-button', {noRipple: true, text: 'Chat.PremiumRequiredButton'});
       attachClickEvent(button, () => {
-        showPremiumPopup();
+        hotReloadGuard.showPremiumPopup();
       });
 
       elements.push(stickerDiv, subtitle, button);
@@ -12593,7 +12583,7 @@ export default class ChatBubbles {
       const button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
       button.append(Sparkles({isDiv: true, mode: 'button'}));
       attachClickEvent(button, () => {
-        showStarsPopup({spendPurposePeerId: this.peerId});
+        hotReloadGuard.showStarsPopup({spendPurposePeerId: this.peerId});
       });
 
       elements.push(stickerDiv, subtitle, button);
@@ -12623,7 +12613,7 @@ export default class ChatBubbles {
         button = Button('bubble-service-button overflow-hidden', {noRipple: true, text: 'BuyStars'});
         button.append(Sparkles({isDiv: true, mode: 'button'}));
         attachClickEvent(button, () => {
-          showStarsPopup({spendPurposePeerId: this.peerId});
+          hotReloadGuard.showStarsPopup({spendPurposePeerId: this.peerId});
         });
       }
 

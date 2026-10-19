@@ -4,11 +4,13 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import '@helpers/peerIdPolyfill';
 
 const mocks = vi.hoisted(() => ({showStarsPopup: vi.fn()}));
-vi.mock('@components/popups/stars', () => ({default: mocks.showStarsPopup}));
 vi.mock('@helpers/dom/createContextMenu', () => ({default: vi.fn()}));
 vi.mock('@lib/langPack', () => ({i18n: (key: string) => document.createTextNode(key)}));
 
 import TransactionHistorySection, {showPeerTransactionHistory} from '@components/stars/transactionHistory';
+import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+
+registerHotReloadGuard({showStarsPopup: mocks.showStarsPopup});
 
 let dispose: () => void;
 afterEach(() => {

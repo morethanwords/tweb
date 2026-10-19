@@ -8,7 +8,6 @@ import {StoryItem, PeerStories, StoryAlbum, StoriesStealthMode} from '@layer';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
-import {STORY_DURATION} from '@components/stories/viewer';
 import createListenerSetter from '../../helpers/solid/createListenerSetter';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {AnyFunction} from '@types';
@@ -17,6 +16,9 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import AppStoriesManager from '@appManagers/appStoriesManager';
 import untrackActions from '@helpers/solid/untrackActions';
+
+/** how long a story without a video stays on screen */
+export const STORY_DURATION = 5e3;
 
 export type NextPrevStory = () => void;
 export type ChangeStoryParams = {

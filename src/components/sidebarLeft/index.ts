@@ -43,7 +43,8 @@ import formatNumber from '@helpers/number/formatNumber';
 import {AppManagers} from '@lib/managers';
 import themeController from '@helpers/themeController';
 import contextMenuController from '@helpers/contextMenuController';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import appDialogsManager from '@lib/appDialogsManager';
+import {DIALOG_LIST_ELEMENT_TAG} from '@components/dialogElement';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '@appManagers/constants';
 import mediaSizes from '@helpers/mediaSizes';
@@ -83,7 +84,7 @@ import showAccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
-import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider, {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {SliderSuperTabConstructable} from '@components/sliderTab';
 import showSettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
@@ -112,7 +113,6 @@ import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 
-export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 type SearchInitResult = {
   open: (focus?: boolean) => void;
@@ -1905,6 +1905,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
+registerHotReloadGuard({appSidebarLeft});
 export default appSidebarLeft;
 
 function getVersionLink() {

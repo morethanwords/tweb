@@ -2,13 +2,13 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import AvatarListLoader from '@helpers/avatarListLoader';
 import {Photo} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import AppMediaViewerBase from '@components/mediaViewer/base';
 import confirmationPopup from '@components/confirmationPopup';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {i18n} from '@lib/langPack';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id'], photo?: Photo.photo};
 export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
@@ -87,7 +87,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
   onDownloadClick = () => {
     appDownloadManager.downloadToDisc({
       media: this.target.photo,
-      queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId
+      queueId: hotReloadGuard.appImManager.chat.bubbles.lazyLoadQueue.queueId
     });
   };
 

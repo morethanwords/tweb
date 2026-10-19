@@ -1,12 +1,12 @@
 import type SidebarSlider from '@components/slider';
 import type SliderSuperTab from '@components/sliderTab';
 import type {LangPackKey} from '@lib/langPack';
-import {AppSettingsTab} from '@components/solidJsTabs/tabs';
 import {highlightMenuControl, highlightSettingsEntry} from './highlight';
 import {findSettingsLink} from './link';
 import {openSectionTab} from './openers';
 import {ROOT_SECTION_ID} from './registry';
 import type {SettingsSearchItem} from './index';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /**
  * Opens the section itself, without the tabs above it: iOS pushes the target
@@ -64,12 +64,12 @@ export async function openSettingsDeepLink(path: string, highlight: string, slid
   // Settings may be open somewhere under the current tab: come back to it rather
   // than opening a second copy — `open` would push the same tab onto the stack
   // again, and one back press would then leave the user in Settings still.
-  const opened = slider.getTab(AppSettingsTab);
+  const opened = slider.getTab(hotReloadGuard.tabs.AppSettingsTab);
   if(opened && !await slider.closeTabsUntilTab(opened)) {
     return true; // handled: the user chose to stay where they were
   }
 
-  const settingsTab = opened || slider.createTab(AppSettingsTab);
+  const settingsTab = opened || slider.createTab(hotReloadGuard.tabs.AppSettingsTab);
   await settingsTab.open();
   await openSettingsSection(link.sectionId, (highlight as LangPackKey) || link.highlight, settingsTab);
   return true;

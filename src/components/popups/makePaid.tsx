@@ -7,10 +7,10 @@ import I18n, {LangPackKey} from '@lib/langPack';
 import currencyStarIcon from '@components/currencyStarIcon';
 import InputField from '@components/inputField';
 import Section from '@components/section';
-import showStarsPopup from '@components/popups/stars';
 import rootScope from '@lib/rootScope';
 import {createSignal, onMount} from 'solid-js';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export function InputStarsField(options: {
   middleware: Middleware,
@@ -84,7 +84,7 @@ export default async function showMakePaidPopup(onSave: (value: number) => void,
             caption="PaidMedia.Caption"
             captionArgs={[
               anchorCallback(() => {
-                showStarsPopup();
+                hotReloadGuard.showStarsPopup();
               })
             ]}
           >

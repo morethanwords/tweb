@@ -5,6 +5,7 @@ import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {getAppWindow} from '@helpers/appWindow';
 import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 import rootScope from '@lib/rootScope';
+import {hotReloadGuardReady} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 type OnFinishArgs = {
@@ -68,7 +69,8 @@ export async function getFileAndOpenEditor({
 
   let openMediaEditorFromMediaRaw: typeof import('@components/mediaEditor')['openMediaEditorFromMediaRaw'];
   try {
-    ({openMediaEditorFromMediaRaw} = await import('@components/mediaEditor'));
+    // the editor mounts the app's top level, which nothing has loaded yet when the sign-up screen opens it
+    [{openMediaEditorFromMediaRaw}] = await Promise.all([import('@components/mediaEditor'), hotReloadGuardReady()]);
   } catch(error) {
     revokeObjectURL(mediaSrc);
     throw error;

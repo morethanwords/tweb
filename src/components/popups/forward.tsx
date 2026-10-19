@@ -1,6 +1,5 @@
 import type {ChatRights} from '@appManagers/appChatsManager';
 import flatten from '@helpers/array/flatten';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {toastNew} from '@components/toast';
 import showPickUserPopup from '@components/popups/pickUser';
@@ -24,6 +23,7 @@ import SendMenu from '@components/chat/sendContextMenu';
 import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
 import {getMiddleware} from '@helpers/middleware';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: number[]}): Promise<ChatRights[]> {
   const messagesPromises = Object.keys(peerIdMids).map((peerId) => {
@@ -200,8 +200,8 @@ export default async function showForwardPopup(
 
     let success: boolean;
     if(openChat) {
-      await appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
-      appImManager.chat.input.initMessagesForward(peerIdMids);
+      await hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
+      hotReloadGuard.appImManager.chat.input.initMessagesForward(peerIdMids);
     } else {
       const result = await ChatInput.sendMessageWithForward({
         inputField,

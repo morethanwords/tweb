@@ -2,7 +2,6 @@ import setInnerHTML from '@helpers/dom/setInnerHTML';
 import {Middleware} from '@helpers/middleware';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {Chat, ChatInvite} from '@layer';
-import appImManager from '@lib/appImManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -14,6 +13,7 @@ import generateTitleIcons from '@components/generateTitleIcons';
 import {toastNew} from '@components/toast';
 import showPeerPopup from '@components/popups/peer';
 import MediaHeader from '@components/mediaHeader';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
 
@@ -104,14 +104,14 @@ export function openChatFromInvite(chatId: ChatId) {
   const peerId = chatId.toPeerId(true);
   // Use `open` (not `setInnerPeer`) so forums route through `op`, which opens the topics
   // tab in the left sidebar instead of just dropping the user into the chat view.
-  appImManager.open({peerId});
+  hotReloadGuard.appImManager.open({peerId});
 }
 
 export function importChatInvite(hash: string, chatTitle?: string) {
   rootScope.managers.appChatInvitesManager.importChatInvite(hash)
   .then((result) => {
     if(typeof(result) === 'object') {
-      void appImManager.openJoinChatWebView(result, chatTitle);
+      void hotReloadGuard.appImManager.openJoinChatWebView(result, chatTitle);
       return;
     }
 

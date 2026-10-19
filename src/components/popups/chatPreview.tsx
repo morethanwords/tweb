@@ -9,7 +9,6 @@ import {NULL_PEER_ID} from '@appManagers/constants';
 import themeController from '@helpers/themeController';
 import mediaSizes from '@helpers/mediaSizes';
 import {bindActiveWindowListener, getAppWindow, onAppWindowChange} from '@helpers/appWindow';
-import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -19,6 +18,7 @@ import {appState} from '@stores/appState';
 import useIsNightTheme from '@hooks/useIsNightTheme';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import ListenerSetter from '@helpers/listenerSetter';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export type ChatPreviewAnchor = HTMLElement | {x: number, y: number} | {
   x: number, y: number, left: number, right: number, top: number, bottom: number
@@ -85,7 +85,7 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
 
     let disposeResize: () => void, disposeWindowChange: () => void;
 
-    const chat = new Chat(appImManager, managers, false, {sharedMedia: true});
+    const chat = new Chat(hotReloadGuard.appImManager, managers, false, {sharedMedia: true});
     chat.isPreview = true;
     chat.isStandalone = true;
     chat.onPreviewClose = () => handle.hide();

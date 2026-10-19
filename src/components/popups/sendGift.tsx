@@ -8,7 +8,8 @@ import MediaHeader from '@components/mediaHeader';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Setter, Show} from 'solid-js';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
-import showStarsPopup, {StarsBalance, StarsStar} from '@components/popups/stars';
+import showStarsPopup from '@components/popups/stars';
+import {StarsBalance, StarsStar} from '@components/stars/starsAmount';
 import LottieAnimation from '@components/lottieAnimation';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import classNames from '@helpers/string/classNames';
@@ -57,7 +58,6 @@ import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals'
 import getStarGiftSendPolicy, {DisallowedGifts} from '@appManagers/utils/gifts/getStarGiftSendPolicy';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
-import showPremiumPopup from '@components/popups/premium';
 import tsNow from '@helpers/tsNow';
 import confirmationPopup from '@components/confirmationPopup';
 import {toastNew} from '@components/toast';
@@ -71,6 +71,7 @@ import Modes from '@config/modes';
 import styles from '@components/popups/sendGift.module.scss';
 import Animated from '@helpers/solid/animations';
 import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -220,7 +221,7 @@ function GiftOptionsPage(props: {
     }
 
     if(gift.pFlags.require_premium && !rootScope.premium) {
-      showPremiumPopup();
+      hotReloadGuard.showPremiumPopup();
       return;
     }
 

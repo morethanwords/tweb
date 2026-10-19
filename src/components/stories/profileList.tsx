@@ -1,7 +1,6 @@
 import {createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createReaction, Show, Switch, Match} from 'solid-js';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {Portal} from 'solid-js/web';
-import {createStoriesViewer, createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import {wrapStoryMedia} from '@components/stories/preview';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
@@ -32,7 +31,6 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import SidebarSlider from '../slider';
 import InputField from '@components/inputField';
 import confirmationPopup from '@components/confirmationPopup';
@@ -47,6 +45,7 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {handleShareStory} from './share';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
@@ -255,7 +254,7 @@ class StoriesContextMenu {
         const id = this.storyItem.id;
         showStoriesStealthModePopup({
           onActivate: () => {
-            createStoriesViewerWithPeer({peerId, id});
+            hotReloadGuard.createStoriesViewerWithPeer({peerId, id});
           }
         });
       },
@@ -493,7 +492,7 @@ function StoriesGrid(props: {
       actions.set({peer, index});
     });
 
-    createStoriesViewer({
+    hotReloadGuard.createStoriesViewer({
       onExit,
       target,
       splitByDays: true
@@ -816,8 +815,8 @@ export function profileStoriesButtonMenu(props: {
     icon: 'archive',
     text: 'MyStories.ShowArchive',
     onClick: () => {
-      props.slider.createTab(AppMyStoriesTab).open({
-        ...AppMyStoriesTab.getInitArgs(),
+      props.slider.createTab(hotReloadGuard.tabs.AppMyStoriesTab).open({
+        ...hotReloadGuard.tabs.AppMyStoriesTab.getInitArgs(),
         isArchive: true,
         chatId: props.peerId.isAnyChat() ? props.peerId.toChatId() : undefined
       });

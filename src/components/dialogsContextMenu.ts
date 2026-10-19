@@ -1,9 +1,7 @@
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {ForumTopic} from '@layer';
 import type {AnyDialog} from '@lib/storages/dialogs';
-import appDialogsManager, {
-  findDialogListElement
-} from '@lib/appDialogsManager';
+import {findDialogListElement} from '@components/dialogElement';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
@@ -18,7 +16,6 @@ import createContextMenu from '@helpers/dom/createContextMenu';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
-import appImManager from '@lib/appImManager';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
 import type AddToFolderDropdownMenu from '@components/addToFolderDropdownMenu';
@@ -45,6 +42,7 @@ import {
   showCommunityMutePopup,
   unmuteCommunity
 } from '@components/communities/communityMute';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /**
  * What an item does on a chat row inside a Community panel (`data-community-chat-kind`),
@@ -114,7 +112,7 @@ export default class DialogsContextMenu {
 
         // * Android shows no context menu while rows are being selected: the press belongs to the
         // * selection, and on touch it is also what starts a reorder of the pinned block
-        const selection = appDialogsManager.getSelectionForRow(li);
+        const selection = hotReloadGuard.appDialogsManager.getSelectionForRow(li);
         if(selection?.isSelecting && selection.canSelect(li)) {
           throw 'Selecting dialogs';
         }
@@ -127,7 +125,7 @@ export default class DialogsContextMenu {
         this.filterId = this.threadId ? undefined :
           this.options.useDialogFolder || this.options.recentSearch ?
             (isDialog(this.dialog) ? this.dialog.folder_id ?? 0 : 0) :
-            appDialogsManager.filterId;
+            hotReloadGuard.appDialogsManager.filterId;
         this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
         this.canDelete = await this.checkIfCanDelete();
         this.canRemoveFromCommunity = !!this.communityId &&
@@ -179,7 +177,7 @@ export default class DialogsContextMenu {
       icon: 'newtab',
       text: 'OpenInNewTab',
       onClick: (e: MouseEvent | TouchEvent) => {
-        appDialogsManager.openDialogInNewTab(this.li);
+        hotReloadGuard.appDialogsManager.openDialogInNewTab(this.li);
         if(this.options.recentSearch) {
           this.managers.appUsersManager.pushRecentSearch(this.peerId);
         }
@@ -192,7 +190,7 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'Community.View',
       onClick: () => {
-        appDialogsManager.toggleForumTabByPeerId(
+        hotReloadGuard.appDialogsManager.toggleForumTabByPeerId(
           this.peerId,
           true,
           false
@@ -210,7 +208,7 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'TopicViewAsTopics',
       onClick: () => {
-        appImManager.toggleViewAsMessages(this.peerId, false);
+        hotReloadGuard.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       // the flag outlives the forum it was set for, so ask the peer too
       verify: () => apiManagerProxy.isForum(this.peerId) &&
@@ -219,23 +217,23 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'SavedViewAsChats',
       onClick: () => {
-        appImManager.toggleViewAsMessages(this.peerId, false);
+        hotReloadGuard.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       verify: () => this.peerId === rootScope.myId && !appSettings.savedAsForum && !this.threadId
     }, {
       icon: 'message',
       text: 'SavedViewAsMessages',
       onClick: () => {
-        appImManager.toggleViewAsMessages(this.peerId, true);
+        hotReloadGuard.appImManager.toggleViewAsMessages(this.peerId, true);
       },
       verify: () => this.peerId === rootScope.myId && appSettings.savedAsForum && !this.threadId
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: () => {
-        appDialogsManager.getSelectionForRow(this.li)?.toggleByElement(this.li);
+        hotReloadGuard.appDialogsManager.getSelectionForRow(this.li)?.toggleByElement(this.li);
       },
-      verify: () => !!appDialogsManager.getSelectionForRow(this.li)?.canSelect(this.li)
+      verify: () => !!hotReloadGuard.appDialogsManager.getSelectionForRow(this.li)?.canSelect(this.li)
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',
@@ -486,7 +484,7 @@ export default class DialogsContextMenu {
     menu.feedProps({
       dialog: this.dialog,
       filters,
-      currentFilter: () => appDialogsManager.filterId,
+      currentFilter: () => hotReloadGuard.appDialogsManager.filterId,
       onNewDialog: (dialog) => {
         this.dialog = dialog;
       },

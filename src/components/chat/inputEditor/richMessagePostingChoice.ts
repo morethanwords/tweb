@@ -2,8 +2,8 @@ import type {AppManagers} from '@lib/managers';
 import confirmationPopup, {
   PopupConfirmationOptions
 } from '@components/confirmationPopup';
-import showPremiumPopup from '@components/popups/premium';
 import {toastNew} from '@components/toast';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 /** `plain`: the sender chose to remove the rich formatting (`richMessageToPlainMessage`). */
 export type RichMessagePostingChoice = 'rich' | 'plain' | 'cancel';
@@ -17,7 +17,7 @@ type RichMessagePostingChoiceDependencies = {
 const DEFAULT_DEPENDENCIES: RichMessagePostingChoiceDependencies = {
   confirm: confirmationPopup,
   showError: () => toastNew({langPackKey: 'Error.AnError'}),
-  showPremium: () => showPremiumPopup()
+  showPremium: () => hotReloadGuard.showPremiumPopup()
 };
 
 export function createRichMessagePremiumConfirmation(

@@ -13,7 +13,6 @@ import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {fastRaf} from '@helpers/schedulers';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import liteMode from '@helpers/liteMode';
-import appImManager from '@lib/appImManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import CustomEmojiElement from '@lib/customEmoji/element';
 import deferredPromise from '@helpers/cancellablePromise';
@@ -25,7 +24,8 @@ import Scrollable from '@components/scrollable';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {savedReactionTags} from '@components/chat/reactions';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
-import {StarsStar} from '@components/popups/stars';
+import {StarsStar} from '@components/stars/starsAmount';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {Sparkles} from '@components/sparkles';
 import {AnimatedCounter} from '@components/animatedCounter';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
@@ -1117,7 +1117,7 @@ export default class ReactionElement extends HTMLElement {
         size: REACTIONS_SIZE[this.type] + add,
         effectSize: 80
       },
-      scrollable: appImManager.chat.bubbles.scrollable
+      scrollable: hotReloadGuard.appImManager.chat.bubbles.scrollable
     });
   }
 

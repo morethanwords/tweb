@@ -8,7 +8,6 @@ import safeAssign from '@helpers/object/safeAssign';
 import positionMenu from '@helpers/positionMenu';
 import ScrollableLoader from '@helpers/scrollableLoader';
 import {GroupCallParticipant} from '@layer';
-import appImManager from '@lib/appImManager';
 import {AppManagers} from '@lib/managers';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
@@ -26,6 +25,7 @@ import {getMiddleware} from '@helpers/middleware';
 import type GroupCallVideoGrid from '@components/groupCall/videoGrid';
 import type {GroupCallVideoTileType} from '@components/groupCall/videoTile';
 import {toastNew} from '@components/toast';
+import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 export class GroupCallParticipantContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -241,11 +241,10 @@ export class GroupCallParticipantContextMenu {
     const peerId = this.targetPeerId;
     PopupElement.getPopups(GROUP_CALL_POPUP_KIND)[0]?.hide();
 
-    const opened = appImManager.setInnerPeer({peerId});
+    const opened = hotReloadGuard.appImManager.setInnerPeer({peerId});
     if(profile) {
-      void Promise.resolve(opened).then(async() => {
-        const {default: appSidebarRight} = await import('@components/sidebarRight');
-        appSidebarRight.toggleSidebar(true);
+      void Promise.resolve(opened).then(() => {
+        hotReloadGuard.appSidebarRight.toggleSidebar(true);
       }).catch((err) => {
         console.error('open group call participant profile failed', err);
       });
