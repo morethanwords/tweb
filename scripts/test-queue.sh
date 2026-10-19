@@ -36,6 +36,11 @@
 #   * A run starts when it is the lowest-numbered waiting ticket and its workers
 #     fit in what the running ones leave. Strictly in order: quick runs never
 #     overtake a big one, so a full sweep is not starved.
+#   * A run started with TWEB_TEST_QUEUE_PRIORITY=1 — the full vitest run of a
+#     release build (build.js) — goes ahead of every waiting run, never ahead of
+#     a running one: it is next as soon as they leave its workers free. It takes
+#     a number below every ticket in the queue, so the script of every checkout,
+#     whatever its version, puts it first.
 #
 # Usage:
 #   bash scripts/test-queue.sh       what runs and what waits, in order
@@ -68,17 +73,18 @@ age() { local s=$(( NOW - $1 )); printf -v AGE '%dm%02ds' $((s / 60)) $((s % 60)
 # run reads the whole queue every 2 s, on a machine that is short of CPU by definition.
 load() {
   local k v
-  NEED=1 LABEL='?' CHECKOUT='?' SINCE=$NOW STATE=waiting STARTED=''
+  NEED=1 LABEL='?' CHECKOUT='?' SINCE=$NOW STATE=waiting STARTED='' PRIORITY=''
   while IFS='=' read -r k v; do
-    case $k in NEED|LABEL|CHECKOUT|SINCE|STATE|STARTED) printf -v "$k" '%s' "$v" ;; esac
+    case $k in NEED|LABEL|CHECKOUT|SINCE|STATE|STARTED|PRIORITY) printf -v "$k" '%s' "$v" ;; esac
   done <"$1"
   NUM=${1##*/t-}; NUM=$((10#${NUM%%-*}))
   local s=s; [ "$NEED" != 1 ] || s=''
   printf -v DESC '#%d %s · %s, %s worker%s' "$NUM" "$LABEL" "$CHECKOUT" "$NEED" "$s"
+  [ -z "$PRIORITY" ] || DESC+=', priority'
 }
 # the loaded fields back into ticket $1 — in place: the holder's lock is on this very file
 store() {
-  printf '%s\n' "NEED=$NEED" "LABEL=$LABEL" "CHECKOUT=$CHECKOUT" "SINCE=$SINCE" "STATE=$STATE" ${STARTED:+"STARTED=$STARTED"} >"$1"
+  printf '%s\n' "NEED=$NEED" "LABEL=$LABEL" "CHECKOUT=$CHECKOUT" "SINCE=$SINCE" "STATE=$STATE" ${STARTED:+"STARTED=$STARTED"} ${PRIORITY:+"PRIORITY=$PRIORITY"} >"$1"
 }
 
 # Delete the tickets whose holder is gone. Under the lock.
@@ -90,9 +96,10 @@ reap() {
 }
 
 hold() {
-  local id=$1 pid=$2 top branch seq n x t
+  local id=$1 pid=$2 top branch seq n x t low=''
   tick
-  NEED=$3 LABEL=$4 SINCE=$NOW STATE=waiting STARTED=''
+  NEED=$3 LABEL=$4 SINCE=$NOW STATE=waiting STARTED='' PRIORITY=''
+  [ "${TWEB_TEST_QUEUE_PRIORITY:-}" != 1 ] || PRIORITY=1
   [ "$NEED" -ge 1 ] 2>/dev/null || NEED=1
   [ "$NEED" -le "$BUDGET" ] || NEED=$BUDGET
   top=$(git rev-parse --show-toplevel 2>/dev/null); CHECKOUT=${top##*/}
@@ -106,9 +113,13 @@ hold() {
     [ -e "$x" ] || continue
     n=${x##*/t-}; n=$((10#${n%%-*}))
     [ "$n" -le "$seq" ] || seq=$n
+    [ -n "$low" ] && [ "$low" -le "$n" ] || low=$n
   done
   seq=$((seq + 1))
   echo "$seq" >"$Q/seq"
+  # a priority run, below every ticket: the queue goes by the numbers, here and in the older copies of this
+  # script in the other checkouts alike
+  [ -z "$PRIORITY" ] || [ "${low:-0}" -lt 1 ] || seq=$((low - 1))
   printf -v t '%s/t-%08d-%s' "$Q" "$seq" "$id"
   store "$t"
   # Taken before the queue lock is dropped, so nobody ever sees this ticket unheld while the run lives.

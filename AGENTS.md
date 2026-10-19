@@ -544,7 +544,11 @@ import {Message, Chat, User, InputPeer} from '@layer';
   `bash scripts/test-queue.sh`. A Playwright run narrowed to some files or
   tests gets at most 4 workers unless `--workers` says otherwise, so a few of
   them share the machine; vitest on a few files does not queue at all.
-  `TWEB_TEST_QUEUE=0` runs without the queue; CI never queues.
+  The full run of a release build (`node build.js`) goes ahead of every
+  waiting run, though never ahead of a running one
+  (`TWEB_TEST_QUEUE_PRIORITY=1` — that build's alone, never set it for a
+  suite of your own). `TWEB_TEST_QUEUE=0` runs without the queue; CI never
+  queues.
 - **A code review goes to Codex first.** Asked to review a change, an agent
   other than Codex does not review its own work: it hands the change, and what
   it is for, to Codex (GPT) with `scripts/codex-review.sh`, then checks each

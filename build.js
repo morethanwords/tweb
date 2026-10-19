@@ -201,19 +201,18 @@ formatLang()
   console.error('Failed to apply new lang');
   return changeVersion('same');
 }).then(() => {
-  const child = spawn(npmCmd, ['run', 'build'], {shell: true});
+  // * the full test run before the build goes ahead of every run waiting in the machine's test queue
+  const child = spawn(npmCmd, ['run', 'build'], {shell: true, env: {...process.env, TWEB_TEST_QUEUE_PRIORITY: '1'}});
   child.stdout.on('data', (chunk) => {
     console.log(chunk.toString());
   });
 
-  let error = '';
-  child.stderr.on('data', (chunk) => {
-    error += chunk.toString();
-  });
+  // * as it comes: a build waiting for its turn in the test queue says so on stderr
+  child.stderr.pipe(process.stderr);
 
   child.on('close', (code) => {
     if(code != 0) {
-      console.error(error, `build child process exited with code ${code}`);
+      console.error(`build child process exited with code ${code}`);
     } else {
       onCompiled();
     }
