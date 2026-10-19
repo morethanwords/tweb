@@ -1,2 +1,0 @@
-function e(...e){return e.join(``)}function t(e){return e.split(``)}function n(e,t,n,r){let i=t.split(``),a=i.length,o=e;for(let e=0;e<a-1;++e){var s;let t=i[e];o=(s=o)[t]??(s[t]={})}let c=i[a-1];n===void 0&&r?delete o[c]:o[c]=n}export{n,t as r,e as t};
-//# sourceMappingURL=setDeepProperty-PeINt371.js.map

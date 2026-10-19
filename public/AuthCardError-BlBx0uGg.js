@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{f as e,h as t,s as n,v as r}from"./solid-Beq2bZCx.js";import{c as i,d as a,h as o,o as s}from"./web-BIda0ujS.js";import{r as c}from"./bootstrapIm-DHh8lAfP.js";import{t as l}from"./autoHeight-5WV3KeeT.js";var u=o(`<div role=alert>`),d=0;function f(o){let f=`auth-card-error-`+ ++d;return t(()=>{let e=o.describes;e&&(o.content?(e.setAttribute(`aria-invalid`,`true`),e.setAttribute(`aria-describedby`,f)):(e.removeAttribute(`aria-invalid`),e.removeAttribute(`aria-describedby`)))}),e(l,{overflowHidden:!0,get children(){return e(n,{get when(){return o.content},get children(){var e=u();return a(e,`id`,f),i(e,()=>o.content),r(()=>s(e,c.errorLabel)),e}})}})}export{f as t};
+//# sourceMappingURL=AuthCardError-BlBx0uGg.js.map

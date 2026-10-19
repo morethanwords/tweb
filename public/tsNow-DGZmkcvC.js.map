@@ -1,0 +1,1 @@
+{"version":3,"file":"tsNow-DGZmkcvC.js","names":["tsNow","seconds"],"sources":["../src/helpers/tsNow.ts"],"sourcesContent":["export default function tsNow(seconds?: true) {\n  const t = Date.now();\n  return seconds ? t / 1000 | 0 : t;\n}\n"],"mappings":";AAAA,SAAwBA,EAAM,EAAgB,CAC5C,IAAM,EAAI,KAAK,IAAI,EACnB,OAAOC,EAAU,EAAI,IAAO,EAAI,CAClC"}

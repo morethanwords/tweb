@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{c as e}from"./liteMode-zAOs27pM.js";import{t}from"./pause-DLoMQAIJ.js";var n=1e3;function r(e){let t=[];for(let n=e;n&&typeof n.getAnimations==`function`;n=n.parentElement)for(let e of n.getAnimations())e.effect?.getTiming().iterations!==1/0&&t.push(e);return t}function i(i,a){let o=!1,s=0,c=()=>!o&&(!a||a()),l=async()=>{let a=Date.now()+n;for(await e();c()&&Date.now()<a;){let e=r(i);if(!e.length)break;await Promise.race([Promise.all(e.map(e=>e.finished.catch(()=>{}))),t(Math.max(0,a-Date.now()))])}c()&&i.focus()},u=()=>{c()&&(i.isConnected?l():s=requestAnimationFrame(u))};return s=requestAnimationFrame(u),()=>{o=!0,cancelAnimationFrame(s)}}export{i as t};
+//# sourceMappingURL=focusWhenSettled-CYgdtieA.js.map

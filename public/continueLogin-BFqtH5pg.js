@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{r as e}from"./toast-DjQSntON.js";import{d as t,u as n}from"./sentCode-BoPnll2Y.js";async function r(r,i){if(r._!==`auth.sentCodeSuccess`){let e=t(r,i.phone_number);(i.onSentCode??(e=>i.navigate(n(e))))(e);return}let{authorization:a}=r;a._===`auth.authorization`?(await i.managers.apiManager.setUser(a.user),await i.toIm()):i.phone_code_hash?i.navigate({name:`signUp`,payload:{phone_number:i.phone_number,phone_code_hash:i.phone_code_hash}}):(console.error(`auth: sign-up required, but no phone_code_hash to sign up with`,r),e({langPackKey:`Error.AnError`}),i.navigate({name:`signIn`}))}export{r as t};
+//# sourceMappingURL=continueLogin-BFqtH5pg.js.map

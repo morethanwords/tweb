@@ -262,7 +262,10 @@ export default defineConfig({
       // a `**/e2e/**` glob also swallowed src/lib/calls/e2e/tests/, silently
       // dropping the whole TdE2E suite (blockchain, call, crypto, keys, …) from
       // `pnpm test`.
-      'e2e/**'
+      'e2e/**',
+      // scratch: a test file parked there is no part of the suite, and one
+      // that no longer resolves fails `pnpm test --run` and with it the build
+      'tmp/**'
     ],
     // coverage: {
     //   provider: 'v8',

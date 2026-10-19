@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+function e(e,t,n){let r=performance.memory;return{thread:e,jsHeap:r?.usedJSHeapSize,jsHeapTotal:r?.totalJSHeapSize,details:t,events:n}}function t(e){return(e?.width||0)*(e?.height||0)*4}function n(e){return(e/1048576).toFixed(1)+` MB`}function r(e,t,n=3e3){let r;return Promise.race([e.then(e=>({...e,thread:t}),()=>({thread:t,details:{error:1}})),new Promise(e=>{r=setTimeout(()=>e({thread:t+` (no answer)`}),n)})]).finally(()=>clearTimeout(r))}export{r as i,n,e as r,t};
+//# sourceMappingURL=memoryStats-D-seQmxH.js.map

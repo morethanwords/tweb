@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{uo as e}from"./buttonMenu-CwWKR_cf.js";function t(t){return e({...t.length===1?{peerId:t[0],titleLangKey:`DeleteContact`,descriptionLangKey:`AreYouSureDeleteContact`}:{titleLangKey:`DeleteContactsTitle`,titleLangArgs:[t.length],descriptionLangKey:`DeleteContactsSubtitle`},button:{langKey:`Delete`,isDanger:!0}})}export{t};
+//# sourceMappingURL=deleteContacts-DTA0Eq93.js.map

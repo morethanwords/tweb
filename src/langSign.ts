@@ -41,7 +41,7 @@ const lang = {
   'Login.ResetAccount.Title': 'Warning',
   'Login.ResetAccount.Text': 'This action can\'t be undone.\n\nIf you reset your account, all your messages and chats will be deleted.',
   'Login.ResetAccountFail.Title': 'Sorry',
-  'Login.ResetAccountFail.TextCancelled': 'Your recent attempts to reset this account have been cancelled by its active user. Please try again in 7 days.',
+  'Login.ResetAccountFail.TextCancelled': 'Your recent attempts to reset this account have been canceled by its active user. Please try again in 7 days.',
   'Login.ResetAccountFail.TextWait': 'Since this account is active and protected by a password, we will delete it in 1 week for security purposes.\n\nYou can cancel this process at any time.\n\nYou\'ll be able to reset your account in: %s.',
   'Login.ResetEmail.Title': 'Reset Email',
   'Login.ResetEmail.Text': 'You can change your login email if you are logged into Telegram from another device.\n\nOtherwise, if you don\'t have access to this email, you can reset it with an **SMS** code in **%s**.',

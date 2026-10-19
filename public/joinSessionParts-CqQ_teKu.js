@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{c as e,u as t}from"./langPack-oPcGr-D3.js";import{v as n}from"./solid-Beq2bZCx.js";import{c as r,d as i,h as a}from"./web-BIda0ujS.js";var o=a(`<span>`);function s(a,s){return(()=>{var c=o();return r(c,()=>e(a.filter(e=>typeof e==`string`?e:e?.ltr).map(e=>{let t=typeof e!=`string`,n=t?e.ltr:e;return(()=>{var e=o();return i(e,`dir`,t?`ltr`:`auto`),r(e,n),e})()}),s)),n(()=>i(c,`dir`,t.isRTL()?`rtl`:`ltr`)),c})()}export{s as t};
+//# sourceMappingURL=joinSessionParts-CqQ_teKu.js.map

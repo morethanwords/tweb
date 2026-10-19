@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=new Set([`all`,`web`,`webk`]),t=`sensitive`;function n(e=[],n){let r=new Set(e);return n&&(n.pFlags.sensitive_enabled?r.add(t):r.delete(t)),r}var r=new Set;function i(e){r=e}function a(t,n=r){return t.find(t=>e.has(t.platform)&&!n.has(t.reason))}function o(t,n=r){return!n.has(`sensitive`)&&t.some(t=>t.reason===`sensitive`&&e.has(t.platform))}function s(e,t=r){return!!a(e,t)}export{n as a,o as i,a as n,i as o,s as r,t};
+//# sourceMappingURL=restrictions-Dq_9Cd3p.js.map

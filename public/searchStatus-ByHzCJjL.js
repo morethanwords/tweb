@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{f as e,v as t}from"./solid-Beq2bZCx.js";import{c as n,d as r,h as i,o as a}from"./web-BIda0ujS.js";import{t as o}from"./classNames-HGN7N_ne.js";import{H as s}from"./index-BcovhLpe.js";var c={loading:`_loading_125tt_1`,preloader:`_preloader_125tt_6`,empty:`_empty_125tt_11`},l=i(`<div role=status aria-live=polite>`);function u(i){return(()=>{var u=l();return n(u,e(s,{get class(){return c.preloader}})),t(e=>{var t=o(c.loading,i.class),n=i[`aria-label`];return t!==e.e&&a(u,e.e=t),n!==e.t&&r(u,`aria-label`,e.t=n),e},{e:void 0,t:void 0}),u})()}function d(e){return(()=>{var r=l();return n(r,()=>e.children),t(()=>a(r,o(c.empty,e.class))),r})()}export{u as n,d as t};
+//# sourceMappingURL=searchStatus-ByHzCJjL.js.map

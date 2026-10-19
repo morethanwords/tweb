@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{a as e}from"./langPack-oPcGr-D3.js";import"./index-BcovhLpe.js";import{Pt as t}from"./buttonMenu-CwWKR_cf.js";function n(e){return e.length===1&&e[0].start===0&&e[0].end===1439}function r(e){return e.map(e=>e.map(e=>({start:e.start,end:e.end})))}function i(e,t){return e.length===t.length&&e.every((e,n)=>e.start===t[n].start&&e.end===t[n].end)}function a(e,t){return e.length===t.length&&e.every((e,n)=>i(e,t[n]))}function o(n){return n.length?t.isFull(n)?e(`BusinessHoursDayFullOpened`):n.map(e=>new t.Period(e.start,e.end).toString()).join(`, `):e(`BusinessHoursDayClosed`)}export{i as a,n as i,r as n,o as r,a as t};
+//# sourceMappingURL=businessHoursShared-6CSatnMs.js.map

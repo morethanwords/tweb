@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{f as e,v as t}from"./solid-Beq2bZCx.js";import{t as n}from"./ripple-BEiGGUJE.js";import{c as r,g as i,h as a,o,s}from"./web-BIda0ujS.js";import{r as c}from"./hotReloadGuard-CHYXNvhm.js";var l={inlineRippleLink:`_inlineRippleLink_1nv8a_16`},u=a(`<span>`),d=a=>{let{appImManager:s,PeerTitleTsx:d}=c();return(()=>{var c=u();return c.$$click=()=>{s.setInnerPeer({peerId:a.peerId}),a.onClick?.()},i(n,c,()=>!0),r(c,e(d,{get peerId(){return a.peerId},limitSymbols:32})),t(()=>o(c,l.inlineRippleLink)),c})()};s([`click`]);var f=()=>{let{usePremium:e,useAppConfig:t}=c(),n=e(),r=t();return()=>n()?r.aicompose_tone_saved_limit_premium||20:r.aicompose_tone_saved_limit_default||5};export{d as n,f as t};
+//# sourceMappingURL=limits-DfvNrzDB.js.map
