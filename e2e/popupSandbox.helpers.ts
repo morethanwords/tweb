@@ -105,5 +105,10 @@ export async function closeStory(page: Page, story: Pick<Story, 'surface'>, {tim
     if(Date.now() > deadline) return false;
     await page.waitForTimeout(20);
   }
+
+  // A popup closed from a script rejects its caller's promise (a confirmation's "cancelled") in the task that
+  // removes it, and the page reports the unhandled rejection a task later: let that report arrive here, not in
+  // the window of whatever the caller checks next.
+  if(!leaveHiding) await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 10)));
   return true;
 }

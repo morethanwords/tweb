@@ -20,6 +20,7 @@
 
 // First import on purpose — see the note in `bootstrapState.ts`.
 import './bootstrapState';
+import type {UpdatePayload} from 'vite';
 import {createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
@@ -132,17 +133,23 @@ export async function openStory(story: PopupStory) {
  * comes straight back.
  *
  * CSS is left alone — Vite swaps stylesheets in place and that already works.
+ *
+ * Over a running app (`storiesOnly`) only for an edit a story module takes — the app's own edits stay hot. A story
+ * accepts its own updates (so that a popup's edit stops there), and run again it would leave the panel's rows
+ * holding the previous story and list one the edit removed.
  */
-function watchForEdits() {
+function watchForEdits(storiesOnly?: boolean) {
   if(!import.meta.hot) {
     return;
   }
 
-  import.meta.hot.on('vite:afterUpdate', ({updates}) => {
-    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path))) {
+  const onUpdate = ({updates}: UpdatePayload) => {
+    if(updates.some((update) => /\.[jt]sx?($|\?)/.test(update.path) && (!storiesOnly || update.path.includes('/popupSandbox/stories/')))) {
       location.reload();
     }
-  });
+  };
+  import.meta.hot.on('vite:afterUpdate', onUpdate);
+  return () => import.meta.hot.off('vite:afterUpdate', onUpdate);
 }
 
 /**
@@ -272,11 +279,16 @@ export function showPopupSandbox() {
   // The guard has to be in place before the first await — two calls in the same tick would
   // otherwise both get past it and mount a panel each.
   return showPromise ??= (async() => {
-    const close = await mountPanel(() => {
+    const unwatch = watchForEdits(true);
+    const unmount = await mountPanel(() => {
       showPromise = undefined;
       closePanel = undefined;
       close();
     });
+    const close = () => {
+      unwatch?.();
+      unmount();
+    };
 
     closePanel = close;
   })();

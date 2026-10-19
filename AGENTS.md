@@ -79,7 +79,9 @@ Every popup, opened by click with mock data and **no Telegram traffic**. Two way
 - `showPopupSandbox()` from the console of a running app, signed in or not. The
   panel opens over the app and closing it (×) puts the real managers back. The
   fixture peers/messages are merged into the mirrors key by key rather than
-  replacing them, so a live session's own cache survives.
+  replacing them, so a live session's own cache survives. While it is open, an
+  edit a story module takes reloads the page (`?popups=1` reloads for every
+  edit); the app's own edits stay hot.
 
 Signed in, the panel offers a second data source — **My data** — which builds the
 stories out of the session's own dialogs, messages and gifts instead of the
