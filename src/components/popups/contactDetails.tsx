@@ -38,7 +38,7 @@ const ICONS: Record<VcardItemType, Icon> = {
   email: 'email_filled',
   address: 'location_filled',
   url: 'link_filled',
-  note: 'note_filled',
+  note: 'newchat_filled',
   birthday: 'birthday_filled',
   organization: 'business_filled',
   name: 'person_filled'

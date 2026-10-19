@@ -897,7 +897,7 @@ PeerProfile.ContactNote = () => {
           }]
         }}
       >
-        <Row.Icon icon="edit" />
+        <Row.Icon icon="newchat_filled" />
         <Row.Title>{text()}</Row.Title>
         <Row.Subtitle subtitleRight={i18n('ContactNoteRowDesc')}>
           {i18n('ContactNoteRow')}

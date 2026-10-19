@@ -1275,7 +1275,7 @@ export default class ChatContextMenu {
           this.chat.container
         )
     }, {
-      icon: 'note_filled',
+      icon: 'note',
       text: 'SavedMusic.AddToProfile',
       onClick: () => addToProfileMusic(this.getSavedMusicDocId()),
       verify: () => this.verifySavedMusic(false)

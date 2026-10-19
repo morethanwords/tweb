@@ -61,7 +61,7 @@ export default function StoryMusicPanel(props: {
 
   const contextMenu = createContextMenu({
     buttons: [{
-      icon: 'note_filled',
+      icon: 'note',
       text: 'SavedMusic.AddToProfile',
       onClick: () => addToProfileMusic(props.doc.id),
       verify: async() => !(await isInProfile())
