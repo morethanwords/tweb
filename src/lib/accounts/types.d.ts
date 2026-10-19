@@ -1,4 +1,5 @@
 import {DcAuthKey, DcServerSalt, TrueDcId} from '@types';
+import type {StoredTempAuthKey} from '@lib/mtproto/tempAuthKeys';
 
 export type ActiveAccountNumber = 1 | 2 | 3 | 4;
 
@@ -10,7 +11,9 @@ type A = Record<DcAuthKey, string> &
     push_key_fingerprint?: string,
     userId: PeerId,
     dcId: TrueDcId,
-    date: number
+    date: number,
+    // * by `${dcId}` or `${dcId}-media` (PFS, see @lib/mtproto/tempAuthKeys)
+    temp_auth_keys?: Record<string, StoredTempAuthKey>
   };
 
 export type AccountSessionData = Partial<A>;

@@ -35,7 +35,7 @@ pnpm lint           # oxlint on the whole repo (config: .oxlintrc.json)
 pnpm lint:fix       # Same, with auto-fix
 ```
 
-Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?pfs=1` (Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; off by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left"), `?memoryWatch=1` (keeps a memory history of the tab — see "Memory").
+Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker), `?noPfs=1` (turns off Perfect Forward Secrecy — temporary auth keys, `src/lib/mtproto/tempAuthKeys.ts`; on by default), `?a11y=1` (the keyboard and screen-reader layer — see "Accessibility"; off by default), `?rtl=1` (lays the app out right to left in whatever language is loaded — see "Right-to-left"), `?memoryWatch=1` (keeps a memory history of the tab — see "Memory").
 
 ### Preview
 

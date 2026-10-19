@@ -44,9 +44,9 @@ const Modes = {
   multipleTransports: !!(import.meta.env.VITE_MTPROTO_AUTO && import.meta.env.VITE_MTPROTO_HAS_HTTP && import.meta.env.VITE_MTPROTO_HAS_WS) && location.search.indexOf('noMultipleTransports=1') === -1,
   // Perfect Forward Secrecy: every networker talks over a temporary auth key
   // bound to the stored permanent one (auth.bindTempAuthKey), replaced once it
-  // expires or the server forgets it. Off by default; ?pfs=1 turns it on (the
+  // expires or the server forgets it. On by default; ?noPfs=1 turns it off (the
   // worker sees it too — makeWorkerURL forwards query params).
-  pfs: location.search.indexOf('pfs=1') > 0,
+  pfs: location.search.indexOf('noPfs=1') === -1,
   // The keyboard and screen-reader layer: focus traps, roving tab stops, focus
   // rings, key routing, inert off-screen columns, pinch zoom. Off by default
   // until it settles; ?a11y=1 turns it on. ARIA names and roles stay either way,

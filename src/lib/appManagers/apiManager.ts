@@ -39,7 +39,7 @@ import {getCommonDatabaseState} from '@config/databases/state';
 import {saveEncryptionKeyForHandoff} from '@lib/passcode/keyHandoff';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import {MTAuthKey} from '@lib/mtproto/authKey';
-import TempAuthKeys from '@lib/mtproto/tempAuthKeys';
+import TempAuthKeys, {StoredTempAuthKey} from '@lib/mtproto/tempAuthKeys';
 /**
  * To not be used in an ApiManager instance as there is no account number attached to it
  */
@@ -65,6 +65,7 @@ export class ApiManager extends ApiManagerMethods {
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>};
   // * Perfect Forward Secrecy: temporary keys per DC, and per its media cluster
   private tempAuthKeys: {[dcIdAndCluster: string]: TempAuthKeys};
+  private droppedTempAuthKeys: boolean;
   private baseDcId: DcId;
 
   private afterMessageTempIds: {
@@ -317,6 +318,9 @@ export class ApiManager extends ApiManagerMethods {
       if(wasCleared) return;
       wasCleared = true;
 
+      // * a write still on its way would bring the data back after it is gone
+      await AccountController.whenUpdated(accountNumber);
+
       this.baseDcId = undefined;
       // * totalAccounts can be 0 somehow
       if(totalAccounts <= 1 && accountNumber === 1 && !migrateAccountTo) {
@@ -470,6 +474,10 @@ export class ApiManager extends ApiManagerMethods {
       };
     }
 
+    if(!Modes.pfs) {
+      this.dropTempAuthKeys();
+    }
+
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = AccountController
     .get(this.getAccountNumber())
@@ -571,8 +579,45 @@ export class ApiManager extends ApiManagerMethods {
         ...options,
         dcId,
         serverSalt: options.authKey.serverSalt
-      })
+      }),
+      load: async() => (await AccountController.get(this.getAccountNumber())).temp_auth_keys?.[key],
+      store: (stored) => this.storeTempAuthKey(key, stored)
     });
+  }
+
+  // * Kept in the account's data next to the permanent keys they are bound to: encrypted with them
+  // * under a passcode, and gone with them at log out
+  private storeTempAuthKey(key: string, stored: StoredTempAuthKey) {
+    AccountController.update(this.getAccountNumber(), (data) => {
+      // * nothing is written for an account that is logging out, nor while the accounts move to
+      // * other slots after a log out - this one may no longer be in its own
+      if(this.loggingOut || AccountController.shifting) {
+        return;
+      }
+
+      const keys = {...data.temp_auth_keys};
+      if(stored) {
+        keys[key] = stored;
+      } else {
+        delete keys[key];
+      }
+
+      return {temp_auth_keys: keys};
+    }).catch((err) => {
+      this.log.error('can\'t keep temporary auth key', err);
+    });
+  }
+
+  // * with PFS off (?noPfs=1) the kept keys have no use, and are not kept
+  private dropTempAuthKeys() {
+    if(this.droppedTempAuthKeys) {
+      return;
+    }
+
+    this.droppedTempAuthKeys = true;
+    AccountController.update(this.getAccountNumber(), (data) => {
+      return !this.loggingOut && !AccountController.shifting && data.temp_auth_keys ? {temp_auth_keys: undefined} : undefined;
+    }).catch(noop);
   }
 
   private changeNetworkerTransport(networker: MTPNetworker, transport?: MTTransport) {

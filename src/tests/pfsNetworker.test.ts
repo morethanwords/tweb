@@ -2,7 +2,8 @@ import '../lib/crypto/crypto.worker';
 import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 import MTPNetworker from '@lib/mtproto/networker';
 import {makeNetworker, makePermAuthKey} from './networkerHarness';
-import TempAuthKeys, {TEMP_AUTH_KEY_EXPIRES_IN} from '@lib/mtproto/tempAuthKeys';
+import TempAuthKeys, {StoredTempAuthKey, TEMP_AUTH_KEY_EXPIRES_IN, TempAuthKeysOptions} from '@lib/mtproto/tempAuthKeys';
+import bytesToHex from '@helpers/bytes/bytesToHex';
 import {MTAuthKey} from '@lib/mtproto/authKey';
 import {TimeManager} from '@lib/mtproto/timeManager';
 import {MessageKeyUtils} from '@lib/mtproto/messageKeyUtils';
@@ -23,7 +24,7 @@ async function makeTempAuthKey() {
   return authKey;
 }
 
-function makeTempAuthKeys(permAuthKey: MTAuthKey) {
+function makeTempAuthKeys(permAuthKey: MTAuthKey, options?: Partial<TempAuthKeysOptions>) {
   return new TempAuthKeys({
     permAuthKey,
     timeManager: new TimeManager(),
@@ -32,7 +33,8 @@ function makeTempAuthKeys(permAuthKey: MTAuthKey) {
       throw new Error('no network here');
     },
     authTemp: undefined,
-    createNetworker: undefined
+    createNetworker: undefined,
+    ...options
   });
 }
 
@@ -202,5 +204,71 @@ describe('TempAuthKeys', () => {
     expect(tempAuthKeys.isUsable(nextAuthKey)).toBe(false);
     expect(make).toHaveBeenCalledTimes(2);
     expect(tempAuthKeys.getAuthKey()).toBeUndefined();
+  });
+});
+
+// * A key kept between runs saves a cold start the handshake, the binding and the introduction
+describe('TempAuthKeys kept between runs', () => {
+  const keep = (authKey: MTAuthKey, permAuthKey: MTAuthKey, expiresAt = authKey.expiresAt): StoredTempAuthKey => ({
+    key: bytesToHex(authKey.key),
+    salt: bytesToHex(authKey.serverSalt),
+    expiresAt,
+    permKeyId: bytesToHex(permAuthKey.id)
+  });
+  const settle = (tempAuthKeys: TempAuthKeys) => vi.waitFor(() => expect((tempAuthKeys as any).making).toBeUndefined());
+
+  test('picks up the key an earlier run kept instead of making one', async() => {
+    const permAuthKey = await makePermAuthKey();
+    const kept = await makeTempAuthKey();
+    const store = vi.fn();
+    const tempAuthKeys = makeTempAuthKeys(permAuthKey, {load: async() => keep(kept, permAuthKey), store});
+    const makeOne = vi.spyOn(tempAuthKeys as any, 'makeOne');
+
+    expect(tempAuthKeys.getAuthKey()).toBeUndefined();
+    await settle(tempAuthKeys);
+    const authKey = tempAuthKeys.getAuthKey();
+    expect(bytesToHex(authKey.key)).toBe(bytesToHex(kept.key));
+    expect(bytesToHex(authKey.id)).toBe(bytesToHex(kept.id));
+    expect(bytesToHex(authKey.serverSalt)).toBe(bytesToHex(kept.serverSalt));
+    expect(authKey.expiresAt).toBe(kept.expiresAt);
+    expect(makeOne).not.toHaveBeenCalled();
+    expect(store).not.toHaveBeenCalled();
+  });
+
+  test('drops a kept key of another permanent key or about to expire, and keeps the fresh one', async() => {
+    const permAuthKey = await makePermAuthKey();
+    const otherPermAuthKey = await makePermAuthKey();
+    const kept = await makeTempAuthKey();
+    const fresh = await makeTempAuthKey();
+    for(const stored of [
+      keep(kept, otherPermAuthKey),
+      keep(kept, permAuthKey, tsNow(true) + 5 * 60)
+    ]) {
+      const store = vi.fn();
+      const tempAuthKeys = makeTempAuthKeys(permAuthKey, {load: async() => stored, store});
+      vi.spyOn(tempAuthKeys as any, 'makeOne').mockResolvedValue(fresh);
+
+      tempAuthKeys.getAuthKey();
+      await settle(tempAuthKeys);
+      expect(tempAuthKeys.getAuthKey()).toBe(fresh);
+      expect(store.mock.calls).toEqual([[undefined], [keep(fresh, permAuthKey)]]);
+    }
+  });
+
+  test('forgets the kept key once the server has forgotten it', async() => {
+    const permAuthKey = await makePermAuthKey();
+    const store = vi.fn();
+    const tempAuthKeys = makeTempAuthKeys(permAuthKey, {load: async() => undefined, store});
+    const first = await makeTempAuthKey();
+    const second = await makeTempAuthKey();
+    vi.spyOn(tempAuthKeys as any, 'makeOne').mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    tempAuthKeys.getAuthKey();
+    await settle(tempAuthKeys);
+    tempAuthKeys.invalidate(first);
+    await settle(tempAuthKeys);
+
+    expect(store.mock.calls).toEqual([[keep(first, permAuthKey)], [undefined], [keep(second, permAuthKey)]]);
+    expect(tempAuthKeys.getAuthKey()).toBe(second);
   });
 });

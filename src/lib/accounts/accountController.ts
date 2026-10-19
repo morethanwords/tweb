@@ -11,8 +11,19 @@ import {AccountSessionData, ActiveAccountNumber} from '@lib/accounts/types';
 import {MAX_ACCOUNTS} from '@lib/accounts/constants';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import randomize from '@helpers/array/randomize';
+import noop from '@helpers/noop';
+
+type AccountDataChanges = Partial<AccountSessionData> | ((data: AccountSessionData) => Partial<AccountSessionData> | undefined);
 
 export class AccountController extends StaticUtilityClass {
+  // * the write in progress of each account: every update reads the whole data, merges and writes it
+  // * back, so two at once would lose one of them
+  private static updates: Map<ActiveAccountNumber, Promise<unknown>> = new Map();
+  // * Set once the slots start moving after a log out, and never cleared: the worker is terminated
+  // * right after, and until then every live writer still holds its old account number. A write that
+  // * can be skipped (the temporary auth keys) checks it and writes nothing
+  public static shifting: boolean;
+
   static async getTotalAccounts() {
     const promises = ([1, 2, 3, 4] as const).map((accountNumber) => this.get(accountNumber));
     const allAccountsData = await Promise.all(promises);
@@ -69,8 +80,31 @@ export class AccountController extends StaticUtilityClass {
     return false;
   }
 
-  static async update(accountNumber: ActiveAccountNumber, data: Partial<AccountSessionData>, overrideAll = false) {
+  /**
+   * One at a time per account. `changes` can be a function of the data as it is at that moment, and
+   * can return `undefined` to write nothing
+   */
+  static update(accountNumber: ActiveAccountNumber, changes: AccountDataChanges, overrideAll = false) {
+    const promise = (this.updates.get(accountNumber) || Promise.resolve())
+    .catch(noop)
+    .then(() => this.write(accountNumber, changes, overrideAll));
+    this.updates.set(accountNumber, promise);
+    return promise;
+  }
+
+  /**
+   * Settles once the updates of the account asked for so far are written
+   */
+  static async whenUpdated(accountNumber: ActiveAccountNumber) {
+    await this.updates.get(accountNumber)?.catch(noop);
+  }
+
+  private static async write(accountNumber: ActiveAccountNumber, changes: AccountDataChanges, overrideAll: boolean) {
     const prevData = await this.get(accountNumber, true);
+    const data = typeof(changes) === 'function' ? changes(prevData) : changes;
+    if(!data) {
+      return prevData;
+    }
 
     const updatedData = {
       ...(overrideAll ? {} : prevData),
@@ -101,6 +135,15 @@ export class AccountController extends StaticUtilityClass {
    * @param upTo Account to delete basically
    */
   static async shiftAccounts(upTo: ActiveAccountNumber) {
+    this.shifting = true;
+    // * what is already on its way to any of the moving slots lands first, then they move
+    const slots: ActiveAccountNumber[] = [];
+    for(let i = upTo; i <= MAX_ACCOUNTS; i++) {
+      slots.push(i as ActiveAccountNumber);
+    }
+
+    await Promise.all(slots.map((accountNumber) => this.whenUpdated(accountNumber)));
+
     for(let i = upTo; i <= MAX_ACCOUNTS; i++) {
       await sessionStorage.delete(`account${i as ActiveAccountNumber}`);
       if(i < MAX_ACCOUNTS) {

@@ -2,7 +2,8 @@ import type {logger} from '@lib/logger';
 import type {TimeManager} from '@lib/mtproto/timeManager';
 import type MTPNetworker from '@lib/mtproto/networker';
 import type MTTransport from '@lib/mtproto/transports/transport';
-import type {MTAuthKey} from '@lib/mtproto/authKey';
+import {MTAuthKey} from '@lib/mtproto/authKey';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import makeError from '@helpers/makeError';
 import pause from '@helpers/schedulers/pause';
@@ -13,6 +14,20 @@ export const TEMP_AUTH_KEY_EXPIRES_IN = 86400;
 // * making, binding and introducing a key, all over one connection
 const MAKE_TIMEOUT = 30000;
 const MAX_RETRY_DELAY = 16000;
+// * a kept key with less than this left is not worth picking up: a fresh one is made instead
+const RESTORE_MIN_LIFETIME = 10 * 60;
+
+// * What is kept of a temporary key between runs, next to the permanent key it is bound to: the
+// * handshake, the binding and the introduction cost a cold start ~1.4 s otherwise. It weakens
+// * forward secrecy for the key's own lifetime only, and only for someone who both recorded the
+// * traffic inside TLS and later took the stored permanent key as well - the server side, whose
+// * long-lived keys PFS is mostly about, is untouched.
+export type StoredTempAuthKey = {
+  key: string, // hex
+  salt: string, // hex
+  expiresAt: number,
+  permKeyId: string // hex - the permanent key it is bound to
+};
 
 export type TempAuthKeysOptions = {
   permAuthKey: MTAuthKey,
@@ -22,7 +37,10 @@ export type TempAuthKeysOptions = {
   createTransport: () => MTTransport,
   authTemp: (transport: MTTransport, expiresIn: number) => Promise<{authKey?: MTAuthKey, serverSalt?: Uint8Array}>,
   // * a networker for one job, out of the pool: no status, no updates
-  createNetworker: (options: {authKey: MTAuthKey, permAuthKey: MTAuthKey}) => MTPNetworker
+  createNetworker: (options: {authKey: MTAuthKey, permAuthKey: MTAuthKey}) => MTPNetworker,
+  // * the key kept from an earlier run, and keeping the current one (`undefined` drops it)
+  load?: () => Promise<StoredTempAuthKey>,
+  store?: (stored: StoredTempAuthKey) => void
 };
 
 /**
@@ -34,13 +52,15 @@ export type TempAuthKeysOptions = {
  * initConnection over a connection and a session of its own, so networkers
  * only ever see ready keys. A new one is made once the current one expires or
  * the server forgets it (-404) or its binding (AUTH_KEY_PERM_EMPTY), and the
- * networkers move to it. Temporary keys live in memory only.
+ * networkers move to it. The current key is kept (see StoredTempAuthKey) and
+ * picked up again by the next run while it lasts.
  */
 export default class TempAuthKeys {
   private authKey: MTAuthKey;
   private making: Promise<void>;
   private networkers: Set<MTPNetworker> = new Set();
   private failures = 0;
+  private restored: boolean;
   private log: ReturnType<typeof logger>;
 
   constructor(private options: TempAuthKeysOptions) {
@@ -84,18 +104,64 @@ export default class TempAuthKeys {
 
     this.log.warn('temporary auth key is gone', bytesToHex(authKey.id));
     authKey.invalid = true;
+    if(authKey === this.authKey) {
+      this.options.store?.(undefined);
+    }
+
     this.getAuthKey();
   }
 
+  private adopt(authKey: MTAuthKey) {
+    this.authKey = authKey;
+    this.log('temporary auth key is ready', bytesToHex(authKey.id), authKey.expiresAt);
+    // * the waiting networkers go on over it
+    this.networkers.forEach((networker) => networker.scheduleRequest());
+  }
+
+  // * The key an earlier run kept, if it is still bound to this permanent key and lasts a while
+  private async restore() {
+    try {
+      const stored = await this.options.load?.();
+      if(!stored) {
+        return;
+      }
+
+      const lifetime = stored.expiresAt - this.options.timeManager.getServerTime();
+      if(stored.permKeyId !== bytesToHex(this.options.permAuthKey.id) || lifetime < RESTORE_MIN_LIFETIME) {
+        this.options.store?.(undefined);
+        return;
+      }
+
+      const authKey = await MTAuthKey.fromKey(bytesFromHex(stored.key));
+      authKey.expiresAt = stored.expiresAt;
+      authKey.serverSalt = bytesFromHex(stored.salt);
+      return authKey;
+    } catch(err) {
+      this.log.error('can\'t restore temporary auth key', err);
+    }
+  }
+
   private async make() {
+    if(!this.restored) {
+      this.restored = true;
+      const authKey = await this.restore();
+      if(authKey) {
+        this.adopt(authKey);
+        return;
+      }
+    }
+
     for(;;) {
       try {
         const authKey = await this.makeOne();
         this.failures = 0;
-        this.authKey = authKey;
-        this.log('temporary auth key is ready', bytesToHex(authKey.id), authKey.expiresAt);
-        // * the waiting networkers go on over it
-        this.networkers.forEach((networker) => networker.scheduleRequest());
+        this.adopt(authKey);
+        this.options.store?.({
+          key: bytesToHex(authKey.key),
+          salt: bytesToHex(authKey.serverSalt),
+          expiresAt: authKey.expiresAt,
+          permKeyId: bytesToHex(this.options.permAuthKey.id)
+        });
         return;
       } catch(err) {
         const delay = Math.min(MAX_RETRY_DELAY, 1000 * 2 ** this.failures++);
