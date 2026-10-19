@@ -242,3 +242,19 @@ test('premium/business keeps its content after scrolling to the bottom', async({
   // The header only fades in once scrolled past 100px — proof the handler ran at all.
   await expect(tab.locator('.popup-header')).toHaveClass(/\bis-visible\b/);
 });
+
+/**
+ * A message read in a group but not reacted to has one list, its readers'. The popup picks its first
+ * list before the close button joins the strip of lists, and counted from the strip that button took
+ * the only list for itself: the readers' tab was never chosen and the popup showed an empty sheet.
+ */
+test('reactedList/read shows who read the message', async({page}) => {
+  await page.goto('/?popups=1');
+  await page.waitForFunction(() => !!window.popupSandbox, null, {timeout: 30_000});
+  await page.evaluate(() => window.popupSandbox.ready());
+  await page.evaluate(() => window.popupSandbox.open('reactedList/read'));
+
+  const rows = page.locator('.popup-reacted-list .tabs-tab.active .chatlist-chat');
+  await expect(rows).toHaveCount(2, {timeout: SHOWN_TIMEOUT});
+  await expect(rows.first()).toBeVisible();
+});

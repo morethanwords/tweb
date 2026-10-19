@@ -1,10 +1,12 @@
-import {expect} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
 import {test} from './workerContext';
 import type {CreateLinkPopupResult} from '@components/popups/createLink';
+import type {RichMediaComposerHarness} from './fixtures/richMediaComposer';
 
 declare global {
   interface Window {
-    linkPickerResult: {text: string, url: string} | 'cancelled' | undefined
+    linkPickerResult: {text: string, url: string} | 'cancelled' | undefined,
+    richMediaComposerHarness: RichMediaComposerHarness
   }
 }
 
@@ -227,4 +229,68 @@ test('the selection tooltip stands over the text of a Select All, not over the b
     // placed (it is kept within the field), then over the text
     return box.x >= text.field - 1 && box.x <= center && center <= box.x + box.width;
   }).toBe(true);
+});
+
+const mountFoldedComposer = async(page: Page, sendsRich: boolean) => {
+  await page.goto('/?popups=1');
+  await page.waitForFunction(() => !!window.popupSandbox);
+  await page.evaluate(() => window.popupSandbox.ready());
+  await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
+  await page.evaluate(async(sendsRich) => {
+    const path = '/e2e/fixtures/richMediaComposer.ts';
+    const {mountRichMediaComposerHarness} = await import(/* @vite-ignore */ path);
+    const harness = window.richMediaComposerHarness = mountRichMediaComposerHarness({sendsRich});
+    await harness.ready();
+    harness.setExpanded(false);
+  }, sendsRich);
+  return page.locator('.input-message-input');
+};
+
+// Without Premium a rich message would not go out as it is, and the folded field is a plain one: what is
+// typed there is the message as it will be sent. The expanded editor is where a rich one is written, and
+// what was written there stays rich when the field folds, until it is gone.
+test('without Premium the folded field types a list as text, the expanded editor makes one', async({page}) => {
+  const input = await mountFoldedComposer(page, false);
+  const tooltip = page.locator('.markup-tooltip');
+
+  await input.click();
+  await page.keyboard.type('1. one');
+  await expect(input).toHaveText('1. one');
+  await expect(input.locator('ol')).toHaveCount(0);
+  // nor does the folded field offer formatting only a rich message carries
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip.getByRole('button', {name: 'Bold', exact: true})).toBeVisible();
+  await expect(tooltip.getByRole('button', {name: 'Highlight', exact: true})).toHaveCount(0);
+
+  await page.evaluate(() => {
+    window.richMediaComposerHarness.setText('');
+    window.richMediaComposerHarness.setExpanded(true);
+  });
+  await input.click();
+  await page.keyboard.type('1. one');
+  await expect(input.locator('ol')).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(tooltip.getByRole('button', {name: 'Highlight', exact: true})).toBeVisible();
+
+  await page.evaluate(() => window.richMediaComposerHarness.setExpanded(false));
+  await expect(input.locator('ol')).toHaveCount(1);
+  await expect(input).toHaveAttribute('data-chat-input-editor-mode', 'rich');
+
+  // sent (the field let go of and folded): plain again
+  await page.evaluate(() => {
+    window.richMediaComposerHarness.setText('');
+    window.richMediaComposerHarness.setExpanded(false);
+  });
+  await input.click();
+  await page.keyboard.type('- two');
+  await expect(input).toHaveText('- two');
+  await expect(input.locator('ul')).toHaveCount(0);
+});
+
+test('with Premium the folded field makes a list of a typed `1. `', async({page}) => {
+  const input = await mountFoldedComposer(page, true);
+  await input.click();
+  await page.keyboard.type('1. one');
+  await expect(input.locator('ol')).toHaveCount(1);
 });

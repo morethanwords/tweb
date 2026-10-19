@@ -55,6 +55,36 @@ defineStories('Chat & moderation', [
     }
   },
   {
+    id: 'reactedList/read',
+    title: 'Who read — no reactions',
+    managers: (ctx) => {
+      const readers = [ctx.peer('private'), ctx.peer('bot')];
+      return {
+        appMessagesManager: {
+          getGroupsFirstMessage: (message: unknown) => message,
+          canViewMessageReadParticipants: () => true,
+          getMessageReadParticipants: () => readers.map((peerId, idx) => ({
+            _: 'readParticipantDate',
+            user_id: peerId.toUserId(),
+            date: NOW - 60 * (idx + 1)
+          })),
+          getMessageReactionsListAndReadParticipants: () => ({
+            reactions: [],
+            readParticipantDates: [],
+            combined: readers.map((peerId, idx) => ({peerId, date: NOW - 60 * (idx + 1)}))
+          })
+        },
+        appReactionsManager: {
+          canDeleteParticipantReactions: () => false
+        }
+      };
+    },
+    open: async(ctx) => {
+      const {default: showReactedListPopup} = await import('@components/popups/reactedList');
+      showReactedListPopup(ctx.message('private'));
+    }
+  },
+  {
     id: 'deleteMegagroupMessages',
     title: 'Delete & ban — supergroup',
     open: async(ctx) => {

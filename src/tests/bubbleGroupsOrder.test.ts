@@ -86,6 +86,8 @@ function makeChat(type = ChatType.Chat) {
   document.body.append(root);
   const middlewareHelper = getMiddleware();
   const dateContainers = new Map<number, {container: HTMLElement, groupsLength: number}>();
+  /** the server ids the sends took, by temporary id (`message_sent`) */
+  const changedMids = new Map<number, number>();
   const chat: any = {
     type,
     peerId: PEER_ID,
@@ -109,7 +111,8 @@ function makeChat(type = ChatType.Chat) {
 
         return dateContainer;
       },
-      deleteEmptyDateGroups: () => {}
+      deleteEmptyDateGroups: () => {},
+      changedMids
     },
     selection: {isSelecting: false},
     getMessageByPeer: (_: PeerId, mid: number) => mirror.get(mid)
@@ -124,7 +127,7 @@ function makeChat(type = ChatType.Chat) {
   const harness = Object.assign(Object.create(ChatBubbles.prototype), {
     chat,
     bubbles: registry,
-    changedMids: new Map<number, number>(),
+    changedMids,
     bubbleGroups,
     bubblesToReplace,
     isAvatarNeeded: () => false,
@@ -361,6 +364,105 @@ describe('a send the server confirms', () => {
 
     expect(chat.order()).toEqual(['x', 't1', 't2', 'f']);
     expect(chat.groups()).toEqual([['x'], ['t1', 't2'], ['f']]);
+    chat.expectConsistent();
+  });
+
+  test('puts a send whose bubble comes in after an earlier send was confirmed behind that one', async() => {
+    const chat = makeChat();
+    chat.render(incoming('x', 100, T));
+    const a = sending('a', 100.0001, T + 10);
+    const b = sending('b', 100.0002, T + 11);
+    const c = sending('c', 100.0003, T + 12);
+    await chat.batch(chat.startRendering(a));
+
+    // sent in a burst: the server takes `a` before the bubbles of `b` and `c` are in
+    chat.sent(a, 102);
+    chat.update(confirmed(a, 102));
+    await chat.batch(chat.startRendering(b));
+    expect(chat.order()).toEqual(['x', 'a', 'b']);
+    chat.render(incoming('i', 101, T + 9));
+    expect(chat.order()).toEqual(['x', 'i', 'a', 'b']);
+    await chat.batch(chat.startRendering(c));
+
+    expect(chat.order()).toEqual(['x', 'i', 'a', 'b', 'c']);
+    expect(chat.groups()).toEqual([['x', 'i'], ['a', 'b', 'c']]);
+    chat.expectConsistent();
+
+    chat.sent(c, 103);
+    chat.update(confirmed(c, 103));
+    expect(chat.order()).toEqual(['x', 'i', 'a', 'b', 'c']);
+    chat.sent(b, 104);
+    chat.update(confirmed(b, 104));
+
+    // `b` takes an id past `c`'s, and moves behind it then, as it would have with its bubble in all along
+    expect(chat.order()).toEqual(['x', 'i', 'a', 'c', 'b']);
+    chat.expectConsistent();
+  });
+
+  test('puts a late bubble behind an earlier send the server took before its own bubble came in', async() => {
+    const chat = makeChat();
+    chat.render(incoming('x', 100, T));
+    const a = sending('a', 100.0001, T + 10);
+    const b = sending('b', 100.0002, T + 11);
+    const queue = chat.startRendering(a);
+    chat.sent(a, 101);
+    await chat.batch(queue);
+    chat.update(confirmed(a, 101));
+    chat.render(incoming('i', 102, T + 12));
+    await chat.batch(chat.startRendering(b));
+
+    expect(chat.order()).toEqual(['x', 'a', 'b', 'i']);
+    chat.expectConsistent();
+  });
+
+  test('keeps late bubbles in the order they were sent, whichever comes in first', async() => {
+    const chat = makeChat();
+    chat.render(incoming('x', 100, T));
+    const a = sending('a', 100.0001, T + 10);
+    const [b, c, d, e] = [100.0002, 100.0003, 100.0004, 100.0005].map((mid, idx) => sending('bcde'[idx], mid, T + 11 + idx));
+    await chat.batch(chat.startRendering(a));
+    await chat.batch(chat.startRendering(b));
+    chat.sent(a, 102);
+    chat.update(confirmed(a, 102));
+    expect(chat.order()).toEqual(['x', 'a', 'b']);
+
+    // * an upload's bubble comes in after the texts sent behind it
+    await chat.batch(chat.startRendering(e));
+    await chat.batch(chat.startRendering(c));
+    await chat.batch(chat.startRendering(d));
+
+    expect(chat.order()).toEqual(['x', 'a', 'b', 'c', 'd', 'e']);
+    chat.expectConsistent();
+  });
+
+  test('puts a send made after the earlier ones were moved behind a confirmed one after them', async() => {
+    const chat = makeChat();
+    chat.render(incoming('x', 100, T));
+    const a = sending('a', 100.0001, T + 10);
+    const b = sending('b', 100.0002, T + 11);
+    chat.render(a);
+    chat.render(b);
+    chat.sent(a, 101);
+    chat.update(confirmed(a, 101));
+
+    // * the next temporary id is a step past the server id `a` took
+    chat.render(sending('c', 101.0001, T + 12));
+
+    expect(chat.order()).toEqual(['x', 'a', 'b', 'c']);
+    chat.expectConsistent();
+  });
+
+  test('leaves a long upload rendered late above the messages sent after it', async() => {
+    const chat = makeChat();
+    chat.render(incoming('x', 100, T));
+    const f = sending('f', 100.0001, T + 1);
+    const t1 = sending('t1', 100.0002, T + 5);
+    await chat.batch(chat.startRendering(t1));
+    chat.sent(t1, 101);
+    chat.update(confirmed(t1, 101));
+    await chat.batch(chat.startRendering(f));
+
+    expect(chat.order()).toEqual(['x', 'f', 't1']);
     chat.expectConsistent();
   });
 

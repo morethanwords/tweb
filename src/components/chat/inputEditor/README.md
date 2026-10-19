@@ -160,10 +160,14 @@ from becoming a link while still admitting the relative hrefs upstream allowed;
   authored quotes, offsets and history.
 - A list is rich-only, as in the official clients: entities have no list, and
   what the field shows as one must not leave as `1. ` text. The typed marker
-  still makes one in the collapsed field. The other way round, Telegram text
-  never becomes a list — a plain draft or a plain message being edited keeps
-  its `1. ` lines as text, and so does every plain field. A rich list sent
-  without formatting is written out with the same markers.
+  still makes one in the collapsed field where a rich message goes out as it
+  is; without Premium (`rich_message_posting` `premium`) the collapsed field
+  runs on the plain schema, as a caption does, and only the expanded editor —
+  or a rich draft already in the field — makes lists and the formatting only a
+  rich message carries (`RichMessageInput`'s `canSendRich`). The other way
+  round, Telegram text never becomes a list — a plain draft or a plain message
+  being edited keeps its `1. ` lines as text, and so does every plain field. A
+  rich list sent without formatting is written out with the same markers.
 - Tables have an explicit title/wrapper and preserve rectangular selections.
   Block movement respects container schemas and list numbering. A compact
   table is the table's `compact` attribute, sent as `pageBlockTable.compact`.

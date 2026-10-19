@@ -10,10 +10,11 @@ import {ensureMediaPlayback} from './mediaPlayback';
 
 /**
  * The complete field mounts without ChatInput. Only transport is replaced. `premiumRequired` shows
- * the premium stars on what a rich message alone can carry; `inChat` puts the field where the chat
- * keeps it, in the composer's rows, whose rules size every button in them.
+ * the premium stars on what a rich message alone can carry; `sendsRich: false` is a rich message that
+ * would not go out as it is (no Premium), which leaves the folded field a plain one; `inChat` puts the
+ * field where the chat keeps it, in the composer's rows, whose rules size every button in them.
  */
-export function mountRichMediaComposerHarness({premiumRequired = false, inChat = false} = {}) {
+export function mountRichMediaComposerHarness({premiumRequired = false, sendsRich = true, inChat = false} = {}) {
   const managers = createMockManagers();
   const requests: Array<ReturnType<typeof deferredPromise<ChatInputRichMedia>>> = [];
   // whether each upload was asked for as a file block, and under what name
@@ -50,6 +51,7 @@ export function mountRichMediaComposerHarness({premiumRequired = false, inChat =
     return RichMessageInput({
       captureContext: () => () => active,
       getPremiumRequired: async() => premiumRequired,
+      canSendRich: async() => sendsRich,
       onSubmit: () => {++sends;},
       media: {
         capture: () => ({
@@ -124,6 +126,8 @@ export function mountRichMediaComposerHarness({premiumRequired = false, inChat =
       field.editor.setDocument(document);
     },
     setExpanded: (expanded: boolean) => field.setExpanded(expanded),
+    /** Settled on the schema the capabilities call for (`richReady`). */
+    ready: () => field.richReady,
     /** Files put in where the caret is, as the attach menu's File does with `asFile`. */
     insertFiles: (files: File[], asFile?: boolean) => {
       field.editor.focusAtEnd(false);

@@ -45,6 +45,7 @@ function setup({canWriteRich = true} = {}) {
     richMessageInput: {
       editor,
       canWriteRich,
+      prepareForRichMessage() {},
       field: {input, syncFromInput() {}, setValueSilently: (value: string | Node) => host.richMessageInput.editor.setContent(value)}
     },
     inputValueGeneration: 0,

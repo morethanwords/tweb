@@ -332,9 +332,10 @@ export default async function showReactedListPopup(message$: Message.message, in
 
 
   const selectTab = horizontalMenu(reactionsElement, tabsContainer, (id, tabContent) => {
-    if(Modes.a11y ?
-      id >= tabsContainer.childElementCount :
-      id >= (reactionsElement.childElementCount - (reactionsElement.customEmojiRenderer ? 2 : 1))) {
+    // a tab per list: what the strip holds after them (the emoji renderer, the close button once
+    // mounted) is no tab. Counted from the strip instead, the first selection — made before the
+    // close button is in — took the only tab, the readers' one, for the button and showed nothing
+    if(id >= tabsContainer.childElementCount) {
       return false;
     }
 

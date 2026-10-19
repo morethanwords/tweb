@@ -928,7 +928,8 @@ export default class ChatBubbles {
 
   private batchingModifying: Array<() => void>;
 
-  private changedMids: Map<number, number>; // used when message is sent faster than temporary one was rendered
+  /** a send's temporary id → its server id; used when message is sent faster than temporary one was rendered */
+  public changedMids: Map<number, number>;
 
   private peerSettings: PeerSettings;
 
@@ -6081,6 +6082,12 @@ export default class ChatBubbles {
         bubble = this.getFirstUnreadBubble(readMaxId) || bubble;
       }
 
+      // * only a list on screen is scrolled to: a jump this one took over from may have rendered the
+      // * target into its own list, which nothing mounts now — that one is built again below
+      if(bubble && !bubble.isConnected) {
+        bubble = undefined;
+      }
+
       if(bubble) {
         if(followingUnread) {
           this.scrollToBubble(bubble, 'start');
@@ -6365,10 +6372,15 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
       // });
 
+      // a flow the next one has taken over (`setPeerTempId`, a jump made while this one still loads)
+      // ends in PEER_CHANGED_ERROR: what waits for it here checks `middleware()` instead, rather than
+      // leave a rejection nobody handles
       const afterSetPromise = Promise.all([
         setPeerPromise,
         getHeavyAnimationPromise()
-      ]);
+      ]).catch((err) => {
+        if(middleware()) throw err;
+      });
 
       // if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition?.mids) {
@@ -6425,6 +6437,7 @@ export default class ChatBubbles {
 
         if(isTarget && !foundTarget) {
           afterSetPromise.then(() => {
+            if(!middleware()) return;
             toastNew({langPackKey: 'MessageNotFound'});
           });
         }
@@ -6486,6 +6499,7 @@ export default class ChatBubbles {
           savedPosition
         })
       ]).then(() => {
+        if(!middleware()) return;
         log('scrolledAllDown:', scrollable.loadedAll.bottom);
         if(scrollable.loadedAll.bottom && topMessageFullMid !== EMPTY_FULL_MID && !this.unreaded.size) {
           this.onScrolledAllDown();
@@ -7983,8 +7997,10 @@ export default class ChatBubbles {
       // body's first layout is its bubble arriving, and whoever rendered it owns the scroll:
       // renderNewMessage animates to the end, and a jump from here lands first and leaves that
       // animation nothing to do, so every message of a burst snapped instead of gliding. Nor
-      // does it cut into a smooth scroll that is already on its way.
-      if(!grew || getAnimationInstance(container)) return;
+      // does it cut into a smooth scroll that is already on its way, or about to start: in a
+      // burst an earlier body lays out again (its send confirmed) while the next bubble is
+      // still rendering, or waits a frame for its scroll.
+      if(!grew || getAnimationInstance(container) || this.renderNewPromises.size || this.scrollingToBubble) return;
       if(!this.scrolledDown || Date.now() < this.streamFollowInvalidatedUntil) return;
       if(container.scrollTop + container.clientHeight > container.scrollHeight - 120) {
         container.scrollTop = container.scrollHeight;
@@ -12993,6 +13009,13 @@ export default class ChatBubbles {
       return;
     }
 
+    // a jump in flight shows the old list until the new one is built: slicing that old one forgets the
+    // new one's history load (`getHistoryTopPromise`), whose render then gives up — the jump went
+    // nowhere, as a search result clicked a few seconds after a scroll did
+    if(this.chat.setPeerPromise) {
+      return;
+    }
+
     // const scrollSaver = new ScrollSaver(this.scrollable, true);
     // scrollSaver.save();
     const slice = this.getViewportSlice(true);
@@ -13319,7 +13342,7 @@ export default class ChatBubbles {
 
         // this.scrollable.onScroll();
       }
-    });
+    }, noop); // * a load taken over by the next one ends in PEER_CHANGED_ERROR, which its owner handles
 
     return result;
   }

@@ -111,6 +111,12 @@ export default class Chat extends EventListenerBase<{
 
   public setPeerPromise: Promise<void>;
   private setPeerPromiseStartedAt: number;
+  /** the change in flight opens the chat, not only moves in it */
+  private setPeerPromiseOpens: boolean;
+  /** the change in flight builds the list for a new search (`sameSearch` off) */
+  private setPeerPromiseChangesSearch: boolean;
+  /** where in the chat to go once it has opened, asked for while it was opening */
+  private jumpAfterOpening: ChatSetPeerOptions;
   public peerChanged: boolean;
 
   public log: ReturnType<typeof logger>;
@@ -1050,6 +1056,7 @@ export default class Chat extends EventListenerBase<{
     }
 
     const samePeer = this.appImManager.isSamePeer(this, options);
+    let takesOverSearchChange = false;
     if(!samePeer) {
       this.appImManager.dispatchEvent('peer_changing', this);
       this.peerIdSignal[1](this.peerId = peerId || NULL_PEER_ID);
@@ -1082,8 +1089,34 @@ export default class Chat extends EventListenerBase<{
       // chat can never be opened again for the lifetime of the tab. Past the deadline, fall through
       // and start a fresh change — `bubbles.setPeer` bumps `setPeerTempId`, which invalidates the
       // abandoned flow.
-      return;
+      //
+      // Going somewhere in the chat (a message, a search) is no duplicate, though: dropped, the next
+      // search result clicked while the last jump still waited for its media went nowhere. It takes
+      // over from a jump on its way the same way; the opening of the chat it waits out, which has
+      // more to finish than the scroll (`finishPeerChange`).
+      const isJump = options.lastMsgId !== undefined || CHAT_SEARCH_KEYS.some((key) => options.hasOwnProperty(key));
+      if(!isJump) {
+        return;
+      }
+
+      if(this.setPeerPromiseOpens) {
+        const jump = this.jumpAfterOpening = options;
+        this.setPeerPromise.then(() => {
+          if(this.jumpAfterOpening !== jump) return;
+          this.jumpAfterOpening = undefined;
+          if(this.appImManager.isSamePeer(this, options)) {
+            this.setPeer(options);
+          }
+        });
+        return;
+      }
+
+      // a jump on its way that was building the list for a new search (a reaction filter, say) hands
+      // that over too: the chat holds the new search already, and its list is still to be built
+      takesOverSearchChange = this.setPeerPromiseChangesSearch;
     }
+
+    this.jumpAfterOpening = undefined;
 
     this.staticMessages = messages || [];
 
@@ -1115,7 +1148,7 @@ export default class Chat extends EventListenerBase<{
 
     this.peerChanged = samePeer;
 
-    let sameSearch = true;
+    let sameSearch = !takesOverSearchChange;
     if(!samePeer || CHAT_SEARCH_KEYS.some((key) => options.hasOwnProperty(key))) {
       CHAT_SEARCH_KEYS.forEach((key) => {
         // @ts-ignore
@@ -1148,6 +1181,8 @@ export default class Chat extends EventListenerBase<{
 
     const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameSearch});
     this.setPeerPromiseStartedAt = Date.now();
+    this.setPeerPromiseOpens = !samePeer;
+    this.setPeerPromiseChangesSearch = !sameSearch;
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
       return result.promise;
     }).catch(noop).finally(() => {

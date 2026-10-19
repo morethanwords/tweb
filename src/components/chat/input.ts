@@ -346,6 +346,8 @@ export default class ChatInput {
       },
       // as Android has it: where the server turned rich messages off, the field is a plain one
       canWriteRich: async() => (await this.managers.appMessagesManager.getRichMessagePostingState()).available,
+      // without Premium the folded field is a plain one: no lists from `1. `, no Premium formatting
+      canSendRich: async() => (await this.managers.appMessagesManager.getRichMessagePostingState()).allowed,
       subscribeCapabilities: (update) => {
         rootScope.addEventListener('premium_toggle', update);
         rootScope.addEventListener('app_config', update);
@@ -4584,6 +4586,9 @@ export default class ChatInput {
       this.messageInputField.setValueSilently(clearValue);
     }
 
+    // a folded field that held a rich message is a plain one again without Premium, the next chat's too
+    this.richMessageInput?.syncEditorSchema();
+
     this.setEffect();
 
     let set = false;
@@ -5904,6 +5909,7 @@ export default class ChatInput {
         toastNew({langPackKey: 'RichMessage.Error.UnsupportedContent'});
         return false;
       }
+      this.richMessageInput?.prepareForRichMessage();
       richMessageSet = this.messageInputEditor.setRichMessage(richMessage);
       if(!richMessageSet) {
         toastNew({langPackKey: 'RichMessage.Error.UnsupportedContent'});

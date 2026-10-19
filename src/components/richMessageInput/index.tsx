@@ -41,6 +41,13 @@ export type RichMessageInputOptions = Pick<EditorToolbarOptions, 'canInsertMap' 
    * rich message carries is written out as text (`richMessageToPlainMessage`).
    */
   canWriteRich?: () => Promise<boolean>,
+  /**
+   * Whether a rich message goes out as it is — not only for Premium; checked again on every
+   * `subscribeCapabilities` update. Where not, the COLLAPSED field is a plain one too: no list from
+   * a typed `1. `, no formatting a plain message cannot carry. The expanded editor stays the place to
+   * write a rich message, and a field already holding one keeps it.
+   */
+  canSendRich?: () => Promise<boolean>,
   /** Optional outer element whose height participates in the application's layout. */
   layoutElement?: HTMLElement,
   tabIndex?: number,
@@ -82,6 +89,7 @@ export class RichMessageInputController {
   /** Settles once the first answer on rich text is in and the editor runs on the schema it calls for. */
   public readonly richReady: Promise<void>;
   private richAvailable = true;
+  private richSendable = true;
   private richAvailableGeneration = 0;
   // a rich message being edited is edited as one, wherever rich text may not be written anew
   private richRequired = false;
@@ -175,8 +183,9 @@ export class RichMessageInputController {
     this.listenerSetter.add(mediaSizes)('resize', () => this.syncHeight());
     this.syncHeight();
     this.setExpanded(false);
-    this.richReady = options.canWriteRich ? this.updateRichAvailable() : Promise.resolve();
-    if(options.canWriteRich) {
+    const followsCapabilities = !!(options.canWriteRich || options.canSendRich);
+    this.richReady = followsCapabilities ? this.updateRichAvailable() : Promise.resolve();
+    if(followsCapabilities) {
       const unsubscribe = options.subscribeCapabilities?.(() => void this.updateRichAvailable());
       if(unsubscribe) this.middlewareHelper.onDestroy(unsubscribe);
     }
@@ -428,7 +437,7 @@ export class RichMessageInputController {
     }
   }
 
-  public get expandable() {return !!this.expandButton && !this.shouldBePlain;}
+  public get expandable() {return !!this.expandButton && !this.plainOnly;}
   public get canWriteRich() {return this.richAvailable;}
 
   /**
@@ -448,14 +457,18 @@ export class RichMessageInputController {
   // and the field turns plain
   private async updateRichAvailable() {
     const generation = ++this.richAvailableGeneration;
-    let available: boolean;
+    let available: boolean, sendable: boolean;
     try {
-      available = await this.options.canWriteRich();
+      [available, sendable] = await Promise.all([
+        this.options.canWriteRich?.() ?? true,
+        this.options.canSendRich?.() ?? true
+      ]);
     } catch{
       return;
     }
     if(this.destroyed || generation !== this.richAvailableGeneration) return;
     this.richAvailable = available;
+    this.richSendable = sendable;
     this.syncRichState();
   }
 
@@ -470,16 +483,32 @@ export class RichMessageInputController {
     this.options.onInput?.(event);
   }
 
-  private get shouldBePlain() {return !this.richAvailable && !this.richRequired;}
+  /** No rich text may be written at all: the field is a plain message's, expanded editor and all. */
+  private get plainOnly() {return !this.richAvailable && !this.richRequired;}
+
+  /**
+   * The field runs on a plain message's schema where rich text may not be written, and also while it is
+   * collapsed where a rich message would not go out as it is (`canSendRich`) — unless it holds one
+   * already (a draft, what was written expanded), which it keeps until it is folded or sent.
+   */
+  private get shouldBePlain() {
+    return this.plainOnly || (
+      !this.richSendable &&
+      !this.richRequired &&
+      !this.expanded &&
+      this.editor?.getMode() !== 'rich'
+    );
+  }
 
   // a plain field runs on a plain message's schema, as a caption does; what it held that only a rich
-  // message carries is written out as text first, the way Remove Formatting does it
-  private syncEditorSchema() {
+  // message carries is written out as text first, the way Remove Formatting does it. The host calls it
+  // too when it replaced the field's content (cleared it): a folded field may be plain again
+  public syncEditorSchema() {
     if(this.shouldBePlain === this.plainEditor) return;
     this.reloadScheduler.run(() => {
       const plain = this.shouldBePlain;
       if(this.destroyed || plain === this.plainEditor) return;
-      const value = plain ? this.editor.getPlainMessage() : undefined;
+      const value = plain && this.editor.getMode() === 'rich' ? this.editor.getPlainMessage() : undefined;
       if(value) this.editor.setTextWithEntities(value.text, value.entities);
       this.plainEditor = plain;
       this.replaceEditor(createEditor);
@@ -488,7 +517,24 @@ export class RichMessageInputController {
     });
   }
 
+  /**
+   * A rich message is about to be put into the field (a draft, a message to edit): a field that is
+   * plain only while collapsed takes the rich schema first, at once, or the message would not fit.
+   */
+  public prepareForRichMessage() {
+    if(!this.plainEditor || this.plainOnly || this.destroyed) return;
+    this.plainEditor = false;
+    this.replaceEditor(createEditor);
+  }
+
   public setExpanded(expanded: boolean, animate = false) {
+    this.applyExpanded(expanded, animate);
+    // the schema follows: expanded, the field is rich; folded, or sent while folded, it can be plain
+    // again (`shouldBePlain`)
+    this.syncEditorSchema();
+  }
+
+  private applyExpanded(expanded: boolean, animate: boolean) {
     if(!this.expandButton || (expanded && !this.expandable)) return;
     if(this.expanded === expanded) {
       this.editor?.setExpanded(expanded);

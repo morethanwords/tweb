@@ -11,7 +11,8 @@ import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
  *   - an ephemeral message has a local id above every history id, so it takes the position of the message
  *     it follows and comes right after it;
  *   - a send still on its way moves behind an earlier send that has taken its server id, so it is not left
- *     above it at its temporary id (`BubbleGroups.raiseLaterSends`).
+ *     above it at its temporary id (`BubbleGroups.raiseLaterSends`), and a bubble that comes in after that
+ *     goes there at once (`getLateSendPosition`).
  *
  * Choosing the field per pair instead (ids for two history messages, dates once an ephemeral one is
  * involved) is not an order: it lets a < b < c < a, and the binary search then files bubbles anywhere.
