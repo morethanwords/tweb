@@ -3283,3 +3283,6 @@ export default class AppSearchSuper {
       undefined;
   }
 }
+
+// a method edited here takes effect on the open shared media and search tabs, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

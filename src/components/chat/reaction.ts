@@ -26,6 +26,7 @@ import {savedReactionTags} from '@components/chat/reactions';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import {StarsStar} from '@components/stars/starsAmount';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 import {Sparkles} from '@components/sparkles';
 import {AnimatedCounter} from '@components/animatedCounter';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
@@ -712,11 +713,16 @@ export function warmUpGenericEffectAssets(managers: AppManagers = rootScope.mana
   prepareGenericEffect(managers);
 }
 
-rootScope.addEventListener('user_auth', () => {
+hotListen(import.meta.hot, rootScope, 'user_auth', () => {
   setTimeout(() => warmUpGenericEffectAssets(), 5e3);
 });
 
 export default class ReactionElement extends HTMLElement {
+  public static create() {
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    return new (customElements.get(TAG_NAME) as typeof ReactionElement)();
+  }
+
   private type: ReactionLayoutType;
   private counter: HTMLElement;
   public stickerContainer: HTMLElement;
@@ -1550,3 +1556,6 @@ export default class ReactionElement extends HTMLElement {
 if(!customElements.get(TAG_NAME)) {
   customElements.define(TAG_NAME, ReactionElement);
 }
+
+// a method edited here takes effect on the reactions on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

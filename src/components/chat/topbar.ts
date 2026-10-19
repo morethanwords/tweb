@@ -1866,3 +1866,6 @@ export default class ChatTopbar {
     return menu;
   }
 }
+
+// a method edited here takes effect on the open chats' top bars, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

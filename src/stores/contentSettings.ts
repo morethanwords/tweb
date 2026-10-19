@@ -1,6 +1,7 @@
 import {createEffect, createMemo, createRoot} from 'solid-js';
 import {useAppState} from '@stores/appState';
 import {makeIgnoredRestrictionReasons, setIgnoredRestrictionReasons} from '@helpers/restrictions';
+import {hotEffect} from '@helpers/hotModule';
 
 export default function useContentSettings() {
   const [appState] = useAppState();
@@ -27,10 +28,12 @@ export default function useContentSettings() {
 }
 
 // * the page's copy of what the shown account ignores: without it every sensitive media would be hidden again
-// * after a reload, however the account's switch is set
-createRoot(() => {
+// * after a reload, however the account's switch is set. A hot update disposes the previous run's root
+hotEffect(import.meta.hot, () => createRoot((dispose) => {
   const contentSettings = useContentSettings();
   createEffect(() => {
     setIgnoredRestrictionReasons(contentSettings.ignoredRestrictionReasons());
   });
-});
+
+  return dispose;
+}));

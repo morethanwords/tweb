@@ -16,6 +16,7 @@ import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import pause from '@helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 
 
 const CLASS_NAME = 'reactions';
@@ -62,12 +63,12 @@ function getPaidReactionAvailable(managers: AppManagers, peerId: PeerId): MaybeP
   return value;
 }
 
-rootScope.addEventListener('chat_full_update', (chatId) => {
+hotListen(import.meta.hot, rootScope, 'chat_full_update', (chatId) => {
   PAID_REACTION_AVAILABLE.delete(chatId.toPeerId(true));
 });
 
 export const savedReactionTags: SavedReactionTag[] = [];
-rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
+hotListen(import.meta.hot, rootScope, 'saved_tags', ({savedPeerId, tags}) => {
   if(savedPeerId) {
     return;
   }
@@ -85,6 +86,11 @@ rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
 });
 
 export default class ReactionsElement extends HTMLElement {
+  public static create() {
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    return new (customElements.get(TAG_NAME) as typeof ReactionsElement)();
+  }
+
   private context: ReactionsContext;
   private key: string;
   private isPlaceholder: boolean;
@@ -311,7 +317,7 @@ export default class ReactionsElement extends HTMLElement {
       let reactionElement: ReactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
       if(!reactionElement) {
         const middlewareHelper = this.middleware.create();
-        reactionElement = new ReactionElement();
+        reactionElement = ReactionElement.create();
         reactionElement.init(this.type, middlewareHelper.get());
         this.middlewareHelpers.set(reactionElement, middlewareHelper);
       }
@@ -449,3 +455,6 @@ export default class ReactionsElement extends HTMLElement {
 if(!customElements.get(TAG_NAME)) {
   customElements.define(TAG_NAME, ReactionsElement);
 }
+
+// a method edited here takes effect on the reactions on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

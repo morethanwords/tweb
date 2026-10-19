@@ -282,6 +282,9 @@ export class RtmpCallsController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const rtmpCallsController = new RtmpCallsController();
 DEBUG && (MOUNT_CLASS_TO.rtmpCallsController = rtmpCallsController);
 export default rtmpCallsController;
+
+if(import.meta.hot) import.meta.hot.accept();

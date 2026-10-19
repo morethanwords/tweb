@@ -1903,6 +1903,7 @@ export class AppSidebarLeft extends SidebarSlider {
   };
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 registerHotReloadGuard({appSidebarLeft});
@@ -1924,3 +1925,5 @@ function getVersionLink() {
 
   return btnMenuFooter;
 }
+
+if(import.meta.hot) import.meta.hot.accept();

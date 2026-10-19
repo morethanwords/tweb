@@ -359,6 +359,50 @@ top-level module hands the mock over with `registerHotReloadGuard({...})`. A val
 needs from a top-level module (a constant, a pure function, a small component) moves out into a module of its own
 (`@lib/appColumns`, `@components/dialogElement`, `@components/stars/starsAmount`).
 
+**A module's top-level state survives a hot update by itself, in dev.** Vite re-stamps every importer of an edited
+module, so a boundary that runs again runs the modules under it again too. The dev server rewrites every app module
+it serves (`scripts/hot-reload-plugin.mjs` → `scripts/hot-module-transform.mjs`, kept by `@helpers/hotRegistry`) so
+that the next evaluation keeps what the previous one made — nothing in the sources asks for it, and the build is
+untouched:
+
+- a top-level `const` whose value is state — anything but literal data, functions, another name for something, data
+  the module changes, or what `defineSolidElement` makes (it takes the update itself) — a top-level `let` a function
+  uses, and a static field made with a call are made once per page.
+  An edit of the code that makes one, or of a function, table or class's static method it is made from (in any
+  module), reloads the page;
+- every top-level class: the first evaluation's class stays the one the instances and `instanceof` hold, and each
+  later evaluation copies its methods onto it. What a live instance cannot take reloads: a constructor or field
+  initializer, a method the constructor calls, a method it holds as a value (`this.x.bind(this)`, a listener), a custom
+  element's lifecycle callback, a function or another class's static method its construction calls, or a factory whose
+  product a method stores on it — the markup of JSX among them, which Solid hoists out of the code;
+  and private members (`#x`), which another evaluation's methods cannot read — a class with them reloads whenever its
+  module runs again;
+- a TypeScript namespace that holds state (`I18n`) cannot be kept without its code: its module reloads when it runs
+  again;
+- a module that accepts its own updates (`import.meta.hot.accept()`, or solid-refresh's for components): an export its
+  importers hold — a function, a table, a re-export — that changed reloads.
+
+A closure made before the update — a listener added inside a method, a callback handed to another module — keeps the
+code it captured until a reload (but for a dynamic `import()`, which always loads the latest version), and what a method that already ran built (DOM, an instance's state) stays as built —
+construction included past the constructor's own code and the methods it calls directly: what those call in turn
+runs at other times too (`ChatBubbles.constructBubbles` reaches `renderMessage`), and an edit of it applies from its
+next call. A module an edit leaves with no importer is dropped, and its `hotEffect`s are undone.
+`e2e/popupSandboxHotRerun.spec.ts` (in `test:popups`) and `test:hot:app` run every module the sandbox, or a signed-in
+boot, loads once more with the same code, as a hot update does, and fail on a reload none of these rules asks for.
+
+What a module *does* at its top level runs again with it, and is left to the module: a listener goes through
+`hotListen(import.meta.hot, rootScope, 'event', onEvent)`, any other setup with a cleanup (an interval, a window
+listener with options, a root with effects) through `hotEffect(import.meta.hot, () => cleanup)` (`@helpers/hotModule`),
+so the new one replaces the old. A top-level statement that acts on kept state (`promise.resolve()`,
+`Tab.prototype.init = ...`, `if(...) set.add(...)`, `Object.assign(state, ...)`) is kept with it, and so is a table it reads: it runs once per
+page, and an edit, an addition or a removal of one reloads. A custom element: `define` behind `if(!customElements.get(TAG))`, instances built by
+`new (customElements.get(TAG) as typeof X)()` (a `static create()`), since a re-run module's class is unregistered.
+
+A reload the page asks for goes through the dev server, so the log says "page reload <file> (<reason>)" —
+`import.meta.hot.invalidate()` does not reload, it re-runs the importers. A module a worker imports never mentions
+`import.meta.hot` (it would pull Vite's client into the worker), and `@helpers/hotRegistry`, which every module
+imports, neither does nor imports anything, nor needs timers: an AudioWorklet, which has none, runs it too.
+
 ### Media devices (camera / microphone)
 
 **Strict rule — never call `navigator.mediaDevices.getUserMedia` directly when you need a camera or microphone. Use `getStream` from `@lib/calls/helpers/getStream`.** It is the single chokepoint for every `getUserMedia` in the app (calls, voice notes, round-video notes), so two things happen for free:
@@ -561,7 +605,9 @@ import {Message, Chat, User, InputPeer} from '@layer';
   the hold-to-peek on photos (`components/mediaPeek`), `test:viewer:app` the
   media viewer's paging (`components/mediaViewer`), `test:calls` the calls'
   noise suppressor (`lib/calls/noiseSuppression`), `test:memory:app` what a long
-  session leaves in memory (caches, players, registries, the workers). A change none
+  session leaves in memory (caches, players, registries, the workers), `test:hot:app` (with `test:popups`, and
+  `test:calls`, whose worklet runs the registry) the dev server's hot updates (`scripts/hot-*.mjs`,
+  `@helpers/hotRegistry`, `@helpers/hotModule`). A change none
   of them exercises (chat-only styling, a manager fix) skips them. Report what
   ran, and what was skipped and why.
 - **Heavy runs wait their turn on a shared machine.** Every Playwright run and a
@@ -791,6 +837,7 @@ pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared m
 pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
 pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
 pnpm test:memory:app # a session played several times: no isolate's heap, DOM or renderer allocator keeps growing, idle lottie heaps go back (needs PLAYWRIGHT_BASE_URL of a --static preview; ~7 min)
+pnpm test:hot:app    # every module a signed-in boot loads, run again as a hot update does: no false reload (needs PLAYWRIGHT_BASE_URL)
 ```
 
 `test:a11y` runs against a plain unauthenticated server, so everything past the

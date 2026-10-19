@@ -750,6 +750,9 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 }
 
+// one panel for the page: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const emoticonsDropdown = new EmoticonsDropdown();
 MOUNT_CLASS_TO.emoticonsDropdown = emoticonsDropdown;
 export default emoticonsDropdown;
+
+if(import.meta.hot) import.meta.hot.accept();

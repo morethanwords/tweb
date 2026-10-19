@@ -46,12 +46,13 @@ import {isFullScreen} from '@helpers/dom/fullScreen';
 import overlayCounter from '@helpers/overlayCounter';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 export const USE_VIDEO_OBSERVER = false;
 
 const roundVideoProgressRingResizers = new Set<() => void>();
-mediaSizes.addEventListener('changeScreen', (from, to) => {
+hotListen(import.meta.hot, mediaSizes, 'changeScreen', (from: ScreenSize, to: ScreenSize) => {
   if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
     roundVideoProgressRingResizers.forEach((resize) => resize());
   }

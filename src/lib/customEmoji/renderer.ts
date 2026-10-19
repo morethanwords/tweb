@@ -30,8 +30,11 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import StickerType from '@config/stickerType';
 import {Accessor, createEffect, createMemo, createRoot, createSignal, on, Setter} from 'solid-js';
 import readValue from '@helpers/solid/readValue';
+import {hotEffect, hotListen} from '@helpers/hotModule';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
+
+const TAG_NAME = 'custom-emoji-renderer-element';
 
 export class CustomEmojiRendererElement extends HTMLElement {
   public static globalLazyLoadQueue: LazyLoadQueue = globalLazyLoadQueue;
@@ -1453,7 +1456,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 
   public static create(options: CustomEmojiRendererElementOptions) {
-    const renderer = new CustomEmojiRendererElement();
+    // the registered class: after a hot update this module's class is a copy, which the element registry does not know
+    const renderer = new (customElements.get(TAG_NAME) as typeof CustomEmojiRendererElement)();
     renderer.animationGroup = options.animationGroup;
     renderer.size = options.customEmojiSize || mediaSizes.active.customEmoji;
     renderer.isSelectable = options.isSelectable;
@@ -1616,7 +1620,7 @@ const getOffscreenRenderer = (rendererId: number) => {
 // Placeholder-clear parity with the legacy render() path: clear the layout children once
 // the compositor reports the group is fully faded in (fired immediately when the fade was
 // skipped/disabled), so the thumb never lingers past the moment the canvas fully covers it.
-compositorMessagePort.addEventListener('groupPainted', ({rendererId, groupId}) => {
+hotListen(import.meta.hot, compositorMessagePort, 'groupPainted', ({rendererId, groupId}: {rendererId: number, groupId: DocId}) => {
   const renderer = getOffscreenRenderer(rendererId);
   const elements = renderer?.customEmojis.get(groupId);
   if(!elements || !renderer.isConnected || renderer.clearedElements.has(elements)) {
@@ -1636,7 +1640,7 @@ const forEachOffscreenRenderer = (callback: (renderer: CustomEmojiRendererElemen
 };
 
 // CSS-var resolution is not reactive to theme swaps - re-resolve and re-ship the color.
-rootScope.addEventListener('theme_changed', () => {
+hotListen(import.meta.hot, rootScope, 'theme_changed', () => {
   forEachOffscreenRenderer((renderer) => {
     const property = renderer.textColor();
     if(property) {
@@ -1650,12 +1654,15 @@ rootScope.addEventListener('theme_changed', () => {
 // * The fade follows the lite-mode setting through ONE subscription that walks the
 // * weak registry. A per-renderer effect reading the settings store put every renderer on that store's
 // * observer list, so one its owner never destroyed - a chat list row whose subtitle was redrawn -
-// * stayed reachable from the store for good, and the whole detached row with it.
-createRoot(() => {
+// * stayed reachable from the store for good, and the whole detached row with it. A hot update disposes the previous
+// * run's root
+hotEffect(import.meta.hot, () => createRoot((dispose) => {
   createEffect(on(() => liteMode.isAvailable('emoji_appear'), (fadeEnabled) => {
     forEachOffscreenRenderer((renderer) => renderer.sendCompositor('configRenderer', {fadeEnabled}));
   }, {defer: true}));
-});
+
+  return dispose;
+}));
 
 export const renderEmojis = (renderers: CustomEmojiRenderer[] = liveEmojiRenderers()) => {
   const t = renderers.filter((r) => r.isConnected && r.checkForAnyFrame() && !r.ignoreSettingDimensions);
@@ -1809,4 +1816,9 @@ const fadeInMediaAndCleanupThumbs = (el: HTMLElement) => {
 (window as any).syncedPlayers = syncedPlayers;
 (window as any).emojiRenderers = emojiRenderers;
 
-customElements.define('custom-emoji-renderer-element', CustomEmojiRendererElement);
+if(!customElements.get(TAG_NAME)) {
+  customElements.define(TAG_NAME, CustomEmojiRendererElement);
+}
+
+// a method edited here takes effect on the renderers on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

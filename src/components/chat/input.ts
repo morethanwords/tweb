@@ -6307,3 +6307,6 @@ export default class ChatInput {
     return !!this.editMessage?.grouped_id;
   }
 }
+
+// a method edited here takes effect on the open chats' inputs, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

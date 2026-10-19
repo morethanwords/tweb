@@ -37,7 +37,14 @@ const stories: PopupStory[] = [];
 
 export function defineStories(group: string, groupStories: Array<Omit<PopupStory, 'group'>>) {
   for(const story of groupStories) {
-    if(stories.some((existing) => existing.id === story.id)) {
+    const index = stories.findIndex((existing) => existing.id === story.id);
+    // the same story again, from its module running once more on a hot update: the new one takes its place
+    if(index !== -1 && stories[index].group === group) {
+      stories[index] = {...story, group};
+      continue;
+    }
+
+    if(index !== -1) {
       throw new Error(`popupSandbox: duplicate story id "${story.id}"`);
     }
 

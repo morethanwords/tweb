@@ -332,4 +332,5 @@ class ContextMenuController extends OverlayClickHandler {
 }
 
 const contextMenuController = new ContextMenuController();
+if(import.meta.hot) import.meta.hot.accept();
 export default contextMenuController;

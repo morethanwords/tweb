@@ -402,6 +402,9 @@ export class LottieLoader {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const lottieLoader = new LottieLoader();
 MOUNT_CLASS_TO.lottieLoader = lottieLoader;
 export default lottieLoader;
+
+if(import.meta.hot) import.meta.hot.accept();

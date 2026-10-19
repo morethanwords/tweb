@@ -1707,7 +1707,10 @@ export class InternalLinkProcessor {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const internalLinkProcessor = new InternalLinkProcessor();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.internalLinkProcessor = internalLinkProcessor);
 registerHotReloadGuard({internalLinkProcessor});
 export default internalLinkProcessor;
+
+if(import.meta.hot) import.meta.hot.accept();

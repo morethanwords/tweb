@@ -1580,6 +1580,9 @@ export class GroupCallsController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const groupCallsController = new GroupCallsController();
 DEBUG && (MOUNT_CLASS_TO.groupCallController = groupCallsController);
 export default groupCallsController;
+
+if(import.meta.hot) import.meta.hot.accept();

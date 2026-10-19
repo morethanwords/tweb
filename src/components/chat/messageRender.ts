@@ -431,7 +431,7 @@ export namespace MessageRender {
     const isFooter = !bubble.classList.contains('sticker') &&
       !bubble.classList.contains('emoji-big') &&
       !bubble.classList.contains('round');
-    const repliesFooter = new RepliesElement();
+    const repliesFooter = RepliesElement.create();
     repliesFooter.message = message;
     repliesFooter.type = isFooter ? 'footer' : 'beside';
     repliesFooter.loadPromises = loadPromises;

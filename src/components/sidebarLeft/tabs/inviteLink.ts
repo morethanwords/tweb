@@ -115,7 +115,7 @@ export class InviteLink {
 
     // Middle truncation, so both ends of the link survive a narrow box: the
     // same element documents and audio trim their file names with.
-    const element = new MiddleEllipsisElement();
+    const element = MiddleEllipsisElement.create();
     // * a link reads left to right by its own letters (a trailing `_` of the hash stays at its end),
     // * yet sits at the start of the box in RTL
     setDirection(element);

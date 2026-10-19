@@ -78,5 +78,6 @@ export class FramesCache {
 }
 
 const framesCache = new FramesCache();
+if(import.meta.hot) import.meta.hot.accept();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.framesCache = framesCache);
 export default framesCache;

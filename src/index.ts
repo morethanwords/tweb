@@ -538,7 +538,7 @@ if(import.meta.env.DEV) {
   themeController.setThemeListener();
 
   // * fetch lang pack updates
-  if((langPack.localVersion !== App.langPackLocalVersion || true) && IS_BETA) {
+  if((langPack.localVersion !== I18n.getLocalVersion() || true) && IS_BETA) {
     I18n.getLangPackAndApply(langPack.lang_code);
   } else {
     checkLangPackForUpdates();

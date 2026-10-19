@@ -16,6 +16,7 @@ import {vitestWorkers} from './scripts/testQueue';
 import devChecks from './scripts/dev-checks.mjs';
 import settingsSearchPlugin from './scripts/settings-search-plugin.mjs';
 import watchTransformCache from './scripts/watch-transform-cache.mjs';
+import hotReloadPlugin from './scripts/hot-reload-plugin.mjs';
 import path from 'path';
 
 const rootDir = resolve(__dirname);
@@ -226,6 +227,7 @@ export default defineConfig({
     process.env.VITEST || process.env.TWEB_PREVIEW ? undefined : devChecks(rootDir),
     process.env.VITEST ? undefined : settingsSearchPlugin(),
     watchTransformCache(),
+    hotReloadPlugin(),
     solidPlugin(),
     handlebarsPlugin as any,
     compileHintsPlugin(),

@@ -350,6 +350,9 @@ export class ConferenceInvitesController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const conferenceInvitesController = new ConferenceInvitesController();
 DEBUG && (MOUNT_CLASS_TO.conferenceInvitesController = conferenceInvitesController);
 export default conferenceInvitesController;
+
+if(import.meta.hot) import.meta.hot.accept();

@@ -2781,7 +2781,10 @@ export class AppDialogsManager {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const appDialogsManager = new AppDialogsManager();
 MOUNT_CLASS_TO.appDialogsManager = appDialogsManager;
 registerHotReloadGuard({appDialogsManager});
 export default appDialogsManager;
+
+if(import.meta.hot) import.meta.hot.accept();

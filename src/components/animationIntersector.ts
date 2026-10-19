@@ -508,5 +508,6 @@ export class AnimationIntersector {
 }
 
 const animationIntersector = new AnimationIntersector();
+if(import.meta.hot) import.meta.hot.accept();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.animationIntersector = animationIntersector);
 export default animationIntersector;

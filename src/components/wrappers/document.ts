@@ -38,8 +38,9 @@ import readBlobAsText from '@helpers/blob/readBlobAsText';
 import SolidJSHotReloadGuardProvider, {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {openMarkdownInstantView} from '@components/markdownInstantView';
 import isPlayableDocument from '@appManagers/utils/docs/isPlayableDocument';
+import {hotListen} from '@helpers/hotModule';
 
-rootScope.addEventListener('document_downloading', (docId) => {
+hotListen(import.meta.hot, rootScope, 'document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
   elements.forEach((element) => {
     if(element.querySelector('.preloader-container.manual')) {
@@ -255,7 +256,7 @@ export default async function wrapDocument({
   `;
 
   const nameDiv = docDiv.querySelector('.document-name') as HTMLElement;
-  const middleEllipsisEl = new MiddleEllipsisElement();
+  const middleEllipsisEl = MiddleEllipsisElement.create();
   middleEllipsisEl.dataset.fontWeight = '' + fontWeight;
   middleEllipsisEl.dataset.fontSize = '' + fontSize;
   middleEllipsisEl.dataset.sizeType = sizeType;

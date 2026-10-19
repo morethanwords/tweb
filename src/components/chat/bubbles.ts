@@ -602,10 +602,11 @@ const ensureAdminLogResolver = () => {
   })();
 };
 
-let rerenderLogBubblesCallbacks: NoneToVoidFunction[];
+// made with the declaration, not in the block below: a hot update runs the block again, and the live bubbles' callbacks
+// are in this one
+const rerenderLogBubblesCallbacks: NoneToVoidFunction[] = import.meta.hot ? [] : undefined;
 
 if(import.meta.hot) {
-  rerenderLogBubblesCallbacks = [];
   import.meta.hot.accept('./bubbleParts/adminLogsResolver/index.tsx', (module: unknown) => {
     if(!module) return;
     const {resolveAdminLog: newResolveAdminLog} = module as unknown as typeof import('./bubbleParts/adminLogsResolver');
@@ -8080,7 +8081,7 @@ export default class ChatBubbles {
       };
       rerenderLogBubblesCallbacks.push(callback);
       middleware.onDestroy(() => {
-        rerenderLogBubblesCallbacks = rerenderLogBubblesCallbacks.filter(cb => cb !== callback);
+        indexOfAndSplice(rerenderLogBubblesCallbacks, callback);
       });
     }
 
@@ -11532,7 +11533,7 @@ export default class ChatBubbles {
 
     // message = this.appMessagesManager.getMessageWithReactions(message);
 
-    const reactionsElement = new ReactionsElement();
+    const reactionsElement = ReactionsElement.create();
     reactionsElement.init({
       context: reactionsMessage,
       type: ReactionLayoutType.Block,
@@ -14109,3 +14110,6 @@ export default class ChatBubbles {
     this.contexts.get(bubble)?.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
   }
 }
+
+// a method edited here takes effect on the open chats' bubbles, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

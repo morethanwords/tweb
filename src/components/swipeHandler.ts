@@ -15,6 +15,7 @@ import debounce from '@helpers/schedulers/debounce';
 import {logger} from '@lib/logger';
 import isSwipingBackSafari from '@helpers/dom/isSwipingBackSafari';
 import windowSize from '@helpers/windowSize';
+import {hotListen} from '@helpers/hotModule';
 
 type E = {
   clientX: number,
@@ -49,7 +50,7 @@ function getTouchCenter(a: Touch, b: Touch) {
 // (stories viewer, media-viewer pan, reorder, …) lives there, so a main-document listener never sees
 // the gesture and the swipe sticks. Equals `document` when not popped out, so behaviour is unchanged.
 let RESET_GLOBAL = false;
-contextMenuController.addEventListener('toggle', (visible) => {
+hotListen(import.meta.hot, contextMenuController, 'toggle', (visible) => {
   RESET_GLOBAL = visible;
 });
 

@@ -522,5 +522,6 @@ export class AppDownloadManager {
 }
 
 const appDownloadManager = new AppDownloadManager();
+if(import.meta.hot) import.meta.hot.accept();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDownloadManager = appDownloadManager);
 export default appDownloadManager;

@@ -729,6 +729,9 @@ export class CallsController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const callsController = new CallsController();
 DEBUG && (MOUNT_CLASS_TO.callsController = callsController);
 export default callsController;
+
+if(import.meta.hot) import.meta.hot.accept();

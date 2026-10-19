@@ -1726,3 +1726,6 @@ export default class Chat extends EventListenerBase<{
     return true;
   }
 }
+
+// a method edited here takes effect on the open chats, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

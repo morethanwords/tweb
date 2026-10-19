@@ -1340,3 +1340,6 @@ export default class ChatSelection extends AppSelection {
     // });
   };
 }
+
+// a method edited here takes effect on the open chats' and searches' selections, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

@@ -11,6 +11,8 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
+import ListenerSetter from '@helpers/listenerSetter';
+import {hotEffect} from '@helpers/hotModule';
 import {bindActiveWindowListener, getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import tooltipController from '@helpers/tooltipController';
@@ -125,7 +127,11 @@ const onFullScreenChange = () => {
   setFullScreenElement((getFullScreenElement() as HTMLElement) || null);
 };
 
-addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
+hotEffect(import.meta.hot, () => {
+  const listenerSetter = new ListenerSetter();
+  addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange, listenerSetter);
+  return () => listenerSetter.removeAll();
+});
 
 export const useSnitchedPopupContext = () => {
   let context: PopupContextValue;
@@ -488,9 +494,11 @@ const PopupElement = (props: {
   );
 };
 
-// Static properties
-PopupElement.POPUPS = [] as PopupContextValue[];
-PopupElement.MANAGERS = undefined as any;
+// Static properties — the open popups and the managers carried over from the previous evaluation on a hot update
+const previousPopupElement: {POPUPS: PopupContextValue[], MANAGERS: any} = import.meta.hot?.data?.PopupElement;
+PopupElement.POPUPS = previousPopupElement?.POPUPS ?? [] as PopupContextValue[];
+PopupElement.MANAGERS = previousPopupElement?.MANAGERS as any;
+if(import.meta.hot?.data) import.meta.hot.data.PopupElement = PopupElement;
 
 PopupElement.Header = (props: {
   class?: string,

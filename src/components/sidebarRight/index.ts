@@ -138,7 +138,10 @@ export class AppSidebarRight extends SidebarSlider {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const appSidebarRight = new AppSidebarRight();
 MOUNT_CLASS_TO.appSidebarRight = appSidebarRight;
 registerHotReloadGuard({appSidebarRight});
 export default appSidebarRight;
+
+if(import.meta.hot) import.meta.hot.accept();

@@ -115,6 +115,7 @@ import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import A11yButton from '@components/a11yButton';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 
 const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
@@ -123,7 +124,7 @@ const STORIES_PRESERVE_HIDDEN = 2;
 const STORY_REPOST_ICON: Icon = 'storyrepost';
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
-rootScope.addEventListener('app_config', (appConfig) => {
+hotListen(import.meta.hot, rootScope, 'app_config', (appConfig) => {
   const userId = appConfig.stories_changelog_user_id;
   CHANGELOG_PEER_ID = userId ? userId.toPeerId(false) : SERVICE_PEER_ID;
 });

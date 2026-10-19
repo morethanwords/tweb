@@ -146,7 +146,7 @@ export default async function showReactedListPopup(message$: Message.message, in
   }
 
   function createFakeReaction(icon: Icon, count: number) {
-  const reaction = new ReactionElement();
+  const reaction = ReactionElement.create();
   reaction.init(ReactionLayoutType.Block, middleware);
   reaction.reactionCount = {
     _: 'reactionCount',
@@ -173,7 +173,7 @@ export default async function showReactedListPopup(message$: Message.message, in
   if(!middleware()) return;
   // this.body.append(generateDelimiter());
 
-  const reactionsElement = new ReactionsElement();
+  const reactionsElement = ReactionsElement.create();
   const newMessage: Message.message = {
     ...message,
     mid: 0,

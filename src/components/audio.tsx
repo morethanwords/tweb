@@ -41,12 +41,13 @@ import {createStore, SetStoreFunction} from 'solid-js/store';
 import setCurrentTime from '@helpers/dom/setCurrentTime';
 import makeError from '@helpers/makeError';
 import {Middleware} from '@helpers/middleware';
+import {hotListen} from '@helpers/hotModule';
 
 
 const UNMOUNT_PRELOADER = true;
 const SUBTITLE_SEPARATOR = ' • ';
 
-rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
+hotListen(import.meta.hot, rootScope, 'messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {
     const attr = `[data-mid="${mid}"][data-peer-id="${peerId}"]`;
     (Array.from(document.querySelectorAll(`.audio.is-unread${attr}, .media-round.is-unread${attr}`)) as HTMLElement[]).forEach((elem) => {
@@ -420,7 +421,7 @@ async function wrapAudio(ctx: AudioRowContext): Promise<WrappedAudio> {
     descriptionEl.append(SUBTITLE_SEPARATOR, ...joinElementsWith(parts, SUBTITLE_SEPARATOR));
   }
 
-  const middleEllipsisEl = new MiddleEllipsisElement();
+  const middleEllipsisEl = MiddleEllipsisElement.create();
   middleEllipsisEl.dataset.fontWeight = '' + options.fontWeight;
   middleEllipsisEl.dataset.fontSize = '' + options.fontSize;
   middleEllipsisEl.dataset.sizeType = options.sizeType;

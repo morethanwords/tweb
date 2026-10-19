@@ -14,6 +14,7 @@ import type {AsAllChatsType} from '@components/dialogElement';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 import buildURLHash from '@helpers/buildURLHash';
 import Modes from '@config/modes';
+import {hotListen} from '@helpers/hotModule';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -40,7 +41,7 @@ export type PeerTitleOptions = {
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
 
-rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
+hotListen(import.meta.hot, rootScope, 'peer_title_edit', ({peerId, threadId}) => {
   let query = `.peer-title[data-peer-id="${peerId}"]`;
   if(threadId) {
     query += `[data-thread-id="${threadId}"]`;
@@ -53,7 +54,7 @@ rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
   });
 });
 
-rootScope.addEventListener('botforum_pending_topic_created', ({peerId, tempId, newId}) => {
+hotListen(import.meta.hot, rootScope, 'botforum_pending_topic_created', ({peerId, tempId, newId}) => {
   if(!newId) return;
 
   const query = `.peer-title[data-peer-id="${peerId}"][data-thread-id="${tempId}"]`;
@@ -271,3 +272,6 @@ export function changeTitleEmojiColor(element: HTMLElement, color: string) {
     }
   })
 }
+
+// a method edited here takes effect on the titles on screen, without a reload (see @helpers/hotRegistry)
+if(import.meta.hot) import.meta.hot.accept();

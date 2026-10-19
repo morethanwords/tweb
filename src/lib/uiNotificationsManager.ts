@@ -1132,5 +1132,8 @@ export class UiNotificationsManager {
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const uiNotificationsManager = new UiNotificationsManager();
 export default uiNotificationsManager;
+
+if(import.meta.hot) import.meta.hot.accept();

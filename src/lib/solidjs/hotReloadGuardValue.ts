@@ -176,3 +176,9 @@ registerHotReloadGuard({
   openInstantViewInAppBrowser,
   tabs
 });
+
+// An edit below a popup or a tab registered here runs this module again and registers the new one, which the code
+// that reads the registry at call time picks up. The singletons and the tab classes (solidJsTabs/tabs's top-level
+// values, which `SidebarSlider.getTab()` matches the open tabs with by `instanceof`) are the same across that: the dev
+// server keeps them (see @helpers/hotRegistry).
+if(import.meta.hot) import.meta.hot.accept();

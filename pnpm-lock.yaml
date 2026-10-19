@@ -198,6 +198,9 @@ importers:
       libsodium-wrappers:
         specifier: ^0.8.4
         version: 0.8.4
+      magic-string:
+        specifier: ^0.30.21
+        version: 0.30.21
       mediabunny:
         specifier: ^1.50.9
         version: 1.50.9

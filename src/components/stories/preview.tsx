@@ -11,6 +11,7 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {IS_SAFARI} from '@environment/userAgent';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
+import {hotEffect} from '@helpers/hotModule';
 
 let processing = false;
 const pollStories = () => {
@@ -39,7 +40,10 @@ const pollStories = () => {
 
 const wrappedStories: Map<PeerId, Map<number, {mounted: number}>> = new Map();
 (window as any).wrappedStories = wrappedStories;
-setInterval(pollStories, 300e3);
+hotEffect(import.meta.hot, () => {
+  const interval = setInterval(pollStories, 300e3);
+  return () => clearInterval(interval);
+});
 
 type CommonProperties = {
   peerId: PeerId,

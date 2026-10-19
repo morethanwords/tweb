@@ -16,6 +16,7 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import AppStoriesManager from '@appManagers/appStoriesManager';
 import untrackActions from '@helpers/solid/untrackActions';
+import {hotListen} from '@helpers/hotModule';
 
 /** how long a story without a video stays on screen */
 export const STORY_DURATION = 5e3;
@@ -115,7 +116,7 @@ const createPositions = (positions: Map<PeerId, StoriesListPosition> = new Map()
 };
 
 const {positions: globalPositions, onPosition} = createPositions();
-rootScope.addEventListener('stories_position', onPosition);
+hotListen(import.meta.hot, rootScope, 'stories_position', onPosition);
 
 /**
  * `stories_position` only fires when a position CHANGES, so a tab that attached to an

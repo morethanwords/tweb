@@ -4175,7 +4175,10 @@ export class AppImManager extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const appImManager = new AppImManager();
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appImManager = appImManager);
 registerHotReloadGuard({appImManager});
 export default appImManager;
+
+if(import.meta.hot) import.meta.hot.accept();

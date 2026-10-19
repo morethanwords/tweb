@@ -1319,6 +1319,9 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   }
 }
 
+// made once: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
 const appMediaPlaybackController = new AppMediaPlaybackController();
 MOUNT_CLASS_TO.appMediaPlaybackController = appMediaPlaybackController;
 export default appMediaPlaybackController;
+
+if(import.meta.hot) import.meta.hot.accept();

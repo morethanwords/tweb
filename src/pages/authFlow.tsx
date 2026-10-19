@@ -1,4 +1,4 @@
-import {Accessor, Signal, createContext, createRoot, createSignal, useContext} from 'solid-js';
+import {Accessor, createContext, createRoot, createSignal, useContext} from 'solid-js';
 
 import rootScope from '@lib/rootScope';
 import {AuthState} from '@types';
@@ -85,13 +85,7 @@ export type AuthFlowContextValue = {
  * `<AuthCardsHost>` reads `currentCard()`; imperative callers write through
  * `navigateAuth()`.
  */
-const [currentCard, setCurrentCard] = (() => {
-  const stored = (import.meta.hot?.data as any)?.currentCardSignal as Signal<CardSpec | null> | undefined;
-  if(stored) return stored;
-  const pair = createRoot(() => createSignal<CardSpec | null>(null));
-  if(import.meta.hot) (import.meta.hot.data as any).currentCardSignal = pair;
-  return pair;
-})();
+const [currentCard, setCurrentCard] = createRoot(() => createSignal<CardSpec | null>(null));
 
 export {currentCard};
 

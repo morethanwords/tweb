@@ -49,6 +49,7 @@ import computeLockColor from '@helpers/computeLockColor';
 import createAvatarVideo from '@components/createAvatarVideo';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import WeakRefSet from '@helpers/weakRefSet';
+import {hotListen} from '@helpers/hotModule';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -122,19 +123,19 @@ const onAvatarStoriesUpdate = ({peerId}: {peerId: PeerId}) => {
   forEachAvatar(avatarsMap, getAvatarQueueKey(peerId), (avatar) => avatar.updateStoriesSegments());
 };
 
-rootScope.addEventListener('avatar_update', onAvatarUpdate);
-rootScope.addEventListener('peer_title_edit', async(data) => {
+hotListen(import.meta.hot, rootScope, 'avatar_update', onAvatarUpdate);
+hotListen(import.meta.hot, rootScope, 'peer_title_edit', async(data) => {
   if(!data.threadId && (await rootScope.managers.appAvatarsManager.isAvatarCached(data.peerId))) return;
 
   onAvatarUpdate(data);
 });
 
-rootScope.addEventListener('peer_stories', ({peerId}) => {
+hotListen(import.meta.hot, rootScope, 'peer_stories', ({peerId}) => {
   onAvatarStoriesUpdate({peerId});
 });
-rootScope.addEventListener('stories_read', onAvatarStoriesUpdate);
-rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
-rootScope.addEventListener('story_new', onAvatarStoriesUpdate);
+hotListen(import.meta.hot, rootScope, 'stories_read', onAvatarStoriesUpdate);
+hotListen(import.meta.hot, rootScope, 'story_deleted', onAvatarStoriesUpdate);
+hotListen(import.meta.hot, rootScope, 'story_new', onAvatarStoriesUpdate);
 
 const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegmentsType>> => {
   if(storyId) {

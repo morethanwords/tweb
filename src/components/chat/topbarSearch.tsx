@@ -1005,7 +1005,7 @@ export default function TopbarSearch(props: {
     element.classList.toggle('is-locked', !premium);
     if(!premium) {
       const icon: Icon = 'premium_lock';
-      const reaction = new ReactionElement();
+      const reaction = ReactionElement.create();
       reaction.init(ReactionLayoutType.Tag, createMiddleware().get());
       reaction.reactionCount = {
         _: 'reactionCount',
@@ -1041,7 +1041,7 @@ export default function TopbarSearch(props: {
         middlewareHelper.destroy();
       }, 400);
     });
-    const reactionsElement = new ReactionsElement();
+    const reactionsElement = ReactionsElement.create();
     reactionsElement.init({
       context: {peerId: props.peerId, mid: 0, reactions: tagsToMessageReactions([])},
       type: ReactionLayoutType.Block,
