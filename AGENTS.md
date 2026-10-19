@@ -361,6 +361,12 @@ top-level module hands the mock over with `registerHotReloadGuard({...})`. A val
 needs from a top-level module (a constant, a pure function, a small component) moves out into a module of its own
 (`@lib/appColumns`, `@components/dialogElement`, `@components/stars/starsAmount`).
 
+`src/tests/importGraphBudget.test.ts` is the ratchet: it fails when the largest import cycle, the modules whose edit
+reloads the page, or the hot updates that make a second instance of a singleton grow past
+`scripts/import-graph.budget.json`. `node scripts/import-graph.mjs` (`hmr`, `why <file>`, `hazards`, `funnels`,
+`tests`, `cycle` — see its header) shows what an edit reloads and why, and which import closed a cycle; lower the
+budget with `check --update` when the numbers shrink.
+
 **A module's top-level state survives a hot update by itself, in dev.** Vite re-stamps every importer of an edited
 module, so a boundary that runs again runs the modules under it again too. The dev server rewrites every app module
 it serves (`scripts/hot-reload-plugin.mjs` → `scripts/hot-module-transform.mjs`, kept by `@helpers/hotRegistry`) so
