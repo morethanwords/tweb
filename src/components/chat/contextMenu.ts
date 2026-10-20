@@ -34,7 +34,7 @@ import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener'
 import {getLinkFirstChild, holdLinkPlate} from '@helpers/dom/linkPress';
 import filterAsync from '@helpers/array/filterAsync';
 import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
-import {SERVICE_PEER_ID} from '@appManagers/constants';
+import {NULL_PEER_ID, SERVICE_PEER_ID} from '@appManagers/constants';
 import {MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapEmojiText, {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
@@ -843,14 +843,24 @@ export default class ChatContextMenu {
     }
 
     if(this.avatarPeerId !== undefined) {
+      const getStack = () => this.chat.appImManager.getStackFromElement(this.target);
       const openPeer = () => {
         this.chat.appImManager.setInnerPeer({
           peerId: this.avatarPeerId,
-          stack: this.chat.appImManager.getStackFromElement(this.target)
+          stack: getStack()
         });
       };
 
       this.buttons = [{
+        icon: 'user',
+        text: 'VoiceChat.OpenProfile',
+        onClick: () => void hotReloadGuard.showPeerProfilePopup({
+          peerId: this.avatarPeerId,
+          stack: getStack()
+        }),
+        // * a forward's hidden author has no profile to open
+        verify: () => this.avatarPeerId !== NULL_PEER_ID
+      }, {
         icon: 'message',
         text: 'SendMessage',
         onClick: openPeer,

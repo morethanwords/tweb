@@ -27,6 +27,7 @@ import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdow
 import showLimitPopup from '@components/popups/limit';
 import showForwardPopup from '@components/popups/forward';
 import showMyQrCodePopup from '@components/popups/myQrCode';
+import showPeerProfilePopup from '@components/popups/peerProfile';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
 import showPremiumPopup, {showBusinessPopup} from '@components/popups/premium';
 import showSendGiftPopup from '@components/popups/sendGift';
@@ -171,6 +172,7 @@ export type SolidJSHotReloadGuardContextValue = {
   CommunityLinkSection: typeof CommunityLinkSection;
   internalLinkProcessor: InternalLinkProcessor;
   showForwardPopup: typeof showForwardPopup;
+  showPeerProfilePopup: typeof showPeerProfilePopup;
   createStoriesViewer: typeof createStoriesViewer;
   createStoriesViewerWithPeer: typeof createStoriesViewerWithPeer;
   createStoriesViewerWithProvider: typeof createStoriesViewerWithProvider;

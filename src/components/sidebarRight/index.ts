@@ -101,6 +101,10 @@ export class AppSidebarRight extends SidebarSlider {
     rootScope.dispatchEventSingle('right_sidebar_toggle', false);
   }
 
+  public reveal() {
+    this.toggleSidebar(true);
+  }
+
   public toggleSidebar(enable?: boolean, animate?: boolean) {
     const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;

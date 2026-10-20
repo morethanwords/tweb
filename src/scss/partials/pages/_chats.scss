@@ -37,13 +37,6 @@
     }
   }
 
-  .avatar-edit {
-    width: 120px;
-    height: 120px;
-    margin: 1rem auto 2rem;
-    flex: 0 0 auto;
-  }
-
   // Gated on :not(.has-auth-pages) so the boot-time flip of
   // body.is-left-column-shown (applied by appDialogsManager.start() before
   // bootstrapIm removes has-auth-pages) doesn't animate the column in

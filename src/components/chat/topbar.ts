@@ -21,8 +21,6 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, User, UserFull} from '@layer';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
-import showPeerPopup, {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import {CallType} from '@lib/calls/types';
@@ -40,6 +38,9 @@ import callbackify from '@helpers/callbackify';
 import confirmationPopup from '@components/confirmationPopup';
 import noop from '@helpers/noop';
 import clearHistoryWithConfirmation from '@components/clearHistory';
+import blockUserWithConfirmation, {unblockUser} from '@components/blockUser';
+import shareContact, {canShareContact} from '@components/shareContact';
+import addContact from '@components/addContact';
 import canClearHistory from '@appManagers/utils/chats/canClearHistory';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import {avatarNew, findUpAvatar} from '@components/avatarNew';
@@ -50,7 +51,6 @@ import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
 import {ChatType} from './chatType';
 import {showRtmpStartStreamPopup} from '@components/rtmp/adminPopup';
 import showSendGiftPopup from '@components/popups/sendGift';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import {createTopbarPlates, TopbarPlates} from '@components/chat/topbarPlates';
 import pause from '@helpers/schedulers/pause';
@@ -620,46 +620,8 @@ export default class ChatTopbar {
     }, {
       icon: 'forward',
       text: 'ShareContact',
-      onClick: () => {
-        const contactPeerId = this.peerId;
-        showSharingPickerPopup({
-          onSelect: async(chosen) => {
-            const {peerId, threadId, monoforumThreadId} = chosen[0];
-            const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
-            if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
-
-            const send = () => {
-              this.managers.appMessagesManager.sendContact({peerId, threadId, contactPeerId, confirmedPaymentResult: preparedPaymentResult, monoforumThreadId});
-              this.chat.appImManager.setInnerPeer({peerId, threadId});
-            };
-
-            if(preparedPaymentResult) return void send();
-
-            return new Promise((resolve, reject) => {
-              showPeerPopup('', {
-                titleLangKey: 'SendMessageTitle',
-                descriptionLangKey: 'SendContactToGroupText',
-                descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
-                buttons: [{
-                  langKey: 'Send',
-                  callback: async() => {
-                    resolve();
-                    send();
-                  }
-                }, {
-                  langKey: 'Cancel',
-                  callback: () => {
-                    reject();
-                  },
-                  isCancel: true
-                }],
-                peerId
-              });
-            });
-          }
-        });
-      },
-      verify: async() => rootScope.myId !== this.peerId && this.peerId.isUser() && (await this.managers.appPeersManager.isContact(this.peerId)) && !!(await this.managers.appUsersManager.getUser(this.peerId.toUserId())).phone
+      onClick: () => shareContact(this.peerId),
+      verify: () => canShareContact(this.peerId)
     }, {
       icon: 'gift',
       text: 'Chat.Menu.SendGift',
@@ -740,11 +702,7 @@ export default class ChatTopbar {
     }, {
       icon: 'lockoff',
       text: 'Unblock',
-      onClick: () => {
-        this.managers.appUsersManager.toggleBlock(this.peerId, false).then(() => {
-          toastNew({langPackKey: 'UserUnblocked'});
-        });
-      },
+      onClick: () => unblockUser(this.peerId),
       verify: async() => {
         const userFull = await this.managers.appProfileManager.getCachedFullUser(this.peerId.toUserId());
         return !!userFull?.pFlags?.blocked;
@@ -896,11 +854,7 @@ export default class ChatTopbar {
   }
 
   public addContact() {
-    if(!this.appSidebarRight.isTabExists(hotReloadGuard.tabs.AppEditContactTab)) {
-      this.appSidebarRight.createTab(hotReloadGuard.tabs.AppEditContactTab).open(this.peerId);
-
-      this.appSidebarRight.toggleSidebar(true);
-    }
+    addContact(this.peerId, this.appSidebarRight);
   }
 
   /** Bot we manage — opens the same tab as the profile's edit button. */
@@ -912,44 +866,8 @@ export default class ChatTopbar {
     }
   }
 
-  public async blockUser(showReport?: boolean, showDelete?: boolean, onConfirmed?: (promise: Promise<any>) => void) {
-    const peerId = this.peerId;
-    const checkboxes: PopupPeerCheckboxOptions[] = [
-      showReport && {
-        text: 'DeleteReportSpam',
-        checked: true
-      },
-      showDelete && {
-        text: 'DeleteThisChat',
-        checked: true
-      }
-    ];
-
-    const checked = await confirmationPopup({
-      peerId,
-      titleLangKey: 'BlockUser',
-      descriptionLangKey: 'AreYouSureBlockContact2',
-      descriptionLangArgs: [new PeerTitle({peerId}).element],
-      button: {
-        langKey: 'BlockUser',
-        isDanger: true
-      },
-      checkboxes: checkboxes.filter(Boolean)
-    });
-
-    const [reportSpam, deleteChat] = Array.isArray(checked) ? checked : [];
-
-    const promise = Promise.all([
-      reportSpam && this.managers.appMessagesManager.reportSpam(peerId),
-      deleteChat && this.managers.appMessagesManager.flushHistory({peerId, justClear: false, revoke: true}),
-      this.managers.appUsersManager.toggleBlock(peerId, true)
-    ]);
-
-    onConfirmed?.(promise);
-
-    await promise;
-
-    toastNew({langPackKey: 'UserBlocked'});
+  public blockUser(showReport?: boolean, showDelete?: boolean, onConfirmed?: (promise: Promise<any>) => void) {
+    return blockUserWithConfirmation({peerId: this.peerId, showReport, showDelete, onConfirmed});
   }
 
   public attachClickEvent(el: HTMLElement, cb: (e: MouseEvent) => void, noBlur?: boolean) {

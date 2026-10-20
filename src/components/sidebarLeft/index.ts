@@ -87,7 +87,7 @@ import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSideba
 import SolidJSHotReloadGuardProvider, {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {SliderSuperTabConstructable} from '@components/sliderTab';
-import showSettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
+import showSliderPopup from '@components/sliderPopup';
 import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import {addShortcutListener} from '@helpers/shortcutListener';
 import tsNow from '@helpers/tsNow';
@@ -1833,7 +1833,7 @@ export class AppSidebarLeft extends SidebarSlider {
   ) {
     const ctorsToOpenInPopup = [AppSettingsTab, AppEditFolderTab, AppChatFoldersTab]
     if(this.isCollapsed() && !mediaSizes.isLessThanFloatingLeftSidebar && ctorsToOpenInPopup.includes(ctor as any)) {
-      const slider = showSettingsSliderPopup(this.managers);
+      const {slider} = showSliderPopup({managers: this.managers, navigationType: 'settings-popup'});
       return slider.createTab(ctor, destroyable, doNotAppend);
     }
     return super.createTab(ctor, destroyable, doNotAppend);

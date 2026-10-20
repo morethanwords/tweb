@@ -3456,11 +3456,14 @@ export default class ChatBubbles {
       //   return;
       // }
 
+      // * a channel opens itself and anyone else their profile, as on iOS
       const peerId = avatar.dataset.peerId.toPeerId();
-      if(peerId !== NULL_PEER_ID) {
+      if(peerId === NULL_PEER_ID) {
+        toastNew({langPackKey: 'HidAccount'});
+      } else if((apiManagerProxy.getPeer(peerId) as MTChat.channel)?.pFlags?.broadcast) {
         this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
       } else {
-        toastNew({langPackKey: 'HidAccount'});
+        void hotReloadGuard.showPeerProfilePopup({peerId, stack});
       }
       return;
     }

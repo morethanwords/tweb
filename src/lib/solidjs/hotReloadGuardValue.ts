@@ -28,6 +28,7 @@ import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdow
 import showLimitPopup from '@components/popups/limit';
 import showForwardPopup from '@components/popups/forward';
 import showMyQrCodePopup from '@components/popups/myQrCode';
+import showPeerProfilePopup from '@components/popups/peerProfile';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
 import showPremiumPopup, {showBusinessPopup} from '@components/popups/premium';
 import showSendGiftPopup from '@components/popups/sendGift';
@@ -170,6 +171,7 @@ registerHotReloadGuard({
   PaidMessagesInterceptor,
   CommunityLinkSection,
   showForwardPopup,
+  showPeerProfilePopup,
   createStoriesViewer,
   createStoriesViewerWithPeer,
   createStoriesViewerWithProvider,

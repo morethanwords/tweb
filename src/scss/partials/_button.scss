@@ -1230,7 +1230,8 @@ $btn-menu-z-index: 4;
   cursor: pointer !important;
   pointer-events: all !important;
 
-  &:not(.btn-primary):not(.btn-corner).menu-open {
+  // * a tile takes its colours from the row it stands in, the open state's too
+  &:not(.btn-primary):not(.btn-corner, .btn-tile).menu-open {
     background-color: var(--light-secondary-text-color);
 
     &.primary {
@@ -1248,6 +1249,34 @@ $btn-menu-z-index: 4;
 
   @include respond-to(handhelds) {
     --size: 46px;
+  }
+}
+
+// * `Button.Tile`: an icon over a short label, one of a row of equal buttons (a profile's header, a
+// * gift's), 58px high as iOS has them; the row gives the colours
+.btn-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: $btn-tile-height;
+  padding: 0 .25rem;
+  border-radius: $border-radius-medium;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .125rem;
+  overflow: hidden;
+  font-size: var(--font-size-12);
+  line-height: var(--line-height-12);
+
+  .button-icon {
+    font-size: 1.5rem;
+  }
+
+  &-text {
+    max-width: 100%;
+    @include text-overflow();
   }
 }
 

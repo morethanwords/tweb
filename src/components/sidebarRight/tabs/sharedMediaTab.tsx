@@ -5,6 +5,7 @@ import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {PromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
+import type {ChatSetPeerOptions} from '@lib/appImManager';
 
 export type SharedMediaImpl = {
   setQuery: () => void;
@@ -28,6 +29,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   public threadId: number;
   public isFirst: boolean;
   public noProfile: boolean;
+  // * false shows my own profile rather than Saved Messages
+  public isDialog = true;
+  // * what a chat opened from the profile goes back to
+  public openChatStack: ChatSetPeerOptions['stack'];
   public peerChanged: boolean;
   public searchSuper: AppSearchSuper;
 
@@ -123,13 +128,24 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.onCloseAfterTimeout();
   }
 
-  public static async open(slider: SidebarSlider, peerId: PeerId, noProfile?: boolean) {
+  public static async open(
+    slider: SidebarSlider,
+    peerId: PeerId,
+    options: Partial<Pick<AppSharedMediaTab, 'noProfile' | 'isFirst' | 'isDialog' | 'openChatStack'>> = {}
+  ) {
     const tab = slider.createTab(AppSharedMediaTab, true);
-    tab.noProfile = noProfile;
     tab.isFirst = true;
-    tab.setPeer(peerId);
-    (await tab.fillProfileElements())();
-    await tab.loadSidebarMedia(true);
+    Object.assign(tab, options);
+    try {
+      tab.setPeer(peerId);
+      (await tab.fillProfileElements())();
+      await tab.loadSidebarMedia(true);
+    } catch(err) {
+      // * not opened yet, so no slider closes it: it goes by itself, its listeners with it
+      tab.destroy();
+      throw err;
+    }
+
     return tab.open();
   }
 }

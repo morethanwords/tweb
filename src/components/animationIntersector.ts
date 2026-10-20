@@ -311,7 +311,8 @@ export class AnimationIntersector {
     group?: AnimationItemGroup,
     destroy?: boolean,
     imitateIntersection?: boolean,
-    exceptGroup?: AnimationItemGroup
+    exceptGroup?: AnimationItemGroup,
+    exceptUnder?: Node
   ) {
     // if(rootScope.idle.isIDLE) return;
 
@@ -334,13 +335,19 @@ export class AnimationIntersector {
       const animations = this.byGroups[group];
 
       forEachReverse(animations, (animation) => {
+        if(exceptUnder?.contains(animation.el)) {
+          return;
+        }
+
         this.checkAnimation(animation, blurred, destroy);
       });
     }
   }
 
-  public checkAnimations2(blurred?: boolean, exceptGroup?: AnimationItemGroup) {
-    this.checkAnimations(blurred, undefined, undefined, true, exceptGroup);
+  // * `exceptUnder`: what stands in it is left as it is - the content of a popup that pauses what is
+  // * under it
+  public checkAnimations2(blurred?: boolean, exceptGroup?: AnimationItemGroup, exceptUnder?: Node) {
+    this.checkAnimations(blurred, undefined, undefined, true, exceptGroup, exceptUnder);
   }
 
   public checkAnimation(player: AnimationItem, blurred?: boolean, destroy?: boolean) {

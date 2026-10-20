@@ -1191,7 +1191,7 @@ export default function showStarGiftInfoPopup(options: {
 
           {isEditableUniqueGift && (
             <div class="popup-star-gift-info-actions">
-              <Button
+              <Button.Tile
                 noRipple
                 class="popup-star-gift-info-action"
                 icon="gem_transfer_filled"
@@ -1202,7 +1202,7 @@ export default function showStarGiftInfoPopup(options: {
                   }
                 })}
               />
-              <Button
+              <Button.Tile
                 noRipple
                 class="popup-star-gift-info-action"
                 icon={isWearing() ? 'crownoff_filled' : 'crown_filled'}
@@ -1230,7 +1230,7 @@ export default function showStarGiftInfoPopup(options: {
                   }
                 }}
               />
-              <Button
+              <Button.Tile
                 noRipple
                 class="popup-star-gift-info-action"
                 icon={isListed() ? 'tag_alt_crossed_filled' : 'tag_alt_filled'}

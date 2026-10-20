@@ -8,7 +8,7 @@ import ButtonIcon from '@components/buttonIcon';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {renderPeerProfile} from '@components/peerProfile';
+import {getPeerProfileTitleKey, renderPeerProfile} from '@components/peerProfile';
 import {Message} from '@layer';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import liteMode from '@helpers/liteMode';
@@ -105,19 +105,12 @@ const SharedMedia: Component = () => {
       })
     });
 
-    const titleKey = ((): LangPackKey => {
-      if((isForum || isBotforum) && threadId) {
-        return 'Profile.Info.Topic';
-      } else if(isBot) {
-        return 'Profile.Info.Bot';
-      } else if(isBroadcast) {
-        return 'Profile.Info.Channel';
-      } else if(usePeerId.isUser()) {
-        return 'Profile.Info.User';
-      } else {
-        return 'Profile.Info.Group';
-      }
-    })();
+    const titleKey = getPeerProfileTitleKey({
+      isTopic: (isForum || isBotforum) && !!threadId,
+      isBot,
+      isBroadcast,
+      isUser: usePeerId.isUser()
+    });
 
     return () => {
       titleI18n.compareAndUpdate({
@@ -179,9 +172,11 @@ const SharedMedia: Component = () => {
           tab.scrollable.append(renderPeerProfile({
             peerId: tab.peerId,
             threadId: tab.threadId,
-            isDialog: true,
+            isDialog: tab.isDialog,
             scrollable: tab.scrollable,
             setCollapsedOn: tab.container,
+            slider: tab.slider,
+            openChatStack: tab.openChatStack,
             searchSuperContainer: tab.searchSuper.container,
             onPinnedGiftsChange: (gifts) => {
               tab.searchSuper.setPinnedGifts(gifts);
@@ -601,7 +596,6 @@ const SharedMedia: Component = () => {
   const HEADER_HEIGHT = 56;
   const ADDITIONAL_OFFSET = 16;
   const OFFSET = HEADER_HEIGHT + ADDITIONAL_OFFSET;
-  const BODY_PADDING = 16;
   const cb = tab.scrollable.onAdditionalScroll;
   tab.scrollable.onAdditionalScroll = () => {
     cb?.();
@@ -609,8 +603,9 @@ const SharedMedia: Component = () => {
     const rect = (isSingle ? tab.searchSuper.container : tab.searchSuper.nav).getBoundingClientRect();
     if(!rect.width) return;
 
-    const top = rect.top - 1;
-    const isSharedMedia = top <= (OFFSET + BODY_PADDING);
+    // * from the tab's own top: the sidebar stands at the page's padding, the profile popup lower
+    const top = rect.top - tab.container.getBoundingClientRect().top - 1;
+    const isSharedMedia = top <= OFFSET;
     setIsSharedMedia(isSharedMedia);
     tab.searchSuper.updateScrollDateBadge(isSharedMedia);
   };

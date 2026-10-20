@@ -44,7 +44,9 @@ export default async function showDeleteDialogPopup(
   }; */
 
   const callbackLeave = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
-    onSelect?.(leaveChat(peerId, flush));
+    // * leaves whether or not anyone wants the request: `onSelect?.(leaveChat())` skipped it without one
+    const promise = leaveChat(peerId, flush);
+    onSelect?.(promise);
   };
 
   const callbackDelete = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => {

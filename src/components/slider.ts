@@ -288,6 +288,9 @@ export default class SidebarSlider {
     return tab;
   }
 
+  // * brings the slider into sight where it can be out of it — the right sidebar does
+  public reveal() {}
+
   public hasTabsInNavigation() {
     return !!appNavigationController.findItemByType(this.navigationType);
   }

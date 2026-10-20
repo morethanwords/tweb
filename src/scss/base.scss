@@ -887,6 +887,14 @@ b {
     border-radius: var(--avatar-border-radius-forum);
   }
 
+  // * the photo on a tab's edit screen, in a sidebar or in a popup's slider
+  .sidebar-slider & {
+    width: 120px;
+    height: 120px;
+    margin: 1rem auto 2rem;
+    flex: 0 0 auto;
+  }
+
   // the placeholder avatar is positioned over the whole circle and hides the global ring, which is
   // drawn inside the edge — draw it just outside instead
   :root:where(.a11y) &:focus-visible {

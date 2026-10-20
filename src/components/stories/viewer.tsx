@@ -3584,8 +3584,15 @@ export const createStoriesViewer = (
     });
   }
 
+  // * over what stands open, a popup it is opened from (a profile's shared media) included: last in
+  // * the page, as the media viewer comes, and under the popups it opens itself
+  const mount = getAppWindow().document.getElementById('stories-viewer');
+  if(mount.nextElementSibling) {
+    mount.parentElement.append(mount);
+  }
+
   return (
-    <Portal mount={getAppWindow().document.getElementById('stories-viewer')}>
+    <Portal mount={mount}>
       <StoriesViewer {...props} />
     </Portal>
   );

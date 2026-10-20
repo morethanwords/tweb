@@ -487,6 +487,72 @@ defineStories('Profile', (['username', 'phone'] as const).map((type) => ({
   }
 })));
 
+// the profile a click on a sender's avatar shows: its full peer, and the stories it looks up for the
+// photo (none); the rest of it is the default manager answers
+// * the profile is the sidebar's tab, shared media included: nothing in it, no stories, no channels
+// * like this one
+const peerProfileManagers = (getProfileByPeerId: (peerId: PeerId) => object) => ({
+  appProfileManager: {
+    getProfileByPeerId,
+    getProfile: (userId: UserId) => getProfileByPeerId(userId.toPeerId(false))
+  },
+  appMessagesManager: {
+    getSearchCounters: (peerId: PeerId, filters: {_: string}[]) => filters.map((filter) => ({
+      _: 'messages.searchCounter',
+      pFlags: {},
+      filter,
+      count: 0
+    }))
+  },
+  appChatsManager: {
+    getChannelRecommendations: () => ({_: 'messages.chats', chats: [] as any[]})
+  },
+  appStoriesManager: {
+    getPeerStories: (peerId: PeerId) => ({
+      _: 'peerStories',
+      pFlags: {},
+      peer: peerId.isUser() ?
+        {_: 'peerUser', user_id: peerId.toUserId()} :
+        {_: 'peerChannel', channel_id: peerId.toChatId()},
+      stories: [] as any[]
+    }),
+    getPinnedStories: () => ({count: 0, stories: [] as any[]}),
+    getStoriesArchive: () => ({count: 0, stories: [] as any[]})
+  }
+});
+
+defineStories('Profile', [
+  {
+    id: 'peerProfile/user',
+    title: 'Profile — a user',
+    managers: peerProfileManagers((peerId) => ({
+      _: 'userFull',
+      pFlags: {},
+      id: peerId.toUserId(),
+      about: 'Writes the sandbox stories',
+      settings: {_: 'peerSettings', pFlags: {}}
+    })),
+    open: async(ctx) => {
+      const {default: showPeerProfilePopup} = await import('@components/popups/peerProfile');
+      await showPeerProfilePopup({peerId: ctx.peer('private')});
+    }
+  },
+  {
+    id: 'peerProfile/channel',
+    title: 'Profile — a channel',
+    managers: peerProfileManagers((peerId) => ({
+      _: 'channelFull',
+      pFlags: {},
+      id: peerId.toChatId(),
+      about: 'News of the sandbox'
+    })),
+    open: async(ctx) => {
+      const {default: showPeerProfilePopup} = await import('@components/popups/peerProfile');
+      await showPeerProfilePopup({peerId: ctx.peer('channel')});
+    }
+  }
+]);
+
 // The sandbox reloads on an edit anyway (watchForEdits). Accepting here keeps an edit of a popup this story imports
 // from climbing through the story to the app's root once the sandbox has been opened on the dev server.
 if(import.meta.hot) import.meta.hot.accept();

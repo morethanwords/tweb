@@ -1621,7 +1621,7 @@ export class AppDialogsManager {
     if(peerId === rootScope.myId) {
       const tab = appSidebarLeft.getTab(AppSharedMediaTab);
       if(show === true || (show === undefined && !tab)) {
-        AppSharedMediaTab.open(appSidebarLeft, peerId, true);
+        AppSharedMediaTab.open(appSidebarLeft, peerId, {noProfile: true});
       } else {
         if(tab?.peerId === peerId) {
           tab.close();

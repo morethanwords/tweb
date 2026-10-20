@@ -181,6 +181,8 @@ const PopupElement = (props: {
 
   let focusTrap: FocusTrap;
   let previouslyFocusedEl: HTMLElement;
+  // * whether showing took the overlay and paused what is under it, for going to give them back
+  let overlaid = false;
 
   const register = (kind: PopupKind, element: JSX.Element) => {
     setStore(kind, element);
@@ -224,11 +226,14 @@ const PopupElement = (props: {
     else if(!withoutOverlay) previouslyFocusedEl?.blur?.();
 
     if(!withoutOverlay) {
+      overlaid = true;
       overlayCounter.isOverlayActive = true;
       // except the popup's own content: with the offscreen worker frame cache its
       // stickers can load and start playing BEFORE this sweep runs - pausing them
-      // here would freeze them forever (nothing re-plays until popup close)
-      animationIntersector.checkAnimations2(true, props.animationGroup);
+      // here would freeze them forever (nothing re-plays until popup close). Its own
+      // group, and whatever stands in it: a screen hosted in a popup (a profile) has
+      // its media in the general group, an avatar video among them
+      animationIntersector.checkAnimations2(true, props.animationGroup, popupElement());
     }
 
     // Add keyboard event listener
@@ -311,7 +316,8 @@ const PopupElement = (props: {
       controllerContext.dispose(); // * call it here for the content
       tooltipController.closeAll();
 
-      if(!withoutOverlay) {
+      // * a popup let go before it showed took no overlay and paused nothing
+      if(overlaid) {
         overlayCounter.isOverlayActive = false;
       }
 
@@ -327,7 +333,7 @@ const PopupElement = (props: {
 
       lateMiddlewareHelper.destroy();
 
-      if(!withoutOverlay) {
+      if(overlaid) {
         animationIntersector.checkAnimations2(false);
       }
 
@@ -398,17 +404,21 @@ const PopupElement = (props: {
   });
 
   if(props.show !== undefined) {
+    // * what is done once the frames are through is what the prop says then: a show taken back
+    // * before it came lets the popup go as one that never showed, rather than showing it anyway
+    let asked = false;
     createEffect(on(() => props.show, (_show) => {
-      let callback: () => void;
       if(_show) {
-        callback = show;
-      } else if(shown()) {
-        callback = hide;
+        asked = true;
+      } else if(!asked) {
+        return;
       }
 
-      if(callback) {
-        doubleRaf().then(callback);
-      }
+      doubleRaf().then(() => {
+        if(props.show) show();
+        else if(shown()) hide();
+        else destroy();
+      });
     }));
   } else {
     // Same doubleRaf as the reactive branch above: the open transition only runs if the browser

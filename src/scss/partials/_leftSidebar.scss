@@ -1477,20 +1477,6 @@
   }
 }
 
-.settings-slider-popup {
-  --popup-width: 25rem !important;
-  --popup-height: calc(var(--vh) * 100 - 2rem) !important;
-
-  .popup-header {
-    display: none;
-  }
-
-  &__height-limit,
-  .sidebar-slider {
-    height: 100%;
-  }
-}
-
 .sidebar-lock-button {
   margin-inline-start: 0 !important;
   &-icon {
