@@ -1,6 +1,6 @@
 import {expect, Locator, Page} from '@playwright/test';
 import {test} from './workerContext';
-import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
+import {fontsLoaded, openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
 /*
  * A text link held under the pointer gets a ripple that fills a rounded plate of its own colour
@@ -28,20 +28,6 @@ async function openLinkStory(page: Page) {
   await fontsLoaded(page);
   await installPlateProbe(page);
   return link;
-}
-
-/**
- * The text is measured, so the fonts it is set in have to be in first: Firefox can still be loading
- * the link's when the popup has stopped, and the link widens and moves under a press already
- * measured (a ripple 1.5px off where it was a moment ago). Laying the page out is what starts them
- * loading. Each face is asked rather than `document.fonts.status`, which WebKit leaves at "loading"
- * for good once one of them has failed.
- */
-async function fontsLoaded(page: Page) {
-  await page.evaluate(() => {
-    document.body.getBoundingClientRect();
-  });
-  await page.waitForFunction(() => [...document.fonts].every((face) => face.status !== 'loading'));
 }
 
 /** the press is what is checked: the link must not act on it (a touch acts on mousedown) */
@@ -258,8 +244,7 @@ test('in a dark theme every link of an outgoing message is underlined: it is as 
 /** what a menu does for the link it was opened from (the chat's context menu, a date's menu) */
 function holdPlate(link: Locator) {
   return link.evaluate(async(a) => {
-    const load = (path: string) => import('/src/' + path);
-    const {holdLinkPlate} = await load('helpers/dom/linkPress.ts');
+    const {holdLinkPlate} = await window.e2eImport('/src/helpers/dom/linkPress.ts');
     (window as any).releaseLinkPlate = holdLinkPlate(a);
   });
 }
@@ -301,8 +286,7 @@ test('a date in a message is a link: underlined under the mouse, lit while its m
   await preparePopupSandbox(page, false);
   // a formatted date as a message's text renders it
   await page.evaluate(async() => {
-    const load = (path: string) => import('/src/' + path);
-    const {default: wrapRichText} = await load('lib/richTextProcessor/wrapRichText.ts');
+    const {default: wrapRichText} = await window.e2eImport('/src/lib/richTextProcessor/wrapRichText.ts');
     const host = document.createElement('div');
     host.id = 'date-host';
     host.style.cssText = 'position: fixed; left: 100px; top: 100px; width: 400px; font: 16px sans-serif; z-index: 10000; background: #fff';
@@ -328,10 +312,9 @@ test('a relative date keeps its lit plate as it ticks, and its text is still fou
   await preparePopupSandbox(page, false);
   // "N seconds ago": it is rewritten every second
   await page.evaluate(async() => {
-    const load = (path: string) => import('/src/' + path);
     const [{default: wrapRichText}, {getMiddleware}] = await Promise.all([
-      load('lib/richTextProcessor/wrapRichText.ts'),
-      load('helpers/middleware.ts')
+      window.e2eImport('/src/lib/richTextProcessor/wrapRichText.ts'),
+      window.e2eImport('/src/helpers/middleware.ts')
     ]);
     const host = document.createElement('div');
     host.id = 'date-host';
@@ -351,8 +334,7 @@ test('a relative date keeps its lit plate as it ticks, and its text is still fou
   expect(await date.evaluate((element) => element.querySelector('.link-plate')?.classList.contains('is-lit'))).toBe(true);
   // what reads the date's text (the Quote item's check of a selection) finds it past the plate
   expect(await date.evaluate(async(element) => {
-    const load = (path: string) => import('/src/' + path);
-    const {getLinkFirstChild} = await load('helpers/dom/linkPress.ts');
+    const {getLinkFirstChild} = await window.e2eImport('/src/helpers/dom/linkPress.ts');
     const first = getLinkFirstChild(element);
     return first.nodeType === Node.TEXT_NODE && first.textContent === element.textContent;
   })).toBe(true);

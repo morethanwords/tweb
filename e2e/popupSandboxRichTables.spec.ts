@@ -35,7 +35,7 @@ async function open(page: Page) {
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   await page.evaluate(async() => {
     const path = '/e2e/fixtures/richTables.ts';
-    const {mountRichTables} = await import(/* @vite-ignore */ path);
+    const {mountRichTables} = await window.e2eImport(path);
     window.richTables = mountRichTables(420);
   });
   await expect.poll(() => page.evaluate(() => [...document.fonts]

@@ -18,7 +18,7 @@ async function open(page: Page, content: JSONContent[]) {
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   await page.evaluate(async(content) => {
     const path = '/e2e/fixtures/richMediaComposer.ts';
-    const {mountRichMediaComposerHarness} = await import(/* @vite-ignore */ path);
+    const {mountRichMediaComposerHarness} = await window.e2eImport(path);
     window.richMediaComposerHarness = mountRichMediaComposerHarness();
     window.richMediaComposerHarness.setDocument({type: 'doc', content});
   }, content);

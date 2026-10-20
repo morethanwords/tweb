@@ -1,5 +1,5 @@
 import {expect, Page} from '@playwright/test';
-import {closeStory, openStory, preparePopupSandbox, takeStoryPart} from './popupSandbox.helpers';
+import {closeStory, fontsLoaded, openStory, preparePopupSandbox, takeStoryPart} from './popupSandbox.helpers';
 import {test} from './workerContext';
 
 const SHOWN_TIMEOUT = 10_000;
@@ -96,6 +96,8 @@ async function openAndMeasure(page: Page, id: string, dir: 'ltr' | 'rtl') {
   }
 
   await page.waitForTimeout(LAYOUT_SETTLE);
+  // * a font that comes in between the two directions changes what it sets: an icon, a hint's digits
+  await fontsLoaded(page);
   const first = await page.evaluate(measurePopup);
   await page.waitForTimeout(MOTION_PROBE);
   const second = await page.evaluate(measurePopup);

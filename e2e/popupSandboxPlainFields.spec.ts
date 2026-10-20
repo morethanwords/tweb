@@ -30,7 +30,7 @@ async function typeInto(page: Page, field: Locator, text: string) {
 function readField(page: Page, selector: string) {
   return page.locator(selector).evaluate(async(element) => {
     const registryPath = '/src/components/chat/inputEditor/registry.ts';
-    const {getChatInputEditor} = await import(/* @vite-ignore */ registryPath);
+    const {getChatInputEditor} = await window.e2eImport(registryPath);
     const {value, entities} = getChatInputEditor(element as HTMLElement).getRichValue(true, false);
     return {value, entities: entities.map((entity: {_: string}) => entity._)};
   });
@@ -41,7 +41,7 @@ function readField(page: Page, selector: string) {
 function caretToEnd(field: Locator) {
   return field.evaluate(async(element) => {
     const registryPath = '/src/components/chat/inputEditor/registry.ts';
-    const {getChatInputEditor} = await import(/* @vite-ignore */ registryPath);
+    const {getChatInputEditor} = await window.e2eImport(registryPath);
     getChatInputEditor(element as HTMLElement).focusAtEnd();
   });
 }
@@ -65,7 +65,7 @@ test('an empty caption shows its own placeholder, and its text takes no extra li
     await page.keyboard.press(key);
     expect(await input.evaluate(async(element) => {
       const registryPath = '/src/components/chat/inputEditor/registry.ts';
-      const {getChatInputEditor} = await import(/* @vite-ignore */ registryPath);
+      const {getChatInputEditor} = await window.e2eImport(registryPath);
       const editor = getChatInputEditor(element as HTMLElement);
       editor.replaceSelection('!');
       return editor.getRichValue(false).value;
@@ -133,7 +133,7 @@ test('an emoji is drawn the way a message draws it, and selected with the text a
 
   const native = await page.evaluate(async() => {
     const path = '/src/lib/richTextProcessor/emojiImage.ts';
-    const {isEmojiNative} = await import(/* @vite-ignore */ path);
+    const {isEmojiNative} = await window.e2eImport(path);
     return isEmojiNative('1f603');
   });
   const image = title.locator('.chat-input-emoji-image');

@@ -60,7 +60,7 @@ test('keeps the draft open after a failed save and allows retry', async({page}) 
   await expect(page.locator('.popup.active')).toHaveCount(0);
   await page.evaluate(async() => {
     const modulePath = '/src/components/popups/storySettings.tsx';
-    const {default: showStorySettingsPopup} = await import(/* @vite-ignore */ modulePath);
+    const {default: showStorySettingsPopup} = await window.e2eImport(modulePath);
     let attempt = 0;
     showStorySettingsPopup({
       onSave: async() => {
@@ -149,7 +149,7 @@ for(const {target, canEdit} of [
         '/src/components/popupSandbox/mockManagers.ts', '/src/components/popupSandbox/fixtures.ts'
       ];
       const [{createStoriesViewerWithStory}, {default: rootScope}, {createMockManagers}, fixtures] =
-        await Promise.all(paths.map((path) => import(/* @vite-ignore */ path)));
+        await Promise.all(paths.map((path) => window.e2eImport(path)));
       // No media download is needed to exercise the real viewer's settings entrypoints.
       const story = {...fixtures.storyItem, media: {_: 'messageMediaPhoto', pFlags: {}, photo: {_: 'photoEmpty', id: 0}}};
       const peerId = target === 'self' ? rootScope.myId : target === 'group' ? fixtures.MEGAGROUP_PEER_ID : fixtures.CHANNEL_PEER_ID;
@@ -175,7 +175,7 @@ for(const {target, canEdit} of [
       rootScope.managers = mock.managers;
       createStoriesViewerWithStory({peerId, storyItem: story});
       const stylePath = '/src/components/stories/viewer.module.scss';
-      return (await import(/* @vite-ignore */ stylePath)).default.isReady;
+      return (await window.e2eImport(stylePath)).default.isReady;
     }, {target, canEdit});
     const viewer = page.locator('#stories-viewer');
     const popup = page.locator('.popup.active');

@@ -1,6 +1,10 @@
 import {defineConfig, devices} from '@playwright/test';
 import base from './playwright.config';
+import {appServer} from './playwright.popups.config';
 import {playwrightWorkers} from './scripts/testQueue';
+
+// the app as a bundle, as the popup suites have it (vite.popups-e2e.config.ts), on a port of its own
+const PORT = 8119;
 
 export default defineConfig<{freshContext: boolean}>({
   ...base,
@@ -9,6 +13,8 @@ export default defineConfig<{freshContext: boolean}>({
   fullyParallel: true,
   workers: playwrightWorkers(process.env.A11Y_WORKERS ? Number(process.env.A11Y_WORKERS) : '75%'),
   testMatch: /accessibility(?:Keyboard|MediaEditor|Window|Stories|Contrast)?\.spec\.ts/,
+  use: {...base.use, baseURL: `http://127.0.0.1:${PORT}/`},
+  webServer: appServer(PORT),
   projects: [
     {name: 'chromium', use: {...devices['Desktop Chrome']}},
     {name: 'chromium-touch', testMatch: '**/accessibilityKeyboard.spec.ts', use: {...devices['Desktop Chrome'], hasTouch: true}},

@@ -11,7 +11,7 @@ async function openPlusMenu(page: Page) {
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   await page.evaluate(async() => {
     const path = '/e2e/fixtures/richMediaComposer.ts';
-    const {mountRichMediaComposerHarness} = await import(/* @vite-ignore */ path);
+    const {mountRichMediaComposerHarness} = await window.e2eImport(path);
     mountRichMediaComposerHarness({premiumRequired: true});
   });
   await page.getByRole('button', {name: 'More actions', exact: true}).click();
@@ -24,7 +24,7 @@ test('Quote in the block menu has the outline quote icon', async({page}) => {
   const menu = await openPlusMenu(page);
   const glyphs = await page.evaluate(async() => {
     const path = '/src/icons.ts';
-    const {default: icons} = await import(/* @vite-ignore */ path);
+    const {default: icons} = await window.e2eImport(path);
     return {quote: String.fromCharCode(parseInt(icons.quote, 16)), filled: String.fromCharCode(parseInt(icons.quote_filled, 16))};
   });
   const icon = menu.getByRole('menuitem', {name: 'Quote', exact: true}).locator('.btn-menu-item-icon');

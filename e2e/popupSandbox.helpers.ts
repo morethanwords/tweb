@@ -6,6 +6,8 @@ type ManagerCall = {manager: string, method: string, args: unknown[]};
 
 declare global {
   interface Window {
+    /** The app's own instance of a module (`'/src/…'`, `'/e2e/fixtures/…'`) on an e2e server: vite.e2e.config.ts */
+    e2eImport(path: string): Promise<any>;
     popupSandbox: {
       ready(): Promise<void>,
       hide(): void,
@@ -30,6 +32,20 @@ const OPEN_TIMEOUT = 30_000;
  */
 export function takeStoryPart<T>(stories: T[], part: number, parts: number) {
   return stories.filter((_, index) => index % parts === part);
+}
+
+/**
+ * What is measured has to be set in its fonts first: Firefox can still be loading a link's when the popup has
+ * stopped, and the link widens and moves under a press already measured (a ripple 1.5px off where it was a moment
+ * ago); a popup measured twice, once each way, has its icon or its digits change width in between. Laying the page
+ * out is what starts them loading. Each face is asked rather than `document.fonts.status`, which WebKit leaves at
+ * "loading" for good once one of them has failed.
+ */
+export async function fontsLoaded(page: Page) {
+  await page.evaluate(() => {
+    document.body.getBoundingClientRect();
+  });
+  await page.waitForFunction(() => [...document.fonts].every((face) => face.status !== 'loading'));
 }
 
 /**

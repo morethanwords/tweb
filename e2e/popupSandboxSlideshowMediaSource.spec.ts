@@ -24,7 +24,7 @@ async function open(page: Page) {
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   await page.evaluate(async() => {
     const path = '/e2e/fixtures/slideshowMediaSource.ts';
-    const {mountSlideshowMediaSource} = await import(/* @vite-ignore */ path);
+    const {mountSlideshowMediaSource} = await window.e2eImport(path);
     window.slideshowMediaSource = mountSlideshowMediaSource();
   });
   for(const surface of SURFACES) {

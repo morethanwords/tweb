@@ -26,7 +26,7 @@ test('a picker\'s rows keep their layout while a search is on its way', async({p
   await page.evaluate(async(rowsSelector) => {
     window.pickerOldRows = [...document.querySelectorAll<HTMLElement>(rowsSelector)];
     const path = '/src/components/popupSandbox/environment.ts';
-    const {getMockManagers} = await import(/* @vite-ignore */ path);
+    const {getMockManagers} = await window.e2eImport(path);
     let release: () => void;
     const held = new Promise<void>((resolve) => release = resolve);
     window.releasePickerSearch = release;

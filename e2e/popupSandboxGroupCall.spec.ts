@@ -77,7 +77,7 @@ test('the rows under someone who leaves slide up, and the first fill just appear
   // the fill: each row's place is held back a task here.
   await page.evaluate(async() => {
     const path = '/src/components/groupCall/participantsList.ts';
-    const {prototype} = (await import(/* @vite-ignore */ path)).default;
+    const {prototype} = (await window.e2eImport(path)).default;
     const getParticipant = prototype.getParticipant;
     prototype.getParticipant = async function(...args: any[]) {
       await new Promise((resolve) => setTimeout(resolve));

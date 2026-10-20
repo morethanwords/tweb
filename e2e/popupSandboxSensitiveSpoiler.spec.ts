@@ -12,8 +12,8 @@ async function clickSensitiveSpoiler(page: Page, settings: Settings) {
   await page.evaluate(async({canChange, needAgeVerification, markedVerified}) => {
     const statePath = '/src/stores/appState.ts';
     const spoilerPath = '/src/components/wrappers/mediaSpoiler.ts';
-    const {appState, setAppStateSilent} = await import(/* @vite-ignore */ statePath);
-    const {onMediaSpoilerClick} = await import(/* @vite-ignore */ spoilerPath);
+    const {appState, setAppStateSilent} = await window.e2eImport(statePath);
+    const {onMediaSpoilerClick} = await window.e2eImport(spoilerPath);
     setAppStateSilent({
       appConfig: {...JSON.parse(JSON.stringify(appState.appConfig ?? {})), need_age_video_verification: needAgeVerification},
       accountContentSettings: {

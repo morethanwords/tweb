@@ -10,7 +10,7 @@ type Line = {top: number, height: number};
 async function measure(page: Page, clipHeight?: number): Promise<Line[]> {
   return page.evaluate(async(clipHeight) => {
     const path = '/src/components/messageSpoilerOverlay/utils.ts';
-    const {getCustomDOMRectsForSpoilerSpan} = await import(/* @vite-ignore */ path);
+    const {getCustomDOMRectsForSpoilerSpan} = await window.e2eImport(path);
     const message = document.createElement('div');
     message.style.cssText = 'position:absolute;left:0;top:0;width:200px;font:16px/20px sans-serif;background:white;z-index:2;';
     const box = document.createElement('div');

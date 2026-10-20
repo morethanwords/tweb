@@ -872,6 +872,20 @@ navigates it again for each test (`samePage` in `e2e/workerContext.ts`) — a ne
 document in a warm renderer, three times faster to open than a new page.
 Playwright suites run on `vite.e2e.config.ts` — the dev server without hot
 reload, so an edit made while a suite runs no longer reloads the page under it.
+The sandbox suites (`test:popups`, `test:focus`, `test:a11y`) get the app as a
+bundle instead (`vite.popups-e2e.config.ts`: Vite's Full Bundle Mode, built
+once as the server starts, ~25 s). Each of their tests opens the sandbox anew,
+and served module by module that is ~1800 requests a page — ~25 s each with a
+full run's pages at once, against ~7 s bundled. A bundle has no module URLs, so
+a test that reaches into the app — a store, `rootScope`, a popup to open, a
+harness of `e2e/fixtures` — calls `window.e2eImport('/src/…')` in the page,
+never `import('/src/…')`; it gives the app's own instance on either kind of
+server. Write the path whole, as a string in the spec: the bundle can import
+only the modules some spec under `e2e/` names that way (`vite.e2e.config.ts`
+reads them out), and asked for another, `e2eImport` says so.
+`TWEB_E2E_BUNDLED=0` serves the modules as they are (no build, the quicker for
+one spec); `popupSandboxHotRerun.spec.ts`, which runs every module again by its
+URL, always has a server of that kind beside the bundle.
 
 `test:focus` answers a question the others cannot: not whether a control has a
 name and a role, but whether a person pressing Tab can *see* where they are. It

@@ -27,8 +27,8 @@ async function open(page: Page) {
     const fixture = '/e2e/fixtures/richMediaComposer.ts';
     const testData = '/src/components/chat/inputEditor/testData.ts';
     const [{mountRichMediaComposerHarness}, {createChatInputEditorTestData}] = await Promise.all([
-      import(/* @vite-ignore */ fixture),
-      import(/* @vite-ignore */ testData)
+      window.e2eImport(fixture),
+      window.e2eImport(testData)
     ]);
     const harness = mountRichMediaComposerHarness();
     harness.setExpanded(true);
@@ -46,7 +46,7 @@ async function open(page: Page) {
 // mounts the field, which once kept WebKit redrawing a details forever.
 const measure = (page: Page, index: number) => page.evaluate(async(index): Promise<Block | 'none' | 'end'> => {
   const registry = '/src/components/chat/inputEditor/registry.ts';
-  const {getChatInputEditor} = await import(/* @vite-ignore */ registry);
+  const {getChatInputEditor} = await window.e2eImport(registry);
   const input = document.querySelector<HTMLElement>('.input-message-input')!;
   const {view} = getChatInputEditor(input).editor;
   const blocks: {node: any, position: number}[] = [];
@@ -95,7 +95,7 @@ const tooltipOffers = (page: Page) => page.evaluate(() => Object.fromEntries(['B
 
 const editorState = (page: Page) => page.evaluate(async() => {
   const registry = '/src/components/chat/inputEditor/registry.ts';
-  const {getChatInputEditor} = await import(/* @vite-ignore */ registry);
+  const {getChatInputEditor} = await window.e2eImport(registry);
   const editor = getChatInputEditor(document.querySelector<HTMLElement>('.input-message-input')!);
   const {$from, empty} = editor.editor.state.selection;
   return {
@@ -165,8 +165,8 @@ test('the tooltip quotes with the plain icon in a collapsed field and with the b
     const fixture = '/e2e/fixtures/richMediaComposer.ts';
     const iconsPath = '/src/icons.ts';
     const [{mountRichMediaComposerHarness}, {default: icons}] = await Promise.all([
-      import(/* @vite-ignore */ fixture),
-      import(/* @vite-ignore */ iconsPath)
+      window.e2eImport(fixture),
+      window.e2eImport(iconsPath)
     ]);
     window.richMediaComposerHarness = mountRichMediaComposerHarness();
     const glyph = (icon: string) => String.fromCharCode(parseInt(icons[icon], 16));

@@ -18,7 +18,7 @@ test('link popup validates, moves focus with Enter, submits and cancels through 
   await page.evaluate(() => window.popupSandbox.ready());
   const open = (editing: boolean) => page.evaluate(async editing => {
     const path = '/src/components/popups/createLink.tsx';
-    const {default: showPicker} = await import(/* @vite-ignore */ path);
+    const {default: showPicker} = await window.e2eImport(path);
     window.linkPickerResult = undefined;
     void showPicker(editing ? {editing: true, text: 'Link', url: 'https://example.com'} : {})
     .then((result: CreateLinkPopupResult) => window.linkPickerResult = result, () => window.linkPickerResult = 'cancelled');
@@ -80,7 +80,7 @@ test('media caption keyboard formatting preserves text and does not submit the p
   await expect(popup).toBeVisible();
   const richValue = () => input.evaluate(async(element) => {
     const path = '/src/helpers/dom/getRichValueWithCaret.ts';
-    const {default: getValue} = await import(/* @vite-ignore */ path);
+    const {default: getValue} = await window.e2eImport(path);
     return getValue(element, true, false);
   });
   await expect.poll(async() => (await richValue()).entities).toEqual([{_: 'messageEntityBold', offset: 0, length: 7}]);
@@ -125,7 +125,7 @@ for(const {name, html, value, entities} of CAPTION_PASTE_CASES) {
 
     const pasted = await input.evaluate(async(element, html) => {
       const registryPath = '/src/components/chat/inputEditor/registry.ts';
-      const {getChatInputEditor} = await import(/* @vite-ignore */ registryPath);
+      const {getChatInputEditor} = await window.e2eImport(registryPath);
       const editor = getChatInputEditor(element as HTMLElement);
       editor.setTextWithEntities('');
       (editor as unknown as {editor: {view: {pasteHTML(html: string): void}}}).editor.view.pasteHTML(html);
@@ -151,7 +151,7 @@ test('an empty or explicitly disabled first selection does not poison the next f
   // a caption or a poll description does.
   await page.evaluate(async() => {
     const plainFieldPath = '/src/components/chat/inputEditor/plainField.ts';
-    const {default: attachPlainMessageEditor} = await import(/* @vite-ignore */ plainFieldPath);
+    const {default: attachPlainMessageEditor} = await window.e2eImport(plainFieldPath);
     for(const id of ['first', 'second']) {
       const input = document.createElement('div');
       input.id = `qa-${id}`;
@@ -199,7 +199,7 @@ test('the selection tooltip stands over the text of a Select All, not over the b
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   await page.evaluate(async() => {
     const path = '/e2e/fixtures/richMediaComposer.ts';
-    const {mountRichMediaComposerHarness} = await import(/* @vite-ignore */ path);
+    const {mountRichMediaComposerHarness} = await window.e2eImport(path);
     const paragraph = (text?: string) => ({type: 'paragraph', content: text ? [{type: 'text', text}] : undefined});
     mountRichMediaComposerHarness().setDocument({type: 'doc', content: [paragraph('hello'), paragraph('world'), paragraph()]});
   });
@@ -238,7 +238,7 @@ const mountFoldedComposer = async(page: Page, sendsRich: boolean) => {
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   await page.evaluate(async(sendsRich) => {
     const path = '/e2e/fixtures/richMediaComposer.ts';
-    const {mountRichMediaComposerHarness} = await import(/* @vite-ignore */ path);
+    const {mountRichMediaComposerHarness} = await window.e2eImport(path);
     const harness = window.richMediaComposerHarness = mountRichMediaComposerHarness({sendsRich});
     await harness.ready();
     harness.setExpanded(false);

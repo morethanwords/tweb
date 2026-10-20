@@ -14,7 +14,7 @@ async function open(page: Page, options: {rich: boolean, create?: boolean, sched
   await page.evaluate(() => window.popupSandbox.ready());
   await page.evaluate(async(options) => {
     const path = '/e2e/fixtures/aiEditorPopup.ts';
-    const {openAiPopupHarness} = await import(/* @vite-ignore */ path);
+    const {openAiPopupHarness} = await window.e2eImport(path);
     window.aiPopupHarness = openAiPopupHarness(options);
   }, options);
   const popup = page.locator('.popup.active').last();

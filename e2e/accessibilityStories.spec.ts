@@ -6,12 +6,11 @@ import {expectNoA11yViolations, moveClient, trackBrowserErrors} from './accessib
 async function prepareStories(page: Page, inOtherDocument = false) {
   await preparePopupSandbox(page, true, {a11y: true});
   await page.evaluate(async() => {
-    const load = (path: string) => import('/src/' + path);
     const [{storyItem, photo, SELF_PEER_ID, selfUser}, {seedMirror}, {getMockManagers}, {createStoriesViewerWithProvider}] = await Promise.all([
-      load('components/popupSandbox/fixtures.ts'),
-      load('components/popupSandbox/bootstrapState.ts'),
-      load('components/popupSandbox/environment.ts'),
-      load('components/stories/viewer.tsx')
+      window.e2eImport('/src/components/popupSandbox/fixtures.ts'),
+      window.e2eImport('/src/components/popupSandbox/bootstrapState.ts'),
+      window.e2eImport('/src/components/popupSandbox/environment.ts'),
+      window.e2eImport('/src/components/stories/viewer.tsx')
     ]);
     const canvas = document.createElement('canvas');
     canvas.width = 640;

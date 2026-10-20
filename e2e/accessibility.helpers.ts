@@ -4,11 +4,10 @@ import {expect, Page} from '@playwright/test';
 /** Change the rendered mode without persisting fixture settings or contacting Telegram. */
 export async function setIncreasedContrast(page: Page, enabled: boolean) {
   await page.evaluate(async(enabled) => {
-    const load = (path: string) => import('/src/' + path);
     const [{appSettings, setAppSettingsSilent}, {default: rootScope}, {joinDeepPath}] = await Promise.all([
-      load('stores/appSettings.ts'),
-      load('lib/rootScope.ts'),
-      load('helpers/object/setDeepProperty.ts')
+      window.e2eImport('/src/stores/appSettings.ts'),
+      window.e2eImport('/src/lib/rootScope.ts'),
+      window.e2eImport('/src/helpers/object/setDeepProperty.ts')
     ]);
     setAppSettingsSilent('increaseContrast', enabled);
     rootScope.dispatchEvent('settings_updated', {key: joinDeepPath('settings', 'increaseContrast'), value: enabled, settings: appSettings});
@@ -32,7 +31,7 @@ export function trackBrowserErrors(page: Page) {
 export async function moveClient(page: Page, intoFrame: boolean) {
   return page.evaluate(async(intoFrame) => {
     const moduleURL = '/src/components/clientPip.tsx';
-    const {moveAppToWindow, moveAppBack} = await import(moduleURL);
+    const {moveAppToWindow, moveAppBack} = await window.e2eImport(moduleURL);
     if(!intoFrame) {
       moveAppBack();
       return true;

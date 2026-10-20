@@ -1,5 +1,5 @@
 import {defineConfig, devices} from '@playwright/test';
-import popups from './playwright.popups.config';
+import popups, {appServer} from './playwright.popups.config';
 import {playwrightWorkers} from './scripts/testQueue';
 
 // The popup suite's setup — the sandbox on a server that caches modules for the run, tests side by
@@ -12,5 +12,7 @@ export default defineConfig<{freshContext: boolean}>({
   // the same count focusPixels.spec.ts cuts its parts by — not the popup suite's POPUPS_WORKERS. A run
   // narrowed to some files gets fewer workers (scripts/testQueue.ts) and walks the same parts on them.
   workers: playwrightWorkers(process.env.FOCUS_WORKERS ? Number(process.env.FOCUS_WORKERS) : '75%'),
+  // the bundle alone: the popup suite's second server is for its hot-update spec
+  webServer: appServer(),
   projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}]
 });

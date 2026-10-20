@@ -25,7 +25,7 @@ for(const options of [
   await page.getByRole('button', {name: '◂ Hide', exact: true}).click();
   const selectors = await page.evaluate(async options => {
     const path = '/e2e/fixtures/richTextStyles.ts';
-    const {mountRichTextStyles} = await import(/* @vite-ignore */ path);
+    const {mountRichTextStyles} = await window.e2eImport(path);
     return mountRichTextStyles(options).selectors as Record<string, string>;
   }, options);
   await expect.poll(() => page.evaluate(() => [...document.fonts]
