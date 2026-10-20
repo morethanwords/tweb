@@ -62,6 +62,11 @@ vi.mock('@components/inputField', () => ({
   }
 }));
 
+// * a community has no member tags, and the editor's preview would bring the whole chat in
+vi.mock('@components/memberTag/memberTagEditor', () => ({
+  default: (): undefined => undefined
+}));
+
 vi.mock('@components/popups/channelsTooMuch', () => ({
   handleChannelsTooMuch: (callback: () => Promise<unknown>) => callback()
 }));

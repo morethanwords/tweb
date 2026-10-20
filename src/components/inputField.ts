@@ -465,6 +465,7 @@ export default class InputField {
       `;
 
       input = this.container.firstElementChild as HTMLElement;
+      if(!canBeEdited) (input as HTMLInputElement).readOnly = true;
       // input.addEventListener('input', () => checkAndSetRTL(input));
 
       onInputCallbacks.push(() => {

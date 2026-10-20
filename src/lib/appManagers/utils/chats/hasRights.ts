@@ -167,6 +167,23 @@ export default function hasRights(
       return isAdmin;
     }
 
+    // * member tags live in groups only
+    // * own tag: any admin can set theirs, a member unless the group (or a restriction) forbids it
+    case 'edit_rank':
+    // * someone else's tag
+    case 'manage_ranks': {
+      if(chat._ === 'community' || (chat as Chat.channel).pFlags.broadcast) {
+        return false;
+      }
+
+      if(action === 'manage_ranks') {
+        return isAdmin && !!myFlags[action];
+      }
+
+      // * one member's restrictions do not lift the group's own ban, the two add up (desktop)
+      return isAdmin || (!myFlags[action] && !(chat as Chat.channel).default_banned_rights?.pFlags[action]);
+    }
+
     // case 'view_statistics': {
     //   return isAdmin && !!myFlags['other'];
     // }

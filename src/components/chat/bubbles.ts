@@ -131,7 +131,9 @@ import liteMode from '@helpers/liteMode';
 import getSelectionElementFromTarget from '@components/chat/getSelectionElementFromTarget';
 import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
-import wrapParticipantRank from '@components/wrappers/participantRank';
+import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
+import {canHaveMemberTags, getMemberTagRole} from '@appManagers/utils/chats/memberTag';
+import createBubbleNameRank, {BubbleNameRank} from '@components/chat/bubbleParts/bubbleNameRank';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import SwipeHandler from '@components/swipeHandler';
@@ -906,8 +908,17 @@ export default class ChatBubbles {
     0
   );
 
-  private ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
+  // * the tags known apart from a message's own `from_rank`: a supergroup's admins, a basic group's
+  // * members, and any tag changed since its messages were loaded ('' marks one removed)
+  private ranks: Map<PeerId, BubbleNameRank>;
+  private ranksChatId: ChatId;
+  // * whether a message's own `from_rank` counts: in a supergroup, not in a basic group
+  private ranksFromMessages: boolean;
+  // * tag changes learnt before `ranks` came, applied over them
+  private pendingRankChanges: Array<() => void>;
   private processRanks: Set<() => void>;
+  // * what draws an author's tag on each of their rendered name lines, to redraw it when the tag changes
+  private rankRenderers: Map<PeerId, Set<() => void>>;
   private canShowRanks: boolean;
   // private reactions: Map<number, ReactionsElement>;
 
@@ -2395,6 +2406,59 @@ export default class ChatBubbles {
       }
     });
 
+    // * a tag set or removed after the messages came: redrawn on that author's name lines
+    this.listenerSetter.add(rootScope)('chat_participant_rank', ({chatId, userId, rank}) => this.onRankChange(chatId, () => {
+      const peerId = userId.toPeerId(false);
+      const role = this.ranks.get(peerId)?.role || 'member';
+      // * a supergroup's admin without a tag reads "admin" / "owner" again
+      const defaultRank = role !== 'member' && apiManagerProxy.getChat(chatId)?._ === 'channel' ? (role === 'owner' ? 1 : 2) : '';
+      this.setAuthorRank(peerId, {rank: rank || defaultRank, role});
+    }));
+
+    // * promoted or demoted in a supergroup: the tag takes the new role's colour
+    this.listenerSetter.add(rootScope)('chat_participant', ({channel_id, user_id, new_participant}) => this.onRankChange(channel_id, () => {
+      const peerId = user_id.toPeerId(false);
+      // * no participant: the member left or was let off their restrictions
+      const role = getMemberTagRole(new_participant);
+      // * a member restricted or let off keeps the tag known for them: such an update carries none
+      if(role === 'member' && (this.ranks.get(peerId)?.role ?? 'member') === 'member') {
+        return;
+      }
+
+      // * a demoted admin goes back to what the messages say
+      this.setAuthorRank(
+        peerId,
+        role !== 'member' ? {rank: getParticipantRank(new_participant), role} : undefined
+      );
+    }));
+
+    // * a basic group keeps roles and tags in its full chat
+    this.listenerSetter.add(rootScope)('chat_full_update', (chatId) => this.onRankChange(chatId, async() => {
+      if(apiManagerProxy.getChat(chatId)?._ !== 'chat') {
+        return;
+      }
+
+      const ranks = this.ranks;
+      const chatParticipants = await this.managers.appProfileManager.getParticipants({id: chatId}).catch((): undefined => undefined);
+      if(this.ranks !== ranks || !chatParticipants) {
+        return;
+      }
+
+      const next = new Map<PeerId, BubbleNameRank>();
+      (chatParticipants.participants as ChatParticipant[]).forEach((participant) => {
+        if(participant.rank) {
+          next.set(getParticipantPeerId(participant), {rank: participant.rank, role: getMemberTagRole(participant)});
+        }
+      });
+
+      new Set([...ranks.keys(), ...next.keys()]).forEach((peerId) => {
+        const was = ranks.get(peerId), is = next.get(peerId);
+        if(was?.rank !== is?.rank || was?.role !== is?.role) {
+          this.setAuthorRank(peerId, is);
+        }
+      });
+    }));
+
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       const {peerId} = this;
       if(peerId !== chatId.toPeerId(true)) {
@@ -3774,6 +3838,20 @@ export default class ChatBubbles {
         cancelEvent(e);
         return;
       }
+    }
+
+    // * a member tag says what it is
+    const memberTag = findUpClassName(target, 'is-member-tag');
+    if(memberTag) {
+      cancelEvent(e);
+      const message = this.chat.getMessage(bubbleFullMid) as Message.message;
+      const rank = message && this.getMessageRank(message);
+      if(rank?.role) {
+        const options = {chatId: this.ranksChatId, peerId: message.fromId, rank: memberTag.textContent, role: rank.role};
+        import('@components/popups/memberTagInfo').then(({default: showMemberTagInfoPopup}) => showMemberTagInfoPopup(options));
+      }
+
+      return;
     }
 
     const nameDiv = findUpClassName(target, 'peer-title') ||
@@ -6222,11 +6300,16 @@ export default class ChatBubbles {
 
     if(!samePeer) {
       this.ranks = undefined;
+      this.ranksChatId = undefined;
+      this.ranksFromMessages = false;
+      this.pendingRankChanges = undefined;
       this.processRanks = undefined;
+      this.rankRenderers = new Map();
       this.canShowRanks = false;
 
       // a welcome message is signed by nobody's role (Android drops the admin tag there)
-      let canShowRanks = this.chat.isMegagroup && this.chat.type !== ChatType.Welcome, chatId = this.peerId.toChatId();
+      let chatId = this.peerId.toChatId();
+      let canShowRanks = this.chat.type !== ChatType.Welcome && this.peerId.isAnyChat() && canHaveMemberTags(apiManagerProxy.getChat(chatId));
       if(this.chat.type === ChatType.Saved && !this.chat.threadId.isUser()) {
         const chat = apiManagerProxy.getChat(chatId = this.chat.threadId.toChatId());
         canShowRanks = chat?._ === 'channel';
@@ -6234,25 +6317,29 @@ export default class ChatBubbles {
 
       if(canShowRanks) {
         this.canShowRanks = true;
+        this.ranksChatId = chatId;
         const processRanks = this.processRanks = new Set();
+        // * a basic group has every member's tag in its full chat, a supergroup tells only its admins' apart from the messages
+        const isBasicGroup = apiManagerProxy.getChat(chatId)?._ === 'chat';
 
         const promise = this.managers.acknowledged.appProfileManager.getParticipants({
           id: chatId,
-          filter: {_: 'channelParticipantsAdmins'},
+          filter: {_: isBasicGroup ? 'channelParticipantsRecent' : 'channelParticipantsAdmins'},
           limit: 100
         });
-        const ackedResult = await m(promise);
-        const setRanksPromise = ackedResult.result.then((channelParticipants) => {
+        // * a basic group's list is all there is, a supergroup's messages carry their members' tags
+        this.ranksFromMessages = !isBasicGroup;
+        const pendingRankChanges: Array<() => void> = this.pendingRankChanges = [];
+
+        const installRanks = (ranks: Map<PeerId, BubbleNameRank>) => {
           if(this.processRanks !== processRanks) {
             return;
           }
 
-          const participants = channelParticipants.participants as (ChatParticipant.chatParticipantAdmin | ChannelParticipant.channelParticipantAdmin)[];
-          this.ranks = new Map();
-          participants.forEach((participant) => {
-            const rank = getParticipantRank(participant);
-            this.ranks.set(participant.user_id.toPeerId(), rank);
-          });
+          this.ranks = ranks;
+          // * what changed while the list was on its way goes over it
+          this.pendingRankChanges = undefined;
+          pendingRankChanges.forEach((callback) => callback());
 
           getHeavyAnimationPromise().then(() => {
             if(this.processRanks !== processRanks) {
@@ -6262,12 +6349,26 @@ export default class ChatBubbles {
             processRanks.forEach((callback) => callback());
             this.processRanks = undefined;
           });
+        };
+
+        const ackedResult = await m(promise);
+        const setRanksPromise = ackedResult.result.then((channelParticipants) => {
+          const ranks: Map<PeerId, BubbleNameRank> = new Map();
+          (channelParticipants.participants as (ChatParticipant | ChannelParticipant)[]).forEach((participant) => {
+            // * a basic group shows the tags it has, with no "admin" for an admin without one (as desktop)
+            const rank = isBasicGroup ? (participant as ChatParticipant).rank : getParticipantRank(participant);
+            if(rank) {
+              ranks.set(getParticipantPeerId(participant), {rank, role: getMemberTagRole(participant)});
+            }
+          });
+
+          installRanks(ranks);
         }, (err) => {
           if((err as ApiError).type !== 'CHAT_ADMIN_REQUIRED') {
             this.log.error('ranks error', err);
           }
 
-          this.ranks = new Map();
+          installRanks(new Map());
         });
 
         if(ackedResult.cached) {
@@ -11240,30 +11341,39 @@ export default class ChatBubbles {
         !fwdFromId
         // (!fwdFromId || (message.post_author && !this.chat.getPostAuthor(message)))
       ) {
-        const processRank = () => {
-          const rank = this.ranks.get(message.fromId);
-          if(!rank && !(message as Message.message).from_boosts_applied) {
-            return;
-          }
-
-          this.wrapTitleAndRank(firstElement, message as Message.message, rank);
-        };
-
         const postAuthor = hasPostAuthor && (message as Message.message).post_author/*  || fwdFrom?.post_author */;
         if(postAuthor) {
-          this.wrapTitleAndRank(firstElement, message, postAuthor);
-        } else if(this.ranks) {
-          processRank();
+          this.wrapTitleAndRank(firstElement, message, {rank: postAuthor});
         } else {
-          const processRanks = this.processRanks;
-          processRanks.add(processRank);
+          const processRank = () => {
+            this.wrapTitleAndRank(firstElement, message as Message.message, this.getMessageRank(message as Message.message));
+          };
 
+          // * redrawn when the author's tag changes
+          const {fromId} = message, rankRenderers = this.rankRenderers;
+          let renderers = rankRenderers.get(fromId);
+          if(!renderers) rankRenderers.set(fromId, renderers = new Set());
+          renderers.add(processRank);
           middleware.onDestroy(() => {
-            processRanks.delete(processRank);
+            renderers.delete(processRank);
+            if(!renderers.size && rankRenderers.get(fromId) === renderers) {
+              rankRenderers.delete(fromId);
+            }
           });
+
+          if(this.ranks) {
+            processRank();
+          } else {
+            const processRanks = this.processRanks;
+            processRanks.add(processRank);
+
+            middleware.onDestroy(() => {
+              processRanks.delete(processRank);
+            });
+          }
         }
       } else if(this.chat.isMegagroup && !message.fromId.isUser() && (message as Message.message).views) {
-        this.wrapTitleAndRank(firstElement, message as Message.message, 0);
+        this.wrapTitleAndRank(firstElement, message as Message.message, {rank: 0});
       }/*  else if((message as Message.message).from_boosts_applied) {
         this.wrapTitleAndRank(firstElement, message as Message.message);
       } */
@@ -11809,18 +11919,90 @@ export default class ChatBubbles {
     }, container, middleware);
   }
 
+  // * a tag change in the open chat: applied at once, or over the tags once they come
+  private onRankChange(chatId: ChatId, callback: () => void) {
+    if(chatId !== this.ranksChatId) {
+      return;
+    }
+
+    if(this.ranks) {
+      callback();
+    } else {
+      this.pendingRankChanges?.push(callback);
+    }
+  }
+
+  private setAuthorRank(peerId: PeerId, rank: BubbleNameRank) {
+    if(rank) {
+      this.ranks.set(peerId, rank);
+    } else {
+      this.ranks.delete(peerId);
+    }
+
+    this.rankRenderers.get(peerId)?.forEach((callback) => callback());
+  }
+
+  // * the tag an author's messages show here, read off the bubbles beside their avatar
+  public getAvatarAuthorRank(avatar: HTMLElement) {
+    if(!this.canShowRanks) {
+      return;
+    }
+
+    const bubble = findUpClassName(avatar, 'bubbles-group')?.querySelector<HTMLElement>('.bubble[data-mid]');
+    const fullMid = getBubbleFullMid(bubble);
+    const message = fullMid && this.chat.getMessage(fullMid) as Message.message;
+    return message?.fromId === avatar.dataset.peerId?.toPeerId() ? this.getMessageRank(message) : undefined;
+  }
+
+  /**
+   * The author's tag in this chat (desktop's order): a supergroup admin's own, or "admin" / "owner";
+   * then one we learnt of after the message came; then, in a supergroup only, the message's
+   * `from_rank` - a basic group's list of members is all there is
+   */
+  private getMessageRank(message: Message.message): BubbleNameRank {
+    const known = this.ranks?.get(message.fromId);
+    if(known) {
+      return known.rank === '' ? undefined : known;
+    }
+
+    if(this.ranksFromMessages && message.from_rank) {
+      return {rank: message.from_rank, role: 'member'};
+    }
+  }
+
+  /**
+   * Puts the tag and the boosts at the end of the name line, or changes the tag a line has.
+   * The line keeps its container once made, so a later change only swaps the tag
+   */
   private wrapTitleAndRank(
     title: HTMLElement,
     message: Message.message,
-    rank?: Parameters<ChatBubbles['createBubbleNameRank']>[0]
+    rank?: BubbleNameRank
   ) {
-    const wrappedRank = rank !== undefined && this.createBubbleNameRank(rank);
+    const wrappedRank = rank && createBubbleNameRank(rank);
+    if(title.classList.contains('bubble-name-first')) {
+      const container = title.parentElement;
+      const previous = container.querySelector(':scope > .bubble-name-rank');
+      if(previous) {
+        if(wrappedRank) previous.replaceWith(wrappedRank);
+        else previous.remove();
+      } else if(wrappedRank) {
+        title.after(wrappedRank);
+      }
+
+      return;
+    }
+
+    const boosts = message.from_boosts_applied;
+    if(!wrappedRank && !boosts) {
+      return;
+    }
+
     // title.after(wrappedRank);
     const container = document.createElement('div');
     container.classList.add('title-flex');
     title.replaceWith(container);
     let boostsElement: HTMLElement;
-    const boosts = message.from_boosts_applied;
     if(boosts) {
       boostsElement = document.createElement('span');
       boostsElement.classList.add('bubble-name-boosts');
@@ -11830,12 +12012,6 @@ export default class ChatBubbles {
     container.append(...[title, wrappedRank, boostsElement].filter(Boolean));
   }
 
-  private createBubbleNameRank(rank: Parameters<typeof wrapParticipantRank>[0]) {
-    const span = document.createElement('span');
-    span.classList.add('bubble-name-rank');
-    span.append(wrapParticipantRank(rank));
-    return span;
-  }
 
   private createTitle(peerId: PeerId, wrapOptions: WrapSomethingOptions, isForward?: boolean) {
     const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(peerId));

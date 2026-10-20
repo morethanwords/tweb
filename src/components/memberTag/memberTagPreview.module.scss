@@ -1,0 +1,84 @@
+@use "../../scss/variables" as *;
+
+.preview {
+  border-radius: $border-radius-medium;
+  overflow: hidden;
+}
+
+// * the same inset all round, so the avatar stands as far from the card's side as from its bottom
+.content {
+  padding: .75rem;
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: .375rem;
+  // * a picture of a message: its tag is no button here, and takes no press (linkPress) nor pointer
+  pointer-events: none;
+}
+
+// the end of a bubble that runs out past the start of its card, fading there
+.isCropped {
+  margin-inline-start: -2rem;
+  mask-image: linear-gradient(calc(90deg * var(--reflect)), transparent 2rem, #000 4.5rem);
+
+  .bubble {
+    flex-grow: 1;
+  }
+}
+
+.avatar {
+  flex: 0 0 auto;
+}
+
+.bubble {
+  // wide enough for a long name and a full tag, the way a short message would be
+  flex: 0 1 15rem;
+  min-width: 0;
+
+  // * no group below to keep apart from, so none of a group's last margin, which would stand the
+  // * avatar below the bubble (`.bubble.is-group-last` outweighs a class of its own)
+  &,
+  &:global(.bubble.is-group-last) {
+    margin: 0;
+  }
+
+  :global(.bubble-content-wrapper) {
+    flex: 1 1 auto;
+    max-width: 100%;
+  }
+
+  :global(.bubble-content) {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: .375rem;
+  padding-block: .375rem .25rem;
+}
+
+// the text of the message, which says nothing here
+.line {
+  display: block;
+  height: .5rem;
+  border-radius: .25rem;
+  background-color: var(--primary-text-color);
+  opacity: .1;
+
+  &:nth-child(2) {
+    width: 85%;
+  }
+
+  &:nth-child(3) {
+    width: 65%;
+  }
+
+  &:nth-child(4) {
+    width: 40%;
+  }
+}

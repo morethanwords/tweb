@@ -845,7 +845,8 @@ export class AppChatsManager extends AppManager {
     const peerId = getParticipantPeerId(participant);
     const userId = peerId.toUserId();
     const makingAdmin = Object.keys(rights.pFlags).length > 0;
-    const canStickToLegacy = !rank && (!makingAdmin || deepEqual(rights, CHAT_LEGACY_ADMIN_RIGHTS));
+    // * a tag no longer needs a supergroup: a basic group keeps it apart from the rights (as desktop does)
+    const canStickToLegacy = !makingAdmin || deepEqual(rights, CHAT_LEGACY_ADMIN_RIGHTS);
 
     if(!wasChannel && canStickToLegacy) {
       const editChatAdmin = () => this.apiManager.invokeApi('messages.editChatAdmin', {
@@ -876,6 +877,11 @@ export class AppChatsManager extends AppManager {
         is_admin: makingAdmin,
         version: 0
       });
+
+      const prevRank = typeof(participant) === 'object' ? (participant as ChatParticipant.chatParticipant).rank : undefined;
+      if(makingAdmin && rank !== (prevRank || '')) {
+        await this.editParticipantRank(id, peerId, rank);
+      }
 
       return id;
     }
@@ -918,6 +924,21 @@ export class AppChatsManager extends AppManager {
 
     this.onChatUpdatedForce(id, updates);
     return returnParticipant ? update.new_participant : id;
+  }
+
+  /**
+   * Sets a member tag, or removes it with an empty string. Not optimistic: the caches change once the server accepts
+   */
+  public async editParticipantRank(id: ChatId, peerId: PeerId, rank: string) {
+    const updates = await this.apiManager.invokeApi('messages.editChatParticipantRank', {
+      peer: this.appPeersManager.getInputPeerById(id.toPeerId(true)),
+      participant: this.appPeersManager.getInputPeerById(peerId),
+      rank
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+    // * the answer for a supergroup may carry no update of the tag
+    this.appProfileManager.applyParticipantRank(id, peerId.toUserId(), rank);
   }
 
   public editPhoto(id: ChatId, upload?: InputFile | ChatPhotoUpload) {
@@ -1028,6 +1049,8 @@ export class AppChatsManager extends AppManager {
         banned_rights: bannedRights,
         kicked_by: this.appUsersManager.getSelf().id,
         peer: this.appPeersManager.getOutputPeer(peerId),
+        // * a restriction leaves the member's tag where it was
+        rank: isObject(participant) ? (participant as ChannelParticipant.channelParticipant).rank : undefined,
         pFlags: bannedRights.pFlags.view_messages ? {left: true} : {}
       } : undefined
     });

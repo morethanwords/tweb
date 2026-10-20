@@ -12,6 +12,7 @@ import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
+import {applyChatParticipantRank} from '@appManagers/utils/chats/memberTag';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import filterParticipantsByQuery from '@appManagers/utils/chats/filterParticipantsByQuery';
 import ctx from '@environment/ctx';
@@ -64,6 +65,8 @@ export class AppProfileManager extends AppManager {
       updateChatParticipantDelete: this.onUpdateChatParticipantDelete,
 
       updateChatParticipantAdmin: this.onUpdateChatParticipantAdmin,
+
+      updateChatParticipantRank: this.onUpdateChatParticipantRank,
 
       updateUserTyping: this.onUpdateUserTyping,
       updateChatUserTyping: this.onUpdateUserTyping,
@@ -1401,7 +1404,9 @@ export class AppProfileManager extends AppManager {
           _: update.is_admin ? 'chatParticipantAdmin' : 'chatParticipant',
           user_id: update.user_id,
           inviter_id: this.appUsersManager.getSelf().id,
-          date: tsNow(true)
+          date: tsNow(true),
+          // * the member tag outlives a promotion or a demotion
+          rank: (participants[i] as ChatParticipant.chatParticipant).rank
         };
         return;
       }
@@ -1409,6 +1414,43 @@ export class AppProfileManager extends AppManager {
 
     return false;
   });
+
+  private onUpdateChatParticipantRank = (update: Update.updateChatParticipantRank) => {
+    this.applyParticipantRank(update.chat_id, update.user_id, update.rank, update.version);
+  };
+
+  /**
+   * Puts a member tag into the caches once the server has it, and tells the UI.
+   * A basic group's tags live in its full chat; a supergroup's in the participants it serves
+   */
+  public applyParticipantRank(chatId: ChatId, userId: UserId, rank: string, version?: number) {
+    if(this.appChatsManager.isChannel(chatId)) {
+      this.apiManager.clearCache('channels.getParticipants', (params) => (params.channel as InputChannel.inputChannel).channel_id === chatId);
+    } else {
+      let result: ReturnType<typeof applyChatParticipantRank>;
+      this.modifyCachedFullChat(chatId, (chatFull) => {
+        const chatParticipants = (chatFull as ChatFull.chatFull).participants;
+        if(chatParticipants?._ !== 'chatParticipants') {
+          return false;
+        }
+
+        result = applyChatParticipantRank(chatParticipants, userId, rank, version);
+        return result === 'applied';
+      });
+
+      // * an update older than the list says nothing about the tag now
+      if(result === 'old') {
+        return;
+      }
+
+      // * the tag itself is current either way, the rest of the list is refetched
+      if(result === 'gap') {
+        this.refreshFullPeer(chatId.toPeerId(true));
+      }
+    }
+
+    this.rootScope.dispatchEvent('chat_participant_rank', {chatId, userId, rank});
+  }
 
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
     const fromId = (update as Update.updateUserTyping).user_id ?

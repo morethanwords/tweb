@@ -12,9 +12,10 @@ import {ScrollableContextValue} from '@components/scrollable2';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import cancelEvent from '@helpers/dom/cancelEvent';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
-import SortedUserList from '@components/sortedUserList';
+import SortedUserList, {SortedUserListRank} from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
 import mediaSizes from '@helpers/mediaSizes';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -64,6 +65,9 @@ import wrapMediaSpoiler, {hasMediaSpoiler, hasSensitiveSpoiler, onMediaSpoilerCl
 import filterAsync from '@helpers/array/filterAsync';
 import ChatContextMenu, {getSponsoredMessageButtons} from '@components/chat/contextMenu';
 import getParticipantRank from '@appManagers/utils/chats/getParticipantRank';
+import {canEditMemberTag, getMemberTagRole} from '@appManagers/utils/chats/memberTag';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import openEditMemberTag from '@components/memberTag/openEditMemberTag';
 import {FOLDER_ID_ARCHIVE, NULL_PEER_ID} from '@appManagers/constants';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
@@ -1923,6 +1927,13 @@ export default class AppSearchSuper {
           }
 
           const peerId = li.dataset.peerId.toPeerId();
+          // * a tag I may change opens its editor instead of the chat
+          if(chatId && findUpClassName(e.target, 'member-tag-editable')) {
+            cancelEvent(e);
+            openEditMemberTag(chatId, peerId, membersParticipantMap.get(peerId));
+            return;
+          }
+
           let promise: Promise<any> = Promise.resolve();
           if(this.slider === hotReloadGuard.appSidebarRight && mediaSizes.isMobile) {
             promise = (this.slider as typeof appSidebarRight).toggleSidebar(false);
@@ -1957,6 +1968,27 @@ export default class AppSearchSuper {
             this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
           };
 
+          // * the group's say on tags changed (its own rules, my rights as an admin): every row tells
+          // * anew whether its tag opens the editor. Nothing else a chat update brings touches them
+          const getTagRights = () => {
+            const chat = apiManagerProxy.getChat(chatId);
+            return [hasRights(chat, 'edit_rank'), hasRights(chat, 'manage_ranks')].join();
+          };
+          let tagRights = getTagRights();
+          const onChatUpdate = (_chatId: ChatId) => {
+            const rights = chatId === _chatId && getTagRights();
+            if(!rights || rights === tagRights) {
+              return;
+            }
+
+            tagRights = rights;
+            renderParticipants(Array.from(membersParticipantMap.values()));
+          };
+          rootScope.addEventListener('chat_update', onChatUpdate);
+          middleware.onClean(() => {
+            rootScope.removeEventListener('chat_update', onChatUpdate);
+          });
+
           if(apiManagerProxy.getChat(chatId)._ === 'chat') {
             const onChatFullUpdate = async(_chatId: ChatId) => {
               if(chatId !== _chatId) {
@@ -1987,6 +2019,21 @@ export default class AppSearchSuper {
               rootScope.removeEventListener('chat_full_update', onChatFullUpdate);
             });
           } else {
+            // * a supergroup's tag changed: that row redrawn with it
+            const onParticipantRank = ({chatId: _chatId, userId, rank}: {chatId: ChatId, userId: UserId, rank: string}) => {
+              const peerId = userId.toPeerId(false);
+              const participant = membersParticipantMap.get(peerId);
+              if(chatId !== _chatId || !participant) {
+                return;
+              }
+
+              renderParticipants([{...participant, rank: rank || undefined} as ChannelParticipant]);
+            };
+            rootScope.addEventListener('chat_participant_rank', onParticipantRank);
+            middleware.onClean(() => {
+              rootScope.removeEventListener('chat_participant_rank', onParticipantRank);
+            });
+
             const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
               if(chatId !== update.channel_id) {
                 return;
@@ -2010,9 +2057,10 @@ export default class AppSearchSuper {
         }
       }
 
+      const chat = chatId && apiManagerProxy.getChat(chatId);
       const peerIds: {
         peerId: PeerId,
-        rank: ReturnType<typeof getParticipantRank>,
+        rank: SortedUserListRank,
         participant: typeof participants[0]
       }[] = participants.map((participant) => {
         const peerId = userId ? (participant as Chat.chat).id.toPeerId(true) : getParticipantPeerId(participant as ChannelParticipant);
@@ -2020,9 +2068,21 @@ export default class AppSearchSuper {
           return;
         }
 
+        let rank: SortedUserListRank;
+        if(chatId) {
+          const _participant = participant as ChannelParticipant;
+          const role = getMemberTagRole(_participant);
+          const editable = canEditMemberTag(chat, peerId, rootScope.myId, _participant);
+          // * my own row with no tag offers one, as long as I am a plain member (an admin's reads "admin")
+          rank = {rank: getParticipantRank(_participant), role, editable};
+          if(rank.rank === undefined && !(editable && peerId === rootScope.myId && role === 'member')) {
+            rank = undefined;
+          }
+        }
+
         return {
           peerId,
-          rank: getParticipantRank(participant as ChannelParticipant) as any,
+          rank,
           participant
         };
       }).filter(Boolean);

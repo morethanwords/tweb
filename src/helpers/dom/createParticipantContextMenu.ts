@@ -9,6 +9,8 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleMissingInvitees} from '@components/addChatUsers';
 import {isParticipantAdmin, isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {canEditMemberTag} from '@appManagers/utils/chats/memberTag';
+import openEditMemberTag from '@components/memberTag/openEditMemberTag';
 
 type Participant = ChannelParticipant | ChatParticipant;
 
@@ -62,6 +64,17 @@ export default function createParticipantContextMenu(options: {
       onClick: () => {
         hotReloadGuard.appImManager.setInnerPeer({peerId: participantPeerId});
       }
+    }, {
+      // * "Add tag" / "Edit tag" on my own row, "Add member tag" / "Edit member tag" on another's
+      icon: (participant as ChannelParticipant.channelParticipant)?.rank ? 'edit' : 'tag_add',
+      text: participantPeerId === rootScope.myId ?
+        ((participant as ChannelParticipant.channelParticipant)?.rank ? 'MemberTag.EditMine' : 'MemberTag.AddMine') :
+        ((participant as ChannelParticipant.channelParticipant)?.rank ? 'MemberTag.EditMember' : 'MemberTag.AddMember'),
+      onClick: () => openEditMemberTag(chatId, participantPeerId, participant),
+      // * a restricted member is still one; whoever has left the group has no tag to set
+      verify: () => !bannedParticipantAdapter &&
+        !(participant?._ === 'channelParticipantBanned' && participant.pFlags.left) &&
+        canEditMemberTag(chat, participantPeerId, rootScope.myId, participant)
     }, {
       icon: 'adduser',
       text: isBroadcast ? 'AddToChannel' : 'AddToGroup',

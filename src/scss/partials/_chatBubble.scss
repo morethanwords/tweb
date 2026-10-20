@@ -2047,6 +2047,21 @@
     // the margin `.name` clips with (it is not inherited by itself)
     overflow-clip-margin: inherit;
 
+    // * a name beside a tag gives way to it (desktop): one line, cut with an ellipsis, while the tag
+    // * stays whole. Clipped as `.name` is, so that a held name's plate still shows past its text
+    > .bubble-name-first {
+      flex: 0 1 auto;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: clip;
+      overflow-clip-margin: $link-plate-bleed;
+      text-overflow: ellipsis;
+    }
+
+    > .bubble-name-rank {
+      flex-shrink: 0;
+    }
+
     &-topic {
       > .bubble-name-rank,
       > .bubble-name-first + .bubble-name-boosts {
@@ -2064,6 +2079,18 @@
       color: var(--message-time-color);
       order: 999;
       @include text-overflow();
+
+      // * a member tag is the box of a pill, which the pointer and a press light up (desktop's
+      // * ripple): in the middle of the name line, a little shorter than it, the gap after the name
+      // * outside it. A plain tag's box is a pill's too and ends where the line does - the name
+      // * line clips anything past it - so its text stands where a pill's does
+      &.is-member-tag {
+        cursor: pointer;
+        align-self: center;
+        line-height: 1rem;
+        padding-inline: .375rem;
+        margin-inline-start: .25rem;
+      }
     }
 
     &-boosts {

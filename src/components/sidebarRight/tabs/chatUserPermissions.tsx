@@ -20,6 +20,7 @@ import {
 } from '@components/sidebarRight/tabs/groupPermissions/sharedPermissions';
 import {isParticipantAdmin, isParticipantCreator, participantAdminPredicates} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import copy from '@helpers/object/copy';
+import deepEqual from '@helpers/object/deepEqual';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import Row from '@components/rowTsx';
 import formatDuration from '@helpers/formatDuration';
@@ -36,6 +37,9 @@ import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import limitBotAdminRights from '@appManagers/utils/bots/limitBotAdminRights';
 import attachAdminRightsCaption from './attachAdminRightsCaption';
+import MemberTagEditor from '@components/memberTag/memberTagEditor';
+import createMemberTagInputField from '@components/memberTag/memberTagField';
+import {canEditMemberTag, canHaveMemberTags, cleanMemberTag, MemberTagRole} from '@appManagers/utils/chats/memberTag';
 import appendPermissionsPeerDialog from './permissionsPeerDialog';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
@@ -197,7 +201,7 @@ const ChatUserPermissions: Component = () => {
             chatId,
             participant,
             rights,
-            rankInputField?.value
+            rankInputField && cleanMemberTag(rankInputField.value)
           );
           const targetChatId = resultChatId || chatId;
 
@@ -214,17 +218,32 @@ const ChatUserPermissions: Component = () => {
       } else {
         options.onSomethingChanged = () => solidState.set({rights: p.takeOut()});
         const p = chatPermissions = new ChatPermissions(options as any, tab.managers);
-        solidState.setInitial({rights: p.takeOut()});
+        const initialRights = p.takeOut();
+        solidState.setInitial({rights: initialRights});
 
         options.onSomethingChanged();
 
-        saveCallback = () => {
+        saveCallback = async() => {
+          // * a tag alone changes no restriction
           const rights = p.takeOut();
-          return tab.managers.appChatsManager.editBanned(
-            chatId,
-            participant,
-            rights
-          );
+          let targetChatId = chatId;
+          if(!deepEqual(rights, initialRights)) {
+            await tab.managers.appChatsManager.editBanned(
+              chatId,
+              participant,
+              rights
+            );
+
+            // * a basic group became a supergroup to restrict one member, and the tag goes there:
+            // * for a group that has moved this only reads where to
+            targetChatId = await tab.managers.appChatsManager.migrateChat(chatId);
+          }
+
+          // * the tag goes after the restrictions, and only when it changed (desktop)
+          const rank = rankInputField && cleanMemberTag(rankInputField.value);
+          if(rankInputField && rank !== initialRank) {
+            await tab.managers.appChatsManager.editParticipantRank(targetChatId, userId.toPeerId(false), rank);
+          }
         };
       }
 
@@ -368,40 +387,46 @@ const ChatUserPermissions: Component = () => {
       };
     }
 
-    let rankInputField: InputField;
-    if(editingAdmin && isGroup) {
-      const rankKey: LangPackKey = isParticipantCreator(participant) ? 'Chat.OwnerBadge' : 'ChatAdmin';
-      const inputWrapper = document.createElement('div');
-      inputWrapper.classList.add('input-wrapper');
-
-      const inputField = rankInputField = new InputField({
-        name: 'rank',
-        placeholder: rankKey,
-        maxLength: 16,
-        canBeEdited: _canEditAdmin,
-        label: 'Rank.Label'
+    // * the member tag (desktop): how the author's messages will show it, then the field — in an
+    // * admin's rights, and in a member's restrictions for whoever may set others' tags
+    let rankInputField: InputField, initialRank: string;
+    const peerId = userId.toPeerId(false);
+    if(
+      isGroup &&
+      canHaveMemberTags(chat) &&
+      (editingAdmin || canEditMemberTag(chat, peerId, rootScope.myId, participant))
+    ) {
+      const role: MemberTagRole = editingAdmin ? (isCreator ? 'owner' : 'admin') : 'member';
+      initialRank = (participant as ChannelParticipant.channelParticipant).rank || '';
+      const inputField = rankInputField = createMemberTagInputField({
+        role,
+        value: initialRank,
+        canBeEdited: editingAdmin ? _canEditAdmin : true
       });
 
-      const customRank = (participant as ChannelParticipant.channelParticipantAdmin).rank;
-      if(customRank) {
-        inputField.setOriginalValue(customRank, true);
-        solidState.setInitial({rank: customRank});
+      if(initialRank) {
+        solidState.setInitial({rank: initialRank});
       }
 
       tab.listenerSetter.add(inputField.input)('input', () => {
-        solidState.set({rank: inputField.value || undefined});
+        solidState.set({rank: cleanMemberTag(inputField.value) || undefined});
         solidState.setValid(inputField.isValid());
       });
 
-      inputWrapper.append(inputField.container);
-
+      const isSelf = peerId === rootScope.myId;
+      const captionArgs = isSelf ? undefined : [await wrapPeerTitle({peerId, onlyFirstName: true})];
       tab.scrollable.append(wrapSolidComponent(() => (
         <Section
           name="EditAdminRank"
-          caption="EditAdminRankInfo"
-          captionArgs={[i18n(rankKey)]}
+          caption={isSelf ? 'MemberTag.AboutSelf' : 'MemberTag.About'}
+          captionArgs={captionArgs}
         >
-          {inputWrapper}
+          <MemberTagEditor
+            chatPeerId={chatId.toPeerId(true)}
+            peerId={peerId}
+            role={role}
+            inputField={inputField}
+          />
         </Section>
       ), tab.middlewareHelper.get()));
     }

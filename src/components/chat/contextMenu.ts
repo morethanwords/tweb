@@ -55,6 +55,9 @@ import {canEditMessageMediaWithEditor, getEditMediaLangKey} from './editMessageM
 import {formatFullSentTime} from '@helpers/date';
 import showToggleReadDatePopup from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {canEditMemberTag} from '@appManagers/utils/chats/memberTag';
+import openEditMemberTag from '@components/memberTag/openEditMemberTag';
 import ReactionElement from '@components/chat/reaction';
 import ReactionsElement from '@components/chat/reactions';
 import createReactionContextMenu from '@components/chat/reactionContextMenu';
@@ -239,6 +242,7 @@ export default class ChatContextMenu {
   private selectedMessagesText: PartialByKeys<Awaited<ReturnType<ChatContextMenu['getSelectedMessagesText']>>, 'html'>;
   private selectedMessages: MyMessage[];
   private avatarPeerId: number;
+  private avatarElement: HTMLElement;
   private copyMediaButton: ChatContextMenuButton;
 
   private isLegacy: boolean;
@@ -508,6 +512,7 @@ export default class ChatContextMenu {
       this.isOverBubble = !!contentWrapper;
 
       this.avatarPeerId = avatar && avatar.dataset.peerId.toPeerId();
+      this.avatarElement = avatar;
 
       // * an album item in the chat carries the mid of its own message; anything else wearing the class
       // * (a rich message's collage, whose items are blocks of a page) has none and the menu is the
@@ -760,6 +765,33 @@ export default class ChatContextMenu {
     });
   }
 
+  /**
+   * "Add member tag" / "Edit member tag" under a sender's avatar (desktop): someone else's, with the
+   * right to set it, never in a channel's discussion group. An admin's needs that admin to be mine
+   * to edit, which only the participant itself tells
+   */
+  private getAvatarMemberTagButton(): ChatContextMenuButton {
+    const peerId = this.avatarPeerId;
+    const rank = this.avatarElement && this.chat.bubbles.getAvatarAuthorRank(this.avatarElement);
+    const chatId = this.chat.peerId.isAnyChat() ? this.chat.peerId.toChatId() : undefined;
+    return {
+      icon: rank ? 'edit' : 'tag_add',
+      text: rank ? 'MemberTag.EditMember' : 'MemberTag.AddMember',
+      onClick: () => openEditMemberTag(chatId, peerId),
+      verify: async() => {
+        const chat = chatId && apiManagerProxy.getChat(chatId);
+        if(!chat || !peerId.isUser() || peerId === rootScope.myId || (chat as MTChat.channel).pFlags.has_link) {
+          return false;
+        }
+
+        const participant = rank && rank.role !== 'member' ?
+          await this.managers.appProfileManager.getParticipant(chatId, peerId).catch((): undefined => undefined) :
+          undefined;
+        return canEditMemberTag(chat, peerId, rootScope.myId, participant);
+      }
+    };
+  }
+
   private setButtons() {
     if(this.chat.type === ChatType.Logs) {
       this.buttons = [
@@ -889,7 +921,7 @@ export default class ChatContextMenu {
           this.chat.initSearch({filterPeerId: this.avatarPeerId});
         },
         verify: () => this.chat.isAnyGroup
-      }];
+      }, this.getAvatarMemberTagButton()];
       return;
     }
 
