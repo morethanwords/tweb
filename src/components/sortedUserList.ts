@@ -132,5 +132,8 @@ export default class SortedUserList extends SortedList<SortedUser> {
     };
 
     doTimeout();
+    // * otherwise the loop ends only at its next tick, once the list is out of the DOM - holding a closed
+    // * list and every row of it for up to SORT_INTERVAL
+    this.middlewareHelper.onDestroy(() => window.clearTimeout(timeout));
   }
 }

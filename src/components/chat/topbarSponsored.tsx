@@ -61,8 +61,6 @@ function SponsoredPlateBody(props: {
     return undefined;
   };
 
-  const middleware = createMiddleware().get();
-
   return (
     <Show when={message()}>
       <RippleElement
@@ -81,7 +79,9 @@ function SponsoredPlateBody(props: {
                 copyTextToClipboard(message().message);
               }
             }),
-            middleware
+            // * the menu lives as long as this element, which goes with every next message: one
+            // * middleware for the plate's whole life kept each old menu and its element on destroy
+            middleware: createMiddleware().get()
           });
         }}
       >

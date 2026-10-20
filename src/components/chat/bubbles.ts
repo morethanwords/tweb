@@ -5822,6 +5822,8 @@ export default class ChatBubbles {
 
     this.firstUnreadBubble = null;
     this.attachedUnreadBubble = false;
+    // * a bubble of the chat being left: re-pinning to it means nothing now, and keeping it kept its subtree
+    this.reflowAnchor = undefined;
 
     this.batchProcessor.clear();
 
