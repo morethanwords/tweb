@@ -138,6 +138,12 @@ const loadGlobalPositions = () => globalPositionsPromise ??= rootScope.managers.
   globalPositionsPromise = undefined; // a failed read must not leave the list sorted by the fallback forever
 });
 
+// * another account has another list of stories: its positions are read anew
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  globalPositions.clear();
+  globalPositionsPromise = undefined;
+});
+
 export const createStoriesStore = (props: {
   peers?: StoriesContextPeerState[],
   index?: number,

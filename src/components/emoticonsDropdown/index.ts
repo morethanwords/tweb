@@ -11,6 +11,7 @@ import EmojiTab, {EmojiTabCategory, getEmojiFromElement} from '@components/emoti
 import GifsTab from '@components/emoticonsDropdown/tabs/gifs';
 import StickersTab from '@components/emoticonsDropdown/tabs/stickers';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {hotListen} from '@helpers/hotModule';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -18,7 +19,7 @@ import whichChild from '@helpers/dom/whichChild';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import DropdownHover from '@helpers/dropdownHover';
 import {IS_APPLE_MOBILE} from '@environment/userAgent';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import overlayCounter from '@helpers/overlayCounter';
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
@@ -110,7 +111,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
   private savedRange: Range;
   private tabsToRender: EmoticonsTab[] = [];
-  private managers: AppManagers;
+  private managers: ReadingManagers;
 
   private rights: {[action in ChatRights]?: boolean};
 
@@ -750,9 +751,24 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 }
 
-// one panel for the page: a hot update keeps it and moves it onto the edited class (see @helpers/hotRegistry)
-const emoticonsDropdown = new EmoticonsDropdown();
+// one panel per account the tab shows. The holder is what a hot update keeps (see @helpers/hotRegistry): the export
+// is a live binding, so that an account switch puts another instance in its place for every importer
+const shown = {dropdown: new EmoticonsDropdown()};
+let emoticonsDropdown = shown.dropdown;
 MOUNT_CLASS_TO.emoticonsDropdown = emoticonsDropdown;
-export default emoticonsDropdown;
+
+// * its tabs hold the account's stickers, saved GIFs and emoji sets - another account gets a dropdown
+// * of its own, unless this one was never opened and so holds nothing yet
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  if(emoticonsDropdown.init) {
+    return;
+  }
+
+  emoticonsDropdown.destroy();
+  emoticonsDropdown = shown.dropdown = new EmoticonsDropdown();
+  MOUNT_CLASS_TO.emoticonsDropdown = emoticonsDropdown;
+});
+
+export {emoticonsDropdown as default};
 
 if(import.meta.hot) import.meta.hot.accept();

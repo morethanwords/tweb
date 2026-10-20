@@ -154,6 +154,8 @@ export default function createChatPinnedMessage(
   let waitForScrollBottom = false;
   let getCurrentIndexPromise: Promise<any> | undefined;
   let loading = false;
+  // * a fetch in flight comes back after the chat is gone - closed, or its account switched away from
+  let destroyed = false;
   let userHidden = false;
   let locked = false;
   const isStatic = !chat.isPinnedMessagesNeeded();
@@ -341,6 +343,10 @@ export default function createChatPinnedMessage(
 
   function setCorrectIndex(lastScrollDirection?: number) {
     const bound = log.bindPrefix('setCorrectIndex');
+    if(destroyed) {
+      return;
+    }
+
     if(isStatic) {
       debug && bound('not needed, static');
       return;
@@ -446,7 +452,7 @@ export default function createChatPinnedMessage(
           chat.peerId,
           chat.threadId
         ).then((p) => {
-          if(!p.maxId) return;
+          if(!p.maxId || destroyed) return;
           pinnedMaxMid = p.maxId;
 
           if(!gotRest && correctAfter) {
@@ -462,6 +468,7 @@ export default function createChatPinnedMessage(
       }
 
       const result = (await Promise.all(promises))[0];
+      if(destroyed) return;
 
       const history = result.history;
 
@@ -504,6 +511,8 @@ export default function createChatPinnedMessage(
         setPinnedMessageDebounced();
       }
     } catch(err) {
+      // * what came back after the chat was gone was dropped
+      if(destroyed) return;
       log.error('getCurrentIndex error', err);
     }
 
@@ -826,6 +835,7 @@ export default function createChatPinnedMessage(
       plateSetHidden(false);
     },
     destroy: () => {
+      destroyed = true;
       // deferred work would otherwise run against destroyed rows / a detached plate
       setPinnedMessageDebounced.clearTimeout();
       setCorrectIndexThrottled.clear();

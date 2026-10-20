@@ -50,6 +50,7 @@ import canReportBot from '@appManagers/utils/bots/canReportBot';
 import {showPeerReport} from '@components/popups/reportAd';
 import getWebViewTgLink from '@helpers/getWebViewTgLink';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -119,7 +120,7 @@ export default class WebApp {
     safeAssign(this, options);
 
     this.listenerSetter = new ListenerSetter();
-    this.managers = rootScope.managers;
+    this.managers = bindManagersToSession(rootScope.managers);
 
     this.title.classList.add('web-app-title');
     this.header.classList.add('web-app-header');
@@ -529,7 +530,8 @@ export default class WebApp {
     query,
     chat_types
   }: TelegramWebViewEventMap['web_app_switch_inline_query']) => {
-    const user = await this.managers.appUsersManager.getUser(this.webViewOptions.botId);
+    const managers = bindManagersToSession(this.managers);
+    const user = await managers.appUsersManager.getUser(this.webViewOptions.botId);
     if(user.bot_inline_placeholder === undefined) {
       return;
     }
@@ -547,7 +549,7 @@ export default class WebApp {
       }
     }
 
-    this.managers.appInlineBotsManager.switchInlineQuery(
+    managers.appInlineBotsManager.switchInlineQuery(
       peerId,
       threadId,
       this.webViewOptions.botId,
@@ -739,7 +741,8 @@ export default class WebApp {
   };
 
   protected handleSetEmojiStatus = this.debouncePopupMethod(async(data) => {
-    const {telegramWebView, managers, webViewOptions} = this;
+    const {telegramWebView, webViewOptions} = this;
+    const managers = bindManagersToSession(this.managers);
     const doc = await managers.appEmojiManager.getCustomEmojiDocument(data.custom_emoji_id);
     if(!doc) {
       telegramWebView.dispatchWebViewEvent('emoji_status_failed', {error: 'SUGGESTED_EMOJI_INVALID'});
@@ -780,7 +783,8 @@ export default class WebApp {
   }, 'emoji_status_failed', {error: 'USER_DECLINED'});
 
   protected handleEmojiStatusAccess = this.debouncePopupMethod(async() => {
-    const {telegramWebView, managers, webViewOptions} = this;
+    const {telegramWebView, webViewOptions} = this;
+    const managers = bindManagersToSession(this.managers);
     const peer = await managers.appProfileManager.getCachedFullUser(this.webViewOptions.botId);
     if(peer.pFlags.bot_can_manage_emoji_status) {
       telegramWebView.dispatchWebViewEvent('emoji_status_access_requested', {status: 'allowed'});
@@ -817,6 +821,7 @@ export default class WebApp {
   }, 'emoji_status_access_requested', {status: 'cancelled'});
 
   protected handleCheckLocation = async() => {
+    const managers = bindManagersToSession(this.managers);
     const {telegramWebView} = this;
     const browserPermission = await navigator.permissions.query({name: 'geolocation'});
     if(browserPermission.state === 'denied') {
@@ -824,7 +829,7 @@ export default class WebApp {
       return;
     }
 
-    const botPermission = await this.managers.appBotsManager.readBotInternalStorage(this.webViewOptions.botId, 'locationPermission');
+    const botPermission = await managers.appBotsManager.readBotInternalStorage(this.webViewOptions.botId, 'locationPermission');
 
     telegramWebView.dispatchWebViewEvent('location_checked', {
       available: true,
@@ -985,7 +990,8 @@ export default class WebApp {
     if(this._fileDownloadPending) return;
     this._fileDownloadPending = true;
 
-    const {telegramWebView, managers, webViewOptions} = this;
+    const {telegramWebView, webViewOptions} = this;
+    const managers = bindManagersToSession(this.managers);
 
     try {
       const allow = await managers.apiManager.invokeApiSingle('bots.checkDownloadFileParams', {
@@ -1128,8 +1134,9 @@ export default class WebApp {
       web_app_open_scan_qr_popup: () => telegramWebView.dispatchWebViewEvent('scan_qr_popup_closed', {}),
       web_app_read_text_from_clipboard: this.handleReadClipboard,
       web_app_request_write_access: this.debouncePopupMethod(async() => {
+        const managers = bindManagersToSession(this.managers);
         const botId = this.webViewOptions.botId;
-        const canSendMessage = await this.managers.appBotsManager.canSendMessage(botId);
+        const canSendMessage = await managers.appBotsManager.canSendMessage(botId);
         const status: TelegramWebViewSendEventMap['write_access_requested'] = {status: 'allowed'};
         if(!canSendMessage) {
           try {
@@ -1142,7 +1149,7 @@ export default class WebApp {
               }
             });
 
-            await this.managers.appBotsManager.allowSendMessage(botId);
+            await managers.appBotsManager.allowSendMessage(botId);
           } catch(err) {
             status.status = 'cancelled';
           }
@@ -1163,10 +1170,11 @@ export default class WebApp {
         telegramWebView.dispatchWebViewEvent('phone_requested', status);
       }, 'phone_requested', {status: 'cancelled'}),
       web_app_request_chat: this.debouncePopupMethod(async({req_id}: TelegramWebViewEventMap['web_app_request_chat']) => {
+        const managers = bindManagersToSession(this.managers);
         const botId = this.webViewOptions.botId;
         let sent = false;
         try {
-          const button = await this.managers.appAttachMenuBotsManager.getRequestedWebViewButton(botId, req_id);
+          const button = await managers.appAttachMenuBotsManager.getRequestedWebViewButton(botId, req_id);
           const buttonType = button?.type;
           if(buttonType?._ !== 'buttonTypeRequestPeer' || buttonType.peer_type._ === 'requestPeerTypeCreateBot') {
             throw new Error('REQUEST_CHAT_UNSUPPORTED');
@@ -1174,7 +1182,7 @@ export default class WebApp {
 
           const requestingPeerId = botId.toPeerId(false);
           const requestedPeerIds = await selectRequestPeers({button: buttonType, requestingPeerId});
-          await this.managers.appMessagesManager.sendBotRequestedPeer(
+          await managers.appMessagesManager.sendBotRequestedPeer(
             requestingPeerId,
             buttonType.button_id,
             requestedPeerIds,
@@ -1335,13 +1343,14 @@ export default class WebApp {
         });
       }, 'prepared_message_failed', {error: 'USER_DECLINED'}),
       web_app_verify_age: async({passed, age}) => {
+        const managers = bindManagersToSession(this.managers);
         if(!passed) return;
-        const config = await this.managers.apiManager.getAppConfig();
+        const config = await managers.apiManager.getAppConfig();
 
         // * only the configured age-verification bot may attest age — otherwise any
         // * third-party Mini App could self-enable sensitive content
         const verifyAgeBotUsername = (config.verify_age_bot_username ?? 'TelegramAge').toLowerCase();
-        const usernames = await this.managers.appPeersManager.getPeerActiveUsernames(this.getPeerId());
+        const usernames = await managers.appPeersManager.getPeerActiveUsernames(this.getPeerId());
         if(!usernames.some((username) => username.toLowerCase() === verifyAgeBotUsername)) {
           return;
         }
@@ -1352,7 +1361,7 @@ export default class WebApp {
           return;
         }
 
-        await this.managers.appPrivacyManager.notifyAgeVerified();
+        await managers.appPrivacyManager.notifyAgeVerified();
       }
     });
 
@@ -1386,6 +1395,7 @@ export default class WebApp {
   }
 
   public async init(mountCallback: () => MaybePromise<void>) {
+    const managers = bindManagersToSession(this.managers);
     if(!this.attachMenuBot || !IS_WEB_APP_BROWSER_SUPPORTED) {
       const title = await this.getTitle(false);
       if(this.destroyed) {
@@ -1400,7 +1410,7 @@ export default class WebApp {
     /* if(this.webViewOptions.app) {
 
     } else  */try {
-      const attachMenuBot = this.attachMenuBot ?? await this.managers.appAttachMenuBotsManager.getAttachMenuBot(this.webViewOptions.botId);
+      const attachMenuBot = this.attachMenuBot ?? await managers.appAttachMenuBotsManager.getAttachMenuBot(this.webViewOptions.botId);
       if(this.destroyed) {
         return;
       }
@@ -1492,6 +1502,11 @@ export default class WebApp {
   }
 
   private prolongWebView() {
+    // * the first prolongation is 50s after the mount: the app may be closed by then, the account switched
+    if(this.destroyed) {
+      return;
+    }
+
     this.managers.appAttachMenuBotsManager.prolongWebView({
       queryId: (this.webViewResultUrl as WebViewResult.webViewResultUrl).query_id,
       ...this.webViewOptions

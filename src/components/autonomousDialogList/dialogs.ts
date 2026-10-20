@@ -33,6 +33,7 @@ import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 import useChatListUnreadOnly from '@stores/chatListUnreadOnly';
 import {useCommunityDialogs} from '@stores/communities';
 import {usePeers} from '@stores/peers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const [unreadOnly] = useChatListUnreadOnly();
 
@@ -321,12 +322,13 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     });
 
     this.listenerSetter.add(rootScope)('filter_update', async(filter) => {
+      const managers = bindManagersToSession(this.managers);
       if(filter.id === this.filterId && !REAL_FOLDERS.has(filter.id)) {
         this.filterPinnedPeerIds = new Set(filter.pinnedPeerIds);
         await this.scheduleCommunityProjection();
       }
       if(this.isActive && filter.id === this.filterId && !REAL_FOLDERS.has(filter.id)) {
-        const dialogs = await this.managers.dialogsStorage.getCachedDialogs(true);
+        const dialogs = await managers.dialogsStorage.getCachedDialogs(true);
         await this.validateListForFilter();
         for(let i = 0, length = dialogs.length; i < length; ++i) {
           const dialog = dialogs[i];
@@ -610,6 +612,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     projection: CommunityProjection[],
     canFinish: () => boolean
   ) {
+    const managers = bindManagersToSession(this.managers);
     if(!canFinish()) {
       return;
     }
@@ -679,7 +682,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
         continue;
       }
 
-      const dialog = await this.managers.appMessagesManager
+      const dialog = await managers.appMessagesManager
       .getDialogOnly(peerId);
       if(!canFinish()) {
         return;

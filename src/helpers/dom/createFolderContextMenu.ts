@@ -1,4 +1,4 @@
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
 import type {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import type {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
@@ -21,7 +21,7 @@ export default function createFolderContextMenu({
   appDialogsManager: AppDialogsManager,
   AppChatFoldersTab: typeof AppChatFoldersTab,
   AppEditFolderTab: typeof AppEditFolderTab,
-  managers: AppManagers,
+  managers: ReadingManagers,
   className: string,
   listenTo: HTMLElement
 }) {

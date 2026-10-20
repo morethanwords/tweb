@@ -23,6 +23,7 @@ import MediaHeader from '@components/mediaHeader';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware} from '@helpers/middleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -74,6 +75,7 @@ export default async function showGiftLinkPopup(
   stack?: ChatSetPeerOptions['stack'],
   checkedGiftCode?: PaymentsCheckedGiftCode
 ) {
+  const managers = bindManagersToSession(rootScope.managers);
   const isInChat = !!checkedGiftCode;
   const giftCode = checkedGiftCode ?? await rootScope.managers.appPaymentsManager.checkGiftCode(slug);
   if(shouldDisplayGiftCodeAsGift(giftCode)) {
@@ -222,6 +224,7 @@ export default async function showGiftLinkPopup(
 
     return (
       <PopupElement
+        managers={managers}
         class="popup-boosts popup-gift-link"
         closable
         old

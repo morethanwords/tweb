@@ -11,6 +11,7 @@ import rootScope from '@lib/rootScope';
 import {createSignal, onMount} from 'solid-js';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function InputStarsField(options: {
   middleware: Middleware,
@@ -57,6 +58,7 @@ export function InputStarsField(options: {
 }
 
 export default async function showMakePaidPopup(onSave: (value: number) => void, editingFrom?: number) {
+  const managers = bindManagersToSession(rootScope.managers);
   const appConfig = await rootScope.managers.apiManager.getAppConfig();
   const [show, setShow] = createSignal(true);
 
@@ -74,7 +76,7 @@ export default async function showMakePaidPopup(onSave: (value: number) => void,
     onMount(() => placeCaretAtEnd(inputField.input));
 
     return (
-      <PopupElement class="popup-make-paid" closable show={show()}>
+      <PopupElement managers={managers} class="popup-make-paid" closable show={show()}>
         <PopupElement.Header>
           <PopupElement.CloseButton />
           <PopupElement.Title title="PaidMedia.Title" />

@@ -1,4 +1,5 @@
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import type {ChatSetPeerOptions} from '@lib/appImManager';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import showSliderPopup from '@components/sliderPopup';
@@ -19,6 +20,8 @@ export default async function showPeerProfilePopup(options: {
     return;
   }
 
+  // * the account it is asked on: once the tab is on another, it does not open
+  const managers = bindManagersToSession(rootScope.managers);
   opening = true;
   try {
     const {default: AppSharedMediaTab} = await import('@components/sidebarRight/tabs/sharedMediaTab');
@@ -27,7 +30,7 @@ export default async function showPeerProfilePopup(options: {
     const onPeerChanging = () => popup.close();
     const {appImManager} = hotReloadGuard;
     const popup = showSliderPopup({
-      managers: rootScope.managers,
+      managers,
       navigationType: 'profile-popup',
       hidden: true,
       onClose: () => appImManager.removeEventListener('peer_changing', onPeerChanging)

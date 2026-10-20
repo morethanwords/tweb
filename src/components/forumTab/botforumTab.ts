@@ -11,6 +11,7 @@ import SortedDialogList from '@components/sortedDialogList';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ForumTab} from '@components/forumTab/forumTab';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export class BotforumTab extends ForumTab {
@@ -106,6 +107,7 @@ export class BotforumTab extends ForumTab {
   }
 
   async asyncInit(): Promise<void> {
+    const managers = bindManagersToSession(this.managers);
     await super.asyncInit();
 
     const middleware = this.middlewareHelper.get();
@@ -121,7 +123,7 @@ export class BotforumTab extends ForumTab {
           dialog: true,
           wrapOptions: {middleware}
         }),
-        dialogs: this.managers.dialogsStorage.getDialogs({
+        dialogs: managers.dialogsStorage.getDialogs({
           filterId: this.peerId,
           limit: 1
         })

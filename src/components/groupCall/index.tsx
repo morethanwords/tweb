@@ -33,6 +33,7 @@ import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import showCallSettingsPopup from '@components/call/settingsPopup';
 import {toastNew} from '@components/toast';
+import {showCallAccount} from '@lib/calls/callAccount';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import {
   GROUP_CALL_MICROPHONE_BUTTON_STATE,
@@ -462,7 +463,9 @@ export default function showGroupCallPopup() {
             managers.appGroupCallsManager.exportGroupCallInvite(instance.id).catch((err): string => {
               console.error('export group call invite failed', err);
               return undefined;
-            })
+            }),
+            // * the people to pick are the call's account's contacts
+            showCallAccount(instance.accountNumber)
           ]);
           if(!isConferenceInviteContextCurrent(instance)) return;
 
@@ -784,6 +787,8 @@ export default function showGroupCallPopup() {
     <PopupElement
       class={classNames('popup-group-call', IS_MOVABLE_PANEL && 'movable-element')}
       kind={GROUP_CALL_POPUP_KIND}
+      managers={instance.managers}
+      keepOnAccountSwitch
       withoutOverlay
       closable
       show={show()}

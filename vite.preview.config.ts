@@ -25,6 +25,10 @@ const seedPath = process.env.PREVIEW_SEED ?
   resolve(process.env.PREVIEW_SEED) :
   resolve(__dirname, 'tmp/seed-preview.json');
 const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+// the preview's second account (start-preview.sh with TWEB_SECOND_SEED)
+const seed2 = process.env.PREVIEW_SEED_2 ?
+  JSON.parse(readFileSync(resolve(process.env.PREVIEW_SEED_2), 'utf8')) :
+  undefined;
 
 // Per-seed cache dir so simultaneous preview servers don't clobber each other.
 // Keep it inside this worktree: node_modules can be a symlink to the main
@@ -158,7 +162,29 @@ const seedScript = `(function(){
   } catch(e) {
     console.error('[preview-auth] seed failed', e);
   }
-})();`;
+})();` + (seed2 ? `
+(function(){
+  try {
+    var s = ${JSON.stringify(seed2)};
+    var dc = s.dcId;
+    var fingerprint = s.authKeys[dc].key.slice(0, 8);
+    var p = s.isTest ? 't_' : '';
+    if(window.localStorage.getItem(p + 'account2')) return;
+    // once per tab, as for account1 above
+    if(window.sessionStorage.getItem('preview_auth_seeded_2') === fingerprint) return;
+    window.sessionStorage.setItem('preview_auth_seeded_2', fingerprint);
+    var account = {userId: s.userId, dcId: dc, auth_key_fingerprint: fingerprint};
+    Object.keys(s.authKeys).forEach(function(id){
+      account['dc' + id + '_auth_key'] = s.authKeys[id].key;
+      account['dc' + id + '_server_salt'] = s.authKeys[id].salt;
+    });
+    window.localStorage.setItem(p + 'account2', JSON.stringify(account));
+    window.localStorage.setItem(p + 'number_of_accounts', JSON.stringify(2));
+    console.log('[preview-auth] seeded the second account, user', s.userId);
+  } catch(e) {
+    console.error('[preview-auth] second seed failed', e);
+  }
+})();` : '');
 
 // Module scope, not per-plugin-instance: Vite re-instantiates every plugin when
 // it restarts on a config edit, and a per-instance builder would leave the old

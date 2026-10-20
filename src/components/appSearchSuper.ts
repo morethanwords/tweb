@@ -36,7 +36,7 @@ import ScrollableRefiller from '@helpers/scrollableRefiller';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import wrapWebPageTitle from '@components/wrappers/webPageTitle';
@@ -114,6 +114,7 @@ import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
 import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import type appSidebarRight from '@components/sidebarRight';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // The call log is searched by the Calls tab, never by shared media — and unlike
 // every other filter its constructor is not just its id (it carries `pFlags`),
@@ -188,7 +189,7 @@ class SearchContextMenu {
   private peerId: PeerId;
   private mid: number;
   private isSelected: boolean;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private noForwards: boolean;
   private message: MyMessage;
   private selectedMessages: MyMessage[];
@@ -228,14 +229,15 @@ class SearchContextMenu {
       if(!('touches' in e)) e.cancelBubble = true;
 
       const r = async() => {
+        const managers = bindManagersToSession(this.managers);
         this.target = item;
         this.peerId = item.dataset.peerId.toPeerId();
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
-        this.message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
+        this.message = await managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
         this.noForwards = searchSuper.selection.isSelecting ?
           this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
-          !(await this.managers.appMessagesManager.canForward(this.message));
+          !(await managers.appMessagesManager.canForward(this.message));
         this.selectedMessages = searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
         // this.isSavedDialog = !!(searchSuper.searchContext.peerId === rootScope.myId && searchSuper.searchContext.threadId);
 
@@ -464,7 +466,7 @@ export default class AppSearchSuper {
   public scrollStartCallback: (dimensions: ScrollStartCallbackDimensions) => void;
   public scrollOffset: number;
 
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   private loadFirstTimePromise: Promise<void>;
   private mediaFilterChangeId = 0;
   private mediaFilterCommittedInputFilter: SearchSuperMediaInputFilter;
@@ -1640,13 +1642,14 @@ export default class AppSearchSuper {
     const isArchive = this.searchContext.folderId === FOLDER_ID_ARCHIVE;
     if(query && !this.searchContext.peerId && !this.searchContext.communityId) {
       const addDialogSubtitle = async(dom: DialogDom, peerId: PeerId) => {
-        const peer = await this.managers.appPeersManager.getPeer(peerId);
+        const managers = bindManagersToSession(this.managers);
+        const peer = await managers.appPeersManager.getPeer(peerId);
         if(peerId === rootScope.myId) {
           dom.lastMessageSpan.append(i18n('Presence.YourChat'));
         } else {
-          let username = await this.managers.appPeersManager.getPeerUsername(peerId);
+          let username = await managers.appPeersManager.getPeerUsername(peerId);
           if(!username) {
-            const user = await this.managers.appUsersManager.getUser(peerId);
+            const user = await managers.appUsersManager.getUser(peerId);
             if(user?.phone) {
               username = '+' + formatPhoneNumber(user.phone).formatted;
             }
@@ -1890,6 +1893,7 @@ export default class AppSearchSuper {
   }
 
   private async loadMembers({mediaTab}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     const chatId = mediaTab.type === 'members' ? this.searchContext.peerId.toChatId() : undefined;
     const userId = mediaTab.type === 'groups' ? this.searchContext.peerId.toUserId() : undefined;
     const middleware = this.middleware.get();
@@ -1913,7 +1917,7 @@ export default class AppSearchSuper {
         membersList = this.membersList = new SortedUserList({
           lazyLoadQueue: this.lazyLoadQueue,
           rippleEnabled: false,
-          managers: this.managers,
+          managers,
           middleware
         });
         attachClickEvent(membersList.list, (e) => {
@@ -2118,7 +2122,7 @@ export default class AppSearchSuper {
 
     if(userId) {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
-      promise = this.managers.appUsersManager.getCommonChats(userId, LOAD_COUNT, this.nextRates[mediaTab.type]).then((messagesChats) => {
+      promise = managers.appUsersManager.getCommonChats(userId, LOAD_COUNT, this.nextRates[mediaTab.type]).then((messagesChats) => {
         if(!middleware()) {
           return;
         }
@@ -2138,9 +2142,9 @@ export default class AppSearchSuper {
 
         return renderParticipants(messagesChats.chats);
       });
-    } else if(await this.managers.appChatsManager.isChannel(chatId)) {
+    } else if(await managers.appChatsManager.isChannel(chatId)) {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
-      promise = this.managers.appProfileManager.getChannelParticipants({
+      promise = managers.appProfileManager.getChannelParticipants({
         id: chatId,
         limit: LOAD_COUNT,
         offset: this.nextRates[mediaTab.type]
@@ -2161,7 +2165,7 @@ export default class AppSearchSuper {
         return renderParticipants(participants.participants);
       });
     } else {
-      promise = this.managers.appProfileManager.getChatFull(chatId).then((chatFull) => {
+      promise = managers.appProfileManager.getChatFull(chatId).then((chatFull) => {
         if(!middleware()) {
           return;
         }
@@ -2373,6 +2377,7 @@ export default class AppSearchSuper {
   }
 
   private async renderPeerDialogs(peerIds: PeerId[], group: SearchGroup, middleware: Middleware, type?: 'bots' | 'channels') {
+    const managers = bindManagersToSession(this.managers);
     if(!middleware()) return;
 
     for(const peerId of peerIds) {
@@ -2384,8 +2389,8 @@ export default class AppSearchSuper {
           middleware
         }
       });
-      const peer = await this.managers.appPeersManager.getPeer(peerId);
-      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      const peer = await managers.appPeersManager.getPeer(peerId);
+      const username = await managers.appPeersManager.getPeerUsername(peerId);
 
       if('participants_count' in peer) {
         dom.lastMessageSpan.append(await getChatMembersString(peerId.toChatId()));
@@ -2400,6 +2405,7 @@ export default class AppSearchSuper {
   }
 
   private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     if(this.searchContext.query) {
       const group = createSearchGroup({name: 'Channels', type: 'channels', middleware});
       group.setActive();
@@ -2407,9 +2413,9 @@ export default class AppSearchSuper {
 
       // * the server returns channels only; the check below stays as a guard
       const SEARCH_LIMIT = 200;
-      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'broadcasts');
+      const {results: globalResults} = await managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'broadcasts');
       const filteredResultsWithUndefined = await Promise.all(
-        globalResults.map(async(user) => await this.managers.appPeersManager.isBroadcast(user) ? user : undefined)
+        globalResults.map(async(user) => await managers.appPeersManager.isBroadcast(user) ? user : undefined)
       );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
@@ -2424,8 +2430,8 @@ export default class AppSearchSuper {
       return;
     }
 
-    const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
-    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await this.managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
+    const dialogs = await managers.dialogsStorage.getCachedDialogs();
+    const channelDialogsWithUndefined = await Promise.all(dialogs.map(async(dialog) => await managers.appPeersManager.isBroadcast(dialog.peerId) ? dialog : undefined));
     const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
 
     if(channelDialogs.length) {
@@ -2439,7 +2445,7 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
     }
 
-    const recommendations = await this.managers.appChatsManager.getChannelRecommendations();
+    const recommendations = await managers.appChatsManager.getChannelRecommendations();
 
     if(recommendations.chats.length) {
       const group = createSearchGroup({name: 'SimilarChannels', type: 'channels', middleware});
@@ -2454,6 +2460,7 @@ export default class AppSearchSuper {
   }
 
   private async loadApps({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     if(this._loadMoreApps) {
       return this._loadMoreApps();
     }
@@ -2479,9 +2486,9 @@ export default class AppSearchSuper {
 
       // * the server returns bots only; the check below stays as a guard
       const SEARCH_LIMIT = 200;
-      const {results: globalResults} = await this.managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'bots');
+      const {results: globalResults} = await managers.appUsersManager.searchContacts(this.searchContext.query, SEARCH_LIMIT, 'bots');
       const filteredResultsWithUndefined = await Promise.all(
-        globalResults.map(async(user) => await this.managers.appPeersManager.isBot(user) ? user : undefined)
+        globalResults.map(async(user) => await managers.appPeersManager.isBot(user) ? user : undefined)
       );
       const filteredResults = filteredResultsWithUndefined.filter(Boolean);
 
@@ -2496,7 +2503,7 @@ export default class AppSearchSuper {
       return;
     }
 
-    const myTopApps = await rootScope.managers.appUsersManager.getTopPeers('bots_app');
+    const myTopApps = await managers.appUsersManager.getTopPeers('bots_app');
 
     if(myTopApps.length) {
       const group = createSearchGroup({name: 'MiniApps.Apps', type: 'apps', onFound: onClick, middleware});
@@ -2612,6 +2619,7 @@ export default class AppSearchSuper {
   }
 
   private loadType(options: SearchSuperLoadTypeOptions) {
+    const managers = bindManagersToSession(this.managers);
     const {
       mediaTab,
       justLoad,
@@ -2724,7 +2732,7 @@ export default class AppSearchSuper {
         nextRate: this.nextRates[type] ??= 0,
         ...(type === 'saved' ? {inputFilter: undefined, peerId: rootScope.myId, threadId: this.searchContext.peerId} : {})
       };
-      const value = await this.managers.appMessagesManager.getHistory(options);
+      const value = await managers.appMessagesManager.getHistory(options);
 
       let messages = value.messages;
       if(!messages && value.history/*  && mediaTab.type === 'saved' */) {

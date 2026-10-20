@@ -17,6 +17,7 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import iconStyles from '@components/featureDetailsIconSticker.module.scss';
 import styles from '@components/popups/collectibleInfo.module.scss';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /** A username or an anonymous (+888) number bought on Fragment — one of the two. */
 type Collectible = {username: string, phone?: never} | {phone: string, username?: never};
@@ -41,6 +42,7 @@ export default async function showCollectibleInfoPopup(options: Collectible & {
   peerId: PeerId,
   onFail?: () => void
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const {peerId, username, phone} = options;
   const key = username ? '@' + username : '+' + phone;
   if(resolving === key) {
@@ -104,6 +106,7 @@ export default async function showCollectibleInfoPopup(options: Collectible & {
 
     return (
       <PopupElement
+        managers={managers}
         class={styles.popup}
         show={show()}
         onCloseAfterTimeout={() => middlewareHelper.destroy()}

@@ -1,10 +1,12 @@
 import _limitSymbols from '@helpers/string/limitSymbols';
 import {Chat} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import I18n from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import {getOtherAccountManagers} from '@lib/getProxiedManagers';
 
 export type GetPeerTitleOptions = {
   peerId: PeerId,
@@ -13,11 +15,13 @@ export type GetPeerTitleOptions = {
   username?: boolean,
   limitSymbols?: number,
   threadId?: number,
-  useManagers?: boolean
+  useManagers?: boolean,
+  /** The account the peer is of, when the tab may show another: its mirrors know nothing of it then. */
+  accountNumber?: ActiveAccountNumber
 } & Pick<WrapSomethingOptions, 'managers'>;
 
 
-async function getTitleIfMonoforum(chat: Chat, managers?: AppManagers) {
+async function getTitleIfMonoforum(chat: Chat, managers?: ReadingManagers) {
   if(chat?._ !== 'channel' || !chat?.pFlags?.monoforum || !chat.linked_monoforum_id) return;
   const peerId = chat.linked_monoforum_id.toPeerId();
 
@@ -34,10 +38,15 @@ export default async function getPeerTitleText(options: GetPeerTitleOptions): Pr
     onlyFirstName,
     username,
     limitSymbols,
-    managers = rootScope.managers,
-    useManagers,
-    threadId
+    threadId,
+    accountNumber
   } = options;
+  let {managers = rootScope.managers, useManagers} = options;
+  const otherAccountManagers = getOtherAccountManagers(accountNumber);
+  if(otherAccountManagers) {
+    managers = otherAccountManagers;
+    useManagers = true;
+  }
 
   let title = '';
   if(peerId.isUser()) {

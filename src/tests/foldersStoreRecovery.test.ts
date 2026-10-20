@@ -83,4 +83,27 @@ describe('folders store recovery', () => {
     expect(mocks.listeners.get('filter_new')).toHaveLength(1);
     expect(mocks.listeners.get('filter_delete')).toHaveLength(1);
   });
+
+  it('lets go of the previous account\'s folders at once on a switch, a hydration on its way included', async() => {
+    const allChats = makeDialogFilter(0, 0);
+    const folder = makeDialogFilter(2, 2);
+    for(const filter of [allChats, folder]) {
+      mocks.filters.set(filter.id, filter);
+    }
+
+    const useFolders = (await import('@stores/folders')).default;
+    const store = useFolders();
+    store.setOnClick(() => vi.fn());
+    await store.hydrateFilters([allChats, folder]);
+    store.setSelectedFolderId(2);
+
+    // * the previous account's folders were still being read when the switch came
+    const late = store.hydrateFilters([allChats, folder]);
+    store.resetForAccountSwitch();
+    expect(store.folderItems).toHaveLength(0);
+    expect(store.selectedFolderId()).toBe(0);
+
+    await late;
+    expect(store.folderItems, 'the previous account\'s folders came back').toHaveLength(0);
+  });
 });

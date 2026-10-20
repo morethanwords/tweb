@@ -3,7 +3,7 @@ import type {ScrollableBase} from '@components/scrollable';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import Sortable from '@helpers/dom/sortable';
 import {Middleware} from '@helpers/middleware';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import movePinnedKey, {PinnedKey} from '@appManagers/utils/dialogs/movePinnedKey';
 
@@ -47,7 +47,7 @@ export default function attachPinnedDialogsReorder({list, scrollable, middleware
   scrollable: ScrollableBase,
   middleware: Middleware,
   sortedList: SortedDialogList,
-  managers: AppManagers,
+  managers: ReadingManagers,
   /** the list the pins belong to, in `dialogsStorage`'s own filter id space */
   getFilterId: () => number,
   /** the key a row is held under in `sortedList` - the list's own `getDialogKeyFromElement` */
@@ -113,7 +113,7 @@ export default function attachPinnedDialogsReorder({list, scrollable, middleware
  * slots it travelled.
  */
 async function pinnedOrderAfterDrag({managers, filterId, key, reordered, to}: {
-  managers: AppManagers,
+  managers: ReadingManagers,
   filterId: number,
   key: PinnedKey,
   reordered: PinnedKey[],

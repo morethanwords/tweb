@@ -9,6 +9,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {i18n} from '@lib/langPack';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id'], photo?: Photo.photo};
 export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
@@ -92,6 +93,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
   };
 
   onDeleteClick = async() => {
+    const managers = bindManagersToSession(this.managers);
     const peerId = this.peerId;
     const photoId = this.target.photoId;
     try {
@@ -108,11 +110,11 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     }
 
     if(peerId === rootScope.myId) {
-      await this.managers.appProfileManager.deletePhotos([photoId as string]);
+      await managers.appProfileManager.deletePhotos([photoId as string]);
     } else if(peerId.isUser()) { // own bot, see computeCanDelete
-      await this.managers.appProfileManager.clearBotProfilePhoto(peerId.toUserId());
+      await managers.appProfileManager.clearBotProfilePhoto(peerId.toUserId());
     } else {
-      await this.managers.appChatsManager.editPhoto(peerId.toChatId());
+      await managers.appChatsManager.editPhoto(peerId.toChatId());
     }
 
     this.target = {element: this.content.media} as any;
@@ -141,6 +143,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
       this.getCanDelete()
     ]);
 
+    if(this.isAskedTooLate()) return;
     this.buttons.delete.classList.toggle('hide', !canDelete);
 
     const ret = super._openMedia({

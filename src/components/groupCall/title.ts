@@ -30,9 +30,8 @@ export default class GroupCallTitleElement {
     }
 
     const peerId = instance.chatId.toPeerId(true);
-    if(peerTitle.options.peerId !== peerId) {
-      peerTitle.options.peerId = peerId;
-      peerTitle.update();
+    if(peerTitle.options.peerId !== peerId || peerTitle.options.accountNumber !== instance.accountNumber) {
+      peerTitle.update({peerId, accountNumber: instance.accountNumber});
     }
 
     if(peerTitle.element.parentElement !== appendTo) {

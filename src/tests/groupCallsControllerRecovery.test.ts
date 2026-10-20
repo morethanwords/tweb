@@ -57,17 +57,22 @@ vi.mock('@lib/calls/groupCallInstance', () => {
       } : undefined;
     }
 
-    private managers: any;
+    // the account the controller joined the call on: its managers and identity are the call's own
+    public managers: any;
+    public accountNumber: number;
+    public myId: PeerId;
 
     // As the real getter: the manager's cached roster.
     public get participants() {
       return this.managers.appGroupCallsManager.getCachedParticipants(this.id);
     }
 
-    constructor(options: {id: string, chatId: PeerId, managers: any}) {
+    constructor(options: {id: string, chatId: PeerId, managers: any, accountNumber?: number, myId?: PeerId}) {
       this.id = options.id;
       this.chatId = options.chatId;
       this.managers = options.managers;
+      this.accountNumber = options.accountNumber;
+      this.myId = options.myId;
       callMocks.instances.push(this);
     }
 
@@ -122,6 +127,7 @@ vi.mock('@lib/calls/groupCallInstance', () => {
 import {GroupCallsController} from '@lib/calls/groupCallsController';
 import rootScope from '@lib/rootScope';
 import type {InputGroupCall} from '@layer';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 
 const INPUT: Extract<InputGroupCall, {_: 'inputGroupCall'}> = {
   _: 'inputGroupCall',
@@ -133,6 +139,12 @@ const SLUG_INPUT: Extract<InputGroupCall, {_: 'inputGroupCallSlug'}> = {
   slug: 'conference'
 };
 const SELF_USER_ID = BigInt(42);
+
+// * the managers of the controller made last: a call joined through it is that account's
+let lastManagers: any;
+function callAccount(managers = lastManagers) {
+  return {accountNumber: getCurrentAccount(), managers, myId: rootScope.myId};
+}
 
 function makeController() {
   const audioAsset = {
@@ -169,6 +181,7 @@ function makeController() {
   };
   const controller = new GroupCallsController();
   Object.assign(controller as any, {audioAsset, log, managers});
+  lastManagers = managers;
   return {audioAsset, appGroupCallsManager, controller, log};
 }
 
@@ -179,6 +192,7 @@ async function flushPromises() {
 
 function makeLiveConferenceInstance(connection: any) {
   return {
+    ...callAccount(),
     id: INPUT.id,
     chatId: 99 as PeerId,
     selfUserId: SELF_USER_ID,
@@ -305,6 +319,7 @@ async function joinConferenceFixture(
   callMocks.createMainStreamManager.mockResolvedValue(streamManager);
 
   return (controller as any).joinConferenceCommon({
+    account: callAccount(),
     input: options.input ?? INPUT,
     expectedCanonicalInput: options.expectedCanonicalInput,
     worker,
@@ -372,6 +387,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.negotiationError = joinError;
 
     const joining = (controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -411,6 +427,7 @@ describe('GroupCallsController conference transactions', () => {
     appGroupCallsManager.leaveGroupCall.mockRejectedValue(leaveError);
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -439,6 +456,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.acceptedCallInput = INPUT;
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: SLUG_INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -465,6 +483,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.acceptedCallInput = INPUT;
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       createConference: true,
       worker,
       publicKey: new Uint8Array(32),
@@ -491,6 +510,7 @@ describe('GroupCallsController conference transactions', () => {
     callMocks.negotiationError = joinError;
 
     await expect((controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -559,7 +579,8 @@ describe('GroupCallsController conference transactions', () => {
       muted: false,
       joinVideo: false,
       transitionGeneration: expect.any(Number),
-      outboundMediaRecoveryUsed: true
+      outboundMediaRecoveryUsed: true,
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
     expect(log.warn).toHaveBeenCalledWith('rejoining conference', {
       reason: 'outbound-media-blackhole',
@@ -935,7 +956,8 @@ describe('GroupCallsController conference transactions', () => {
       chatId: 99,
       muted: true,
       joinVideo: false,
-      transitionGeneration: expect.any(Number)
+      transitionGeneration: expect.any(Number),
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
   });
 
@@ -959,7 +981,8 @@ describe('GroupCallsController conference transactions', () => {
       chatId: 99,
       muted: true,
       joinVideo: false,
-      transitionGeneration: expect.any(Number)
+      transitionGeneration: expect.any(Number),
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
   });
 
@@ -1061,7 +1084,8 @@ describe('GroupCallsController conference transactions', () => {
       chatId: 99,
       muted: true,
       joinVideo: false,
-      transitionGeneration: expect.any(Number)
+      transitionGeneration: expect.any(Number),
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: instance.myId}
     });
   });
 
@@ -1279,6 +1303,7 @@ describe('GroupCallsController conference transactions', () => {
     (controller as any).conferenceTransitionGeneration = generation;
 
     const joining = (controller as any).joinConferenceCommon({
+      account: callAccount(),
       input: INPUT,
       worker,
       publicKey: new Uint8Array(32),
@@ -1462,7 +1487,9 @@ describe('GroupCallsController conference transactions', () => {
       lastBlockServer: zeroBlock,
       chatId: undefined,
       muted: true,
-      joinVideo: false
+      joinVideo: false,
+      // * started on the account the tab shows
+      account: callAccount()
     });
     expect(appGroupCallsManager.getGroupCallFull).not.toHaveBeenCalled();
     expect(appGroupCallsManager.discardGroupCall).not.toHaveBeenCalled();

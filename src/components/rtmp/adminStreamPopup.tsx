@@ -2,20 +2,21 @@ import '@components/rtmp/adminStreamPopup.scss';
 
 import {createSignal, onMount} from 'solid-js';
 import {RtmpData} from '@components/rtmp/rtmpData';
-import rootScope from '@lib/rootScope';
+import type {AppManagers} from '@lib/managers';
 import {toastNew} from '@components/toast';
 import {i18n} from '@lib/langPack';
 import pause from '@helpers/schedulers/pause';
 
 const cnPlayer = (className = '') => `rtmp-player${className}`;
 
-export const AdminStreamPopup = ({peerId}: {peerId: PeerId}) => {
+// * `managers`: the stream's - the tab may show another account by now
+export const AdminStreamPopup = ({peerId, managers}: {peerId: PeerId, managers: AppManagers}) => {
   const [rtmpUrl, setRtmpUrl] = createSignal('');
   const [rtmpKey, setRtmpKey] = createSignal('');
   const [rtmpDataLoading, setRtmpDataLoading] = createSignal(true);
 
   onMount(() => {
-    rootScope.managers.appGroupCallsManager.fetchRtmpUrl(peerId).then(async(data) => {
+    managers.appGroupCallsManager.fetchRtmpUrl(peerId).then(async(data) => {
       setRtmpUrl(data.url);
       setRtmpKey(data.key);
       setRtmpDataLoading(false);

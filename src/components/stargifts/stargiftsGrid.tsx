@@ -33,6 +33,7 @@ import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
@@ -64,8 +65,9 @@ function StarGiftGridItem(props: {
           text: 'ShareFile',
           verify: () => raw._ === 'starGiftUnique',
           onClick: () => {
+            const managers = bindManagersToSession(rootScope.managers);
             showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
-              rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
+              managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
               hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
             });
           }
@@ -139,18 +141,19 @@ function StarGiftGridItem(props: {
           text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
           verify: () => isEditableUniqueGift,
           onClick: async() => {
+            const managers = bindManagersToSession(rootScope.managers);
             if(isWearing) {
               if(profilePeerId === rootScope.myId) {
-                rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+                managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
               } else {
-                rootScope.managers.apiManager.invokeApiSingleProcess({
+                managers.apiManager.invokeApiSingleProcess({
                   method: 'channels.updateEmojiStatus',
                   params: {
-                    channel: await rootScope.managers.appChatsManager.getChannelInput(profilePeerId.toChatId()),
+                    channel: await managers.appChatsManager.getChannelInput(profilePeerId.toChatId()),
                     emoji_status: {_: 'emojiStatusEmpty'}
                   }
                 }).then((updates) => {
-                  rootScope.managers.apiUpdatesManager.processUpdateMessage(updates);
+                  managers.apiUpdatesManager.processUpdateMessage(updates);
                 }).catch(() => {
                   toastNew({langPackKey: 'Error.AnError'});
                 });

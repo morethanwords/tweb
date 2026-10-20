@@ -9,6 +9,7 @@ import {BusinessWorkHours, Chat, ChatFull, GeoPoint, GroupCall, HelpTimezonesLis
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import {useFullPeer} from '@stores/fullPeers';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {Skeleton} from '@components/skeleton';
 import {Middleware} from '@helpers/middleware';
@@ -1465,7 +1466,7 @@ PeerProfile.Actions = () => {
     text: () => membership() === 'request' ? 'ForumTopic.Context.ApplyToJoin' : isBroadcast() ? 'Chat.Subscribe' : 'ChannelJoin',
     shown: () => membership() === 'join' || membership() === 'request',
     onClick: () => {
-      joinChat({peerId, managers: rootScope.managers, appImManager}).catch(() => {
+      joinChat({peerId, managers: bindManagersToSession(rootScope.managers), appImManager}).catch(() => {
         toastNew({langPackKey: 'Error.AnError'});
       });
     }

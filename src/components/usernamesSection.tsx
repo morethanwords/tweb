@@ -10,6 +10,7 @@ import Section from '@components/section';
 import UsernameRow from '@components/usernameRow';
 import {UsernameInputField} from '@components/usernameInputField';
 import {createSortableList} from '@helpers/solid/createSortableList';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const cloneUsernames = (usernames: Username[] = []) => usernames.map((username) => ({
   ...username,
@@ -21,7 +22,7 @@ export default function UsernamesSection(props: {
   peer: Chat.channel | User.user,
   usernameInputField: UsernameInputField
 }) {
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
   const channelId = props.peerId.isUser() ? undefined : props.peerId.toChatId();
   const botId = (props.peer as User.user).pFlags.bot ? props.peerId.toUserId() : undefined;
   const [usernames, setUsernames] = createSignal(cloneUsernames(props.peer.usernames));

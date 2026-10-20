@@ -1,5 +1,6 @@
 import rootScope from '@lib/rootScope';
 import wrapSticker from '@components/wrappers/sticker';
+import noop from '@helpers/noop';
 
 export function wrapAdaptiveCustomEmoji(options: {
   as?: string
@@ -31,7 +32,10 @@ export function wrapAdaptiveCustomEmoji(options: {
       lazyLoadQueue: wrapOptions?.lazyLoadQueue === false ? undefined : wrapOptions?.lazyLoadQueue,
       managers: wrapOptions?.managers
     }).then(res => res.render);
-  })()
+  })();
+  // * nobody has to wait for it: a row torn down mid-load (an account switch tears down all of them)
+  // * rejects it with MIDDLEWARE, which is no error
+  loadPromise.catch(noop);
 
   return {container, loadPromise};
 }

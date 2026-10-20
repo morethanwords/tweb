@@ -5,7 +5,7 @@ import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {ReactionCount, SavedReactionTag} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import rootScope from '@lib/rootScope';
@@ -47,7 +47,7 @@ export function getPendingPaidReactionKey(message: ReactionsContext) {
 // peer's full info changes (an admin may toggle paid reactions on/off).
 const PAID_REACTION_AVAILABLE: Map<PeerId, MaybePromise<boolean>> = new Map();
 
-function getPaidReactionAvailable(managers: AppManagers, peerId: PeerId): MaybePromise<boolean> {
+function getPaidReactionAvailable(managers: ReadingManagers, peerId: PeerId): MaybePromise<boolean> {
   let value = PAID_REACTION_AVAILABLE.get(peerId);
   if(value === undefined) {
     value = managers.appReactionsManager.isPaidReactionAvailable(peerId);
@@ -65,6 +65,10 @@ function getPaidReactionAvailable(managers: AppManagers, peerId: PeerId): MaybeP
 
 hotListen(import.meta.hot, rootScope, 'chat_full_update', (chatId) => {
   PAID_REACTION_AVAILABLE.delete(chatId.toPeerId(true));
+});
+
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  PAID_REACTION_AVAILABLE.clear();
 });
 
 export const savedReactionTags: SavedReactionTag[] = [];
@@ -97,7 +101,7 @@ export default class ReactionsElement extends HTMLElement {
   private type: ReactionLayoutType;
   private sorted: ReactionElement[];
   private onConnectCallback: () => void;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private middleware: Middleware;
   private middlewareHelpers: Map<ReactionElement, MiddlewareHelper>;
   public customEmojiRenderer: CustomEmojiRendererElement;

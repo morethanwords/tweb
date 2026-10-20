@@ -77,6 +77,7 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
+import switchAccount from '@lib/accounts/switchAccount';
 import {useAppSettings} from '@stores/appSettings';
 import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
@@ -176,6 +177,7 @@ registerHotReloadGuard({
   createStoriesViewerWithPeer,
   createStoriesViewerWithProvider,
   openInstantViewInAppBrowser,
+  switchAccount,
   tabs
 });
 

@@ -18,7 +18,7 @@ import {Middleware, getMiddleware} from '@helpers/middleware';
 import noop from '@helpers/noop';
 import {fastRaf} from '@helpers/schedulers';
 import {Message, AvailableReaction, Reaction, AvailableEffect, EmojiGroup} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
@@ -64,7 +64,7 @@ export class ChatReactionsMenu {
   // private scrollable: ScrollableBase;
   private animationGroup: AnimationItemGroup;
   private middlewareHelper: ReturnType<typeof getMiddleware>;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private onFinish: (reaction?: Reaction | Promise<Reaction>) => void;
   private listenerSetter: ListenerSetter;
   private size: number;
@@ -81,7 +81,7 @@ export class ChatReactionsMenu {
   public inited: boolean;
 
   constructor(options: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     type: 'horizontal' | 'vertical',
     middleware: Middleware,
     onFinish: ChatReactionsMenu['onFinish'],

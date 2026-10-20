@@ -1,6 +1,7 @@
 import {DialogsSelectionBase, DialogsSelectionMenuItem, MENU_ITEM_DELETE} from '@components/dialogsSelectionBase';
 import confirmDeleteContacts from '@components/popups/deleteContacts';
 import {LangPackKey} from '@lib/langPack';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type ContactsSelectionAction = 'delete';
 
@@ -39,12 +40,13 @@ export default class ContactsSelection extends DialogsSelectionBase<ContactsSele
    * @returns `false` when the delete was called off
    */
   public async deleteContacts(peerIds: PeerId[]) {
+    const managers = bindManagersToSession(this.managers);
     try {
       await confirmDeleteContacts(peerIds);
     } catch{
       return false;
     }
 
-    this.managers.appUsersManager.deleteContacts(peerIds.map((peerId) => peerId.toUserId()));
+    managers.appUsersManager.deleteContacts(peerIds.map((peerId) => peerId.toUserId()));
   }
 }

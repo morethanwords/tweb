@@ -1,11 +1,11 @@
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
 import wrapSingleEmoji from '@lib/richTextProcessor/wrapSingleEmoji';
 import {Match, onMount, Switch} from 'solid-js';
 
 
 export default function FolderAnimatedIcon(props: {
-  managers: AppManagers;
+  managers: ReadingManagers;
   docId?: DocId;
   emoji?: string;
   color: string;

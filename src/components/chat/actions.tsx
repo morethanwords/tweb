@@ -26,6 +26,7 @@ import {AckedResult} from '@lib/superMessagePort';
 import {Accessor, createSignal, For, Show} from 'solid-js';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {hotListen} from '@helpers/hotModule';
 
 type PeerSettingsKey = keyof PeerSettings['pFlags'];
 
@@ -81,6 +82,10 @@ const LANG_KEY_MAP: {[key in ActionKey]?: LangPackKey} = {
  */
 const botPhotoPromptOpenedEmpty = new Map<PeerId, boolean>();
 const botPhotoPromptHidden = new Set<PeerId>();
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  botPhotoPromptOpenedEmpty.clear();
+  botPhotoPromptHidden.clear();
+});
 
 export type ChatActionsPlate = TopbarPlateController & {
   set: (peerId: PeerId, settings: PeerSettings) => () => void,

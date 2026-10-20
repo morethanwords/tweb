@@ -4,7 +4,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import mediaSizes from '@helpers/mediaSizes';
 import {Document, MessagesAllStickers, StickerSet} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import {putPreloader} from '@components/putPreloader';
@@ -34,6 +34,7 @@ import {
 } from '@components/emoticonsDropdown/groupSetSection';
 import Icon from '@components/icon';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type StickersTabItem = {element: HTMLElement, document: Document.document};
 export default class StickersTab extends EmoticonsTabC<StickersTabCategory<StickersTabItem>, Document.document[]> {
@@ -41,7 +42,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   private groupSetController: GroupSetController;
   private groupSetHidden: boolean;
 
-  constructor(managers: AppManagers) {
+  constructor(managers: ReadingManagers) {
     super({
       managers,
       searchFetcher: async(value) => {
@@ -323,6 +324,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     const clearButton = ButtonIcon('close', {noRipple: true});
     recentCategory.elements.title.append(clearButton);
     attachClickEvent(clearButton, () => {
+      const managers = bindManagersToSession(this.managers);
       confirmationPopup({
         titleLangKey: 'ClearRecentStickersAlertTitle',
         descriptionLangKey: 'ClearRecentStickersAlertMessage',
@@ -330,7 +332,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           langKey: 'Clear'
         }
       }).then(() => {
-        this.managers.appStickersManager.clearRecentStickers();
+        managers.appStickersManager.clearRecentStickers();
       }, noop);
     });
 
@@ -368,7 +370,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
       this.repositionGroupSet();
 
-      rootScope.addEventListener('stickers_installed', (set) => {
+      this.listenerSetter.add(rootScope)('stickers_installed', (set) => {
         if(!this.categories[set.id]) {
           StickersTab.renderStickerSet(this, this.stickerRenderer, set, true);
           this.repositionGroupSet();
@@ -394,7 +396,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     };
 
     const onStickerUpdatedPostponed = this.postponedEvent(onStickerUpdated);
-    rootScope.addEventListener('sticker_updated', (data) => {
+    this.listenerSetter.add(rootScope)('sticker_updated', (data) => {
       // using a sticker reshuffles the recent row, which must not happen under the cursor —
       // that waits for the panel to hide; faving and removing are the user's own doing right
       // there in the panel, so they land at once
@@ -402,14 +404,14 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       (postpone ? onStickerUpdatedPostponed : onStickerUpdated)(data);
     });
 
-    rootScope.addEventListener('stickers_deleted', ({id}) => {
+    this.listenerSetter.add(rootScope)('stickers_deleted', ({id}) => {
       const category = this.categories[id];
       this.deleteCategory(category);
       // uninstalling may turn a deduped group set into one worth showing on its own
       this.groupSetController?.update();
     });
 
-    rootScope.addEventListener('stickers_top', this.postponedEvent((id) => {
+    this.listenerSetter.add(rootScope)('stickers_top', this.postponedEvent((id) => {
       const category = this.categories[id];
       if(category) {
         this.positionCategory(category, true);
@@ -419,7 +421,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }
     }));
 
-    rootScope.addEventListener('stickers_order', this.postponedEvent(({type, order}) => {
+    this.listenerSetter.add(rootScope)('stickers_order', this.postponedEvent(({type, order}) => {
       if(type !== 'stickers') {
         return;
       }
@@ -440,7 +442,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     };
 
     const onStickersUpdatedPostponed = this.postponedEvent(onStickersUpdated);
-    rootScope.addEventListener('stickers_updated', (data) => {
+    this.listenerSetter.add(rootScope)('stickers_updated', (data) => {
       const category = this.categories[data.type === 'faved' ? 'faved' : 'recent'];
       const {limit} = category || {};
       const length = limit ? Math.min(limit, data.stickers.length) : data.stickers.length;
@@ -451,13 +453,13 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       (shrunk ? onStickersUpdated : onStickersUpdatedPostponed)(data);
     });
 
-    rootScope.addEventListener('app_config', () => {
+    this.listenerSetter.add(rootScope)('app_config', () => {
       this.managers.apiManager.getLimit('favedStickers').then((limit) => {
         this.setFavedLimit(limit);
       });
     });
 
-    mediaSizes.addEventListener('resize', this.resizeCategories);
+    this.listenerSetter.add(mediaSizes)('resize', this.resizeCategories);
 
     this.attachHelpers({
       verifyRecent: (target) => !!findUpAsChild(target, this.categories['recent'].elements.items)
@@ -544,7 +546,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   }
 
   public destroy() {
-    this.stickerRenderer.destroy();
+    // * made by init(): a tab never opened has none
+    this.stickerRenderer?.destroy();
     super.destroy();
   }
 

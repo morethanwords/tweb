@@ -40,14 +40,15 @@ import callbackify from '@helpers/callbackify';
 import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
 import {forgetLoadedURL} from '@helpers/dom/loadedUrlCache';
 import type {SharedObjectURLUpdate} from '@helpers/objectUrlUtils';
-import {setAppStateSilent} from '@stores/appState';
+import {replaceAppStateSilent, setAppStateSilent} from '@stores/appState';
 // * keeps the page's ignored restriction reasons in step with the mirrored state from the start
 import '@stores/contentSettings';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
-import {reconcilePeer, reconcilePeers} from '@stores/peers';
-import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import {reconcilePeer, reconcilePeers, resetPeers} from '@stores/peers';
+import {getCurrentAccount, setCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {ActiveAccountNumber} from '@lib/accounts/types';
-import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
+import {createProxiedManagersForAccount, getAccountManagers, getOtherAccountManagers} from '@lib/getProxiedManagers';
+import {takesCallEvent} from '@lib/calls/callAccount';
 import noop from '@helpers/noop';
 import AccountController from '@lib/accounts/accountController';
 import getPeerTitleText from '@components/wrappers/getPeerTitleText';
@@ -94,6 +95,7 @@ import type {
   CommunityDialog,
   CommunityPeerLinkRequestsState
 } from '@appManagers/appCommunitiesManager';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export type Mirrors = {
@@ -449,7 +451,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       event: ({name, args, accountNumber}) => {
         const isDifferentAccount = accountNumber && accountNumber !== getCurrentAccount();
-        if(!commonEventNames.has(name as keyof BroadcastEvents) && isDifferentAccount) return;
+        // * a call goes on after the tab has switched to another account: what is said about it comes
+        // * from its own account, whichever the tab shows
+        const isTakenAsCallEvent = takesCallEvent(name, args, accountNumber || getCurrentAccount());
+        if(isTakenAsCallEvent === false) return;
+        if(isTakenAsCallEvent === undefined && isDifferentAccount && !commonEventNames.has(name as keyof BroadcastEvents)) return;
         // @ts-ignore
         rootScope.dispatchEventSingle(name, ...args);
       },
@@ -900,6 +906,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
           this.log('got hello from service worker');
           this.serviceMessagePort.resendLockTask(source);
           this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
+          this.serviceMessagePort.invokeVoid('tabAccount', getCurrentAccount());
           this.sendPasscodeStateToServiceWorker();
         },
 
@@ -1115,15 +1122,73 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return loadedStates;
   }
 
-  private async dispatchUserAuth() {
-    const accountData = await AccountController.get(getCurrentAccount());
+  private async dispatchUserAuth(single?: boolean, accountData?: Awaited<ReturnType<typeof AccountController.get>>) {
+    accountData ??= await AccountController.get(getCurrentAccount());
     if(accountData.userId) {
-      rootScope.dispatchEvent('user_auth', {
+      rootScope[single ? 'dispatchEventSingle' : 'dispatchEvent']('user_auth', {
         dcID: accountData.dcId || 0,
         date: accountData.date || (Date.now() / 1000 | 0),
         id: accountData.userId.toPeerId(false)
       });
     }
+  }
+
+  /**
+   * Moves this tab's mirrors to another signed-in account: whatever the previous one left is dropped,
+   * the worker sends the new one's snapshots, and its state replaces the old one's.
+   * The UI of the previous account must be gone by now.
+   */
+  public async switchAccount(accountNumber: ActiveAccountNumber) {
+    // * who the account is goes in with it: its events are let in from here on, and what they bring is checked
+    // * against it (an incoming call is the account's only when it is addressed to it)
+    const accountData = await AccountController.get(accountNumber);
+    setCurrentAccount(accountNumber);
+    void this.dispatchUserAuth(true, accountData);
+    // * the session of the account switched to, which begins here
+    // oxlint-disable-next-line tweb/managers-before-await -- the new account's session, begun just above
+    const managers = bindManagersToSession(rootScope.managers);
+    this.updateTabState('accountNumber', accountNumber);
+    // * the service worker streams media for the account of the tab, and the tab's url would not tell it
+    this.serviceMessagePort?.invokeVoid('tabAccount', accountNumber);
+    this.resetAccountMirrors();
+
+    const [state] = await Promise.all([
+      managers.appStateManager.getState(),
+      this.invoke('mirrorAll', {accountNumber})
+    ]);
+
+    this.mirrors.state = state;
+    replaceAppStateSilent(state);
+
+    // * an account this tab has not shown yet can lack even itself, and the screens read it at once
+    if(!this.mirrors.peers[rootScope.myId]) {
+      await managers.appUsersManager.getApiUsers([{_: 'inputUserSelf'}]).catch(noop);
+    }
+
+    rootScope.premium = await managers.rootScope.getPremium();
+  }
+
+  private resetAccountMirrors() {
+    const {avatars} = this.mirrors;
+    for(const peerId in avatars) {
+      const sizes = avatars[peerId];
+      for(const size in sizes) {
+        const url = sizes[size as keyof typeof sizes];
+        typeof(url) === 'string' && forgetLoadedURL(url);
+      }
+    }
+
+    // * thumbs and stickerThumbs are left to the snapshot: it reconciles them in full
+    this.mirrors.avatars = {};
+    this.mirrors.messages = {};
+    this.mirrors.groupedMessages = {};
+    this.mirrors.peers = {};
+    this.mirrors.availableReactions = undefined;
+    this.appConfig = undefined;
+    resetPeers();
+    _iterateHistoryStorages((key, value) => {
+      this.clearHistoryStorage(key, value, true);
+    });
   }
 
   public hasTabOpenFor(accountNumber: ActiveAccountNumber) {
@@ -1327,9 +1392,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, accountNumber?: ActiveAccountNumber) {
-    if(accountNumber && accountNumber !== getCurrentAccount()) {
-      const managers = createProxiedManagersForAccount(accountNumber);
-      return managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+    const otherAccountManagers = getOtherAccountManagers(accountNumber);
+    if(otherAccountManagers) {
+      return otherAccountManagers.appAvatarsManager.loadAvatar(peerId, photo, size);
     }
 
     const saved = this.mirrors.avatars[peerId] ??= {};
@@ -1337,7 +1402,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
       return saved[size];
     }
 
-    const promise = saved[size] = rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+    // * one asked for an account by name - a call's, which outlives a switch - goes through that account's own
+    // * managers: what comes back once the tab is on another account still reaches whoever asked
+    const managers = accountNumber ? getAccountManagers(accountNumber) : bindManagersToSession(rootScope.managers);
+    const promise = saved[size] = managers.appAvatarsManager.loadAvatar(peerId, photo, size);
     // Don't permanently cache a failed load — allow a retry: any rejection
     // (e.g. FILE_ID_INVALID for a stale photo_id), or a video load that
     // resolved to nothing.

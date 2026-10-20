@@ -6,6 +6,7 @@ import {getAppWindow} from '@helpers/appWindow';
 import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 import rootScope from '@lib/rootScope';
 import {hotReloadGuardReady} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type OnFinishArgs = {
@@ -42,6 +43,8 @@ export async function getFileAndOpenEditor({
   shouldOpenEditor,
   onSkipEditor
 }: GetFileAndOpenEditorArgs) {
+  // * the editor opens for the account the file was asked on, and not at all once the tab is on another
+  const managers = bindManagersToSession(rootScope.managers);
   const input = createHiddenFileInput(acceptMediaTypes);
   document.body.append(input);
 
@@ -82,7 +85,7 @@ export async function getFileAndOpenEditor({
     canFinishWithoutChanges: true,
     canImageResultInGIF,
     getMediaBlob: async() => file,
-    managers: rootScope.managers,
+    managers,
     mediaSrc,
     mediaType: isVideo ? 'video' : 'image',
     // Editing an avatar with a video → avatar-video mode (≤10s trim, forced mute,

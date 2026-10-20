@@ -16,6 +16,7 @@ import {
 } from '@components/chat/editMessageMedia';
 import appDownloadManager from '@lib/appDownloadManager';
 import type {ChatInputEditorSelection} from '@components/chat/inputEditor/types';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type EditRichMediaOptions = {
   editor: ChatInputEditor,
@@ -30,6 +31,7 @@ export default async function editRichMediaItem(
 ): Promise<void> {
   const editor = options.editor;
   if(!editor || !options.isCurrent() || !options.middleware()) return;
+  const managers = bindManagersToSession(rootScope.managers);
   const contextMiddleware = options.middleware;
   const isPhoto = action.media._ === 'photo';
   const mediaType: MediaEditorProps['mediaType'] = isPhoto ? 'image' : 'video';
@@ -141,7 +143,7 @@ export default async function editRichMediaItem(
     animatedCanvasSize: size,
     canImageResultInGIF: !action.grouped,
     getMediaBlob: () => Promise.resolve(mediaBlob),
-    managers: rootScope.managers,
+    managers,
     mediaSrc: mediaUrl,
     mediaType,
     onClose: cleanup,

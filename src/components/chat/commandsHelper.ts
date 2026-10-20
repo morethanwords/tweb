@@ -6,6 +6,7 @@ import processPeerFullForCommands from '@components/chat/processPeerFullForComma
 import hideCommandAutocomplete from '@components/chat/hideCommandAutocomplete';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default class CommandsHelper extends AutocompletePeerHelper {
   constructor(
@@ -43,16 +44,17 @@ export default class CommandsHelper extends AutocompletePeerHelper {
   }
 
   public async checkQuery(query: string, peerId: PeerId) {
+    const managers = bindManagersToSession(this.managers);
     const [isBot, isGroup] = await Promise.all([
-      this.managers.appUsersManager.isBot(peerId),
-      this.managers.appPeersManager.isAnyGroup(peerId)
+      managers.appUsersManager.isBot(peerId),
+      managers.appPeersManager.isAnyGroup(peerId)
     ]);
     if(!isBot && !isGroup) {
       return false;
     }
 
     const middleware = this.controller.getMiddleware();
-    this.managers.appProfileManager.getProfileByPeerId(peerId).then((full) => {
+    managers.appProfileManager.getProfileByPeerId(peerId).then((full) => {
       if(!middleware()) {
         return;
       }

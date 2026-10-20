@@ -20,7 +20,7 @@ import {isSavingLottiePreview, saveLottiePreview, saveLottiePreviewFromPlayer} f
 import sequentialDom from '@helpers/sequentialDom';
 import {DocumentAttribute, PhotoSize, VideoSize} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -83,7 +83,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   needUpscale?: boolean,
   skipRatio?: number,
   static?: boolean,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   fullThumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   isOut?: boolean,
   noPremium?: boolean,
@@ -769,7 +769,7 @@ export async function fireStickerEffect({e, container, doc, managers, middleware
   e: MouseEvent,
   container: HTMLElement,
   doc: MyDocument,
-  managers: AppManagers,
+  managers: ReadingManagers,
   middleware: Middleware,
   isOut: boolean,
   width: number,

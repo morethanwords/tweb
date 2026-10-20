@@ -32,7 +32,15 @@ const mocks = vi.hoisted(() => {
     private inputPhoneCall: any;
     private listeners = new Map<string, Set<Listener>>();
 
-    constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId}) {
+    // the account the controller bound the call to: its managers and identity are the call's own
+    public managers: any;
+    public accountNumber: number;
+    public myId: PeerId;
+
+    constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId, managers?: any, accountNumber?: number, myId?: PeerId}) {
+      this.managers = options.managers;
+      this.accountNumber = options.accountNumber;
+      this.myId = options.myId;
       this.isOutgoing = options.isOutgoing;
       this.interlocutorUserId = options.interlocutorUserId;
     }
@@ -178,6 +186,7 @@ vi.mock('@lib/rootScope', () => ({
 
 import CALL_STATE from '@lib/calls/callState';
 import {CallsController} from '@lib/calls/callsController';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 
 type FakeCall = InstanceType<typeof mocks.FakeCallInstance>;
 
@@ -243,7 +252,17 @@ describe('CallsController call rating', () => {
 
     await settle();
     expect(mocks.showRateCallPopup).toHaveBeenCalledTimes(1);
-    expect(mocks.showRateCallPopup).toHaveBeenCalledWith({call: INPUT_PHONE_CALL, isVideo: false});
+    // * rated on the call's account
+    expect(mocks.showRateCallPopup).toHaveBeenCalledWith({call: INPUT_PHONE_CALL, isVideo: false, managers: instance.managers});
+  });
+
+  it('takes a call with the same user from another account for another call', () => {
+    const {controller, instance} = createCall({connected: true});
+    const accountNumber = instance.accountNumber as ActiveAccountNumber;
+    const otherAccount: ActiveAccountNumber = accountNumber === 1 ? 2 : 1;
+
+    expect(controller.getCallByUserId(123 as UserId, accountNumber)).toBe(instance);
+    expect(controller.getCallByUserId(123 as UserId, otherAccount)).toBeUndefined();
   });
 
   it('finds a call it hung up itself when the server’s discarded update comes back', async() => {
@@ -257,7 +276,8 @@ describe('CallsController call rating', () => {
     await settle();
 
     expect(mocks.showRateCallPopup).toHaveBeenCalledTimes(1);
-    expect(mocks.showRateCallPopup).toHaveBeenCalledWith({call: INPUT_PHONE_CALL, isVideo: true});
+    // * rated on the call's account
+    expect(mocks.showRateCallPopup).toHaveBeenCalledWith({call: INPUT_PHONE_CALL, isVideo: true, managers: instance.managers});
   });
 
   it('does not ask about a call that never connected', async() => {

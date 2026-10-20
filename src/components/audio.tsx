@@ -185,6 +185,8 @@ type AudioRowContext = {
   element: AudioElement,
   listenerSetter: ListenerSetter,
   readyPromise: CancellablePromise<void>,
+  /** Runs `callback` once the track can play; never, for a row destroyed before that. */
+  whenReady: (callback: () => void) => void,
   addAudioListener: HTMLMediaElement['addEventListener'],
   togglePlay: (e?: Event, paused?: boolean) => void
 };
@@ -331,7 +333,7 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
     ctx.addAudioListener('play', setAnimation);
     ctx.addAudioListener('pause', () => ticker?.stop());
 
-    progress && ctx.readyPromise.then(() => {
+    progress && ctx.whenReady(() => {
       let mousedown = false, mousemove = false;
       progress.addEventListener('mouseleave', (e) => {
         if(mousedown) {
@@ -380,7 +382,7 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
         }
         setCurrentTime(audio, scrubTime);
       }
-    }, noop);
+    });
 
     !progress && progressLine.setMedia({
       media: audio,
@@ -668,6 +670,7 @@ export default async function createAudioElement(options: AudioElementOptions): 
     element: undefined,
     listenerSetter,
     readyPromise: undefined,
+    whenReady: (callback) => void ctx.readyPromise.then(callback, noop),
     addAudioListener: ((...args: any[]) => (listenerSetter.add(ctx.element.audio) as any)(...args)) as any,
     togglePlay: (e, paused) => ctx.element.togglePlay(e, paused)
   };
@@ -919,7 +922,7 @@ export default async function createAudioElement(options: AudioElementOptions): 
           };
 
           const playListener: any = ctx.addAudioListener('play', onPlay);
-          ctx.readyPromise.then(() => {
+          ctx.whenReady(() => {
             listenerSetter.remove(playListener);
             pauseListener && listenerSetter.remove(pauseListener);
           });
@@ -959,7 +962,7 @@ export default async function createAudioElement(options: AudioElementOptions): 
 
       setState('downloading', true);
 
-      ctx.readyPromise.then(() => {
+      ctx.whenReady(() => {
         // * the progress comes round to the end before it goes; the playing does not wait for it
         if(UNMOUNT_PRELOADER) {
           Promise.resolve(preloader?.whenCaughtUp()).then(() => {

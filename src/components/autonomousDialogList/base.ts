@@ -9,7 +9,7 @@ import {SequentialCursorFetcher, SequentialCursorFetcherResult} from '@helpers/s
 import windowSize from '@helpers/windowSize';
 import type {AppDialogsManager} from '@lib/appDialogsManager';
 import type {DialogDom} from '@components/dialogElement';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {isForumTopic} from '@appManagers/utils/dialogs/isDialog';
@@ -87,7 +87,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
   // protected offsets: {top: number, bottom: number};
   protected indexKey: ReturnType<typeof getDialogIndexKey>;
   protected sliceTimeout: number;
-  protected managers: AppManagers;
+  protected managers: ReadingManagers;
   protected appDialogsManager: AppDialogsManager;
   protected listenerSetter: ListenerSetter;
   protected middlewareHelper: MiddlewareHelper;

@@ -94,6 +94,9 @@
 #                 test DCs is a master seed with "isTest": 1 in it
 #                 (TWEB_MASTER_SEED=<it> ... --id <another>): it is minted there,
 #                 and its preview boots in test mode with no ?test=1 needed.
+#                 TWEB_SECOND_SEED=<master seed of another account> signs that
+#                 account in as the preview's SECOND account too (minted once
+#                 into account-2/<id>.json) — for multi-account work.
 #   --port        port for a new preview. Default: 9001 for the main checkout's
 #                 own preview (its default id) — the port is kept for it, so a
 #                 fixed address can point at it — and the first free port from
@@ -190,6 +193,13 @@ MASTER_SEED="${TWEB_MASTER_SEED:-seed.json}"
 case "$MASTER_SEED" in
   /*) ;;  # already absolute — leave as-is
   *) MASTER_SEED="$MAIN/tmp/$MASTER_SEED" ;;
+esac
+# TWEB_SECOND_SEED: a master seed of ANOTHER account, signed in as the second
+# account of the same preview (slot 2) — for multi-account work. Same forms.
+SECOND_SEED="${TWEB_SECOND_SEED:-}"
+case "$SECOND_SEED" in
+  ''|/*) ;;
+  *) SECOND_SEED="$MAIN/tmp/$SECOND_SEED" ;;
 esac
 
 # --- the registry -------------------------------------------------------------
@@ -538,6 +548,8 @@ fi
 
 LOG_FILE=""
 SEED="$REPO/tmp/preview-sessions/$ID.json"
+# * in a folder of its own: an id may end in -2 and name another preview's own seed
+SEED_2="$REPO/tmp/preview-sessions/account-2/$ID.json"
 
 if [ "$SERVE" = 1 ]; then
   [ -n "$PORT" ] || die "--serve needs --port"
@@ -633,7 +645,7 @@ else
 
   if [ "$DETACH" = 1 ]; then
     : >"$LOG_FILE"
-    CMD=(env PATH="$PATH" TWEB_MASTER_SEED="$MASTER_SEED")
+    CMD=(env PATH="$PATH" TWEB_MASTER_SEED="$MASTER_SEED" TWEB_SECOND_SEED="$SECOND_SEED")
     [ -z "${TWEB_PREVIEW_REMOTE:-}" ] || CMD+=(TWEB_PREVIEW_REMOTE="$TWEB_PREVIEW_REMOTE")
     CMD+=(bash "$REPO/scripts/start-preview.sh" --serve --id "$ID" --port "$PORT")
     [ "$NO_WORKER" = 0 ] || CMD+=(--no-worker)
@@ -693,18 +705,19 @@ else
 fi
 
 # --- serve (a foreground run, or the background half of --detach) -------------
-mkdir -p "$REPO/tmp/preview-sessions"
-[ "$REMINT" = 1 ] && rm -f "$SEED"
+mkdir -p "$REPO/tmp/preview-sessions/account-2"
+[ "$REMINT" = 1 ] && rm -f "$SEED" "$SEED_2"
 
-# mint a fresh, independent authorization for this preview (once per id)
-if [ ! -f "$SEED" ]; then
-  if [ ! -f "$MASTER_SEED" ]; then
-    echo "[start-preview] master seed not found: $MASTER_SEED" >&2
+# mint a fresh, independent authorization (once per id): mint <master seed> <out>
+mint() {
+  [ ! -f "$2" ] || return 0
+  if [ ! -f "$1" ]; then
+    echo "[start-preview] master seed not found: $1" >&2
     echo "[start-preview] set TWEB_MASTER_SEED or place tmp/seed.json in the main repo" >&2
     exit 1
   fi
   MINT_LOCK="$MAIN/tmp/.preview-mint.lock"
-  echo "[start-preview] minting a fresh authorization for id='$ID'..."
+  echo "[start-preview] minting a fresh authorization: $(basename "$2")..."
   for i in $(seq 1 180); do
     if mkdir "$MINT_LOCK" 2>/dev/null; then MINT_LOCKED=1; break; fi
     if [ "$i" = 180 ]; then echo "[start-preview] timed out waiting for mint lock" >&2; exit 1; fi
@@ -714,12 +727,14 @@ if [ ! -f "$SEED" ]; then
   # test passed; the real success signal is whether the seed file was written.
   # `verify-deps-before-run` off for the same reason as the vite run below: in a worktree
   # node_modules is a symlink and pnpm's pre-run check aborts on it without a TTY.
-  TG_API_TEST=1 TG_API_PROD_DC=1 TG_API_SEED="$MASTER_SEED" PREVIEW_SEED_OUT="$SEED" \
+  TG_API_TEST=1 TG_API_PROD_DC=1 TG_API_SEED="$1" PREVIEW_SEED_OUT="$2" \
     pnpm --config.verify-deps-before-run=false test --run src/tests/api/previewAuth || true
   rmdir "$MINT_LOCK" 2>/dev/null || true
   MINT_LOCKED=0
-  if [ ! -f "$SEED" ]; then echo "[start-preview] mint failed — $SEED not produced" >&2; exit 1; fi
-fi
+  if [ ! -f "$2" ]; then echo "[start-preview] mint failed — $2 not produced" >&2; exit 1; fi
+}
+mint "$MASTER_SEED" "$SEED"
+[ -z "$SECOND_SEED" ] || mint "$SECOND_SEED" "$SEED_2"
 
 if [ "$BUNDLED" = 1 ]; then MODE_TEXT="dev server, full bundle mode";
 elif [ "$HMR" = 1 ]; then MODE_TEXT="dev server + static for remotes";
@@ -736,7 +751,7 @@ echo "[start-preview] preview: http://localhost:$PORT"
 # that dialled the IPv4 literal — a proxy in front of it, for one. Keep the flag
 # and a preview answers whichever form the caller uses, by name or by literal.
 # Still loopback: not exposed to the LAN.
-VITE=(env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER"
+VITE=(env PREVIEW_SEED="$SEED" PREVIEW_SEED_2="${SECOND_SEED:+$SEED_2}" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER"
       pnpm --config.verify-deps-before-run=false exec vite --config vite.preview.config.ts)
 
 if [ "$BUNDLED" = 1 ]; then

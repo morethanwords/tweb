@@ -1,6 +1,6 @@
 import mediaSizes from '@helpers/mediaSizes';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import LazyLoadQueueRepeat from '@components/lazyLoadQueueRepeat';
@@ -14,7 +14,7 @@ export default class SuperStickerRenderer {
   private animated: Set<HTMLElement> = new Set();
   private regularLazyLoadQueue: LazyLoadQueue;
   private group: AnimationItemGroup;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   private intersectionObserverInit: IntersectionObserverInit;
   private visibleRenderOptions: Partial<Parameters<typeof wrapSticker>[0]>;
   private withLock: boolean
@@ -23,7 +23,7 @@ export default class SuperStickerRenderer {
   constructor(options: {
     regularLazyLoadQueue: LazyLoadQueue;
     group: AnimationItemGroup;
-    managers: AppManagers;
+    managers: ReadingManagers;
     intersectionObserverInit?: SuperStickerRenderer['intersectionObserverInit'];
     visibleRenderOptions?: SuperStickerRenderer['visibleRenderOptions'];
     withLock?: boolean

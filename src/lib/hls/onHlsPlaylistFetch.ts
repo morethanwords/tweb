@@ -1,7 +1,7 @@
 import deferredPromise from '@helpers/cancellablePromise';
 import {InputFileLocation} from '@layer';
 
-import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import getClientAccount from '@lib/serviceWorker/clientAccounts';
 import type {DownloadOptions} from '@appManagers/apiFileManager';
 import {get500ErrorResponse} from '@lib/serviceWorker/errors';
 import {serviceMessagePort} from '@lib/serviceWorker/index.service';
@@ -17,7 +17,7 @@ export async function onHlsPlaylistFetch(event: FetchEvent, params: string, sear
     const options: DownloadOptions = JSON.parse(decodeURIComponent(params));
 
     const client = await ctx.clients.get(event.clientId);
-    const accountNumber = getCurrentAccountFromURL(client.url);
+    const accountNumber = await getClientAccount(client);
 
     const docId = (options.location as InputFileLocation.inputDocumentFileLocation)?.id;
 

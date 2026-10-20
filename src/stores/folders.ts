@@ -4,7 +4,8 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import rootScope from '@lib/rootScope';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import type {MyDialogFilter} from '@lib/storages/filters';
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type StoredFolder = {
   id: number,
@@ -16,7 +17,7 @@ export type StoredFolder = {
   filter: MyDialogFilter
 };
 
-async function getNotificationCountForFilter(filterId: number, managers: AppManagers) {
+async function getNotificationCountForFilter(filterId: number, managers: ReadingManagers) {
   const {
     unreadUnmutedCount,
     unreadCount,
@@ -29,7 +30,7 @@ async function getNotificationCountForFilter(filterId: number, managers: AppMana
   };
 }
 
-async function getFolderItemsInOrder(folderItems: StoredFolder[], managers: AppManagers) {
+async function getFolderItemsInOrder(folderItems: StoredFolder[], managers: ReadingManagers) {
   const filters = new Map<number, MyDialogFilter>();
 
   const filtersPromises = folderItems
@@ -100,6 +101,7 @@ const useFoldersStore = createRoot(() => {
   }
 
   async function updateOrAddFolder(filter: MyDialogFilter) {
+    const managers = bindManagersToSession(rootScope.managers);
     const items = [...folderItems];
     const existingItem = items.find((item) => item.id === filter.id);
 
@@ -110,7 +112,7 @@ const useFoldersStore = createRoot(() => {
 
     const [payload, orderedFolderItems] = await Promise.all([
       makeFolderItemPayload(filter),
-      getFolderItemsInOrder(items, rootScope.managers)
+      getFolderItemsInOrder(items, managers)
     ]);
 
     items.push(payload);
@@ -155,10 +157,11 @@ const useFoldersStore = createRoot(() => {
   let lastHydrationId = 0;
   let listenersInited = false;
   async function hydrateFilters(filters: MyDialogFilter[]) {
+    const managers = bindManagersToSession(rootScope.managers);
     const hydrationId = ++lastHydrationId;
     const folderFilters = filters.filter((filter) => filter.id !== FOLDER_ID_ARCHIVE);
     const items = await Promise.all(folderFilters.map(makeFolderItemPayload));
-    const orderedItems = await getFolderItemsInOrder(items, rootScope.managers);
+    const orderedItems = await getFolderItemsInOrder(items, managers);
 
     if(hydrationId !== lastHydrationId) {
       return;
@@ -169,6 +172,14 @@ const useFoldersStore = createRoot(() => {
       listenersInited = true;
       initListeners();
     }
+  }
+
+  // * the tab goes to another account: these folders are not its, and a hydration still on its way is for the
+  // * previous account - the lists they open are gone already
+  function resetForAccountSwitch() {
+    ++lastHydrationId;
+    setFolderItems([]);
+    _setSelectedFolderId(FOLDER_ID_ALL);
   }
 
   function initListeners() {
@@ -220,6 +231,7 @@ const useFoldersStore = createRoot(() => {
     selectedFolderIndex,
     folderItems,
     hydrateFilters,
+    resetForAccountSwitch,
     onClick,
     setOnClick
   };

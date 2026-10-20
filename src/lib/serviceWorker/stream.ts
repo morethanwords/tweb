@@ -5,7 +5,7 @@ import tryPatchMp4 from '@helpers/fixChromiumMp4';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import pause from '@helpers/schedulers/pause';
 import {InputFileLocation} from '@layer';
-import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import getClientAccount from '@lib/serviceWorker/clientAccounts';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import CacheStorageController from '@lib/files/cacheStorage';
 import {DownloadOptions, MyUploadFile} from '@appManagers/apiFileManager';
@@ -334,7 +334,7 @@ export default function onStreamFetch(event: FetchEvent, params: string, search:
 
     const client = await ctx.clients.get(event.clientId);
     // Theoretically should never happen otherwise
-    if(client?.type === 'window') info.accountNumber = getCurrentAccountFromURL(client.url);
+    if(client?.type === 'window') info.accountNumber = await getClientAccount(client);
 
     const stream = Stream.get(info);
 

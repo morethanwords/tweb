@@ -98,6 +98,7 @@ export default class AppMediaViewerStatic extends AppMediaViewerBase<never, 'for
     const prevTargets = index !== undefined && allTargets ? allTargets.slice(0, index) : undefined;
     const nextTargets = index !== undefined && allTargets ? allTargets.slice(index + 1) : undefined;
     console.log('my-debug rest', rest)
+    if(this.isAskedTooLate()) return;
 
     this._openMedia({
       prevTargets,

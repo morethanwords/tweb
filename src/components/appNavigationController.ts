@@ -6,6 +6,9 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {bindActiveWindowListener} from '@helpers/appWindow';
 import isSwipingBackSafari from '@helpers/dom/isSwipingBackSafari';
 import tabId from '@config/tabId';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import {createAppURLForAccount} from '@lib/accounts/createAppURLForAccount';
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |
@@ -14,6 +17,11 @@ export type NavigationItem = {
     'toast' | 'dropdown' | 'forum' | 'stories' | 'stories-focus' | 'topbar-search' |
     'settings-popup' | 'profile-popup' | 'settings-search' | 'monoforum' | 'inline-message-input',
   onPop: (canAnimate: boolean) => boolean | void,
+  /**
+   * Closes it whatever it is doing - before it ever showed, in the middle of a move - settling once it is
+   * gone, for what may not wait for it to accept onPop (an account switch).
+   */
+  closeOutright?: () => Promise<void>,
   onEscape?: (event: KeyboardEvent) => boolean,
   noHistory?: boolean,
   noBlurOnPop?: boolean,
@@ -23,6 +31,11 @@ export type NavigationItem = {
 
 export const USE_NAVIGATION_API = 'navigation' in window && !IS_FIREFOX;
 const TRY_TO_TRAVERSE = USE_NAVIGATION_API && true; // * not tested for legacy api
+
+// * an entry of the history from before the tab switched accounts in place still names the previous one
+function isOtherAccountURL(url: string) {
+  return getCurrentAccountFromURL(url) !== getCurrentAccount();
+}
 
 export class AppNavigationController {
   private navigations: Array<NavigationItem>;
@@ -94,7 +107,7 @@ export class AppNavigationController {
       const destinationHash = new URL(event.destination.url).hash;
       if(
         event.navigationType === 'traverse' &&
-        destinationHash !== this.currentHash
+        (destinationHash !== this.currentHash || isOtherAccountURL(event.destination.url))
       ) {
         this.modifyHistoryFromEvent(() => { // * fix hash
           log('will fix hash', destinationHash, this.currentHash);
@@ -172,7 +185,17 @@ export class AppNavigationController {
   };
 
   private onPopState = (e: PopStateEvent) => {
-    this._onPopState(window.location.hash, e.state);
+    let hash = window.location.hash;
+    if(isOtherAccountURL(location.href)) {
+      // * its route is the previous account's: the entry takes the current account and route, so stepping
+      // * back opens nothing of the previous account. Its state stays - it tells the app's entries from
+      // * the one the tab was opened on
+      const url = createAppURLForAccount(getCurrentAccount(), undefined, true);
+      url.hash = hash = this.currentHash;
+      history.replaceState(history.state, '', url);
+    }
+
+    this._onPopState(hash, e.state);
   };
 
   private _onPopState(hash: string, id: number) {
@@ -413,7 +436,7 @@ export class AppNavigationController {
     this.debug && this.log.warn('replace');
 
     if(!url) {
-      url = new URL(location.href);
+      url = createAppURLForAccount(getCurrentAccount(), undefined, true);
       url.hash = this.overriddenHash;
     }
 
@@ -507,6 +530,24 @@ export class AppNavigationController {
     }
     this.modifyHistoryFromEvent(() => {
       location.reload();
+    });
+  }
+
+  /**
+   * The tab switched to another account in place: nothing of the previous one is left to go back
+   * to - but what outlives the switch (a call's panels, `kept`) - and the address names the new one
+   * (a reload, a push or the service worker read it from there).
+   */
+  public resetForAccountSwitch(url: URL, kept: NavigationItem[] = []) {
+    for(let index = this.navigations.length - 1; index >= 0; --index) {
+      if(!kept.includes(this.navigations[index])) {
+        this.spliceItems(index, 1);
+      }
+    }
+
+    this.currentHash = this.overriddenHash = url.hash;
+    this.modifyHistoryFromEvent(() => {
+      this.replaceState(url);
     });
   }
 

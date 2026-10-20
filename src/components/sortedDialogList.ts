@@ -5,7 +5,7 @@ import pickKeys from '@helpers/object/pickKeys';
 import safeAssign from '@helpers/object/safeAssign';
 import {default as appDialogsManager} from '@lib/appDialogsManager';
 import {DialogElement} from '@components/dialogElement';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {logger} from '@lib/logger';
@@ -16,10 +16,11 @@ import {attachCommunityChildBadge} from '@components/communities/communityDialog
 import rootScope from '@lib/rootScope';
 import useElementSize from '@hooks/useElementSize';
 import {DIALOG_WITH_FOLDER_TAGS_HEIGHT, DialogFolderTagsContext} from '@components/folderTags/dialogFolderTags';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default class SortedDialogList {
   private appDialogsManager: typeof appDialogsManager;
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   public log: ReturnType<typeof logger>;
   public list: HTMLElement;
   public indexKey: ReturnType<typeof getDialogIndexKey>;
@@ -191,10 +192,11 @@ export default class SortedDialogList {
 
 
   public async getIndexForKey(key: any) {
+    const managers = bindManagersToSession(this.managers);
     if(key instanceof CustomPinnedDialog) return 0;
     if(key instanceof CustomSortedDialog) {
       return key.getIndex({
-        managers: this.managers,
+        managers,
         indexKey: this.indexKey
       });
     }
@@ -202,11 +204,11 @@ export default class SortedDialogList {
     if(key === this.virtualFilterId && key !== rootScope.myId) return 0;
 
     if(this.monoforumParentPeerId) {
-      const dialog = await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
+      const dialog = await managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
       return getDialogIndex(dialog);
     }
 
-    return this.managers.dialogsStorage.getDialogIndex(
+    return managers.dialogsStorage.getDialogIndex(
       this.virtualFilterId ?? key,
       this.indexKey,
       this.virtualFilterId ? key : undefined
@@ -452,7 +454,7 @@ interface CustomSortedDialogCtorArgs {
   render: () => HTMLElement;
   destroy?: () => void;
   getIndex: (context: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     indexKey: ReturnType<typeof getDialogIndexKey>
   }) => MaybePromise<number>;
 };

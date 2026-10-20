@@ -10,6 +10,7 @@ import {MyDialogFilter} from '@lib/storages/filters';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 import isRTL from '@helpers/string/isRTL';
 import styles from '@components/addToFolderDropdownMenu/styles.module.scss';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);
@@ -28,6 +29,7 @@ export async function fetchDialogFilters() {
 const p = (p: PeerId) => Math.abs(p);
 
 export async function addToFilter(filter: MyDialogFilter, peerId: PeerId) {
+  const managers = bindManagersToSession(rootScope.managers);
   log.debug('addToFilter before', filter);
   filter = {...filter};
 
@@ -40,15 +42,16 @@ export async function addToFilter(filter: MyDialogFilter, peerId: PeerId) {
 
   if(!hasPinned) {
     filter.includePeerIds = [...(filter.includePeerIds || []).filter(includedPeerId => p(includedPeerId) !== p(peerId)), peerId];
-    filter.include_peers = [...(filter.include_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await rootScope.managers.appPeersManager.getInputPeerById(peerId)];
+    filter.include_peers = [...(filter.include_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await managers.appPeersManager.getInputPeerById(peerId)];
   }
 
   log.debug('addToFilter after', filter);
 
-  await rootScope.managers.filtersStorage.updateDialogFilter(filter);
+  await managers.filtersStorage.updateDialogFilter(filter);
 }
 
 export async function removeFromFilter(filter: MyDialogFilter, peerId: PeerId) {
+  const managers = bindManagersToSession(rootScope.managers);
   log.debug('removeFromFilter before', filter);
   filter = {...filter};
 
@@ -60,12 +63,12 @@ export async function removeFromFilter(filter: MyDialogFilter, peerId: PeerId) {
 
   if(filter._ === 'dialogFilter') {
     filter.excludePeerIds = [...(filter.excludePeerIds || []).filter(excludedPeerId => p(excludedPeerId) !== p(peerId)), peerId];
-    filter.exclude_peers = [...(filter.exclude_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await rootScope.managers.appPeersManager.getInputPeerById(peerId)];
+    filter.exclude_peers = [...(filter.exclude_peers || []).filter(inputPeer => p(getPeerId(inputPeer)) !== p(peerId)), await managers.appPeersManager.getInputPeerById(peerId)];
   }
 
   log.debug('removeFromFilter after', filter);
 
-  await rootScope.managers.filtersStorage.updateDialogFilter(filter);
+  await managers.filtersStorage.updateDialogFilter(filter);
 }
 
 export function wrapFolderTitleInSpan(title: TextWithEntities.textWithEntities, middleware: Middleware) {

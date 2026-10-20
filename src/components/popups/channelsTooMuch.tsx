@@ -7,6 +7,7 @@ import {getMiddleware} from '@helpers/middleware';
 import tsNow from '@helpers/tsNow';
 import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * expect chat migration
@@ -44,9 +45,10 @@ export async function showChannelsTooMuchPopup() {
         } else if(value) {
           mainButton.element.replaceChildren(i18n('LeaveCommunities', [value]));
           mainButton.callback = async() => {
+            const managers = bindManagersToSession(rootScope.managers);
             const peerIds = selector.getSelected();
             for(const peerId of peerIds) {
-              await rootScope.managers.appChatsManager.leave(peerId.toChatId());
+              await managers.appChatsManager.leave(peerId.toChatId());
             }
             deferred.resolve();
           };

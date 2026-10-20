@@ -75,6 +75,12 @@ function installManagers(opts: {
   });
 }
 
+// * the chain tip is fetched through the account the call is joined on
+function fetchLastConferenceBlock(...args: unknown[]) {
+  const controller = groupCallsController as any;
+  return controller.fetchLastConferenceBlock(controller.managers, ...args);
+}
+
 const SELF_USER_ID = BigInt(1234);
 const EXPECTED_CALL: InputGroupCall.inputGroupCall = {
   _: 'inputGroupCall',
@@ -184,7 +190,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
       } satisfies Updates.updates)
     });
 
-    await expect((groupCallsController as any).fetchLastConferenceBlock(input))
+    await expect(fetchLastConferenceBlock(input))
     .rejects.toThrow(/matching block update/);
   });
 
@@ -228,7 +234,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
       } satisfies Updates.updatesCombined)
     });
 
-    await expect((groupCallsController as any).fetchLastConferenceBlock(input, canonical)).resolves.toEqual({
+    await expect(fetchLastConferenceBlock(input, canonical)).resolves.toEqual({
       block: new Uint8Array([5]),
       nextOffset: 3
     });
@@ -255,7 +261,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
     });
 
     let settled = false;
-    const result = (groupCallsController as any).fetchLastConferenceBlock(EXPECTED_CALL).then((value: unknown) => {
+    const result = fetchLastConferenceBlock(EXPECTED_CALL).then((value: unknown) => {
       settled = true;
       return value;
     });
@@ -288,7 +294,7 @@ describe('GroupCallsController.joinConference — InputGroupCall type guard', ()
       } satisfies Updates.updates)
     });
 
-    await expect((groupCallsController as any).fetchLastConferenceBlock(input))
+    await expect(fetchLastConferenceBlock(input))
     .rejects.toThrow(/invalid next_offset/);
   });
 

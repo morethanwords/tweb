@@ -5,6 +5,7 @@ import setInnerHTML from '@helpers/dom/setInnerHTML';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {AvatarNewTsx} from '@components/avatarNew';
 import rootScope from '@lib/rootScope';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import InputField from '@components/inputField';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import RowTsx from '@components/rowTsx';
@@ -30,6 +31,8 @@ export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {
 export type PopupPeerOptions = PopupOptions & Partial<{
   peerId: PeerId,
   threadId: number,
+  /** The peer's account, when the tab may show another one meanwhile (a call's). */
+  accountNumber: ActiveAccountNumber,
   // for a peer the plain avatar can't draw on its own (a Community and its decoration);
   // the caller owns it and its teardown
   avatar: HTMLElement,
@@ -216,6 +219,7 @@ function PeerAvatar(props: {options: PopupPeerOptions}) {
       peerId={isSavedDialog ? threadId : peerId}
       threadId={isSavedDialog ? undefined : threadId}
       meAsNotes={isSavedDialog}
+      accountNumber={props.options.accountNumber}
     />
   );
 }

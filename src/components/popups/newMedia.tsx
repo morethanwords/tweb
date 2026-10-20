@@ -1586,6 +1586,8 @@ export default function showNewMediaPopup(
             btnConfirm.disabled = true;
 
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
+            // * the popup can be gone by the time the editor loads (closed, the account switched)
+            if(context.destroyed) return;
 
             isMediaEditorOpen = true;
             const mediaSrc = params.objectURLs.create(file);

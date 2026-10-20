@@ -11,6 +11,7 @@ import {isParticipantAdmin, isParticipantCreator} from '@lib/appManagers/utils/c
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {canEditMemberTag} from '@appManagers/utils/chats/memberTag';
 import openEditMemberTag from '@components/memberTag/openEditMemberTag';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type Participant = ChannelParticipant | ChatParticipant;
 
@@ -173,6 +174,7 @@ export default function createParticipantContextMenu(options: {
     middleware,
     findElement: (e) => target = findUpClassName(e.target, 'chatlist-chat'),
     onOpen: async() => {
+      const managers = bindManagersToSession(rootScope.managers);
       participantPeerId = target.dataset.peerId.toPeerId();
       participant = participants.get(participantPeerId);
       if(bannedParticipantAdapter) {
@@ -181,10 +183,10 @@ export default function createParticipantContextMenu(options: {
         canManageAdmins = false;
       } else {
         [chat, isBroadcast, canChangePermissions, canManageAdmins] = await Promise.all([
-          rootScope.managers.appChatsManager.getChat(chatId) as Promise<typeof chat>,
-          rootScope.managers.appChatsManager.isBroadcast(chatId),
-          rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
-          rootScope.managers.appChatsManager.hasRights(chatId, 'change_permissions')
+          managers.appChatsManager.getChat(chatId) as Promise<typeof chat>,
+          managers.appChatsManager.isBroadcast(chatId),
+          managers.appChatsManager.hasRights(chatId, 'change_permissions'),
+          managers.appChatsManager.hasRights(chatId, 'change_permissions')
         ]);
       }
 

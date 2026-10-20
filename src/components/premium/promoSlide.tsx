@@ -22,6 +22,7 @@ import RowTsx from '@components/rowTsx';
 import PopupElement from '@components/popups/indexTsx';
 import MediaHeader from '@components/mediaHeader';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function getGiftDetails(data: PremiumPromoData) {
   const gift = data.gift;
@@ -193,6 +194,7 @@ function Heading(props: {
   const wrapTitleOptions: PeerTitleOptions = {onlyFirstName: true};
 
   const build = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(giftDetails) {
       const {fromPeerId, toPeerId, isOutbound, isUnclaimed, gift} = giftDetails;
       const giftText = i18n('GiftDays', [gift.days]);
@@ -247,11 +249,11 @@ function Heading(props: {
     if(props.data.peerId && props.data.emojiStatusId) {
       const [peerTitle, doc] = await Promise.all([
         wrapPeerTitle({peerId: props.data.peerId}),
-        rootScope.managers.appEmojiManager.getCustomEmojiDocument(props.data.emojiStatusId)
+        managers.appEmojiManager.getCustomEmojiDocument(props.data.emojiStatusId)
       ]);
 
       if(doc.stickerSetInput) {
-        const stickerset = await rootScope.managers.appStickersManager.getStickerSet(doc.stickerSetInput);
+        const stickerset = await managers.appStickersManager.getStickerSet(doc.stickerSetInput);
         setTitle(i18n('TelegramPremiumPeerTitleEmojiStatus', [
           peerTitle,
           anchorCallback(() => showStickersPopup(doc.stickerSetInput, true)),

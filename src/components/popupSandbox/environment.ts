@@ -19,7 +19,7 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
 import {createLiveManagers, LiveManagersController} from './liveManagers';
-import type {AppManagers} from '@lib/managers';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import {setAppSettingsSilent} from '@stores/appSettings';
 import {AppTheme, SETTINGS_INIT} from '@config/state';
 
@@ -89,7 +89,7 @@ function restoreSandboxDirection() {
 }
 
 /** The real managers of the session the sandbox opened on top of; undefined when standalone. */
-let realManagers: AppManagers;
+let realManagers: TabManagers;
 let liveManagers: LiveManagersController;
 
 export function getLiveManagers() {
@@ -103,7 +103,7 @@ export function getLiveManagers() {
  * values are captured and put back on close. Popups already open keep whatever they were given —
  * they capture `managers` when they are constructed — which is what you want for a story on screen.
  */
-function useManagers(managers: AppManagers) {
+function useManagers(managers: AppManagers & TabManagers) {
   const previous = {
     root: rootScope.managers,
     popup: PopupElementTsx.MANAGERS

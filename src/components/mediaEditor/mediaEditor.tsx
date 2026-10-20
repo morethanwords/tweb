@@ -19,6 +19,7 @@ import {AppManagers} from '@lib/managers';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createEffect, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
+import {trackOpenMediaEditor} from '@components/mediaEditor/openEditors';
 
 
 export type MediaEditorProps = {
@@ -140,6 +141,11 @@ export function MediaEditor(props: MediaEditorProps) {
   }
 
   let isFinishing = false;
+  // * closed from outside while the result was being made (an account switch): nobody is left to take it
+  let disposed = false;
+  onCleanup(() => {
+    disposed = true;
+  });
 
   return (
     <MediaEditorContext.Provider value={contextValue}>
@@ -161,6 +167,12 @@ export function MediaEditor(props: MediaEditorProps) {
 
               const result = await createFinalResult()
               .finally(() => { isFinishing = false; });
+              if(disposed) {
+                // * what it made is let go: the preview flying over the screens, a video still encoding
+                result.animatedPreview?.remove();
+                result.cancel?.();
+                return;
+              }
 
               cleanupOverlayCounter();
               props.onEditFinish(result);
@@ -192,7 +204,10 @@ export function openMediaEditor(props: MediaEditorProps, HotReloadGuardProvider:
     </HotReloadGuardProvider>
   ), element);
 
+  const stopTracking = trackOpenMediaEditor(() => onClose(false));
+
   function onClose(hasGif: boolean) {
+    stopTracking();
     props.onClose(hasGif);
     dispose();
     element.remove();

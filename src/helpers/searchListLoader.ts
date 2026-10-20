@@ -2,7 +2,7 @@ import type {MediaSearchContext} from '@components/appMediaPlaybackController';
 import type {SearchSuperContext} from '@components/appSearchSuper';
 import type {Message} from '@layer';
 import type {MessagesStorageKey, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
@@ -10,6 +10,7 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import filterChatPhotosMessages from '@helpers/filterChatPhotosMessages';
 import ListLoader, {ListLoaderOptions} from '@helpers/listLoader';
 import getSearchType from '@appManagers/utils/messages/getSearchType';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // * the filters whose every result the media viewer shows: a document search also has files it skips
 const POSITIONED_FILTERS: Set<MediaSearchContext['inputFilter']['_']> = new Set([
@@ -27,7 +28,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   public onEmptied: () => void;
 
   private otherSideLoader: SearchListLoader<Item>;
-  private managers: AppManagers;
+  private managers: ReadingManagers;
   // * every result a chat's search returned: the items of the list, and those it left out
   private searchMids: Set<number> = new Set();
   // * the targets the list was opened with come from where it was opened (an album in a chat), not
@@ -42,11 +43,12 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   constructor(options: Omit<ListLoaderOptions<Item, Message.message>, 'loadMore'> & {
     onEmptied?: () => void,
     isInner?: boolean,
-    managers?: AppManagers
+    managers?: ReadingManagers
   } = {}) {
     super({
       ...options,
       loadMore: async(anchor, older, loadCount) => {
+        const managers = bindManagersToSession(this.managers);
         const peerId = this.searchContext.peerId || anchor?.peerId;
         // * A search inside one peer is read back out of the storage's slices, and a window lying
         // * wholly above an id the storage does not hold cannot be cut out of it again once the request
@@ -64,9 +66,9 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
         const backLimit = older ? 0 : loadCount + (fromAnchor ? 1 : 0);
         let offsetId = anchor?.mid ?? this.searchContext.maxId;
 
-        if(!older && !fromAnchor) offsetId = await this.managers.appMessagesIdsManager.incrementMessageId(offsetId, 1);
+        if(!older && !fromAnchor) offsetId = await managers.appMessagesIdsManager.incrementMessageId(offsetId, 1);
 
-        return this.managers.appMessagesManager.getHistory({
+        return managers.appMessagesManager.getHistory({
           ...this.searchContext,
           peerId,
           offsetId,
@@ -332,15 +334,16 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   // * the search's results over the range of the targets the list was opened with (the loads go on from
   // * its edges), a page at a time from the newest of them down past the oldest
   private async readGivenRange(item: Item) {
+    const managers = bindManagersToSession(this.managers);
     const mids = this.givenMids.concat(item.mid);
     if(mids.length < 2) {
       return true;
     }
 
     const oldest = Math.min(...mids);
-    let offsetId = await this.managers.appMessagesIdsManager.incrementMessageId(Math.max(...mids), 1);
+    let offsetId = await managers.appMessagesIdsManager.incrementMessageId(Math.max(...mids), 1);
     for(let pages = 0; pages < GIVEN_RANGE_PAGES; ++pages) {
-      const page = await this.managers.appMessagesManager.getHistory({
+      const page = await managers.appMessagesManager.getHistory({
         ...this.searchContext,
         offsetId,
         limit: GIVEN_RANGE_PAGE

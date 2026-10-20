@@ -12,6 +12,7 @@ import {
 import {CAN_HIDE_TOPIC} from '@appManagers/constants';
 import type {TopicsSelectionActions} from '@appManagers/utils/dialogs/topicsSelectionActions';
 import {LangPackKey} from '@lib/langPack';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type TopicsSelectionAction = keyof TopicsSelectionActions;
 
@@ -76,7 +77,7 @@ export default class ForumTopicsSelection extends DialogsSelectionBase<TopicsSel
   protected async perform(action: TopicsSelectionAction, direction: boolean) {
     const peerId = this.peerId;
     const topicIds = this.getOrderedKeys();
-    const {appMessagesManager} = this.managers;
+    const {appMessagesManager} = bindManagersToSession(this.managers);
     switch(action) {
       case 'read': {
         appMessagesManager.readTopics({peerId, topicIds});

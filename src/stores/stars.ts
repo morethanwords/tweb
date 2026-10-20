@@ -4,6 +4,7 @@ import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
 import rootScope, {BroadcastEventsListeners} from '@lib/rootScope';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import bigInt from 'big-integer';
+import {hotListen} from '@helpers/hotModule';
 
 const [stars, setStars] = createSignal<Long>();
 const [reservedStars, setReservedStars] = createSignal<number>(0);
@@ -38,6 +39,20 @@ export {hasTonTransactions, setReservedStars};
 
 let cached: Accessor<Long>;
 let cachedTon: Accessor<Long>;
+
+// * the balances are the account's own
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  batch(() => {
+    setStars(undefined);
+    setReservedStars(0);
+    setTonBalance(undefined);
+    setReservedTonBalance(0);
+    setHasTonTransactions(false);
+  });
+
+  cached && fetchStars();
+  cachedTon && fetchTonBalance();
+});
 function _useStars(ton: boolean) {
   if(ton && cachedTon) {
     return cachedTon;

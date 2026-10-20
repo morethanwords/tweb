@@ -19,7 +19,7 @@ export default async function openRtmpCallViewer(peerId: PeerId): Promise<void> 
 
   let viewer: AppMediaViewerRtmp | undefined;
   try {
-    const shareUrl = await AppMediaViewerRtmp.getShareUrl(peerId.toChatId());
+    const shareUrl = await AppMediaViewerRtmp.getShareUrl(peerId.toChatId(), joinedCall.managers);
     viewer = new AppMediaViewerRtmp(shareUrl);
     await viewer.openMedia({
       peerId,

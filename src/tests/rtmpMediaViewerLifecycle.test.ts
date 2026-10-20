@@ -100,7 +100,12 @@ function makeCall(id: string, peerId: PeerId) {
     call: {id, participants_count: 1, pFlags: {}},
     inputCall: {_: 'inputGroupCall', id, access_hash: `${id}-hash`},
     peerId,
-    ssrc: 1
+    ssrc: 1,
+    // * the stream's account
+    managers: {
+      appChatsManager: {getChat: vi.fn()},
+      appProfileManager: {getChatFull: vi.fn()}
+    }
   };
 }
 

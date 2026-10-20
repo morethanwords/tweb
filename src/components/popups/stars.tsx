@@ -52,6 +52,7 @@ import {ScrollableContextValue} from '@components/scrollable2';
 import {onCleanup} from 'solid-js';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {StarsStackedStars, StarsBalance, StarsAmount, StarsChange} from '@components/stars/starsAmount';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function getStarsTransactionTitle(transaction: StarsTransaction) {
   const presentation = getStarsTransactionPresentation(transaction);
@@ -115,6 +116,7 @@ export async function getStarsTransactionTitleAndMedia({
   subscription?: StarsSubscription,
   photo?: WebDocument.webDocument
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const presentation = transaction && getStarsTransactionPresentation(transaction);
   const [title, media] = await Promise.all([
     (() => {
@@ -228,7 +230,7 @@ export async function getStarsTransactionTitleAndMedia({
       if(transaction?.stargift) {
         const container = document.createElement('div');
         container.classList.add('popup-stars-transaction-media');
-        const gift = await rootScope.managers.appGiftsManager.wrapGift(transaction.stargift);
+        const gift = await managers.appGiftsManager.wrapGift(transaction.stargift);
         if(gift?.sticker) {
           await wrapSticker({doc: gift.sticker, div: container, width: size, height: size, middleware, play: false, loop: false});
         } else {
@@ -415,6 +417,9 @@ export type PopupStarsOptions = {
 };
 
 export default function showStarsPopup(options: PopupStarsOptions = {}) {
+  // * the account session the popup is asked in: it opens only once what it shows is in, and not at all
+  // * once the tab is on another account
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
@@ -612,14 +617,14 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
                     amount: option.amount,
                     currency: option.currency,
                     stars: option.stars,
-                    user_id: await rootScope.managers.appUsersManager.getUserInput(options.giftPeerId.toUserId())
+                    user_id: await managers.appUsersManager.getUserInput(options.giftPeerId.toUserId())
                   } : {
                     _: 'inputStorePaymentStarsTopup',
                     amount: option.amount,
                     currency: option.currency,
                     stars: option.stars,
                     spend_purpose_peer: purposePeerId ?
-                      await rootScope.managers.appPeersManager.getInputPeerById(purposePeerId) :
+                      await managers.appPeersManager.getInputPeerById(purposePeerId) :
                       undefined
                   };
 
@@ -628,7 +633,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
                     purpose
                   };
                   try {
-                    const paymentForm = await rootScope.managers.appPaymentsManager.getPaymentForm(inputInvoice);
+                    const paymentForm = await managers.appPaymentsManager.getPaymentForm(inputInvoice);
                     const popup = await createPaymentPopup({
                       inputInvoice,
                       paymentForm
@@ -773,6 +778,7 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
 
       return (
         <PopupElement
+          managers={managers}
           class="popup-stars"
           kind={STARS_POPUP_KIND}
           closable
@@ -847,14 +853,14 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
         return img;
       })(),
       options.peerId || options.paymentForm?.bot_id || options.giftPeerId ? wrapPeerTitle({peerId: options.peerId || options.giftPeerId || options.paymentForm.bot_id.toPeerId(false)}) : undefined,
-      options.giftPeerId ? rootScope.managers.appPaymentsManager.getStarsGiftOptions(options.giftPeerId.toUserId()) : rootScope.managers.appPaymentsManager.getStarsTopupOptions(),
+      options.giftPeerId ? managers.appPaymentsManager.getStarsGiftOptions(options.giftPeerId.toUserId()) : managers.appPaymentsManager.getStarsTopupOptions(),
       options.giftPeerId && (async() => {
         const avatar = avatarNew({peerId: options.giftPeerId, size: 100, middleware: middleware});
         await avatar.readyThumbPromise;
         avatar.node.classList.add('popup-stars-gift-avatar');
         return avatar.node;
       })(),
-      rootScope.managers.apiManager.getAppConfig(),
+      managers.apiManager.getAppConfig(),
       options.itemPrice && prefetchStars(middleware)
     ]);
     options$ = topupOptions;

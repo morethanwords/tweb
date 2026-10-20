@@ -29,7 +29,15 @@ const mocks = vi.hoisted(() => {
 
     private listeners = new Map<string, Set<Listener>>();
 
-    constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId}) {
+    // the account the controller bound the call to: its managers and identity are the call's own
+    public managers: any;
+    public accountNumber: number;
+    public myId: PeerId;
+
+    constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId, managers?: any, accountNumber?: number, myId?: PeerId}) {
+      this.managers = options.managers;
+      this.accountNumber = options.accountNumber;
+      this.myId = options.myId;
       this.isOutgoing = options.isOutgoing;
       this.interlocutorUserId = options.interlocutorUserId;
       createdInstances.push(this);
@@ -331,6 +339,24 @@ describe('CallsController outgoing P2P transaction', () => {
     expect(mocks.requestCall).not.toHaveBeenCalled();
   });
 
+  it('places the call from the account it was asked from, not the one the tab shows by then', async() => {
+    const controller = createOutgoingHarness();
+    const requestCall = vi.fn().mockReturnValue(new Promise(() => {}));
+    const asked = {
+      accountNumber: 2,
+      myId: 77 as PeerId,
+      managers: {
+        appCallsManager: {discardCall: mocks.discardCall, generateDh: mocks.generateDh, requestCall},
+        appProfileManager: {getProfile: mocks.getProfile}
+      } as any
+    };
+
+    void controller.startCallInternal(123 as UserId, false, asked as any);
+    await vi.waitFor(() => expect(requestCall).toHaveBeenCalledTimes(1));
+    expect(mocks.requestCall).not.toHaveBeenCalled();
+    expect(mocks.createdInstances[0]).toMatchObject({accountNumber: 2, managers: asked.managers, myId: 77});
+  });
+
   it('ignores an accepted update delivered before a closing caller-side guard resumes', async() => {
     const controller = createOutgoingHarness();
     const instance = (controller as any).createCallInstance({
@@ -408,7 +434,9 @@ describe('CallsController P2P to conference migration', () => {
       selfUserId: BigInt(77),
       chatId: 0,
       muted: options.muted,
-      joinVideo: options.video
+      joinVideo: options.video,
+      // * the conference goes on on the P2P call's account
+      account: {accountNumber: instance.accountNumber, managers: instance.managers, myId: 77}
     });
     expect(instance.durationReads).toBe(0);
     expect(instance.getEmojisFingerprint).not.toHaveBeenCalled();

@@ -18,6 +18,7 @@ import type {GroupCallId} from '@appManagers/appGroupCallsManager';
 import {defineStories, PopupStory} from '../registry';
 import type {PopupStoryContext} from '../context';
 import {videoChatUsers} from '../fixtures';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /** The SAS a connected call prints in its header. Derived from the shared key, of which there is none. */
 const FINGERPRINT: [string, string, string, string] = ['🐶', '🌴', '🎩', '🍎'];
@@ -226,7 +227,7 @@ async function createCall(peerId: PeerId, isOutgoing?: boolean) {
   return new CallInstance({
     isOutgoing: !!isOutgoing,
     interlocutorUserId: peerId.toUserId(),
-    managers: rootScope.managers
+    managers: bindManagersToSession(rootScope.managers)
   });
 }
 
@@ -309,7 +310,7 @@ function groupCallStory(id: string, title: string, options: GroupCallStoryOption
       const instance = new GroupCallInstance({
         id: sandboxGroupCall.id,
         chatId: ctx.peer('group').toChatId(),
-        managers: rootScope.managers,
+        managers: bindManagersToSession(rootScope.managers),
         // The panel reads its state off the transport and its microphone off the capture track.
         // There is neither, so stand in a connected-looking connection over the silent stream —
         // the same shape `src/tests/groupCallSelfRow.test.ts` drives the instance with.

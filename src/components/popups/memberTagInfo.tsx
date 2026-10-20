@@ -12,6 +12,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import I18n, {LangPackKey} from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import styles from '@components/popups/memberTagInfo.module.scss';
 
 const TITLES: {[role in MemberTagRole]: LangPackKey} = {
@@ -47,7 +48,8 @@ export type MemberTagInfoPopupOptions = {
 export default async function showMemberTagInfoPopup(options: MemberTagInfoPopupOptions) {
   const {chatId, peerId, rank, role} = options;
   const chatPeerId = chatId.toPeerId(true);
-  const managers = rootScope.managers;
+  // * the account it is asked on: it does not open once the tab is on another
+  const managers = bindManagersToSession(rootScope.managers);
 
   const chat = apiManagerProxy.getChat(chatId);
   const isIn = !!chat && !(chat as {pFlags: {left?: true}}).pFlags.left;
@@ -68,7 +70,7 @@ export default async function showMemberTagInfoPopup(options: MemberTagInfoPopup
     };
 
     return (
-      <PopupElement class={styles.popup} show={show()} closable old>
+      <PopupElement class={styles.popup} managers={managers} show={show()} closable old>
         <PopupElement.Header floating>
           <PopupElement.CloseButton />
         </PopupElement.Header>

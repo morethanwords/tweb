@@ -12,6 +12,11 @@ import stopTrack from '@lib/calls/helpers/stopTrack';
 import LocalConferenceDescription from '@lib/calls/localConferenceDescription';
 import StreamManager, {StreamItem} from '@lib/calls/streamManager';
 import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
+import {CallHold, holdCall} from '@lib/calls/callAccount';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import type {AppManagers} from '@lib/managers';
+import rootScope from '@lib/rootScope';
 import {appSettings} from '@stores/appSettings';
 
 export type TryAddTrackOptions = {
@@ -35,6 +40,12 @@ export function getOutputAudioElementKey(source: string | number) {
 }
 
 export default abstract class CallInstanceBase<E extends EventListenerListeners> extends EventListenerBase<E> {
+  // * the account the call belongs to: the tab may show another one meanwhile (see callAccount)
+  public accountNumber: ActiveAccountNumber;
+  public managers: AppManagers;
+  public myId: PeerId;
+  protected heldCall: CallHold;
+
   protected log: ReturnType<typeof logger>;
   protected outputDeviceId: string;
 
@@ -195,7 +206,16 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   public abstract get description(): LocalConferenceDescription;
   public abstract toggleMuted(): Promise<void>;
 
+  // * for a subclass, once its options are assigned: a call made without an account is the tab's
+  protected bindAccount() {
+    this.accountNumber ??= getCurrentAccount();
+    this.myId ??= rootScope.myId;
+    this.heldCall = holdCall(this.accountNumber);
+  }
+
   public cleanup() {
+    this.heldCall?.release();
+
     // Invalidate getUserMedia / setSinkId work that can still resolve after
     // the call has already released its registered streams and elements.
     for(const kind of ['audio', 'video', 'output'] as const) {

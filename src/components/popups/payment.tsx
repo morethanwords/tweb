@@ -222,6 +222,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {ScrollableContextValue} from '@components/scrollable2';
 import {onCleanup} from 'solid-js';
 import Section from '@components/section';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type PopupPaymentOptions = {
   message?: Message.message,
@@ -813,6 +814,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
     };
 
     const onClick = (): MaybePromise<void | false> => {
+      const managers = bindManagersToSession(rootScope.managers);
       const missingInfo = invoice.pFlags.name_requested && !savedInfo?.name ? 'name' : (invoice.pFlags.email_requested && !savedInfo?.email ? 'email' : (invoice.pFlags.phone_requested && !savedInfo?.phone ? 'phone' : undefined));
       const requestsInfo = invoice.pFlags.shipping_address_requested || invoice.pFlags.name_requested ||
         invoice.pFlags.email_requested || invoice.pFlags.phone_requested;
@@ -844,7 +846,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
           return false;
         }
 
-        Promise.resolve(passwordState ?? rootScope.managers.passwordManager.getState()).then((_passwordState) => {
+        Promise.resolve(passwordState ?? managers.passwordManager.getState()).then((_passwordState) => {
           showPaymentCardConfirmationPopup({
             card: savedCredentials.title,
             passwordState: _passwordState,
@@ -885,7 +887,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
         try {
           result = 'pending';
-          const paymentResult = await rootScope.managers.appPaymentsManager.sendPaymentForm(
+          const paymentResult = await managers.appPaymentsManager.sendPaymentForm(
             inputInvoice,
             (paymentForm as PaymentsPaymentForm).form_id,
             lastRequestedInfo?.id,

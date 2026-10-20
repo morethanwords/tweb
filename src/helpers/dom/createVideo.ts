@@ -1,13 +1,14 @@
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {initVideoHls} from '@lib/hls/initVideoHls';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {Middleware} from '@helpers/middleware';
 import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 
-function updateStreamInUse(url: string, inUse: boolean) {
+function updateStreamInUse(url: string, inUse: boolean, accountNumber: ActiveAccountNumber) {
   if(url.includes('stream/')) {
-    apiManagerProxy.serviceMessagePort.invokeVoid('toggleStreamInUse', {url, inUse, accountNumber: getCurrentAccount()});
+    apiManagerProxy.serviceMessagePort.invokeVoid('toggleStreamInUse', {url, inUse, accountNumber});
   }
 }
 
@@ -31,13 +32,16 @@ export default function createVideo({
   });
 
   let originalSrc = video.src;
+  // * the stream is the account's the source was set for: it is released after a switch too
+  let srcAccountNumber = getCurrentAccount();
   Object.defineProperty(video, 'src', {
     get: () => {
       return originalSrc;
     },
     set: (newValue) => {
-      updateStreamInUse(originalSrc, false);
-      updateStreamInUse(newValue, true);
+      updateStreamInUse(originalSrc, false, srcAccountNumber);
+      srcAccountNumber = getCurrentAccount();
+      updateStreamInUse(newValue, true, srcAccountNumber);
 
       originalSrc = newValue;
 

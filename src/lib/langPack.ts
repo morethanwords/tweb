@@ -230,15 +230,14 @@ namespace I18n {
 
   export function loadLangPack(langCode: string, web?: boolean, ignoreCache?: boolean) {
     web = true;
-    const managers = rootScope.managers;
     return Promise.all([
-      managers.appLangPackManager.getLangPack(langCode, web ? 'web' : App.langPack, ignoreCache),
-      !web && managers.appLangPackManager.getLangPack(langCode, 'android', ignoreCache),
+      rootScope.managers.appLangPackManager.getLangPack(langCode, web ? 'web' : App.langPack, ignoreCache),
+      !web && rootScope.managers.appLangPackManager.getLangPack(langCode, 'android', ignoreCache),
       importLocalStrings(),
-      managers.appLangPackManager.getCountriesList(langCode, ignoreCache),
+      rootScope.managers.appLangPackManager.getCountriesList(langCode, ignoreCache),
       polyfillPromise,
       // * no word from the server (a code it does not know) leaves the direction to the code
-      managers.appLangPackManager.getLanguage(langCode, web ? 'web' : App.langPack).catch((): undefined => undefined)
+      rootScope.managers.appLangPackManager.getLanguage(langCode, web ? 'web' : App.langPack).catch((): undefined => undefined)
     ]);
   }
 
@@ -958,6 +957,7 @@ export async function checkLangPackForUpdates() {
   const storedLangPack = await I18n.getCacheLangPack();
   // * a pack stored before its language's direction was kept asks the server once
   if(storedLangPack.rtl === undefined) {
+    // oxlint-disable-next-line tweb/managers-before-await -- the pack is the app's, any account fetches it
     const language = await rootScope.managers.appLangPackManager.getLanguage(storedLangPack.lang_code, 'web').catch((): undefined => undefined);
     if(language && storedLangPack.lang_code === I18n.getLastRequestedLangCode()) {
       storedLangPack.rtl = !!language.pFlags.rtl;
@@ -965,6 +965,7 @@ export async function checkLangPackForUpdates() {
     }
   }
 
+  // oxlint-disable-next-line tweb/managers-before-await -- the pack is the app's, any account fetches it
   const difference = await rootScope.managers.appLangPackManager.getDifference(storedLangPack.lang_code, storedLangPack.version);
   if(difference.version > storedLangPack.version) {
     return handleUpdateLangPack({difference});

@@ -13,6 +13,7 @@ import ctx from '@environment/ctx';
 import SliderSuperTab from '@components/sliderTab';
 import {wrapEmailPattern} from '@components/emailVerification';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export class ForgotPasswordLink {
   private state: AccountPassword;
@@ -57,10 +58,11 @@ export class ForgotPasswordLink {
   }
 
   private handleReset = () => {
+    const managers = bindManagersToSession(this.managers);
     const canReset = this.state.pending_reset_date && this.state.pending_reset_date < tsNow(true)
 
     if(this.state.pFlags.has_recovery && !this.forEmail && !canReset) {
-      this.managers.passwordManager.requestRecovery().then((res) => {
+      managers.passwordManager.requestRecovery().then((res) => {
         this.tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEmailConfirmationTab).open({
           email: wrapEmailPattern(res.email_pattern),
           length: 6,
@@ -86,7 +88,7 @@ export class ForgotPasswordLink {
         if(this.pending) return;
         this.pending = true;
 
-        this.managers.passwordManager.resetPassword()
+        managers.passwordManager.resetPassword()
         .then((result) => {
           switch(result._) {
             case 'account.resetPasswordFailedWait':

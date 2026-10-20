@@ -2,7 +2,7 @@ import mediaSizes from '@helpers/mediaSizes';
 import {Middleware} from '@helpers/middleware';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import {Document, Message, MessageMedia, Photo, PhotoSize} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import rootScope from '@lib/rootScope';
@@ -25,7 +25,7 @@ export default function wrapAlbum({messages, media, attachmentDiv, middleware, u
   chat: Chat,
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   animationGroup?: AnimationItemGroup,
   spoilered?: boolean,
   sensitive?: boolean,

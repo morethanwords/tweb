@@ -60,6 +60,7 @@ import {PreloaderTsx} from '@components/putPreloader';
 import {showCreateStarGiftOfferPopup} from '@components/popups/createStarGiftOffer';
 import {getCanManagePeerGifts} from '@components/stargifts/canManageGifts';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
   if(props.rarity._ !== 'starGiftAttributeRarity') {
@@ -957,8 +958,9 @@ export default function showStarGiftInfoPopup(options: {
     }
 
     const handleShare = () => {
+      const managers = bindManagersToSession(rootScope.managers);
       showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
-        rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (gift as StarGift.starGiftUnique).slug});
+        managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (gift as StarGift.starGiftUnique).slug});
         hotReloadGuard.appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
         context.hide();
       });
@@ -1210,19 +1212,20 @@ export default function showStarGiftInfoPopup(options: {
                 icon={isWearing() ? 'crownoff_filled' : 'crown_filled'}
                 text={isWearing() ? 'StarGiftWearStop' : 'StarGiftWear'}
                 onClick={async() => {
+                  const managers = bindManagersToSession(rootScope.managers);
                   if(ownerPeerId === undefined) return;
                   if(isWearing()) {
                     if(ownerPeerId === rootScope.myId) {
-                      rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+                      managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
                     } else {
-                      rootScope.managers.apiManager.invokeApiSingleProcess({
+                      managers.apiManager.invokeApiSingleProcess({
                         method: 'channels.updateEmojiStatus',
                         params: {
-                          channel: await rootScope.managers.appChatsManager.getChannelInput(ownerPeerId.toChatId()),
+                          channel: await managers.appChatsManager.getChannelInput(ownerPeerId.toChatId()),
                           emoji_status: {_: 'emojiStatusEmpty'}
                         }
                       }).then((updates) => {
-                        rootScope.managers.apiUpdatesManager.processUpdateMessage(updates);
+                        managers.apiUpdatesManager.processUpdateMessage(updates);
                       }).catch(() => {
                         toastNew({langPackKey: 'Error.AnError'});
                       });
@@ -1290,6 +1293,7 @@ export default function showStarGiftInfoPopup(options: {
   }
 
   (async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const raw = myGift.raw;
     const [value, canManageGifts] = await Promise.all([
       raw._ === 'starGiftUnique' ? rootScope.managers.appGiftsManager.getGiftValue(raw.slug) : Promise.resolve(null),
@@ -1301,6 +1305,7 @@ export default function showStarGiftInfoPopup(options: {
 
     createPopup(() => (
       <PopupElement
+        managers={managers}
         class="popup-star-gift-info"
         closable
         show={show()}

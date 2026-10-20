@@ -55,6 +55,8 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import clamp from '@helpers/number/clamp';
 import windowSize from '@helpers/windowSize';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getAccountSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 type BrowserPageProps<T = {}> = T & {
   title: string, // plain text
@@ -656,6 +658,8 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     }
   }
 
+  // * the account session the mini app is opened in: it is not mounted once the tab is on another account
+  const session = getAccountSession();
   const deferred = deferredPromise<void>();
   const [needBackButton, setNeedBackButton] = createSignal(false);
   const [destroy, setDestroy] = createSignal(false);
@@ -669,7 +673,7 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
   });
 
   const title = await webApp.getTitle(true);
-  if(destroy()) {
+  if(destroy() || isSessionLeaving(session)) {
     webApp.destroy();
     options.onClose?.();
     return;
@@ -684,7 +688,7 @@ export async function openWebAppInAppBrowser(options: WebAppLaunchOptions) {
     middleware: middlewareHelper.get()
   });
   await avatar.readyThumbPromise;
-  if(destroy()) {
+  if(destroy() || isSessionLeaving(session)) {
     middlewareHelper.destroy();
     webApp.destroy();
     options.onClose?.();
@@ -752,6 +756,8 @@ export async function openGameInAppBrowser(options: {
 }) {
   const {game, message, url} = options;
   const cacheKey = `game-${game.id}-${message.peerId}-${message.mid}`;
+  // * the account session the game is opened in: it is not mounted once the tab is on another account
+  const session = getAccountSession();
 
   if(lastContext) {
     const existing = lastContext[0].pages.find((page) => page.cacheKey === cacheKey);
@@ -795,6 +801,11 @@ export async function openGameInAppBrowser(options: {
     middleware: middlewareHelper.get()
   });
   await avatar.readyThumbPromise;
+  if(isSessionLeaving(session)) {
+    middlewareHelper.destroy();
+    telegramWebView.destroy();
+    return;
+  }
 
   return createRoot((dispose) => {
     const initialState: BrowserPageProps = {
@@ -1103,6 +1114,7 @@ export function openInstantViewInAppBrowser({
   const [webPageId, setWebPageId] = createSignal<Long>(_webPageId);
   const [page, setPageStore] = createStore<Page>(undefined);
   const [pageResource] = createResource<Page>(async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(
       !TEST_PART &&
       hadCachedPage &&
@@ -1112,7 +1124,7 @@ export function openInstantViewInAppBrowser({
     }
 
     if(TEST_PART) await pause(10000);
-    return rootScope.managers.appWebPagesManager.getWebPage(url)
+    return managers.appWebPagesManager.getWebPage(url)
     .then((webPage) => {
       setWebPageId(webPage.id);
       return (webPage as WebPage.webPage).cached_page;

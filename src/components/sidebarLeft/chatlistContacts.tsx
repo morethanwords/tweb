@@ -5,7 +5,7 @@ import {getMiddleware} from '@helpers/middleware';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import filterAsync from '@helpers/array/filterAsync';
 import windowSize from '@helpers/windowSize';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 
 const CONTACT_ROW_HEIGHT = 60;
 
@@ -18,7 +18,7 @@ export type ChatlistContacts = ReturnType<typeof createChatlistContacts>;
  * nothing has passed the filter yet.
  */
 export function createChatlistContacts(options: {
-  managers: AppManagers,
+  managers: ReadingManagers,
   /** The rendered count changed — the sidebar rechecks its empty-placeholder layout. */
   onLengthChange: () => void,
   /** Hands the rendered list over so the sidebar can attach its own chat-row click handling. */

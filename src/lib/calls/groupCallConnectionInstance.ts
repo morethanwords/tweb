@@ -2,7 +2,6 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import createSerializedQueue from '@helpers/createSerializedQueue';
 import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
 import {AppManagers} from '@lib/managers';
-import rootScope from '@lib/rootScope';
 import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from '@lib/calls/callConnectionInstanceBase';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
 import filterServerCodecs from '@lib/calls/helpers/filterServerCodecs';
@@ -339,7 +338,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
         if(!channel) return;
 
         description.setEntrySource(entry, channel.sourceGroups || channel.source);
-        description.setEntryPeerId(entry, rootScope.myId);
+        description.setEntryPeerId(entry, this.groupCall.myId);
       }
     });
 

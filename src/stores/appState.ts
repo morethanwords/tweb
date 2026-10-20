@@ -22,6 +22,11 @@ const setAppStateSilent = (key: any, value?: any) => {
   _setAppState(key, reconcile(value));
 };
 
+// * the whole state of another account, when the tab switches to it
+const replaceAppStateSilent = (state: State) => {
+  _setAppState(reconcile(state));
+};
+
 const useAppState = () => [appState, setAppState] as const;
 
 const useAppConfig = () => appState.appConfig;
@@ -33,6 +38,7 @@ export {
   useAppState,
   setAppState,
   setAppStateSilent,
+  replaceAppStateSilent,
   useAppConfig,
   useIsFrozen
 };

@@ -19,6 +19,7 @@ import {toastNew} from '@components/toast';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import MediaHeader from '@components/mediaHeader';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const MIN_YEAR = 1900;
 
@@ -56,6 +57,7 @@ export default async function showBirthdayPopup(props: {
   fromSuggestion?: boolean
   onSave: (date: Birthday | null) => MaybePromise<boolean>
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const privacy = props.suggestForPeer ? null : await rootScope.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyBirthday');
   const isContactsOnly = !privacy || (
     privacy.length === 2 &&
@@ -220,7 +222,7 @@ export default async function showBirthdayPopup(props: {
     const doubleRafPromise = doubleRaf();
 
     return (
-      <PopupElement class={styles.popup} show={show()} old>
+      <PopupElement managers={managers} class={styles.popup} show={show()} old>
         <PopupElement.Header floating>
           <PopupElement.CloseButton />
         </PopupElement.Header>

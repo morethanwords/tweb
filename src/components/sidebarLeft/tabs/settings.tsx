@@ -31,6 +31,7 @@ import {SettingsSearchItem} from '@lib/settingsSearch';
 import {openSettingsSearchItem} from '@lib/settingsSearch/navigate';
 import {ROOT_SECTION_ID} from '@lib/settingsSearch/registry';
 import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — wraps a sub-tab declaration. If the tab has a static `getInitArgs`,
@@ -304,12 +305,13 @@ const Settings = () => {
   updateActiveSessions();
 
   const onDevicesClick = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(!authorizations) {
       await updateActiveSessions();
     }
 
     try {
-      connectedBot = await rootScope.managers.appBusinessManager.getConnectedBot(true);
+      connectedBot = await managers.appBusinessManager.getConnectedBot(true);
       updateAuthCount();
     } catch{
       // Keep the latest event-backed snapshot. Active Sessions still exposes

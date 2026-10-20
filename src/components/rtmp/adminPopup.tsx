@@ -9,6 +9,8 @@ import {Ripple} from '@components/rippleTsx';
 import {RtmpData} from '@components/rtmp/rtmpData';
 import {i18n} from '@lib/langPack';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import type {AppManagers} from '@lib/managers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const cnPopup = (className = '') => `rtmp-popup${className}`;
 
@@ -16,11 +18,13 @@ export interface RtmpAdminPopupProps {
   peerId: PeerId
   active?: boolean
   onEndStream?: () => void
+  /** The stream's account, when it may not be the one the tab shows (opened from the stream itself). */
+  managers?: AppManagers
 }
 
 export function showRtmpStartStreamPopup(props: RtmpAdminPopupProps) {
   const [show, setShow] = createSignal(true);
-  const managers = rootScope.managers;
+  const managers = props.managers ?? bindManagersToSession(rootScope.managers);
   const {active} = props;
 
   createPopup(() => {

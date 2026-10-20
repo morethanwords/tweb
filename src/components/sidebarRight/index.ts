@@ -3,7 +3,7 @@ import SidebarSlider from '@components/slider';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import {MOUNT_CLASS_TO} from '@config/debug';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import appNavigationController from '@components/appNavigationController';
 import rootScope from '@lib/rootScope';
 import {installColumnWidthsUpdater} from '@helpers/updateColumnWidths';
@@ -27,7 +27,7 @@ export class AppSidebarRight extends SidebarSlider {
     this.sidebarEl.inert = !document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
   }
 
-  construct(managers: AppManagers) {
+  construct(managers: TabManagers) {
     this.managers = managers;
 
     mediaSizes.addEventListener('changeScreen', (from, to) => {

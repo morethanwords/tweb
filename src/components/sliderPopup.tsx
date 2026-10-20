@@ -1,8 +1,9 @@
 import {createSignal} from 'solid-js';
 import PopupElement, {createPopup, usePopupController} from '@components/popups/indexTsx';
-import SidebarSlider, {SidebarSliderOptions, SliderSuperTab} from '@components/slider';
+import SidebarSlider, {SidebarSliderOptions, SliderSuperTab, trackTabsDestruction} from '@components/slider';
 import appNavigationController, {type NavigationItem} from '@components/appNavigationController';
-import type {AppManagers} from '@lib/managers';
+import type {ReadingManagers} from '@lib/managers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import pause from '@helpers/schedulers/pause';
 import styles from '@components/sliderPopup.module.scss';
 
@@ -12,7 +13,7 @@ class PopupSlider extends SidebarSlider {
   private type: NavigationItem['type'];
   private detached = false;
 
-  constructor(options: SidebarSliderOptions & {managers: AppManagers}) {
+  constructor(options: SidebarSliderOptions & {managers: ReadingManagers}) {
     super(options);
     this.managers = options.managers;
     this.type = options.navigationType;
@@ -47,12 +48,14 @@ class PopupSlider extends SidebarSlider {
  * `hidden` one waits for `show`: for its first tab to have something to show.
  */
 export default function showSliderPopup(options: {
-  managers: AppManagers,
+  managers: ReadingManagers,
   navigationType: NavigationItem['type'],
   hidden?: boolean,
   onClose?: () => void
 }) {
   const [shown, setShown] = createSignal(!options.hidden);
+  // * the popup and its tabs are screens of the account session they are opened in
+  const managers = bindManagersToSession(options.managers);
 
   const element = document.createElement('div');
   element.classList.add(styles.slider);
@@ -63,7 +66,7 @@ export default function showSliderPopup(options: {
   const slider = new PopupSlider({
     navigationType: options.navigationType,
     sidebarEl: element,
-    managers: options.managers
+    managers
   });
 
   // * the dialog is named by the tab on top, as a popup is by its title
@@ -94,6 +97,7 @@ export default function showSliderPopup(options: {
     return (
       <PopupElement
         class={styles.popup}
+        managers={managers}
         closable
         show={shown()}
         onClose={() => {
@@ -102,8 +106,10 @@ export default function showSliderPopup(options: {
           options.onClose?.();
         }}
         onCloseAfterTimeout={() => {
-          // wait for the popup to close
-          pause(200).then(() => slider.closeAllTabs());
+          // wait for the popup to close; whoever waits for closed tabs (an account switch) waits for these too
+          trackTabsDestruction(pause(200).then(() => {
+            slider.closeAllTabs();
+          }));
         }}
       >
         <PopupElement.Body>{element}</PopupElement.Body>

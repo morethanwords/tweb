@@ -31,6 +31,7 @@ import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/n
 import {makeTime} from '@components/chat/utils';
 import {useAppConfig} from '@stores/appState';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const NBSP = '&nbsp;';
 
@@ -93,6 +94,7 @@ const makeEffect = (props: {
   middleware?: Middleware,
   loadPromises?: Promise<any>[]
 }) => {
+  const managers = bindManagersToSession(rootScope.managers);
   const span = document.createElement('span');
   span.classList.add('time-effect');
   if(props.onlyElement) {
@@ -103,7 +105,7 @@ const makeEffect = (props: {
 
   span.dataset.effectId = '' + props.docId;
 
-  rootScope.managers.acknowledged.appReactionsManager.getAvailableEffect(props.docId)
+  managers.acknowledged.appReactionsManager.getAvailableEffect(props.docId)
   .then(async(result) => {
     if(!result.cached) {
       deferred.resolve();
@@ -117,7 +119,7 @@ const makeEffect = (props: {
 
     const loadPromises: Promise<any>[] = [];
     wrapSticker({
-      doc: await rootScope.managers.appDocsManager.getDoc(availableEffect.static_icon_id),
+      doc: await managers.appDocsManager.getDoc(availableEffect.static_icon_id),
       div: span,
       middleware: props.middleware,
       loadPromises,
@@ -456,6 +458,7 @@ export namespace MessageRender {
     isOut: boolean,
     fromUpdate?: boolean
   }) => {
+    const managers = bindManagersToSession(rootScope.managers);
     const isReplacing = !bubbleContainer;
     if(isReplacing) {
       bubbleContainer = bubble.querySelector('.bubble-content');
@@ -480,7 +483,7 @@ export namespace MessageRender {
       );
 
     const originalMessage = !isStoryReply && apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
-    const originalStory = isStoryReply && await rootScope.managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
+    const originalStory = isStoryReply && await managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
     let originalPeerTitle: string | HTMLElement | DocumentFragment;
 
     let isReplyFromAnotherPeer = false;
@@ -500,7 +503,7 @@ export namespace MessageRender {
 
     if(isStoryReply) {
       if(!originalStory.cached) {
-        rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
+        managers.appMessagesManager.fetchMessageReplyTo(message);
         // needUpdate.push(forUpdate = {replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid, peerId: message.peerId});
         originalPeerTitle = i18n('Loading');
       } else {
@@ -528,7 +531,7 @@ export namespace MessageRender {
         originalPeerTitle = i18n('DeletedMessage');
       } else {
         // needUpdate.push(forUpdate = {replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid, peerId: message.peerId});
-        rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
+        managers.appMessagesManager.fetchMessageReplyTo(message);
 
         originalPeerTitle = i18n('Loading');
       }

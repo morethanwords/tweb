@@ -118,7 +118,9 @@ test.describe('the signed-in client has no detectable accessibility violations',
     await page.waitForFunction(() => document.querySelectorAll('.chatlist-chat').length > 0,
       null, {timeout: 180_000});
     await clickVisible(page, '#column-left .btn-menu-toggle');
-    await page.waitForTimeout(700);
+    // * the menu builds its rows first - one per signed-in account, each asked of the worker - so it opens
+    // * when they are in, not at a set time after the click
+    await page.waitForSelector('.btn-menu.active', {timeout: 15_000}).catch(() => {});
     const settings = page.locator('.btn-menu.active .btn-menu-item').filter({hasText: /settings|настройк/i}).first();
     expect(await settings.isVisible().catch(() => false), 'the main menu has no settings item').toBe(true);
     await settings.click({timeout: 8000});

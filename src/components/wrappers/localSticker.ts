@@ -1,6 +1,6 @@
 import {Middleware} from '@helpers/middleware';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
@@ -24,7 +24,7 @@ export default async function wrapLocalSticker({
   assetName?: LottieAssetName,
   width: number,
   height: number,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   middleware?: Middleware,
   autoplay?: boolean,
   loop?: boolean

@@ -12,6 +12,7 @@ import {
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '@appManagers/constants';
 import type {DialogsSelectionActions} from '@appManagers/utils/dialogs/dialogsSelectionActions';
 import {i18n, LangPackKey} from '@lib/langPack';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type DialogsSelectionAction = keyof DialogsSelectionActions;
 
@@ -85,7 +86,7 @@ export default class DialogsSelection extends DialogsSelectionBase<DialogsSelect
   protected async perform(action: DialogsSelectionAction, direction: boolean) {
     const peerIds = this.getSelectedPeerIds();
     const filterId = this.getFilterId();
-    const {appMessagesManager} = this.managers;
+    const {appMessagesManager} = bindManagersToSession(this.managers);
     switch(action) {
       case 'read': {
         appMessagesManager.markDialogsUnread({peerIds, read: direction});

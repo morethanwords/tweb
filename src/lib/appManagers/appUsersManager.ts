@@ -1295,7 +1295,9 @@ export class AppUsersManager extends AppManager {
   }
 
   public updateMyOnlineStatus(offline: boolean) {
-    this.setUserStatus(this.getSelf().id, offline);
+    // * an account a tab has just switched to may not have loaded itself yet
+    const self = this.getSelf();
+    self && this.setUserStatus(self.id, offline);
     return this.apiManager.invokeApiSingle('account.updateStatus', {offline});
   }
 

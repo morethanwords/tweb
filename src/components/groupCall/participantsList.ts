@@ -87,6 +87,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
           autonomous: this.autonomous,
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
+          accountNumber: this.instance.accountNumber,
           wrapOptions: {
             lazyLoadQueue: this.lazyLoadQueue,
             middleware: middlewareHelper.get()

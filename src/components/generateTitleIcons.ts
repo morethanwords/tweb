@@ -9,6 +9,7 @@ import generateVerifiedIcon from '@components/generateVerifiedIcon';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import wrapEmojiStatus from '@components/wrappers/emojiStatus';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function generateTitleIcons({
   peerId,
@@ -58,7 +59,7 @@ export default async function generateTitleIcons({
           e.stopPropagation();
           if(peerId === rootScope.myId) {
             hotReloadGuard.openEmojiStatusPicker({
-              managers: rootScope.managers,
+              managers: bindManagersToSession(rootScope.managers),
               anchorElement: container
             });
           } else if(emojiStatus._ === 'emojiStatusCollectible') {

@@ -3,6 +3,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import PeerTitle from '@components/peerTitle';
 import {toastNew} from '@components/toast';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * Blocks a user once the confirmation is accepted, optionally reporting the chat as spam and
@@ -15,7 +16,8 @@ export default async function blockUserWithConfirmation(options: {
   onConfirmed?: (promise: Promise<any>) => void
 }) {
   const {peerId, showReport, showDelete, onConfirmed} = options;
-  const {managers} = rootScope;
+  // * the account the user is blocked on, whichever the tab shows once the confirmation is answered
+  const managers = bindManagersToSession(rootScope.managers);
   const checkboxes: PopupPeerCheckboxOptions[] = [
     showReport && {
       text: 'DeleteReportSpam',

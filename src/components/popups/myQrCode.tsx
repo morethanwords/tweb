@@ -32,6 +32,7 @@ import ChatThemesPicker from '@components/chatThemesPicker';
 import styles from './myQrCode.module.scss';
 import {FontFamily, FontWeightBold} from '@config/font';
 import Button from '@components/buttonTsx';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // Geometry numbers are lifted from Telegram-iOS' ChatQrCodeScreen.swift so the
 // card layout matches the iOS sheet 1:1. Source lines are noted next to each
@@ -93,10 +94,11 @@ function createSharedState(self: User.user, peerId: PeerId = rootScope.myId, ove
   const [contactTokenUrl] = createResource(
     () => (peerId === rootScope.myId && !username()) || undefined,
     async() => {
+      const managers = bindManagersToSession(rootScope.managers);
       try {
-        const rules = await rootScope.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyAddedByPhone');
+        const rules = await managers.appPrivacyManager.getPrivacy('inputPrivacyKeyAddedByPhone');
         if(rules.some((rule) => rule._ === 'privacyValueAllowAll')) return undefined; // phone-discovery on → t.me/+phone is enough
-        const token = await rootScope.managers.appUsersManager.exportContactToken();
+        const token = await managers.appUsersManager.exportContactToken();
         return token?.url;
       } catch{
         return undefined; // any failure → fall back to the codeLink, never break profileUrl
@@ -970,9 +972,10 @@ function FooterSlot(props: {shared: QrPopupShared, getBlob: () => Blob | undefin
  * for a private group's invite link, which PeerProfile.Link already resolved).
  */
 export default async function showMyQrCodePopup(peerId: PeerId = rootScope.myId, options?: {url?: string}) {
+  const managers = bindManagersToSession(rootScope.managers);
   const self = peerId === rootScope.myId ?
-    await rootScope.managers.appUsersManager.getSelf() :
-    await rootScope.managers.appPeersManager.getPeer(peerId);
+    await managers.appUsersManager.getSelf() :
+    await managers.appPeersManager.getPeer(peerId);
   if(!self) return;
 
   createPopup(() => {
@@ -992,6 +995,7 @@ export default async function showMyQrCodePopup(peerId: PeerId = rootScope.myId,
 
     return (
       <PopupElement
+        managers={managers}
         class={styles.popup}
         containerClass={styles.popupContainer}
         closable

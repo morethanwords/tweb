@@ -9,7 +9,7 @@
  * sandbox surfaces that list, so "this popup renders empty" points straight at the call to fill in.
  */
 
-import type {AppManagers} from '@lib/managers';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import {SETTINGS_INIT, STATE_INIT} from '@config/state';
 import {
   aiToneExample,
@@ -246,8 +246,8 @@ function createDefaultHandlers(): ManagerHandlers {
 }
 
 export type MockManagersController = {
-  /** Drop-in for `rootScope.managers`. */
-  managers: AppManagers,
+  /** Drop-in for `rootScope.managers` - and for whatever is bound from them, which they stay. */
+  managers: AppManagers & TabManagers,
   /** Every call the popups made, newest last. Handy for assertions in an automated run. */
   calls: ManagerCall[],
   /** Calls no handler answered — the to-do list for making a story render fully. */
@@ -311,7 +311,7 @@ export function createMockManagers(): MockManagersController {
   managers.all = createRootProxy((value) => [value]);
 
   const controller: MockManagersController = {
-    managers: managers as AppManagers,
+    managers: managers as AppManagers & TabManagers,
     calls,
     unhandled,
     override(handlers: ManagerHandlers) {

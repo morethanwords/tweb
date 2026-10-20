@@ -23,6 +23,7 @@ import {IconTsx} from '@components/iconTsx';
 import rootScope from '@lib/rootScope';
 import {createListTransition} from '@vendor/createListTransition';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const className = 'popup-boost';
 
@@ -31,6 +32,7 @@ export default async function showReassignBoostPopup(
   myBoosts: PremiumMyBoosts,
   appConfig: MTAppConfig
 ) {
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const descriptionPeerTitle = await wrapPeerTitle({peerId});
@@ -259,6 +261,7 @@ export default async function showReassignBoostPopup(
 
     return (
       <PopupElement
+        managers={managers}
         class={className}
         closable
         show={show()}

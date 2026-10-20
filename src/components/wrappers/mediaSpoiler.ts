@@ -13,6 +13,8 @@ import Modes from '@config/modes';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import makeMediaPreviewsAccessible, {MEDIA_PREVIEW_SELECTOR} from '@helpers/dom/mediaPreviewAccessibility';
 import {doubleRaf} from '@helpers/schedulers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getAccountSession} from '@lib/accounts/getCurrentAccount';
 
 // * the dot canvas is decoration on top of an already-covering blurred thumbnail; never let it
 // * hold up the message batch for longer than this
@@ -142,6 +144,8 @@ async function onSensitiveMediaSpoilerClick(options: {
   mediaSpoiler: HTMLElement,
   event: Event
 }) {
+  // * the account session the media was opened on: rootScope comes with the rest, once loaded
+  const session = getAccountSession();
   const {mediaSpoiler} = options;
   const [
     {default: useContentSettings},
@@ -156,7 +160,9 @@ async function onSensitiveMediaSpoilerClick(options: {
     import('@components/toast'),
     import('@lib/rootScope')
   ]);
-  if(!mediaSpoiler.isConnected || !mediaSpoiler.dataset.isSensitive) return;
+  if(session.ended || !mediaSpoiler.isConnected || !mediaSpoiler.dataset.isSensitive) return;
+  // oxlint-disable-next-line tweb/managers-before-await -- read in the session the click was made in, just checked
+  const managers = bindManagersToSession(rootScope.managers);
   const contentSettings = useContentSettings();
 
   // * drawn before the switch was turned on, in this tab or another one: there is nothing left to ask
@@ -196,7 +202,7 @@ async function onSensitiveMediaSpoilerClick(options: {
     if(remember) {
       // * all of them only once the server has accepted the switch: it may refuse it
       try {
-        await rootScope.managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
+        await managers.appPrivacyManager.setContentSettings({sensitive_enabled: true});
         clearSensitiveSpoilers();
         return;
       } catch(err) {

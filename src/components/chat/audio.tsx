@@ -9,7 +9,7 @@ import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import MediaProgressLine from '@components/mediaProgressLine';
 import VolumeSelector from '@components/volumeSelector';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import {PlaybackRateButton} from '@components/playbackRateButton';
@@ -37,7 +37,7 @@ export type ChatAudioController = {
 
 export default function createChatAudio(
   appImManager: AppImManager,
-  managers: AppManagers
+  managers: TabManagers
 ): ChatAudioController {
   const listenerSetter = new ListenerSetter();
   let duration: number;

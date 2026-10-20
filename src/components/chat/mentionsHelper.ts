@@ -4,6 +4,7 @@ import AutocompletePeerHelper from '@components/chat/autocompletePeerHelper';
 import {AppManagers} from '@lib/managers';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default class MentionsHelper extends AutocompletePeerHelper {
   constructor(
@@ -31,11 +32,12 @@ export default class MentionsHelper extends AutocompletePeerHelper {
     global?: boolean,
     includeGuestBots?: boolean
   ) {
+    const managers = bindManagersToSession(this.managers);
     const trimmed = query.trim(); // check that there is no whitespace
     if(query.length !== trimmed.length) return false;
 
     const middleware = this.controller.getMiddleware();
-    this.managers.appProfileManager.getMentions(
+    managers.appProfileManager.getMentions(
       peerId && peerId.toChatId(),
       trimmed,
       topMsgId,
@@ -49,7 +51,7 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       // const username = trimmed.slice(1).toLowerCase();
 
       const p = peerIds.map(async(peerId) => {
-        const user = await this.managers.appUsersManager.getUser(peerId);
+        const user = await managers.appUsersManager.getUser(peerId);
         const usernames = getPeerActiveUsernames(user);
         // if(usernames.length && usernames.some((_username) => _username.toLowerCase() === username)) { // hide full matched suggestion
         //   return;

@@ -4,7 +4,7 @@ import noop from '@helpers/noop';
 import {nextRandomUint} from '@helpers/random';
 import {DataJSON, GroupCall, InputGroupCall} from '@layer';
 import {JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
-import {AppManagers} from '@lib/managers';
+import {AppManagers, TabManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {RTMP_UNIFIED_CHANNEL_ID, RTMP_UNIFIED_QUALITY} from '@lib/calls/constants';
@@ -12,6 +12,8 @@ import {groupCallToInput} from '@lib/calls/helpers/groupCallUpdates';
 import RTMP_STATE from '@lib/calls/rtmpState';
 import {logger} from '@lib/logger';
 import callTransitionCoordinator from '@lib/calls/callTransitionCoordinator';
+import {CallAccount, CallHold, captureCallAccount, holdCall} from '@lib/calls/callAccount';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 
 const log = logger('RTMP');
 
@@ -26,8 +28,13 @@ export class RtmpCallInstance extends EventListenerBase<{
   public pip: boolean;
   public admin: boolean;
   public lastKnownTime: string;
+  // * the account the stream is watched on: the tab may show another one meanwhile (see callAccount)
+  public accountNumber: ActiveAccountNumber;
+  public managers: AppManagers;
+  public myId: PeerId;
 
   private _state: RTMP_STATE;
+  private heldCall: CallHold;
 
   constructor(params: {
     chatId: ChatId,
@@ -38,13 +45,16 @@ export class RtmpCallInstance extends EventListenerBase<{
     pip: boolean,
     admin: boolean,
     lastKnownTime: string
-  }) {
+  } & CallAccount) {
     super(false);
     Object.assign(this, params);
     this._state = RTMP_STATE.CONNECTING;
+    this.heldCall = holdCall(this.accountNumber);
+    this.heldCall.setId(this.call.id);
   }
 
   public cleanup() {
+    this.heldCall.release();
     super.cleanup();
   }
 
@@ -62,13 +72,13 @@ export class RtmpCallsController extends EventListenerBase<{
   startedJoining: (peerId: PeerId) => void,
   currentCallChanged: (call: RtmpCallInstance) => void
 }> {
-  private managers: AppManagers;
+  private managers: TabManagers;
 
   private _currentCall: RtmpCallInstance;
   private currentCallGeneration = 0;
   private rejoinPromise?: Promise<void>;
 
-  public construct(managers: AppManagers) {
+  public construct(managers: TabManagers) {
     this.managers = managers;
 
     rootScope.addEventListener('group_call_update', this.onGroupCallUpdate);
@@ -87,7 +97,7 @@ export class RtmpCallsController extends EventListenerBase<{
       window.addEventListener('pagehide', () => {
         const {currentCall} = this;
         if(currentCall) {
-          void this.managers.appGroupCallsManager.hangUp(currentCall.call.id, currentCall.ssrc).catch(noop);
+          void currentCall.managers.appGroupCallsManager.hangUp(currentCall.call.id, currentCall.ssrc).catch(noop);
         }
       });
     }
@@ -139,7 +149,8 @@ export class RtmpCallsController extends EventListenerBase<{
     };
   }
 
-  public async joinCall(chatId: ChatId) {
+  // * `account`: the one the stream is watched on - the caller's when it asked, whichever the tab shows later
+  public async joinCall(chatId: ChatId, account = captureCallAccount(this.managers)) {
     if(this.currentCall) {
       throw new Error('Already in rtmp call');
     }
@@ -150,7 +161,8 @@ export class RtmpCallsController extends EventListenerBase<{
     const ssrc = this.randomSsrc();
     const data = this.getJoinPayload(ssrc);
 
-    const chat = await this.managers.appProfileManager.getChatFull(chatId);
+    const {managers} = account;
+    const chat = await managers.appProfileManager.getChatFull(chatId);
     if(chat._ !== 'channelFull') {
       throw new Error('Not a chat');
     }
@@ -160,12 +172,12 @@ export class RtmpCallsController extends EventListenerBase<{
       throw new Error('No call id');
     }
 
-    const call = await this.managers.appGroupCallsManager.getGroupCallFull(callId);
+    const call = await managers.appGroupCallsManager.getGroupCallFull(callId);
     if(call._ !== 'groupCall') {
       throw new Error('Not a group call');
     }
 
-    const update = await this.managers.appGroupCallsManager.joinGroupCall(callId, data, {type: 'main'});
+    const update = await managers.appGroupCallsManager.joinGroupCall(callId, data, {type: 'main'});
     let instance: RtmpCallInstance;
     try {
       const updateData = JSON.parse(update.params.data);
@@ -181,10 +193,11 @@ export class RtmpCallsController extends EventListenerBase<{
         ssrc,
         pip: false,
         admin: Boolean(chat.pFlags?.can_delete_channel),
-        lastKnownTime: '0'
+        lastKnownTime: '0',
+        ...account
       });
     } catch(err) {
-      await this.compensateAcceptedJoin(update.acceptedCallInput, ssrc, 'initial RTMP join');
+      await this.compensateAcceptedJoin(managers, update.acceptedCallInput, ssrc, 'initial RTMP join');
       throw err;
     }
 
@@ -197,14 +210,15 @@ export class RtmpCallsController extends EventListenerBase<{
 
     this.currentCall = undefined;
     apiManagerProxy.serviceMessagePort.invokeVoid('leaveRtmpCall', [currentCall.call.id, true]);
-    await this.managers.appGroupCallsManager.hangUp(currentCall.call.id, discard ? true : currentCall.ssrc);
+    await currentCall.managers.appGroupCallsManager.hangUp(currentCall.call.id, discard ? true : currentCall.ssrc);
     return true;
   }
 
   public async isCurrentCallDead(checkJoined = false, triedRejoin = false): Promise<'dead' | 'dying' | 'alive'> {
-    if(!this.currentCall) return 'dead';
+    const {currentCall} = this;
+    if(!currentCall) return 'dead';
 
-    const state = await this.managers.appGroupCallsManager.fetchRtmpState(this.currentCall.inputCall);
+    const state = await currentCall.managers.appGroupCallsManager.fetchRtmpState(currentCall.inputCall);
     if(!checkJoined) return state.channels.length === 0 ? 'dead' : 'alive';
 
     // check if we are joined by trying to fetch a part
@@ -212,7 +226,7 @@ export class RtmpCallsController extends EventListenerBase<{
     if(!unified) return 'dead';
     try {
       const time = this.currentCall.lastKnownTime === '0' ? unified.last_timestamp_ms : this.currentCall.lastKnownTime;
-      await this.managers.appGroupCallsManager.fetchRtmpPart({
+      await currentCall.managers.appGroupCallsManager.fetchRtmpPart({
         _: 'inputGroupCallStream',
         call: this.currentCall.inputCall,
         video_channel: RTMP_UNIFIED_CHANNEL_ID,
@@ -255,7 +269,7 @@ export class RtmpCallsController extends EventListenerBase<{
     const generation = this.currentCallGeneration;
     const ssrc = this.randomSsrc();
     const data = this.getJoinPayload(ssrc);
-    const update = await this.managers.appGroupCallsManager.joinGroupCall(currentCall.call.id, data, {
+    const update = await currentCall.managers.appGroupCallsManager.joinGroupCall(currentCall.call.id, data, {
       type: 'main',
       // Preserve the exact call identity used by this recovery so a late accepted
       // join can be compensated even after caches/currentCall have moved on.
@@ -263,7 +277,7 @@ export class RtmpCallsController extends EventListenerBase<{
     });
 
     if(this.currentCall !== currentCall || this.currentCallGeneration !== generation) {
-      await this.compensateAcceptedJoin(update.acceptedCallInput, ssrc, 'late RTMP rejoin');
+      await this.compensateAcceptedJoin(currentCall.managers, update.acceptedCallInput, ssrc, 'late RTMP rejoin');
       return;
     }
 
@@ -273,9 +287,9 @@ export class RtmpCallsController extends EventListenerBase<{
     currentCall.ssrc = ssrc;
   }
 
-  private async compensateAcceptedJoin(call: InputGroupCall, ssrc: number, context: string): Promise<void> {
+  private async compensateAcceptedJoin(managers: AppManagers, call: InputGroupCall, ssrc: number, context: string): Promise<void> {
     try {
-      await this.managers.appGroupCallsManager.leaveGroupCall(call, ssrc);
+      await managers.appGroupCallsManager.leaveGroupCall(call, ssrc);
     } catch(err) {
       log.error(`${context} compensation failed`, err);
     }

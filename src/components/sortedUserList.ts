@@ -8,13 +8,14 @@ import replaceContent from '@helpers/dom/replaceContent';
 import {fastRaf} from '@helpers/schedulers';
 import SortedList, {SortedElementBase} from '@helpers/sortedList';
 import safeAssign from '@helpers/object/safeAssign';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import {MemberTagBadge, makeMemberTagPressable, wrapMemberTag} from '@components/wrappers/participantRank';
 import {i18n} from '@lib/langPack';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 // * a row's tag; an `editable` one opens its editor on a click, and one with no `rank` is
 // * my own missing tag, offered as "Add tag"
@@ -36,7 +37,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];
   protected onListLengthChange: () => void;
-  protected managers: AppManagers;
+  protected managers: ReadingManagers;
 
   constructor(options: Partial<{
     lazyLoadQueue: SortedUserList['lazyLoadQueue'],
@@ -58,11 +59,12 @@ export default class SortedUserList extends SortedList<SortedUser> {
         this.onListLengthChange?.();
       },
       onUpdate: options.onUpdate || (async(element) => {
+        const managers = bindManagersToSession(this.managers);
         if(element.id.isAnyChat()) {
-          const status = await getChatMembersString(element.id.toChatId(), this.managers);
+          const status = await getChatMembersString(element.id.toChatId(), managers);
           replaceContent(element.dom.lastMessageSpan, status);
         } else {
-          const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));
+          const status = getUserStatusString(await managers.appUsersManager.getUser(element.id));
           replaceContent(element.dom.lastMessageSpan, status);
 
           this.renderRank(element.id, element.dialogElement);

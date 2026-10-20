@@ -12,7 +12,7 @@ import noop from '@helpers/noop';
 import {Message, MessageMedia, WebPage} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager, {Progress} from '@lib/appDownloadManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getDownloadMediaDetails from '@appManagers/utils/download/getDownloadMediaDetails';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import I18n, {joinElementsWith} from '@lib/langPack';
@@ -87,7 +87,7 @@ export default async function wrapDocument({
   autoDownloadSize?: number,
   lazyLoadQueue?: LazyLoadQueue,
   sizeType?: MediaSizeType,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   cacheContext?: ThumbCache,
   fontSize?: number,
   getSize?: () => number,

@@ -29,6 +29,7 @@ import showBoostPopup from '@components/popups/boost';
 import Tabs from '@components/tabs';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -393,10 +394,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
   };
 
   public async init(peerId: PeerId) {
+    const managers = bindManagersToSession(this.managers);
     this.container.classList.add('boosts-container');
 
     this.peerId = peerId;
-    this.isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
+    this.isBroadcast = await managers.appPeersManager.isBroadcast(peerId);
     this.targets = new Map();
 
     this.setTitle('Boosts');
@@ -436,11 +438,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     });
 
     const [boostsStatus, appConfig, _, __, canCreateGiveaway] = await Promise.all([
-      this.managers.appBoostsManager.getBoostsStatus(peerId),
-      this.managers.apiManager.getAppConfig(),
+      managers.appBoostsManager.getBoostsStatus(peerId),
+      managers.apiManager.getAppConfig(),
       boostsList().loadMore(),
       giftsBoostsList().loadMore(),
-      this.managers.appChatsManager.hasRights(peerId.toChatId(), 'create_giveaway')
+      managers.appChatsManager.hasRights(peerId.toChatId(), 'create_giveaway')
     ]);
 
     this.canCreateGiveaway = canCreateGiveaway;

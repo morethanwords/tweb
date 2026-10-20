@@ -116,6 +116,7 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import A11yButton from '@components/a11yButton';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {hotListen} from '@helpers/hotModule';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
@@ -284,7 +285,9 @@ const StoryInput = (props: {
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
-  const chat = new Chat(hotReloadGuard.appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
+  // * the reply field is a chat of the account the stories are watched on, and goes with it
+  const chatManagers = bindManagersToSession(rootScope.managers);
+  const chat = new Chat(hotReloadGuard.appImManager, chatManagers, false, {elements: true, sharedMedia: true});
   chat.setType(ChatType.Stories);
   chat.isStandalone = true;
 
@@ -309,7 +312,7 @@ const StoryInput = (props: {
     </ButtonIconTsx>
   );
 
-  const input = chat.input = new ChatInput(chat, hotReloadGuard.appImManager, rootScope.managers, 'stories-input');
+  const input = chat.input = new ChatInput(chat, hotReloadGuard.appImManager, chatManagers, 'stories-input');
   input.noRipple = true;
   input.btnReaction = btnReactionEl;
   input.excludeParts = {
@@ -1112,6 +1115,7 @@ const Stories = (props: {
   });
 
   const sendReaction: StorySendReaction = async(params) => {
+    const managers = bindManagersToSession(rootScope.managers);
     let {reaction} = params;
     const peerId = props.state.peerId;
     const story = currentStory() as StoryItem.storyItem;
@@ -1138,7 +1142,7 @@ const Stories = (props: {
       setForceReaction(true);
     }
 
-    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(
+    await managers.acknowledged.appStoriesManager.sendReaction(
       peerId,
       storyId,
       unwrap(reaction as Reaction)
@@ -1538,6 +1542,7 @@ const Stories = (props: {
     });
 
     createEffect(async() => {
+      const managers = bindManagersToSession(rootScope.managers);
       const repostInfo = getStoryRepostInfo(story);
       if(!repostInfo) {
         uRepost();
@@ -1611,7 +1616,7 @@ const Stories = (props: {
         setSubtitle(documentFragmentToNodes(wrapped));
       };
 
-      const storyPromise = fwdFromStoryId && rootScope.managers.acknowledged.appStoriesManager.getStoryById(
+      const storyPromise = fwdFromStoryId && managers.acknowledged.appStoriesManager.getStoryById(
         fwdFromPeerId,
         fwdFromStoryId
       ).then(async(ackedResult) => {
@@ -1628,7 +1633,7 @@ const Stories = (props: {
         wrapPeerTitle(peerTitleOptions).then(async(peerTitle) => {
           const title = document.createDocumentFragment();
           if(fwdFromPeerId) {
-            const isBroadcast = await rootScope.managers.appPeersManager.isBroadcast(fwdFromPeerId);
+            const isBroadcast = await managers.appPeersManager.isBroadcast(fwdFromPeerId);
             const icon = Icon(
               isBroadcast ? 'newchannel_filled' : (fwdFromPeerId.isUser() ? 'newprivate_filled' : 'group_filled'),
               'inline-icon',
@@ -2300,6 +2305,7 @@ const Stories = (props: {
       icon: 'delete danger' as Icon,
       text: 'Delete',
       onClick: async() => {
+        const managers = bindManagersToSession(rootScope.managers);
         const id = currentStory().id;
         const peerId = props.state.peerId;
         ignoreOnClose = true;
@@ -2318,7 +2324,7 @@ const Stories = (props: {
           return;
         }
 
-        rootScope.managers.appStoriesManager.deleteStories(peerId, [id]);
+        managers.appStoriesManager.deleteStories(peerId, [id]);
       },
       verify: () => rootScope.managers.appStoriesManager.hasRights(peerId, story.id, 'delete')
     }, {
@@ -2479,6 +2485,7 @@ const Stories = (props: {
   });
 
   const onDeleteClick = isMe && (async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const peerId = props.state.peerId;
     const storyId = currentStory().id;
     await confirmationPopup({
@@ -2490,7 +2497,7 @@ const Stories = (props: {
       }
     });
 
-    rootScope.managers.appStoriesManager.deleteStories(peerId, [storyId]);
+    managers.appStoriesManager.deleteStories(peerId, [storyId]);
   });
 
   if(isMe) {
@@ -2961,7 +2968,9 @@ export default function StoriesViewer(props: {
     emoticonsDropdown.chatInput = undefined;
   });
 
+  let closed = false;
   const close = (callback?: () => void) => {
+    closed = true;
     callback && runWithOwner(owner, () => {
       onCleanup(() => {
         callback();
@@ -2999,6 +3008,8 @@ export default function StoriesViewer(props: {
 
     const openOnReady = () => {
       clearTimeout(timeout)
+      // * closed while it waited for its stories: it does not open after all
+      if(closed) return;
       wasReady = true;
       runWithOwner(owner, () => {
         onMount(() => {
@@ -3016,6 +3027,7 @@ export default function StoriesViewer(props: {
       });
       openOnReady();
     }, 250);
+    onCleanup(() => clearTimeout(timeout));
 
     const createStories = (peer: StoriesContextPeerState, index: Accessor<number>) => {
       const onReady = () => {
@@ -3274,6 +3286,26 @@ export default function StoriesViewer(props: {
       }
 
       close();
+    },
+    closeOutright: async() => {
+      // * still waiting for its first story: nothing has shown, so nothing has to move away
+      if(!wasShown()) {
+        close();
+        animating = false;
+        props.onExit?.();
+        actions.stop();
+        deferred.resolve();
+        return;
+      }
+
+      while(animating) {
+        await deferred;
+      }
+
+      close();
+      // * and settles once it is gone: its cleanup lets go of what the next account's viewer would hold (the
+      // * emoji panel's input, its night colours) - close() only starts the exit, which resolves this
+      await deferred;
     }
   };
 
@@ -3458,7 +3490,14 @@ export default function StoriesViewer(props: {
   };
 
   let overlaysActive: number;
+  // * taken as it shows: one closed before it ever showed gives back nothing
+  let holdsOverlay = false;
   const toggleOverlay = (active: boolean) => {
+    if(holdsOverlay === active) {
+      return;
+    }
+
+    holdsOverlay = active;
     actions.toggleSorting('viewer', active);
     overlayCounter.isDarkOverlayActive = active;
     animationIntersector.checkAnimations2(active);
@@ -3617,11 +3656,12 @@ export const createStoriesViewerWithPeer = async(
     id?: number,
   }
 ): Promise<void> => {
+  const managers = bindManagersToSession(rootScope.managers);
   const [, rest] = splitProps(props, ['peerId', 'id']);
-  const peerStories = await rootScope.managers.appStoriesManager.getPeerStories(props.peerId);
+  const peerStories = await managers.appStoriesManager.getPeerStories(props.peerId);
   const storyIndex = props.id ? peerStories.stories.findIndex((story) => story.id === props.id) : undefined;
   if(props.id) {
-    const storyItem = await rootScope.managers.appStoriesManager.getStoryById(props.peerId, props.id);
+    const storyItem = await managers.appStoriesManager.getStoryById(props.peerId, props.id);
     if(!storyItem) {
       toastNew({langPackKey: 'Story.ExpiredToast'});
       return;

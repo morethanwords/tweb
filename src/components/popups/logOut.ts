@@ -1,7 +1,9 @@
 import rootScope from '@lib/rootScope';
 import confirmationPopup from '@components/confirmationPopup';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default function showLogOutPopup() {
+  const managers = bindManagersToSession(rootScope.managers);
   confirmationPopup({
     titleLangKey: 'LogOut',
     descriptionLangKey: 'LogOut.Description',
@@ -10,6 +12,6 @@ export default function showLogOutPopup() {
       isDanger: true
     }
   }).then(() => {
-    rootScope.managers.apiManager.logOut();
+    managers.apiManager.logOut();
   });
 }

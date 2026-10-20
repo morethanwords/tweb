@@ -12,9 +12,10 @@ import rootScope from '@lib/rootScope';
 import {getMiddleware} from '@helpers/middleware';
 import MediaHeader from '@components/mediaHeader';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showToggleReadDatePopup(peerId: PeerId, type: 'lastSeen' | 'readTime') {
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
 
   const [titles, isPremiumPurchaseBlocked, stickerContainer] = await Promise.all([
@@ -119,6 +120,7 @@ export default async function showToggleReadDatePopup(peerId: PeerId, type: 'las
 
   createPopup(() => (
     <PopupElement
+      managers={managers}
       class="popup-toggle-read-date"
       closable
       show={show()}

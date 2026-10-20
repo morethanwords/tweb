@@ -18,6 +18,7 @@ import Button from '@components/buttonTsx';
 import classNames from '@helpers/string/classNames';
 import Row from '@components/rowTsx';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const STICKER_EMOJI = '👮‍♀️';
 
@@ -51,6 +52,7 @@ export default function showReportAdPopup(
   onError?: (err: ApiError, option?: Uint8Array, text?: string) => boolean | void,
   initial?: {option: Uint8Array, text?: string}
 ) {
+  const managers = bindManagersToSession(rootScope.managers);
   preloadAnimatedEmojiSticker(STICKER_EMOJI);
 
   const finishReport = (hasReported: boolean) => {
@@ -334,6 +336,7 @@ export default function showReportAdPopup(
 
     createPopup(() => (
       <PopupElement
+        managers={managers}
         class="popup-report-ad"
         closable
         old

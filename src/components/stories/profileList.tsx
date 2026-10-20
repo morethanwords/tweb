@@ -46,6 +46,7 @@ import {copyTextToClipboard} from '@helpers/clipboard';
 import {handleShareStory} from './share';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
@@ -121,7 +122,7 @@ class StoriesContextMenu {
   }
 
   private init() {
-    const managers = rootScope.managers;
+    const managers = bindManagersToSession(rootScope.managers);
     const getSelectedIds = () => {
       if(this.selection && this.selection.isSelecting) {
         return this.selection.getSelectedStoryIds(this.peerId);
@@ -286,6 +287,7 @@ class StoriesContextMenu {
 }
 
 async function openCreateAlbumPopup(peerId: PeerId): Promise<number | undefined> {
+  const managers = bindManagersToSession(rootScope.managers);
   const inputField = new InputField({
     maxLength: 64,
     placeholder: 'Stories.Albums.CreatePlaceholder',
@@ -302,7 +304,7 @@ async function openCreateAlbumPopup(peerId: PeerId): Promise<number | undefined>
     return;
   }
 
-  const album = await rootScope.managers.appStoriesManager.createAlbum(peerId, inputField.value);
+  const album = await managers.appStoriesManager.createAlbum(peerId, inputField.value);
   return album.album_id;
 }
 
@@ -368,6 +370,7 @@ function StoriesAlbums(props: {
               text: 'Stories.Albums.Rename',
               verify: () => stories.canEdit,
               onClick: async() => {
+                const managers = bindManagersToSession(rootScope.managers);
                 const inputField = new InputField({
                   maxLength: 64,
                   placeholder: 'Stories.Albums.CreatePlaceholder',
@@ -386,7 +389,7 @@ function StoriesAlbums(props: {
                 }
 
                 if(inputField.value === album.title) return;
-                rootScope.managers.appStoriesManager.updateAlbum(props.peerId, id, {title: inputField.value}).catch(() => {
+                managers.appStoriesManager.updateAlbum(props.peerId, id, {title: inputField.value}).catch(() => {
                   toastNew({langPackKey: 'Error.AnError'});
                 });
               }
@@ -397,6 +400,7 @@ function StoriesAlbums(props: {
               verify: () => stories.canEdit,
               danger: true,
               onClick: async() => {
+                const managers = bindManagersToSession(rootScope.managers);
                 try {
                   await confirmationPopup({
                     titleLangKey: 'Stories.Albums.Delete',
@@ -407,7 +411,7 @@ function StoriesAlbums(props: {
                   return;
                 }
 
-                rootScope.managers.appStoriesManager.deleteAlbum(props.peerId, id).catch(() => {
+                managers.appStoriesManager.deleteAlbum(props.peerId, id).catch(() => {
                   toastNew({langPackKey: 'Error.AnError'});
                 });
               }
@@ -439,6 +443,7 @@ function StoriesAlbums(props: {
 }
 
 async function openAddToAlbumPopup(peerId: PeerId, albumId: number) {
+  const managers = bindManagersToSession(rootScope.managers);
   const result = await new Promise<{added: number[], removed: number[]} | null>((resolve) => {
     showChooseStoryPopup({peerId, albumId, onFinish: resolve});
   });
@@ -446,7 +451,7 @@ async function openAddToAlbumPopup(peerId: PeerId, albumId: number) {
   if(!result) return;
   const {added, removed} = result;
   if(!added.length && !removed.length) return;
-  rootScope.managers.appStoriesManager.updateAlbum(peerId, albumId, {
+  managers.appStoriesManager.updateAlbum(peerId, albumId, {
     addStories: added.length ? added : undefined,
     deleteStories: removed.length ? removed : undefined
   }).catch(() => {
@@ -875,7 +880,7 @@ export function StoriesProfileList(props: {
 
   const selection = props.withSelection ? new StoriesSelection({
     container: props.scrollable.container,
-    managers: rootScope.managers,
+    managers: bindManagersToSession(rootScope.managers),
     listenerSetter: props.listenerSetter,
     isArchive: props.archive,
     chatId: props.peerId.isAnyChat() ? props.peerId.toChatId() : undefined,

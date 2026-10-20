@@ -46,13 +46,14 @@ export async function processDialogElementForReaction({
   date: number,
   mediaSize?: MediaSize
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const {dom} = dialogElement;
   if(reaction) {
     const stickerContainer = document.createElement('div');
     stickerContainer.classList.add('reacted-list-reaction-icon');
 
     if(reaction._ === 'reactionEmoji') {
-      const availableReaction = await rootScope.managers.appReactionsManager.getReaction(reaction.emoticon);
+      const availableReaction = await managers.appReactionsManager.getReaction(reaction.emoticon);
 
       wrapSticker({
         doc: availableReaction.static_icon,
@@ -81,7 +82,7 @@ export async function processDialogElementForReaction({
     fragment.append(span, c);
     replaceContent(dom.lastMessageSpan, fragment);
   } else if(peerId.isUser()) {
-    const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId());
+    const user = await managers.appUsersManager.getUser(peerId.toUserId());
     replaceContent(dom.lastMessageSpan, getUserStatusString(user));
   } else if(date) {
     replaceContent(dom.lastMessageSpan, formatFullSentTime(date, false));
@@ -91,8 +92,10 @@ export async function processDialogElementForReaction({
 import {createSignal, onCleanup, onMount} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showReactedListPopup(message$: Message.message, initialReaction?: Reaction) {
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
   const listenerSetter = new ListenerSetter();
@@ -127,7 +130,7 @@ export default async function showReactedListPopup(message$: Message.message, in
           participantPeerId,
           knownReaction: reaction,
           isMyReaction,
-          managers: rootScope.managers,
+          managers: bindManagersToSession(rootScope.managers),
           onConfirm: () => {
             setShow(false);
           }
@@ -164,11 +167,11 @@ export default async function showReactedListPopup(message$: Message.message, in
   return reaction;
   }
 
-  const message = await rootScope.managers.appMessagesManager.getGroupsFirstMessage(message$);
+  const message = await managers.appMessagesManager.getGroupsFirstMessage(message$);
   if(!middleware()) return;
   const [canViewReadParticipants, canDeleteReactions] = await Promise.all([
-    rootScope.managers.appMessagesManager.canViewMessageReadParticipants(message),
-    rootScope.managers.appReactionsManager.canDeleteParticipantReactions(message.peerId)
+    managers.appMessagesManager.canViewMessageReadParticipants(message),
+    managers.appReactionsManager.canDeleteParticipantReactions(message.peerId)
   ]);
   if(!middleware()) return;
   // this.body.append(generateDelimiter());
@@ -226,7 +229,7 @@ export default async function showReactedListPopup(message$: Message.message, in
   let hasReadParticipants = false;
   if(canViewReadParticipants) {
     try {
-      const readUserIds = await rootScope.managers.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
+      const readUserIds = await managers.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
       if(!middleware()) return;
       if(!readUserIds.length) {
         throw '';
@@ -373,7 +376,7 @@ export default async function showReactedListPopup(message$: Message.message, in
     });
 
     return (
-      <PopupElement class="popup-reacted-list" closable show={show()} containerProps={{'aria-label': I18n.format('Reactions', true)}}>
+      <PopupElement managers={managers} class="popup-reacted-list" closable show={show()} containerProps={{'aria-label': I18n.format('Reactions', true)}}>
         <PopupElement.Header ref={(element) => headerEl = element}>
           <PopupElement.CloseButton />
         </PopupElement.Header>

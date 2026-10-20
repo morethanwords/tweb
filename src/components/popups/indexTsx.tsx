@@ -2,9 +2,12 @@ import {createContext, useContext, createSignal, createMemo, onCleanup, JSX, Sho
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
+import deferredPromise from '@helpers/cancellablePromise';
 import {IconTsx} from '@components/iconTsx';
 import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 import overlayCounter from '@helpers/overlayCounter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -76,7 +79,8 @@ export type PopupContextValue = {
    * Note: Will trigger isConfirmationNeededOnClose if was set
    */
   hide: () => void,
-  destroy: () => void,
+  /** Closes it outright; settles once its content is disposed */
+  destroy: () => Promise<void>,
   destroyed: boolean,
   managers: AppManagers,
   middlewareHelper: MiddlewareHelper,
@@ -105,6 +109,7 @@ export type PopupContextValue = {
   /** `.popup-container` — what an imperative helper wants to render into or measure. */
   container: HTMLElement | undefined,
   kind: symbol | undefined,
+  keepOnAccountSwitch: boolean,
   old?: boolean
 };
 
@@ -155,7 +160,9 @@ const PopupElement = (props: {
   children: JSX.Element,
   show?: boolean,
   kind?: symbol,
-  animationGroup?: AnimationItemGroup // the popup's OWN content group - excluded from the on-show pause sweep
+  animationGroup?: AnimationItemGroup, // the popup's OWN content group - excluded from the on-show pause sweep
+  /** It belongs to something that outlives the account the tab shows - a call - and stays when it switches. */
+  keepOnAccountSwitch?: boolean
 } & PopupOptions) => {
   const [shown, setShown] = createSignal(false);
   const [store, setStore] = createStore<PopupContextValue['store']>({});
@@ -167,7 +174,10 @@ const PopupElement = (props: {
   const [hasFlowButtons, setHasFlowButtons] = createSignal(false);
   const controllerContext = useContext(PopupControllerContext);
 
-  const managers = props.managers || PopupElement.MANAGERS;
+  // * a popup is a screen of the account it opens on, unless it is given managers of its own (a call's)
+  const managers = bindManagersToSession(props.managers || PopupElement.MANAGERS);
+  // * and one asked for by an account session that is over, or on its way out, is not shown over the next
+  const session = getManagersSession(managers);
   // Capture the active overlay root once. A popup opened while the client is popped out must stay in
   // the Document PiP window for its whole life; reading the live root in the Portal mount would yank
   // it to the tab the instant the app moves back.
@@ -198,6 +208,10 @@ const PopupElement = (props: {
 
   const show = () => {
     if(shown() || destroyed()) return;
+    if(!props.keepOnAccountSwitch && isSessionLeaving(session)) {
+      destroy();
+      return;
+    }
 
     const realmDocument = capturedRoot.ownerDocument || document;
     previouslyFocusedEl = realmDocument.activeElement as HTMLElement;
@@ -216,7 +230,7 @@ const PopupElement = (props: {
             return false;
           }
         }
-        return destroy();
+        destroy();
       }
     };
     setNavigationItem(navItem);
@@ -300,8 +314,10 @@ const PopupElement = (props: {
     appNavigationController.backByItem(navItem);
   };
 
+  // * settles once the content is disposed, with what its cleanups did (an account switch waits for it)
+  const disposed = deferredPromise<void>();
   const destroy = () => {
-    if(destroyed()) return;
+    if(destroyed()) return disposed;
 
     focusTrap?.deactivate();
     props.onClose?.()
@@ -338,7 +354,10 @@ const PopupElement = (props: {
       }
 
       props.onCloseAfterTimeout?.();
+      disposed.resolve();
     }, 250);
+
+    return disposed;
   };
 
   const [destroyed, setDestroyed] = createSignal(false);
@@ -394,6 +413,7 @@ const PopupElement = (props: {
     get element() { return popupElement(); },
     get container() { return containerElement(); },
     kind: props.kind,
+    keepOnAccountSwitch: !!props.keepOnAccountSwitch,
     old: props.old
   };
 

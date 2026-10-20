@@ -18,7 +18,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapSingleEmoji from '@lib/richTextProcessor/wrapSingleEmoji';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import {makeMediaSize} from '@helpers/mediaSize';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import VisibilityIntersector, {OnVisibilityChangeItem} from '@components/visibilityIntersector';
 import mediaSizes from '@helpers/mediaSizes';
 import {StickerSet} from '@layer';
@@ -60,6 +60,7 @@ import {
 } from '@helpers/emojiSkinTone';
 import showEmojiTonePicker from '@components/emoticonsDropdown/emojiTonePicker';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 const loadedURLs: Set<string> = new Set();
@@ -252,7 +253,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   public initPromise: Promise<void>;
 
   constructor(options: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     isStandalone?: boolean,
     noRegularEmoji?: boolean,
     noSearchGroups?: boolean,
@@ -482,6 +483,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   }
 
   public init() {
+    const managers = bindManagersToSession(this.managers);
     super.init();
     this.init = undefined;
 
@@ -571,15 +573,15 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     const mainSetsResult = this.mainSets?.();
     const promise = Promise.all([
       !this.preloaderDelay ? undefined : pause(this.preloaderDelay),
-      !this.noRegularEmoji && this.managers.appEmojiManager.getRecentEmojis('native'),
-      !this.isStandalone && this.managers.appEmojiManager.getRecentEmojis('custom'),
+      !this.noRegularEmoji && managers.appEmojiManager.getRecentEmojis('native'),
+      !this.isStandalone && managers.appEmojiManager.getRecentEmojis('custom'),
       !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
-        return isPremiumPurchaseHidden ? undefined : this.managers.appEmojiManager.getCustomEmojis();
+        return isPremiumPurchaseHidden ? undefined : managers.appEmojiManager.getCustomEmojis();
       }),
       mainSetsResult && Promise.all(Array.isArray(mainSetsResult) ? mainSetsResult : [mainSetsResult]),
       this.additionalSets?.(),
       this.additionalLocalStickerSet?.(),
-      !this.noRegularEmoji && this.managers.appEmojiManager.getEmojiVariants()
+      !this.noRegularEmoji && managers.appEmojiManager.getEmojiVariants()
     ]).then(([_, recent, recentCustom, sets, mainSets, additionalSets, additionalLocalStickerSet, emojiVariants]) => {
       this.emojiVariants = emojiVariants || {};
       this.applySavedEmojiVariants();

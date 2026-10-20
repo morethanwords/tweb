@@ -63,6 +63,8 @@ export default class ChatRecording {
   private recordingType: 'voice' | 'video' = 'voice';
   private recordPaused = false;
   private recordCanceled = false;
+  // * a start still waiting for the microphone or the camera finds the chat gone (an account switch closes it)
+  private destroyed = false;
   private recordStartTime = 0;
   private recordAccumulatedMs = 0;
   private recordingOverlayListener: Listener;
@@ -986,7 +988,7 @@ export default class ChatRecording {
       }
     }
 
-    if(restricted) {
+    if(restricted || this.destroyed) {
       this.input.chatInput.classList.remove('is-locked');
       return;
     }
@@ -1006,6 +1008,13 @@ export default class ChatRecording {
     }
 
     this.recorder.start().then(() => {
+      // * the chat went while the microphone was being asked for: it is let go at once, nothing recorded
+      if(this.destroyed) {
+        this.recordCanceled = true;
+        this.recorder.stop();
+        return;
+      }
+
       this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
       this.recordCanceled = false;
       this.recordPaused = false;
@@ -1110,6 +1119,10 @@ export default class ChatRecording {
     // in settings takes effect on the next recording.
     this.videoRecorder.setDeviceIds(appSettings.callDevices?.cameraId, appSettings.callDevices?.microphoneId);
 
+    if(this.destroyed) {
+      return;
+    }
+
     try {
       await this.videoRecorder.start();
     } catch(e) {
@@ -1130,6 +1143,14 @@ export default class ChatRecording {
       }
       this.setRecording(false);
       this.input.chatInput.classList.remove('is-locked');
+      return;
+    }
+
+    // * the chat went while the camera was being asked for: it is let go at once, nothing recorded
+    if(this.destroyed) {
+      this.recordCanceled = true;
+      this.videoRecorder.stop();
+      this.videoRecorder.releaseStream();
       return;
     }
 
@@ -1294,6 +1315,13 @@ export default class ChatRecording {
   }
 
   public destroy() {
+    this.destroyed = true;
+    // A recording still in flight goes with the chat (an account switch closes it): cancelling it lets the
+    // microphone - or the camera - go, which nothing else would.
+    if(this.active) {
+      this.onCancelRecordClick();
+    }
+
     // The round-preview element lives on <body>, outside the input subtree, so
     // tear it down explicitly. Also release the camera in case a recording (or
     // its warm-up) is still in flight.

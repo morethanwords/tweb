@@ -756,7 +756,8 @@ export default class Chat extends EventListenerBase<{
 
     const freezeObservers = (freeze: boolean) => {
       const cb = () => {
-        this.bubbles.observer?.toggleObservingNew(freeze);
+        // * the unfreeze is delayed, and the chat can be destroyed by then (an account switch closes it)
+        this.bubbles?.observer?.toggleObservingNew(freeze);
         animationIntersector.toggleIntersectionGroup(this.animationGroup, freeze);
         if(freeze) {
           animationIntersector.checkAnimations(freeze, this.animationGroup);
@@ -881,7 +882,8 @@ export default class Chat extends EventListenerBase<{
 
   public beforeDestroy() {
     this.destroyPromise = deferredPromise();
-    this.bubbles.cleanup();
+    // * a chat that never had a peer (the first one, closed by an account switch) has no bubbles yet
+    this.bubbles?.cleanup();
     this.searchSignal?.(undefined);
   }
 

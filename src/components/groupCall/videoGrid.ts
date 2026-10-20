@@ -230,7 +230,8 @@ export default class GroupCallVideoGrid {
         participant,
         result.video,
         (animate) => this.scheduleLayout(animate),
-        original?.videoWidth ? {width: original.videoWidth, height: original.videoHeight} : undefined
+        original?.videoWidth ? {width: original.videoWidth, height: original.videoHeight} : undefined,
+        instance.accountNumber
       );
       created.setSpeaking(instance.isSpeaking(peerId));
       // The SFU can hand a source to a newcomer before the row saying its last owner left: that

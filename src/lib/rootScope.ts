@@ -6,7 +6,7 @@ import type {UserTyping} from '@appManagers/appProfileManager';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {ConnectionStatusChange} from '@lib/mtproto/connectionStatus';
 import type {GroupCallId} from '@appManagers/appGroupCallsManager';
-import type {AppManagers} from '@lib/managers';
+import type {TabManagers} from '@lib/managers';
 import type {GlobalNotifySettingsKey, StateSettings} from '@config/state';
 import type {Progress} from '@lib/appDownloadManager';
 import type {CallId} from '@appManagers/appCallsManager';
@@ -235,6 +235,8 @@ export type BroadcastEvents = {
   'managers_ready': void, // ! inner
 
   'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId},
+  // * tab-local: this tab now shows another signed-in account, its mirrors and state already in place
+  'account_switched': {from: ActiveAccountNumber, to: ActiveAccountNumber},
 
   'resizing_left_sidebar': void,
   'right_sidebar_toggle': boolean,
@@ -279,7 +281,7 @@ export type BroadcastEventsListeners = {
 export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public myId: PeerId;
   private connectionStatus: {[name: string]: ConnectionStatusChange};
-  public managers: AppManagers;
+  public managers: TabManagers;
   public premium: boolean;
 
   constructor() {
@@ -334,6 +336,19 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
     ...args: ArgumentTypes<L[T]>
   ) {
     super.dispatchEvent(name, ...args);
+  }
+
+  /**
+   * About what belongs to an account the tab may no longer show (a call's): this tab hears it at once, the
+   * other tabs as that account's - `dispatchEvent` would name the account the tab shows.
+   */
+  public dispatchEventOfAccount<T extends keyof BroadcastEventsListeners>(
+    accountNumber: ActiveAccountNumber,
+    name: T,
+    ...args: ArgumentTypes<BroadcastEventsListeners[T]>
+  ) {
+    super.dispatchEvent(name, ...args);
+    MTProtoMessagePort.getInstance().invokeVoid('event', {name, args, accountNumber});
   }
 }
 

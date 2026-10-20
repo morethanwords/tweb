@@ -14,6 +14,7 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager, {AppDownloadManager} from '@lib/appDownloadManager';
 import I18n from '@lib/langPack';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import {i18n} from '@lib/langPack';
 import {useAppSettings} from '@stores/appSettings';
 import {unwrap} from 'solid-js/store';
@@ -148,6 +149,7 @@ export class AppBackgroundTab {
     wallPaper: WallPaper,
     themeSettings?: AppThemeSettings
   ) => {
+    const managers = bindManagersToSession(rootScope.managers);
     const _tempId = ++AppBackgroundTab.tempId;
     const middleware = () => _tempId === AppBackgroundTab.tempId;
 
@@ -231,7 +233,7 @@ export class AppBackgroundTab {
         return;
       }
 
-      const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
+      const cacheContext = await managers.thumbsStorage.getCacheContext(doc);
       if(needBlur(wallPaper)) {
         setTimeout(async() => {
           try {
@@ -240,7 +242,7 @@ export class AppBackgroundTab {
               return;
             }
 
-            const currentCacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
+            const currentCacheContext = await managers.thumbsStorage.getCacheContext(doc);
             const sourceUrl = currentCacheContext.url || await downloadWallPaper();
             if(!middleware()) {
               deferred.resolve();
@@ -384,6 +386,8 @@ const ChatBackground = () => {
   });
 
   const onUploadClick = () => {
+    // * the account session the wallpaper is for: a switch to another account while a file is picked leaves it there
+    const managers = bindManagersToSession(rootScope.managers);
     requestFile('image/x-png,image/png,image/jpeg').then(async(file) => {
       try {
         file = await prepareWallPaperImage(file);
@@ -393,19 +397,19 @@ const ChatBackground = () => {
         return;
       }
 
-      const wallPaper = await rootScope.managers.appDocsManager.prepareWallPaperUpload(file);
+      const wallPaper = await managers.appDocsManager.prepareWallPaperUpload(file);
       // Seed ChatBackgroundStore with the local blob URL so the picker thumbnail
       // (which now goes through `<ChatBackground>` → ChatBackgroundStore.getBackground)
       // resolves the in-progress upload preview without trying to hit the network.
       const uploadDoc = (wallPaper as WallPaper.wallPaper).document as Document.document;
       if(uploadDoc) {
-        const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(uploadDoc);
+        const cacheContext = await managers.thumbsStorage.getCacheContext(uploadDoc);
         ChatBackgroundStore.setBackgroundUrlToCache({
           slug: (wallPaper as WallPaper.wallPaper).slug,
           url: cacheContext.url
         });
       }
-      const uploadPromise = rootScope.managers.appDocsManager.uploadWallPaper(wallPaper.id);
+      const uploadPromise = managers.appDocsManager.uploadWallPaper(wallPaper.id);
       const uploadDeferred: CancellablePromise<any> = appDownloadManager.getNewDeferredForUpload(file.name, uploadPromise);
 
       const deferred = deferredPromise<void>();
@@ -531,8 +535,9 @@ const ChatBackground = () => {
   // Build synchronously from the cached list (warmed by the General Settings preload, or a prior
   // open) so the grid + its skeleton tiles are present in the very first frame of the tab-open
   // slide, instead of popping in when the async getWallPapers resolves (around when the slide ends).
-  if(ChatBackgroundStore.cachedWallPapers) {
-    buildGrid(ChatBackgroundStore.cachedWallPapers);
+  const cachedWallPapers = ChatBackgroundStore.getCachedWallPapers();
+  if(cachedWallPapers) {
+    buildGrid(cachedWallPapers);
   }
 
   // Always refresh from the server: keep the cache warm for the next open, and build now if the
@@ -542,7 +547,7 @@ const ChatBackground = () => {
 
   createEffect(on(wallPapersResource, (wallPapers) => {
     if(!wallPapers) return;
-    ChatBackgroundStore.cachedWallPapers = wallPapers;
+    ChatBackgroundStore.setCachedWallPapers(wallPapers);
     if(!loaded()) {
       buildGrid(wallPapers);
     }

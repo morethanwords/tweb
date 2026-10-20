@@ -24,6 +24,7 @@ import generateQId from '@appManagers/utils/inlineBots/generateQId';
 import rootScope from '@lib/rootScope';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default function showWebAppPreparedMessagePopup(options: {
   message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage,
@@ -44,6 +45,7 @@ export default function showWebAppPreparedMessagePopup(options: {
   };
 
   const onShare = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const availableTypes = new Set(message.peer_types.map((it) => it._));
 
     const chosenPeerId = await showPickUser2Popup({
@@ -71,7 +73,7 @@ export default function showWebAppPreparedMessagePopup(options: {
 
     await hotReloadGuard.appImManager.setInnerPeer({peerId: chosenPeerId});
     const queryAndResultIds = generateQId(message.query_id, message.result.id);
-    const sent = await rootScope.managers.appInlineBotsManager.sendInlineResult(chosenPeerId, botId, queryAndResultIds, {
+    const sent = await managers.appInlineBotsManager.sendInlineResult(chosenPeerId, botId, queryAndResultIds, {
       inlineResult: message.result,
       ...hotReloadGuard.appImManager.chat.getMessageSendingParams(),
       clearDraft: true

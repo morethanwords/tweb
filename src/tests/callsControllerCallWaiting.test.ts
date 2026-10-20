@@ -37,7 +37,15 @@ const mocks = vi.hoisted(() => {
     public getInputPhoneCall = vi.fn((): unknown => undefined);
     private listeners = new Map<string, Set<Listener>>();
 
-    constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId}) {
+    // the account the controller bound the call to: its managers and identity are the call's own
+    public managers: any;
+    public accountNumber: number;
+    public myId: PeerId;
+
+    constructor(options: {isOutgoing: boolean, interlocutorUserId: UserId, managers?: any, accountNumber?: number, myId?: PeerId}) {
+      this.managers = options.managers;
+      this.accountNumber = options.accountNumber;
+      this.myId = options.myId;
       this.isOutgoing = options.isOutgoing;
       this.interlocutorUserId = options.interlocutorUserId;
     }

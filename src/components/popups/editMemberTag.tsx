@@ -8,6 +8,7 @@ import {toastNew} from '@components/toast';
 import {cleanMemberTag, getMemberTagRole, MemberTagRole} from '@appManagers/utils/chats/memberTag';
 import {I18nTsx} from '@helpers/solid/i18n';
 import rootScope from '@lib/rootScope';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 import styles from '@components/popups/editMemberTag.module.scss';
 
 export type EditMemberTagPopupOptions = {
@@ -39,9 +40,11 @@ function FocusWhenShown(props: {element: HTMLElement}) {
  */
 export default async function showEditMemberTagPopup(options: EditMemberTagPopupOptions) {
   const {chatId, peerId} = options;
+  // * the account it is asked on: it does not open once the tab is on another
+  const managers = bindManagersToSession(rootScope.managers);
   let {rank, role} = options;
   if(!role) {
-    const participant = await rootScope.managers.appProfileManager.getParticipant(chatId, peerId).catch((): undefined => undefined);
+    const participant = await managers.appProfileManager.getParticipant(chatId, peerId).catch((): undefined => undefined);
     role = getMemberTagRole(participant);
     rank ??= participant && (participant as {rank?: string}).rank;
   }
@@ -57,7 +60,7 @@ export default async function showEditMemberTagPopup(options: EditMemberTagPopup
       }
 
       try {
-        await rootScope.managers.appChatsManager.editParticipantRank(chatId, peerId, value);
+        await managers.appChatsManager.editParticipantRank(chatId, peerId, value);
       } catch(err) {
         console.error('editChatParticipantRank failed', err);
         toastNew({langPackKey: 'Error.AnError'});
@@ -68,7 +71,7 @@ export default async function showEditMemberTagPopup(options: EditMemberTagPopup
     };
 
     return (
-      <PopupElement class={styles.popup} closable initialFocus={() => inputField.input}>
+      <PopupElement class={styles.popup} managers={managers} closable initialFocus={() => inputField.input}>
         <PopupElement.Header>
           <PopupElement.CloseButton />
           <PopupElement.Title title="MemberTag.EditTitle" />

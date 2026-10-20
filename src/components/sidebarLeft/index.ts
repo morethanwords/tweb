@@ -40,7 +40,7 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import lastItem from '@helpers/array/lastItem';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import themeController from '@helpers/themeController';
 import contextMenuController from '@helpers/contextMenuController';
 import appDialogsManager from '@lib/appDialogsManager';
@@ -82,6 +82,8 @@ import filterAsync from '@helpers/array/filterAsync';
 import pause from '@helpers/schedulers/pause';
 import showAccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
+import switchAccount from '@lib/accounts/switchAccount';
+import {hasCallInTab} from '@lib/calls/callAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider, {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
@@ -93,7 +95,6 @@ import {addShortcutListener} from '@helpers/shortcutListener';
 import tsNow from '@helpers/tsNow';
 import {toastNew} from '@components/toast';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
-import {saveEncryptionKeyForHandoff} from '@lib/passcode/keyHandoff';
 import createLockButton from '@components/sidebarLeft/lockButton';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
 import ChatTypeMenu from '@components/chatTypeMenu';
@@ -112,6 +113,7 @@ import isCommunity from '@appManagers/utils/communities/isCommunity';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type SearchInitResult = {
@@ -125,6 +127,8 @@ type SearchInitResult = {
 const ARCHIVE_SEARCH_KEY = 'archive';
 
 export class AppSidebarLeft extends SidebarSlider {
+  // * the column lives as long as the tab, whichever account it shows
+  protected declare managers: TabManagers;
   private chatListContainer: HTMLElement;
   private buttonsContainer: HTMLElement;
   private toolsBtn: HTMLElement;
@@ -162,7 +166,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 
-  construct(managers: AppManagers) {
+  construct(managers: TabManagers) {
     this.managers = managers;
 
     this.chatListContainer = document.getElementById('chatlist-container');
@@ -277,7 +281,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     attachClickEvent(statusBtnIcon, () => {
       openEmojiStatusPicker({
-        managers: this.managers,
+        managers: bindManagersToSession(this.managers),
         anchorElement: statusBtnIcon,
         onChosen: () => {
           fireOnNew = true
@@ -369,10 +373,20 @@ export class AppSidebarLeft extends SidebarSlider {
       toggleRightButtons(rootScope.premium, isUsingPasscode);
     });
 
+    // * the search shows them the moment it opens; nothing is lost if the server refuses for now
+    const warmTopPeers = () => this.managers.appUsersManager.getTopPeers('correspondents').catch(noop);
+
+    // * another account: its own emoji status and archive, even when both are premium
+    rootScope.addEventListener('account_switched', () => {
+      onPremium(rootScope.premium);
+      void updateArchivedCount().catch(noop);
+      void warmTopPeers();
+    });
+
     const [appSettings] = useAppSettings();
     toggleRightButtons(rootScope.premium, appSettings.passcode?.enabled);
 
-    this.managers.appUsersManager.getTopPeers('correspondents');
+    void warmTopPeers();
 
     this.initNavigation();
 
@@ -503,7 +517,8 @@ export class AppSidebarLeft extends SidebarSlider {
       noHistory: true
     };
     appNavigationController.removeByType('global-search-focus');
-    appNavigationController.pushItem(navigationItem);
+    // * the fallback goes under whatever is up already: a call's panel kept through an account switch
+    appNavigationController.unshiftItem(navigationItem);
   }
 
   public isCollapsed() {
@@ -702,9 +717,10 @@ export class AppSidebarLeft extends SidebarSlider {
         this.openArchiveTab();
       },
       verify: async() => {
-        const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
-        const hasArchiveStories = await this.managers.appStoriesManager.hasArchive();
-        return !!folder.length || hasArchiveStories || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
+        const managers = bindManagersToSession(this.managers);
+        const folder = await managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
+        const hasArchiveStories = await managers.appStoriesManager.hasArchive();
+        return !!folder.length || hasArchiveStories || !(await managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
       }
     };
 
@@ -794,10 +810,11 @@ export class AppSidebarLeft extends SidebarSlider {
       buttonOptions: {ariaLabel: 'MultiAccount.More'},
       positionPadding,
       onOpenBefore: async() => {
+        const managers = bindManagersToSession(this.managers);
         const emptyAttachMenuBots: AttachMenuBot[] = [];
         const attachMenuBots = await Promise.race([
           pause(30).then(() => emptyAttachMenuBots),
-          this.managers.appAttachMenuBotsManager.getAttachMenuBots().catch(() => emptyAttachMenuBots)
+          managers.appAttachMenuBotsManager.getAttachMenuBots().catch(() => emptyAttachMenuBots)
         ]);
         const buttons = filteredButtonsSliced.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
@@ -846,7 +863,7 @@ export class AppSidebarLeft extends SidebarSlider {
         for(let i = 1; i <= totalAccounts; i++) {
           const accountNumber = i as ActiveAccountNumber;
           if(accountNumber === getCurrentAccount()) {
-            const user = await this.managers.appUsersManager.getSelf();
+            const user = await managers.appUsersManager.getSelf();
             accountButtons.push({
               avatarInfo: {
                 accountNumber: getCurrentAccount(),
@@ -883,20 +900,12 @@ export class AppSidebarLeft extends SidebarSlider {
               },
               className: 'btn-menu-account-item',
               regularText: content,
-              onClick: async(e) => {
-                const newTab = e.ctrlKey || e.metaKey;
-                if(!newTab) {
-                  appImManager.goOffline();
-
-                  const chatListEl = document.querySelector('.chatlist-container')?.firstElementChild;
-                  chatListEl.classList.add('chatlist-exit');
-                  await doubleRaf();
-                  chatListEl.classList.add('chatlist-exiting');
-                  await pause(200);
-
-                  await this.saveEncryptionKeyBeforeSwitchingAccounts();
+              onClick: (e) => {
+                if(e.ctrlKey || e.metaKey) {
+                  changeAccount(accountNumber, true);
+                } else {
+                  switchAccount(accountNumber);
                 }
-                changeAccount(accountNumber, newTab);
               }
             });
           }
@@ -919,15 +928,6 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     return buttonMenuToggle;
-  }
-
-  private async saveEncryptionKeyBeforeSwitchingAccounts() {
-    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
-    if(!isUsingPasscode) return;
-
-    const openTabs = apiManagerProxy.getOpenTabsCount();
-
-    openTabs <= 1 && await saveEncryptionKeyForHandoff();
   }
 
 
@@ -1726,6 +1726,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.searchGroups.recent.setNameRight({
       onClick: () => {
+        const managers = bindManagersToSession(this.managers);
         confirmationPopup({
           descriptionLangKey: 'Search.Confirm.ClearHistory',
           button: {
@@ -1733,7 +1734,7 @@ export class AppSidebarLeft extends SidebarSlider {
             isDanger: true
           }
         }).then(() => {
-          return this.managers.appUsersManager.clearRecentSearch().then(() => {
+          return managers.appUsersManager.clearRecentSearch().then(() => {
             this.searchGroups.recent.clear();
           });
         });
@@ -1789,13 +1790,14 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private async watchChannelsTabVisibility(listenerSetter: ListenerSetter) {
     const checkChannelsVisiblity = async() => {
+      const managers = bindManagersToSession(this.managers);
       if(!this.searchSuper) return;
-      const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
+      const dialogs = await managers.dialogsStorage.getCachedDialogs();
 
       if(!this.searchSuper) return;
       let hasChannels = false;
       for(const dialog of dialogs) {
-        hasChannels = await this.managers.appPeersManager.isBroadcast(dialog.peerId);
+        hasChannels = await managers.appPeersManager.isBroadcast(dialog.peerId);
         if(hasChannels) break;
       }
 
@@ -1882,15 +1884,17 @@ export class AppSidebarLeft extends SidebarSlider {
       return;
     }
 
-    localStorage.setItem('previous-account', getCurrentAccount() + '');
+    // * the sign-in screen's back button returns here
+    await sessionStorage.set({previous_account: getCurrentAccount()});
     const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
     const openTabs = apiManagerProxy.getOpenTabsCount();
 
-    const newTab = e?.ctrlKey || e?.metaKey || (openTabs <= 1 && isUsingPasscode);
+    // * the sign-in screen is a page of its own: a call in this tab is not ended for it
+    const newTab = e?.ctrlKey || e?.metaKey || (openTabs <= 1 && isUsingPasscode) || hasCallInTab();
     if(!newTab) {
       appImManager.goOffline();
 
-      localStorage.setItem('should-animate-auth', 'true');
+      await sessionStorage.set({should_animate_auth: 1});
 
       const chatsPageEl = document.querySelector('.page-chats');
       chatsPageEl.classList.add('main-screen-exit');

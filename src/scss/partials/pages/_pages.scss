@@ -42,6 +42,11 @@
   &-exiting {
     opacity: 0;
     transform: translateY(18px) scale(1.01);
+
+    // * reduced: the chats of the account switched from fade where they stand
+    @include animation-level-below(2) {
+      transform: none;
+    }
   }
 }
 

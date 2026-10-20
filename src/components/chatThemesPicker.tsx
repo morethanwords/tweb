@@ -16,6 +16,7 @@ import themeController from '@helpers/themeController';
 import liteMode from '@helpers/liteMode';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type ThemeItem = {
   container: HTMLElement;
@@ -166,6 +167,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
   const [themesPromise] = createResource(() => rootScope.managers.appThemesManager.getThemes());
 
   const buildThemes = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const themes = themesPromise();
     if(!themes) return;
 
@@ -174,7 +176,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     // slot permanently blank — there is no retry — so wait for the set first. It is cached, so this
     // is free on every build after the first. Hit by the empty-column tip cards, which mount as
     // soon as the IM page does.
-    await rootScope.managers.appStickersManager.getAnimatedEmojiStickerSet();
+    await managers.appStickersManager.getAnimatedEmojiStickerSet();
     if(!middleware()) return;
 
     const defaultThemes = themes.filter((theme) => theme.pFlags.default);
@@ -235,7 +237,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
           width: size,
           height: size,
           emoji: theme.emoticon,
-          managers: rootScope.managers,
+          managers,
           loadPromises,
           middleware,
           play: false,

@@ -11,7 +11,7 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {IS_SAFARI} from '@environment/userAgent';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
-import {hotEffect} from '@helpers/hotModule';
+import {hotEffect, hotListen} from '@helpers/hotModule';
 
 let processing = false;
 const pollStories = () => {
@@ -44,6 +44,8 @@ hotEffect(import.meta.hot, () => {
   const interval = setInterval(pollStories, 300e3);
   return () => clearInterval(interval);
 });
+// * the stories shown were the previous account's - their unmounts still hold the counters
+hotListen(import.meta.hot, rootScope, 'account_switched', () => wrappedStories.clear());
 
 type CommonProperties = {
   peerId: PeerId,

@@ -16,6 +16,7 @@ from '@components/forumTab/getGroupForumMembershipAction';
 import joinChat from '@components/chat/joinChat';
 import {toastNew} from '@components/toast';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 export class GroupForumTab extends ForumTab {
@@ -169,12 +170,13 @@ export class GroupForumTab extends ForumTab {
   }
 
   async asyncInit(): Promise<void> {
+    const managers = bindManagersToSession(this.managers);
     await super.asyncInit();
 
     const middleware = this.middlewareHelper.get();
     const peerId = this.peerId;
 
-    this.managers.apiUpdatesManager.subscribeToChannelUpdates(this.peerId.toChatId());
+    managers.apiUpdatesManager.subscribeToChannelUpdates(this.peerId.toChatId());
     middleware.onDestroy(() => {
       this.managers.apiUpdatesManager.unsubscribeFromChannelUpdates(this.peerId.toChatId());
     });

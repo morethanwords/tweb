@@ -72,6 +72,7 @@ import styles from '@components/popups/sendGift.module.scss';
 import Animated from '@helpers/solid/animations';
 import smoothScrollBehavior from '@helpers/dom/smoothScrollBehavior';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
@@ -840,10 +841,11 @@ function ChosenGiftPage(props: {
   }));
 
   async function handleSubmit() {
+    const managers = bindManagersToSession(rootScope.managers);
     setSending(true);
     let invoice: InputInvoice;
     if(props.chosenGift.type === 'stargift') {
-      const peer = await rootScope.managers.appPeersManager.getInputPeerById(props.peerId)
+      const peer = await managers.appPeersManager.getInputPeerById(props.peerId)
       invoice = {
         _: 'inputInvoiceStarGift',
         pFlags: {
@@ -856,7 +858,7 @@ function ChosenGiftPage(props: {
       };
     } else {
       const payWithStars$ = payWithStars();
-      const inputUser = await rootScope.managers.appUsersManager.getUserInput(props.peerId.toUserId());
+      const inputUser = await managers.appUsersManager.getUserInput(props.peerId.toUserId());
       if(payWithStars$) {
         invoice = {
           _: 'inputInvoicePremiumGiftStars',
@@ -1106,6 +1108,7 @@ export default async function showSendGiftPopup(options: {
     filter?: StarGiftAttribute;
   };
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const {peerId, birthday, resaleParams} = options;
   const [show, setShow] = createSignal(true);
   let containerEl!: HTMLDivElement;
@@ -1169,6 +1172,7 @@ export default async function showSendGiftPopup(options: {
 
   createPopup(() => (
     <PopupElement
+      managers={managers}
       class={styles.popup}
       closable
       show={show()}

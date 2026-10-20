@@ -20,6 +20,7 @@ import showTooltip from '@components/tooltip';
 import kindaFuzzyFinder from '@components/addToFolderDropdownMenu/kindaFuzzyFinder';
 import styles from '@components/addToFolderDropdownMenu/styles.module.scss';
 import {addToFilter, highlightTextNodes, log, removeFromFilter, wrapFolderTitleInSpan} from '@components/addToFolderDropdownMenu/utils';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 const MIN_FUZZY_SCORE = 0.25;
@@ -155,6 +156,7 @@ export const useToggleDialogInFilter = ({dialog, onNewDialog, isInFilter}: UseTo
   let hasRequestInProgress = false;
 
   return async(filter: MyDialogFilter) => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(hasRequestInProgress || !filter) return;
 
     const unwrapped = unwrap(filter);
@@ -163,7 +165,7 @@ export const useToggleDialogInFilter = ({dialog, onNewDialog, isInFilter}: UseTo
 
     try {
       await (isInFilter(filter) ? removeFromFilter(unwrapped, dialog().peerId) : addToFilter(unwrapped, dialog().peerId));
-      const newDialog = await rootScope.managers.dialogsStorage.getAnyDialog(dialog().peerId);
+      const newDialog = await managers.dialogsStorage.getAnyDialog(dialog().peerId);
       if(!isDialog(newDialog)) return;
       onNewDialog(newDialog);
     } catch{} finally {

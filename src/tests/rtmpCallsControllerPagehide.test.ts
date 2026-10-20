@@ -19,8 +19,9 @@ import {RtmpCallsController} from '@lib/calls/rtmpCallsController';
 
 // One controller for the file: every `construct` subscribes to pagehide anew.
 const hangUp = vi.fn(async() => {});
+const managers = {appGroupCallsManager: {hangUp}};
 const controller = new RtmpCallsController();
-controller.construct({appGroupCallsManager: {hangUp}} as any);
+controller.construct(managers as any);
 
 describe('RtmpCallsController on pagehide', () => {
   beforeEach(() => {
@@ -29,7 +30,7 @@ describe('RtmpCallsController on pagehide', () => {
   });
 
   it('leaves the stream this tab is watching', () => {
-    (controller as any)._currentCall = {call: {id: '42'}, ssrc: 7};
+    (controller as any)._currentCall = {call: {id: '42'}, ssrc: 7, managers};
 
     window.dispatchEvent(new Event('pagehide'));
 
@@ -44,7 +45,7 @@ describe('RtmpCallsController on pagehide', () => {
 
   it('swallows a manager that is already gone', async() => {
     hangUp.mockRejectedValueOnce(new Error('port closed'));
-    (controller as any)._currentCall = {call: {id: '42'}, ssrc: 7};
+    (controller as any)._currentCall = {call: {id: '42'}, ssrc: 7, managers};
 
     window.dispatchEvent(new Event('pagehide'));
     await new Promise((resolve) => setTimeout(resolve, 0));

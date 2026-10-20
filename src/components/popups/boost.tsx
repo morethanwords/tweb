@@ -21,11 +21,12 @@ import type {BoostReason} from '@components/openBoosts';
 import {createEffect, createSignal, For, JSX, onCleanup} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const className = 'popup-boost';
 
 export default async function showBoostPopup(peerId: PeerId, reason?: BoostReason) {
-  const managers = rootScope.managers;
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
 
   const [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked, isBroadcast] = await Promise.all([
@@ -270,6 +271,7 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
 
     return (
       <PopupElement
+        managers={managers}
         class={'popup-peer ' + className}
         closable
         old

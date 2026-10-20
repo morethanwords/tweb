@@ -11,6 +11,7 @@ import rootScope from '@lib/rootScope';
 import {TrueDcId} from '@types';
 import Button from '@components/buttonTsx';
 import {toastNew} from '@components/toast';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 let _fetchPasskeyOptionPromise: Promise<[TrueDcId, AuthPasskeyLoginOptions]>;
 
@@ -43,6 +44,7 @@ export default function PasskeyLoginButton(props: {
   };
 
   const onClick = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     setSubmitting(true);
     try {
       const userIds = await AccountController.getUserIds();
@@ -59,8 +61,8 @@ export default function PasskeyLoginButton(props: {
         return;
       }
 
-      await rootScope.managers.apiManager.setBaseDcId(dcId);
-      await rootScope.managers.appAccountManager.finishPasskeyLogin(
+      await managers.apiManager.setBaseDcId(dcId);
+      await managers.appAccountManager.finishPasskeyLogin(
         inputPasskeyCredential,
         passkeyInitDcId === dcId ? undefined : passkeyInitDcId
       );

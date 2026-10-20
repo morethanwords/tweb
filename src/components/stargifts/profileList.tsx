@@ -26,11 +26,13 @@ import showChooseGiftPopup from '@components/popups/chooseGiftPopup';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 async function openCreateCollectionPopup({actions, peerId}: {
   actions: StarGiftsProfileActions
   peerId: PeerId
 }): Promise<void> {
+  const managers = bindManagersToSession(rootScope.managers);
   const buttonOptions: PopupConfirmationOptions['button'] = {
     langKey: 'Create'
   };
@@ -52,9 +54,9 @@ async function openCreateCollectionPopup({actions, peerId}: {
     return
   }
 
-  const collection = await rootScope.managers.apiManager.invokeApi('payments.createStarGiftCollection', {
+  const collection = await managers.apiManager.invokeApi('payments.createStarGiftCollection', {
     title: inputField.value,
-    peer: await rootScope.managers.appPeersManager.getInputPeerById(peerId),
+    peer: await managers.appPeersManager.getInputPeerById(peerId),
     stargift: []
   })
 
@@ -66,6 +68,7 @@ async function openRenameCollectionPopup({actions, collection, peerId}: {
   collection: StarGiftCollection
   peerId: PeerId
 }): Promise<void> {
+  const managers = bindManagersToSession(rootScope.managers);
   const buttonOptions: PopupConfirmationOptions['button'] = {
     langKey: 'Edit'
   };
@@ -89,7 +92,7 @@ async function openRenameCollectionPopup({actions, collection, peerId}: {
 
   if(inputField.value === collection.title) return
 
-  const newCollection = await rootScope.managers.appGiftsManager.updateCollection({
+  const newCollection = await managers.appGiftsManager.updateCollection({
     peerId,
     collectionId: collection.collection_id,
     title: inputField.value
@@ -103,6 +106,7 @@ async function openAddGiftsPopup({actions, collectionId, peerId}: {
   collectionId: number
   peerId: PeerId
 }): Promise<void> {
+  const managers = bindManagersToSession(rootScope.managers);
   const result = await new Promise<{selected: MyStarGift[], deselected: MyStarGift[]} | null>((resolve) => {
     showChooseGiftPopup({
       peerId,
@@ -113,7 +117,7 @@ async function openAddGiftsPopup({actions, collectionId, peerId}: {
 
   if(!result) return
 
-  const collection = await rootScope.managers.appGiftsManager.updateCollection({
+  const collection = await managers.appGiftsManager.updateCollection({
     peerId,
     collectionId,
     add: result.selected.map((it) => it.input),
@@ -371,6 +375,7 @@ export function StarGiftsProfileTab(props: {
                   text: 'Delete',
                   danger: true,
                   onClick: async() => {
+                    const managers = bindManagersToSession(rootScope.managers);
                     const collection = store.collections.find((it) => it.collection_id === id)
                     if(!collection) return
                     await confirmationPopup({
@@ -382,9 +387,9 @@ export function StarGiftsProfileTab(props: {
                         isDanger: true
                       }
                     })
-                    rootScope.managers.apiManager.invokeApi('payments.deleteStarGiftCollection', {
+                    managers.apiManager.invokeApi('payments.deleteStarGiftCollection', {
                       collection_id: id,
-                      peer: await rootScope.managers.appPeersManager.getInputPeerById(props.peerId)
+                      peer: await managers.appPeersManager.getInputPeerById(props.peerId)
                     })
                     actions.deleteCollection(id)
                   }

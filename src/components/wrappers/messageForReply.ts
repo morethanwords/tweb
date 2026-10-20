@@ -27,6 +27,7 @@ import {wrapMessageGiveawayResults} from '@components/wrappers/messageActionText
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getMessagePreviewIcon from '@components/wrappers/messagePreviewIcon';
 import getMessageForReplyContent from '@components/wrappers/messageForReplyContent';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
   message: MyMessage | MyDraftMessage
@@ -71,7 +72,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
     }
   };
 
-  const managers = options.managers || rootScope.managers;
+  const managers = options.managers || bindManagersToSession(rootScope.managers);
   const appMessagesManager = managers.appMessagesManager;
 
   const getMyId = () => options.managers ? options.managers.rootScope.getMyId() : rootScope.myId;

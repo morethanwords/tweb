@@ -24,7 +24,7 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import {Message, PhotoSize, VideoSize} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager from '@lib/appDownloadManager';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
@@ -86,7 +86,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   photoSize?: PhotoSize,
   videoSize?: Extract<VideoSize, VideoSize.videoSize>,
   searchContext?: MediaSearchContext,
-  managers?: AppManagers,
+  managers?: ReadingManagers,
   noAutoplayAttribute?: boolean,
   ignoreStreaming?: boolean,
   canAutoplay?: boolean,

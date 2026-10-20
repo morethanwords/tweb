@@ -16,7 +16,6 @@ import safeAssign from '@helpers/object/safeAssign';
 import {InputPhoneCall, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhoneConnection} from '@layer';
 import {emojiFromCodePoints} from '@vendor/emoji';
 import type {CallId} from '@appManagers/appCallsManager';
-import type {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import CallInstanceBase from '@lib/calls/callInstanceBase';
@@ -232,7 +231,6 @@ export default class CallInstance extends CallInstanceBase<{
   // `signalBars`.
   public signalBars: number | undefined;
 
-  private managers: AppManagers;
   private hangUpTimeout: number;
   private hangUpStarted = false;
 
@@ -371,6 +369,8 @@ export default class CallInstance extends CallInstanceBase<{
     isOutgoing: boolean,
     interlocutorUserId: UserId,
     managers: CallInstance['managers'],
+    accountNumber?: CallInstance['accountNumber'],
+    myId?: PeerId,
     protocol?: PhoneCallProtocol
   }) {
     super();
@@ -382,6 +382,8 @@ export default class CallInstance extends CallInstanceBase<{
     }
 
     safeAssign(this, options);
+    this.bindAccount();
+    this.addEventListener('id', (id) => this.heldCall.setId(id));
 
     this.createdAt = performance.now();
     this.joined = false;

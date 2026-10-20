@@ -18,7 +18,7 @@ import windowSize from '@helpers/windowSize';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import filterUnique from '@helpers/array/filterUnique';
 import safeAssign from '@helpers/object/safeAssign';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import filterAsync from '@helpers/array/filterAsync';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -48,6 +48,7 @@ import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@lib/appManagers/constants';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /** A row whose trailing checkbox is painted over it — the lane it takes is reserved in `_selector.scss`. */
 const ROW_WITH_CHECKBOX_CLASS = 'selector-row-with-checkbox';
@@ -132,7 +133,7 @@ export default class AppSelectPeers {
   ) => HTMLElement | DocumentFragment | undefined | Promise<HTMLElement | DocumentFragment | undefined>;
   private processElementAfter: (peerId: PeerId, dialogElement: DialogElement) => void | Promise<void>;
 
-  private managers: AppManagers;
+  private managers: ReadingManagers;
 
   private middleware: Middleware;
   public middlewareHelper: MiddlewareHelper;
@@ -261,6 +262,7 @@ export default class AppSelectPeers {
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = async(peerIds, append?: boolean) => {
+      const managers = bindManagersToSession(this.managers);
       const middleware = this.middlewareHelperLoader.get();
       if(this.needSwitchList) {
         this.needSwitchList = false;
@@ -288,11 +290,11 @@ export default class AppSelectPeers {
         peerIds = await filterAsync(peerIds, async(peerId) => {
           if(peerId.isPeerId()) {
             if(isFunction) {
-              const peer = await this.managers.appPeersManager.getPeer(peerId);
+              const peer = await managers.appPeersManager.getPeer(peerId);
               return (this.filterPeerTypeBy as FilterPeerTypeByFunc)(peer);
             } else {
               for(const method of this.filterPeerTypeBy as IsPeerType[]) {
-                if(await this.managers.appPeersManager[method](peerId)) {
+                if(await managers.appPeersManager[method](peerId)) {
                   return true;
                 }
               }
@@ -331,9 +333,9 @@ export default class AppSelectPeers {
           const userId = peerId.toUserId();
 
           const {requirement, starsAmount, canManageDirectMessages} = await namedPromises({
-            requirement: this.managers.appUsersManager.getRequirementToContact(userId),
-            starsAmount: this.managers.appPeersManager.getStarsAmount(peerId),
-            canManageDirectMessages: peerId.isAnyChat() && this.managers.appChatsManager.canManageDirectMessages(peerId.toChatId())
+            requirement: managers.appUsersManager.getRequirementToContact(userId),
+            starsAmount: managers.appPeersManager.getStarsAmount(peerId),
+            canManageDirectMessages: peerId.isAnyChat() && managers.appChatsManager.canManageDirectMessages(peerId.toChatId())
           });
 
           return {peerId, userId, requirement, requiredStars: starsAmount, canManageDirectMessages};
@@ -1289,13 +1291,14 @@ export default class AppSelectPeers {
   }
 
   public async wrapSubtitle(peerId: PeerId) {
+    const managers = bindManagersToSession(this.managers);
     let subtitleEl: HTMLElement;
     if(peerId.isAnyChat()) {
       subtitleEl = await getChatMembersString(peerId.toChatId());
     } else if(peerId === rootScope.myId) {
       subtitleEl = i18n(this.selfPresence);
     } else {
-      subtitleEl = getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()));
+      subtitleEl = getUserStatusString(await managers.appUsersManager.getUser(peerId.toUserId()));
     }
 
     return subtitleEl;

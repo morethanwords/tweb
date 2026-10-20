@@ -24,6 +24,7 @@ import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
 import {getMiddleware} from '@helpers/middleware';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: number[]}): Promise<ChatRights[]> {
   const messagesPromises = Object.keys(peerIdMids).map((peerId) => {
@@ -96,6 +97,7 @@ export default async function showForwardPopup(
   noTopics?: boolean,
   onClose?: () => void
 ) {
+  const managers = bindManagersToSession(rootScope.managers);
   const chatRightsActions = peerIdMids ? await resolveChatRightsActions(peerIdMids) : [];
   if(!chatRightsActions.length) {
     chatRightsActions.push('send_plain');
@@ -111,11 +113,11 @@ export default async function showForwardPopup(
     const fromPeerIdStr = Object.keys(peerIdMids)[0];
     const fromPeerId = fromPeerIdStr.toPeerId();
     const mid = peerIdMids[fromPeerIdStr as any as number][0];
-    const firstMessage = await rootScope.managers.appMessagesManager.getMessageByPeer(fromPeerId, mid) as Message.message;
+    const firstMessage = await managers.appMessagesManager.getMessageByPeer(fromPeerId, mid) as Message.message;
     canCopyLink = !!firstMessage?.pFlags?.post;
   }
 
-  const {message_length_max: MAX_MESSAGE_LENGTH} = await rootScope.managers.apiManager.getConfig();
+  const {message_length_max: MAX_MESSAGE_LENGTH} = await managers.apiManager.getConfig();
 
   const listenerSetter = new ListenerSetter();
   const sendMenuMiddleware = getMiddleware();
@@ -216,7 +218,7 @@ export default async function showForwardPopup(
         slowModeParams: {
           peerId,
           element: btnRef,
-          managers: rootScope.managers
+          managers
         }
       });
 
@@ -271,10 +273,10 @@ export default async function showForwardPopup(
         if(peerIds.length !== 1) return false;
         const peerId = peerIds[0];
         if(peerId === rootScope.myId || !peerId.isUser()) return false;
-        if(!(await rootScope.managers.appUsersManager.isUserOnlineVisible(peerId.toUserId()))) {
+        if(!(await managers.appUsersManager.isUserOnlineVisible(peerId.toUserId()))) {
           return false;
         }
-        const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId()) as User.user;
+        const user = await managers.appUsersManager.getUser(peerId.toUserId()) as User.user;
         if(user?.pFlags?.bot) return false;
         return user?.status?._ !== 'userStatusOnline';
       },

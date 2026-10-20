@@ -33,6 +33,7 @@ import readValue from '@helpers/solid/readValue';
 import {hotEffect, hotListen} from '@helpers/hotModule';
 import {isEmojiLayoutMoving, markEmojiLayoutChanged, measureEmojiLayout, unwatchEmojiLayout, watchEmojiLayout} from '@lib/customEmoji/layoutWatch';
 import {getAppWindow} from '@helpers/appWindow';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 
@@ -1017,7 +1018,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }) {
     const renderer = this;
     const size = this.size;
-    const managers = rootScope.managers;
+    const managers = bindManagersToSession(rootScope.managers);
     const middleware = this.middlewareHelper.get();
 
     const docId = doc.id;
@@ -1374,7 +1375,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
     const usingOwnQueue = !!(!lazyLoadQueue && lazyLoadQueue !== false && globalLazyLoadQueue);
     const docIds = Array.from(addCustomEmojis.keys());
-    const managers = rootScope.managers;
+    const managers = bindManagersToSession(rootScope.managers);
 
     const loadPromise = managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then((docs) => {
       if(!middleware()) return;

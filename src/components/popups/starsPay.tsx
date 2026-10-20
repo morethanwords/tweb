@@ -43,6 +43,7 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import {getMiddleware} from '@helpers/middleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import type AppMediaViewer from '@components/mediaViewer';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const TEST_FIRST_TIME = DEBUG && false;
 
@@ -60,7 +61,8 @@ export type StarsPayHandle = EventListenerBase<{
 
 export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHandle {
   const emitter: StarsPayHandle = new EventListenerBase();
-  const managers = rootScope.managers;
+  // * the account the payment is asked on: a step after a switch (a retry, a form fetched again) does not go
+  const managers = bindManagersToSession(rootScope.managers);
   const middlewareHelper = getMiddleware();
   const middleware = middlewareHelper.get();
 
@@ -248,6 +250,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
   };
 
   const construct = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const [image, {title: transactionTitle, media: avatar}, link] = await Promise.all([
       (async() => {
         const img = document.createElement('img');
@@ -686,6 +689,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
 
       return (
         <PopupElement
+          managers={managers}
           class="popup-stars popup-stars-pay"
           closable
           old

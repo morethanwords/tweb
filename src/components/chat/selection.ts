@@ -31,7 +31,7 @@ import swallowNextClick from '@helpers/dom/swallowNextClick';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import EventListenerBase from '@helpers/eventListenerBase';
 import safeAssign from '@helpers/object/safeAssign';
-import {AppManagers} from '@lib/managers';
+import {AppManagers, ReadingManagers} from '@lib/managers';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import {Message} from '@layer';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
@@ -48,6 +48,7 @@ import {ChatType} from './chatType';
 import ChatInputPlate from '@components/chat/controlPlate';
 import isSameMessageSelectionGroup, {getMessageSelectionGroup} from '@components/chat/isSameMessageSelectionGroup';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const accumulateMapSet = <T extends {size: number}>(map: Map<any, T>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -84,7 +85,7 @@ export class AppSelection extends EventListenerBase<{
   protected lookupBetweenElementsQuery: string;
 
   protected doNotAnimate: boolean;
-  protected managers: AppManagers;
+  protected managers: ReadingManagers;
   /**
    * How far the pointer has to travel before a press turns into a drag that selects what it runs
    * across. Without it the shake of an ordinary click counts as a drag, and the row it was meant to
@@ -96,7 +97,7 @@ export class AppSelection extends EventListenerBase<{
   protected onTouchLongPress: (e: Event) => void;
 
   constructor(options: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     getElementFromTarget: AppSelection['getElementFromTarget'],
     verifyTarget?: AppSelection['verifyTarget'],
     verifyMouseMoveTarget?: AppSelection['verifyMouseMoveTarget'],
@@ -469,6 +470,7 @@ export class AppSelection extends EventListenerBase<{
   }
 
   protected async updateContainer(forceSelection = false) {
+    const managers = bindManagersToSession(this.managers);
     const size = this.selectedMids.size;
     if(!size && !forceSelection) return;
 
@@ -478,7 +480,7 @@ export class AppSelection extends EventListenerBase<{
 
     for(const [peerId, mids] of this.selectedMids) {
       const storageKey = this.getStorageKey(peerId);
-      const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
+      const r = await managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
       cantForward ||= r.cantForward;
       cantDelete ||= r.cantDelete;
 
@@ -691,7 +693,7 @@ export class SearchSelection extends AppSelection {
 
   constructor(
     private searchSuper: AppSearchSuper,
-    managers: AppManagers,
+    managers: ReadingManagers,
     listenerSetter: ListenerSetter
   ) {
     super({

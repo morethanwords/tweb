@@ -10,6 +10,7 @@ import SidebarSlider from '@components/slider';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export async function handleMissingInvitees(chatId: ChatId, missingInvitees: MissingInvitee[]) {
   if(!missingInvitees.length) {
@@ -141,9 +142,10 @@ export default async function addChatUsers({
   slider: SidebarSlider,
   skippable?: boolean
 }) {
+  const managers = bindManagersToSession(rootScope.managers);
   const id = peerId.toChatId();
-  const isChannel = await rootScope.managers.appChatsManager.isChannel(id);
-  const isBroadcast = await rootScope.managers.appChatsManager.isBroadcast(id);
+  const isChannel = await managers.appChatsManager.isChannel(id);
+  const isBroadcast = await managers.appChatsManager.isBroadcast(id);
 
   const showConfirmation = async(peerIds: PeerId[], callback: (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => void) => {
     let titleLangKey: LangPackKey, titleLangArgs: FormatterArguments,

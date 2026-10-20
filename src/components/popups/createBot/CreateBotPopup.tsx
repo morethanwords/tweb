@@ -9,6 +9,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createComputed, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 const USERNAME_SUFFIX = 'bot';
@@ -78,6 +79,7 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
 
   // Constantly check username availability when it changes
   createComputed(on(usernameValue, (value) => {
+    const managers = bindManagersToSession(rootScope.managers);
     const localResult = validateUsernameLocally(value);
     if(localResult) {
       setUsernameStatus(localResult);
@@ -93,7 +95,7 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
 
       const fullUsername = value + USERNAME_SUFFIX;
 
-      const result = await rootScope.managers.appBotsManager.checkUsername(fullUsername);
+      const result = await managers.appBotsManager.checkUsername(fullUsername);
       if(cancelled) return;
 
       if(usernameValue() !== value) return; // out-of-date result

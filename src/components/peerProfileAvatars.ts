@@ -11,7 +11,7 @@ import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {fastRaf} from '@helpers/schedulers';
 import {Message, ChatFull, MessageAction, Photo, User, ChatPhoto, UserFull} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import {avatarNew, wrapPhotoToAvatar} from '@components/avatarNew';
@@ -37,6 +37,7 @@ import {avatarUploads} from '@stores/avatarUpload';
 import Button from '@components/button';
 import Modes from '@config/modes';
 import isDocumentRTL from '@helpers/dom/isDocumentRTL';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = true;
@@ -83,7 +84,7 @@ export default class PeerProfileAvatars {
 
   constructor(
     private scrollable: Scrollable,
-    private managers: AppManagers,
+    private managers: ReadingManagers,
     private setCollapsedOn: HTMLElement
   ) {
     this.container = document.createElement('div');
@@ -406,13 +407,14 @@ export default class PeerProfileAvatars {
   }
 
   public async setPeer(peerId: PeerId, threadId?: number) {
+    const managers = bindManagersToSession(this.managers);
     this.peerId = peerId;
     this.threadId = threadId;
     this.middlewareHelper.clean();
 
     // A topic isn't backed by its own photo history — render the topic icon as a
     // single, collapse-locked avatar, exactly like a chat with no avatar photo.
-    const photo = threadId ? undefined : await this.managers.appPeersManager.getPeerPhoto(peerId);
+    const photo = threadId ? undefined : await managers.appPeersManager.getPeerPhoto(peerId);
     if(!photo && !SHOW_NO_AVATAR) {
       return;
     }
@@ -457,7 +459,7 @@ export default class PeerProfileAvatars {
     this.fallbackPhotoId = undefined;
     this.fallbackAppended = false;
     if(peerId === rootScope.myId && peerId.isUser() && !this.hasNoPhoto) {
-      const userFull = await this.managers.appProfileManager.getProfile(peerId.toUserId());
+      const userFull = await managers.appProfileManager.getProfile(peerId.toUserId());
       const fallback = (userFull as UserFull.userFull)?.fallback_photo as Photo.photo;
       if(fallback?._ === 'photo') this.fallbackPhotoId = fallback.id;
     }
@@ -469,7 +471,7 @@ export default class PeerProfileAvatars {
 
         if(peerId.isUser()) {
           const maxId: Photo.photo['id'] = anchor as any;
-          return this.managers.appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then((value) => {
+          return managers.appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then((value) => {
             const items = value.photos.slice();
             let count = value.count;
             if(this.fallbackPhotoId) {
@@ -487,10 +489,10 @@ export default class PeerProfileAvatars {
         } else {
           const promises: [Promise<ChatFull> | ChatFull, ReturnType<AppMessagesManager['getHistory']>] = [] as any;
           if(!listLoader.current) {
-            promises.push(this.managers.appProfileManager.getChatFull(peerId.toChatId()));
+            promises.push(managers.appProfileManager.getChatFull(peerId.toChatId()));
           }
 
-          promises.push(this.managers.appMessagesManager.getHistory({
+          promises.push(managers.appMessagesManager.getHistory({
             peerId,
             offsetId: Number.MAX_SAFE_INTEGER,
             inputFilter: {
@@ -518,7 +520,7 @@ export default class PeerProfileAvatars {
                 return ((message as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatPhoto?.id;
               }) as Message.messageService;
 
-              const current = listLoader.current = message || (chatPhoto && await this.managers.appMessagesManager.generateFakeAvatarMessage(this.peerId, chatPhoto));
+              const current = listLoader.current = message || (chatPhoto && await managers.appMessagesManager.generateFakeAvatarMessage(this.peerId, chatPhoto));
               count = getChatPhotosCount(value.count, messages.length, !message && !!current);
             }
 

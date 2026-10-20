@@ -3,11 +3,20 @@ import rootScope from '@lib/rootScope';
 import {MyPromoData} from '@appManagers/appPromoManager';
 import {createStore, reconcile} from 'solid-js/store';
 
-const [promoData, setPromoData] = createStore<MyPromoData>({
+const createEmptyPromoData = (): MyPromoData => ({
   pendingSuggestions: [],
   dismissedSuggestions: []
 });
+
+const [promoData, setPromoData] = createStore<MyPromoData>(createEmptyPromoData());
 const [promoDataLoaded, setPromoDataLoaded] = createRoot(() => createSignal(false));
+
+function fetchPromoData() {
+  rootScope.managers.appPromoManager.getPromoData().then((data) => {
+    setPromoData(reconcile(data));
+    setPromoDataLoaded(true);
+  }).catch(() => {});
+}
 
 let _loaded = false;
 function loadPromoData() {
@@ -18,10 +27,14 @@ function loadPromoData() {
       setPromoDataLoaded(true);
     });
 
-    rootScope.managers.appPromoManager.getPromoData().then((data) => {
-      setPromoData(reconcile(data));
-      setPromoDataLoaded(true);
-    }).catch(() => {});
+    // * the suggestions are the account's own
+    rootScope.addEventListener('account_switched', () => {
+      setPromoData(reconcile(createEmptyPromoData()));
+      setPromoDataLoaded(false);
+      fetchPromoData();
+    });
+
+    fetchPromoData();
   }
 }
 

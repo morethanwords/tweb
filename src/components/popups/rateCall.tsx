@@ -9,6 +9,7 @@ import classNames from '@helpers/string/classNames';
 import {InputPhoneCall} from '@layer';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
+import type {AppManagers} from '@lib/managers';
 import styles from '@components/popups/rateCall.module.scss';
 
 export const CALL_RATING_MAX = 5;
@@ -83,7 +84,9 @@ export type RateCallPopupOptions = {
   /** Rated from the user's own action rather than the server's `need_rating`. */
   userInitiative?: boolean,
   /** Stars to start with — the sandbox opens the "what went wrong" state with it. */
-  rating?: number
+  rating?: number,
+  /** The call's account, which the tab may no longer show; the tab's when left out. */
+  managers?: AppManagers
 };
 
 /**
@@ -128,7 +131,7 @@ export default function showRateCallPopup(options: RateCallPopupOptions) {
       const comment = composeCallRatingComment(value, checkedProblems(), commentField.value);
       // tdesktop closes its box whether the request goes through or not: there is nothing the user
       // could do about a failed rating.
-      rootScope.managers.appCallsManager.setCallRating(options.call, value, comment, options.userInitiative)
+      (options.managers ?? rootScope.managers).appCallsManager.setCallRating(options.call, value, comment, options.userInitiative)
       .catch((err) => {
         console.error('phone.setCallRating failed', err);
       });

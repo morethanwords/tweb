@@ -88,6 +88,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
    */
   const callInstance = inviteInstance ? undefined : instance as CallInstance;
   const peerId = instance.interlocutorUserId.toPeerId();
+  // * the call's: the tab may switch to another account while the panel is up
+  const {accountNumber} = instance;
 
   const [show, setShow] = createSignal(true);
   const [noVideo, setNoVideo] = createSignal(true);
@@ -311,12 +313,14 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
       middleware,
       isBig: true,
       peerId,
-      size: 'full'
+      size: 'full',
+      accountNumber
     });
     avatarContainer.append(node);
 
     const title = new PeerTitle({
-      peerId
+      peerId,
+      accountNumber
     }).element;
 
     title.classList.add(className + '-title');
@@ -384,7 +388,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
       const stackedAvatars = new StackedAvatars({
         avatarSize: 30,
-        middleware
+        middleware,
+        accountNumber
       });
       stackedAvatars.render(peerIds);
 
@@ -465,7 +470,7 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
 
       weakNetworkNotice = createCallNotice({text: () => i18n('VoipWeakNetwork')});
 
-      const peerName = () => new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element;
+      const peerName = () => new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18, accountNumber}).element;
 
       const mutedIcon = new GroupCallMicrophoneIconMini(false, true, 36);
       mutedIcon.setState(false, false);
@@ -822,6 +827,8 @@ export default function showCallPopup(instance: AnyCallInstance, options: {
   createPopup(() => (
     <PopupElement
       class={classNames('popup-call', IS_MOVABLE_PANEL && 'movable-element')}
+      managers={instance.managers}
+      keepOnAccountSwitch
       withoutOverlay
       closable
       show={show()}

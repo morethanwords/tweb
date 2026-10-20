@@ -20,7 +20,7 @@ import {isWebAppNameValid} from '@lib/richTextProcessor/validators';
 import appImManager, {JoinConferenceOptions} from '@lib/appImManager';
 import {makeFullMid} from '@appManagers/utils/messages/fullMid';
 import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from '@lib/internalLink';
-import {AppManagers} from '@lib/managers';
+import {TabManagers} from '@lib/managers';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import shake from '@helpers/dom/shake';
@@ -60,6 +60,7 @@ import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import parseChatSpecificTag from '@lib/richTextProcessor/parseChatSpecificTag';
 import searchByTag from '@lib/richTextProcessor/searchByTag';
 import {APP_TABS} from '@lib/appColumns';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * A link whose section we know but whose path we do not — the one thing worse
@@ -71,7 +72,7 @@ const showUnsupportedLinkToast = () => {
 };
 
 export class InternalLinkProcessor {
-  protected managers: AppManagers;
+  protected managers: TabManagers;
   private processingAddAiStyleSlugs: Set<string> = new Set();
   private tagSearchVersion = 0;
 
@@ -83,7 +84,7 @@ export class InternalLinkProcessor {
     }
   }
 
-  public construct(managers: AppManagers) {
+  public construct(managers: TabManagers) {
     this.managers = managers;
 
     // a middle click never reaches an anchor's inline `onclick`, so the alert below is wired to it
@@ -1022,6 +1023,7 @@ export class InternalLinkProcessor {
 
   /** What `tg://chats/emoji-status` — and its `tg://settings` alias — opens. */
   private showEmojiStatusPicker() {
+    const managers = bindManagersToSession(this.managers);
     // iOS opens the picker itself, from where it always opens — for us
     // that is the status button in the chat list header.
     const statusBtn = appSidebarLeft.sidebarEl.querySelector<HTMLElement>('.sidebar-emoji-status');
@@ -1051,7 +1053,7 @@ export class InternalLinkProcessor {
 
       const {openEmojiStatusPicker} = await import('@components/sidebarLeft/emojiStatusPicker');
       openEmojiStatusPicker({
-        managers: this.managers,
+        managers,
         anchorElement: statusBtn.closest('.sidebar-header')
       });
     });
@@ -1125,18 +1127,19 @@ export class InternalLinkProcessor {
   };
 
   public processPrivatePostLink = async(link: InternalLink.InternalLinkPrivatePost) => {
+    const managers = bindManagersToSession(this.managers);
     const chatId = link.channel.toChatId();
     const userId = link.channel.toUserId();
 
     const {chat, isBotforum, user} = await namedPromises({
-      chat: this.managers.appChatsManager.getChat(chatId),
-      isBotforum: this.managers.appUsersManager.isBotforum(userId),
-      user: this.managers.appUsersManager.getUser(userId)
+      chat: managers.appChatsManager.getChat(chatId),
+      isBotforum: managers.appUsersManager.isBotforum(userId),
+      user: managers.appUsersManager.getUser(userId)
     });
 
     if(!chat && !isBotforum) {
       try {
-        await this.managers.appChatsManager.resolveChannel(chatId);
+        await managers.appChatsManager.resolveChannel(chatId);
       } catch(err) {
         toastNew({langPackKey: 'LinkNotFound'});
         throw err;
@@ -1319,8 +1322,9 @@ export class InternalLinkProcessor {
   };
 
   public processInvoiceLink = (link: InternalLink.InternalLinkInvoice) => {
-    return this.managers.appPaymentsManager.getInputInvoiceBySlug(link.slug).then((inputInvoice) => {
-      return this.managers.appPaymentsManager.getPaymentForm(inputInvoice).then((paymentForm) => {
+    const managers = bindManagersToSession(this.managers);
+    return managers.appPaymentsManager.getInputInvoiceBySlug(link.slug).then((inputInvoice) => {
+      return managers.appPaymentsManager.getPaymentForm(inputInvoice).then((paymentForm) => {
         // const message: Message.message = {
         //   _: 'message',
         //   date: 0,
@@ -1397,7 +1401,8 @@ export class InternalLinkProcessor {
   };
 
   public processWebAppLink = async(link: InternalLink.InternalLinkWebApp) => {
-    const user = await this.managers.appUsersManager.resolveUserByUsername(link.domain).catch(() => undefined as User.user);
+    const managers = bindManagersToSession(this.managers);
+    const user = await managers.appUsersManager.resolveUserByUsername(link.domain).catch(() => undefined as User.user);
     if(!user) {
       toastNew({langPackKey: 'Alert.UserDoesntExists'});
       return;
@@ -1433,7 +1438,7 @@ export class InternalLinkProcessor {
 
     let messagesBotApp: MessagesBotApp;
     try {
-      messagesBotApp = await this.managers.appAttachMenuBotsManager.getBotApp(botId, link.appname);
+      messagesBotApp = await managers.appAttachMenuBotsManager.getBotApp(botId, link.appname);
     } catch(err) {
       if((err as ApiError).type === 'BOT_APP_INVALID') {
         toastNew({langPackKey: 'Alert.BotAppDoesntExist'});
@@ -1486,6 +1491,7 @@ export class InternalLinkProcessor {
   };
 
   public processStoryLink = async(link: InternalLink.InternalLinkStory) => {
+    const managers = bindManagersToSession(this.managers);
     const event = window.event;
     const bubble = findUpClassName(event.target as HTMLElement, 'bubble');
     if(bubble && bubble.classList.contains('story')) {
@@ -1495,7 +1501,7 @@ export class InternalLinkProcessor {
 
     let peer: User.user | Chat;
     try {
-      peer = await this.managers.appUsersManager.resolveUsername(link.domain);
+      peer = await managers.appUsersManager.resolveUsername(link.domain);
     } catch(err) {
       if((err as ApiError).type === 'USERNAME_NOT_OCCUPIED') {
         toastNew({langPackKey: 'NoUsernameFound'});
@@ -1510,7 +1516,7 @@ export class InternalLinkProcessor {
     // * `t.me/<name>/s/live` names the peer's current live stream, not a story id — open the peer's
     // * stories, as tdesktop does
     if(link.story === 'live') {
-      const peerStories = await this.managers.appStoriesManager.getPeerStories(peerId);
+      const peerStories = await managers.appStoriesManager.getPeerStories(peerId);
       if(!peerStories?.stories.length) {
         toastNew({langPackKey: 'NoStoryFound'});
         return;
@@ -1520,7 +1526,7 @@ export class InternalLinkProcessor {
       return;
     }
 
-    const storyItem = await this.managers.appStoriesManager.getStoryById(peerId, +link.story);
+    const storyItem = await managers.appStoriesManager.getStoryById(peerId, +link.story);
     if(!storyItem) {
       toastNew({langPackKey: 'NoStoryFound'});
       return;
@@ -1601,13 +1607,14 @@ export class InternalLinkProcessor {
   };
 
   public processShareLink = async(link: InternalLink.InternalLinkShare) => {
+    const managers = bindManagersToSession(rootScope.managers);
     const {peerId, threadId, monoforumThreadId} = await showSharingPicker2Popup();
     // The shared text becomes a draft of the chosen chat — any chat, the way
     // tdesktop's `MainWidget::shareUrl` does it. `setInnerPeer({text})` is the
     // `?text=` deep-link path, which only prefills private chats.
     const text = [link.url, link.text].filter(Boolean).join('\n');
     if(text) {
-      await rootScope.managers.appDraftsManager.setDraft(peerId, threadId || monoforumThreadId, text);
+      await managers.appDraftsManager.setDraft(peerId, threadId || monoforumThreadId, text);
     }
 
     appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});

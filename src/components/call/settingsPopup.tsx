@@ -155,7 +155,7 @@ export default function showCallSettingsPopup(options: CallSettingsPopupOptions)
       setJoinMuted(checked);
       // Optimistic UI: server echoes via updateGroupCall and the
       // subscription above reconciles if it disagrees.
-      rootScope.managers.appGroupCallsManager.toggleGroupCallSettings(
+      groupCallInstance.managers.appGroupCallsManager.toggleGroupCallSettings(
         groupCallInstance.id,
         {joinMuted: checked}
       ).catch((err) => {

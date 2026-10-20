@@ -1,6 +1,7 @@
 import {PINNED_DIALOG_CLASS_NAME} from '@components/dialogsPinnedReorder';
 import attachDialogFolderTags, {DialogFolderTags, DialogFolderTagsContext} from '@components/folderTags/dialogFolderTags';
 import rootScope from '@lib/rootScope';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import Button from '@components/button';
 import SetTransition from '@components/singleTransition';
 import Modes from '@config/modes';
@@ -178,7 +179,9 @@ export type DialogElementOptions = {
   autoDeletePeriod?: number,
   avatarElement?: HTMLElement,
   /** the row is in a folder's chat list, and wears the tags of the other folders its chat is in */
-  folderTags?: DialogFolderTagsContext
+  folderTags?: DialogFolderTagsContext,
+  /** the peer's account, when the tab may show another one meanwhile (a call's participants) */
+  accountNumber?: ActiveAccountNumber
 };
 
 export type DialogElementBadgeState = {
@@ -240,7 +243,8 @@ export class DialogElement {
     asAllChats,
     autoDeletePeriod,
     avatarElement,
-    folderTags
+    folderTags,
+    accountNumber
   }: DialogElementOptions) {
     const wrapMiddleware = wrapOptions?.middleware;
     this.middlewareHelper = wrapMiddleware ? wrapOptions.middleware.create() : (controlled ? getMiddleware() : undefined);
@@ -291,7 +295,8 @@ export class DialogElement {
         wrapOptions: newWrapOptions,
         meAsNotes: isSavedDialog,
         asAllChats: asAllChats === 'monoforum',
-        autoDeletePeriod
+        autoDeletePeriod,
+        accountNumber
       });
     loadPromises?.push(avatar?.readyThumbPromise);
     const avatarEl = avatarElement || avatar?.node;
@@ -332,7 +337,8 @@ export class DialogElement {
       wrapOptions: titleWrapOptions,
       iconsColor: hotReloadGuard.appDialogsManager.getPrimaryColor(isActive),
       meAsNotes: isSavedDialog,
-      asAllChats
+      asAllChats,
+      accountNumber
     });
 
     loadPromises?.push(peerTitlePromise);

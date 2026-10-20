@@ -5,6 +5,7 @@ import rootScope from '@lib/rootScope';
 import type {Middleware} from '@helpers/middleware';
 import type {ConnectedBot} from '@layer';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * Sections the search cannot open on its own: wizard steps and detail views that
@@ -85,12 +86,13 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
     return openTab(slider, hotReloadGuard.tabs.AppPrivacyGiftsTab, middleware, settings);
   },
   AppActiveSessionsTab: async(slider, middleware) => {
-    const authorizations = await rootScope.managers.appAccountManager.getAuthorizations();
+    const managers = bindManagersToSession(rootScope.managers);
+    const authorizations = await managers.appAccountManager.getAuthorizations();
 
     // The bot row is optional — a failed request must not keep the sessions list closed.
     let connectedBot: ConnectedBot.connectedBot;
     try {
-      connectedBot = await rootScope.managers.appBusinessManager.getConnectedBot();
+      connectedBot = await managers.appBusinessManager.getConnectedBot();
     } catch{}
 
     return openTab(slider, hotReloadGuard.tabs.AppActiveSessionsTab, middleware, {

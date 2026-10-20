@@ -8317,8 +8317,8 @@ export default class ChatBubbles {
       renderComponent({element: serviceContent, Component: entry.ServiceContent, middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
 
       const {message, originalMessage} = await namedPromises({
-        message: rootScope.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.message),
-        originalMessage: rootScope.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.originalMessage)
+        message: this.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.message),
+        originalMessage: this.managers.appMessagesManager.saveLogsMessage(this.peerId, entry.originalMessage)
       });
 
       const existing = this.logsBubbleByMid.get(message.mid);

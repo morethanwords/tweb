@@ -21,6 +21,7 @@ import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function ChecklistBubble(props: {
   out: boolean
@@ -63,6 +64,7 @@ export function ChecklistBubble(props: {
   const isReadonly = props.message.fwd_from || !props.out && !isGroupChecklist;
 
   async function handleClick(id: number) {
+    const managers = bindManagersToSession(rootScope.managers);
     if(props.message.fwd_from) {
       toastNew({
         langPackKey: 'ChecklistReadonlyForwarded'
@@ -87,7 +89,7 @@ export function ChecklistBubble(props: {
 
     const wasCompleted = completionsById()[id];
 
-    rootScope.managers.appMessagesManager.updateTodo({
+    managers.appMessagesManager.updateTodo({
       peerId: props.chat.peerId,
       mid: props.message.mid,
       taskId: id,

@@ -4832,6 +4832,9 @@ export default class ChatInput {
     ephemeral?: boolean,
     text?: LocalTextWithOptionalEntities
   }) {
+    // * the managers of the chat the message is sent from: a send still on its way when the tab switches
+    // * to another account goes out from the account it was written in
+    const {managers} = slowModeParams;
     forwarding = ephemeral ? undefined : copy(forwarding);
     let {value, entities} = inputField ?
       getRichValueWithCaret(inputField.input, true, false) :
@@ -4863,7 +4866,7 @@ export default class ChatInput {
         undefined
     );
     if(richMessage) {
-      const postingChoice = await getRichMessagePostingChoice(rootScope.managers);
+      const postingChoice = await getRichMessagePostingChoice(managers);
       if(postingChoice === 'cancel') return false;
       if(postingChoice === 'plain') {
         // as Android has it: the formatting goes in the field, where the result can be read and
@@ -4891,7 +4894,7 @@ export default class ChatInput {
 
     if(richMessage?.input._ === 'inputRichMessage') {
       try {
-        const validation = await rootScope.managers.appMessagesManager.validateRichMessage(richMessage.input);
+        const validation = await managers.appMessagesManager.validateRichMessage(richMessage.input);
         if(showRichMessageValidationError(validation)) return false;
       } catch{
         toastNew({langPackKey: 'RichMessage.Error.ResourcesUnavailable'});
@@ -4903,7 +4906,7 @@ export default class ChatInput {
     if(forwarding) {
       for(const fromPeerId in forwarding) messageCount += forwarding[fromPeerId].length;
     }
-    const config = await rootScope.managers.apiManager.getConfig();
+    const config = await managers.apiManager.getConfig();
     const MAX_LENGTH = config.message_length_max;
     const textOverflow = !richMessage && value.length > MAX_LENGTH;
     const textMessageCount = richMessage ? 1 : trimmedValue ? splitStringByLength(value, MAX_LENGTH).length : 0;
@@ -4936,7 +4939,7 @@ export default class ChatInput {
       const mids = forwarding[fromPeerId];
       if(mids.length !== 1) continue;
       lookups.push(Promise.resolve(
-        rootScope.managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0])
+        managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0])
       ).then((message) => {
         forwardedAlone.set(fromPeerId, message as Message.message);
       }));
@@ -4949,7 +4952,7 @@ export default class ChatInput {
     }
 
     if(sendsText) {
-      rootScope.managers.appMessagesManager.sendText({
+      managers.appMessagesManager.sendText({
         ...sendTextParams,
         ...sendingParams,
         text: value,
@@ -4968,11 +4971,11 @@ export default class ChatInput {
       if(msg) {
         if(msg.pFlags?.fakeForSavedMusic) {
           const doc = (msg.media as MessageMedia.messageMediaDocument).document as MyDocument;
-          rootScope.managers.appMessagesManager.sendOther({
+          managers.appMessagesManager.sendOther({
             ...sendingParams,
             inputMedia: {_: 'inputMediaDocument', id: getDocumentInput(doc), pFlags: {}}
           });
-          rootScope.managers.appMessagesManager.deleteMessageFromHistoryStorage(
+          managers.appMessagesManager.deleteMessageFromHistoryStorage(
             fromPeerId.toPeerId(),
             mids[0]
           );
@@ -4980,7 +4983,7 @@ export default class ChatInput {
         }
       }
 
-      rootScope.managers.appMessagesManager.forwardMessages({
+      managers.appMessagesManager.forwardMessages({
         ...forwardParams,
         ...sendingParams,
         fromPeerId: fromPeerId.toPeerId(),

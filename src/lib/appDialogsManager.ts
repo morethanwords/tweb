@@ -50,7 +50,7 @@ import {ChatlistsChatlistUpdates, DialogFilter, Message, MessageMedia, MessageRe
 import mediaSizes from '@helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
-import {AppManagers} from '@lib/managers';
+import {AppManagers, TabManagers} from '@lib/managers';
 import appSidebarRight from '@components/sidebarRight';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import renderDialogSubtitleParts from '@components/wrappers/dialogSubtitle';
@@ -134,6 +134,8 @@ import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {DialogElement, findDialogListElement, setPromiseMiddleware, disposeTextHighlight, setDialogSubtitle, isRenderedSubtitleIntact, getFolderTitleTextColor} from '@components/dialogElement';
 import type {DialogDom, DialogElementOptions} from '@components/dialogElement';
 import createStyleRule from '@helpers/dom/createStyleRule';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 // below this many dialogs the sidebar looks empty, so contacts are offered under the chat list
 const MIN_DIALOGS_WITHOUT_CONTACTS = 10;
@@ -234,7 +236,7 @@ export class AppDialogsManager {
 
   private filtersNavigationItem: NavigationItem;
 
-  private managers: AppManagers;
+  private managers: TabManagers;
 
   public doNotRenderChatList: boolean;
   public isFirstDialogsLoad: boolean;
@@ -441,13 +443,91 @@ export class AppDialogsManager {
     this.onStateLoaded(appState);
   }
 
-  private onRef(scrollableContext: ScrollableContextValue) {
-    this.setFilterId(FOLDER_ID_ALL);
+  /**
+   * The tab is about to move to another account: the lists of this one go - every folder but All,
+   * whose list is emptied - with the forum tabs, the stories and the selection made in them.
+   * The navigation entries they pushed are dropped by the switch with the rest of the stack.
+   */
+  public closeForAccountSwitch() {
+    this.stateMiddlewareHelper.clean();
+    this.selection.cancelSelection();
+    this.cancelChatlistUpdatesFetching?.();
+    this.cancelChatlistUpdatesFetching =
+      this.fetchChatlistUpdates =
+      undefined;
+
+    this.forumsTabs.forEach((forumTab) => forumTab.onCloseAfterTimeout());
+    this.forumsTabs.clear();
+    this.forumTabByPeerIdPromises.clear();
+    if(this.forumTab) {
+      this.forumTab = undefined;
+      appSidebarLeft.sidebarEl.classList.remove('is-forum-visible');
+      this.onSomeDrawerToggle?.();
+      this.onChatListNarrowChange();
+    }
+
+    this.forumNavigationItem =
+      this.filtersNavigationItem =
+      undefined;
+
+    this.disposeStories?.();
+    this.disposeStories =
+      this.resizeStoriesList =
+      undefined;
+
+    this.contactsPlaceholder && this.removeContactsPlaceholder();
+    this.updateContactsLengthPromise = undefined;
+    this.lastActiveElements.clear();
+
+    for(const id in this.filtersRendered) {
+      +id !== FOLDER_ID_ALL && this.destroyFilter(+id);
+    }
+
+    // * the folders sidebar lists them too: at once, with their lists
+    useFolders().resetForAccountSwitch();
+    this.filterId = FOLDER_ID_ALL;
+    this.xd = this.xds[FOLDER_ID_ALL];
+    this.xd.clear();
+  }
+
+  // * the counterpart of closeForAccountSwitch, once the tab is on the new account
+  public openAfterAccountSwitch() {
+    // * All is made anew rather than refilled: its list keeps more of the account than its rows - the
+    // * archive above them, the communities projected into it - and fetches it as it is made
+    this.destroyFilter(FOLDER_ID_ALL);
+    this.addAllChatsFilter();
+    this.xd = this.xds[FOLDER_ID_ALL];
+
+    appSidebarLeft.onCollapsedChange();
+    // * a new list is loaded the way the first one was: once, by picking its folder
+    this.isFirstDialogsLoad = true;
+    this.showFiltersPromise = undefined;
+    this.onStateLoaded(useAppState()[0]);
+    // * an account without folders adds none, and nothing else would hide the previous one's tabs
+    this.onFiltersLengthChange();
+  }
+
+  private addAllChatsFilter() {
     this.addFilter({
       id: FOLDER_ID_ALL,
       title: {_: 'textWithEntities', text: '', entities: []},
       localId: FOLDER_ID_ALL
     });
+  }
+
+  private destroyFilter(filterId: number) {
+    const elements = this.filtersRendered[filterId];
+    elements.topNotification?.dispose();
+    elements.container.remove();
+
+    this.xds[filterId].destroy();
+    delete this.xds[filterId];
+    delete this.filtersRendered[filterId];
+  }
+
+  private onRef(scrollableContext: ScrollableContextValue) {
+    this.setFilterId(FOLDER_ID_ALL);
+    this.addAllChatsFilter();
 
     const {setSelectedFolderId, onClick, setOnClick, folderItems} = useFolders();
     const selectFolderByIndex = async(index: number) => {
@@ -916,16 +996,9 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
-      const elements = this.filtersRendered[filter.id];
-      if(!elements) return;
+      if(!this.filtersRendered[filter.id]) return;
 
-      elements.topNotification?.dispose();
-      elements.container.remove();
-
-      this.xds[filter.id].destroy();
-      delete this.xds[filter.id];
-      delete this.filtersRendered[filter.id];
-
+      this.destroyFilter(filter.id);
       this.onFiltersLengthChange();
     });
 
@@ -995,6 +1068,7 @@ export class AppDialogsManager {
   }
 
   private async onStateLoaded(state: State) {
+    const managers = bindManagersToSession(this.managers);
     this.stateMiddlewareHelper.clean();
     const middleware = this.stateMiddlewareHelper.get();
     const filtersArr = state.filtersArr;
@@ -1021,7 +1095,7 @@ export class AppDialogsManager {
     if(haveFilters) {
       await addFilters(filtersArr);
     } else {
-      addFiltersPromise = this.managers.filtersStorage.getDialogFilters().then(addFilters);
+      addFiltersPromise = managers.filtersStorage.getDialogFilters().then(addFilters);
     }
 
     this.doNotRenderChatList = true;
@@ -1054,10 +1128,10 @@ export class AppDialogsManager {
 
     haveFilters && this.showFiltersPromise && await wrapPromiseWithMiddleware(this.showFiltersPromise);
 
-    this.managers.appNotificationsManager.getNotifyPeerTypeSettings();
+    managers.appNotificationsManager.getNotifyPeerTypeSettings();
 
     // await (await m(loadDialogsPromise)).renderPromise.catch(noop);
-    this.managers.appMessagesManager.fillConversations();
+    managers.appMessagesManager.fillConversations();
 
     if(!this.suggestionContainer) {
       this.suggestionContainer = document.createElement('div');
@@ -1590,9 +1664,13 @@ export class AppDialogsManager {
     asInnerIfAsMessages?: boolean,
     ForumTabConstructorOverride?: typeof ForumTab
   ) {
+    // * the forum opens for the account it was asked on, and not at all once the tab is on another: a run
+    // * queued behind another one for the same peer included
+    const managers = bindManagersToSession(this.managers);
     const previousPromise = this.forumTabByPeerIdPromises.get(peerId);
     const run = () => this.toggleForumTabByPeerIdInternal(
       peerId,
+      managers,
       show,
       asInnerIfAsMessages,
       ForumTabConstructorOverride
@@ -1613,10 +1691,15 @@ export class AppDialogsManager {
 
   private async toggleForumTabByPeerIdInternal(
     peerId: PeerId,
+    managers: AppManagers,
     show?: boolean,
     asInnerIfAsMessages?: boolean,
     ForumTabConstructorOverride?: typeof ForumTab
   ) {
+    if(isSessionLeaving(getManagersSession(managers))) {
+      return;
+    }
+
     if(peerId === rootScope.myId) {
       const tab = appSidebarLeft.getTab(AppSharedMediaTab);
       if(show === true || (show === undefined && !tab)) {
@@ -1632,7 +1715,6 @@ export class AppDialogsManager {
       return;
     }
 
-    const {managers} = this;
     const chat = !peerId.isUser() ?
       apiManagerProxy.getChat(peerId.toChatId()) :
       undefined;
@@ -1731,7 +1813,7 @@ export class AppDialogsManager {
       this.forumsTabs.set(peerId, forumTab);
       this.forumsSlider.append(forumTab.container);
 
-      forumTab.managers = this.managers;
+      forumTab.managers = managers;
       forumTab.eventListener.addEventListener('destroy', () => {
         this.forumsTabs.delete(peerId);
       });
@@ -2543,10 +2625,11 @@ export class AppDialogsManager {
   }
 
   private async getDialog(dialog: AnyDialog | PeerId, {threadOrSavedId, monoforumParentPeerId}: GetDialogOptions = {}) {
+    const managers = bindManagersToSession(this.managers);
     if(typeof(dialog) !== 'object') {
       let originalDialog: AnyDialog | MonoforumDialog;
       if(monoforumParentPeerId) {
-        originalDialog = await this.managers.monoforumDialogsStorage.getDialogByParent(monoforumParentPeerId, dialog);
+        originalDialog = await managers.monoforumDialogsStorage.getDialogByParent(monoforumParentPeerId, dialog);
 
         if(!originalDialog) return {
           peerId: dialog || NULL_PEER_ID,
@@ -2554,7 +2637,7 @@ export class AppDialogsManager {
         } as MonoforumDialog;
       } else if(threadOrSavedId) {
         if(dialog === rootScope.myId) {
-          originalDialog = await this.managers.dialogsStorage.getAnyDialog(dialog, threadOrSavedId);
+          originalDialog = await managers.dialogsStorage.getAnyDialog(dialog, threadOrSavedId);
           if(!originalDialog) {
             const peerId = dialog || NULL_PEER_ID;
             return {
@@ -2563,7 +2646,7 @@ export class AppDialogsManager {
             } as any as SavedDialog;
           }
         } else {
-          originalDialog = await this.managers.dialogsStorage.getForumTopic(dialog, threadOrSavedId);
+          originalDialog = await managers.dialogsStorage.getForumTopic(dialog, threadOrSavedId);
           if(!originalDialog) {
             const peerId = dialog || NULL_PEER_ID;
             return {
@@ -2573,12 +2656,12 @@ export class AppDialogsManager {
           }
         }
       } else {
-        originalDialog = await this.managers.appMessagesManager.getDialogOnly(dialog);
+        originalDialog = await managers.appMessagesManager.getDialogOnly(dialog);
         if(!originalDialog) {
           const peerId = dialog || NULL_PEER_ID;
           return {
             peerId,
-            peer: await this.managers.appPeersManager.getOutputPeer(peerId),
+            peer: await managers.appPeersManager.getOutputPeer(peerId),
             pFlags: {}
           } as any as Dialog;
         }
@@ -2607,6 +2690,7 @@ export class AppDialogsManager {
       const lazyLoadElement: Parameters<AppDialogsManager['lazyLoadQueue']['push']>[0] = {
         div,
         load: async() => {
+          const managers = bindManagersToSession(this.managers);
           await pause(200);
           if(!this.lazyLoadQueue.intersector.isVisible(div)) {
             this.lazyLoadQueue.push(lazyLoadElement); // * to process again
@@ -2620,14 +2704,14 @@ export class AppDialogsManager {
             limit: 50
           };
 
-          const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(
+          const readMaxId = await managers.appMessagesManager.getReadMaxIdIfUnread(
             options.peerId,
             options.threadId
           );
 
           if(readMaxId) {
             const limit = Math.floor(getHistoryOptions.limit / 2);
-            await this.managers.appMessagesManager.getHistory({
+            await managers.appMessagesManager.getHistory({
               ...getHistoryOptions,
               offsetId: readMaxId || undefined,
               backLimit: readMaxId ? limit : undefined,
@@ -2635,7 +2719,7 @@ export class AppDialogsManager {
             });
           }
 
-          return this.managers.appMessagesManager.getHistory(getHistoryOptions);
+          return managers.appMessagesManager.getHistory(getHistoryOptions);
         }
       };
 
@@ -2649,6 +2733,7 @@ export class AppDialogsManager {
   }
 
   public initDialog(dialogElement: DialogElement, options: Parameters<AppDialogsManager['addDialogNew']>[0] & InitDialogAdditionalOptions) {
+    const managers = bindManagersToSession(this.managers);
     const {peerId} = options;
     const getDialogPromise = this.getDialog(options.dialog || peerId, {
       threadOrSavedId: options.threadId,
@@ -2663,7 +2748,7 @@ export class AppDialogsManager {
       }
 
       if(peerId !== rootScope.myId && isUser) {
-        promises.push(this.managers.appUsersManager.getUserStatus(peerId.toUserId()).then((status) => {
+        promises.push(managers.appUsersManager.getUserStatus(peerId.toUserId()).then((status) => {
           if(status?._ === 'userStatusOnline') {
             this.xd.setOnlineStatus(dialogElement.dom.avatarEl.node, true);
           }
@@ -2743,6 +2828,7 @@ export class AppDialogsManager {
   }
 
   private showPollCancelConfirmation(randomId: string) {
+    const managers = bindManagersToSession(this.managers);
     const listenerSetter = new ListenerSetter;
     let popup: PopupPeerHandle;
 
@@ -2769,7 +2855,7 @@ export class AppDialogsManager {
         popup = p;
       }
     }).then(() => {
-      this.managers.appMessagesManager.cancelPendingMessage(randomId).then((wasCanceled) => {
+      managers.appMessagesManager.cancelPendingMessage(randomId).then((wasCanceled) => {
         if(!wasCanceled) {
           onSent();
         }

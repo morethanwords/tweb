@@ -10,6 +10,7 @@ import type {AppPrivacyMessagesTab} from '@components/solidJsTabs';
 
 import {MessagesTabStateStore, MessagesPrivacyOption, defaultPrivacyRules, privacyRulesInputKey} from '@components/sidebarLeft/tabs/privacy/messages/config';
 import {ChosenPeersByType} from '@components/sidebarLeft/tabs/privacy/messages/useStateStore';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 const log = logger('useSaveSettings');
@@ -47,6 +48,7 @@ const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersB
   };
 
   const savePrivacyRules = async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     const rules: InputPrivacyRule[] = [];
 
     const {chats, users} = chosenPeersByType();
@@ -59,13 +61,13 @@ const useSaveSettings = ({store, globalPrivacy, isPaid, hasChanges, chosenPeersB
     });
     if(users.length) rules.push({
       _: 'inputPrivacyValueAllowUsers',
-      users: await Promise.all(users.map((id) => rootScope.managers.appUsersManager.getUserInput(id)))
+      users: await Promise.all(users.map((id) => managers.appUsersManager.getUserInput(id)))
     });
 
 
     log('saving rules :>> ', rules);
 
-    return rootScope.managers.appPrivacyManager.setPrivacy(privacyRulesInputKey, rules);
+    return managers.appPrivacyManager.setPrivacy(privacyRulesInputKey, rules);
   };
 
 

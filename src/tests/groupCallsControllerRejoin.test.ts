@@ -59,11 +59,15 @@ function makeConnectionInstance(source: number, connection = new FakeConnection(
   return connectionInstance;
 }
 
+// * the managers of the controller made last: the call is joined on that account and recovers through it
+let lastManagers: any;
+
 function makeLegacyInstance() {
   const main = makeConnectionInstance(777);
   const created: any[] = [];
   const listeners = new Map<string, Array<(payload: any) => void>>();
   const instance: any = {
+    managers: lastManagers,
     id: INPUT.id,
     chatId: 99,
     joined: true,
@@ -128,7 +132,8 @@ function makeController() {
     bindPrefix: () => Object.assign(vi.fn(), {warn: vi.fn(), error: vi.fn()})
   });
   const controller = new GroupCallsController();
-  Object.assign(controller as any, {audioAsset, log, managers: {appGroupCallsManager}});
+  lastManagers = {appGroupCallsManager};
+  Object.assign(controller as any, {audioAsset, log, managers: lastManagers});
   return {controller, appGroupCallsManager, log, audioAsset};
 }
 

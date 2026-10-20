@@ -1324,6 +1324,7 @@ describe('GroupCallInstance runtime media transactions', () => {
     (main.description as any).getEntryBySource = vi.fn(() => ({peerId: 42 as PeerId}));
     vi.spyOn(CallInstanceBase.prototype, 'tryAddTrack').mockReturnValue('77');
     const dispatch = vi.spyOn(rootScope, 'dispatchEvent');
+    const dispatchOfAccount = vi.spyOn(rootScope, 'dispatchEventOfAccount');
 
     instance.tryAddTrack({type: 'output'} as any);
     instance.cleanup();
@@ -1332,6 +1333,7 @@ describe('GroupCallInstance runtime media transactions', () => {
     await Promise.resolve();
 
     expect(dispatch).not.toHaveBeenCalledWith('group_call_participant', expect.anything());
+    expect(dispatchOfAccount).not.toHaveBeenCalledWith(expect.anything(), 'group_call_participant', expect.anything());
   });
 
   it('keeps the old camera state intact when a device sender swap fails', async() => {

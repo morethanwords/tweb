@@ -24,6 +24,10 @@
     {
       "name": "style",
       "specifier": "@stylistic/eslint-plugin"
+    },
+    {
+      "name": "tweb",
+      "specifier": "./scripts/oxlint/twebPlugin.mjs"
     }
   ],
   "options": {
@@ -39,6 +43,35 @@
   "overrides": [{
     "files": ["src/tests/**"],
     "rules": {"jsx-a11y/control-has-associated-label": "off"}
+  }, {
+    "files": ["src/**/*.ts", "src/**/*.tsx"],
+    "rules": {"tweb/managers-before-await": "error"}
+  }, {
+    "files": [
+      "src/components/chat/bubbles.ts",
+      "src/components/chat/chat.ts",
+      "src/components/chat/contextMenu.ts",
+      "src/components/chat/inlineHelper.ts",
+      "src/components/chat/input.ts",
+      "src/components/chat/topbar.ts",
+      "src/components/mediaViewer/rtmp.ts",
+      "src/lib/calls/callInstance.ts",
+      "src/lib/calls/groupCallConnectionInstance.ts",
+      "src/lib/calls/groupCallInstance.ts"
+    ],
+    "rules": {"tweb/managers-before-await": ["error", {"allowThis": true}]}
+  }, {
+    "files": [
+      "src/tests/**",
+      "src/index.ts",
+      "src/components/popupSandbox/**",
+      "src/lib/appManagers/**",
+      "src/lib/crypto/**",
+      "src/lib/mainWorker/**",
+      "src/lib/mtproto/**",
+      "src/lib/serviceWorker/**"
+    ],
+    "rules": {"tweb/managers-before-await": "off"}
   }],
   "rules": {
     "jsx-a11y/alt-text": "error",

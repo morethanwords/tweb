@@ -17,7 +17,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import safeAssign from '@helpers/object/safeAssign';
 import liteMode from '@helpers/liteMode';
 import {I18n, LangPackKey} from '@lib/langPack';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 
 /** The row of a chat list - what these selections select, and what a drag over one runs across */
 export const DIALOG_ROW_CLASS_NAME = 'chatlist-chat';
@@ -110,7 +110,7 @@ export type DialogsSelectionList = {
 export type DialogsSelectionActionsOf<Action extends string> = Partial<Record<Action, boolean>>;
 
 export type DialogsSelectionBaseOptions = {
-  managers: AppManagers,
+  managers: ReadingManagers,
   /** the header of the sidebar tab the list lives in - the bar stands in for it */
   getHeader: () => HTMLElement,
   /**

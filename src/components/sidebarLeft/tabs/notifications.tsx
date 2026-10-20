@@ -6,6 +6,8 @@ import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, ReactionNo
 import {i18n, LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
+import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {useAppSettings} from '@stores/appSettings';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import RangeSettingSelector from '@components/rangeSettingSelector';
@@ -47,10 +49,12 @@ const NotifySection = (props: {
   });
 
   onCleanup(async() => {
+    // * the account the tab was open on: an account switch can come before the answer below
+    const managers = createProxiedManagersForAccount(getCurrentAccount());
     const mute = !enabled();
     const _showPreviews = showPreviews();
     const _notifySettings = notifySettings();
-    const isMuted = await rootScope.managers.appNotificationsManager.isMuted(_notifySettings);
+    const isMuted = await managers.appNotificationsManager.isMuted(_notifySettings);
     if(
       mute === isMuted &&
       _showPreviews === _notifySettings.show_previews
@@ -62,7 +66,7 @@ const NotifySection = (props: {
     inputSettings._ = 'inputPeerNotifySettings';
     inputSettings.mute_until = mute ? MUTE_UNTIL : 0;
     inputSettings.show_previews = _showPreviews;
-    rootScope.managers.appNotificationsManager.updateNotifySettings(
+    managers.appNotificationsManager.updateNotifySettings(
       inputNotifyPeer,
       inputSettings
     );

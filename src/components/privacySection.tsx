@@ -16,6 +16,8 @@ import Section, {SectionParts} from '@components/section';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {hideToast, toastNew} from '@components/toast';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import bindManagersToAccount from '@lib/accounts/bindManagersToAccount';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 
 type PrivacyKey = InputPrivacyKey['_'];
 type PrivacyExceptionKey = 'allow' | 'disallow';
@@ -276,6 +278,8 @@ export default class PrivacySection {
   }
 
   public onTabDestroy = async() => {
+    // * a save on the way out reaches the account it was made in, even once the tab is on another one
+    const managers = bindManagersToAccount(rootScope.managers, getCurrentAccount());
     if(this.isLocked()) {
       return;
     }
@@ -329,7 +333,7 @@ export default class PrivacySection {
         if(splitted.users.length) {
           rules.push({
             _: usersKey,
-            users: await Promise.all(splitted.users.map((id) => rootScope.managers.appUsersManager.getUserInput(id)))
+            users: await Promise.all(splitted.users.map((id) => managers.appUsersManager.getUserInput(id)))
           });
         }
 
@@ -339,7 +343,7 @@ export default class PrivacySection {
       }
     }
 
-    rootScope.managers.appPrivacyManager.setPrivacy(this.options.inputKey, rules);
+    managers.appPrivacyManager.setPrivacy(this.options.inputKey, rules);
   };
 
   private replaceCaption(caption: PrivacySectionStr = this.isLocked() ? this.options.premiumCaption : this.options.captions[this.type]) {

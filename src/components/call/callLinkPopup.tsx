@@ -19,6 +19,7 @@ import noop from '@helpers/noop';
 import type {GroupCallId} from '@appManagers/appGroupCallsManager';
 import styles from '@components/call/callLinkPopup.module.scss';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * The slug a conference invite link carries. tdesktop pulls it out of the link
@@ -75,6 +76,7 @@ export default function showCallLinkPopup(options: CallLinkPopupOptions) {
    * link the server just minted.
    */
   const revoke = async() => {
+    const {appGroupCallsManager} = bindManagersToSession(rootScope.managers);
     await confirmationPopup({
       titleLangKey: 'RevokeLink',
       descriptionLangKey: 'CallLink.RevokeAlert',
@@ -82,9 +84,8 @@ export default function showCallLinkPopup(options: CallLinkPopupOptions) {
     });
 
     try {
-      const managers = rootScope.managers.appGroupCallsManager;
-      await managers.toggleGroupCallSettings(callId, {resetInviteHash: true});
-      const newLink = await managers.exportGroupCallInvite(callId);
+      await appGroupCallsManager.toggleGroupCallSettings(callId, {resetInviteHash: true});
+      const newLink = await appGroupCallsManager.exportGroupCallInvite(callId);
       setLink(newLink);
       inviteLink.setUrl(newLink);
       toastNew({langPackKey: 'CallLink.Revoked'});

@@ -10,7 +10,7 @@ import safeAssign from '@helpers/object/safeAssign';
 import Animated from '@helpers/solid/animations';
 import windowSize from '@helpers/windowSize';
 import {EmojiGroup, StickerSet} from '@layer';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {AnyFunction} from '@types';
@@ -58,7 +58,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   public middlewareHelper: MiddlewareHelper;
   private disposeSearch: () => void;
 
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   protected noMenu: boolean;
   protected mediaPeekClass: string;
   // * returning the results directly (not a promise) renders them without a repaint gap
@@ -72,7 +72,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   protected searchVerifyDebounce?: Parameters<typeof EmoticonsSearch>[0]['verifyDebounce'];
 
   constructor(options: {
-    managers: AppManagers,
+    managers: ReadingManagers,
     noMenu?: boolean,
     mediaPeekClass?: string,
     searchFetcher?: EmoticonsTabC<Category, T>['searchFetcher'],

@@ -29,6 +29,7 @@ import {
   getButtonTypeIcon
 } from '@components/wrappers/buttonTypes';
 import {copyUrlButtonAnchor, createUrlButtonAnchor} from '@components/wrappers/urlButtonAnchor';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type AnyKeyboardButton = KeyboardButton | KeyboardInlineButton;
 
@@ -106,11 +107,12 @@ function getButtonTypeHandler({
     case 'inlineButtonTypeSwitchInline': {
       result.classNames.push('is-switch-inline');
       result.onClick = (e) => {
+        const managers = bindManagersToSession(rootScope.managers);
         cancelEvent(e);
 
         let promise: Promise<PeerId>;
         if(type.pFlags.same_peer) promise = Promise.resolve(peerId);
-        else promise = rootScope.managers.appInlineBotsManager.checkSwitchReturn(botId).then((peerId) => {
+        else promise = managers.appInlineBotsManager.checkSwitchReturn(botId).then((peerId) => {
           if(peerId) {
             return peerId;
           }
@@ -134,7 +136,7 @@ function getButtonTypeHandler({
         promise.then(async(chosenPeerId) => {
           const threadId = peerId === chosenPeerId ? chat.threadId : undefined;
           await chat.appImManager.setInnerPeer({peerId: chosenPeerId, threadId});
-          rootScope.managers.appInlineBotsManager.switchInlineQuery(chosenPeerId, threadId, botId, type.query);
+          managers.appInlineBotsManager.switchInlineQuery(chosenPeerId, threadId, botId, type.query);
         });
       };
       break;
@@ -266,6 +268,7 @@ function getButtonTypeHandler({
 
     case 'buttonTypeRequestPeer': {
       result.onClick = async() => {
+        const managers = bindManagersToSession(rootScope.managers);
         const peerType = type.peer_type;
 
         if(peerType._ === 'requestPeerTypeCreateBot') {
@@ -275,7 +278,7 @@ function getButtonTypeHandler({
             suggestedUsername: peerType.suggested_username,
             onCreate: async({name, username}) => {
               try {
-                const createBotResult = await rootScope.managers.appBotsManager.createManagedBot({
+                const createBotResult = await managers.appBotsManager.createManagedBot({
                   managerId: peerId,
                   botName: name,
                   username: username
@@ -299,7 +302,7 @@ function getButtonTypeHandler({
 
                 const user = createBotResult.user;
 
-                await rootScope.managers.appMessagesManager.sendBotRequestedPeer(
+                await managers.appMessagesManager.sendBotRequestedPeer(
                   peerId,
                   type.button_id,
                   [user.id.toPeerId()],
@@ -323,7 +326,7 @@ function getButtonTypeHandler({
           return;
         }
 
-        rootScope.managers.appMessagesManager.sendBotRequestedPeer(
+        managers.appMessagesManager.sendBotRequestedPeer(
           peerId,
           type.button_id,
           requestedPeerIds,

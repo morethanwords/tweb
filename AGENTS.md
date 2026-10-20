@@ -331,6 +331,27 @@ rootScope.managers.appChatsManager.getChat(chatId);
 
 IMPORTANT: `rootScope.managers.*` are asynchronous proxies to a shared worker. Every manager method returns a `Promise`, even if the manager's own methods seem synchronous.
 
+### Managers belong to an account session
+
+The tab switches between signed-in accounts in place (`@lib/accounts/switchAccount`), so the account a
+flow started on may not be the one shown when its `await` returns.
+
+- `rootScope.managers` (`TabManagers`) follow whichever account the tab shows, read at call time. Only
+  what lives as long as the tab keeps them (the sidebars, the chat list, `appImManager`).
+- Anything else holds managers bound to an account session (`AppManagers`):
+  `bindManagersToSession(rootScope.managers)`. They reach the account they were taken in, and once the
+  tab has switched away they send nothing and drop what comes back — an action the switch interrupted
+  is not carried on. Tabs, popups and the media viewer get them from their base classes; a chat and a
+  call have their own, tied to their account for good.
+- A function that waits reads its managers once, before the first await, bound, and uses that after.
+  `tweb/managers-before-await` (`scripts/oxlint/twebPlugin.mjs`) reports a read after an await or in a
+  callback that runs later, and managers kept unbound; `TabManagers` is not assignable to `AppManagers`,
+  so handing them to what keeps them asks for the binding (what only reads takes `ReadingManagers`).
+- A save on a screen's way out that reads before it writes binds to the account for good
+  (`bindManagersToAccount(managers, getCurrentAccount())`): the switch waits for closing screens a while only.
+- A tab, a popup, the media editor or a picker asked for by a session that is over or on its way out is
+  not opened (`isSessionLeaving`); hand the opener's managers on so the check knows whose it is.
+
 ### The app's top level: `hotReloadGuard`
 
 **Strict rule — code below the app's top level never imports it.** The top level is the singletons

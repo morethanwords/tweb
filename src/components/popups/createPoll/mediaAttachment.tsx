@@ -34,6 +34,7 @@ import {openPollLinkEditorPopup} from '../pollLink';
 import styles from './mediaAttachment.module.scss';
 import {useStickersDropdown} from './stickersDropdown';
 import {AttachedLink, AttachedMedia, AttachedVideo, SupportedMediaType} from './storeContext';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type PersistingState = {
@@ -309,6 +310,7 @@ export const MediaAttachment = (props: {
   });
 
   const onEdit = wrapAsyncClickHandler(async() => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(!props.attachedMedia || !persistingState) return;
     if(props.attachedMedia.type !== 'photo' && props.attachedMedia.type !== 'video') return;
 
@@ -322,6 +324,8 @@ export const MediaAttachment = (props: {
     const sourceHeight = willAnimateFromVideo ? (sourceEl as HTMLVideoElement).videoHeight : (sourceEl as HTMLImageElement).naturalHeight;
 
     const {openMediaEditorFromMedia} = await import('@components/mediaEditor');
+    // * the attachment can be gone by the time the editor loads (its popup closed, the account switched)
+    if(persistingState !== editingState) return;
     const mediaSrc = objectURLs.create(editingState.initialFile);
 
     openMediaEditorFromMedia({
@@ -331,7 +335,7 @@ export const MediaAttachment = (props: {
       mediaType: wasInitiallyVideo ? 'video' : 'image',
       mediaSrc,
       getMediaBlob: async() => editingState.initialFile,
-      managers: rootScope.managers,
+      managers,
       onEditFinish: (editorResult) => handleFinish(editorResult, editingState.initialFile, startOperation()),
       editingMediaState: editingState.editingState,
       onClose: () => objectURLs.release(mediaSrc),

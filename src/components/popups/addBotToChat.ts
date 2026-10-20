@@ -16,6 +16,7 @@ import hasBotAdminRights from '@appManagers/utils/bots/hasBotAdminRights';
 import mergeBotAdminRights from '@appManagers/utils/bots/mergeBotAdminRights';
 import tsNow from '@helpers/tsNow';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 function makeMissingParticipant(
   chat: Chat.chat | Chat.channel,
@@ -105,6 +106,7 @@ export default async function showAddBotToChat(options: {
       return canAddAsAdmin || (!user.pFlags.bot_nochats && hasRights(peer, 'invite_users'));
     },
     onSelect: async(chosen) => {
+      const managers = bindManagersToSession(rootScope.managers);
       const peerId = chosen[0].peerId;
       const chatId = peerId.toChatId();
       const chat = apiManagerProxy.getChat(chatId) as Chat.chat | Chat.channel;
@@ -146,7 +148,7 @@ export default async function showAddBotToChat(options: {
           langKey: 'Add'
         }
       });
-      await rootScope.managers.appMessagesManager.addBotToChat(
+      await managers.appMessagesManager.addBotToChat(
         options.botId,
         chatId,
         options.startParam

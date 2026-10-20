@@ -40,6 +40,7 @@ import AlbumThumbs, {AlbumThumbItem, ALBUM_THUMBS_CLASSNAME, getAlbumThumbsHeigh
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {batch, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 const isItemIndex = (index: number) => typeof(index) === 'number' && index >= 0;
 
@@ -269,6 +270,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   };
 
   onDeleteClick = async() => {
+    const managers = bindManagersToSession(this.managers);
     const target = this.target;
     if(this.deleteAsChatPhoto) {
       try {
@@ -284,7 +286,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         return;
       }
 
-      await this.managers.appChatsManager.editPhoto(target.peerId.toChatId());
+      await managers.appChatsManager.editPhoto(target.peerId.toChatId());
       this.target = {element: this.content.media} as any;
       this.close();
       return;
@@ -667,6 +669,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     /* , needLoadMore = true */
   }) {
     if(this.setMoverPromise) return this.setMoverPromise;
+    if(this.isAskedTooLate()) return Promise.resolve();
 
     const mid = message.mid;
     const fromId = (message as Message.message).fwd_from && !message.fromId ? getFwdFromName((message as Message.message).fwd_from) : message.fromId;

@@ -77,6 +77,7 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import {RootScope} from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
+import type switchAccount from '@lib/accounts/switchAccount';
 import {useAppSettings} from '@stores/appSettings';
 import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
@@ -177,6 +178,8 @@ export type SolidJSHotReloadGuardContextValue = {
   createStoriesViewerWithPeer: typeof createStoriesViewerWithPeer;
   createStoriesViewerWithProvider: typeof createStoriesViewerWithProvider;
   openInstantViewInAppBrowser: typeof openInstantViewInAppBrowser;
+  /** it closes and reopens the app's screens, so it is the top level too */
+  switchAccount: typeof switchAccount;
   /** every tab scaffold: their registry imports each tab's component, i.e. the whole app */
   tabs: typeof tabs;
 };

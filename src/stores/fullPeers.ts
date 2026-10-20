@@ -26,6 +26,12 @@ const requestFullPeer = (peerId: PeerId, overwrite?: boolean) => {
 
 hotListen(import.meta.hot, rootScope, 'peer_full_update', requestFullPeer);
 
+// * the same peer is another peer full for another account (rights, bio, pinned message)
+hotListen(import.meta.hot, rootScope, 'account_switched', () => {
+  expirations.clear();
+  setState(reconcile({}));
+});
+
 function _useFullPeer(peerId: PeerId) {
   const fullPeer = () => state[peerId];
 

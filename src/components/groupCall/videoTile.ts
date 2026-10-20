@@ -6,6 +6,7 @@ import {getMiddleware} from '@helpers/middleware';
 import safePlay from '@helpers/dom/safePlay';
 import PeerTitle from '@components/peerTitle';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {STANDARD_TRANSITION_EASING, STANDARD_TRANSITION_IN_TIME} from '@helpers/standardTransition';
 import Icon from '@components/icon';
 import liteMode from '@helpers/liteMode';
@@ -64,6 +65,7 @@ export default class GroupCallVideoTile {
    * @param initialSize the picture's size where the call's own element already knows it: the clone
    * has no frame yet, and a 16:9 guess would reshape the tile once its first one arrived.
    * @param onSizeChange `animate` is off for the first frame, which only settles the tile.
+   * @param accountNumber the call's, which the tab may not show meanwhile
    */
   constructor(
     public readonly source: GroupCallOutputSource,
@@ -71,7 +73,8 @@ export default class GroupCallVideoTile {
     participant: GroupCallParticipant,
     video: HTMLVideoElement,
     private readonly onSizeChange: (animate: boolean) => void,
-    private readonly initialSize?: GroupCallTileSize
+    private readonly initialSize?: GroupCallTileSize,
+    accountNumber?: ActiveAccountNumber
   ) {
     this.peerId = getPeerId(participant.peer);
 
@@ -87,7 +90,8 @@ export default class GroupCallVideoTile {
       middleware: this.middlewareHelper.get(),
       size: AVATAR_SIZE,
       isDialog: false,
-      peerId: this.peerId
+      peerId: this.peerId,
+      accountNumber
     });
     avatar.node.classList.add(className + '-avatar');
     placeholder.append(avatar.node);
@@ -110,10 +114,10 @@ export default class GroupCallVideoTile {
       peerTitleElement.classList.add('peer-title');
       this.peerName = I18n.format('VoiceChat.Status.You', true);
     } else {
-      peerTitleElement = new PeerTitle({peerId: this.peerId}).element;
+      peerTitleElement = new PeerTitle({peerId: this.peerId, accountNumber}).element;
       // the title fills in later, so the name is asked for on its own
       const middleware = this.middlewareHelper.get();
-      getPeerTitle({peerId: this.peerId, plainText: true}).then((name) => {
+      getPeerTitle({peerId: this.peerId, plainText: true, accountNumber}).then((name) => {
         if(!middleware()) return;
         this.peerName = name;
         this.updateAriaLabel();

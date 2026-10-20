@@ -14,6 +14,7 @@ import createPendingUndoableMessage from '@components/chat/pendingUndoableMessag
 import type Chat from '@components/chat/chat';
 import {useAppState} from '@stores/appState';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 
 type PassedDownArgs = {
@@ -206,6 +207,7 @@ export default class PaidMessagesInterceptor {
   }
 
   private triggerUndoableMessages({peerId, messageCount, starsAmount}: PassedDownArgs) {
+    const managers = bindManagersToSession(this.managers);
     this.pendingUndoableMessage.setMessageCount(prev => prev + messageCount);
     this.pendingUndoableMessage.setSendTime(Date.now() + SEND_PAID_WITH_STARS_DELAY);
 
@@ -228,7 +230,7 @@ export default class PaidMessagesInterceptor {
     });
 
     this.pendingUndoableMessage.timeoutId = self.setTimeout(() => {
-      this.managers.appMessagesManager.sendQueuedPaidMessages(peerId);
+      managers.appMessagesManager.sendQueuedPaidMessages(peerId);
       this.pendingUndoableMessage.reset();
     }, SEND_PAID_WITH_STARS_DELAY);
   }

@@ -3,13 +3,14 @@ import {FormatterArguments, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import showPeerPopup, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from '@components/popups/peer';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 /**
  * Leaves a group or a channel, and with `flush` clears what is left of it here as well: a basic
  * group stays in the list with its history once we have left it, a channel goes with the leave
  */
 export function leaveChat(peerId: PeerId, flush?: boolean) {
-  const {managers} = rootScope;
+  const managers = bindManagersToSession(rootScope.managers);
   const promise = managers.appChatsManager.leave(peerId.toChatId());
   return flush ? promise.then(() => managers.appMessagesManager.flushHistory({peerId})) : promise;
 }
@@ -22,7 +23,8 @@ export default async function showDeleteDialogPopup(
   threadId?: number,
   monoforumParentPeerId?: number
 ) {
-  const isSavedDialog = await rootScope.managers.appPeersManager.isSavedDialog(peerId, threadId);
+  const managers = bindManagersToSession(rootScope.managers);
+  const isSavedDialog = await managers.appPeersManager.isSavedDialog(peerId, threadId);
   // if(isSavedDialog) {
   //   peerId = threadId;
   // }
@@ -33,7 +35,6 @@ export default async function showDeleteDialogPopup(
     meAsNotes: isSavedDialog
   });
 
-  const managers = rootScope.managers;
   if(peerType === undefined) {
     peerType = await managers.appPeersManager.getDialogType(monoforumParentPeerId || peerId, monoforumParentPeerId ? peerId : threadId);
   }

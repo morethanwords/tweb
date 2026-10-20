@@ -5,7 +5,7 @@ import I18n from '@lib/langPack';
 import replaceContent from '@helpers/dom/replaceContent';
 import StackedAvatars from '@components/stackedAvatars';
 import formatNumber from '@helpers/number/formatNumber';
-import {AppManagers} from '@lib/managers';
+import {ReadingManagers} from '@lib/managers';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {MiddlewareHelper} from '@helpers/middleware';
@@ -35,7 +35,7 @@ export default class RepliesElement extends HTMLElement {
   public lazyLoadQueue: LazyLoadQueue;
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
-  public managers: AppManagers;
+  public managers: ReadingManagers;
   public middlewareHelper: MiddlewareHelper;
 
   private updated = false;

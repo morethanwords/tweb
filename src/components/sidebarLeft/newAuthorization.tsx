@@ -19,6 +19,7 @@ import {render} from 'solid-js/web';
 import styles from '@components/sidebarLeft/newAuthorization.module.scss';
 import collapsedPanelStyles from '@components/sidebarLeft/collapsedPanelButton.module.scss';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export function formatAuthorizationOrigin(authorization: UnconfirmedAuthorization) {
   return [authorization.device, authorization.location].filter(Boolean).join(', ');
@@ -147,14 +148,15 @@ export function NewAuthorization(props: {
   const [processing, setProcessing] = createSignal(false);
 
   const performAction = async(action: 'confirm' | 'deny') => {
+    const managers = bindManagersToSession(rootScope.managers);
     if(processing()) return false;
 
     const authorization = props.authorization;
     setProcessing(true);
     try {
       const result = action === 'confirm' ?
-        await rootScope.managers.appAccountManager.confirmUnconfirmedAuthorization(authorization.hash) :
-        await rootScope.managers.appAccountManager.resetAuthorization(authorization.hash);
+        await managers.appAccountManager.confirmUnconfirmedAuthorization(authorization.hash) :
+        await managers.appAccountManager.resetAuthorization(authorization.hash);
 
       if(!result) {
         throw new Error('Authorization action failed');

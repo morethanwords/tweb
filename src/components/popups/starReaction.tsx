@@ -31,22 +31,23 @@ import {PeerTitleTsx} from '@components/peerTitleTsx';
 import {LimitLineTsx} from '@components/limitLineTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export default async function showStarReactionPopup(peerId: PeerId, mid: number, chat: Chat) {
+  const managers = bindManagersToSession(rootScope.managers);
   // * cancel all pending paid reactions
   PENDING_PAID_REACTIONS.forEach((it) => it.abortController.abort());
 
   const [peerTitle, message, defaultSendAs] = await Promise.all([
     wrapPeerTitle({peerId}),
-    rootScope.managers.appMessagesManager.getMessageByPeer(peerId, mid) as Promise<Message.message>,
-    rootScope.managers.appReactionsManager.getPaidReactionPrivacy()
+    managers.appMessagesManager.getMessageByPeer(peerId, mid) as Promise<Message.message>,
+    managers.appReactionsManager.getPaidReactionPrivacy()
   ]);
 
   // the senders list opens a profile, and that has to close the popup from outside a button
   const [show, setShow] = createSignal(true);
 
   createPopup(() => {
-    const managers = rootScope.managers;
     const [appState] = useAppState();
     const maximumStars = appState.appConfig.stars_paid_reaction_amount_max;
     const [starsSliderValue, setStarsSliderValue] = createSignal<number>(0.1); // 50 stars
@@ -207,6 +208,7 @@ export default async function showStarReactionPopup(peerId: PeerId, mid: number,
 
     return (
       <PopupElement
+        managers={managers}
         class="popup-stars popup-star-reaction"
         closable
         old

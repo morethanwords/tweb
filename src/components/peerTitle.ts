@@ -15,6 +15,8 @@ import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 import buildURLHash from '@helpers/buildURLHash';
 import Modes from '@config/modes';
 import {hotListen} from '@helpers/hotModule';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -36,7 +38,9 @@ export type PeerTitleOptions = {
    * A name that opens its peer on click (a sender's in a message): an `<a href="#<peerId>">`, as a
    * mention of the peer in a message is — the route opens the peer. Read once, by the constructor.
    */
-  link?: boolean
+  link?: boolean,
+  /** The account the peer is of, when the tab may show another one meanwhile (a call's). */
+  accountNumber?: ActiveAccountNumber
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -125,6 +129,7 @@ export default class PeerTitle {
   }
 
   public async update(options?: PeerTitleOptions) {
+    const managers = bindManagersToSession(rootScope.managers);
     this.setOptions(options);
 
     let fromName = this.options.fromName;
@@ -181,10 +186,10 @@ export default class PeerTitle {
     } else {
       if(threadId) {
         const [topic, isForum, isBotforum, isMonoforum] = await Promise.all([
-          rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId),
-          rootScope.managers.appPeersManager.isForum(peerId),
-          rootScope.managers.appPeersManager.isBotforum(peerId),
-          rootScope.managers.appPeersManager.isMonoforum(peerId)
+          managers.dialogsStorage.getForumTopic(peerId, threadId),
+          managers.appPeersManager.isForum(peerId),
+          managers.appPeersManager.isBotforum(peerId),
+          managers.appPeersManager.isMonoforum(peerId)
         ]);
 
         // * fix monoforum
@@ -192,7 +197,7 @@ export default class PeerTitle {
           peerId = threadId;
           threadId = undefined;
         } else if(!topic && (isForum || isBotforum)) {
-          rootScope.managers.dialogsStorage.getForumTopicById(peerId, threadId).then((forumTopic) => {
+          managers.dialogsStorage.getForumTopicById(peerId, threadId).then((forumTopic) => {
             if(!forumTopic && this.options.threadId === threadId) {
               this.options.threadId = undefined;
               this.update({threadId: undefined});
@@ -214,7 +219,7 @@ export default class PeerTitle {
       }
 
       const getTopicIconPromise = threadId && this.options.withIcons ?
-        rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId).then((topic) => wrapTopicIcon({...(this.options.wrapOptions ?? {}), topic})) :
+        managers.dialogsStorage.getForumTopic(peerId, threadId).then((topic) => wrapTopicIcon({...(this.options.wrapOptions ?? {}), topic})) :
         undefined;
 
       const [title, icons, topicIcon] = await Promise.all([

@@ -2,6 +2,7 @@
 // * https://github.com/Ajaxy/telegram-tt/blob/069f4f5b2f2c7c22529ccced876842e7f9cb81f4/src/components/mediaViewer/MediaViewerSlides.tsx
 
 import type {MyDocument} from '@appManagers/appDocsManager';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {MyPhoto} from '@appManagers/appPhotosManager';
 import deferredPromise from '@helpers/cancellablePromise';
 import mediaSizes from '@helpers/mediaSizes';
@@ -92,6 +93,8 @@ import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import isVideoStalled from '@helpers/dom/isVideoStalled';
 import {getMoverTransform, MOVER_TRANSFORM_PROPERTY, MOVER_TRANSFORM_SYNCED_CLASS, setMoverTransform} from '@components/mediaViewer/moverTransform';
 import createSourceFloatings from '@components/mediaViewer/sourceFloatings';
+import {bindManagersToSession, getSessionOf} from '@lib/accounts/bindManagersToAccount';
+import {isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -319,7 +322,7 @@ export default class AppMediaViewerBase<
   ) {
     super(false);
 
-    this.managers = rootScope.managers;
+    this.managers = bindManagersToSession(rootScope.managers);
     this.middlewareHelper = getMiddleware();
 
     this.log = logger('AMV');
@@ -991,6 +994,20 @@ export default class AppMediaViewerBase<
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptionsVerifiable[]) {
     const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons});
     this.topbar.append(btnMenuToggle);
+  }
+
+  /** What Escape and Back do to the viewer: a live stream's outlives an account switch. */
+  public getNavigationItem() {
+    return this.navigationItem;
+  }
+
+  /** Closes it from outside (an account switch) even mid-animation, which `close` refuses: once it is over. */
+  public async closeWhenIdle() {
+    while(this.setMoverAnimationPromise && !this.closing) {
+      await this.setMoverAnimationPromise.catch(noop);
+    }
+
+    return this.close();
   }
 
   public close(e?: MouseEvent) {
@@ -2023,7 +2040,8 @@ export default class AppMediaViewerBase<
     } */
   }
 
-  protected setAuthorInfo(fromId: PeerId | string, timestamp: number) {
+  // * `accountNumber`: the account the media is of, when the tab may show another (a live stream's)
+  protected setAuthorInfo(fromId: PeerId | string, timestamp: number, accountNumber?: ActiveAccountNumber) {
     const isPeerId = fromId.isPeerId();
     let wrapTitlePromise: Promise<HTMLElement> | HTMLElement;
     if(isPeerId) {
@@ -2031,7 +2049,8 @@ export default class AppMediaViewerBase<
         peerId: fromId as PeerId,
         dialog: false,
         onlyFirstName: false,
-        plainText: false
+        plainText: false,
+        accountNumber
       });
     } else {
       const title = wrapTitlePromise = document.createElement('span');
@@ -2046,7 +2065,8 @@ export default class AppMediaViewerBase<
       middleware: (this.author.avatarMiddlewareHelper = this.middlewareHelper.get().create()).get(),
       size: 44,
       peerId: fromId as PeerId || NULL_PEER_ID,
-      peerTitle: isPeerId ? undefined : '' + fromId
+      peerTitle: isPeerId ? undefined : '' + fromId,
+      accountNumber
     });
 
     newAvatar.node.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic');
@@ -2203,9 +2223,10 @@ export default class AppMediaViewerBase<
   }
 
   protected async loadQualityLevelsDownloadOptions(doc: MyDocument, tempId = this.tempId) {
+    const managers = bindManagersToSession(this.managers);
     this.removeQualityOptions();
 
-    const altDocs = await this.managers.appDocsManager.getAltDocsByDocument(doc.id);
+    const altDocs = await managers.appDocsManager.getAltDocsByDocument(doc.id);
     if(!altDocs) return;
 
     const filteredEntries = getQualityLevels(altDocs);
@@ -2213,7 +2234,7 @@ export default class AppMediaViewerBase<
     if(!playsOverHls(filteredEntries)) return;
 
     const options: ButtonMenuItemOptionsVerifiable[] = await Promise.all(filteredEntries.map(async(entry) => {
-      const doc = await this.managers.appDocsManager.getDoc(entry.id);
+      const doc = await managers.appDocsManager.getDoc(entry.id);
       const snappedHeight = snapQualityHeight(entry.h);
 
       return ({
@@ -2227,6 +2248,21 @@ export default class AppMediaViewerBase<
     if(this.tempId === tempId) {
       this.downloadQualityMenuOptions.push(...options);
     }
+  }
+
+  /**
+   * Asked to open (or to page on) by an account session that is over, or on its way out: it would stand over
+   * the next account, after the switch has closed what was open. A live stream's viewer holds the stream's own
+   * managers, not a session's, and goes on.
+   */
+  protected isAskedTooLate() {
+    const session = getSessionOf(this.managers);
+    if(!session || !isSessionLeaving(session)) {
+      return false;
+    }
+
+    console.debug('[media viewer] not opened: its account session is over');
+    return true;
   }
 
   protected async _openMedia({
@@ -2245,7 +2281,8 @@ export default class AppMediaViewerBase<
     onCanPlay,
     onMoverSet,
     onBuffering,
-    noAuthor
+    noAuthor,
+    liveStreamAccount
   }: {
     media: MyDocument | MyPhoto | InputGroupCall.inputGroupCall,
     mediaThumbnail?: string,
@@ -2262,7 +2299,9 @@ export default class AppMediaViewerBase<
     onCanPlay?: () => void,
     onMoverSet?: () => void,
     onBuffering?: () => void,
-    noAuthor?: boolean
+    noAuthor?: boolean,
+    // * the account a live stream is watched on: the tab may show another one by now
+    liveStreamAccount?: ActiveAccountNumber
     /* , needLoadMore = true */
   }) {
     if(this.setMoverPromise) return this.setMoverPromise;
@@ -2275,7 +2314,7 @@ export default class AppMediaViewerBase<
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
 
     this.live = isLiveStream;
-    const setAuthorPromise = noAuthor ? Promise.resolve() : this.setAuthorInfo(fromId, timestamp);
+    const setAuthorPromise = noAuthor ? Promise.resolve() : this.setAuthorInfo(fromId, timestamp, liveStreamAccount);
     void setAuthorPromise.catch(() => {});
 
     if(this.isFirstOpen) {
@@ -2478,7 +2517,8 @@ export default class AppMediaViewerBase<
         const avatar = avatarNew({
           middleware: this.middlewareHelper.get(),
           peerId: fromId.toPeerId(),
-          size: 'full'
+          size: 'full',
+          accountNumber: liveStreamAccount
         });
         avatar.node.classList.add('thumbnail-avatar');
         container.append(avatar.node);
@@ -2495,7 +2535,7 @@ export default class AppMediaViewerBase<
     const preloader = isLiveStream ? undefined : supportsStreaming ? this.preloaderStreamable : this.preloader;
 
     const getCacheContext = (type = size?.type) => {
-      if(isLiveStream) return {url: getRtmpStreamUrl(media)};
+      if(isLiveStream) return {url: getRtmpStreamUrl(media, liveStreamAccount)};
       if(isHlsStream && apiManagerProxy.isServiceWorkerOnline()) return {url: getDocumentURL(media as MyDocument, {supportsHlsStreaming: true})};
       return this.managers.thumbsStorage.getCacheContext(media, type);
     };
