@@ -1,4 +1,4 @@
-import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
+import {keepsKeyFromComposer, shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import isTargetAnInput from '@helpers/dom/isTargetAnInput';
 import type {GroupCallId, MyGroupCall} from '@appManagers/appGroupCallsManager';
 import type {ApiLimitType} from '@appManagers/apiManagerMethods';
@@ -1772,13 +1772,13 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private attachKeydownListener() {
-    const IGNORE_KEYS = new Set(['Meta', 'Control']);
     const onKeyDown = async(e: KeyboardEvent) => {
       const managers = bindManagersToSession(this.managers);
       const key = e.key;
       const isSelectionCollapsed = document.getSelection().isCollapsed;
       if(
-        (Modes.a11y ? shouldPreserveKeyboardFocus(e) : IGNORE_KEYS.has(key)) ||
+        keepsKeyFromComposer(e) ||
+        (Modes.a11y && shouldPreserveKeyboardFocus(e)) ||
         overlayCounter.isOverlayActive ||
         !e.isTrusted // * ignore synthetic events
       ) return;
@@ -1813,8 +1813,6 @@ export class AppImManager extends EventListenerBase<{
       if(this.isShiftLockShortcut && e.shiftKey) return;
 
       if((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed) {
-        return;
-      } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && !targetIsInput) {
         return;
       } else if(
         (key === 'PageUp' || key === 'PageDown') &&

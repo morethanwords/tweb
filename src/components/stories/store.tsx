@@ -61,6 +61,7 @@ export type StoriesContextState = {
   peers: StoriesContextPeerState[],
   peer: StoriesContextPeerState,
   getNearestStory: (next: boolean, loop?: boolean, offsetIndex?: number, offsetPeer?: StoriesContextPeerState, offsetStoryIndex?: number) => ChangeStoryParams,
+  getNearestStories: (next: boolean, count: number, loop?: boolean) => ChangeStoryParams[],
   albumId: number | undefined,
   loaded: boolean,
   canEdit: boolean
@@ -197,6 +198,30 @@ export const createStoriesStore = (props: {
     }
   };
 
+  const getNearestStories = (next: boolean, count: number, loop?: boolean): ChangeStoryParams[] => {
+    let nearestStory: ChangeStoryParams | undefined;
+    const out: ChangeStoryParams[] = [];
+    for(let i = 0; i < count; ++i) {
+      nearestStory = state.getNearestStory(
+        next,
+        loop,
+        nearestStory?.peer ? state.peers.indexOf(nearestStory.peer) : undefined,
+        undefined,
+        // * walk on from the story just reached — the stored index doesn't move, so without this
+        // * every iteration would return the very same story
+        nearestStory?.index
+      );
+
+      if(!nearestStory) {
+        break;
+      }
+
+      out.push(nearestStory);
+    }
+
+    return out;
+  };
+
   const initialState: StoriesContextState = {
     index: props.index || 0,
     paused: true,
@@ -224,6 +249,7 @@ export const createStoriesStore = (props: {
       return state.peers[state.index];
     },
     getNearestStory,
+    getNearestStories,
     albumId: props.initialAlbumId as number | undefined,
     loaded: false,
     canEdit: false
@@ -262,30 +288,6 @@ export const createStoriesStore = (props: {
     const maxReadId = peer.maxReadId || 0;
     const unreadIndex = peer.stories.findIndex((storyItem) => storyItem.id > maxReadId);
     return Math.max(0, unreadIndex);
-  };
-
-  const getNearestStories = (next: boolean, count: number, loop?: boolean): ChangeStoryParams[] => {
-    let nearestStory: ChangeStoryParams | undefined;
-    const out: ChangeStoryParams[] = [];
-    for(let i = 0; i < count; ++i) {
-      nearestStory = state.getNearestStory(
-        next,
-        loop,
-        nearestStory?.peer ? state.peers.indexOf(nearestStory.peer) : undefined,
-        undefined,
-        // * walk on from the story just reached — the stored index doesn't move, so without this
-        // * every iteration would return the very same story
-        nearestStory?.index
-      );
-
-      if(!nearestStory) {
-        break;
-      }
-
-      out.push(nearestStory);
-    }
-
-    return out;
   };
 
   const checkForNearestSkipped = () => {

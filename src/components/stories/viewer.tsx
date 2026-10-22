@@ -1,4 +1,4 @@
-import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
+import {keepsKeyFromComposer, shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 /* @refresh reload */
 
@@ -61,7 +61,7 @@ import StackedAvatars from '@components/stackedAvatars';
 import {processDialogElementForReaction} from '@components/popups/reactedList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import focusInput from '@helpers/dom/focusInput';
-import {wrapStoryMedia} from '@components/stories/preview';
+import {preloadStoriesMedia, wrapStoryMedia} from '@components/stories/preview';
 import {StoriesContextPeerState, useStories, StoriesProvider, STORY_DURATION} from '@components/stories/store';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
@@ -122,6 +122,7 @@ const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
 const STORIES_PRESERVE = 2;
 const STORIES_PRESERVE_HIDDEN = 2;
+const STORIES_PRELOAD = 3;
 const STORY_REPOST_ICON: Icon = 'storyrepost';
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
@@ -281,7 +282,6 @@ const StoryInput = (props: {
   const [focused, setFocused] = props.focusedSignal;
   const [inputEmpty, setInputEmpty] = props.inputEmptySignal;
   const [inputMenuOpen, setInputMenuOpen] = props.inputMenuOpenSignal;
-  const [recording, setRecording] = createSignal(false);
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
@@ -303,7 +303,7 @@ const StoryInput = (props: {
     <ButtonIconTsx
       ref={btnReactionEl}
       onClick={onReactionClick}
-      class="btn-circle btn-reaction chat-input-secondary-button chat-secondary-button"
+      class="btn-reaction"
       noRipple={true}
       aria-label={I18n.format('Reactions', true)}
       aria-pressed={!!(props.currentStory() as StoryItem.storyItem)?.sent_reaction}
@@ -422,7 +422,7 @@ const StoryInput = (props: {
     actions.toggle(open ? false : playAfter);
     setInputMenuOpen(open);
   };
-  input.onMenuToggle/*  = input.onRecording */ = onMenuToggle;
+  input.onMenuToggle = onMenuToggle;
   input.construct();
   input.constructPeerHelpers();
   // input.setShrinking(true);
@@ -450,21 +450,12 @@ const StoryInput = (props: {
     input.setCanForwardStory(props.isPublic());
   });
 
+  // * every button is in the field, which is as wide as the story, and focused grows past it on a wide screen
   createEffect(() => {
-    const [_focused, _recording, isPublic] = [focused(), recording(), props.isPublic()];
-    const isReactionButtonVisible = !_focused;
-    const isMainButtonVisible = _focused ? true : isPublic;
-    const isRecordingButtonVisible = _recording;
-    const visibleButtons = Math.min(2, [
-      isReactionButtonVisible,
-      isMainButtonVisible,
-      isRecordingButtonVisible
-    ].reduce((acc, v) => acc + +v, 0));
-    const chatInputSize = 48;
-    const chatInputBtnSendMargin = 8;
+    const _focused = focused();
     const chatInputPadding = props.isFull() ? 8 : 0;
     const focusOffset = props.isFull() ? 0 : 135;
-    const width = stories.width - (chatInputSize + chatInputBtnSendMargin) * visibleButtons + (_focused ? focusOffset : 0) - chatInputPadding * 2;
+    const width = stories.width + (_focused ? focusOffset : 0) - chatInputPadding * 2;
     input.rowsWrapper.style.setProperty('width', width + 'px', 'important');
     input.chatInput.classList.toggle('is-focused', _focused);
   });
@@ -504,7 +495,6 @@ const StoryInput = (props: {
     input.onFocusChange =
       input.onFileSelection =
       input.onMenuToggle =
-      input.onRecording =
       input.onUpdateSendBtn =
       input.onMessageSent2 =
       input.forwardStoryCallback =
@@ -532,10 +522,6 @@ const StoryInput = (props: {
 
   input.forwardStoryCallback = (e) => {
     props.onShareButtonClick(e, input.btnSendContainer);
-  };
-
-  input.onRecording = (recording) => {
-    setRecording(recording);
   };
 
   return input.chatInput;
@@ -1042,7 +1028,7 @@ const Stories = (props: {
   const [captionOpacity, setCaptionOpacity] = createSignal(0);
   const [captionActive, setCaptionActive] = createSignal(false);
   const [date, setDate] = createSignal<{timestamp: number, edited?: boolean}>();
-  const [loading, setLoading] = createSignal(false);
+  const [loading, setLoading] = createSignal(true);
   const [canShareStory, setCanShareStory] = createSignal();
   const focusedSignal = createSignal(false);
   const sendingReactionSignal = createSignal<StorySendReactionAnimation>();
@@ -1483,7 +1469,7 @@ const Stories = (props: {
       const sentReaction = story.sent_reaction;
       const isDefault = isDefaultReaction(sentReaction);
       if(!sentReaction || isDefault) {
-        reactionNode = Icon('reactions_filled', ...['btn-reaction-icon', isDefault && 'btn-reaction-default'].filter(Boolean));
+        reactionNode = Icon(isDefault ? 'reactions_filled' : 'reactions', ...['btn-reaction-icon', isDefault && 'btn-reaction-default'].filter(Boolean));
         uReaction(reactionNode);
       } else {
         const div = document.createElement('div');
@@ -1721,6 +1707,17 @@ const Stories = (props: {
     //     setStory(unwrap(story), hasViewer);
     //   }
     // ));
+  });
+
+  // * once the story has loaded, the next ones are fetched behind it, so that going on shows them at once
+  createEffect(() => {
+    if(!isActive() || loading()) {
+      return;
+    }
+
+    const middleware = createMiddleware().get();
+    const next = untrack(() => stories.getNearestStories(true, STORIES_PRELOAD));
+    preloadStoriesMedia(next.map(({peer, index}) => peer.stories[index]), middleware);
   });
 
   const pollViewedStories = () => {
@@ -2777,7 +2774,11 @@ const Stories = (props: {
       onTransitionStart={onTransitionStart}
       onTransitionEnd={onTransitionEnd}
     >
-      <div ref={storyDiv} class={classNames(styles.ViewerStory, loading() && isActive() && 'shimmer')}>
+      <div ref={storyDiv} class={styles.ViewerStory}>
+        {/* fades out with the media fading in, rather than going in one frame */}
+        <Transition name="fade-2">
+          {loading() && isActive() && <div class={classNames(styles.ViewerStoryShimmer, 'shimmer')} />}
+        </Transition>
         <div class={styles.ViewerStoryContent}>
           {contentItem}
         </div>
@@ -2917,7 +2918,7 @@ export default function StoriesViewer(props: {
 
     if(CANCELABLE_KEYS.has(e.key) || CANCELABLE_KEYS.has(e.code)) {
       cancelEvent(e);
-    } else {
+    } else if(!keepsKeyFromComposer(e)) {
       const input = activeStoryContainer.querySelector<HTMLElement>('.input-message-input');
       if(
         input &&

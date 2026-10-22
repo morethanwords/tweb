@@ -85,6 +85,11 @@ $color-inactive: rgba(255, 255, 255, .5);
       --chat-input-background: #212121;
       --chat-input-focus-offset: 0px;
       --backdrop-filter: unset;
+
+      // * the field keeps clear of both edges of the screen
+      :global(.rows-wrapper-wrapper) {
+        justify-content: center;
+      }
     }
 
     // .ViewerStory {
@@ -140,9 +145,12 @@ $color-inactive: rgba(255, 255, 255, .5);
     position: relative;
     z-index: 0;
 
-    // shimmer
-    &:before {
+    // * the loading wave over the media, an element of its own so that it can fade out
+    &Shimmer {
+      position: absolute;
+      inset: 0;
       z-index: 1;
+      pointer-events: none;
     }
 
     @include animation-level-global(2) {
@@ -787,62 +795,23 @@ $color-inactive: rgba(255, 255, 255, .5);
       //   width: var(--chat-input-max-width);
       // }
 
+      // * focused, the field grows towards both sides: wider by the offset, moved back by half of it
       .rows-wrapper-wrapper {
+        transform: translateX(calc(var(--focus-translateX) * -1 * var(--reflect)));
+        transform-origin: center left;
+
         @include animation-level-global(2) {
           transition: transform var(--transition-standard-out) !important;
         }
       }
 
-      .btn-send-container {
-        opacity: 1;
-        visibility: visible;
-
-        @include animation-level-transition(transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out), $global: true);
-
-        // after the shorthands, which reset it
-        @include animation-level-global(1) {
-          transition-delay: 0s, 0s, 0s;
-        }
-      }
-
-      // * focused, the input grows towards both sides: its start one way, the buttons at its end the other
-      .rows-wrapper-wrapper {
-        transform: translateX(calc(var(--focus-translateX) * -1 * var(--reflect)));
-        transform-origin: center left;
-      }
-
-      .btn-send-container,
-      .chat-input-secondary-button {
-        transform: translateX(calc(var(--focus-translateX) * var(--reflect)));
-        transform-origin: center right;
-      }
-
-      &.is-private {
-        .btn-reaction {
-          --add-translateX: calc(var(--chat-input-height) + #{$btn-send-margin});
-        }
-
-        &:not(.is-focused) .btn-send-container {
-          opacity: 0;
-          visibility: hidden;
-          transition-delay: 0s, 0s, var(--transition-standard-out-time);
-        }
-      }
-
       &.is-focused {
         --focus-translateX: calc(var(--chat-input-focus-offset) / 2);
-
-        .btn-reaction {
-          opacity: 0;
-          visibility: hidden;
-          transition-delay: 0s, 0s, 0s, var(--transition-standard-out-time);
-        }
       }
 
       .rows-wrapper {
         width: var(--stories-width);
-        // max-width: calc(var(--chat-input-max-width) - var(--chat-input-size) - #{$btn-send-margin});
-        max-width: calc(var(--chat-input-max-width) - (var(--chat-input-height) + #{$btn-send-margin} + var(--chat-input-padding)));
+        max-width: var(--chat-input-max-width);
 
         @include animation-level-global(2) {
           transition: width var(--transition-standard-out) !important;
@@ -858,22 +827,10 @@ $color-inactive: rgba(255, 255, 255, .5);
         }
       }
 
+      // * the reaction is an icon of the field, as the emoji one is, and stands next to the text: going
+      // * away it only widens the text, the buttons at the end stay where they are
       .btn-reaction {
-        --add-translateX: 0px;
-        position: absolute;
-        transform: translateX(calc((var(--focus-translateX) + var(--add-translateX)) * var(--reflect)));
-        inset-inline-end: calc(var(--chat-input-height) + var(--chat-input-padding) + #{$btn-send-margin});
-
-        @include animation-level-transition(.2s color, transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out-time), $global: true);
-
-        // after the shorthands, which reset it
-        @include animation-level-global(1) {
-          transition-delay: 0s, 0s, 0s, 0s;
-        }
-
-        &:after {
-          display: none;
-        }
+        flex: 0 0 auto;
 
         &-default {
           color: #FF3B30 !important;
@@ -886,47 +843,31 @@ $color-inactive: rgba(255, 255, 255, .5);
         }
       }
 
-      // .btn-send:not(:hover):not(:active) {
-      //   .btn-send-icon-forward {
-      //     color: var(--secondary-text-color) !important;
-      //   }
-      // }
-
-      .btn-send-icon-forward {
-        color: var(--secondary-text-color);
-      }
-
-      .btn-send.forward,
-      .btn-reaction {
-        --color: var(--secondary-text-color);
-        color: var(--color);
-        background: var(--chat-input-background) !important;
-
-        @include hover-global() {
-          --color: var(--primary-text-color);
-          color: var(--color) !important;
-          background: var(--chat-input-background) !important;
+      // * focused, or recording a voice message, the field has the send button to offer instead
+      &.is-focused,
+      &.is-recording {
+        .btn-reaction {
+          display: none;
         }
       }
 
+      // * a story shown to a few has no sharing, so the button only comes for something to send
+      &.is-private:not(.is-focused):not(.is-recording) .btn-send-container {
+        display: none;
+      }
+
+      // * sharing is an icon of the field like the others: the round send button is for what is typed
+      // * or recorded, and fills in as the one turns into the other
       .btn-send {
-        @include hover-global() {
-          .btn-send-icon-forward {
-            color: var(--primary-text-color) !important;
-          }
-        }
-
         @include animation-level-global(1) {
-          transition: .2s color, .2s background;
-
-          .btn-send-icon-forward {
-            transition: .2s color;
-          }
+          transition: background-color .2s;
         }
 
-        &:not(.forward) {
-          .btn-send-icon-forward {
-            color: var(--primary-text-color) !important;
+        &.forward {
+          background-color: transparent !important;
+
+          @include hover-global() {
+            background-color: var(--light-secondary-text-color) !important;
           }
         }
       }
@@ -941,13 +882,8 @@ $color-inactive: rgba(255, 255, 255, .5);
 
       .rows-wrapper:before,
       .bubble-tail,
-      .chat-input-secondary-button,
       .emoji-dropdown {
         background-color: var(--chat-input-background) !important;
-        backdrop-filter: var(--backdrop-filter);
-      }
-
-      .btn-send {
         backdrop-filter: var(--backdrop-filter);
       }
 

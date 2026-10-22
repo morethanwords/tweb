@@ -8,6 +8,14 @@ export default function isKeyboardControl(element: HTMLElement) {
   return !!element.closest('button, a[href], select, input[type="checkbox"], input[type="radio"], input[type="range"], [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="checkbox"], [role="radio"], [role="slider"]');
 }
 
+/** Keys a composer that takes what is typed anywhere (a chat's, a story's) leaves where they are: a
+ * bare Control or Meta, which begins a shortcut, and copying, which copies what is selected on the
+ * page — focusing the field first would drop that selection. */
+export function keepsKeyFromComposer(event: KeyboardEvent) {
+  return event.key === 'Control' || event.key === 'Meta' ||
+    (event.code === 'KeyC' && (event.ctrlKey || event.metaKey));
+}
+
 export function shouldPreserveKeyboardFocus(event: KeyboardEvent) {
   const target = event.target as HTMLElement;
   return event.defaultPrevented || event.isComposing ||

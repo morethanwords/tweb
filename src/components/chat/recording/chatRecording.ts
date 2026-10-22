@@ -810,7 +810,6 @@ export default class ChatRecording {
     this.input.inputState.set({isRecording: value});
     this.input.setShrinking(this.active, ['is-recording']);
     this.input.updateSendBtn();
-    this.input.onRecording?.(value);
   }
 
   // Swallow the click that ends a record-button long-press (it already opened

@@ -584,7 +584,6 @@ export default class ChatInput {
   private peerChanging: boolean;
   public onFocusChange: (isFocused: boolean) => void;
   public onMenuToggle: (isOpen: boolean) => void;
-  public onRecording: (isRecording: boolean) => void;
   public onUpdateSendBtn: (icon: ChatSendBtnIcon) => void;
   public onMessageSent2: () => void;
   public forwardStoryCallback: (e: MouseEvent) => void;
@@ -1593,6 +1592,7 @@ export default class ChatInput {
       this.btnSuggestPost,
       this.btnAutoDeletePeriod,
       this.btnSendGift,
+      this.btnReaction,
       this.btnToggleEmoticons,
       this.fileInput
     ].filter(Boolean));
@@ -1625,7 +1625,7 @@ export default class ChatInput {
       ['check', 'edit'],
       ['microphone_filled', 'record'],
       ['recordround_filled', 'record-video'],
-      ['forward_filled', 'forward'],
+      ['forward', 'forward'],
       ['stop', 'stop']
     ];
     this.btnSend.append(...icons.map(([name, type, mirror]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type, ...(mirror ? [mirror] : []))));
@@ -1691,7 +1691,6 @@ export default class ChatInput {
     // Move the morphing send/record button into the input row as the last button.
     // btnCancelRecord is built above but intentionally not appended to the DOM.
     this.newMessageWrapper.append(this.btnSendContainer);
-    this.inputContainer.append(...[this.btnReaction].filter(Boolean));
 
     // The voice + round-video recording panels are constructed and mounted by
     // ChatRecording (built in constructRecorder below): the voice panel is
