@@ -69,6 +69,18 @@ import focusSearchInput from '@components/chat/focusSearchInput';
 import createStyleRule from '@helpers/dom/createStyleRule';
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
+
+export type FinishPeerChangeOptions = {
+  peerId: PeerId,
+  isTarget?: boolean,
+  isJump?: boolean,
+  lastMsgId?: number,
+  startParam?: string,
+  middleware: () => boolean,
+  text?: string,
+  entities?: MessageEntity[]
+};
+
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];
 
 // * after this long an in-flight peer change is treated as abandoned rather than as a reason to
@@ -320,7 +332,9 @@ export default class Chat extends EventListenerBase<{
     const delta = value - this.pinnedFloatingHeightPx;
     this.pinnedFloatingHeightPx = value;
     const scrollable = this.bubbles?.scrollable;
-    const wasAtEnd = scrollable?.isScrolledToEnd;
+    // * a list still on its way (the chat is opening) is scrolled where it belongs once it is mounted: reading
+    // * the one being replaced only forced a layout of it
+    const wasAtEnd = this.bubbles?.chatInner?.isConnected && scrollable.isScrolledToEnd;
     this.recomputePaddings();
     // Mobile-faithful (verified against iOS ListView + Android ChatActivity):
     // leave a mid-scroll position anchored. recomputePaddings grows the
@@ -1257,16 +1271,18 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
-  public async finishPeerChange(options: {
-    peerId: PeerId,
-    isTarget?: boolean,
-    isJump?: boolean,
-    lastMsgId?: number,
-    startParam?: string,
-    middleware: () => boolean,
-    text?: string,
-    entities?: MessageEntity[]
-  }) {
+  public async finishPeerChange(options: FinishPeerChangeOptions) {
+    const apply = await this.prepareFinishPeerChange(options, true);
+    apply?.();
+  }
+
+  /**
+   * Gets the chat's parts ready for the new peer and returns what puts them up. The chat on screen stays as it is
+   * until that is called - in the same task as the new bubbles are mounted, so that one style recalc and layout
+   * covers both: a microtask in between let the composer's editor read the selection and lay out the list on its way
+   * out with the parts' changes
+   */
+  public async prepareFinishPeerChange(options: FinishPeerChangeOptions, cleanupNow?: boolean): Promise<() => void> {
     if(this.peerChanged) return;
 
     const peerId = this.peerId;
@@ -1275,7 +1291,9 @@ export default class Chat extends EventListenerBase<{
 
     const {middleware} = options;
 
-    this.cleanup(false);
+    if(cleanupNow) {
+      this.cleanup(false);
+    }
 
     const sharedMediaTab = this.sharedMediaTab;
 
@@ -1288,31 +1306,41 @@ export default class Chat extends EventListenerBase<{
     }, this.log);
 
     const callbacks = Object.values(callbacksObj);
-    sharedMediaTab?.loadSidebarMedia(true);
+    return () => {
+      if(!cleanupNow) {
+        if(!middleware()) {
+          return;
+        }
 
-    if(!middleware()) {
-      return;
-    }
+        this.cleanup(false);
+      }
 
-    callbacks.forEach((callback) => {
-      callback?.();
-    });
+      sharedMediaTab?.loadSidebarMedia(true);
 
-    if(sharedMediaTab) {
-      hotReloadGuard.appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
-      this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
-    }
+      if(!middleware()) {
+        return;
+      }
 
-    if(this.container) {
-      this.container.dataset.type = this.type === ChatType.Search ? 'chat' : this.type;
-      this.container.classList.toggle('can-click-date', [ChatType.Chat, ChatType.Discussion, ChatType.Saved].includes(this.type));
-    }
+      callbacks.forEach((callback) => {
+        callback?.();
+      });
 
-    this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
+      if(sharedMediaTab) {
+        hotReloadGuard.appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
+        this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
+      }
 
-    if(this.isMainChat) {
-      this.appImManager.dispatchEvent('peer_changed', this);
-    }
+      if(this.container) {
+        this.container.dataset.type = this.type === ChatType.Search ? 'chat' : this.type;
+        this.container.classList.toggle('can-click-date', [ChatType.Chat, ChatType.Discussion, ChatType.Saved].includes(this.type));
+      }
+
+      this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
+
+      if(this.isMainChat) {
+        this.appImManager.dispatchEvent('peer_changed', this);
+      }
+    };
   }
 
   public getMessage(mid: number | FullMid) {

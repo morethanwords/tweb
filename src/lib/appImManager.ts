@@ -94,6 +94,7 @@ import sameInputGroupCall from '@lib/calls/helpers/sameInputGroupCall';
 import getFilesFromEvent from '@helpers/files/getFilesFromEvent';
 import getFileMimeType from '@helpers/files/getFileMimeType';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import getChatMigratedTo from '@appManagers/utils/peers/getChatMigratedTo';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
@@ -3426,9 +3427,22 @@ export class AppImManager extends EventListenerBase<{
     }, 250 + 100);
   }
 
+  /**
+   * The page mirrors the chat already, so the answer is right here: no round trip to the worker before the chat
+   * starts opening, which on a busy main thread waits for a whole frame. A peer the page does not know asks the worker
+   */
+  private getPeerMigratedTo(peerId: PeerId) {
+    if(!peerId || peerId.isUser()) {
+      return;
+    }
+
+    const chat = apiManagerProxy.getChat(peerId.toChatId());
+    return chat ? getChatMigratedTo(chat) : this.managers.appPeersManager.getPeerMigratedTo(peerId);
+  }
+
   public async setPeer(options: Partial<ChatSetInnerPeerOptions> = {}, animate?: boolean): Promise<boolean> {
     options.peerId ??= NULL_PEER_ID;
-    options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(options.peerId) || options.peerId;
+    options.peerId = await this.getPeerMigratedTo(options.peerId) || options.peerId;
 
     const {peerId} = options;
 
@@ -3532,7 +3546,7 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    peerId = options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    peerId = options.peerId = await this.getPeerMigratedTo(peerId) || peerId;
 
     if(!options.type) {
       if(options.threadId) {

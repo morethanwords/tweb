@@ -11139,6 +11139,14 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    // * a channel's posts on screen have their reactions asked for every 10 seconds, and most come back as they
+    // * were: each one dispatched had its reactions rendered anew on the main thread for nothing. The server's
+    // * answer still saves what a reaction of our own only showed (a local update is not saved)
+    if(deepEqual(message.reactions, reactions)) {
+      if(!update.local) this.setDialogToStateIfMessageIsTop(message);
+      return;
+    }
+
     const modifyUnreadReactions = (add: boolean) => {
       this.modifyCachedMentionsAndSave({
         peerId,

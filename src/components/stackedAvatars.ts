@@ -12,6 +12,7 @@ export default class StackedAvatars {
   private lazyLoadQueue: LazyLoadQueue;
   private avatarSize: number;
   private middlewareHelper: MiddlewareHelper;
+  private peerIdByContainer: WeakMap<HTMLElement, PeerId> = new WeakMap();
 
   constructor(options: {
     lazyLoadQueue?: StackedAvatars['lazyLoadQueue'],
@@ -42,6 +43,14 @@ export default class StackedAvatars {
 
     peerIds.forEach((peerId, idx) => {
       let avatarContainer = children[idx] as HTMLElement;
+      // * the same person in the same place keeps the avatar: it follows the photo by itself, and a new one put the
+      // * thumbnail through loading again for every refresh of the list (a channel post's comments refresh on open)
+      if(avatarContainer && this.peerIdByContainer.get(avatarContainer) === peerId) {
+        avatarContainer.classList.toggle('is-first', idx === 0);
+        avatarContainer.classList.toggle('is-last', idx === peerIds.length - 1);
+        return;
+      }
+
       if(!avatarContainer) {
         avatarContainer = document.createElement('div');
         avatarContainer.classList.add(AVATAR_CONTAINER_CLASS_NAME);
@@ -61,6 +70,7 @@ export default class StackedAvatars {
       loadPromises?.push(avatarElem.readyThumbPromise);
 
       avatarContainer.replaceChildren(avatarElem.node);
+      this.peerIdByContainer.set(avatarContainer, peerId);
 
       if(!avatarContainer.parentNode) {
         this.container.append(avatarContainer);

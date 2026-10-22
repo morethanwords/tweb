@@ -39,6 +39,7 @@ import Modes from '@config/modes';
 import {SliceEnd} from '@helpers/slicedArray';
 import PeerTitle from '@components/peerTitle';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import {countFirstScreen, estimateBubbleHeight, getBubbleHeightAtLeast, keepFrom, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
 import findUpTag from '@helpers/dom/findUpTag';
 import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware} from '@helpers/middleware';
@@ -360,6 +361,21 @@ const SCROLLED_DOWN_THRESHOLD = 300;
 // * generous enough for slow media on a bad connection, short enough that a promise which will
 // * never settle cannot brick the chat
 const MEDIA_PROMISES_TIMEOUT = 10000;
+
+// * how each kind of chat lays out the text of a message, at the width and the text size it was laid out at: an opening
+// * chat counts by it how many of its newest messages fill its screen. Not the heights of the bubbles it showed: one
+// * goes stale with whatever changed since (an edit, a reaction, a poll, a quote opened, a translation), while a
+// * message's text is measured as it is now
+const messageTextMetrics: Map<string, MessageTextMetrics & {layout: string}> = new Map();
+
+const getReadMaxIdKey = (peerId: PeerId, threadId?: number) => peerId + '_' + (threadId || '');
+
+// * imported once: in the build every `import()` walks its chunk's ~300 dependencies again (~3 ms), once per poll
+let pollMessageContentPromise: Promise<typeof import('./bubbleParts/pollMessageContent')>;
+const loadPollMessageContent = () => pollMessageContentPromise ??= import('./bubbleParts/pollMessageContent').catch((err) => {
+  pollMessageContentPromise = undefined;
+  throw err;
+});
 const PEER_CHANGED_ERROR = new Error('peer changed');
 const HIDDEN_LINKS_PENDING_ATTRIBUTE = 'data-hidden-links-pending';
 const HIDDEN_LINKS_FALLBACK_ATTRIBUTE = 'data-hidden-links-fallback';
@@ -457,7 +473,11 @@ export function disposeChatInnerMiddlewareAfterDetach(
     if(!waiting || chatInner.isConnected) return;
     waiting = false;
     observer.disconnect();
-    middlewareHelper.destroy();
+    // * after the frame: the list is taken out as the next one is put in, and its bubbles' teardown held that
+    // * one's first frame back
+    const destroy = () => middlewareHelper.destroy();
+    if(document.hidden) destroy();
+    else fastRaf(() => setTimeout(destroy, 0));
   };
   const observer = new MutationObserver(destroyIfDetached);
   observer.observe(chatInner.ownerDocument, {childList: true, subtree: true});
@@ -869,6 +889,8 @@ export default class ChatBubbles {
   private reflowAnchor: {element: HTMLElement, offset: number};
   private reflowWasAtEnd = true;
   private reflowWasWidth: number;
+  // * the scrollable's size as the resize observer last saw it: what an opening chat measures by, without a layout read
+  private scrollableSize: {width: number, height: number};
   private saveReflowScrollDebounced: DebounceReturnType<ChatBubbles['saveReflowScroll']>;
   private appWindowUnsubs: (() => void)[] = [];
   private disposeDirectionEffect: () => void;
@@ -904,9 +926,13 @@ export default class ChatBubbles {
   // later, distinct render pass re-reads a fresh value.
   private getRenderReadMaxId = memoizeAsyncWithTTL(
     (peerId: PeerId, threadId?: number) => this.managers.appMessagesManager.getInboxReadMaxId(peerId, threadId),
-    ([peerId, threadId]) => peerId + '_' + (threadId || ''),
+    ([peerId, threadId]) => getReadMaxIdKey(peerId, threadId),
     0
   );
+
+  // * the cursor an opening chat's bubbles are rendered against, asked for together with the history: asked by the
+  // * first bubble instead, its answer came a frame later on a busy main thread, and every bubble waited for it
+  private openingReadMaxId: {key: string, promise: Promise<number>};
 
   // * the tags known apart from a message's own `from_rank`: a supergroup's admins, a basic group's
   // * members, and any tag changed since its messages were loaded ('' marks one removed)
@@ -2715,6 +2741,103 @@ export default class ChatBubbles {
     });
   }
 
+  /**
+   * Splits the history of a chat opened at its end. What fills its screen and the scroll trigger above it stays, for
+   * the first frame; what fills two screens more - as much as viewport slicing keeps above - is returned, to render
+   * after that frame; the rest is left to scrolling up. Counted by how this kind of chat lays out text, else by the
+   * lowest a bubble can be: never by more than there is
+   */
+  private cutToFirstScreen(historyResult: LocalHistoryResult | {history: number[]}): {beyond?: LocalHistoryResult | {history: number[]}, oldestMid: number} {
+    const items: (number | MyMessage | AdminLog)[] = (historyResult as LocalHistoryResult).messages || historyResult.history;
+    const messages = items.map((item) => (typeof(item) === 'number' ? this.chat.getMessage(item) : item) as Message.message | Message.messageService);
+    const {width, height} = this.scrollableSize ?? {
+      width: this.scrollable.container.clientWidth,
+      height: this.scrollable.container.clientHeight
+    };
+
+    const metrics = messageTextMetrics.get(this.getTextMetricsKind());
+    const textMetrics = !this.isTextTranslated() && metrics?.layout === this.getLayoutKey(width) ? metrics : undefined;
+    const getHeight = (message: Message.message | Message.messageService, inAlbum: boolean) => {
+      return textMetrics ? estimateBubbleHeight(message, textMetrics, inAlbum) : getBubbleHeightAtLeast(message, inAlbum);
+    };
+
+    const firstCount = countFirstScreen(messages, height + this.scrollable.onScrollOffset, getHeight);
+    const firstOldestMid = messages[firstCount - 1]?.mid;
+    if(firstCount >= items.length || !firstOldestMid) {
+      return;
+    }
+
+    const count = countFirstScreen(messages, height * 3, getHeight);
+    const oldestMid = messages[count - 1]?.mid ?? firstOldestMid;
+    const whole = {...historyResult};
+    Object.assign(historyResult, keepFrom(whole, firstOldestMid));
+    return {
+      beyond: count > firstCount ? keepFrom(whole, oldestMid, firstOldestMid) : undefined,
+      oldestMid
+    };
+  }
+
+  private getTextMetricsKind() {
+    return this.chat.isBroadcast ? 'channel' : 'chat';
+  }
+
+  // * a translation shown in place of the text is not the text the model measures: such a chat counts by the lowest a
+  // * bubble can be, and teaches the model nothing
+  private isTextTranslated() {
+    return !!this.chat.appSettings.translations.enabledPeers[this.peerId];
+  }
+
+  private getLayoutKey(width: number) {
+    return width + '_' + this.chat.appSettings.messagesTextSize;
+  }
+
+  /**
+   * How the text of the bubbles on screen is laid out, read once the chat has settled: in a frame, before anything is
+   * written, it is the layout the frame has anyway
+   */
+  private rememberLayout() {
+    const width = this.scrollableSize?.width;
+    if(!width || this.isTextTranslated()) {
+      return;
+    }
+
+    // * a text bubble is as wide as a bubble gets when a paragraph of it is wider than it: that one has wrapped. Lines
+    // * broken by hand say nothing of it, and the widest such bubble of the kind of chat is the one counted by
+    const layout = this.getLayoutKey(width);
+    const kind = this.getTextMetricsKind();
+    const known = messageTextMetrics.get(kind);
+    let metrics: MessageTextMetrics = known?.layout === layout ? known : undefined;
+    for(const bubble of this.chatInner.querySelectorAll<HTMLElement>('.bubbles-date-group .bubble[data-mid]:not(.is-date)')) {
+      const element = bubble.querySelector<HTMLElement>('.message');
+      const message = element && this.chat.getMessage(+bubble.dataset.mid) as Message.message;
+      if(
+        !message?.message ||
+        message.entities?.some((entity) => entity._ === 'messageEntityBlockquote' || entity._ === 'messageEntityPre') ||
+        bubble.matches('.photo, .video, .has-webpage, .poll-message, .is-album, .sticker, .round, .emoji-big') ||
+        bubble.querySelector('.attachment, .document-container, .reply-summary') // * a summary is not the text either
+      ) {
+        continue;
+      }
+
+      const lineWidth = element.clientWidth;
+      if(metrics && lineWidth <= metrics.lineWidth) {
+        continue;
+      }
+
+      const style = getComputedStyle(element);
+      const font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(' ');
+      const lineHeight = parseFloat(style.lineHeight);
+      // * by a tenth more: a line that only just fits may measure a little wider on a canvas
+      if(lineHeight && message.message.split('\n').some((paragraph) => measureTextWidth(paragraph, font) > lineWidth * 1.1)) {
+        metrics = {font, lineHeight, lineWidth};
+      }
+    }
+
+    if(metrics && metrics !== known) {
+      messageTextMetrics.set(kind, {...metrics, layout});
+    }
+  }
+
   public createScrollSaver(reverse = true) {
     const scrollSaver = new ScrollSaver(
       this.scrollable,
@@ -3026,6 +3149,9 @@ export default class ChatBubbles {
     };
 
     const processEntries: ResizeObserverCallback = (entries) => {
+      const {width: containerWidth, height: containerHeight} = entries[0].contentRect;
+      this.scrollableSize = {width: containerWidth, height: containerHeight};
+
       /* if(skipNext) {
         skipNext = false;
         return;
@@ -5917,6 +6043,7 @@ export default class ChatBubbles {
     this.sponsoredMessagesLoaded = false;
     this.sponsoredMessagesMids = [];
     this.sponsoredMessagesAvailable = [];
+    this.sponsoredAfterMids.clear();
 
     if(this.stickyIntersector) {
       this.stickyIntersector.disconnect();
@@ -6014,6 +6141,13 @@ export default class ChatBubbles {
     });
   }
 
+  private getReadMaxIdAndDialog(peerId: PeerId) {
+    return Promise.all([
+      this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId),
+      this.chat.getDialogOrTopic()
+    ]);
+  }
+
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
     const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption, highlight, wholeAlbum} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
@@ -6037,9 +6171,18 @@ export default class ChatBubbles {
 
     const m = middlewarePromise(middleware, PEER_CHANGED_ERROR);
 
+    // * where the chat opens is asked of the worker while the chat's flags are, not a round trip after them
+    let readMaxIdAndDialogPromise: ReturnType<ChatBubbles['getReadMaxIdAndDialog']>;
     if(!samePeer) {
       // await pause(2000); // * test some bugs
-      await m(this.chat.onChangePeer(options, m));
+      const changePeerPromise = this.chat.onChangePeer(options, m);
+      // * `onChangePeer` has set the chat type by now; a topic may have to be loaded first, so a thread asks later
+      if(!lastMsgId && !options.savedReaction && !this.chat.threadId && !monoforumThreadId) {
+        readMaxIdAndDialogPromise = this.getReadMaxIdAndDialog(peerId);
+        readMaxIdAndDialogPromise.catch(noop);
+      }
+
+      await m(changePeerPromise);
     }
 
     /* if(samePeer && this.chat.setPeerPromise) {
@@ -6094,10 +6237,7 @@ export default class ChatBubbles {
       } else if(topMessageFullMid !== EMPTY_FULL_MID) {
         let dialog: Awaited<ReturnType<Chat['getDialogOrTopic']>>;
         if(!options.savedReaction) {
-          [readMaxId, dialog] = await m(Promise.all([
-            this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId),
-            this.chat.getDialogOrTopic()
-          ]));
+          [readMaxId, dialog] = await m(readMaxIdAndDialogPromise || this.getReadMaxIdAndDialog(peerId));
         }
 
         if(/* dialog.unread_count */
@@ -6132,7 +6272,8 @@ export default class ChatBubbles {
     // * a start parameter from a link to the bot chat that is already open (`reload` re-renders
     // * the same chat for an in-chat search and leaves the input alone)
     const startsBotFromLink = samePeer && sameSearch && !!startParam;
-    if(startParam === undefined && await m(this.chat.isStartButtonNeeded())) {
+    // * only a bot has a START button
+    if(startParam === undefined && this.chat.isBot && await m(this.chat.isStartButtonNeeded())) {
       startParam = BOT_START_PARAM;
     }
 
@@ -6216,7 +6357,7 @@ export default class ChatBubbles {
       this.followStack.length = 0;
 
       this.passEntities = {
-        messageEntityBotCommand: await m(this.managers.appPeersManager.isAnyGroup(peerId)) || this.chat.isBot
+        messageEntityBotCommand: this.chat.isAnyGroup || this.chat.isBot
       };
     }
 
@@ -6377,13 +6518,28 @@ export default class ChatBubbles {
       }
     }
 
+    let openingReadMaxId: ChatBubbles['openingReadMaxId'];
+    if(peerId.isAnyChat()) {
+      const promise = this.managers.appMessagesManager.getInboxReadMaxId(peerId, this.chat.threadId);
+      promise.catch(noop);
+      this.openingReadMaxId = openingReadMaxId = {key: getReadMaxIdKey(peerId, this.chat.threadId), promise};
+    }
+
+    const dropOpeningReadMaxId = () => {
+      if(this.openingReadMaxId === openingReadMaxId) {
+        this.openingReadMaxId = undefined;
+      }
+    };
+
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
     if(!savedPosition?.mids) {
       result = await m(this.getHistory1(
         !isJump && !additionalFullMid && lastMsgFullMid === topMessageFullMid ? EMPTY_FULL_MID : lastMsgFullMid,
         true,
         isJump,
-        additionalFullMid
+        additionalFullMid,
+        undefined,
+        !samePeer && !isJump && !isTarget && !followingUnread && !savedPosition?.mids && chatType === ChatType.Chat
       ));
     } else {
       result = {
@@ -6411,8 +6567,16 @@ export default class ChatBubbles {
       entities: options.entities
     };
 
+    // * from the cache the chat's other parts get ready while its bubbles are built, not after them, and are put up
+    // * in the same task as they are mounted
+    let applyPeerChangePromise: ReturnType<Chat['prepareFinishPeerChange']>;
+    if(cached && !samePeer) {
+      applyPeerChangePromise = this.chat.prepareFinishPeerChange(finishPeerChangeOptions);
+      applyPeerChangePromise.catch(noop);
+    }
+
     if(!cached && !samePeer) {
-      await m(this.chat.finishPeerChange(finishPeerChangeOptions));
+      (await m(this.chat.prepareFinishPeerChange(finishPeerChangeOptions, true)))?.();
       // Flip the staging-slot wallpaper that `finishPeerChange` prepared, in the same sync
       // block as clearing the old bubbles. Otherwise the bg DOM swap (running inside the
       // Solid effect's `await built.readyPromise`) can paint a frame ahead of the cleared
@@ -6424,12 +6588,13 @@ export default class ChatBubbles {
 
     animationIntersector.lockGroup(this.chat.animationGroup);
     const setPeerPromise = m(promise).then(async() => {
+      dropOpeningReadMaxId();
       log.warn('promise fulfilled');
 
       const mountedByLastMsgId = haveToScrollToBubble ? await m(lastMsgFullMid !== EMPTY_FULL_MID ? this.getMountedBubble(lastMsgFullMid) : {bubble: this.getLastBubble()}) : undefined;
       if(cached && !samePeer) {
         log.warn('finishing peer change');
-        await m(this.chat.finishPeerChange(finishPeerChangeOptions)); // * костыль
+        (await m(applyPeerChangePromise || this.chat.prepareFinishPeerChange(finishPeerChangeOptions)))?.(); // * костыль
         log.warn('finished peer change');
       }
 
@@ -6559,6 +6724,9 @@ export default class ChatBubbles {
       this.onScroll();
       void this.loadEphemeralHistory();
 
+      // * once it has settled: for the next opening of a chat like it
+      afterSetPromise.then(() => pause(1000)).then(() => fastRaf(() => middleware() && this.rememberLayout())).catch(noop);
+
       afterSetPromise.then(() => { // check whether list isn't full
         if(!middleware()) {
           return;
@@ -6619,6 +6787,7 @@ export default class ChatBubbles {
 
       // this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
     }).catch((err) => {
+      dropOpeningReadMaxId();
       log.error('setPeer promise error:', err);
       if(!middleware()) {
         this.preloader.detach();
@@ -6855,9 +7024,13 @@ export default class ChatBubbles {
       });
 
       this.createResizeObserver();
-      // Baseline the container width now (the chat is laid out) so the very first window resize
-      // already detects the width change and re-pins scroll, instead of just setting the baseline.
-      this.reflowWasWidth = this.scrollable.container.offsetWidth || this.reflowWasWidth;
+      // Baseline the container width once the chat is laid out, so the very first window resize already detects the
+      // width change and re-pins scroll, instead of just setting the baseline. Read in the next frame: this runs right
+      // before the new bubbles are mounted, and a read here laid out the list on its way out
+      fastRaf(() => {
+        if(!middleware()) return;
+        this.reflowWasWidth = this.scrollable.container.offsetWidth || this.reflowWasWidth;
+      });
     };
   }
 
@@ -8331,7 +8504,9 @@ export default class ChatBubbles {
       !context.isInUnread &&
       this.chat.peerId.isAnyChat()
     ) {
-      const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
+      const {peerId, threadId} = this.chat;
+      const opening = this.openingReadMaxId;
+      const readMaxId = await (opening?.key === getReadMaxIdKey(peerId, threadId) ? opening.promise : this.getRenderReadMaxId(peerId, threadId));
       if(isUnreadByReadCursor(readMaxId, maxBubbleMid)) {
         context.isInUnread = true;
       }
@@ -10494,7 +10669,7 @@ export default class ChatBubbles {
             context.mediaRequiresMessageDiv = true;
             context.messageMessage = totalEntities = undefined;
 
-            const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
+            const {PollMessageContent} = await loadPollMessageContent();
 
             const container = document.createElement('div');
             container.classList.add('poll-message-content');
@@ -10514,7 +10689,8 @@ export default class ChatBubbles {
               canSend: (rights) => this.chat.canSend(rights),
               loadPromises,
               controls: context.pollMessageContentControls = {},
-              uploadingFileNames: await this.managers.appPollsManager.getUploadingFileNamesForPoll(context.messageMedia.poll.id)
+              // * only a poll being sent from here has files on their way
+              uploadingFileNames: message.pFlags.is_outgoing ? await this.managers.appPollsManager.getUploadingFileNamesForPoll(context.messageMedia.poll.id) : undefined
             });
 
             renderComponent({
@@ -12110,6 +12286,9 @@ export default class ChatBubbles {
     log?.('start', this.chatInner.parentElement, historyResult);
 
     let history: (Message.message | Message.messageService | AdminLog | number)[] = (historyResult as LocalHistoryResult).messages || historyResult.history;
+    // * only ads there were when this history came are put between its posts: ones that arrive while it awaits below
+    // * belong to the bottom of the chat (`loadSponsoredMessages`), however long the awaits took
+    const hadSponsoredMessages = !!this.sponsoredMessagesAvailable?.length;
     history = history.slice(); // need
 
     if(this.needReflowScroll) {
@@ -12194,7 +12373,7 @@ export default class ChatBubbles {
       await Promise.all(setLoadedPromises);
     }
 
-    if(this.sponsoredMessageEvery && this.sponsoredMessagesAvailable.length) {
+    if(this.sponsoredMessageEvery && hadSponsoredMessages && this.sponsoredMessagesAvailable.length) {
       const [readMaxId, chatMaxId] = await Promise.all([
         this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId),
         this.chat.getHistoryMaxId()
@@ -13478,12 +13657,12 @@ export default class ChatBubbles {
     }
   }
 
-  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean) {
+  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: boolean) {
     const middleware = this.getMiddleware(justLoad ? undefined : () => {
       return (reverse ? this.getHistoryTopPromise : this.getHistoryBottomPromise) === waitPromise;
     });
 
-    const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware);
+    const result = this.getHistory(maxId, reverse, isBackLimit, additionalFullMid, justLoad, middleware, firstScreen);
     const waitPromise = result.then((res) => res && (res.waitPromise || res.promise));
 
     (reverse ? this.getHistoryTopPromise = waitPromise : this.getHistoryBottomPromise = waitPromise);
@@ -13531,6 +13710,7 @@ export default class ChatBubbles {
    * @param isBackLimit is search
    * @param additionalFullMid for the last message
    * @param justLoad do not render
+   * @param firstScreen a chat opened at its end: from the cache only what surely fills its screen is rendered
    */
   public async getHistory(
     maxId: FullMid = EMPTY_FULL_MID,
@@ -13538,7 +13718,8 @@ export default class ChatBubbles {
     isBackLimit = false,
     additionalFullMid?: FullMid,
     justLoad = false,
-    middleware?: () => boolean
+    middleware?: () => boolean,
+    firstScreen?: boolean
   ): Promise<{cached: boolean, promise: Promise<void>, waitPromise: Promise<any>}> {
     const peerId = this.peerId;
 
@@ -13678,7 +13859,7 @@ export default class ChatBubbles {
       return promise;
     };
 
-    let promise: Promise<void>, cached: boolean;
+    let promise: Promise<void>, cached: boolean, cut: ReturnType<ChatBubbles['cutToFirstScreen']>, beyondPromise: Promise<void>;
     if(!result.cached) {
       cached = false;
       promise = processPromise(result.result);
@@ -13688,10 +13869,24 @@ export default class ChatBubbles {
       return null;
     } else {
       cached = true;
-      promise = sup(await result.result);
+      const historyResult = await result.result;
+      // * the first frame gets what fills the screen: the bubbles of the rest of a page cost it as much again, for
+      // * posts nobody sees before scrolling up. As much as viewport slicing keeps above comes right after that frame
+      cut = firstScreen ? this.cutToFirstScreen(historyResult) : undefined;
+      promise = sup(historyResult);
+      if(cut?.beyond) {
+        const peerMiddleware = this.getMiddleware();
+        beyondPromise = promise.then(() => new Promise<void>((resolve) => fastRaf(() => setTimeout(resolve, 0)))).then(() => {
+          if(!peerMiddleware()) return;
+          return this.performHistoryResult(cut.beyond, reverse);
+        }).catch(noop);
+      }
     }
 
-    const waitPromise = isAdditionRender ? processPromise(resultPromise) : promise;
+    // * the fresh page renders what is new at the bottom, not the posts left out above
+    const waitPromise = isAdditionRender ?
+      processPromise((beyondPromise ? beyondPromise.then(() => resultPromise) : resultPromise).then((result) => cut ? keepFrom(result, cut.oldestMid) : result)) :
+      beyondPromise || promise;
 
     if(isFirstMessageRender && liteMode.isAvailable('motion')/*  && false */) {
       let times = isAdditionRender ? 2 : 1;

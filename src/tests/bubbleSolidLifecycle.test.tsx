@@ -1292,6 +1292,9 @@ test('waits for physical chat generation detach instead of a superseded transiti
 
   chatInner.remove();
   await new Promise((resolve) => setTimeout(resolve, 0));
+  // * torn down after the frame, not in the task that puts the next generation in
+  expect(destroyed).toBe(false);
+  await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
   expect(destroyed).toBe(true);
 });
 
@@ -1307,7 +1310,7 @@ test('disposes a disconnected staging generation without waiting for any transit
   expect(destroyed).toBe(true);
 });
 
-test('keeps visible O alive, disposes superseded A, and observes only the mounted generation', () => {
+test('keeps visible O alive, disposes superseded A, and observes only the mounted generation', async() => {
   const originalMutationObserver = globalThis.MutationObserver;
   const callbacks: Array<() => void> = [];
   const observers: Array<{
@@ -1355,8 +1358,9 @@ test('keeps visible O alive, disposes superseded A, and observes only the mounte
 
     oldChatInner.remove();
     callbacks[0]();
-    expect(oldBubbleDestroyed).toBe(true);
     expect(observers[0].disconnect).toHaveBeenCalledOnce();
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    expect(oldBubbleDestroyed).toBe(true);
     chatDestroyMiddlewareHelper.destroy();
   } finally {
     vi.stubGlobal('MutationObserver', originalMutationObserver);

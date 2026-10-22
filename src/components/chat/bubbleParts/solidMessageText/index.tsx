@@ -15,7 +15,7 @@ import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRich
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import {Accessor, batch, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, Show, untrack} from 'solid-js';
 import {Dynamic, render} from 'solid-js/web';
-import {MessageTextPhase, TextRevealModel, TextRevealState} from './textRevealModel';
+import {MessageTextPhase, TextRevealModel, TextRevealSnapshot, TextRevealState} from './textRevealModel';
 import createMessageTextRevealLeafBinding from './revealLeafBinding';
 import styles from './solidMessageText.module.scss';
 
@@ -493,8 +493,8 @@ function getCommonTextPrefixLength(left: string, right: string) {
 function getIncrementalRenderStart(
   previous: TextWithEntities,
   current: TextWithEntities,
-  previousOffsets: readonly number[],
-  currentOffsets: readonly number[],
+  getPreviousOffsets: () => readonly number[],
+  getCurrentOffsets: () => readonly number[],
   knownAppend = false
 ): number {
   let dirtyStart: number;
@@ -503,8 +503,8 @@ function getIncrementalRenderStart(
   } else {
     const commonPrefix = getCommonTextPrefixLength(previous.text, current.text);
     dirtyStart = Math.min(
-      snapGraphemeOffsetDown(previousOffsets, commonPrefix),
-      snapGraphemeOffsetDown(currentOffsets, commonPrefix)
+      snapGraphemeOffsetDown(getPreviousOffsets(), commonPrefix),
+      snapGraphemeOffsetDown(getCurrentOffsets(), commonPrefix)
     );
   }
 
@@ -630,9 +630,14 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
   let previousOptions: WrapRichTextOptions;
   let previousProcessFragment: SolidInlineTextProps['processFragment'];
   let previousProcessFragmentMode: SolidInlineTextProps['processFragmentMode'];
+  // * grapheme boundaries are found only once a reveal or a rewrite asks for them: a text shown whole, which most
+  // * are, is never segmented
   let graphemeOffsetsText: string;
-  let graphemeOffsets: number[] = [0];
-  let previousSourceOffsets: number[] = [0];
+  let graphemeOffsets: number[];
+  let previousSource: {text: string, offsets: number[]} = {text: '', offsets: [0]};
+  const getSourceOffsets = () => graphemeOffsets ??= getGraphemeOffsets(graphemeOffsetsText ?? '');
+  const getPreviousSourceOffsets = () => previousSource.offsets ??= getGraphemeOffsets(previousSource.text);
+  const rememberSource = () => previousSource = {text: graphemeOffsetsText ?? '', offsets: graphemeOffsets};
   let renderedChunks: RenderedTextChunk[] = [];
   const revealBinding = createMessageTextRevealLeafBinding({
     coordinator: props.revealCoordinator,
@@ -842,8 +847,8 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
         const nestedDirtyStart = getIncrementalRenderStart(
           previousNested,
           currentNested,
-          previousSourceOffsets,
-          graphemeOffsets,
+          getPreviousSourceOffsets,
+          getSourceOffsets,
           knownAppend
         );
         const outerStart = currentEntity.offset || 0;
@@ -998,10 +1003,10 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
     const sourceAppend = sourceValue.text === previousSourceText ||
       (sourceValue.text.length >= previousSourceText.length && sourceValue.text.startsWith(previousSourceText));
     if(sourceValue.text !== graphemeOffsetsText) {
-      graphemeOffsets = updateGraphemeOffsets(previousSourceText, graphemeOffsets, sourceValue.text, sourceAppend);
+      if(graphemeOffsets) graphemeOffsets = updateGraphemeOffsets(previousSourceText, graphemeOffsets, sourceValue.text, sourceAppend);
       graphemeOffsetsText = sourceValue.text;
     }
-    let value = sliceTextWithEntitiesAtGrapheme(sourceValue, visibleGraphemes, graphemeOffsets);
+    let value = visibleGraphemes === undefined ? sourceValue : sliceTextWithEntitiesAtGrapheme(sourceValue, visibleGraphemes, getSourceOffsets());
     value = preserveVisiblePreEntity(sourceValue, value);
     const options = props.richTextOptions?.();
     const processFragment = props.processFragment;
@@ -1019,7 +1024,7 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
       previousOptions = options;
       previousProcessFragment = processFragment;
       previousProcessFragmentMode = processFragmentMode;
-      previousSourceOffsets = graphemeOffsets;
+      rememberSource();
       previousPhase = phase;
       if(phase === 'final') compactChunkRecords(true);
       if(renderMode !== 'none') {
@@ -1033,8 +1038,8 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
       getIncrementalRenderStart(
         previousValue,
         value,
-        previousSourceOffsets,
-        graphemeOffsets,
+        getPreviousSourceOffsets,
+        getSourceOffsets,
         sourceAppend && value.text.length >= previousValue.text.length
       ) :
       undefined;
@@ -1065,7 +1070,7 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
       previousOptions = options;
       previousProcessFragment = processFragment;
       previousProcessFragmentMode = processFragmentMode;
-      previousSourceOffsets = graphemeOffsets;
+      rememberSource();
       previousPhase = phase;
       props.onLayout?.({element, sourceRevision, phase, reason: 'render', renderMode});
       return;
@@ -1085,7 +1090,7 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
       previousOptions = options;
       previousProcessFragment = processFragment;
       previousProcessFragmentMode = processFragmentMode;
-      previousSourceOffsets = graphemeOffsets;
+      rememberSource();
       previousPhase = phase;
       if(phase === 'final') compactChunkRecords(true);
       props.onLayout?.({element, sourceRevision, phase, reason: 'render', renderMode: 'append'});
@@ -1138,7 +1143,7 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
         previousOptions = options;
         previousProcessFragment = processFragment;
         previousProcessFragmentMode = processFragmentMode;
-        previousSourceOffsets = graphemeOffsets;
+        rememberSource();
         previousPhase = phase;
         if(phase === 'final') compactChunkRecords(true);
         props.onLayout?.({element, sourceRevision, phase, reason: 'render', renderMode});
@@ -1161,7 +1166,7 @@ export function SolidInlineText(props: SolidInlineTextProps): JSX.Element {
     previousOptions = options;
     previousProcessFragment = processFragment;
     previousProcessFragmentMode = processFragmentMode;
-    previousSourceOffsets = graphemeOffsets;
+    rememberSource();
     previousPhase = phase;
     compactChunkRecords(phase === 'final');
     props.onLayout?.({element, sourceRevision, phase, reason: 'render', renderMode});
@@ -1203,6 +1208,22 @@ export function SolidMessageTextBody(props: SolidMessageTextBodyProps): JSX.Elem
   const model = new TextRevealModel();
   const scheduler = props.frameScheduler ?? makeDefaultFrameScheduler();
   const [revealState, setRevealState] = createSignal(model.getState());
+  // * a text final from the start is shown whole: the model, which splits it into graphemes, gets it only once a
+  // * later revision comes and has to be revealed from it - most messages never do
+  let deferredFinal: TextRevealSnapshot;
+  const updateModel = (snapshot: TextRevealSnapshot): TextRevealState => {
+    if(snapshot.phase === 'final' && (deferredFinal || model.getState().sourceRevision === -1)) {
+      deferredFinal = snapshot;
+      return {sourceRevision: snapshot.sourceRevision, phase: 'final', visibleGraphemes: 0, totalGraphemes: 0, caughtUp: true};
+    }
+
+    if(deferredFinal) {
+      model.update(deferredFinal);
+      deferredFinal = undefined;
+    }
+
+    return model.update(snapshot);
+  };
   let currentAcceptedSnapshot = props.snapshot();
   const [acceptedSnapshot, setAcceptedSnapshot] = createSignal(currentAcceptedSnapshot);
   let element: HTMLElement;
@@ -1297,7 +1318,7 @@ export function SolidMessageTextBody(props: SolidMessageTextBodyProps): JSX.Elem
     currentAcceptedSnapshot = snapshot;
     setAcceptedSnapshot(snapshot);
 
-    const state = model.update({
+    const state = updateModel({
       sourceRevision: snapshot.sourceRevision,
       text: snapshot.source.text,
       phase: snapshot.phase,
@@ -1324,7 +1345,8 @@ export function SolidMessageTextBody(props: SolidMessageTextBodyProps): JSX.Elem
 
   const visibleGraphemes = createMemo<number | undefined>(() => {
     const snapshot = acceptedSnapshot();
-    if(snapshot.phase === 'final' && snapshot.display?.sourceRevision === snapshot.sourceRevision) {
+    // * a final text is shown whole (the model reveals it at once), so there is nothing to cut at a grapheme
+    if(snapshot.phase === 'final') {
       return undefined;
     }
 
