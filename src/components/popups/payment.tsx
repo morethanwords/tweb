@@ -41,6 +41,7 @@ import showPaymentMethodsPopup from '@components/popups/paymentMethods';
 import showPaymentShippingPopup, {PaymentShippingAddress} from '@components/popups/paymentShipping';
 import showPaymentShippingMethodsPopup from '@components/popups/paymentShippingMethods';
 import showPaymentVerificationPopup from '@components/popups/paymentVerification';
+import paymentErrorLangKey from '@components/popups/paymentErrorLangKey';
 import type showStarsPopup from '@components/popups/stars';
 import showStarsPayPopup from '@components/popups/starsPay';
 
@@ -474,7 +475,9 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
     if(canTip) {
       inputRightNumber.input.classList.add('input-clear', `${className}-tips-input`);
-      inputRightNumber.input.setAttribute('aria-label', i18n('PaymentTipOptional').textContent);
+      inputRightNumber.input.setAttribute('aria-label', i18n(isReceipt ? 'PaymentTip' : 'PaymentTipOptional').textContent);
+      // a receipt shows the tip that was paid
+      inputRightNumber.input.readOnly = isReceipt;
       inputRightNumber.input.addEventListener('input', () => {
         setTip(+inputRightNumber.value.replace(/\D/g, ''));
       });
@@ -618,15 +621,11 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
     let shippingAddressRow: PaymentRowState, shippingNameRow: PaymentRowState, shippingEmailRow: PaymentRowState, shippingPhoneRow: PaymentRowState, shippingMethodRow: PaymentRowState;
     let lastShippingOption: ShippingOption, onShippingAddressClick: (focus?: Parameters<typeof showPaymentShippingPopup>[0]['focus']) => void, onShippingMethodClick: () => void;
-    const setShippingTitle = invoice.pFlags.shipping_address_requested ? (shippingAddress?: PaymentShippingAddress) => {
-      if(!shippingAddress) {
-        shippingMethodRow.title[1](i18n('PaymentShippingAddress'));
-        shippingMethodRow.subtitleVisible[1](false);
-        return;
-      }
-
-      const postAddress = shippingAddress.shipping_address;
-      setRowTitle(shippingAddressRow, [
+    let setShippingOption: (shippingOption?: ShippingOption) => void;
+    const setShippingTitle = invoice.pFlags.shipping_address_requested ? (info: PaymentShippingAddress) => {
+      // the saved information may come from an invoice that asked for no address
+      const postAddress = info.shipping_address;
+      setRowTitle(shippingAddressRow, postAddress && [
         postAddress.city,
         postAddress.street_line1,
         postAddress.street_line2
@@ -636,10 +635,19 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
     } : undefined;
 
     const setShippingInfo = (info: PaymentRequestedInfo) => {
-      setShippingTitle && setShippingTitle?.(info);
+      setShippingTitle?.(info);
       shippingNameRow && setRowTitle(shippingNameRow, info.name);
       shippingEmailRow && setRowTitle(shippingEmailRow, info.email);
       shippingPhoneRow && setRowTitle(shippingPhoneRow, info.phone && ('+' + formatPhoneNumber(info.phone).formatted));
+    };
+
+    // A validation brings the bot's shipping options for that address: the chosen one stays only while
+    // the bot still offers it, and at the price it asks now.
+    const setRequestedInfo = (requestedInfo: PaymentsValidatedRequestedInfo) => {
+      lastRequestedInfo = requestedInfo;
+      if(lastShippingOption) {
+        setShippingOption(requestedInfo.shipping_options?.find(({id}) => id === lastShippingOption.id));
+      }
     };
 
     if(!isReceipt) {
@@ -650,7 +658,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
           inputInvoice,
           focus,
           onFinish: ({shippingAddress, requestedInfo}) => {
-            lastRequestedInfo = requestedInfo;
+            setRequestedInfo(requestedInfo);
             savedInfo = (paymentForm as PaymentsPaymentForm.paymentsPaymentForm).saved_info = shippingAddress;
             setShippingInfo(shippingAddress);
           }
@@ -660,15 +668,12 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
 
     if(invoice.pFlags.shipping_address_requested) {
       // The rows appear above the fold, so adding them would push the content the user is looking at.
-      const setShippingOption = (shippingOption?: ShippingOption) => {
-        const scrollSaver = new ScrollSaver(scrollableRef()?.container as any, undefined, true);
+      setShippingOption = (shippingOption) => {
+        const scrollSaver = new ScrollSaver(scrollableRef(), undefined, true);
         scrollSaver.save();
 
-        if(shippingOption) {
-          lastShippingOption = shippingOption;
-          setRowTitle(shippingMethodRow, shippingOption.title);
-        }
-
+        lastShippingOption = shippingOption;
+        setRowTitle(shippingMethodRow, shippingOption?.title);
         setShippingPrices(shippingOption ? shippingOption.prices : []);
 
         scrollSaver.restore();
@@ -791,7 +796,8 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
       try {
         requestedInfo = await rootScope.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, info);
       } catch(err) {
-        console.error('validateRequestedInfo', err, info);
+        // not the information itself: a name, an address and a phone have no business in the logs
+        console.error('validateRequestedInfo', err);
       }
 
       // The whole checkout stays live while the request is in flight: it can be closed, a row can
@@ -808,7 +814,7 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
         return false;
       }
 
-      lastRequestedInfo = requestedInfo;
+      setRequestedInfo(requestedInfo);
       setShippingInfo(info); // the shipping method row appears once its options are known
       return onClick();
     };
@@ -878,7 +884,8 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
           _: 'inputPaymentCredentials',
           data: {
             _: 'dataJSON',
-            data: JSON.stringify(previousToken.token ? previousToken : {type: previousToken.type, id: previousToken.id})
+            // exactly what the card form handed over: a provider's own page may put anything in it
+            data: JSON.stringify(previousToken)
           },
           pFlags: {
             save: previousCardDetails.save || undefined
@@ -922,15 +929,16 @@ export default function showPaymentPopup(options: PopupPaymentOptions): PopupPay
             });
           }
         } catch(err) {
-          if((err as ApiError).type === 'BOT_PRECHECKOUT_TIMEOUT') {
-            toastNew({langPackKey: 'Error.AnError'});
-            (err as ApiError).handled = true;
-          } else if((err as ApiError).type === 'TMP_PASSWORD_INVALID') {
+          // nothing was paid, whatever comes next: callers take 'pending' for a payment on its way
+          result = 'failed';
+          const type = (err as ApiError).type;
+          if(type === 'TMP_PASSWORD_INVALID') {
             passwordState = lastTmpPasword = undefined;
             simulateClickEvent(payButtonElement);
             (err as ApiError).handled = true;
-          } else {
-            result = 'failed';
+          } else if(!(err as ApiError).handled) {
+            toastNew({langPackKey: paymentErrorLangKey(type)});
+            (err as ApiError).handled = true;
           }
 
           throw err;

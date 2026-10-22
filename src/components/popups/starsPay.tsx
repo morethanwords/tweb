@@ -14,6 +14,7 @@ import {putPreloader} from '@components/putPreloader';
 import Table, {TablePeer} from '@components/table';
 import {toastNew} from '@components/toast';
 import type {PopupPaymentOptions, PopupPaymentResult} from '@components/popups/payment';
+import paymentErrorLangKey from '@components/popups/paymentErrorLangKey';
 import {STARS_POPUP_KIND, getStarsTransactionTitleAndMedia} from '@components/popups/stars';
 import {StarsAmount, StarsBalance, StarsChange} from '@components/stars/starsAmount';
 import {createSignal, JSX} from 'solid-js';
@@ -93,6 +94,8 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
   let result: PopupPaymentResult = 'cancelled';
   let finished = false;
   let popupOpened = false;
+  // the popup can be closed while a payment is on its way: `finish` then waits for how it went
+  let popupClosed = false;
   const deferredCloseCallbacks: (() => void)[] = [];
 
   const [show, setShow] = createSignal(true);
@@ -119,6 +122,23 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     drainDeferred();
   };
 
+  /** The payment is over, one way or the other. */
+  const finishPayment = () => popupClosed ? emitFinish() : closePopup();
+
+  const onPopupClose = () => {
+    popupClosed = true;
+    if(!paying()) emitFinish();
+  };
+
+  /** A payment that did not go through: the payer is told, and with no popup to stay on, the caller is too. */
+  const failPayment = (err: ApiError) => {
+    result = 'failed';
+    setPaying(false);
+    toastNew({langPackKey: paymentErrorLangKey(err?.type)});
+    if(err) err.handled = true;
+    if(popupClosed || !popupOpened) finishPayment();
+  };
+
   const hidePopupsWithCallback = (callback: () => void, e?: Event) => {
     cancelEvent(e);
     deferredCloseCallbacks.push(callback);
@@ -141,6 +161,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     const {currency, prices: [{amount}]} = paymentForm.invoice;
     if(currency !== expectedPrice.currency) {
       result = 'failed';
+      toastNew({langPackKey: 'Error.AnError'});
       return false;
     }
 
@@ -169,19 +190,22 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
   };
 
   let test = TEST_FIRST_TIME;
-  const onConfirm = async() => {
+  // `retried`: the form has just been fetched again after it expired — once is enough
+  const onConfirm = async(retried?: boolean) => {
     if(isReceipt || subscription?.pFlags.bot_canceled || (!paymentForm && !chatInvite && !subscription)) {
       closePopup();
       return;
     }
 
+    // one payment at a time, and none for a popup the user has already closed
+    if(paying() || popupClosed) return;
+
     if(expectedPrice && paymentForm) {
-      if(paying()) return;
       setPaying(true);
       const confirmed = await confirmFormPrice();
       setPaying(false);
       if(!confirmed) {
-        closePopup();
+        finishPayment();
         return;
       }
     }
@@ -191,62 +215,88 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
     setPaying(true);
     result = 'pending';
 
-    let promise: Promise<any>;
-    if(test) {
-      test = false;
-      promise = Promise.reject(makeError('BALANCE_TOO_LOW'));
-    } else if(subscription) {
-      promise = managers.appPaymentsManager.changeStarsSubscription(
-        subscription.id,
-        !subscription.pFlags.canceled
-      );
-    } else {
-      const balance = await managers.appPaymentsManager[isTon ? 'getStarsStatusTon' : 'getStarsStatus']();
-      if(bigInt(balance.balance.amount as number).lt(itemPrice)) {
-        promise = Promise.reject(makeError('BALANCE_TOO_LOW'));
+    try {
+      if(test) {
+        test = false;
+        throw makeError('BALANCE_TOO_LOW');
+      } else if(subscription) {
+        await managers.appPaymentsManager.changeStarsSubscription(
+          subscription.id,
+          !subscription.pFlags.canceled
+        );
       } else {
-        promise = managers.appPaymentsManager.sendStarsForm(
+        const balance = await managers.appPaymentsManager[isTon ? 'getStarsStatusTon' : 'getStarsStatus']();
+        if(bigInt(balance.balance.amount as number).lt(itemPrice)) {
+          throw makeError('BALANCE_TOO_LOW');
+        }
+
+        await managers.appPaymentsManager.sendStarsForm(
           inputInvoice,
           (paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars)?.form_id || chatInvite.subscription_form_id
         );
       }
-    }
-
-    try {
-      await promise;
-      result = 'paid';
-      closePopup();
     } catch(err) {
-      let shouldRetry = false;
-      if((err as ApiError).type === 'BALANCE_TOO_LOW') {
+      const type = (err as ApiError).type;
+      if(type === 'BALANCE_TOO_LOW' && !popupClosed) {
+        // nothing is on its way while the top-up is offered: callers take 'pending' for a payment that is
+        result = 'cancelled';
+        setPaying(false);
         hotReloadGuard.showStarsPopup({
           itemPrice,
           paymentForm: paymentForm as PaymentsPaymentForm.paymentsPaymentFormStars,
           ton: isTon,
           onTopup: async() => {
-            await reloadForm();
+            try {
+              // the purchase is checked against the balance the top-up has just changed
+              await Promise.all([
+                reloadForm(),
+                managers.appPaymentsManager[isTon ? 'getStarsStatusTon' : 'getStarsStatus'](true)
+              ]);
+            } catch(err) {
+              failPayment(err as ApiError);
+              return;
+            }
+
             onConfirm();
           },
           onCancel: () => {
             result = 'cancelled';
-            closePopup();
+            finishPayment();
           },
           purpose,
           spendPurposePeerId: peerId
         });
-      } else if((err as ApiError).type === 'FORM_EXPIRED') {
-        await reloadForm();
-        shouldRetry = true;
+      } else if(type === 'FORM_EXPIRED' && paymentForm && !retried && !popupClosed) {
+        // an invite's subscription has no form to fetch again: it would only expire once more
+        try {
+          await reloadForm();
+        } catch(err) {
+          failPayment(err as ApiError);
+          return;
+        }
+
+        setPaying(false);
+        if(popupClosed) { // closed while the form was fetched again: nothing was paid, and `finish` waits
+          result = 'cancelled';
+          finishPayment();
+          return;
+        }
+
+        onConfirm(true);
+      } else if(type === 'BALANCE_TOO_LOW') { // the popup is gone, and with it the offer to top up
+        result = 'cancelled';
+        setPaying(false);
+        finishPayment();
       } else {
-        result = 'failed';
+        failPayment(err as ApiError);
       }
 
-      setPaying(false);
-
-      if(shouldRetry) {
-        onConfirm();
-      }
+      return;
     }
+
+    result = 'paid';
+    setPaying(false);
+    finishPayment();
   };
 
   const construct = async() => {
@@ -377,6 +427,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
             });
           } catch(err) {
             console.error('fulfill error', err);
+            toastNew({langPackKey: paymentErrorLangKey((err as ApiError).type)});
             setFulfilling(false);
           }
         };
@@ -694,7 +745,7 @@ export default function showStarsPayPopup(options: StarsPayOptions): StarsPayHan
           closable
           old
           show={show()}
-          onClose={emitFinish}
+          onClose={onPopupClose}
           onCloseAfterTimeout={() => {
             middlewareHelper.destroy();
             drainDeferred();

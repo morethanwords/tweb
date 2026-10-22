@@ -4,6 +4,7 @@ import {AccountPassword, AccountTmpPassword} from '@layer';
 import {InputState} from '@components/inputField';
 import PasswordInputField from '@components/passwordInputField';
 import Section from '@components/section';
+import {toastNew} from '@components/toast';
 import rootScope from '@lib/rootScope';
 import {createSignal, onMount} from 'solid-js';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
@@ -27,10 +28,12 @@ export default function showPaymentCardConfirmationPopup(options: {
       options.onFinish?.(tmpPassword);
     } catch(err) {
       if((err as ApiError).type === 'PASSWORD_HASH_INVALID') {
-        (err as ApiError).handled = true;
         passwordInputField.setError('PASSWORD_HASH_INVALID');
+      } else if(!(err as ApiError).handled) {
+        toastNew({langPackKey: 'Error.AnError'});
       }
 
+      (err as ApiError).handled = true;
       throw err;
     }
   };

@@ -406,7 +406,8 @@ export const STARS_POPUP_KIND = Symbol('stars-popup');
 export type PopupStarsOptions = {
   paymentForm?: PaymentsPaymentForm.paymentsPaymentFormStars,
   itemPrice?: Long,
-  onTopup?: (amount: number) => void,
+  /** `stars`: how many were bought (or gifted) */
+  onTopup?: (stars: number) => void,
   onCancel?: () => void,
   purpose?: 'reaction' | 'stargift' | (string & {}),
   giftPeerId?: PeerId,
@@ -645,12 +646,13 @@ export default function showStarsPopup(options: PopupStarsOptions = {}) {
 
                         if(options.onTopup) {
                           setShow(false);
-                          options.onTopup(+option.amount);
+                          options.onTopup(+option.stars);
                         }
                       }
                     });
                   } catch(err) {
                     console.error('stars error', err);
+                    toastNew({langPackKey: 'Error.AnError'});
                   }
 
                   busy = false;
