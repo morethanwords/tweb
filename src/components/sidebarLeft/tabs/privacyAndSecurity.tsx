@@ -215,22 +215,7 @@ const PrivacyAndSecurity: Component = () => {
                 <Row.Title>{i18n('PasscodeLock.Item.Title')}</Row.Title>
                 <Row.Subtitle>{passcodeSubtitle()}</Row.Subtitle>
               </Row>
-              <Row clickable={() => {
-                if(twoFactorFrozen()) return;
-                if(passwordState.pFlags.has_password) {
-                  tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEnterPasswordTab).open({state: passwordState});
-                } else if(passwordState.email_unconfirmed_pattern) {
-                  tab.managers.passwordManager.resendPasswordEmail();
-                  tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationEmailConfirmationTab).open({
-                    state: passwordState,
-                    email: wrapEmailPattern(passwordState.email_unconfirmed_pattern),
-                    length: 6,
-                    isFirst: true
-                  });
-                } else {
-                  tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationTab).open({state: passwordState});
-                }
-              }}>
+              <Row clickable={() => !twoFactorFrozen() && hotReloadGuard.tabs.AppTwoStepVerificationTab.openChecked(tab.slider, passwordState)}>
                 <Row.Icon icon="two_factor_auth_filled" />
                 <Row.Title>{i18n('TwoStepVerification')}</Row.Title>
                 <Row.Subtitle>{twoFactorSubtitle()}</Row.Subtitle>

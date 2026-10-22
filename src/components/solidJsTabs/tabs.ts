@@ -1030,17 +1030,66 @@ type AppTwoStepVerificationTabPayload = {
   plainPassword?: string
 };
 
-export const AppTwoStepVerificationTab =
+/**
+ * Two-Step Verification's screen works with the cloud password it was handed, so while one is set it is
+ * entered first, and an unconfirmed recovery email is confirmed first — the same from the Privacy and
+ * Security row, the settings search and a `tg://settings/privacy/2sv` link. Resolves with the screen once
+ * the password is accepted, so a result or a link can point at its control there, or with nothing when
+ * the password step is given up; with the email's confirmation when that comes first.
+ */
+async function openTwoStepVerificationTabChecked(slider: SidebarSlider, state: AccountPassword): Promise<SliderSuperTab> {
+  if(state.pFlags.has_password) {
+    const opened = deferredPromise<SliderSuperTab>();
+    let passed = false;
+    const checkTab = slider.createTab(AppTwoStepVerificationEnterPasswordTab);
+    // the step goes away once passed too, while the screen is still loading: only giving it up opens nothing
+    checkTab.middlewareHelper.onDestroy(() => {
+      if(!passed) opened.resolve(undefined);
+    });
+    await checkTab.open({
+      state,
+      onPassed: (screen) => {
+        passed = true;
+        screen.then((tab) => opened.resolve(tab));
+      }
+    });
+    return opened;
+  }
+
+  if(state.email_unconfirmed_pattern) {
+    const tab = slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
+    tab.managers.passwordManager.resendPasswordEmail();
+    // the email screen's own module, and its weight, only for the one case that needs it
+    const {wrapEmailPattern} = await import('@components/emailVerification');
+    await tab.open({
+      state,
+      email: wrapEmailPattern(state.email_unconfirmed_pattern),
+      length: 6,
+      isFirst: true
+    });
+    return tab;
+  }
+
+  const tab = slider.createTab(AppTwoStepVerificationTab);
+  await tab.open({state});
+  return tab;
+}
+
+export const AppTwoStepVerificationTab = Object.assign(
   scaffoldSolidJSTab<AppTwoStepVerificationTabPayload>({
     title: 'TwoStepVerificationTitle',
     getComponentModule: () => import('../sidebarLeft/tabs/2fa/index')
-  });
+  }),
+  {openChecked: openTwoStepVerificationTabChecked}
+);
 
 
 type AppTwoStepVerificationEnterPasswordTabPayload = {
   state: AccountPassword,
   plainPassword?: string,
-  isFirst?: boolean
+  isFirst?: boolean,
+  /** The current password was accepted: Two-Step Verification's screen is opening, and this resolves with it once open. */
+  onPassed?: (screen: Promise<InstanceOf<typeof AppTwoStepVerificationTab>>) => void
 };
 
 export const AppTwoStepVerificationEnterPasswordTab =

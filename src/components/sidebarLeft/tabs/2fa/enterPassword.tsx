@@ -90,10 +90,15 @@ const TwoStepVerificationEnterPassword: Component = () => {
         if(auth._ === 'auth.authorization') {
           clearInterval(getStateInterval);
           if(monkey) monkey.remove();
-          tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationTab).open({
+          // the step was left while the password was being checked: it opens nothing after all
+          if(!tab.slider.getHistory().includes(tab)) return;
+
+          const screen = tab.slider.createTab(hotReloadGuard.tabs.AppTwoStepVerificationTab);
+          const opening = screen.open({
             state,
             plainPassword
           });
+          tab.payload.onPassed?.(opening.then(() => screen));
           tab.slider.removeTabFromHistory(tab);
         }
       }, (err) => {

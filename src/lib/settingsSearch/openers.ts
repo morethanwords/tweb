@@ -123,6 +123,15 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
   AppBusinessLocationTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessLocationTab),
   // the current passcode is asked for first, as it is from Privacy and Security
   AppPasscodeLockTab: (slider) => hotReloadGuard.tabs.AppPasscodeLockTab.openChecked(slider),
+  // and so is the cloud password while one is set
+  AppTwoStepVerificationTab: async(slider, middleware) => {
+    const state = await rootScope.managers.passwordManager.getState();
+    if(middleware && !middleware()) {
+      return;
+    }
+
+    return hotReloadGuard.tabs.AppTwoStepVerificationTab.openChecked(slider, state);
+  },
   AppActiveWebSessionsTab: async(slider, middleware) => {
     const authorizations = await rootScope.managers.appSeamlessLoginManager.getWebAuthorizations();
     return openTab(slider, hotReloadGuard.tabs.AppActiveWebSessionsTab, middleware, authorizations);
