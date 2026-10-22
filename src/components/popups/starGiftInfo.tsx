@@ -1083,53 +1083,55 @@ export default function showStarGiftInfoPopup(options: {
             aria-label={I18n.format('Close', true)}
             onClick={() => context.hide()}
           />
-          <ButtonMenuToggleTsx
-            class="popup-star-gift-info-menu-toggle"
-            icon="more"
-            buttonOptions={{ariaLabel: 'MultiAccount.More'}}
-            direction="bottom-left"
-            buttons={[
-              {
-                icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
-                text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
-                verify: () => isEditableUniqueGift,
-                onClick: () => {
-                  if(ownerPeerId === undefined) return;
-                  context.managers.appGiftsManager.togglePinnedGift(input, ownerPeerId).then(() => {
-                    context.hide();
-                  });
+          {gift._ === 'starGiftUnique' && (
+            <ButtonMenuToggleTsx
+              class="popup-star-gift-info-menu-toggle"
+              icon="more"
+              buttonOptions={{ariaLabel: 'MultiAccount.More'}}
+              direction="bottom-left"
+              buttons={[
+                {
+                  icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
+                  text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
+                  verify: () => isEditableUniqueGift,
+                  onClick: () => {
+                    if(ownerPeerId === undefined) return;
+                    context.managers.appGiftsManager.togglePinnedGift(input, ownerPeerId).then(() => {
+                      context.hide();
+                    });
+                  }
+                },
+                {
+                  icon: 'tag_alt',
+                  text: 'StarGiftChangePrice',
+                  verify: () => isEditableUniqueGift && isListed(),
+                  onClick: () => handleSell(true)
+                },
+                {
+                  icon: 'tag_alt',
+                  text: 'StarGiftOffer.CreateOffer',
+                  verify: () => gift.offer_min_stars !== undefined,
+                  onClick: () => showCreateStarGiftOfferPopup({
+                    gift: myGift,
+                    onFinish: (res) => res === 'created' && context.hide()
+                  })
+                },
+                {
+                  icon: 'forward',
+                  text: 'ShareFile',
+                  onClick: handleShare
+                },
+                {
+                  icon: 'link',
+                  text: 'CopyLink',
+                  onClick: () => {
+                    copyTextToClipboard('https://t.me/nft/' + gift.slug);
+                    toastNew({langPackKey: 'LinkCopied'});
+                  }
                 }
-              },
-              {
-                icon: 'tag_alt',
-                text: 'StarGiftChangePrice',
-                verify: () => isEditableUniqueGift && isListed(),
-                onClick: () => handleSell(true)
-              },
-              {
-                icon: 'tag_alt',
-                text: 'StarGiftOffer.CreateOffer',
-                verify: () => gift._ === 'starGiftUnique' && gift.offer_min_stars !== undefined,
-                onClick: () => showCreateStarGiftOfferPopup({
-                  gift: myGift,
-                  onFinish: (res) => res === 'created' && context.hide()
-                })
-              },
-              {
-                icon: 'forward',
-                text: 'ShareFile',
-                onClick: handleShare
-              },
-              {
-                icon: 'link',
-                text: 'CopyLink',
-                onClick: () => {
-                  copyTextToClipboard('https://t.me/nft/' + (gift as StarGift.starGiftUnique).slug);
-                  toastNew({langPackKey: 'LinkCopied'});
-                }
-              }
-            ]}
-          />
+              ]}
+            />
+          )}
 
           <MediaHeader.Title>
             {gift._ === 'starGift' ?
