@@ -110,9 +110,10 @@ describe('rich media preview URL leases', () => {
     expect(getRichMediaPreviewSource(preview.url)).toBeUndefined();
     expect(getRichMediaPreviewPoster(preview.url)).toBeUndefined();
     expect(getRichMediaPreviewSideFill(preview.url)).toBeUndefined();
-    expect(image.hasAttribute('src')).toBe(false);
-    expect(poster.hasAttribute('src')).toBe(false);
-    expect(sideFill.hasAttribute('src')).toBe(false);
+    // * off the document a cleared image keeps an empty src (see clearMediaElementSource)
+    expect(image.getAttribute('src')).toBeFalsy();
+    expect(poster.getAttribute('src')).toBeFalsy();
+    expect(sideFill.getAttribute('src')).toBeFalsy();
     expect(revokeObjectURL).toHaveBeenCalledWith(preview.url);
     expect(revokeObjectURL).toHaveBeenCalledWith(posterUrl);
 

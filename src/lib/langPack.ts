@@ -511,7 +511,7 @@ namespace I18n {
           if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick + '(this)');
           setBlankToAnchor(a);
         } else {
-          a = args[indexHolder.i++] as HTMLAnchorElement;
+          a = args?.[indexHolder.i++] as HTMLAnchorElement;
 
           if(a instanceof DocumentFragment) { // right after wrapRichText
             a = a.firstChild as any;

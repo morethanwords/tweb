@@ -29,10 +29,23 @@ describe('clearMediaElementSource', () => {
   it('removes the src attribute from images without touching media APIs', () => {
     const image = new Image();
     image.src = 'blob:test/image';
+    document.body.append(image);
 
     clearMediaElementSource(image);
 
     expect(image.hasAttribute('src')).toBe(false);
+    image.remove();
+  });
+
+  it('empties the src of an image outside the document instead of removing it', () => {
+    // * Chrome never collects a loaded image that was never in the document once its src
+    // * attribute is gone: it shows the broken-image fallback and stays registered for good
+    const image = new Image();
+    image.src = 'blob:test/image';
+
+    clearMediaElementSource(image);
+
+    expect(image.getAttribute('src')).toBe('');
   });
 
   it('pauses, uses the video src setter and clears srcObject', () => {

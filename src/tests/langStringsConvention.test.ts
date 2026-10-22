@@ -37,4 +37,9 @@ describe('lang strings', () => {
     expect(render(now, [document.createElement('a'), 10])).toBe('Subscribe to Telegram Premium to increase download speeds <a></a> times.');
     expect(render(now, [10, document.createElement('a')])).toBe('Subscribe to <a>Telegram Premium</a> to increase download speeds 10 times.');
   });
+
+  // * a call bubble's title is rendered without arguments, and its link took the whole message down
+  test('render a link given no arguments at all as its label', () => {
+    expect(I18n.superFormatter(lang['Chat.Service.ConferenceCall.Incoming']).join('')).toBe('Incoming group call. Join');
+  });
 });

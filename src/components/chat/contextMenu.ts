@@ -618,6 +618,8 @@ export default class ChatContextMenu {
         this.mid = 0;
         this.peerId = undefined;
         this.target = null;
+        // * the chat outlives its bubbles: a kept bubble stayed in memory after it left the DOM
+        this.bubble = undefined;
         this.viewerPeerId = undefined;
         this.canOpenReactedList = undefined;
         cleanup();

@@ -125,7 +125,7 @@ export default class DialogsPlaceholder {
     this.detachTime = Date.now();
 
     const animationLevel = liteMode.getAnimationLevel();
-    if(!animationLevel || !this.inView) { // * nobody would see it go
+    if(!animationLevel || !this.inView || !this.hasSize()) { // * nobody would see it go
       this.remove();
     } else if(animationLevel === 1) {
       // * reduced animations: the skeleton held still, and it fades out as a whole
@@ -253,10 +253,27 @@ export default class DialogsPlaceholder {
     mediaSizes.addEventListener('resize', this.onResize);
   }
 
+  // * a box that is not laid out - the list it measures is in a hidden tab (the chat list under
+  // * Settings) - has no rows to draw, and a canvas of no size cannot even make a pattern
+  private hasSize() {
+    const {canvas} = this;
+    return !!(canvas.width && canvas.height);
+  }
+
   // * redraws without touching the subscriptions, as it runs from inside their dispatch
   private runAnimation() {
     const {canvas, shimmer} = this;
     const tempId = ++this.tempId;
+    if(!this.hasSize()) {
+      // * the resize that gives it a size draws it again
+      this.looping = false;
+      if(this.detachTime) {
+        this.remove();
+      }
+
+      return;
+    }
+
     const pattern = this.createPattern();
 
     shimmer.settings({

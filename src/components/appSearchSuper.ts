@@ -3335,6 +3335,8 @@ export default class AppSearchSuper {
 
   public destroy() {
     this.cleanup();
+    // * cleaning ends what is loading, the destructors registered on it (a video's source) run only here
+    this.middleware.destroy();
     this.listenerSetter.removeAll();
     this.disposeNav?.();
     this.disposeNav = undefined;

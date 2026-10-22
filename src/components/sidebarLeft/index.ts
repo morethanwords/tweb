@@ -1172,7 +1172,10 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const searchListenerSetter = new ListenerSetter();
-    const middleware = this.middlewareHelper.get();
+    // * the search's own lifetime: the sidebar's middleware is never cleaned, and each opening of the
+    // * search left its groups (their roots and lists) registered there
+    const searchMiddlewareHelper = this.middlewareHelper.get().create();
+    const middleware = searchMiddlewareHelper.get();
     this.searchGroups = {
       contacts: createSearchGroup({name: 'SearchAllChatsShort', type: 'contacts', onFound: close, middleware}),
       globalContacts: createSearchGroup({name: 'GlobalSearch', type: 'contacts', onFound: close, middleware}),
@@ -1610,10 +1613,12 @@ export class AppSidebarLeft extends SidebarSlider {
       this.inputSearch.input.style.removeProperty('--paddingLeft');
       this.inputSearch.onChange = undefined;
       this.inputSearch.onClear = undefined;
+      this.inputSearch.onEnter = undefined;
 
       searchSuper.destroy();
       dialogContextMenus.forEach((menu) => menu.destroy());
       helperMiddlewareHelper.destroy();
+      searchMiddlewareHelper.destroy();
       searchContainer.replaceChildren();
       searchListenerSetter.removeAll();
 

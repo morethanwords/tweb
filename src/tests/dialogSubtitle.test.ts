@@ -22,6 +22,7 @@ vi.mock('@lib/langPack', () => ({
 }));
 
 import type {PeerTitleOptions} from '@components/peerTitle';
+import {getMiddleware} from '@helpers/middleware';
 import renderDialogSubtitleParts
 from '@components/wrappers/dialogSubtitle';
 
@@ -63,6 +64,34 @@ describe('renderDialogSubtitleParts', () => {
     );
     expect(parts.map((part) => part.textContent).join(''))
     .toBe('service preview');
+  });
+
+  it('hands the message renderer the lifetime of what the parts hold', async() => {
+    const wrapMiddleware = getMiddleware().get();
+    const message = {
+      _: 'message',
+      pFlags: {},
+      peerId: (1) as PeerId,
+      fromId: (1) as PeerId,
+      mid: 1,
+      date: 1,
+      message: 'body'
+    } as any;
+
+    await renderDialogSubtitleParts({
+      peerId: message.peerId,
+      isSaved: false,
+      lastMessage: message,
+      middleware: (value) => value,
+      wrapMiddleware,
+      textColor: 'secondary-text-color'
+    });
+
+    // * its custom emoji renderer is destroyed with that lifetime: without one it is released only by
+    // * leaving the document, which a subtitle that never got in does not do
+    expect(mocks.wrapMessageForReply).toHaveBeenCalledWith(
+      expect.objectContaining({message, middleware: wrapMiddleware})
+    );
   });
 
   it('keeps the standard Draft prefix and renders draft text once', async() => {

@@ -9,7 +9,7 @@ vi.mock('@helpers/mediaSizes', async() => {
   return {default: new EventListenerBase()};
 });
 vi.mock('@helpers/animation', () => ({animate: () => {}}));
-vi.mock('@helpers/liteMode', () => ({default: {isAvailable: () => false}}));
+vi.mock('@helpers/liteMode', () => ({default: {isAvailable: () => false, getAnimationLevel: () => 2}}));
 vi.mock('@helpers/canvas/shimmer', () => ({default: class {
   settings() {}
   on() {}
@@ -99,6 +99,39 @@ describe('DialogsPlaceholder', () => {
       placeholder.remove();
       rootScope.dispatchEvent('theme_changed');
       expect(patterns()).toBe(2);
+    } finally {
+      getContext.mockRestore();
+    }
+  });
+
+  it('draws nothing for a list laid out in a hidden tab, and goes at once when it is done', () => {
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function(this: HTMLCanvasElement) {
+      const ctx = fakeContext();
+      ctx.canvas = this;
+      // * as in Chrome, which throws an InvalidStateError for a canvas of no size
+      ctx.createPattern = vi.fn((source: HTMLCanvasElement) => {
+        if(!source.width || !source.height) {
+          throw new DOMException('The image argument is a canvas element with a width or height of 0.', 'InvalidStateError');
+        }
+
+        return {};
+      });
+      return ctx;
+    } as any);
+
+    try {
+      const placeholder = new DialogsPlaceholder();
+      const container = document.createElement('div');
+      const scrollable = {container: document.createElement('div')} as any;
+      const onRemove = vi.fn();
+      // * a list whose rows it measures is in a tab not shown (the chat list under Settings)
+      placeholder.attach({container, rect: {width: 0, height: 0}, onRemove, blockScrollable: scrollable});
+      expect(scrollable.container.style.overflowY).toBe('hidden');
+
+      placeholder.detach(0);
+      expect(onRemove).toHaveBeenCalledOnce();
+      expect(container.querySelector('canvas')).toBeNull();
+      expect(scrollable.container.style.overflowY).toBe('');
     } finally {
       getContext.mockRestore();
     }

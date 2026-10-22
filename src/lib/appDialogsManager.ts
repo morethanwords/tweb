@@ -2364,6 +2364,11 @@ export class AppDialogsManager {
     let renderedParts = canSkipRender ? previousRenderParts : undefined;
 
     if(!canSkipRender && !keepTyping) {
+      // * what this render wraps lives as long as it is the row's subtitle, or the row: a custom emoji
+      // * renderer was released only by leaving the document, so one that never got there - a render
+      // * a newer one replaced, a row dropped before it was shown - kept its emoji in the global
+      // * lazy-load queue for good
+      const subtitleMiddlewareHelper = dialogElement.middlewareHelper?.get().create();
       let mediaContainer: HTMLElement;
       const mediaParts: (Promise<HTMLElement> | HTMLElement)[] = [];
 
@@ -2395,7 +2400,7 @@ export class AppDialogsManager {
                   width: 20,
                   height: 20,
                   multiply: 0.1,
-                  middleware: this.stateMiddlewareHelper.get(),
+                  middleware: subtitleMiddlewareHelper?.get() ?? this.stateMiddlewareHelper.get(),
                   animationGroup: 'none'
                 }).then((el) => {
                   mediaContainer.append(el);
@@ -2415,26 +2420,33 @@ export class AppDialogsManager {
       }
 
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
-      const parts = await renderDialogSubtitleParts({
-        peerId,
-        isSaved,
-        lastMessage,
-        draftMessage,
-        noForwardIcon,
-        mediaParts,
-        withoutMediaType,
-        withoutMessageIcon: !!mediaContainer,
-        prependPeerId: subtitlePeerId,
-        middleware,
-        messageRenderer: wrapMessageForReply,
-        peerTitleRenderer: wrapPeerTitle,
-        textColor: this.getTextColor(
-          dom.listEl.classList.contains('active')
-        )
-      });
+      let parts: HTMLElement[];
+      try {
+        parts = await renderDialogSubtitleParts({
+          peerId,
+          isSaved,
+          lastMessage,
+          draftMessage,
+          noForwardIcon,
+          mediaParts,
+          withoutMediaType,
+          withoutMessageIcon: !!mediaContainer,
+          prependPeerId: subtitlePeerId,
+          middleware,
+          wrapMiddleware: subtitleMiddlewareHelper?.get(),
+          messageRenderer: wrapMessageForReply,
+          peerTitleRenderer: wrapPeerTitle,
+          textColor: this.getTextColor(
+            dom.listEl.classList.contains('active')
+          )
+        });
+      } catch(err) {
+        subtitleMiddlewareHelper?.destroy();
+        throw err;
+      }
       dom.lastMessageSpan.classList.add('dialog-subtitle-parts');
       disposeTextHighlight(dom);
-      setDialogSubtitle(dom, parts);
+      setDialogSubtitle(dom, parts, subtitleMiddlewareHelper);
       renderedParts = parts;
 
       // * the last part is the message text itself (the ones before are the sender, the

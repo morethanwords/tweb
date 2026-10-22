@@ -218,6 +218,36 @@ function compileHintsPlugin(): Plugin {
   };
 }
 
+// Vite's preload helper waits for a lazy chunk's CSS with listeners it leaves on the <link> for good,
+// and makes them inside `__vitePreload`, so their closures hold its scope: the `() => import(...)`
+// it was called with, and through that whatever the caller's scope held — the first popup, tab or
+// menu to load each stylesheet stayed in memory with its whole DOM (~4k nodes in a short session).
+// The wait moves into a function of its own, whose listeners hold only the link and its URL.
+function preloadHelperCssWaitPlugin(): Plugin {
+  const waitRe = /new Promise\(\(res, rej\) => \{\s*link\.addEventListener\("load", res\);\s*link\.addEventListener\("error", \(\) => rej\([^;]*?\)\);\s*\}\)/;
+  return {
+    name: 'preload-helper-css-wait',
+    apply: 'build',
+    transform(code, id) {
+      if(!id.includes('vite/preload-helper')) return;
+      if(!waitRe.test(code)) {
+        throw new Error('preload-helper-css-wait: the CSS wait in Vite\'s preload helper changed, update the plugin');
+      }
+
+      return {
+        code: code.replace(waitRe, '__waitForPreloadedCss(link, dep)') + `
+function __waitForPreloadedCss(link, dep) {
+  return new Promise((res, rej) => {
+    link.addEventListener("load", res);
+    link.addEventListener("error", () => rej(new Error(\`Unable to preload CSS for \${dep}\`)));
+  });
+}`,
+        map: null
+      };
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
     // devtools({
@@ -231,6 +261,7 @@ export default defineConfig({
     solidPlugin(),
     handlebarsPlugin as any,
     compileHintsPlugin(),
+    preloadHelperCssWaitPlugin(),
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
     // Only emit the bundle treemap (stats.html) when explicitly analyzing (ANALYZE=1):
     // it adds build time and writes a ~1.3MB file that otherwise gets globbed into the

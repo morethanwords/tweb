@@ -76,6 +76,11 @@ export type DialogDom = {
    * rendered subtitle is still the one in the DOM.
    */
   lastMessageRenderParts?: HTMLElement[],
+  /**
+   * The lifetime of what the subtitle in the row wraps (the custom emoji of the text, a spoiler over
+   * the media) - a child of the row's own, destroyed when another subtitle takes its place
+   */
+  subtitleMiddlewareHelper?: MiddlewareHelper,
   /** search-result rows: the query lit up inside the rendered message text */
   textHighlight?: TextHighlight,
   /**
@@ -115,7 +120,9 @@ export function disposeTextHighlight(dom: DialogDom) {
  * Puts the subtitle of a row in - crossfading from the activity it takes the place of, which
  * came in the same way (`setDialogTyping`)
  */
-export function setDialogSubtitle(dom: DialogDom, nodes: Node[]) {
+export function setDialogSubtitle(dom: DialogDom, nodes: Node[], middlewareHelper?: MiddlewareHelper) {
+  dom.subtitleMiddlewareHelper?.destroy();
+  dom.subtitleMiddlewareHelper = middlewareHelper;
   const {lastMessageSpan} = dom;
   const wasTyping = lastMessageSpan.classList.contains('user-typing');
   lastMessageSpan.classList.remove('user-typing');
