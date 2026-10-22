@@ -145,6 +145,7 @@ import {
 import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';
+import type {FullMid} from '@appManagers/utils/messages/fullMid';
 import getSelectedNodes from '@helpers/dom/getSelectedNodes';
 import showChatToast from '@components/chat/chatToast';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -183,6 +184,12 @@ export type ChatSavedPosition = {
    */
   mids?: number[],
   top?: number,
+  /**
+   * The bubble at the top of the screen - by its message's peer as well: a group's history before its upgrade has
+   * its old one - and how far below the screen's top it stood: the chat goes back to it, rendering what fills the
+   * screen around it first, and the rest of `mids` after that frame
+   */
+  anchor?: {fullMid: FullMid, top: number},
   /**
    * Last-displayed pinned plate state. Captured on exit, restored on
    * re-entry so the plate paints atomically with bubbles without the
@@ -2759,6 +2766,7 @@ export class AppImManager extends EventListenerBase<{
       const position: ChatSavedPosition = {
         mids: chatBubbles.getRenderedHistory('desc', true, false).map((fullMid) => splitFullMid(fullMid).mid),
         top: chatBubbles.scrollable.scrollPosition,
+        anchor: chatBubbles.getScrollAnchor(),
         pinnedMessages
       };
       chatPositions[key] = position;

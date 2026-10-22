@@ -39,7 +39,7 @@ import Modes from '@config/modes';
 import {SliceEnd} from '@helpers/slicedArray';
 import PeerTitle from '@components/peerTitle';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import {countFirstScreen, estimateBubbleHeight, getBubbleHeightAtLeast, keepFrom, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
+import {countFirstScreen, estimateBubbleHeight, FirstScreenPlace, getAlbumBubbleMessage, getBubbleHeightAtLeast, joinHistories, keepFrom, keepRange, measureTextWidth, MessageTextMetrics} from '@components/chat/firstScreenHistory';
 import findUpTag from '@helpers/dom/findUpTag';
 import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware} from '@helpers/middleware';
@@ -331,6 +331,22 @@ if(IS_GROUP_CALL_SUPPORTED) {
   SERVICE_AS_REGULAR.add('messageActionConferenceCall');
 }
 
+const isStoryMentionMessage = (message: Message.message) => !!(message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
+const isSelfDestructingMediaMessage = (message: Message.message) => !!(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds;
+
+/**
+ * Whether a message is drawn as a service line, neither incoming nor outgoing: a service message but a call, a
+ * story mention, self-destructing media that cannot be seen
+ */
+function isDrawnAsService(message: Message.message | Message.messageService) {
+  if(message._ !== 'message') {
+    const action = (message as Message.messageService).action;
+    return !action || !SERVICE_AS_REGULAR.has(action._);
+  }
+
+  return isStoryMentionMessage(message) || (isSelfDestructingMediaMessage(message) && !canSeeMessageMedia(message));
+}
+
 // Service actions whose inline photo (suggested profile photo, or a group/channel
 // avatar change) is shown via wrapServiceMediaBubble. `filter`/`useSearch` drive
 // the media-viewer opened on click; `suggest` adds the receiving-side accept flow.
@@ -362,8 +378,16 @@ const SCROLLED_DOWN_THRESHOLD = 300;
 // * never settle cannot brick the chat
 const MEDIA_PROMISES_TIMEOUT = 10000;
 
+// * where a chat opens, which its first frame is counted around (`ChatBubbles.getFirstScreen`): its end, a message
+// * jumped to, the first unread message, the message it was left at with where that stood
+type FirstScreen =
+  {at: 'end'} |
+  {at: 'message', mid: number} |
+  {at: 'unread', readMaxId: number} |
+  {at: 'position', mid: number, top: number};
+
 // * how each kind of chat lays out the text of a message, at the width and the text size it was laid out at: an opening
-// * chat counts by it how many of its newest messages fill its screen. Not the heights of the bubbles it showed: one
+// * chat counts by it how many of its messages fill its screen. Not the heights of the bubbles it showed: one
 // * goes stale with whatever changed since (an edit, a reaction, a poll, a quote opened, a translation), while a
 // * message's text is measured as it is now
 const messageTextMetrics: Map<string, MessageTextMetrics & {layout: string}> = new Map();
@@ -933,6 +957,10 @@ export default class ChatBubbles {
   // * the cursor an opening chat's bubbles are rendered against, asked for together with the history: asked by the
   // * first bubble instead, its answer came a frame later on a busy main thread, and every bubble waited for it
   private openingReadMaxId: {key: string, promise: Promise<number>};
+
+  // * what an opening chat renders right after its first frame (`renderFirstScreen`): no scroll trigger loads more
+  // * until it is in, the history it would load is on its way
+  private firstScreenRestPromise: Promise<void>;
 
   // * the tags known apart from a message's own `from_rank`: a supergroup's admins, a basic group's
   // * members, and any tag changed since its messages were loaded ('' marks one removed)
@@ -2742,12 +2770,11 @@ export default class ChatBubbles {
   }
 
   /**
-   * Splits the history of a chat opened at its end. What fills its screen and the scroll trigger above it stays, for
-   * the first frame; what fills two screens more - as much as viewport slicing keeps above - is returned, to render
-   * after that frame; the rest is left to scrolling up. Counted by how this kind of chat lays out text, else by the
-   * lowest a bubble can be: never by more than there is
+   * What an opening chat counts its first screen by: the messages of a history (newest first), the height of its
+   * screen, and the height of a message's bubble by how this kind of chat lays out text, else the lowest a bubble can
+   * be: never more than it is
    */
-  private cutToFirstScreen(historyResult: LocalHistoryResult | {history: number[]}): {beyond?: LocalHistoryResult | {history: number[]}, oldestMid: number} {
+  private measureFirstScreen(historyResult: LocalHistoryResult | {history: number[]}) {
     const items: (number | MyMessage | AdminLog)[] = (historyResult as LocalHistoryResult).messages || historyResult.history;
     const messages = items.map((item) => (typeof(item) === 'number' ? this.chat.getMessage(item) : item) as Message.message | Message.messageService);
     const {width, height} = this.scrollableSize ?? {
@@ -2758,23 +2785,155 @@ export default class ChatBubbles {
     const metrics = messageTextMetrics.get(this.getTextMetricsKind());
     const textMetrics = !this.isTextTranslated() && metrics?.layout === this.getLayoutKey(width) ? metrics : undefined;
     const getHeight = (message: Message.message | Message.messageService, inAlbum: boolean) => {
+      // * an album as the chat has it, whole: a history may hold some of its items only (a saved position has its main
+      // * one), and the caption its bubble shows is the only one of all its items
+      const album = inAlbum && apiManagerProxy.getMessagesByGroupedId((message as Message.message).grouped_id);
+      if(album?.length) {
+        message = getAlbumBubbleMessage(album);
+      }
+
       return textMetrics ? estimateBubbleHeight(message, textMetrics, inAlbum) : getBubbleHeightAtLeast(message, inAlbum);
     };
 
-    const firstCount = countFirstScreen(messages, height + this.scrollable.onScrollOffset, getHeight);
-    const firstOldestMid = messages[firstCount - 1]?.mid;
-    if(firstCount >= items.length || !firstOldestMid) {
+    return {items, messages, height, getHeight};
+  }
+
+  /**
+   * Where a chat opens, which its first frame is counted around: at a message jumped to, at the first unread one, at
+   * the one it was left at - else at its end. Nothing for a chat that is not a plain one (a search, pinned messages,
+   * comments), which renders its page whole
+   */
+  private getFirstScreen({chatType, peerId, savedPosition, followingUnread, readMaxId, isTarget, isJump, lastMsgFullMid}: {
+    chatType: ChatType,
+    peerId: PeerId,
+    savedPosition: ChatSavedPosition,
+    followingUnread: boolean,
+    readMaxId: number,
+    isTarget: boolean,
+    isJump: boolean,
+    lastMsgFullMid: FullMid
+  }): FirstScreen {
+    if(chatType !== ChatType.Chat) {
+      return;
+    } else if(savedPosition?.mids) {
+      const {anchor} = savedPosition;
+      return anchor && {at: 'position', mid: splitFullMid(anchor.fullMid).mid, top: anchor.top};
+    } else if(followingUnread) {
+      return {at: 'unread', readMaxId};
+    } else if(!isJump) { // * the last message jumped to stands at the end too
+      return {at: 'end'};
+    } else if(isTarget) {
+      const target = splitFullMid(lastMsgFullMid);
+      return target.peerId === peerId ? {at: 'message', mid: target.mid} : undefined;
+    }
+  }
+
+  /**
+   * The message a chat opens at in a history (newest first) and where on a screen of `height` it stands - as
+   * `setPeer` scrolls to it: `top` and `bottom` are the bars over the screen's edges
+   */
+  private placeFirstScreen(messages: (Message.message | Message.messageService)[], firstScreen: FirstScreen, height: number): {index: number, place: FirstScreenPlace} {
+    const top = this.chat.chatPaddingTop[0](), bottom = this.chat.chatPaddingBottom[0]();
+    // * `scrollToBubble`'s margin from the bars
+    const margin = 4;
+    let index: number;
+    switch(firstScreen.at) {
+      case 'end':
+        return {index: 0, place: 'end'};
+      case 'message':
+        // * in the middle of what the bars leave
+        index = messages.findIndex((message) => message?.mid === firstScreen.mid);
+        return index === -1 ? undefined : {index, place: {center: top + (height - top - bottom) / 2}};
+      case 'unread':
+        // * the oldest after the read cursor not drawn as one's own, as `setUnreadDelimiter` finds it among the bubbles
+        // * - an album by the item its bubble is rendered for, the oldest - under the topbar
+        for(index = messages.length - 1; index >= 0; --index) {
+          const message = messages[index];
+          const groupedId = (message as Message.message)?.grouped_id;
+          const mid = groupedId ? apiManagerProxy.getMidsByGroupedId(groupedId)[0] ?? message.mid : message?.mid;
+          if(mid > firstScreen.readMaxId && (isDrawnAsService(message) || !this.chat.isOutMessage(message))) {
+            return {index, place: {top: top + margin}};
+          }
+        }
+
+        return;
+      case 'position':
+        index = messages.findIndex((message) => message?.mid === firstScreen.mid);
+        return index === -1 ? undefined : {index, place: {top: firstScreen.top}};
+    }
+  }
+
+  /**
+   * Splits a history at where the chat opens. What fills its screen there and the scroll triggers on both sides stays,
+   * for the first frame; what fills two screens more each way - as much as viewport slicing keeps - is returned with
+   * the oldest message it goes to, to render after that frame; the rest is left to scrolling
+   */
+  private cutToFirstScreen(historyResult: LocalHistoryResult | {history: number[]}, firstScreen: FirstScreen): {beyond?: LocalHistoryResult | {history: number[]}, oldestMid: number} {
+    const {items, messages, height, getHeight} = this.measureFirstScreen(historyResult);
+    // * a screen not laid out has nothing to count by, a message that is gone nothing to count around
+    const placed = height && items.length ? this.placeFirstScreen(messages, firstScreen, height) : undefined;
+    if(!placed) {
       return;
     }
 
-    const count = countFirstScreen(messages, height * 3, getHeight);
-    const oldestMid = messages[count - 1]?.mid ?? firstOldestMid;
+    const isEnd = (historyResult as LocalHistoryResult).isEnd || {};
+    const count = (margin: number) => countFirstScreen(messages, placed.index, placed.place, height, margin, isEnd, getHeight);
+    const first = count(this.scrollable.onScrollOffset);
+    if(first.newest === 0 && first.oldest === items.length - 1) {
+      return;
+    }
+
+    const beyond = count(height * 2);
     const whole = {...historyResult};
-    Object.assign(historyResult, keepFrom(whole, firstOldestMid));
+    Object.assign(historyResult, keepRange(whole, first.newest, first.oldest));
+    const oldest = items[beyond.oldest];
     return {
-      beyond: count > firstCount ? keepFrom(whole, oldestMid, firstOldestMid) : undefined,
-      oldestMid
+      beyond: beyond.newest === first.newest && beyond.oldest === first.oldest ? undefined : joinHistories(
+        keepRange(whole, beyond.newest, first.newest - 1),
+        keepRange(whole, first.oldest + 1, beyond.oldest)
+      ),
+      oldestMid: typeof(oldest) === 'number' ? oldest : (oldest as MyMessage).mid
     };
+  }
+
+  /**
+   * Renders a history from where the chat opens (`getFirstScreen`): what fills its screen there first, by `render`,
+   * and once that frame is up what fills two screens more each way. No scroll trigger loads more until it is in
+   */
+  private renderFirstScreen<T extends LocalHistoryResult | {history: number[]}>(
+    historyResult: T,
+    firstScreen: FirstScreen,
+    render: (historyResult: T) => Promise<void>
+  ) {
+    const cut = firstScreen ? this.cutToFirstScreen(historyResult, firstScreen) : undefined;
+    const promise = render(historyResult);
+    let restPromise: Promise<void>;
+    if(cut?.beyond) {
+      const middleware = this.getMiddleware();
+      restPromise = this.firstScreenRestPromise = promise.then(() => new Promise<void>((resolve) => fastRaf(() => setTimeout(resolve, 0)))).then(async() => {
+        if(!middleware()) return;
+        await this.performHistoryResult(cut.beyond, true, true);
+        if(!middleware()) return;
+        // * the browser keeps what is on screen in place as bubbles go in above it: that is no scroll of the user's,
+        // * which would show the date over the list
+        this.scrollable.lastScrollPosition = this.scrollable.scrollPosition;
+      }).catch(noop).finally(() => {
+        if(this.firstScreenRestPromise === restPromise) {
+          this.firstScreenRestPromise = undefined;
+        }
+      });
+    }
+
+    return {promise, restPromise, cut};
+  }
+
+  /**
+   * The bubble at the top of the screen and how far below the screen's top it stands: where the chat is reopened at
+   */
+  public getScrollAnchor(): ChatSavedPosition['anchor'] {
+    const top = this.getTopBubble();
+    const fullMid = top && getBubbleFullMid(top.element);
+    return fullMid ? {fullMid, top: top.offset} : undefined;
   }
 
   private getTextMetricsKind() {
@@ -2847,6 +3006,29 @@ export default class ChatBubbles {
     return scrollSaver;
   }
 
+  // The top visible bubble - the first one reaching into the viewport from the top - and its offset from the
+  // container top: where the chat stands, to put it back after a reflow or when it is reopened
+  private getTopBubble(): {element: HTMLElement, offset: number} {
+    const container = this.scrollable.container;
+    const cTop = container.getBoundingClientRect().top;
+    const bubbles = container.querySelectorAll<HTMLElement>('.bubble:not(.is-date):not(.is-sponsored):not(.botforum-new-topic-bubble)');
+    for(const bubble of bubbles) {
+      const rect = bubble.getBoundingClientRect();
+      if(rect.bottom > cTop + 1) {
+        return {element: bubble, offset: rect.top - cTop};
+      }
+    }
+  }
+
+  // Scrolls so that the bubble stands `offset` below the container top again
+  private pinBubble(element: HTMLElement, offset: number) {
+    const scrollable = this.scrollable;
+    const delta = element.getBoundingClientRect().top - scrollable.container.getBoundingClientRect().top - offset;
+    if(Math.abs(delta) > 0.5) {
+      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
+    }
+  }
+
   // Snapshot the scroll position (the top visible bubble + its offset from the container top) so it can
   // be re-pinned after a reflow rewraps the bubbles. Container-relative on purpose — see reflowAnchor.
   private saveReflowScroll = () => {
@@ -2855,16 +3037,7 @@ export default class ChatBubbles {
     this.reflowWasAtEnd = scrollable.isScrolledToEnd;
     this.reflowAnchor = undefined;
     if(this.reflowWasAtEnd) return; // bottom-stick needs no anchor
-    const container = scrollable.container;
-    const cTop = container.getBoundingClientRect().top;
-    const bubbles = container.querySelectorAll<HTMLElement>('.bubble:not(.is-date):not(.is-sponsored):not(.botforum-new-topic-bubble)');
-    for(const bubble of bubbles) {
-      const rect = bubble.getBoundingClientRect();
-      if(rect.bottom > cTop + 1) { // first bubble reaching into the viewport from the top
-        this.reflowAnchor = {element: bubble, offset: rect.top - cTop};
-        break;
-      }
-    }
+    this.reflowAnchor = this.getTopBubble();
   };
 
   private restoreReflowScroll = () => {
@@ -2876,12 +3049,7 @@ export default class ChatBubbles {
     }
     const anchor = this.reflowAnchor;
     if(!anchor?.element.isConnected) return;
-    const cTop = scrollable.container.getBoundingClientRect().top;
-    const currentOffset = anchor.element.getBoundingClientRect().top - cTop;
-    const delta = currentOffset - anchor.offset;
-    if(Math.abs(delta) > 0.5) {
-      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
-    }
+    this.pinBubble(anchor.element, anchor.offset);
   };
 
   private unreadedObserverCallback = (entry: IntersectionObserverEntry) => {
@@ -4878,6 +5046,7 @@ export default class ChatBubbles {
       !this.peerId ||
       /* TEST_SCROLL || */
       this.chat.setPeerPromise ||
+      this.firstScreenRestPromise ||
       this.isHeavyAnimationInProgress ||
       (top && (this.getHistoryTopPromise || this.scrollable.loadedAll.top)) ||
       (!top && (this.getHistoryBottomPromise || this.scrollable.loadedAll.bottom))
@@ -6032,6 +6201,7 @@ export default class ChatBubbles {
     this.batchProcessor.clear();
 
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
+    this.firstScreenRestPromise = undefined;
     this.fetchNewPromise = undefined;
     this.updateGradient = undefined;
     this.ephemeralHistoryPromise = undefined;
@@ -6531,6 +6701,8 @@ export default class ChatBubbles {
       }
     };
 
+    // * the first frame gets what fills the screen where the chat opens
+    const firstScreen = this.getFirstScreen({chatType, peerId, savedPosition, followingUnread, readMaxId, isTarget, isJump, lastMsgFullMid});
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
     if(!savedPosition?.mids) {
       result = await m(this.getHistory1(
@@ -6539,15 +6711,17 @@ export default class ChatBubbles {
         isJump,
         additionalFullMid,
         undefined,
-        !samePeer && !isJump && !isTarget && !followingUnread && !savedPosition?.mids && chatType === ChatType.Chat
+        firstScreen
       ));
     } else {
+      const {promise, restPromise} = this.renderFirstScreen({history: savedPosition.mids}, firstScreen, (historyResult) => {
+        return getHeavyAnimationPromise().then(() => this.performHistoryResult(historyResult, true, true));
+      });
+
       result = {
-        promise: getHeavyAnimationPromise().then(() => {
-          return this.performHistoryResult({history: savedPosition.mids}, true, true);
-        }) as any,
+        promise,
         cached: true,
-        waitPromise: Promise.resolve()
+        waitPromise: restPromise || Promise.resolve()
       };
     }
 
@@ -6648,7 +6822,13 @@ export default class ChatBubbles {
 
       // if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition?.mids) {
-        scrollable.setScrollPositionSilently(savedPosition.top);
+        // * the message the chat was left at goes back where it stood: what stood above it may not be rendered yet
+        const anchor = savedPosition.anchor && this.getBubble(savedPosition.anchor.fullMid);
+        if(anchor?.isConnected) {
+          this.pinBubble(anchor, savedPosition.anchor.top);
+        } else {
+          scrollable.setScrollPositionSilently(savedPosition.top);
+        }
       } else if(haveToScrollToBubble) {
         let unsetPadding: () => void;
         if(scrollFromDown) {
@@ -8526,9 +8706,8 @@ export default class ChatBubbles {
       animationGroup: this.chat.animationGroup
     };
 
-    const isStoryMention = isMessage && !!(message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
-    const isSelfDestructingMedia = isMessage && !!(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds;
-    const regularAsService = isStoryMention || (isSelfDestructingMedia && !canSeeMessageMedia(message));
+    const isStoryMention = isMessage && isStoryMentionMessage(message);
+    const isSelfDestructingMedia = isMessage && isSelfDestructingMediaMessage(message);
     let returnService: boolean;
 
     if(
@@ -8539,7 +8718,7 @@ export default class ChatBubbles {
       return;
     }
 
-    if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
+    if(isDrawnAsService(message)) {
       const action = (message as Message.messageService).action;
       if(action) {
         const _ = action._;
@@ -13657,7 +13836,7 @@ export default class ChatBubbles {
     }
   }
 
-  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: boolean) {
+  public getHistory1(maxId?: FullMid, reverse?: boolean, isBackLimit?: boolean, additionalFullMid?: FullMid, justLoad?: boolean, firstScreen?: FirstScreen) {
     const middleware = this.getMiddleware(justLoad ? undefined : () => {
       return (reverse ? this.getHistoryTopPromise : this.getHistoryBottomPromise) === waitPromise;
     });
@@ -13710,7 +13889,7 @@ export default class ChatBubbles {
    * @param isBackLimit is search
    * @param additionalFullMid for the last message
    * @param justLoad do not render
-   * @param firstScreen a chat opened at its end: from the cache only what surely fills its screen is rendered
+   * @param firstScreen where an opening chat opens: only what surely fills its screen there is rendered first
    */
   public async getHistory(
     maxId: FullMid = EMPTY_FULL_MID,
@@ -13719,7 +13898,7 @@ export default class ChatBubbles {
     additionalFullMid?: FullMid,
     justLoad = false,
     middleware?: () => boolean,
-    firstScreen?: boolean
+    firstScreen?: FirstScreen
   ): Promise<{cached: boolean, promise: Promise<void>, waitPromise: Promise<any>}> {
     const peerId = this.peerId;
 
@@ -13835,7 +14014,17 @@ export default class ChatBubbles {
       });
     };
 
-    const processPromise = (_promise: typeof result['result']) => {
+    // * the first frame gets what fills the screen where the chat opens: the bubbles of the rest of a page cost it as
+    // * much again, for messages nobody sees before scrolling. As much as viewport slicing keeps comes right after it
+    let cut: ReturnType<ChatBubbles['cutToFirstScreen']>, restPromise: Promise<void>;
+    const renderFirstScreen = (historyResult: Awaited<typeof result['result']>) => {
+      const rendered = this.renderFirstScreen(historyResult, firstScreen, sup);
+      cut = rendered.cut;
+      restPromise = rendered.restPromise;
+      return rendered.promise;
+    };
+
+    const processPromise = (_promise: typeof result['result'], isFirstScreen?: boolean) => {
       const promise = Promise.resolve(_promise).then((result) => {
         if(middleware && !middleware()) {
           throw PEER_CHANGED_ERROR;
@@ -13850,7 +14039,7 @@ export default class ChatBubbles {
           return;
         }
 
-        return sup(result);
+        return isFirstScreen ? renderFirstScreen(result) : sup(result);
       }, (err) => {
         this.log.error('getHistory error:', err);
         throw err;
@@ -13859,34 +14048,24 @@ export default class ChatBubbles {
       return promise;
     };
 
-    let promise: Promise<void>, cached: boolean, cut: ReturnType<ChatBubbles['cutToFirstScreen']>, beyondPromise: Promise<void>;
+    let promise: Promise<void>, cached: boolean;
     if(!result.cached) {
       cached = false;
-      promise = processPromise(result.result);
+      // * a page from the server is cut the same way once it comes
+      promise = processPromise(result.result, !!firstScreen);
     } else if(justLoad) {
       // нужно делать из-за ранней прогрузки
       this.scrollable.onScroll();
       return null;
     } else {
       cached = true;
-      const historyResult = await result.result;
-      // * the first frame gets what fills the screen: the bubbles of the rest of a page cost it as much again, for
-      // * posts nobody sees before scrolling up. As much as viewport slicing keeps above comes right after that frame
-      cut = firstScreen ? this.cutToFirstScreen(historyResult) : undefined;
-      promise = sup(historyResult);
-      if(cut?.beyond) {
-        const peerMiddleware = this.getMiddleware();
-        beyondPromise = promise.then(() => new Promise<void>((resolve) => fastRaf(() => setTimeout(resolve, 0)))).then(() => {
-          if(!peerMiddleware()) return;
-          return this.performHistoryResult(cut.beyond, reverse);
-        }).catch(noop);
-      }
+      promise = renderFirstScreen(await result.result);
     }
 
     // * the fresh page renders what is new at the bottom, not the posts left out above
     const waitPromise = isAdditionRender ?
-      processPromise((beyondPromise ? beyondPromise.then(() => resultPromise) : resultPromise).then((result) => cut ? keepFrom(result, cut.oldestMid) : result)) :
-      beyondPromise || promise;
+      processPromise((restPromise ? restPromise.then(() => resultPromise) : resultPromise).then((result) => cut ? keepFrom(result, cut.oldestMid) : result)) :
+      promise.then(() => restPromise);
 
     if(isFirstMessageRender && liteMode.isAvailable('motion')/*  && false */) {
       let times = isAdditionRender ? 2 : 1;

@@ -198,41 +198,101 @@ export function estimateBubbleHeight(message: HistoryMessage, metrics: MessageTe
  * An album (oldest first) as its one bubble shows it: the caption of the only item that has one - none when more do -
  * and the reactions of its main item
  */
-function getAlbumBubbleMessage(items: Message.message[]): Message.message {
+export function getAlbumBubbleMessage(items: Message.message[]): Message.message {
   const caption = getGroupedText(items);
   return {...getMainGroupedMessage(items), message: caption?.message || '', entities: caption?.entities};
 }
 
+type GetHeight = (message: HistoryMessage, inAlbum: boolean) => number;
+
+const getGroupedId = (message: HistoryMessage) => (message as Message.message)?.grouped_id;
+
 /**
- * How many of the newest messages (newest first) fill `height` by `getHeight`: an album is one bubble and is never
- * split. All of them when they may not
+ * An album's bubble from its items, in whatever order they come
  */
-export function countFirstScreen(
-  messages: HistoryMessage[],
-  height: number,
-  getHeight: (message: HistoryMessage, inAlbum: boolean) => number = getBubbleHeightAtLeast
-) {
-  const getGroupedId = (index: number) => (messages[index] as Message.message)?.grouped_id;
+function getAlbumHeight(items: HistoryMessage[], getHeight: GetHeight) {
+  const sorted = (items as Message.message[]).slice().sort((a, b) => a.mid - b.mid);
+  return getHeight(getAlbumBubbleMessage(sorted), true);
+}
+
+/**
+ * How many of the messages, in the order they go away from a point of the screen, fill `height` by `getHeight`, and
+ * how much they fill: an album is one bubble and is never split
+ */
+function fillHeight(messages: HistoryMessage[], height: number, getHeight: GetHeight) {
   let filled = 0, count = 0;
   for(; count < messages.length && filled < height; ++count) {
-    const groupedId = getGroupedId(count);
+    const groupedId = getGroupedId(messages[count]);
     if(!groupedId) {
       filled += getHeight(messages[count], false);
-    } else if(groupedId !== getGroupedId(count - 1)) {
-      const items: Message.message[] = [];
-      for(let i = count; getGroupedId(i) === groupedId; ++i) {
-        items.unshift(messages[i] as Message.message);
+    } else if(groupedId !== getGroupedId(messages[count - 1])) {
+      const items: HistoryMessage[] = [];
+      for(let i = count; getGroupedId(messages[i]) === groupedId; ++i) {
+        items.push(messages[i]);
       }
 
-      filled += getHeight(getAlbumBubbleMessage(items), true);
+      filled += getAlbumHeight(items, getHeight);
     }
   }
 
-  while(count < messages.length && getGroupedId(count) && getGroupedId(count) === getGroupedId(count - 1)) {
+  while(count < messages.length && getGroupedId(messages[count]) && getGroupedId(messages[count]) === getGroupedId(messages[count - 1])) {
     ++count;
   }
 
-  return filled < height ? messages.length : count;
+  return {count, filled};
+}
+
+/**
+ * Where the message a chat opens at stands on its screen, counted from the screen's top: the end of the chat at the
+ * bottom, a message jumped to with its middle at `center`, or a message with its top at `top` - the first unread one
+ * under the bars over the screen, the one the chat was left at where it stood
+ */
+export type FirstScreenPlace = 'end' | {center: number} | {top: number};
+
+/**
+ * Which of the messages (newest first) fill a screen of `height` with the one at `index` - its whole album - standing
+ * at `place`, and `margin` more on each side: from the newest to the oldest index kept. Where one side ends with the
+ * chat before it fills its part, the scroll stops there, the message moves toward that edge, and the other side shows
+ * the rest of the screen. All of them when they may not fill it
+ */
+export function countFirstScreen(
+  messages: HistoryMessage[],
+  index: number,
+  place: FirstScreenPlace,
+  height: number,
+  margin: number,
+  isEnd: {top?: boolean, bottom?: boolean},
+  getHeight: GetHeight = getBubbleHeightAtLeast
+) {
+  const groupedId = getGroupedId(messages[index]);
+  let newest = index, oldest = index;
+  while(groupedId && getGroupedId(messages[newest - 1]) === groupedId) --newest;
+  while(groupedId && getGroupedId(messages[oldest + 1]) === groupedId) ++oldest;
+  const messageHeight = groupedId ? getAlbumHeight(messages.slice(newest, oldest + 1), getHeight) : getHeight(messages[index], false);
+
+  // * the screen above the message and below it, at most: the message is `messageHeight` high at least
+  let above: number, below: number;
+  if(place === 'end') {
+    [above, below] = [height - messageHeight, 0];
+  } else if('center' in place) {
+    [above, below] = [place.center, height - place.center];
+  } else {
+    [above, below] = [place.top, height - place.top - messageHeight];
+  }
+
+  // * each side in the order it goes away from the message
+  const older = messages.slice(oldest + 1);
+  const newer = messages.slice(0, newest).reverse();
+  // * the margin counts from the screen's edge: a message standing past it covers that much of it itself
+  const fill = (side: HistoryMessage[], need: number) => fillHeight(side, Math.max(0, need + margin), getHeight);
+  // * what a side that ends with the chat leaves of the screen to the other one
+  const leftBy = (side: HistoryMessage[], sideFill: ReturnType<typeof fillHeight>, endsWithChat: boolean) => {
+    return endsWithChat && sideFill.count === side.length ? height - messageHeight - sideFill.filled : -Infinity;
+  };
+
+  const newerFill = fill(newer, Math.max(below, leftBy(older, fill(older, above), isEnd.top)));
+  const olderFill = fill(older, Math.max(above, leftBy(newer, newerFill, isEnd.bottom)));
+  return {newest: newest - newerFill.count, oldest: oldest + olderFill.count};
 }
 
 /**
@@ -259,5 +319,49 @@ export function keepFrom<T extends {
       both: false,
       ...(newerThanMid !== undefined && {bottom: false})
     }})
+  };
+}
+
+/**
+ * The messages of a history (newest first) from index `newest` to `oldest`, by its order, not by their ids: the
+ * order shown can put a message being sent after newer ones. An end of the chat stays reached only where nothing past
+ * it is left out
+ */
+export function keepRange<T extends {
+  history: number[],
+  messages?: unknown[],
+  isEnd?: {top?: boolean, bottom?: boolean, both?: boolean}
+}>(historyResult: T, newest: number, oldest: number): T {
+  const leftOutOlder = oldest < historyResult.history.length - 1, leftOutNewer = newest > 0;
+  const isEnd = historyResult.isEnd;
+  return {
+    ...historyResult,
+    history: historyResult.history.slice(newest, oldest + 1),
+    ...(historyResult.messages && {messages: historyResult.messages.slice(newest, oldest + 1)}),
+    ...(isEnd && {isEnd: {
+      ...isEnd,
+      top: isEnd.top && !leftOutOlder,
+      bottom: isEnd.bottom && !leftOutNewer,
+      both: isEnd.both && !leftOutOlder && !leftOutNewer
+    }})
+  };
+}
+
+/**
+ * Two parts of a history as one, the newer first: ending where the part at each end does, or the other part where
+ * that one is empty
+ */
+export function joinHistories<T extends {
+  history: number[],
+  messages?: unknown[],
+  isEnd?: {top?: boolean, bottom?: boolean, both?: boolean}
+}>(newer: T, older: T): T {
+  const atTop = older.history.length ? older : newer;
+  const atBottom = newer.history.length ? newer : older;
+  return {
+    ...older,
+    history: [...newer.history, ...older.history],
+    ...(older.messages && {messages: [...newer.messages, ...older.messages]}),
+    ...(older.isEnd && {isEnd: {...older.isEnd, top: atTop.isEnd.top, bottom: atBottom.isEnd.bottom, both: false}})
   };
 }
