@@ -960,6 +960,10 @@
       position: relative;
       margin: 0 auto;
       z-index: 1;
+      // * a picture fitted into the box stays inside the box's frame (the border of a photo or a
+      // * video): cut off by it, the bubble showed less than the media viewer and the peek open from
+      // * and close back into
+      max-height: 100%;
     }
 
     &-fitted {
