@@ -121,6 +121,8 @@ const SECTION_OPENERS: {[sectionId: string]: SectionOpener} = {
   // a free account gets the Business promo instead, as it does from Edit Profile
   AppBusinessHoursTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessHoursTab),
   AppBusinessLocationTab: (slider) => hotReloadGuard.tabs.openBusinessEditorTab(slider, hotReloadGuard.tabs.AppBusinessLocationTab),
+  // the current passcode is asked for first, as it is from Privacy and Security
+  AppPasscodeLockTab: (slider) => hotReloadGuard.tabs.AppPasscodeLockTab.openChecked(slider),
   AppActiveWebSessionsTab: async(slider, middleware) => {
     const authorizations = await rootScope.managers.appSeamlessLoginManager.getWebAuthorizations();
     return openTab(slider, hotReloadGuard.tabs.AppActiveWebSessionsTab, middleware, authorizations);

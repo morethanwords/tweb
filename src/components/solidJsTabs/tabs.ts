@@ -1,4 +1,4 @@
-import {CancellablePromise} from '@helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
@@ -9,8 +9,8 @@ import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
 import {SetStoreFunction} from 'solid-js/store';
 import {scaffoldSolidJSTab, scaffoldSolidJSTabEventable} from '@components/solidJsTabs/scaffoldSolidJSTab';
-import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import rootScope from '@lib/rootScope';
+import {appSettings} from '@stores/appSettings';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
 import type {BusinessHoursTabPayload} from '@components/sidebarLeft/tabs/businessHours';
 import type {BusinessLocationTabPayload} from '@components/sidebarLeft/tabs/businessLocation';
@@ -28,18 +28,58 @@ import type {IsPeerType} from '@appManagers/appPeersManager';
 import type {AppChatFull} from '@appManagers/appProfileManager';
 
 
-export const AppPasscodeLockTab =
+/**
+ * The passcode's screen turns the passcode off and sets a new one without asking for it again, so
+ * every way there — the Privacy and Security row, the settings search, a `tg://settings/privacy/passcode`
+ * link — goes through here, and is asked for the current passcode first while one is set. Resolves with
+ * the passcode's screen once it is open, so a search result or a link can point at its control there, or
+ * with nothing when the check is given up.
+ */
+async function openPasscodeLockTabChecked(slider: SidebarSlider): Promise<SliderSuperTab> {
+  if(!appSettings.passcode?.enabled) {
+    const tab = slider.createTab(AppPasscodeLockTab);
+    await tab.open();
+    return tab;
+  }
+
+  const opened = deferredPromise<SliderSuperTab>();
+  const checkTab = slider.createTab(AppPasscodeEnterPasswordTab);
+  checkTab.middlewareHelper.onDestroy(() => opened.resolve(undefined));
+  await checkTab.open({
+    buttonText: 'PasscodeLock.Next',
+    inputLabel: 'PasscodeLock.EnterYourPasscode',
+    onSubmit: async(passcode, _, {isMyPasscode}) => {
+      const isCorrect = await isMyPasscode(passcode);
+      passcode = '';
+      if(!isCorrect) throw {};
+      // the check was left while the passcode was being verified (Back, an account switch): it opens
+      // nothing after all
+      if(!slider.getHistory().includes(checkTab)) return;
+
+      const tab = slider.createTab(AppPasscodeLockTab);
+      await tab.open();
+      opened.resolve(tab);
+    }
+  });
+  return opened;
+}
+
+export const AppPasscodeLockTab = Object.assign(
   scaffoldSolidJSTab({
     title: 'PasscodeLock.Title',
     getComponentModule: () => import('../sidebarLeft/tabs/passcodeLock/mainTab'),
     onOpenAfterTimeout: async function() {
-      // Remove the previous enter password tab
-      this.slider.sliceTabsUntilTab(
-        SuperTabProvider.allTabs.AppPrivacyAndSecurityTab,
-        this
-      );
+      // the check that let us in is no step to go back to: Back lands where the passcode was opened
+      // from — Privacy and Security, or the settings search
+      const history = this.slider.getHistory();
+      const below = history[history.indexOf(this) - 1];
+      if(below instanceof AppPasscodeEnterPasswordTab) {
+        this.slider.removeTabFromHistory(below);
+      }
     }
-  });
+  }),
+  {openChecked: openPasscodeLockTabChecked}
+);
 
 
 type AppPasscodeEnterPasswordTabPayload = {

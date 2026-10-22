@@ -110,7 +110,6 @@ const PrivacyAndSecurity: Component = () => {
       {
         let blockedPeerIds: PeerId[];
         let passwordState: AccountPassword;
-        let passcodeEnabled: boolean;
         let websites: WebAuthorization[];
         let passkeys: Passkey[];
         let setPasskeys: SetStoreFunction<Passkey[]>;
@@ -171,25 +170,6 @@ const PrivacyAndSecurity: Component = () => {
           });
         };
 
-        const openPasscodeLock = () => {
-          if(passcodeEnabled) {
-            tab.slider.createTab(hotReloadGuard.tabs.AppPasscodeEnterPasswordTab)
-            .open({
-              buttonText: 'PasscodeLock.Next',
-              inputLabel: 'PasscodeLock.EnterYourPasscode',
-              onSubmit: async(passcode, _, {isMyPasscode}) => {
-                const isCorrect = await isMyPasscode(passcode);
-                passcode = '';
-                if(!isCorrect) throw {};
-
-                tab.slider.createTab(hotReloadGuard.tabs.AppPasscodeLockTab).open();
-              }
-            })
-          } else {
-            tab.slider.createTab(hotReloadGuard.tabs.AppPasscodeLockTab).open();
-          }
-        };
-
         renderComponent({
           element: sessionsContent,
           Component: () => (
@@ -230,7 +210,7 @@ const PrivacyAndSecurity: Component = () => {
                 <Row.Title>{i18n('AutoDeleteMessages')}</Row.Title>
                 <Row.Subtitle>{autoDeleteSubtitle()}</Row.Subtitle>
               </Row>
-              <Row clickable={() => !passcodeFrozen() && openPasscodeLock()}>
+              <Row clickable={() => !passcodeFrozen() && hotReloadGuard.tabs.AppPasscodeLockTab.openChecked(tab.slider)}>
                 <Row.Icon icon="key_filled" />
                 <Row.Title>{i18n('PasscodeLock.Item.Title')}</Row.Title>
                 <Row.Subtitle>{passcodeSubtitle()}</Row.Subtitle>
@@ -330,7 +310,6 @@ const PrivacyAndSecurity: Component = () => {
         });
 
         const setPasscodeEnabledState = (enabled?: boolean) => {
-          passcodeEnabled = enabled;
           setPasscodeSubtitle(i18n(enabled ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
         };
         tab.managers.appStateManager.getState().then((state) => {
