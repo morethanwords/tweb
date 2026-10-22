@@ -10,16 +10,19 @@ export type Point = {x: number, y: number};
 
 /**
  * The newest message in the chat list with a photo a peek or the media viewer can show - in a chat
- * with at least `photos` of them - or a rich message whose page has a photo or a video
+ * with at least `photos` of them - a small GIF (no side over 320 px), or a rich message whose page has
+ * a photo or a video
  */
-export async function findMessage(page: Page, kind: 'photo' | 'rich', {photos = 1}: {photos?: number} = {}) {
+export async function findMessage(page: Page, kind: 'photo' | 'gif' | 'rich', {photos = 1}: {photos?: number} = {}) {
   return page.evaluate(async({kind, photos, limit}) => {
     const managers = (window as any).appImManager.managers;
     const {dialogs} = await managers.dialogsStorage.getDialogs({filterId: 0, limit});
     for(const {peerId} of dialogs) {
       const result = await managers.appMessagesManager.getHistory({
         peerId,
-        ...(kind === 'photo' ? {inputFilter: {_: 'inputMessagesFilterPhotos'}, limit: 10} : {limit: 50})
+        ...(kind === 'rich' ?
+          {limit: 50} :
+          {inputFilter: {_: kind === 'gif' ? 'inputMessagesFilterGif' : 'inputMessagesFilterPhotos'}, limit: 10})
       }).catch((): undefined => undefined);
       if(kind === 'photo' && (result?.count ?? result?.history.length) < photos) continue;
       for(const mid of result?.history || []) {
@@ -29,7 +32,10 @@ export async function findMessage(page: Page, kind: 'photo' | 'rich', {photos = 
         const found = kind === 'photo' ?
           media?._ === 'messageMediaPhoto' && !media.pFlags.spoiler && !media.ttl_seconds &&
             Math.max(...media.photo.sizes.map((size: {w?: number}) => size.w || 0)) >= 320 :
-          message?.rich_message && /pageBlock(Photo|Video)/.test(JSON.stringify(message.rich_message));
+          kind === 'gif' ?
+            media?._ === 'messageMediaDocument' && media.document?.type === 'gif' && !media.pFlags.spoiler &&
+              Math.max(media.document.w, media.document.h) <= 320 :
+            message?.rich_message && /pageBlock(Photo|Video)/.test(JSON.stringify(message.rich_message));
         if(found) {
           return {peerId, mid};
         }

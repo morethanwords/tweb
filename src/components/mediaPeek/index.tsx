@@ -167,8 +167,16 @@ function getEntryLayout(kind: MediaPeekKind, media: MediaPeekSource['media'], re
     return {box: size, size, shift: 0};
   }
 
-  const hasEffect = kind === 'sticker' && !!getStickerEffectThumb(media as MyDocument);
-  const side = hasEffect ? 280 : (kind === 'gif' ? Math.min(480, windowHeight - 200) : 360);
+  if(kind === 'gif') {
+    const side = Math.min(480, windowWidth - MEDIA_MARGIN * 2, windowHeight - 200);
+    const box = makeMediaSize(side, side);
+    // * in its own shape, grown to fill the box: a GIF is mostly smaller than the box, and at its own
+    // * size it came out no bigger than where it was pressed. A square cell's crop grows into it whole
+    return {box, size: (getMediaDimensions(media) || box).aspect(box, false), shift: 0};
+  }
+
+  const hasEffect = !!getStickerEffectThumb(media as MyDocument);
+  const side = hasEffect ? 280 : 360;
   const box = makeMediaSize(side, side);
   const dimensions = rect.width !== rect.height && getMediaDimensions(media);
   return {

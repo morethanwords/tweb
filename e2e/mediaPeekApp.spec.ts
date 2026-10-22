@@ -144,6 +144,35 @@ test.describe('the media peek', () => {
     }
   });
 
+  // * a GIF is mostly smaller than the peek's box: at its own size it came out no bigger than in the chat
+  test('grows a small GIF to fill its box', async({page}) => {
+    const gif = await findMessage(page, 'gif');
+    test.skip(!gif, 'no small GIF in the recent chats of this account');
+
+    const media = await openMessage(page, gif);
+    // * the GIF itself: one narrower than its caption is fitted into a box as wide as the text
+    const inChat = await page.evaluate(({x, y}) => {
+      const attachment = document.elementFromPoint(x, y).closest('.attachment');
+      const picture = attachment.querySelector(':scope > .media-container-aspecter') || attachment;
+      const {width, height} = picture.getBoundingClientRect();
+      return {width, height};
+    }, media);
+    await page.mouse.move(media.x, media.y);
+    await page.mouse.down();
+    await expect(page.locator(PEEK)).toHaveClass(/_visible_/);
+    await page.waitForTimeout(400);
+    const {box, shown} = await page.locator(PEEK_ITEM).evaluate((item) => {
+      const box = item.getBoundingClientRect();
+      const shown = item.querySelector('[class*="_MediaPeekMedia_"]').getBoundingClientRect();
+      return {box: {width: box.width, height: box.height}, shown: {width: shown.width, height: shown.height}};
+    });
+    await page.mouse.up();
+    await expect(page.locator(PEEK)).toHaveCount(0);
+
+    expect(Math.max(shown.width / box.width, shown.height / box.height), 'the GIF does not fill its box').toBeCloseTo(1, 2);
+    expect(shown.width, 'the GIF is no bigger than in the chat').toBeGreaterThan(inChat.width);
+  });
+
   test('opens on the media of a rich message', async({page}) => {
     const rich = await findMessage(page, 'rich');
     test.skip(!rich, 'no rich message with a photo or video in the recent chats of this account');

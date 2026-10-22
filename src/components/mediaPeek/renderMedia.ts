@@ -162,6 +162,13 @@ export default async function renderMediaPeek({
         })
       });
 
+      // * a GIF file (not an MP4 one) is laid out by wrapPhoto, which never grows a picture past its own
+      // * size: it is shown at the peek's
+      if(kind === 'gif') {
+        container.style.width = width + 'px';
+        container.style.height = height + 'px';
+      }
+
       // * a GIF or a downloaded video loops from a shared blob URL: kept alive while the peek plays it
       result.loadPromise?.then(() => {
         middleware.onClean(pinObjectURL(apiManagerProxy.getCacheContext(doc).url));
