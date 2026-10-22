@@ -430,6 +430,9 @@ export type RequestHistoryOptions = {
   hashtagType?: 'this' | 'my' | 'public',
   chatType?: 'all' | 'users' | 'groups' | 'channels',
   communityId?: ChatId,
+  // * a page may leave out an album its edge cuts, which comes whole with the next page, rather than wait for a second
+  // * request to fill it: for a reader that tells the end by `isEnd` only, not by a page shorter than asked for
+  leaveOutEdgeAlbums?: boolean,
   previewOnly?: boolean,                  // ! FOR INNER USE ONLY
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
@@ -13715,6 +13718,40 @@ export class AppMessagesManager extends AppManager {
       const firstMessage = messages[0] as Message.message;
       const lastMessage = messages[messages.length - 1] as Message.message;
 
+      // * erase unfilled grouped messages if they're last elements in their history slices (`messages` newest first) -
+      // * at an edge the slice does not know to be the history's end, which nothing goes on past
+      const eraseUnfilledGroupedMessages = (bottom: boolean, messages: Message.message[]) => {
+        const messagesSlice = (bottom ? messages : messages.slice().reverse()).slice(0, MESSAGES_ALBUM_MAX_SIZE);
+        const groupedIds = messagesSlice.map((message) => message.grouped_id);
+        const slice = messagesSlice[0] && historyStorage.history.findSlice(messagesSlice[0].mid);
+        if(
+          groupedIds[0] &&
+          groupedIds[0] !== groupedIds[MESSAGES_ALBUM_MAX_SIZE - 1] &&
+          slice &&
+          slice.index === (bottom ? 0 : slice.slice.length - 1) &&
+          !slice.slice.isEnd(bottom ? SliceEnd.Bottom : SliceEnd.Top)
+        ) {
+          messagesSlice.forEach((message) => {
+            if(message.grouped_id === groupedIds[0]) {
+              historyStorage.history.delete(message.mid);
+            }
+          });
+        }
+      };
+
+      const fillBottom = !isBottomEnd && !!firstMessage?.grouped_id;
+      const fillTop = !isTopEnd && !!lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id;
+
+      // * the albums at the edges of the page, which may go on past them, are left out of it rather than loaded whole by
+      // * second requests first (`leaveOutEdgeAlbums`): the page waited for those, and so did the first screen of a chat
+      // * opened from the server. They come with the next pages. When one holds the message asked for, or they are all
+      // * of the page, both are loaded whole as before: the request for one takes in part of the other again
+      const edgeGroupedIds = [fillBottom && firstMessage.grouped_id, fillTop && lastMessage.grouped_id].filter(Boolean);
+      const inEdgeAlbums = messages.filter((message) => edgeGroupedIds.includes((message as Message.message).grouped_id));
+      const leaveOut = options.leaveOutEdgeAlbums &&
+        inEdgeAlbums.length < messages.length &&
+        !inEdgeAlbums.some((message) => message.mid === offsetId);
+
       const fillMissingGroupedMessages = async(bottom: boolean) => {
         if(!middleware()) {
           return;
@@ -13735,33 +13772,19 @@ export class AppMessagesManager extends AppManager {
           return;
         }
 
-        // * erase unfilled grouped messages if they're last elements in their history slices
         if(!isEnd[bottom ? 'bottom' : 'top']) {
-          if(!bottom) messages.reverse();
-          const messagesSlice = messages.slice(0, MESSAGES_ALBUM_MAX_SIZE) as Message.message[];
-          const groupedIds = messagesSlice.map((message) => message.grouped_id);
-          const slice = messagesSlice[0] && historyStorage.history.findSlice(messagesSlice[0].mid);
-          if(
-            groupedIds[0] &&
-            groupedIds[0] !== groupedIds[MESSAGES_ALBUM_MAX_SIZE - 1] &&
-            slice &&
-            slice.index === (bottom ? 0 : slice.slice.length - 1)
-          ) {
-            messagesSlice.forEach((message) => {
-              if(message.grouped_id === groupedIds[0]) {
-                historyStorage.history.delete(message.mid);
-              }
-            });
-          }
+          eraseUnfilledGroupedMessages(bottom, messages as Message.message[]);
         }
       };
 
-      if(!isBottomEnd && firstMessage?.grouped_id) {
-        await fillMissingGroupedMessages(true);
+      if(fillBottom) {
+        if(leaveOut) eraseUnfilledGroupedMessages(true, messages as Message.message[]);
+        else await fillMissingGroupedMessages(true);
       }
 
-      if(!isTopEnd && lastMessage?.grouped_id && lastMessage.grouped_id !== firstMessage?.grouped_id) {
-        await fillMissingGroupedMessages(false);
+      if(fillTop) {
+        if(leaveOut) eraseUnfilledGroupedMessages(false, messages as Message.message[]);
+        else await fillMissingGroupedMessages(false);
       }
     }
     // * grouped end

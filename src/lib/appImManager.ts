@@ -2890,9 +2890,20 @@ export class AppImManager extends EventListenerBase<{
       this.prevTab.classList.remove('active');
       this.chatsSelectTabDebounced();
 
-      // ! нужно переделать на animation, так как при лаге анимация будет длиться не 250мс
+      // * for as long as the chats cross: that is over well before the time a fixed pause held, and what waits for it -
+      // * the first page of a chat opened from the server among it - waits no longer. That time stays the most it holds
       if(liteMode.isAvailable('animations') && animate !== false) {
-        dispatchHeavyAnimationEvent(pause(250 + 150), 250 + 150);
+        let onEnd: (e: TransitionEvent) => void;
+        const crossed = new Promise<void>((resolve) => {
+          onEnd = (e) => e.target === tab && e.propertyName === 'opacity' && resolve();
+          tab.addEventListener('transitionend', onEnd);
+          tab.addEventListener('transitioncancel', onEnd);
+        });
+
+        dispatchHeavyAnimationEvent(Promise.race([crossed, pause(250 + 150)]).then(() => {
+          tab.removeEventListener('transitionend', onEnd);
+          tab.removeEventListener('transitioncancel', onEnd);
+        }));
       }
 
       const prevIdx = whichChild(this.prevTab);

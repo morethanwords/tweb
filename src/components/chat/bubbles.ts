@@ -12740,7 +12740,10 @@ export default class ChatBubbles {
         offsetPeerId,
         offsetId,
         limit,
-        backLimit
+        backLimit,
+        // * the bubbles go by `isEnd`: an album a page's edge cuts may come with the next page. Search results are kept
+        // * apart from the history, and their albums filled as before
+        leaveOutEdgeAlbums: this.chat.type !== ChatType.Search
       });
     } else if(this.chat.type === ChatType.Pinned) {
       return this.managers.acknowledged.appMessagesManager.getHistory({
@@ -13584,9 +13587,11 @@ export default class ChatBubbles {
     }
 
     if(!this.chat.isRestricted) {
+      // * an ad that came before the bottom did, as a new message (`loadSponsoredMessages`)
       if(side === 'bottom' && this.sponsoredMessagesAvailable.length > 0) {
         Promise.all([this.getHistoryTopPromise, this.messagesQueuePromise]).then(() => {
-          this.performHistoryResult({history: [this.sponsoredMessagesAvailable.shift()]}, false);
+          const message = this.sponsoredMessagesAvailable.shift();
+          message && this.renderNewMessage(message);
         })
       }
 
@@ -13668,13 +13673,15 @@ export default class ChatBubbles {
       }
       log('sponsored messages:', sponsoredMessages);
 
+      // * an ad comes in at the bottom as a new message does: a chat that stood at its end, as one opened from the
+      // * server does by the time its ad comes, follows it there
       if(sponsoredMessages.posts_between) {
         this.sponsoredMessageEvery = sponsoredMessages.posts_between;
         Promise.all(sponsoredMessages.messages.map((it, idx) => this.generateSponsoredMessage(it, idx))).then((msgs) => {
           this.messagesSinceLastSponsored = 0;
           this.sponsoredMessages = this.sponsoredMessagesAvailable = msgs
-          if(this.scrollable.loadedAll.bottom) {
-            this.performHistoryResult({history: [msgs.shift()]}, false);
+          if(this.scrollable.loadedAll.bottom && msgs.length) {
+            this.renderNewMessage(msgs.shift());
           }
         });
         return;
@@ -13695,7 +13702,7 @@ export default class ChatBubbles {
       ]).then(([message]) => {
         if(!middleware()) return;
         if(this.scrollable.loadedAll.bottom) {
-          this.performHistoryResult({history: [message]}, false);
+          this.renderNewMessage(message);
         } else {
           this.sponsoredMessagesAvailable = [message]
         }
@@ -14062,9 +14069,13 @@ export default class ChatBubbles {
       promise = renderFirstScreen(await result.result);
     }
 
-    // * the fresh page renders what is new at the bottom, not the posts left out above
+    // * the fresh page renders what is new at the bottom, not the posts left out above. What was cached may not have
+    // * filled the screen (a chat with its last message only): then the page is what fills it, and is cut as one
     const waitPromise = isAdditionRender ?
-      processPromise((restPromise ? restPromise.then(() => resultPromise) : resultPromise).then((result) => cut ? keepFrom(result, cut.oldestMid) : result)) :
+      processPromise(
+        (restPromise ? restPromise.then(() => resultPromise) : resultPromise).then((result) => cut ? keepFrom(result, cut.oldestMid) : result),
+        !cut && !!firstScreen
+      ).then(() => restPromise) :
       promise.then(() => restPromise);
 
     if(isFirstMessageRender && liteMode.isAvailable('motion')/*  && false */) {
