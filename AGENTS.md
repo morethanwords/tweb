@@ -862,9 +862,9 @@ tune the split, and `--project=chromium` drops the other engines (~70 s).
 `test:popups` works the same way: parallel, the story sweep split into parts
 (`POPUPS_WORKERS` / `POPUP_STORY_PARTS`), Chromium unless `POPUPS_ALL_ENGINES=1`
 (`test:popups:full`, implied on CI). So does `test:focus`, on the popup suite's
-server and port (`playwright.focus.config.ts`, so the two run one after the
-other): a part per worker but one, which the sign-in sweep takes
-(`FOCUS_WORKERS` / `FOCUS_STORY_PARTS`, `FOCUS_STORIES=a,b` picks stories).
+kind of server (`playwright.focus.config.ts`): a part per worker but one, which
+the sign-in sweep takes (`FOCUS_WORKERS` / `FOCUS_STORY_PARTS`,
+`FOCUS_STORIES=a,b` picks stories).
 `test:editor:e2e` too: parallel (`EDITOR_E2E_WORKERS`), Chromium unless
 `EDITOR_E2E_ALL_ENGINES=1` (`test:editor:e2e:full`, implied on CI); and since its
 every test opens the fixture by navigating, a Chromium worker keeps one page and
@@ -872,6 +872,8 @@ navigates it again for each test (`samePage` in `e2e/workerContext.ts`) — a ne
 document in a warm renderer, three times faster to open than a new page.
 Playwright suites run on `vite.e2e.config.ts` — the dev server without hot
 reload, so an edit made while a suite runs no longer reloads the page under it.
+Each suite's server listens on a port of its checkout's own (`e2e/ports.ts`), so
+the suites of different checkouts and worktrees run side by side.
 The sandbox suites (`test:popups`, `test:focus`, `test:a11y`) get the app as a
 bundle instead (`vite.popups-e2e.config.ts`: Vite's Full Bundle Mode, built
 once as the server starts, ~25 s). Each of their tests opens the sandbox anew,

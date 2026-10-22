@@ -1,6 +1,7 @@
 import {defineConfig, devices} from '@playwright/test';
 import path from 'path';
 import {playwrightWorkers} from './scripts/testQueue';
+import e2ePort from './e2e/ports';
 
 // Browser tests for lottie sticker rendering.
 //
@@ -9,7 +10,8 @@ import {playwrightWorkers} from './scripts/testQueue';
 // self-contained worker would be a *dedicated* worker with different commit timing. So these run
 // against the actual dev server in a real browser. Lottie renders without login (the login page
 // itself plays .tgs animations), so a plain HTTP Vite preview is enough - no auth/seed needed.
-const PORT = 8099;
+// this checkout's own (e2e/ports.ts): the server found on it and taken is never another checkout's
+const PORT = e2ePort('default');
 
 // A spec that needs a signed-in client cannot use that server: it points at an
 // authorized preview instead (`bash scripts/start-preview.sh`), and then there is

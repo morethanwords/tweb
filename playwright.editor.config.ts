@@ -1,8 +1,9 @@
 import {defineConfig, devices} from '@playwright/test';
 import path from 'path';
 import {playwrightWorkers} from './scripts/testQueue';
+import e2ePort from './e2e/ports';
 
-const PORT = 8100;
+const PORT = e2ePort('editor');
 
 // A quick run is Chromium alone; Firefox and WebKit are the full run: EDITOR_E2E_ALL_ENGINES=1, and
 // always on CI.

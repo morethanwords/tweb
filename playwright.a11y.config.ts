@@ -2,9 +2,10 @@ import {defineConfig, devices} from '@playwright/test';
 import base from './playwright.config';
 import {appServer} from './playwright.popups.config';
 import {playwrightWorkers} from './scripts/testQueue';
+import e2ePort from './e2e/ports';
 
 // the app as a bundle, as the popup suites have it (vite.popups-e2e.config.ts), on a port of its own
-const PORT = 8119;
+const PORT = e2ePort('a11y');
 
 export default defineConfig<{freshContext: boolean}>({
   ...base,

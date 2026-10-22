@@ -1,10 +1,11 @@
 import {defineConfig, devices} from '@playwright/test';
 import path from 'path';
 import {playwrightWorkers} from './scripts/testQueue';
+import e2ePort from './e2e/ports';
 
-const PORT = 8117;
+const PORT = e2ePort('popups');
 // the modules as they are, for popupSandboxHotRerun.spec.ts: it runs every module again by its URL
-const MODULES_PORT = 8118;
+const MODULES_PORT = e2ePort('popupsModules');
 
 // The app's server for the sandbox suites (vite.popups-e2e.config.ts): a bundle, ready once it is built, which
 // /__e2e/ready says — or, `bundled` false, the modules as they are
