@@ -16,7 +16,7 @@ import {AppContactsTab} from '@components/solidJsTabs/tabs';
 import {AppCallsTab} from '@components/solidJsTabs/tabs';
 import {AppArchivedTab} from '@components/solidJsTabs/tabs';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
-import I18n, {i18n} from '@lib/langPack';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {IS_APPLE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
@@ -54,7 +54,7 @@ import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
 import DOCUMENT_PICTURE_IN_PICTURE_SUPPORTED from '@environment/documentPictureInPictureSupport';
 import openClientPip, {closeClientPip, isClientPipOpen} from '@components/clientPip';
-import liteMode from '@helpers/liteMode';
+import liteMode, {AnimationLevel} from '@helpers/liteMode';
 import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import Icon from '@components/icon';
@@ -958,8 +958,13 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'animations',
       regularText: animationsText,
       onClick: () => {
-        toggleAnimations();
+        // * full → reduced → off → full again; the system's reduce motion leaves only reduced and off
+        const level = liteMode.getAnimationLevel();
+        liteMode.setAnimationLevel(level ? level - 1 as AnimationLevel : (liteMode.isMotionHeldBySystem() ? 1 : 2));
+        updateAnimationsToggleButton();
       },
+      // * the next level is a click away
+      keepOpen: true,
       verify: () => !liteMode.isEnabled()
     }, {
       icon: 'animations',
@@ -1031,31 +1036,23 @@ export class AppSidebarLeft extends SidebarSlider {
     }];
 
 
-    async function hasAnimations() {
-      const [appSettings] = useAppSettings();
-      return !appSettings.liteMode.animations;
-    }
+    // * the toggle names what its click does
+    const animationsToggleTexts: {[level in AnimationLevel]: LangPackKey} = {
+      2: 'ReduceAnimations',
+      1: 'DisableAnimations',
+      0: 'EnableAnimations'
+    };
 
-    async function initAnimationsToggleIcon() {
-      updateAnimationsToggleButton(await hasAnimations());
-    }
-
-    async function toggleAnimations() {
-      updateAnimationsToggleButton(!(await hasAnimations()));
-      const [, setAppSettings] = useAppSettings();
-      await setAppSettings('liteMode', 'animations', await hasAnimations());
-    }
-
-    async function updateAnimationsToggleButton(enabled: boolean) {
+    function updateAnimationsToggleButton() {
       const animationToggleButton = btns.find((button) => button.id === 'animations-toggle')?.element;
       if(!animationToggleButton) return;
 
+      const level = liteMode.getAnimationLevel();
       const icon = animationToggleButton.querySelector('.tgico');
-      enabled ?
-        icon?.classList.add('animations-icon-off') :
-        icon?.classList.remove('animations-icon-off');
+      icon?.classList.toggle('animations-icon-reduce', level === 2);
+      icon?.classList.toggle('animations-icon-off', level === 1);
 
-      animationsText.replaceChildren(i18n(enabled ? 'DisableAnimations' : 'EnableAnimations'));
+      animationsText.replaceChildren(i18n(animationsToggleTexts[level]));
     }
 
     const filtered = await filterAsync(btns, (button) => button?.verify ? button.verify() ?? false : true);
@@ -1073,7 +1070,7 @@ export class AppSidebarLeft extends SidebarSlider {
       pause(20).then(() => contextMenuController.close());
     }, true);
 
-    initAnimationsToggleIcon();
+    updateAnimationsToggleButton();
 
     if(!middleware()) return;
 

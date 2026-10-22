@@ -1371,6 +1371,13 @@
   }
 }
 
+// * the speed lines fade, the ball stays: the glyph's ring is centred at 62.5% 37.5%, .326em in radius
+.animations-icon-reduce {
+  mask-image:
+    radial-gradient(circle .33em at 62.5% 37.5%, #000 100%, transparent 100%),
+    linear-gradient(rgb(0 0 0 / .35), rgb(0 0 0 / .35));
+}
+
 .animations-icon-off {
   position: relative;
   --amount: 8.4%;

@@ -6,8 +6,11 @@ import reducedKeyframes, {keyframesAtLevel} from '@helpers/reducedKeyframes';
 
 // * the settings liteMode reads, and the OS reduce-motion preference
 const settings = vi.hoisted(() => ({liteMode: {} as Record<string, boolean>}));
+const setSettings = vi.hoisted(() => (key: 'liteMode', value: Record<string, boolean>) => {
+  Object.assign(settings[key], value);
+});
 const prefersReducedMotion = vi.hoisted(() => ({matches: false}));
-vi.mock('@stores/appSettings', () => ({useAppSettings: () => [settings]}));
+vi.mock('@stores/appSettings', () => ({useAppSettings: () => [settings, setSettings]}));
 vi.mock('@stores/reducedMotion', () => ({default: () => () => prefersReducedMotion.matches}));
 
 afterEach(() => {
@@ -44,6 +47,31 @@ describe('animation level', () => {
 
     settings.liteMode = {animations: true};
     expect(liteMode.getAnimationLevel()).toBe(0);
+  });
+
+  test('is set through the two switches it is made of', () => {
+    liteMode.setAnimationLevel(1);
+    expect(settings.liteMode).toEqual({animations: false, motion: true});
+    expect(liteMode.getAnimationLevel()).toBe(1);
+
+    // * turning the animations off keeps the movement switch under them
+    liteMode.setAnimationLevel(0);
+    expect(settings.liteMode).toEqual({animations: true, motion: true});
+    expect(liteMode.getAnimationLevel()).toBe(0);
+
+    liteMode.setAnimationLevel(2);
+    expect(settings.liteMode).toEqual({animations: false, motion: false});
+    expect(liteMode.getAnimationLevel()).toBe(2);
+  });
+
+  test('leaves the movement switch alone while the OS reduce-motion preference holds it', () => {
+    Modes.a11y = true;
+    prefersReducedMotion.matches = true;
+    settings.liteMode = {animations: true, motion: false};
+
+    liteMode.setAnimationLevel(1);
+    expect(settings.liteMode).toEqual({animations: false, motion: false});
+    expect(liteMode.getAnimationLevel()).toBe(1);
   });
 });
 

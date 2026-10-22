@@ -55,6 +55,19 @@ export class LiteMode {
   public getAnimationLevel(): AnimationLevel {
     return this.isAvailable('motion') ? 2 : (this.isAvailable('animations') ? 1 : 0);
   }
+
+  /**
+   * Turning the animations off keeps the movement setting under them, and so does the system's
+   * reduce motion, which holds the level at 1 whatever that setting says
+   */
+  public setAnimationLevel(level: AnimationLevel) {
+    const [appSettings, setAppSettings] = useAppSettings();
+    const keepMotion = level === 0 || (level === 1 && this.isMotionHeldBySystem());
+    return setAppSettings('liteMode', {
+      animations: level === 0,
+      motion: keepMotion ? appSettings.liteMode.motion : level === 1
+    });
+  }
 }
 
 const liteMode = new LiteMode();
