@@ -37,17 +37,22 @@
       margin: 0 .5px;
       display: inline-block;
       vertical-align: middle;
-      animation-duration: .6s;
-      animation-iteration-count: infinite;
-      animation-timing-function: linear;
-      animation-name: dotMiddle;
 
-      &-first {
-        animation-name: dotFirst;
-      }
+      // * the activity indicators keep going with reduced animations, as a spinner does, and stand
+      // * still with none
+      @include animation-level(1) {
+        animation-duration: .6s;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+        animation-name: dotMiddle;
 
-      &-last {
-        animation-name: dotLast;
+        &-first {
+          animation-name: dotFirst;
+        }
+
+        &-last {
+          animation-name: dotLast;
+        }
       }
     }
   }
@@ -75,7 +80,9 @@
     }
 
     &:after {
-      animation: upload 1s ease-in-out infinite;
+      @include animation-level(1) {
+        animation: upload 1s ease-in-out infinite;
+      }
     }
   }
 
@@ -89,7 +96,10 @@
       height: 6px;
       border-radius: 50%;
       background-color: currentColor;
-      animation: recordBlink 1.25s infinite;
+
+      @include animation-level(1) {
+        animation: recordBlink 1.25s infinite;
+      }
     }
   }
 
@@ -109,7 +119,10 @@
       border: 1px solid currentColor;
       margin: 0 .0625rem;
       position: relative;
-      animation: eye 1.8s ease-in-out infinite;
+
+      @include animation-level(1) {
+        animation: eye 1.8s ease-in-out infinite;
+      }
 
       &:before {
         content: " ";
@@ -125,8 +138,11 @@
         left: 0;
         top: 50%;
         // transform: translate(-50%, -50%);
-        animation: eye-move 1.8s ease-in-out infinite;
         transform: translate(-1px, -50%);
+
+        @include animation-level(1) {
+          animation: eye-move 1.8s ease-in-out infinite;
+        }
       }
     }
   }

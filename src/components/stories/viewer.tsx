@@ -2,7 +2,7 @@ import {shouldPreserveKeyboardFocus} from '@helpers/dom/isKeyboardControl';
 import createFocusTrap, {FocusTrap} from '@helpers/dom/focusTrap';
 /* @refresh reload */
 
-import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
+import {animateSingle} from '@helpers/animation';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
@@ -183,84 +183,78 @@ const StorySlides = (props: {
   return slides;
 };
 
+// * The bar of a story fills by itself: from where the story is to its end in the time left, a linear
+// * animation of its scale the compositor runs. Set from a frame loop as the width of a pseudo-element,
+// * it had the page restyle, lay out and paint the bar in every frame of every story played
 const StorySlide = (props: {
   slideIndex: Accessor<number>,
   state: StoriesContextPeerState,
   storyIndex: Accessor<number>,
   index: Accessor<number>
 }) => {
-  const [progress, setProgress] = createSignal(0);
   const [stories] = useStories();
+  let animation: Animation;
 
-  const calculateAndSetProgress = () => {
-    const elapsedTime = Date.now() - stories.startTime;
-    const progress = elapsedTime / stories.storyDuration;
-    setProgress(progress);
-  };
+  const fill = document.createElement('div');
+  fill.classList.add(styles.ViewerStorySlidesSlideFill);
 
-  const onTick = () => {
-    if(
-      stories.peer !== props.state ||
-      props.storyIndex() !== props.slideIndex() ||
-      stories.paused
-    ) {
-      onPause();
-      return false;
+  // * stands at `progress`, and with `left` grows from it to the end in that many ms
+  const show = (progress: number, left?: number) => {
+    animation?.cancel();
+    animation = undefined;
+    const from = `scaleX(${Math.min(1, Math.max(0, progress))})`;
+    fill.style.transform = from;
+    if(left > 0) {
+      animation = fill.animate([{transform: from}, {transform: 'scaleX(1)'}], {
+        duration: left,
+        easing: 'linear',
+        fill: 'forwards'
+      });
     }
-
-    // if(stories.paused) {
-    //   return true;
-    // }
-
-    calculateAndSetProgress();
-    return true;
   };
 
-  const onPause = () => {
-    cancelAnimationByKey(ret);
-  };
-
-  const onPlay = () => {
-    animateSingle(onTick, ret);
+  // * none for a story not started yet (no start time, or no length yet: still loading), which stands empty
+  const getProgress = () => {
+    const {startTime, storyDuration} = stories;
+    return startTime && storyDuration ? (Date.now() - startTime) / storyDuration : undefined;
   };
 
   createEffect(() => { // on peer change
     if(stories.peer !== props.state) {
-      onPause();
+      animation?.pause(); // * stands where it is, another peer's stories playing
       return;
     }
 
     createEffect(on( // on story change
       () => [props.storyIndex(), props.slideIndex()],
       ([storyIndex, slideIndex]) => {
-        const isActive = storyIndex === slideIndex;
-        if(isActive) {
-          setProgress(undefined);
-
-          createEffect(() => { // on story toggle
-            if(stories.paused || stories.buffering) {
-              onPause();
-            } else {
-              onPlay();
-            }
-          });
-        } else {
-          onPause();
-          setProgress(storyIndex > slideIndex ? 1 : undefined);
+        if(storyIndex !== slideIndex) {
+          show(storyIndex > slideIndex ? 1 : 0);
+          return;
         }
+
+        show(0);
+        createEffect(() => { // on story toggle
+          if(stories.paused || stories.buffering) {
+            // * stands where it is drawn: the clock ran on while it buffered, the story did not
+            animation?.pause();
+          } else {
+            // * a play that moves the start or learns the length starts the bar again from there
+            const progress = getProgress();
+            show(progress ?? 0, progress === undefined ? 0 : stories.storyDuration * (1 - progress));
+          }
+        });
       })
     );
   });
 
-  const ret = (
-    <div
-      class={styles.ViewerStorySlidesSlide}
-      // classList={{[styles.active]: index() > slideIndex()}}
-      style={progress() !== undefined ? {'--progress': Math.min(100, progress() * 100) + '%'} : {}}
-    />
-  );
+  onCleanup(() => animation?.cancel());
 
-  return ret;
+  return (
+    <div class={styles.ViewerStorySlidesSlide}>
+      {fill}
+    </div>
+  );
 };
 
 const DEFAULT_REACTION_EMOTICON = '❤';

@@ -1,5 +1,21 @@
 @use "../shared" as *;
 
+// * the height of what lies over the chat list (appDialogsManager): not inherited, so the scrollables
+// * that read it are all it restyles, not the rows inside them
+@property --chatlist-overlay-height {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+// * how far the stories over the chat list are folded (stories/list.tsx), given to the boxes that move
+// * with it alone - not inherited, so a frame of the fold does not restyle the rows inside them
+@property --stories-scrolled {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 92px;
+}
+
 :root {
   --sidebar-collapsed-width: 80px;
 }
@@ -120,7 +136,9 @@
     }
 
     #chatlist-container {
-      --stories-scrolled: 92px !important;
+      .connection-status-bottom {
+        --stories-scrolled: 92px !important;
+      }
 
       .chatlist {
         padding: 0;
@@ -439,11 +457,6 @@
     }
   }
 
-  #chatlist-container,
-  #chats-archived-container {
-    --stories-scrolled: 92px;
-  }
-
   #chatlist-container {
     max-height: 100%;
     position: relative;
@@ -536,7 +549,7 @@
     inset: 0;
     overflow: hidden;
     background-color: var(--surface-color);
-    transform: translateY(calc(var(--offset-top) - var(--stories-scrolled)));
+    transform: translateY(calc(var(--offset-top) - var(--stories-scrolled, 92px)));
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -562,8 +575,10 @@
   background-color: rgba(0, 0, 0, 0.3);
   transition: opacity .4s;
 
+  // * a `:has()` down a chain of children: `html:has(#column-left…)` searched the whole document each
+  // * time this was restyled - and it is on every node inserted anywhere, ~0.6 ms each, 28 ms a chat opened
   @include respond-to(no-floating-left-sidebar) {
-    html:has(#column-left.is-collapsed.has-open-tabs) &:not(.force-hide) {
+    body:has(> #page-chats > #main-columns > #column-left.is-collapsed.has-open-tabs) &:not(.force-hide) {
       opacity: 1;
       pointer-events: initial;
     }
@@ -821,7 +836,7 @@
 
   .sidebar-content {
     // height: calc(100% + 92px);
-    transform: translateY(calc(92px - var(--stories-scrolled)));
+    transform: translateY(calc(92px - var(--stories-scrolled, 92px)));
 
     @include animation-level(2) {
       transition: transform var(--transition-standard-in);
@@ -1420,7 +1435,8 @@
     inset-inline-start: -3px;
   }
 
-  html:has(.btn-menu.active) &,
+  // * a menu open (contextMenuController)
+  html.has-open-btn-menu &,
   #column-left.is-collapsed.has-open-tabs &-left {
     display: none;
   }

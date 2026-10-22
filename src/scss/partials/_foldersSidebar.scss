@@ -220,13 +220,15 @@
     left: 50%;
     transform: translateX(-50%) !important;
 
+    // * `:has()` of a child, not of the whole document: that one was searched again each time the
+    // * button was restyled (see .sidebar-left-overlay)
     @include respond-to(no-floating-left-sidebar) {
-      html:has(#column-left.is-collapsed) & {
+      #main-columns:has(> #column-left.is-collapsed) & {
         display: flex;
       }
 
       // a11y: `.btn-corner` is hidden until it is slid in
-      html:where(.a11y):has(#column-left.is-collapsed) & {
+      html:where(.a11y) #main-columns:has(> #column-left.is-collapsed) & {
         visibility: visible;
       }
     }
@@ -268,11 +270,11 @@
       background: var(--folders-sidebar-background-hover);
     }
 
-    :has(#column-left.is-collapsed:not(.has-open-tabs)) & {
+    #main-columns:has(> #column-left.is-collapsed:not(.has-open-tabs)) & {
       display: flex;
     }
 
-    body:has(.hide-add-folders) & {
+    #main-columns:has(> #column-left.hide-add-folders) & {
       opacity: 0 !important;
     }
 

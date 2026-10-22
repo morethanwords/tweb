@@ -61,21 +61,23 @@ function moveChatUp(page: Page, updates: number): Promise<Glide | null> {
     const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
     await nextFrame();
 
-    const from = parseFloat(passed.style.top);
+    // * where the row is drawn: its place in the list, and the transform that glides it there
+    const drawnTop = (row: HTMLElement) => parseFloat(row.style.top) + new DOMMatrix(getComputedStyle(row).transform).m42;
+    const from = drawnTop(passed);
     const getIndexForKey = sortedList.getIndexForKey;
     sortedList.getIndexForKey = (key: any) => key === mover.id ? index : getIndexForKey.call(sortedList, key);
     try {
       // * the message, and the updates that follow it - all in before the next frame
       await Promise.all(Array.from({length: updates}, () => sortedList.update(mover.id)));
       const updatedAt = performance.now();
-      const afterUpdates = parseFloat(passed.style.top);
+      const afterUpdates = drawnTop(passed);
       const animatingAbove = above.filter((row) => row.style.getPropertyValue('--background')).length;
       const animatingPassed = !!passed.style.getPropertyValue('--background');
 
       const frames: Glide['frames'] = [];
       for(let i = 0; i < 40; ++i) {
         await nextFrame();
-        frames.push({top: parseFloat(passed.style.top), time: performance.now() - updatedAt});
+        frames.push({top: drawnTop(passed), time: performance.now() - updatedAt});
       }
 
       return {

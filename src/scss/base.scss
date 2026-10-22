@@ -1569,7 +1569,6 @@ hr {
 
     @include animation-level(1) {
       opacity: 0;
-      transition: opacity .2s ease-in-out;
     }
   }
 
@@ -1581,6 +1580,15 @@ hr {
 
     @include animation-level(1) {
       opacity: 1;
+    }
+  }
+
+  // * only while an emoji fades in over its placeholder (emoticonsDropdown/tabs/emoji.ts): declared on
+  // * every tile, the transitions had hiding the panel work out each of its two thousand elements -
+  // * 150-200 ms of style every time it closed
+  .emoji-placeholder.is-fading,
+  .emoji.is-fading {
+    @include animation-level(1) {
       transition: opacity .2s ease-in-out;
     }
   }
@@ -2357,7 +2365,11 @@ hr {
   background-size: var(--background-gradient-size);
   box-decoration-break: clone;
   border-radius: 0.25rem;
-  animation: text-loading 1.5s linear infinite;
+
+  // * it says the text is being worked on: it goes on with reduced animations, as a spinner does
+  @include animation-level(1) {
+    animation: text-loading 1.5s linear infinite;
+  }
 
   // * sweeps along the line, from the inline start
   @keyframes text-loading {

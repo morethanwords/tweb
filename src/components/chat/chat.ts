@@ -66,6 +66,7 @@ import hasRights from '@appManagers/utils/chats/hasRights';
 import {ChatType} from '@components/chat/chatType';
 import {animateSingle} from '@helpers/animation';
 import focusSearchInput from '@components/chat/focusSearchInput';
+import createStyleRule from '@helpers/dom/createStyleRule';
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];
@@ -287,8 +288,31 @@ export default class Chat extends EventListenerBase<{
     if(this.chatInputSurplusPx === surplus) return;
     this.preservePaddingScroll();
     this.chatInputSurplusPx = surplus;
-    this.container.style.setProperty('--chat-input-height-surplus', surplus + 'px');
+    this.setChatInputSurplusRule(surplus);
     this.recomputePaddings();
+  }
+
+  // * `--chat-input-height-surplus` is not inherited (_chat.scss): a rule of the chat's own gives it to
+  // * the few boxes that read it. Set on the chat, a custom property of its is worked out anew for
+  // * every element in it - a thousand in a short chat, on each line the input grows or a reply shown
+  private chatInputSurplusRule: ReturnType<typeof createStyleRule>;
+  private setChatInputSurplusRule(surplus: number) {
+    if(!this.container) {
+      return;
+    }
+
+    if(!this.chatInputSurplusRule) {
+      const className = 'chat-surplus-' + this.animationGroup;
+      this.container.classList.add(className);
+      this.chatInputSurplusRule = createStyleRule(
+        this.container,
+        // * a list rather than an `:is()`: a selector whose own element is a class is looked at for
+        // * elements of that class alone, an `:is()` for every element of every restyle
+        ['.bubbles-viewport', '.bubbles-inner', '.bubbles-group-avatar', '.bubbles-corner-button'].map((c) => `.${className} ${c}`).join(', ')
+      );
+    }
+
+    this.chatInputSurplusRule.set('--chat-input-height-surplus', surplus + 'px');
   }
 
   public updatePinnedFloatingHeight(value: number) {
@@ -864,8 +888,10 @@ export default class Chat extends EventListenerBase<{
     // * chat, container and shared-media tabs included, which is how 4 951 detached nodes ended up
     // * charged to rootScope in a day-old tab. Peer changes keep cleaning it as before.
     this.middlewareHelper.destroy();
+    this.chatInputSurplusRule?.remove();
 
-    this.topbar =
+    this.chatInputSurplusRule =
+      this.topbar =
       this.bubbles =
       this.input =
       this.contextMenu =

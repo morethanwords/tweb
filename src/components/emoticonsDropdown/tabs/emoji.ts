@@ -63,6 +63,9 @@ import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 
 
 const loadedURLs: Set<string> = new Set();
+// * the fade of an emoji in over its placeholder (base.scss .super-emoji)
+const EMOJI_FADE_TIME = 200;
+
 export function appendEmoji(_emoji: AppEmoji, unify = false) {
   if(_emoji.docId) {
     const customEmojiElement = CustomEmojiElement.create(_emoji.docId);
@@ -105,14 +108,20 @@ export function appendEmoji(_emoji: AppEmoji, unify = false) {
       const placeholder = document.createElement('span');
       placeholder.classList.add('emoji-placeholder');
 
-      if(liteMode.isAvailable('animations')) {
+      // * the fade's transition is there for the fade alone - a transition starts from the style the
+      // * change itself brings - and the placeholder goes once it has faded: what every tile of the
+      // * panel carries is paid each time the panel is hidden
+      const fade = liteMode.isAvailable('animations');
+      if(fade) {
         image.style.opacity = '0';
         placeholder.style.opacity = '1';
       }
 
       image.addEventListener('load', () => {
         fastRaf(() => {
-          if(liteMode.isAvailable('animations')) {
+          if(fade) {
+            image.classList.add('is-fading');
+            placeholder.classList.add('is-fading');
             image.style.opacity = '';
             placeholder.style.opacity = '';
           }
@@ -120,6 +129,11 @@ export function appendEmoji(_emoji: AppEmoji, unify = false) {
           spanEmoji.classList.remove('empty');
 
           loadedURLs.add(url);
+
+          setTimeout(() => {
+            image.classList.remove('is-fading');
+            placeholder.remove();
+          }, fade ? EMOJI_FADE_TIME + 50 : 0);
         });
       }, {once: true});
 

@@ -1,7 +1,8 @@
-import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor} from 'solid-js';
+import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor, createRenderEffect, untrack} from 'solid-js';
 
-import createAnimatedValue from '@helpers/solid/createAnimatedValue';
+import {simpleEasing} from '@helpers/easings';
 import liteMode from '@helpers/liteMode';
+import noop from '@helpers/noop';
 import ListenerSetter from '@helpers/listenerSetter';
 import useElementSize from '@hooks/useElementSize';
 import styles from '@components/verticalVirtualList.module.scss';
@@ -14,7 +15,8 @@ export type VerticalVirtualListItemProps<T = any> = {
   item: T;
   top: number;
   idx: number;
-  animating: boolean;
+  /** whether a move to another `top` may glide there (`createItemGlide`) */
+  glide: boolean;
 };
 
 const VerticalVirtualList: Component<{
@@ -115,14 +117,12 @@ const VerticalVirtualList: Component<{
 
 
   const Item: Component<{idx: number, item: any}> = (itemProps) => {
-    const animatedTop = createAnimatedValue(() => getLayout().top(itemProps.idx), 120, undefined, canAnimate);
-
     return (
       <props.ListItem
         idx={itemProps.idx}
         item={itemProps.item}
-        top={animatedTop()}
-        animating={animatedTop.animating()}
+        top={getLayout().top(itemProps.idx)}
+        glide={canAnimate()}
       />
     );
   };
@@ -166,6 +166,77 @@ const VerticalVirtualList: Component<{
     </ul>
   );
 };
+
+const GLIDE_TIME = 120;
+
+/**
+ * Puts an item at `top`, and when it may glide there carries it from where it was drawn: the item
+ * is at its new place at once, and a transform animation the compositor runs takes it there. A
+ * `top` animated a frame at a time laid the list out again in every frame of every row that moved
+ * (a chat going up the list moves every row above its old place). Gives whether it is gliding.
+ */
+export function createItemGlide(element: Accessor<HTMLElement>, top: Accessor<number>, canGlide: Accessor<boolean>) {
+  const [gliding, setGliding] = createSignal(false);
+  let glide: {animation: Animation, from: number, to: number}, lastElement: HTMLElement, lastTop: number;
+
+  // * where the item is drawn now: a glide that is cut short starts the next one from there (the
+  // * animation's own time - it starts with the next frame, not when it is asked for)
+  const getDrawnTop = () => {
+    if(!glide) {
+      return lastTop;
+    }
+
+    const time = Number(glide.animation.currentTime) || 0;
+    const progress = simpleEasing(Math.min(1, time / GLIDE_TIME));
+    return glide.from + (glide.to - glide.from) * progress;
+  };
+
+  const stop = () => {
+    glide?.animation.cancel();
+    glide = undefined;
+  };
+
+  createRenderEffect(() => {
+    const _element = element(), _top = top();
+    // * an update that moves nothing (the dialog updated again in the place it has just taken)
+    // * leaves the glide running
+    if(_element && _element === lastElement && _top === lastTop) {
+      return;
+    }
+
+    const from = _element && _element === lastElement ? getDrawnTop() : undefined;
+    stop();
+    lastElement = _element;
+    lastTop = _top;
+    if(!_element) {
+      setGliding(false);
+      return;
+    }
+
+    _element.style.setProperty('top', _top + 'px');
+    if(from === undefined || from === _top || !untrack(canGlide) || typeof(_element.animate) !== 'function') {
+      setGliding(false);
+      return;
+    }
+
+    const animation = _element.animate([
+      {transform: `translateY(${from - _top}px)`},
+      {transform: 'translateY(0)'}
+    ], {duration: GLIDE_TIME, easing: 'ease'}); // * `simpleEasing`
+    glide = {animation, from, to: _top};
+    setGliding(true);
+    animation.finished.then(() => {
+      if(glide?.animation === animation) {
+        glide = undefined;
+        setGliding(false);
+      }
+    }, noop);
+  });
+
+  onCleanup(stop);
+
+  return gliding;
+}
 
 /** Where the items of a list start: `top(idx)` for any index up to the length, which is where the list ends */
 export type ItemsLayout = {

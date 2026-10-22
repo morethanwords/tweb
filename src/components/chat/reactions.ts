@@ -105,6 +105,11 @@ export default class ReactionsElement extends HTMLElement {
   private animationGroup: AnimationItemGroup;
   private lazyLoadQueue: LazyLoadQueue;
   private forceCounter: boolean;
+  // * the bubble is raised for a paid reaction's effect by a class of its own (a `:has()` of it was
+  // * searched through every bubble restyled): given when the effect starts or the strip is put into
+  // * a bubble, whichever comes last
+  private paidEffect: boolean;
+  private paidEffectBubble: HTMLElement;
 
   constructor() {
     super();
@@ -126,6 +131,19 @@ export default class ReactionsElement extends HTMLElement {
       this.onConnectCallback();
       this.onConnectCallback = undefined;
     }
+
+    this.syncPaidEffectBubble();
+  }
+
+  private syncPaidEffectBubble() {
+    const bubble = this.paidEffect ? this.closest<HTMLElement>('.bubble') : undefined;
+    if(bubble === this.paidEffectBubble) {
+      return;
+    }
+
+    this.paidEffectBubble?.classList.remove('has-paid-effect');
+    bubble?.classList.add('has-paid-effect');
+    this.paidEffectBubble = bubble;
   }
 
   disconnectedCallback() {
@@ -371,7 +389,11 @@ export default class ReactionsElement extends HTMLElement {
       paidReactionElement.setPaidReactionCounter(pendingPaidReaction.count());
       if(!paidReactionElement.classList.contains('effect-active')) {
         paidReactionElement.classList.add('effect-active');
+        this.paidEffect = true;
+        this.syncPaidEffectBubble();
         pendingPaidReaction.abortController.signal.addEventListener('abort', () => {
+          this.paidEffect = false;
+          this.syncPaidEffectBubble();
           paidReactionElement.classList.remove('effect-active');
           paidReactionElement.querySelectorAll('.reaction-sticker-activate').forEach((it) => it.remove());
           paidReactionElement.destroyPaidReactionCounter();

@@ -9,6 +9,7 @@ import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {VideoTimestamp} from '@components/mediaViewer/base';
 import RangeSelector from '@components/rangeSelector';
 import {observeResize} from '@components/resizeObserver';
+import createMediaProgressTicker from '@helpers/mediaProgressTicker';
 
 const MIN_VIDEO_TIMESTAMP_SEGMENT_WIDTH = 7; // -2px padding will be 5px
 
@@ -26,7 +27,7 @@ export default class MediaProgressLine extends RangeSelector {
   protected currentTimeElement?: HTMLDivElement;
   protected currentSegmentElement?: HTMLDivElement;
 
-  protected progressRAF: number;
+  protected progressTicker: ReturnType<typeof createMediaProgressTicker>;
 
   protected media: HTMLMediaElement;
   protected streamable: boolean;
@@ -355,25 +356,14 @@ export default class MediaProgressLine extends RangeSelector {
   };
 
   protected onPlay = () => {
-    const r = () => {
-      this.setProgress();
-
-      this.progressRAF = this.media.paused ? undefined : window.requestAnimationFrame(r);
-    };
-
-    if(this.progressRAF) {
-      window.cancelAnimationFrame(this.progressRAF);
-      this.progressRAF = undefined;
-    }
+    this.progressTicker?.stop();
+    this.progressTicker = createMediaProgressTicker(this.media, this.container, () => this.setProgress());
 
     if(this.streamable) {
       this.setLoadProgress();
     }
 
-    // this.lastOnPlayTime = Date.now();
-    // this.lastOnPlayCurrentTime = this.media.currentTime;
-    r();
-    // this.progressRAF = window.requestAnimationFrame(r);
+    this.progressTicker.start();
   };
 
   protected onTimeUpdate = () => {
@@ -503,10 +493,8 @@ export default class MediaProgressLine extends RangeSelector {
     this.container.removeEventListener('pointermove', this.onHover);
     this.container.removeEventListener('pointerout', this.onPointerOut);
 
-    if(this.progressRAF) {
-      window.cancelAnimationFrame(this.progressRAF);
-      this.progressRAF = undefined;
-    }
+    this.progressTicker?.stop();
+    this.progressTicker = undefined;
   }
 
   public cleanup() {

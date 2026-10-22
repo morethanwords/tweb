@@ -1038,6 +1038,13 @@
   }
 }
 
+// * with no animations it stands, as with the system's reduce motion
+:global(body:not(.animation-level-1)) .Thinking {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  animation: none;
+}
+
 .Caption {
   color: var(--secondary-text-color);
   margin: 0;

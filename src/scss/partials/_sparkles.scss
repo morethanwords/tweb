@@ -1,17 +1,35 @@
+@use "../shared" as *;
+
 .sparkles-container {
   --sparkles-duration: 5s;
+  display: block;
   pointer-events: none;
 
   font-size: 0.5rem;
+
+  // * out of sight (sparkles.ts) they are not there at all: a paused animation is not restyled in
+  // * every frame, but it keeps its compositor layer, and the 200 layers of a channel's paid
+  // * reactions made every frame's layerization the longer. Back in sight, they start where they did
+  &.is-paused .sparkles-sparkle {
+    display: none;
+  }
 }
 
 .sparkles-sparkle {
   --sparkle-min-opacity: 0;
   position: absolute;
 
-  animation: sparkle var(--sparkles-duration) infinite;
   width: 1em;
   height: 1em;
+
+  // * decoration: it goes with the full animation level, as shimmers do
+  @include animation-level(2) {
+    animation: sparkle var(--sparkles-duration) infinite;
+  }
+
+  @include animation-level-below(2) {
+    display: none;
+  }
 }
 
 @keyframes sparkle {

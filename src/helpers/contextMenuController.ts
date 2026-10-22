@@ -12,6 +12,9 @@ import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
 import {onAppWindowChange} from '@helpers/appWindow';
 import Modes from '@config/modes';
 
+// * on the root while a menu is open (_leftSidebar.scss)
+const BTN_MENU_OPEN_CLASS_NAME = 'has-open-btn-menu';
+
 type AdditionalMenuItem = {
   level: number,
   element: HTMLElement,
@@ -223,6 +226,8 @@ class ContextMenuController extends OverlayClickHandler {
 
     if(this.element) {
       this.element.classList.remove('active');
+      this.element.ownerDocument.documentElement.classList.remove(BTN_MENU_OPEN_CLASS_NAME);
+      document.documentElement.classList.remove(BTN_MENU_OPEN_CLASS_NAME); // * moved to another window meanwhile
       this.menuOpenTarget?.classList.remove('menu-open');
       this.menuOpenTarget = undefined;
 
@@ -273,6 +278,9 @@ class ContextMenuController extends OverlayClickHandler {
     super.open(element);
 
     this.element.classList.add('active', 'was-open');
+    // * what the page shows while a menu is open (the columns' resize handles go) reads this, rather
+    // * than an `html:has(.btn-menu.active)` the browser searched the document for on every restyle
+    this.element.ownerDocument.documentElement.classList.add(BTN_MENU_OPEN_CLASS_NAME);
     this.menuOpenTarget = triggerElement ?? this.element.parentElement;
     this.menuOpenTarget?.classList.add('menu-open');
 

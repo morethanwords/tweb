@@ -35,6 +35,12 @@ $delay: calc($duration / 5);
   }
 }
 
+// * with no animations they stand, as with the system's reduce motion
+:global(body:not(.animation-level-1)) .Dot {
+  animation: none;
+  opacity: 1;
+}
+
 @keyframes dot-animation {
   0%, 15% {
     opacity: 0;

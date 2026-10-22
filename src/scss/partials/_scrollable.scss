@@ -32,6 +32,16 @@ html.overlay-scroll {
     scrollbar-color: var(--scrollbar-color) rgba(0, 0, 0, 0);
   }
 
+  // * the hover's colour is for the scrollable's own scrollbar, and goes no further: `scrollbar-color`
+  // * is inherited, and everything inside - a whole chat, its every bubble laid out again - was worked
+  // * out anew each time the pointer came in or left (opening a context menu too). Firefox hides the
+  // * scrollbars inside by that inheritance (`.is-firefox .scrollable-y`), and keeps it. A universal
+  // * child: what a scrollable holds is anyone's markup, and one parent's class is all it checks;
+  // * `:where` leaves a hovered scrollable inside its own colour
+  &:not(.is-firefox) :where(.scrollable > *) {
+    scrollbar-color: auto;
+  }
+
   .scrollable:hover::-webkit-scrollbar {
     opacity: 1; // for safari
   }

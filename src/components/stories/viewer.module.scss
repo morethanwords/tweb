@@ -247,14 +247,14 @@ $color-inactive: rgba(255, 255, 255, .5);
         min-width: .375rem;
         box-shadow: $shadow;
 
-        &:before {
+        // * what is filled, scaled from the inline start (StorySlide)
+        &Fill {
           position: absolute;
-          top: 0;
-          bottom: 0;
-          width: var(--progress);
+          inset: 0;
           border-radius: inherit;
           background-color: #fff;
-          content: " ";
+          transform-origin: var(--transform-origin-inline-start);
+          transform: scaleX(0);
         }
 
         // &.active {

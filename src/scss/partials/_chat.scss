@@ -602,12 +602,21 @@
 	height: 100%;
 }
 
+// * how much taller the input is than its one line: given only to the boxes that read it, by a rule of
+// * the chat's own (Chat.setChatInputSurplusRule) - set on the chat, a custom property is worked out
+// * anew for every element in it, and it changes on each line the input grows and each reply shown
+@property --chat-input-height-surplus {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 .chat {
   --chat-topbar-height: 3rem;
-  --chat-input-height-surplus: 0px;
   --pinned-floating-height: 0px;
   --chat-padding-top: calc(var(--chat-topbar-height) + var(--page-chats-padding) + var(--pinned-floating-height));
-  --chat-padding-bottom: calc(var(--chat-input-height) + var(--page-chats-padding) + var(--chat-input-height-surplus));
+  // * without the input's surplus, which whatever reads this adds of its own
+  --chat-padding-bottom: calc(var(--chat-input-height) + var(--page-chats-padding));
   --chat-input-background: var(--surface-color);
 	display: flex !important;
 	width: 100%;
@@ -1260,7 +1269,7 @@
   position: absolute;
   inset-inline: 0;
   top: var(--chat-padding-top);
-  bottom: var(--chat-padding-bottom);
+  bottom: calc(var(--chat-padding-bottom) + var(--chat-input-height-surplus, 0px));
   margin-block: calc(var(--page-chats-padding) * -1);
 }
 
@@ -1457,7 +1466,7 @@
 	display: flex;
 	flex-direction: column;
 	margin: 0 auto;
-	min-height: calc(100% - var(--chat-padding-top) - var(--chat-padding-bottom));
+	min-height: calc(100% - var(--chat-padding-top) - var(--chat-padding-bottom) - var(--chat-input-height-surplus, 0px));
 	justify-content: flex-end;
 	max-width: calc(var(--chat-width) - var(--chat-bubbles-padding) * 2);
 	transition: transform var(--transition-standard-out);
@@ -1606,7 +1615,7 @@
 	bottom: calc(var(--chat-input-height) + .5rem);
 	z-index: 2;
 	overflow: visible;
-  transform: translateY(var(--translateY)) translateY(calc(var(--chat-input-height-surplus) * -1)) !important;
+  transform: translateY(var(--translateY)) translateY(calc(var(--chat-input-height-surplus, 0px) * -1)) !important;
 
   @include animation-level(2) {
     transition: transform var(--transition-standard-in);

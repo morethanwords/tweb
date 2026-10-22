@@ -7,6 +7,10 @@ $transition: .2s ease-in-out;
     //animation: rotate 2s linear infinite;
     animation: rotate 1s linear infinite;
     height: 100%;
+
+    @include animation-level-below(1) {
+      animation: none;
+    }
     transform-origin: center center;
     /* width: 100%; */
     position: absolute;
@@ -57,6 +61,12 @@ $transition: .2s ease-in-out;
     position: absolute;
     inset: 0;
     opacity: 0;
+
+    // * the sweeps only while shown, as the spinner above
+    &:not(.is-visible) .loading {
+      animation: none;
+    }
+
     overflow: hidden;
     pointer-events: none;
     backdrop-filter: blur(0px) brightness(1.0);
@@ -136,7 +146,10 @@ $transition: .2s ease-in-out;
   &.preloader-swing {
     cursor: default;
 
-    .you-spin-me-round {
+    // * only while shown (and fading out): a player keeps its buffering spinner, hidden, for as long as
+    // * it is open, and an endless animation on what is not painted runs on the main thread - a frame
+    // * every 16 ms under a playing video
+    &.is-visible .you-spin-me-round {
       animation: rotate 1s linear infinite !important;
     }
 

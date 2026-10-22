@@ -23,6 +23,7 @@ import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import buttonKeyDown from '@helpers/solid/buttonKeyDown';
 import Modes from '@config/modes';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
+import createStyleRule from '@helpers/dom/createStyleRule';
 
 const TEST_COUNT = 0;
 const ITEM_MARGIN = 0;
@@ -233,6 +234,14 @@ function _StoriesList(props: {
 
   const MOVE_Y = -69, CONTAINER_PADDING = 6, CONTAINER_HEIGHT = 92;
   let scrolling = false;
+  // * given to the boxes that move with it alone (_leftSidebar.scss): set on the list's container, it
+  // * restyled the whole chat list in every frame of the fold
+  let scrolledRule: ReturnType<typeof createStyleRule>, scrolledClassName: string;
+  onCleanup(() => {
+    scrolledRule?.remove();
+    scrolledClassName && props.setScrolledOn.classList.remove(scrolledClassName);
+  });
+
   const calculateMovement = (): JSX.CSSProperties => {
     const value = progress();
 
@@ -246,7 +255,13 @@ function _StoriesList(props: {
 
     const translateY = value * MOVE_Y;
     const translate = `translateY(${translateY}px)`;
-    props.setScrolledOn.style.setProperty('--stories-scrolled', (value * CONTAINER_HEIGHT) + 'px');
+    if(!scrolledRule) {
+      const className = scrolledClassName = 'stories-scrolled-' + Math.random().toString(36).slice(2);
+      props.setScrolledOn.classList.add(className);
+      scrolledRule = createStyleRule(props.setScrolledOn, `.${className} .connection-status-bottom, .${className} .sidebar-content`);
+    }
+
+    scrolledRule.set('--stories-scrolled', (value * CONTAINER_HEIGHT) + 'px');
 
     return {
       // 'height': `${containerHeight - (containerHeight * value)}px`,

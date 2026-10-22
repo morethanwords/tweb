@@ -227,18 +227,35 @@ Utility Classes
 // * ...but `plaintext` also aligns `start` by each paragraph's own direction, so in a right-to-left
 // * layout a Latin name or username would hug the left edge of a row whose label sits on the right.
 // * A label keeps the layout's side: `match-parent` resolves `start` against the parent's
-// * direction, and is inheritance otherwise (an inherited `center` stays centred). Zero
-// * specificity, so any alignment a component sets itself wins.
-:where(.is-rtl [dir="auto"]) {
-  text-align: -webkit-match-parent;
-  text-align: match-parent;
-}
-
+// * direction, and is inheritance otherwise (an inherited `center` stays centred). Below any
+// * alignment a component sets itself: in a cascade layer of their own, under every rule outside
+// * one - as a `:where()` had it, but with plain selectors, which the browser files under the `dir`
+// * attribute and tries on elements that have one; a `:where()` was tried on every element of
+// * every restyle.
+$rtl-label: '.is-rtl [dir="auto"]';
 // * what is read or typed as running text - a message, a caption, an input - aligns by its own
 // * content: a paragraph's direction is its first strong letter's (Unicode's bidi rule)
-:where(.is-rtl :is(.message, .input-message-input, input, textarea, [contenteditable])[dir="auto"]),
-:where(.is-rtl :is(.message, .input-message-input, [contenteditable]) [dir="auto"]) {
-  text-align: start;
+$rtl-running-text: '.is-rtl :is(.message, .input-message-input, input, textarea, [contenteditable])[dir="auto"], .is-rtl :is(.message, .input-message-input, [contenteditable]) [dir="auto"]';
+
+@mixin rtl-text-align($label, $running-text) {
+  #{$label} {
+    text-align: -webkit-match-parent;
+    text-align: match-parent;
+  }
+
+  #{$running-text} {
+    text-align: start;
+  }
+}
+
+@layer rtl-text-align {
+  @include rtl-text-align($rtl-label, $rtl-running-text);
+}
+
+// * a browser without cascade layers (Safari before 15.4, Firefox before 97) drops the block above:
+// * the same rules in a `:where()`, as low. Every browser with `:has()` has the layers
+@supports not selector(:has(a)) {
+  @include rtl-text-align(':where(#{$rtl-label})', ':where(#{$rtl-running-text})');
 }
 
 /* .flex-grow {

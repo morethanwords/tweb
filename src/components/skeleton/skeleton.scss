@@ -29,7 +29,13 @@
     inset: 0;
 
     background: linear-gradient(90deg, transparent 0%, var(--gradient-color) 50%, transparent 100%);
+    // * a glint is decoration: it goes with the full animation level
     animation: skeleton-animation 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+
+    body:not(.animation-level-2) & {
+      animation: none;
+      display: none;
+    }
   }
 }
 

@@ -827,12 +827,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   public setCallStatus(dom: DialogDom, visible: boolean) {
     let {callIcon, listEl} = dom;
     if(!callIcon && visible) {
-      const {canvas, startAnimation} = dom.callIcon = callIcon = groupCallActiveIcon(listEl.classList.contains('active'));
-      canvas.classList.add('dialog-group-call-icon');
-      listEl.append(canvas);
+      const {element} = dom.callIcon = callIcon = groupCallActiveIcon();
+      element.classList.add('dialog-group-call-icon');
+      listEl.append(element);
 
       listEl.classList.add('has-group-call-icon');
-      startAnimation();
     }
 
     if(!callIcon) {
@@ -840,12 +839,12 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     }
 
     SetTransition({
-      element: dom.callIcon.canvas,
+      element: dom.callIcon.element,
       className: 'is-visible',
       forwards: visible,
       duration: BADGE_TRANSITION_TIME,
       onTransitionEnd: visible ? undefined : () => {
-        dom.callIcon.canvas.remove();
+        dom.callIcon.element.remove();
         dom.callIcon = undefined;
         listEl.classList.remove('has-group-call-icon');
       },

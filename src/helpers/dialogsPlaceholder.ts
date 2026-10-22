@@ -9,6 +9,7 @@ import {CROSS_FADE_KEYFRAMES} from '@helpers/dom/crossfadeContent';
 import isDocumentRTL from '@helpers/dom/isDocumentRTL';
 import easeInOutSine from '@helpers/easing/easeInOutSine';
 import liteMode from '@helpers/liteMode';
+import createAppWindowIntersectionObserver from '@helpers/dom/createAppWindowIntersectionObserver';
 import mediaSizes from '@helpers/mediaSizes';
 
 export default class DialogsPlaceholder {
@@ -18,6 +19,11 @@ export default class DialogsPlaceholder {
   private tempId: number;
   private detachTime: number;
   private looping: boolean;
+  // * out of sight (a tab not shown, the shared media of a profile not opened) the shimmer holds
+  // * still: it redrew the whole canvas every frame, seen or not
+  private observer: ReturnType<typeof createAppWindowIntersectionObserver>;
+  private inView = true;
+  private held: boolean;
 
   private length: number;
   private dialogHeight: number;
@@ -98,6 +104,16 @@ export default class DialogsPlaceholder {
     this.updateCanvasSize(rect);
     this.startAnimation();
     container.append(canvas);
+
+    this.observer?.disconnect();
+    this.observer = createAppWindowIntersectionObserver((entries) => {
+      this.inView = entries[entries.length - 1].isIntersecting;
+      if(this.inView && this.held) {
+        this.held = false;
+        this.runAnimation();
+      }
+    });
+    this.observer.observe(canvas);
   }
 
   public detach(availableLength: number) {
@@ -109,7 +125,7 @@ export default class DialogsPlaceholder {
     this.detachTime = Date.now();
 
     const animationLevel = liteMode.getAnimationLevel();
-    if(!animationLevel) {
+    if(!animationLevel || !this.inView) { // * nobody would see it go
       this.remove();
     } else if(animationLevel === 1) {
       // * reduced animations: the skeleton held still, and it fades out as a whole
@@ -270,6 +286,18 @@ export default class DialogsPlaceholder {
         return false;
       }
 
+      // * out of sight: held until it is seen again (attach); one going away just goes
+      if(!this.inView) {
+        this.looping = false;
+        if(this.detachTime) {
+          this.remove();
+        } else {
+          this.held = true;
+        }
+
+        return false;
+      }
+
       this.renderFrame();
 
       // ! tempId can be changed during renderFrame
@@ -279,6 +307,10 @@ export default class DialogsPlaceholder {
 
   private stopAnimation() {
     ++this.tempId;
+    this.observer?.disconnect();
+    this.observer = undefined;
+    this.held = false;
+    this.inView = true;
     rootScope.removeEventListener('theme_changed', this.onThemeChange);
     mediaSizes.removeEventListener('resize', this.onResize);
   }

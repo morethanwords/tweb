@@ -133,6 +133,7 @@ import {
 import {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {DialogElement, findDialogListElement, setPromiseMiddleware, disposeTextHighlight, setDialogSubtitle, isRenderedSubtitleIntact, getFolderTitleTextColor} from '@components/dialogElement';
 import type {DialogDom, DialogElementOptions} from '@components/dialogElement';
+import createStyleRule from '@helpers/dom/createStyleRule';
 
 // below this many dialogs the sidebar looks empty, so contacts are offered under the chat list
 const MIN_DIALOGS_WITHOUT_CONTACTS = 10;
@@ -297,11 +298,14 @@ export class AppDialogsManager {
     this.listCover = document.createElement('div');
     this.listCover.classList.add('chatlist-cover');
 
-    // Surface the overlay's live height to the parent so the chatlist below can leave matching
-    // top padding — .folders-scrollable reads var(--chatlist-overlay-height) for its padding-top.
+    // Surface the overlay's live height so the chatlist below can leave matching top padding —
+    // .folders-scrollable reads var(--chatlist-overlay-height) for its padding-top. Given to the
+    // scrollables alone: set on the container, it restyled the whole chat list on every frame a
+    // plate in the overlay grew or shrank (createStyleRule)
+    const overlayHeightRule = createStyleRule(bottomPart, '#folders-container .folders-scrollable');
     new ResizeObserver((entries) => {
       const height = entries[0].borderBoxSize?.[0]?.blockSize ?? entries[0].contentRect.height;
-      bottomPart.style.setProperty('--chatlist-overlay-height', height + 'px');
+      overlayHeightRule.set('--chatlist-overlay-height', height + 'px');
     }).observe(this.foldersOverlay);
 
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
@@ -977,7 +981,6 @@ export class AppDialogsManager {
   }
 
   public setDialogActive(listEl: HTMLElement, active: boolean) {
-    const dom = (listEl as any).dialogDom as DialogDom;
     this.setDialogActiveStatus(listEl, active);
     listEl.classList.toggle(
       'is-forum-open',
@@ -988,10 +991,6 @@ export class AppDialogsManager {
       this.lastActiveElements.add(listEl);
     } else {
       this.lastActiveElements.delete(listEl);
-    }
-
-    if(dom?.callIcon) {
-      dom.callIcon.setActive(active);
     }
   }
 

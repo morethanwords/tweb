@@ -38,7 +38,7 @@ import {animate} from '@helpers/animation';
 import {defaultEasing} from '@helpers/easings';
 import clamp from '@helpers/number/clamp';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
-import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
+import createAppWindowIntersectionObserver from '@helpers/dom/createAppWindowIntersectionObserver';
 import {createEffect, createRoot, on} from 'solid-js';
 
 const N = 12;
@@ -153,32 +153,16 @@ type Phase = 'go' | 'back';
 // What is out of sight draws nothing: no line, no wave, no change of the arrow (the line takes up
 // where the bytes are once seen). One observer for every ring in the document; the arrow, which does
 // nothing until it is pressed, is not watched (a chat with automatic downloads off has hundreds).
-let observer: IntersectionObserver;
 const observed: Map<Element, PreloaderRing> = new Map();
-
-// The active window's: an observer's implicit root is the viewport of the realm that made it, and the
-// whole app moves into a Document PiP window and back (as animationIntersector does).
-function createObserver() {
-  const IO = (getAppWindow() as Window & typeof globalThis).IntersectionObserver;
-  observer = new IO((entries) => {
-    for(const entry of entries) {
-      observed.get(entry.target)?.setInSight(entry.isIntersecting);
-    }
-  });
-}
+const observer = createAppWindowIntersectionObserver((entries) => {
+  for(const entry of entries) {
+    observed.get(entry.target)?.setInSight(entry.isIntersecting);
+  }
+});
 
 function observe(element: Element, ring: PreloaderRing) {
   if(typeof(IntersectionObserver) === 'undefined') {
     return;
-  }
-
-  if(!observer) {
-    createObserver();
-    onAppWindowChange(() => {
-      observer.disconnect();
-      createObserver();
-      observed.forEach((_, element) => observer.observe(element));
-    });
   }
 
   // one taken out of the document out of sight is not reported: each new one looks for them
@@ -189,7 +173,7 @@ function observe(element: Element, ring: PreloaderRing) {
 
 function unobserve(element: Element) {
   observed.delete(element);
-  observer?.unobserve(element);
+  observer.unobserve(element);
 }
 
 export default class PreloaderRing {

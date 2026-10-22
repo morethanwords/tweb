@@ -60,7 +60,7 @@
   &-avatar {
     position: sticky !important;
     top: 0;
-    bottom: calc(var(--chat-padding-bottom) + #{$bubble-overflow-big} + .25rem);
+    bottom: calc(var(--chat-padding-bottom) + var(--chat-input-height-surplus, 0px) + #{$bubble-overflow-big} + .25rem);
     cursor: pointer;
     pointer-events: all;
     overflow: hidden;
@@ -2416,6 +2416,12 @@
         &-3 {
           animation-name: audio-dots-3;
         }
+
+        // * with no animations they stand, all three shown
+        @include animation-level-below(1) {
+          animation: none;
+          opacity: 1;
+        }
       }
     }
   }
@@ -2678,7 +2684,8 @@
     }
   }
 
-  &:has(.reaction.is-paid.effect-active) {
+  // * its paid reaction's effect playing (reactions.ts)
+  &.has-paid-effect {
     z-index: 3;
   }
 

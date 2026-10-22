@@ -21,7 +21,7 @@ import {formatFullSentTime} from '@helpers/date';
 import throttleWithRaf from '@helpers/schedulers/throttleWithRaf';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import formatBytes from '@helpers/formatBytes';
-import {animateSingle} from '@helpers/animation';
+import createMediaProgressTicker from '@helpers/mediaProgressTicker';
 import clamp from '@helpers/number/clamp';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import MediaProgressLine from '@components/mediaProgressLine';
@@ -305,12 +305,14 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
   const onLoad = () => {
     let audio = ctx.element.audio;
 
+    // * the played part follows the waveform's width - a long message moves it a pixel far less often
+    // * than every frame
+    let ticker: ReturnType<typeof createMediaProgressTicker>;
     const setAnimation = () => {
-      animateSingle(() => {
-        if(!audio) return false;
-        onTimeUpdate();
-        return !audio.paused;
-      }, ctx.element);
+      ticker?.stop();
+      if(!audio) return;
+      ticker = createMediaProgressTicker(audio, svgContainer, onTimeUpdate);
+      ticker.start();
     };
 
     const onTimeUpdate = () => {
@@ -327,6 +329,7 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
     ctx.addAudioListener('timeupdate', throttledTimeUpdate);
     ctx.addAudioListener('ended', throttledTimeUpdate);
     ctx.addAudioListener('play', setAnimation);
+    ctx.addAudioListener('pause', () => ticker?.stop());
 
     progress && ctx.readyPromise.then(() => {
       let mousedown = false, mousemove = false;
@@ -386,6 +389,7 @@ async function wrapVoiceMessage(ctx: AudioRowContext): Promise<WrappedAudio> {
     });
 
     return () => {
+      ticker?.stop();
       progress?.remove();
       progress = null;
       audio = null;
