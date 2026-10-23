@@ -2741,7 +2741,8 @@ const Stories = (props: {
           const {fwdFrom, mediaAreaChannelPost} = repostInfo;
           if(fwdFrom?.from || mediaAreaChannelPost) {
             e.stopPropagation();
-            props.close(() => {
+            const managers = bindManagersToSession(rootScope.managers);
+            props.close(async() => {
               const peerId = fwdFrom ? getPeerId(fwdFrom.from) : mediaAreaChannelPost.channel_id.toPeerId(true);
               if(fwdFrom?.story_id && !findUpClassName(e.target, styles.ViewerStoryHeaderRepost)) {
                 createStoriesViewerWithPeer({
@@ -2749,10 +2750,13 @@ const Stories = (props: {
                   id: fwdFrom.story_id
                 });
               } else {
-                hotReloadGuard.appImManager.setInnerPeer({
-                  peerId,
-                  lastMsgId: mediaAreaChannelPost?.msg_id
-                });
+                // * the post by the client's id of it, not the server's: given the server's, the chat stopped
+                // * at the nearest post and said the one asked for did not exist
+                const lastMsgId = mediaAreaChannelPost && await managers.appMessagesIdsManager.generateMessageId(
+                  mediaAreaChannelPost.msg_id,
+                  peerId.toChatId()
+                );
+                hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId});
               }
             });
           }
