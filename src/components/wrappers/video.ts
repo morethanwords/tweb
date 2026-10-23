@@ -588,6 +588,146 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     video.autoplay = true;
   }
 
+  // * before `load`, which calls this once the video has loaded: a video from the cache loads while
+  // * the thumb is still awaited below, and found it not yet made
+  const attachSoundObserver = willObserveSound ? () => {
+    video.mini = true;
+    video.pause();
+    const onIntersection: IntersectionCallback = (entry) => {
+      if(!entry.isIntersecting) {
+        destroyPlayer();
+      }
+    };
+
+    container.classList.add('media-video-container', 'media-video-mini');
+    observer.observe(video, onIntersection);
+
+    const destroyPlayer = () => {
+      debouncedDestroy.clearTimeout();
+      if(
+        !videoPlayer ||
+        !middleware() ||
+        isFullScreen() ||
+        videoPlayer.inPip
+      ) {
+        return;
+      }
+
+      videoPlayer.unmount();
+      videoPlayer.cleanup();
+      videoPlayer = undefined;
+      setShowControlsOn.classList.remove('show-controls');
+    };
+
+    const debouncedDestroy = debounce(destroyPlayer, 1000, false, true);
+
+    let videoPlayer: VideoPlayer, releasePromise: CancellablePromise<void>/* , changedVolume = false */;
+    container.onMiniVideoMouseMove = (e: MouseEvent) => {
+      if(videoPlayer) {
+        return;
+      }
+
+      const toggleReleasePromise = (active: boolean) => {
+        if(active) releasePromise = deferredPromise();
+        else releasePromise?.resolve();
+      };
+
+      const onLock = (active: boolean) => {
+        if(ignoreNextEvents && ignoreNextEvents--) {
+          return;
+        }
+
+        const animationItem = animationIntersector.getAnimations(video)[0];
+        animationIntersector.toggleItemLock(animationItem, active);
+        toggleReleasePromise(active);
+      };
+
+      let ignoreNextEvents = 0;
+      videoPlayer = new VideoPlayer({
+        video,
+        container,
+        duration: video.duration,
+        streamable: true,
+        listenKeyboardEvents: 'fullscreen',
+        useGlobalVolume: 'no-init',
+        // shouldEnableSoundOnClick: () => !changedVolume,
+        onVolumeChange: (type) => {
+          const noVolume = !video.volume || video.muted;
+          let newValue: boolean;
+          if(noVolume) {
+            newValue = turnedObserverOn = false;
+          } else if(type === 'click') {
+            newValue = turnedObserverOn = true;
+          }
+
+          if(newValue !== turnedObserverOn && newValue !== undefined) {
+            appMediaPlaybackController.dispatchEvent('toggleVideoAutoplaySound', newValue);
+          }
+
+          // changedVolume = true;
+        },
+        onFullScreen: (active) => {
+          onLock(active);
+          overlayCounter.isDarkOverlayActive = active;
+        },
+        onFullScreenToPip: () => {
+          ignoreNextEvents = 2;
+        },
+        onPip: onLock/* ,
+        onPipClose: () => {
+          if(!setShowControlsOn.classList.contains('show-controls')) {
+            debouncedDestroy();
+          }
+        } */
+      });
+
+      videoPlayer.volumeSelector.setVolume({muted: !turnedObserverOn, volume: video.volume});
+
+      videoPlayer.addEventListener('toggleControls', (show) => {
+        setShowControlsOn.classList.toggle('show-controls', show);
+        if(show) {
+          debouncedDestroy.clearTimeout();
+        } else {
+          debouncedDestroy();
+        }
+      });
+    };
+
+    // * mute video when other media is playing
+    const onAutoplaySound = (enabled: boolean) => {
+      if(videoPlayer) {
+        return;
+      }
+
+      appMediaPlaybackController.applySharedVolume(video);
+    };
+
+    const onPlaybackMediaParams = (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
+      if(videoPlayer) {
+        return;
+      }
+
+      appMediaPlaybackController.applySharedVolume(video);
+      video.muted = turnedObserverOn ? params.muted : true;
+      video.playbackRate = params.playbackRate;
+    };
+
+    appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);
+    appMediaPlaybackController.addEventListener('playbackParams', onPlaybackMediaParams);
+
+    middleware.onClean(() => {
+      observer.unobserve(video, onIntersection);
+      delete container.onMiniVideoMouseMove;
+      appMediaPlaybackController.removeEventListener('toggleVideoAutoplaySound', onAutoplaySound);
+      appMediaPlaybackController.removeEventListener('playbackParams', onPlaybackMediaParams);
+    });
+
+    originalMiddleware.onClean(async() => {
+      await releasePromise;
+      myMiddlewareHelper.destroy();
+    });
+  } : undefined;
+
   let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
   const load = async() => {
     if(preloader && noAutoDownload && !withoutPreloader) {
@@ -735,144 +875,6 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   if(video) {
     res.video = video;
   }
-
-  const attachSoundObserver = willObserveSound ? () => {
-    video.mini = true;
-    video.pause();
-    const onIntersection: IntersectionCallback = (entry) => {
-      if(!entry.isIntersecting) {
-        destroyPlayer();
-      }
-    };
-
-    container.classList.add('media-video-container', 'media-video-mini');
-    observer.observe(video, onIntersection);
-
-    const destroyPlayer = () => {
-      debouncedDestroy.clearTimeout();
-      if(
-        !videoPlayer ||
-        !middleware() ||
-        isFullScreen() ||
-        videoPlayer.inPip
-      ) {
-        return;
-      }
-
-      videoPlayer.unmount();
-      videoPlayer.cleanup();
-      videoPlayer = undefined;
-      setShowControlsOn.classList.remove('show-controls');
-    };
-
-    const debouncedDestroy = debounce(destroyPlayer, 1000, false, true);
-
-    let videoPlayer: VideoPlayer, releasePromise: CancellablePromise<void>/* , changedVolume = false */;
-    container.onMiniVideoMouseMove = (e: MouseEvent) => {
-      if(videoPlayer) {
-        return;
-      }
-
-      const toggleReleasePromise = (active: boolean) => {
-        if(active) releasePromise = deferredPromise();
-        else releasePromise?.resolve();
-      };
-
-      const onLock = (active: boolean) => {
-        if(ignoreNextEvents && ignoreNextEvents--) {
-          return;
-        }
-
-        const animationItem = animationIntersector.getAnimations(video)[0];
-        animationIntersector.toggleItemLock(animationItem, active);
-        toggleReleasePromise(active);
-      };
-
-      let ignoreNextEvents = 0;
-      videoPlayer = new VideoPlayer({
-        video,
-        container,
-        duration: video.duration,
-        streamable: true,
-        listenKeyboardEvents: 'fullscreen',
-        useGlobalVolume: 'no-init',
-        // shouldEnableSoundOnClick: () => !changedVolume,
-        onVolumeChange: (type) => {
-          const noVolume = !video.volume || video.muted;
-          let newValue: boolean;
-          if(noVolume) {
-            newValue = turnedObserverOn = false;
-          } else if(type === 'click') {
-            newValue = turnedObserverOn = true;
-          }
-
-          if(newValue !== turnedObserverOn && newValue !== undefined) {
-            appMediaPlaybackController.dispatchEvent('toggleVideoAutoplaySound', newValue);
-          }
-
-          // changedVolume = true;
-        },
-        onFullScreen: (active) => {
-          onLock(active);
-          overlayCounter.isDarkOverlayActive = active;
-        },
-        onFullScreenToPip: () => {
-          ignoreNextEvents = 2;
-        },
-        onPip: onLock/* ,
-        onPipClose: () => {
-          if(!setShowControlsOn.classList.contains('show-controls')) {
-            debouncedDestroy();
-          }
-        } */
-      });
-
-      videoPlayer.volumeSelector.setVolume({muted: !turnedObserverOn, volume: video.volume});
-
-      videoPlayer.addEventListener('toggleControls', (show) => {
-        setShowControlsOn.classList.toggle('show-controls', show);
-        if(show) {
-          debouncedDestroy.clearTimeout();
-        } else {
-          debouncedDestroy();
-        }
-      });
-    };
-
-    // * mute video when other media is playing
-    const onAutoplaySound = (enabled: boolean) => {
-      if(videoPlayer) {
-        return;
-      }
-
-      appMediaPlaybackController.applySharedVolume(video);
-    };
-
-    const onPlaybackMediaParams = (params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
-      if(videoPlayer) {
-        return;
-      }
-
-      appMediaPlaybackController.applySharedVolume(video);
-      video.muted = turnedObserverOn ? params.muted : true;
-      video.playbackRate = params.playbackRate;
-    };
-
-    appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);
-    appMediaPlaybackController.addEventListener('playbackParams', onPlaybackMediaParams);
-
-    middleware.onClean(() => {
-      observer.unobserve(video, onIntersection);
-      delete container.onMiniVideoMouseMove;
-      appMediaPlaybackController.removeEventListener('toggleVideoAutoplaySound', onAutoplaySound);
-      appMediaPlaybackController.removeEventListener('playbackParams', onPlaybackMediaParams);
-    });
-
-    originalMiddleware.onClean(async() => {
-      await releasePromise;
-      myMiddlewareHelper.destroy();
-    });
-  } : undefined;
 
   return res;
 }
