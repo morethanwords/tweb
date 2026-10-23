@@ -166,19 +166,77 @@ describe('stories notifications mute', () => {
 });
 
 describe('top peers', () => {
-  test('a failed request is asked again instead of staying cached', async() => {
+  test('a failed request answers an empty list and is asked again instead of staying cached', async() => {
     const manager = new AppUsersManager();
     const invokeApi = vi.fn()
     .mockRejectedValueOnce(new Error('FLOOD_WAIT_X'))
     .mockResolvedValueOnce({_: 'contacts.topPeersDisabled'});
     Object.assign(manager as any, {
       getTopPeersPromises: {},
+      topPeersFloods: {},
       appStateManager: {getState: () => Promise.resolve({topPeersCache: {}}), pushToState: vi.fn()},
       apiManager: {invokeApi}
     });
 
-    await expect(manager.getTopPeers('correspondents')).rejects.toThrow('FLOOD_WAIT_X');
+    await expect(manager.getTopPeers('correspondents')).resolves.toEqual([]);
     await expect(manager.getTopPeers('correspondents')).resolves.toEqual([]);
     expect(invokeApi).toHaveBeenCalledTimes(2);
+  });
+
+  const createFloodedManager = (topPeersCache: any) => {
+    const manager = new AppUsersManager();
+    const invokeApi = vi.fn()
+    .mockRejectedValueOnce({code: 420, type: 'FLOOD_WAIT_60'})
+    .mockResolvedValueOnce({_: 'contacts.topPeersDisabled'});
+    Object.assign(manager as any, {
+      getTopPeersPromises: {},
+      topPeersFloods: {},
+      appStateManager: {getState: () => Promise.resolve({topPeersCache}), pushToState: vi.fn()},
+      appPeersManager: {getPeer: () => ({})},
+      apiManager: {invokeApi}
+    });
+
+    return {manager, invokeApi};
+  };
+
+  test('told to wait, it asks nothing again until the wait is over', async() => {
+    const now = Date.now();
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const {manager, invokeApi} = createFloodedManager({});
+
+      // * nobody had the list: none, at once, rather than a refusal every caller would have to handle
+      await expect(manager.getTopPeers('correspondents')).resolves.toEqual([]);
+      await expect(manager.getTopPeers('correspondents')).resolves.toEqual([]);
+      expect(invokeApi).toHaveBeenCalledTimes(1);
+      expect(invokeApi.mock.calls[0][2]).toMatchObject({floodMaxTimeout: 0});
+
+      dateNow.mockReturnValue(now + 61e3);
+      await expect(manager.getTopPeers('correspondents')).resolves.toEqual([]);
+      expect(invokeApi).toHaveBeenCalledTimes(2);
+    } finally {
+      dateNow.mockRestore();
+    }
+  });
+
+  test('while it waits, the list from before is served and not kept', async() => {
+    const now = Date.now();
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const stale = [{id: userPeerId, rating: 1}];
+      const {manager, invokeApi} = createFloodedManager({
+        correspondents: {peers: stale, cachedTime: now - 2 * 86400e3}
+      });
+
+      await expect(manager.getTopPeers('correspondents')).resolves.toEqual(stale);
+      await expect(manager.getTopPeers('correspondents')).resolves.toEqual(stale);
+      expect(invokeApi).toHaveBeenCalledTimes(1);
+
+      dateNow.mockReturnValue(now + 61e3);
+      await expect(manager.getTopPeers('correspondents')).resolves.toEqual([]);
+      expect(invokeApi).toHaveBeenCalledTimes(2);
+    } finally {
+      dateNow.mockRestore();
+    }
   });
 });

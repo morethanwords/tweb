@@ -18,6 +18,7 @@ import createSerializedQueue, {SerializedQueue} from '@helpers/createSerializedQ
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
 import {ReferenceContext} from '@lib/storages/references';
 import {AppManager} from '@appManagers/manager';
+import type {MyTopPeer} from '@appManagers/appUsersManager';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
@@ -1743,7 +1744,9 @@ export default class AppStoriesManager extends AppManager {
       return 'hide';
     }
 
-    const topPeers = await this.appUsersManager.getTopPeers('correspondents');
+    // * the top correspondents may not be had (a flood wait): taken as not being one of them, as a menu
+    // * asking this must open all the same
+    const topPeers = await this.appUsersManager.getTopPeers('correspondents').catch((): MyTopPeer[] => []);
     return topPeers.some((topPeer) => topPeer.id === peerId) ? 'remove' : 'hide';
   }
 
