@@ -3,6 +3,7 @@ import type {RichMediaUploadServices} from '@components/richMessageInput/media';
 import createAiEditorContext from '@components/chat/inputState/createAiEditorContext';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
+import sliceMessageEntities from '@helpers/sliceMessageEntities';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '@appManagers/appMessagesManager';
 import type Chat from '@components/chat/chat';
@@ -30,7 +31,8 @@ import {
   Dialog,
   TextWithEntities,
   GlobalPrivacySettings,
-  RichMessage
+  RichMessage,
+  InputMedia
 } from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ChatInputPlate from '@components/chat/controlPlate';
@@ -3342,7 +3344,9 @@ export default class ChatInput {
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
     ) {
       key = 'SendAnonymously';
-    } else if(type === ChatType.Stories) {
+    } else if(type === ChatType.Stories && !this.chat.starsAmount) {
+      // * a reply that costs Stars shows its price below instead, over the stealth mode countdown too:
+      // * as Android has it, what a message costs is said before it is sent
       const stealthModeActiveUntilDate = this.chat.stealthMode?.active_until_date || 0;
       if(stealthModeActiveUntilDate > tsNow(true)) {
         const {element, dispose} = slowModeTimer(() => stealthModeActiveUntilDate - tsNow(true));
@@ -4807,6 +4811,7 @@ export default class ChatInput {
     inputField,
     chatType,
     forwarding,
+    media,
     sendTextParams = {},
     forwardParams = {},
     slowModeParams,
@@ -4824,6 +4829,8 @@ export default class ChatInput {
     onSending?: (textMessages: number) => void,
     chatType?: ChatType,
     forwarding?: ChatInput['forwarding'],
+    /** media of its own, one message sent after the text: a story shared with a comment */
+    media?: InputMedia,
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
     forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions'>,
     slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
@@ -4901,12 +4908,14 @@ export default class ChatInput {
       }
     }
 
-    let messageCount = 0;
+    let messageCount = media ? 1 : 0;
     if(forwarding) {
       for(const fromPeerId in forwarding) messageCount += forwarding[fromPeerId].length;
     }
     const config = await managers.apiManager.getConfig();
     const MAX_LENGTH = config.message_length_max;
+    // * what of the text goes as a dice rather than a message, for the text that media follows (below)
+    const diceEmojis = media && !richMessage ? (await managers.apiManager.getAppConfig()).emojies_send_dice : undefined;
     const textOverflow = !richMessage && value.length > MAX_LENGTH;
     const textMessageCount = richMessage ? 1 : trimmedValue ? splitStringByLength(value, MAX_LENGTH).length : 0;
     messageCount += textMessageCount;
@@ -4951,17 +4960,36 @@ export default class ChatInput {
     }
 
     if(sendsText) {
-      managers.appMessagesManager.sendText({
-        ...sendTextParams,
-        ...sendingParams,
-        text: value,
-        entities,
-        richMessage,
-        noWebPage: richMessage ? true : sendTextParams.noWebPage,
-        webPage: richMessage ? undefined : sendTextParams.webPage,
-        webPageOptions: richMessage ? undefined : sendTextParams.webPageOptions,
-        invertMedia: richMessage ? undefined : sendTextParams.invertMedia
+      // * with media after it, the text is sent part by part from here, and a part that is a dice emoji as
+      // * the dice: sendText queues the parts after the first, and a dice, a step later, and the media sent
+      // * alongside came between them
+      const parts = media && !richMessage ? splitStringByLength(value, MAX_LENGTH) : [value];
+      let offset = 0;
+      parts.forEach((part, index) => {
+        const start = offset;
+        offset += part.length;
+        const dice = diceEmojis?.includes(part.trim()) && part.trim();
+        if(dice) {
+          managers.appMessagesManager.sendOther({...sendingParams, inputMedia: {_: 'inputMediaDice', emoticon: dice}});
+          return;
+        }
+
+        managers.appMessagesManager.sendText({
+          ...sendTextParams,
+          ...sendingParams,
+          text: part,
+          entities: parts.length > 1 ? sliceMessageEntities(entities, start, part.length) : entities,
+          richMessage,
+          noWebPage: richMessage ? true : sendTextParams.noWebPage,
+          webPage: richMessage || index ? undefined : sendTextParams.webPage,
+          webPageOptions: richMessage ? undefined : sendTextParams.webPageOptions,
+          invertMedia: richMessage ? undefined : sendTextParams.invertMedia
+        });
       });
+    }
+
+    if(media) {
+      managers.appMessagesManager.sendOther({...sendingParams, inputMedia: media});
     }
 
     for(const fromPeerId in forwarding) {

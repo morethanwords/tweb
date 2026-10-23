@@ -579,6 +579,7 @@
 "Username.Purchase" = "**This username is already taken.** However, it is currently available for purchase. [Learn more…]()";
 "Video.Unsupported.Desktop" = "__Unfortunately, this video can't be played on Telegram Web. Try opening it with our [desktop app](https://getdesktop.telegram.org/) instead.__";
 "Video.Unsupported.Mobile" = "__Unfortunately, this video can't be played on Telegram Web. Try opening it with our [mobile app](https://telegram.org/dl/) instead.__";
+"Story.Unsupported" = "This story is not supported on Telegram Web yet. Try opening it in another Telegram app.";
 "Error.RequestPeer.NoRights.Channel" = "Sorry, you can't add bots to this channel.";
 "Error.RequestPeer.NoRights.Group" = "Sorry, you are not allowed to add bots to this group.";
 "JustArgument" = "%@";
@@ -793,6 +794,7 @@
 "GiftModal.Title.You" = "You gifted **%1$s** a %2$s subscription to Telegram Premium.";
 "GiftCode.Activation.After" = "You can activate this gift code after **%1$s** or **[send the link]()** to a friend.";
 "Story.ViewPost" = "View Message";
+"Story.ViewGift" = "View Gift";
 "RequestPeer.MultipleLimit" = "You can select up to %s.";
 "RequestPeer.MultipleLimit.Users_one" = "%d user";
 "RequestPeer.MultipleLimit.Users_other" = "%d users";
@@ -2176,6 +2178,9 @@
 "Done" = "Done";
 "PaymentShippingMethod" = "Shipping methods";
 "PaymentNoShippingMethod" = "Sorry, it is not possible to deliver to your address.";
+"PaymentFailed" = "Sorry, the payment was declined.";
+"PaymentPrecheckoutFailed" = "Sorry, the payment was cancelled by the bot.";
+"PaymentConnectionFailed" = "Unable to reach payment server. Please check your internet connection and try again.";
 "PaymentShippingInfo" = "Shipping Information";
 "PaymentShippingAddress" = "Shipping address";
 "PaymentShippingAddress1Placeholder" = "Address 1 (Street)";
@@ -2634,7 +2639,7 @@
 "StoriesMovedToDialogs" = "Stories of **%s** were moved to **Chats**.";
 "StoriesRemoveFromRecent" = "Remove from Recent";
 "StoriesRemovedFromRecent" = "Stories of **%s** were removed from Recent.";
-"StorySharedTo" = "Story forwarded to **%s**.";
+"StorySharedTo" = "Story forwarded to %s.";
 "StorySharedToSavedMessages" = "Story forwarded to **Saved Messages**";
 "BoostLinkButton" = "BOOST";
 "SaveToPosts" = "Post to Profile";

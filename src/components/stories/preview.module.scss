@@ -1,0 +1,14 @@
+// in place of media this client cannot show: iOS's grey, with the note centred on it in the viewer
+.Unsupported {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: #181818;
+  color: #fff;
+  font-size: var(--font-size-16);
+  line-height: var(--line-height-16);
+  text-align: center;
+}

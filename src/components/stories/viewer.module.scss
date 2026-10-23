@@ -613,7 +613,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       pointer-events: all;
       cursor: pointer;
       overflow: hidden;
-      border-radius: 6px;
+      border-radius: var(--area-radius);
       z-index: 1;
       pointer-events: all;
 
@@ -641,6 +641,11 @@ $color-inactive: rgba(255, 255, 255, .5);
           &.dark {
             background-color: #000;
             opacity: .5;
+          }
+
+          // the bubble's tail on the other side; the reaction in it stays as it is
+          &.flipped {
+            transform: scaleX(-1);
           }
         }
 
@@ -702,6 +707,18 @@ $color-inactive: rgba(255, 255, 255, .5);
           }
         }
       }
+    }
+
+    // the address under "Open Link" in a link area's tooltip, cut short at the tooltip's edge
+    &MediaAreaUrl {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: match-parent;
+      font-size: .875em;
+      font-weight: var(--font-weight-normal);
+      color: rgba(255, 255, 255, .6);
     }
 
     &MediaAreas {

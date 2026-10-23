@@ -81,6 +81,7 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {IS_MOBILE} from '@environment/userAgent';
 import formatNumber from '@helpers/number/formatNumber';
 import callbackify from '@helpers/callbackify';
+import noop from '@helpers/noop';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import wrapReply from '@components/wrappers/reply';
@@ -105,10 +106,11 @@ import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {showStorySettingsForStory} from '@components/popups/storySettings';
 import {useAppConfig} from '@stores/appState';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
-import {handleShareStory} from './share';
+import {handleShareStory, makeStoryLink} from './share';
 import createListenerSetter from '@helpers/solid/createListenerSetter';
 import pillStyles from '@components/stories/storyPill.module.scss';
 import StoryWeatherArea, {toggleTemperatureUnit} from '@components/stories/weatherArea';
+import getMediaAreaRadius from '@components/stories/mediaAreaRadius';
 import StoryMusicPanel, {STORY_MUSIC_PANEL_CLASS} from '@components/stories/musicPanel';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
 import type {MyDocument} from '@appManagers/appDocsManager';
@@ -527,6 +529,8 @@ const StoryInput = (props: {
 };
 
 const JOINER = ' • ';
+// * the marks, embeddings, overrides and isolates that change the order text is shown in
+const BIDI_CONTROLS_REG_EXP = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
 const renderStoryReaction = async(props: {
   reaction: Reaction,
@@ -611,6 +615,8 @@ const StoryMediaArea = (props: {
   const isPost = createMemo(() => props.mediaArea._ === 'mediaAreaChannelPost');
   const isLink = createMemo(() => props.mediaArea._ === 'mediaAreaUrl');
   const isWeather = createMemo(() => props.mediaArea._ === 'mediaAreaWeather');
+  const isGift = createMemo(() => props.mediaArea._ === 'mediaAreaStarGift');
+  const middleware = createMiddleware().get();
 
   // * the place leads to the public stories posted from it, its map is there too
   const onLocationClick = () => {
@@ -643,14 +649,18 @@ const StoryMediaArea = (props: {
   };
 
   const showNotCenteredTooltip = (_props: {
-    callback: () => void,
-    text: HTMLElement
+    callback: () => void | Promise<void>,
+    text: HTMLElement,
+    subtitle?: HTMLElement
   }) => {
+    // * what the action waits for before it goes: the story stands still until then, or it could run
+    // * out and take the area, and the action with it, along to the next one
+    let acting: Promise<void>;
     const a = anchorCallback(() => {
+      acting = Promise.resolve(_props.callback()).catch(noop);
       close();
-      _props.callback();
     });
-    a.append(_props.text);
+    a.append(..._props.subtitle ? [_props.text, _props.subtitle] : [_props.text]);
     const wasPlaying = !stories.paused;
     actions.pause();
     const {close} = showTooltip({
@@ -658,8 +668,9 @@ const StoryMediaArea = (props: {
       vertical: 'top',
       textElement: a,
       centerVertically: false,
-      onClose: () => {
-        if(wasPlaying) {
+      onClose: async() => {
+        await acting;
+        if(wasPlaying && middleware()) {
           actions.play();
         }
       }
@@ -668,14 +679,40 @@ const StoryMediaArea = (props: {
   };
 
   const onPostClick = () => {
-    const openPost = () => {
+    const {channel_id, msg_id} = props.mediaArea as MediaArea.mediaAreaChannelPost;
+    const peerId = channel_id.toPeerId(true);
+    // * `lastMsgId` is the client's id of the post, not the server's: given the server's, the chat
+    // * stopped at the nearest post and said the one asked for did not exist
+    const open = (lastMsgId?: number) => {
       props.close(() => {
-        const mediaArea = props.mediaArea as MediaArea.mediaAreaChannelPost;
-        hotReloadGuard.appImManager.setInnerPeer({
-          peerId: mediaArea.channel_id.toPeerId(true),
-          lastMsgId: mediaArea.msg_id
-        });
+        hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId});
       });
+    };
+
+    // * as iOS has it: the post is looked up first. One that is gone says so over the story, and a
+    // * channel this account cannot read opens as it is, without the post
+    const openPost = async() => {
+      const managers = bindManagersToSession(rootScope.managers);
+      const chatId = peerId.toChatId();
+      const mid = await managers.appMessagesIdsManager.generateMessageId(msg_id, chatId);
+      const message = await managers.appMessagesManager.reloadMessage(peerId, mid);
+      if(!middleware()) return;
+      if(message) {
+        open(mid);
+        return;
+      }
+
+      const [chat, isInChat, username] = await Promise.all([
+        managers.appChatsManager.getChat(chatId),
+        managers.appChatsManager.isInChat(chatId),
+        managers.appPeersManager.getPeerUsername(peerId)
+      ]);
+      if(!middleware()) return;
+      if(chat && !isInChat && !username) {
+        open();
+      } else {
+        toastNew({langPackKey: 'MessageNotFound'});
+      }
     };
 
     showNotCenteredTooltip({
@@ -685,18 +722,39 @@ const StoryMediaArea = (props: {
   };
 
   const onLinkClick = () => {
+    const url = (props.mediaArea as MediaArea.mediaAreaUrl).url;
+    // * the address goes under the action, as iOS and Android have it, read left to right; a
+    // * direction override in it is left out, or it could make the address read as another
+    const urlElement = document.createElement('span');
+    urlElement.classList.add(styles.ViewerStoryMediaAreaUrl);
+    urlElement.dir = 'ltr';
+    urlElement.textContent = url.replace(BIDI_CONTROLS_REG_EXP, '');
+
     showNotCenteredTooltip({
       callback: () => {
-        const url = (props.mediaArea as MediaArea.mediaAreaUrl).url;
         if(wrapUrl(url).onclick) {
           props.close(() => {
             hotReloadGuard.appImManager.openUrl(url);
           });
         } else {
+          // * a lookalike host is asked about there, before it opens
           safeWindowOpen(url);
         }
       },
-      text: i18n('OpenUrlTitle')
+      text: i18n('OpenUrlTitle'),
+      subtitle: urlElement
+    });
+  };
+
+  const onGiftClick = () => {
+    const {slug} = props.mediaArea as MediaArea.mediaAreaStarGift;
+    showNotCenteredTooltip({
+      callback: () => {
+        props.close(() => {
+          hotReloadGuard.appImManager.openUrl(`https://t.me/nft/${slug}`);
+        });
+      },
+      text: i18n('Story.ViewGift')
     });
   };
 
@@ -752,6 +810,7 @@ const StoryMediaArea = (props: {
             class={classNames(
               styles.ViewerStoryMediaAreaReactionBubbles,
               mediaArea.pFlags.dark && styles.dark,
+              mediaArea.pFlags.flipped && styles.flipped,
               count() && styles.hasCount
             )}
           >
@@ -789,12 +848,14 @@ const StoryMediaArea = (props: {
   } else if(isLink()) {
     onTypeClick = onLinkClick;
     props.setReady(true);
+  } else if(isGift()) {
+    onTypeClick = onGiftClick;
+    props.setReady(true);
   } else if(isWeather()) {
     onTypeClick = toggleTemperatureUnit;
     setChildren(
       <StoryWeatherArea
         mediaArea={props.mediaArea as MediaArea.mediaAreaWeather}
-        width={w}
         height={h}
         storyHeight={stories.height}
       />
@@ -810,6 +871,7 @@ const StoryMediaArea = (props: {
     if(isLocation()) return 'StoryViewLocation';
     if(isPost()) return 'Story.ViewPost';
     if(isLink()) return 'OpenUrlTitle';
+    if(isGift()) return 'Story.ViewGift';
     return undefined;
   });
 
@@ -829,7 +891,7 @@ const StoryMediaArea = (props: {
         ] : []),
         isWeather() && styles.ViewerStoryMediaAreaWeather
       )}
-      style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
+      style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg; --area-radius: ${getMediaAreaRadius(props.mediaArea.coordinates)}`}
       onClick={onClick}
       role={interactiveLabel() ? 'button' : undefined}
       tabindex={Modes.a11y && interactiveLabel() ? 0 : undefined}
@@ -924,16 +986,9 @@ const Stories = (props: {
     handleShareStory({
       story: currentStory(),
       peerId: props.state.peerId,
-      onSend: async(toPeerId: PeerId) => {
-        showMessageSentTooltip(
-          i18n(
-            toPeerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
-            [await wrapPeerTitle({peerId: toPeerId})]
-          )
-        )
-      },
+      onSent: (text) => showMessageSentTooltip(text),
       onClose: bindOnAnyPopupClose(wasPlaying)
-    })
+    });
   };
 
   const onShareButtonClick = (e: MouseEvent, listenTo: HTMLElement) => {
@@ -1370,12 +1425,9 @@ const Stories = (props: {
     });
 
     createEffect(() => {
-      const media = untrack(() => getMediaFromMessage(story));
-      const mediaId = media.id;
-      if(!mediaId) {
-        uContent();
-        return;
-      }
+      // * read for the effect to follow: an edit that puts other media in is wrapped anew. Media of a
+      // * kind this client cannot show has no id, and is wrapped all the same, into a note in its place
+      void untrack(() => getMediaFromMessage(story)).id;
 
       uContent(null);
 
@@ -1837,7 +1889,7 @@ const Stories = (props: {
   );
 
   const copyLink = () => {
-    copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(peer)[0]}/s/${currentStory().id}`);
+    copyTextToClipboard(makeStoryLink(getPeerActiveUsernames(peer)[0], currentStory().id));
     toastNew({
       langPackKey: 'LinkCopied'
     });

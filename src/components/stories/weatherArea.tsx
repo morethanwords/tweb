@@ -7,6 +7,7 @@ import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import formatTemperature, {getDefaultTemperatureUnit} from '@helpers/temperature';
 import styles from '@components/stories/weatherArea.module.scss';
+import getMediaAreaRadius from '@components/stories/mediaAreaRadius';
 
 export function getTemperatureUnit() {
   return appSettings.temperatureUnit ?? getDefaultTemperatureUnit();
@@ -32,8 +33,6 @@ export default function StoryWeatherArea(props: {
   mediaArea: MediaArea.mediaAreaWeather,
   /** The area's own height, as a percentage of the story — the pill's whole scale. */
   height: number,
-  /** The area's width, as a percentage of the story — what the corner radius is relative to. */
-  width: number,
   /** Story height in px, only to pick the resolution the emoji is rendered at. */
   storyHeight: number
 }) {
@@ -62,11 +61,8 @@ export default function StoryWeatherArea(props: {
 
   const temperature = createMemo(() => formatTemperature(props.mediaArea.temperature_c, getTemperatureUnit()));
 
-  // the radius arrives as a percentage of the area's WIDTH (iOS / Android); a pill can never be
-  // rounder than half its height, and an area that omits it gets Android's .2 of the height
-  const radius = coordinates.radius !== undefined ?
-    `calc(var(--stories-width) * ${props.width / 100 * coordinates.radius / 100})` :
-    'calc(var(--weather-size) * .2)';
+  // a pill can never be rounder than half its height
+  const radius = getMediaAreaRadius(coordinates);
 
   return (
     <div

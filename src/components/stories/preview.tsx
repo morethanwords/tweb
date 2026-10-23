@@ -18,6 +18,8 @@ import {Middleware} from '@helpers/middleware';
 import appDownloadManager from '@lib/appDownloadManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {IS_H265_SUPPORTED} from '@environment/videoSupport';
+import {i18n} from '@lib/langPack';
+import styles from '@components/stories/preview.module.scss';
 
 let processing = false;
 const pollStories = () => {
@@ -151,7 +153,7 @@ export const wrapStoryMedia = (props: {
   useBlur?: boolean | number
 } & CommonProperties) => {
   const [thumb, setThumb] = createSignal<HTMLImageElement | HTMLCanvasElement>();
-  const [media, setMedia] = createSignal<HTMLImageElement | HTMLVideoElement>();
+  const [media, setMedia] = createSignal<HTMLImageElement | HTMLVideoElement | HTMLDivElement>();
   const [ready, setReady] = createSignal(false);
 
   let map = wrappedStories.get(props.peerId);
@@ -292,6 +294,25 @@ export const wrapStoryMedia = (props: {
       });
 
       return result;
+    },
+
+    // * media of a kind this client cannot show (a newer layer's): a note in its place, as iOS and
+    // * Android have it — in the viewer, a tile has no room for one — and the story goes on by its
+    // * timer, as a photo does. Ready once whoever wrapped it has started listening, as a photo is;
+    // * only the viewer takes the note for its media, a tile's owner reads a photo's thumb off that
+    unsupported: () => {
+      const placeholder = document.createElement('div');
+      placeholder.classList.add(styles.Unsupported);
+      if(props.forViewer) {
+        placeholder.append(i18n('Story.Unsupported'));
+      }
+
+      div.append(placeholder);
+      queueMicrotask(() => {
+        if(!middleware()) return;
+        setReady(true);
+        if(props.forViewer) setMedia(placeholder);
+      });
     }
   };
 
@@ -309,6 +330,11 @@ export const wrapStoryMedia = (props: {
       mediaResult = wrappers.video(messageMedia);
       // }
 
+      break;
+    }
+
+    default: {
+      wrappers.unsupported();
       break;
     }
   }

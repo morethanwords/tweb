@@ -177,6 +177,19 @@ defineStories('Pickers', [
     }
   },
   {
+    id: 'forward/story',
+    title: 'Share a story',
+    open: async(ctx) => {
+      const {default: showForwardPopup} = await import('@components/popups/forward');
+      const peerId = ctx.peer('channel');
+      await showForwardPopup(undefined, undefined, undefined, undefined, {
+        peerId,
+        id: 1,
+        link: 'https://t.me/telegram/s/1'
+      });
+    }
+  },
+  {
     id: 'shareUrl',
     title: 'Share a link',
     open: async(ctx) => {

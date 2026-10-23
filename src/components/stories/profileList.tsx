@@ -40,8 +40,7 @@ import LottieAnimation from '@components/lottieAnimation';
 import Tabs from '@components/tabs';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {handleShareStory} from './share';
-import wrapPeerTitle from '../wrappers/peerTitle';
+import {handleShareStory, makeStoryLink} from './share';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
 
@@ -215,7 +214,7 @@ class StoriesContextMenu {
       text: 'CopyLink',
       onClick: async() => {
         const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
-        copyTextToClipboard(`https://t.me/${username}/s/${this.storyItem.id}`);
+        copyTextToClipboard(makeStoryLink(username, this.storyItem.id));
         toastNew({langPackKey: 'LinkCopied'});
       },
       verify: async() => {
@@ -228,13 +227,7 @@ class StoriesContextMenu {
       onClick: async() => {
         handleShareStory({
           story: this.storyItem,
-          peerId: this.peerId,
-          onSend: async(toPeerId: PeerId) => {
-            toastNew({
-              langPackKey: toPeerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
-              langPackArguments: [await wrapPeerTitle({peerId: toPeerId})]
-            })
-          }
+          peerId: this.peerId
         });
       },
       verify: async() => {

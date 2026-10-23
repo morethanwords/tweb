@@ -381,7 +381,14 @@ function _StoriesList(props: {
       });
     };
 
-    let peer: PeerStories, isSelf: boolean, removal: 'hide' | 'remove';
+    let peer: PeerStories, isSelf: boolean, isBroadcast: boolean, removal: 'hide' | 'remove';
+    const openChat = () => {
+      hotReloadGuard.appImManager.setInnerPeer({
+        peerId: peer.peerId,
+        type: ChatType.Chat
+      });
+    };
+
     createContextMenu({
       buttons: [{
         icon: 'stories',
@@ -400,23 +407,23 @@ function _StoriesList(props: {
       }, {
         icon: 'message',
         text: 'SendMessage',
-        onClick: () => {
-          hotReloadGuard.appImManager.setInnerPeer({
-            peerId: peer.peerId,
-            type: ChatType.Chat
-          });
-        },
+        onClick: openChat,
+        verify: () => !isSelf && peer.peerId.isUser()
+      }, {
+        icon: 'user',
+        text: 'VoiceChat.OpenProfile',
+        onClick: () => hotReloadGuard.showPeerProfilePopup({peerId: peer.peerId}),
         verify: () => !isSelf && peer.peerId.isUser()
       }, {
         icon: 'channel',
         text: 'OpenChannel2',
-        onClick: () => {
-          hotReloadGuard.appImManager.setInnerPeer({
-            peerId: peer.peerId,
-            type: ChatType.Chat
-          });
-        },
-        verify: () => !peer.peerId.isUser()
+        onClick: openChat,
+        verify: () => isBroadcast
+      }, {
+        icon: 'newgroup',
+        text: 'OpenGroup2',
+        onClick: openChat,
+        verify: () => !peer.peerId.isUser() && !isBroadcast
       }, {
         icon: 'mute',
         text: 'NotificationsStoryMute2',
@@ -432,6 +439,8 @@ function _StoriesList(props: {
       }, {
         icon: 'eyecross',
         text: 'Stories.StealthMode.View',
+        // * another user's stories only, as iOS and Android have it
+        verify: () => !isSelf && peer.peerId.isUser(),
         onClick: () => {
           const {peerId} = peer;
           showStoriesStealthModePopup({
@@ -469,7 +478,10 @@ function _StoriesList(props: {
       onOpen: async(e, target) => {
         peer = itemsTarget.get(target as HTMLDivElement);
         isSelf = peer.peerId === rootScope.myId;
-        removal = await rootScope.managers.appStoriesManager.getPeerStoriesRemoval(peer.peerId);
+        [removal, isBroadcast] = await Promise.all([
+          rootScope.managers.appStoriesManager.getPeerStoriesRemoval(peer.peerId),
+          rootScope.managers.appPeersManager.isBroadcast(peer.peerId)
+        ]);
       },
       onClose: () => {
         peer = undefined;
