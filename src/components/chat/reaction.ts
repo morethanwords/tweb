@@ -31,6 +31,7 @@ import {Sparkles} from '@components/sparkles';
 import {AnimatedCounter} from '@components/animatedCounter';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import {IS_MOBILE} from '@environment/userAgent';
+import drawMediaToCanvas, {DrawableMedia} from '@helpers/canvas/drawMediaToCanvas';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -313,27 +314,12 @@ function getReactionStickerDoc(reaction: Reaction, managers: ReadingManagers) {
   }
 }
 
-function mediaToCanvas(media: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement) {
-  let width: number, height: number;
-  if(media instanceof HTMLVideoElement) {
-    width = media.videoWidth;
-    height = media.videoHeight;
-  } else if(media instanceof HTMLImageElement) {
-    width = media.naturalWidth;
-    height = media.naturalHeight;
-  } else {
-    width = media.width;
-    height = media.height;
-  }
-
-  if(!width || !height) {
+function mediaToCanvas(media: DrawableMedia) {
+  const canvas = drawMediaToCanvas(media);
+  if(!canvas) {
     throw new Error('rendered media has no size');
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext('2d').drawImage(media, 0, 0);
   return normalizeReactionSource(canvas);
 }
 
@@ -405,26 +391,10 @@ function captureClickedSnapshot(container: HTMLElement): HTMLCanvasElement {
       ).find((media) => !media.closest('.hide'));
 
     if(media) {
-      let width: number, height: number;
-      if(media instanceof HTMLVideoElement) {
-        width = media.videoWidth;
-        height = media.videoHeight;
-      } else if(media instanceof HTMLImageElement) {
-        width = media.naturalWidth;
-        height = media.naturalHeight;
-      } else {
-        width = media.width;
-        height = media.height;
-      }
-
-      if(!width || !height) {
+      snapshot = drawMediaToCanvas(media);
+      if(!snapshot) {
         return;
       }
-
-      snapshot = document.createElement('canvas');
-      snapshot.width = width;
-      snapshot.height = height;
-      snapshot.getContext('2d').drawImage(media, 0, 0);
     } else {
       // * a custom emoji is painted on the shared renderer canvas - copy its region
       const customEmoji = container instanceof CustomEmojiElement ?

@@ -96,6 +96,9 @@ export default class ChatRecording {
   // menu, so the click that ends the press doesn't also start a recording.
   private recordModeLongPressed = false;
   private pinnedEphemeralSendingParams: MessageSendingParams;
+  // whether the recording goes as an ephemeral message, kept till it has stopped: the pinned params are taken
+  // as its data comes, and the native recorders hand their data over before they say they have stopped
+  private recordingEphemeral = false;
 
   private releaseMediaPlayback: () => void;
 
@@ -178,6 +181,11 @@ export default class ChatRecording {
     attachClickEvent(this.input.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.input.listenerSetter});
 
     this.recorder.onstop = () => {
+      // the send button's circle flies into the voice message's play button
+      if(this.isStoppedToSend()) {
+        this.input.chat.bubbles?.sendFlights?.captureVoice({button: this.input.btnSend});
+      }
+
       this.setRecording(false);
       this.input.chatInput.classList.remove('is-locked');
 
@@ -252,6 +260,12 @@ export default class ChatRecording {
 
     if(this.videoRecorder) {
       this.videoRecorder.onstop = () => {
+        // the preview flies into the round video's circle, instead of fading
+        const circle = this.videoRecordingPanel?.element.querySelector<HTMLElement>('.video-recording-circle');
+        if(circle && this.isStoppedToSend()) {
+          this.input.chat.bubbles?.sendFlights?.captureRound({circle, video: this.videoRecordingPanel.previewVideo});
+        }
+
         this.setRecording(false);
         this.videoLimitReached = false;
         this.input.chatInput.classList.remove('is-locked');
@@ -832,6 +846,11 @@ export default class ChatRecording {
     return !!this.recorder;
   }
 
+  // a recording that stops now is sent to this chat as it is shown
+  private isStoppedToSend() {
+    return !this.recordCanceled && !this.input.scheduleDate && !this.recordingEphemeral;
+  }
+
   // Handle the send button's recording branch: stop+send (or cancel if too
   // short). Called by ChatInput.onBtnSendClick when a recording is active.
   public handleSendButtonClick() {
@@ -952,6 +971,7 @@ export default class ChatRecording {
       replyToMsgId: sendingParams.replyToMsgId,
       replyTo: sendingParams.replyTo
     } : undefined;
+    this.recordingEphemeral = !!sendingParams.ephemeral;
     this.isStartingRecording = true;
     const promise = type === 'video' ? this.startVideoRecording() : this.startVoiceRecording();
     Promise.resolve(promise).catch(() => {}).finally(() => {

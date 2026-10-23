@@ -423,6 +423,15 @@ export function getSendingStatusIconState(host: HTMLElement) {
   return getRestingState(host);
 }
 
+/**
+ * A copy of an icon made by SendingStatusIcon, cloned while a change of it may have been playing (its layers come
+ * along, their animations do not): it stands in its state, at rest
+ */
+export function settleSendingStatusIconCopy(copy: HTMLElement) {
+  copy.classList.remove(styles.moving, styles.hold);
+  copy.querySelectorAll(`:scope > .${styles.layer}`).forEach((layer) => layer.remove());
+}
+
 // the still drawing of a state, for the test that pins it to the glyph
 export function getSendingStatusIconDrawing(state: SendingStatusIconState) {
   return {

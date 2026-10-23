@@ -276,8 +276,12 @@ import useReducedMotion from '@stores/reducedMotion';
 import wheelDeltaToPixels from '@helpers/dom/wheelDeltaToPixels';
 import {TEXT_LINK_ATTRIBUTE} from '@helpers/dom/linkPress';
 import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown/constants';
+import SendFlights, {SEND_FLIGHT_SCROLL, type SendFlight} from '@components/chat/sendFlights';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
+
+// how a scroll goes when it is not the usual one
+type ScrollTiming = {duration: number, transition: (value: number) => number};
 
 export type BubbleContext = {
   bubble: HTMLElement,
@@ -936,6 +940,8 @@ export default class ChatBubbles {
   private setPeerTempId: number = 0;
 
   private renderNewPromises: Set<Promise<any>> = new Set();
+  // what is sent flies into its message
+  public sendFlights: SendFlights;
   private updateGradient: boolean;
 
   private extendedMediaMessages: Set<number> = new Set();
@@ -1024,6 +1030,8 @@ export default class ChatBubbles {
     // PiP pop-in/out: snapshot the scroll BEFORE the window flips (DOM still at the old size, nothing
     // reflowed), then re-pin once the moved DOM has settled in the new window (rAF; two frames safe).
     this.appWindowUnsubs.push(onBeforeAppWindowChange(this.saveReflowScroll));
+    // a flight is drawn in one window, on its frames and its clock: one on its way does not go along
+    this.appWindowUnsubs.push(onBeforeAppWindowChange(() => this.sendFlights?.abortAll()));
     this.appWindowUnsubs.push(onAppWindowChange(() => {
       const win = getAppWindow();
       win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
@@ -1065,6 +1073,21 @@ export default class ChatBubbles {
     this.lazyLoadQueue.queueId = ++queueId;
 
     this.changedMids = new Map();
+    this.sendFlights = new SendFlights({
+      container: () => this.chat.container,
+      canFly: () => this.scrolledDown &&
+        this.scrollable.loadedAll.bottom &&
+        !this.chat.isPreview &&
+        [ChatType.Chat, ChatType.Discussion, ChatType.Saved].includes(this.chat.type) &&
+        !this.container.classList.contains('is-selecting'),
+      viewportHeight: () => this.chat.bubblesViewport.getBoundingClientRect().height,
+      scrollToEnd: () => {
+        const {container} = this.scrollable;
+        return Math.max(0, container.scrollHeight - container.clientHeight - container.scrollTop);
+      },
+      // the paddings too: the one under the list follows the composer as it grows or shrinks
+      observed: () => [this.scrollable.container, this.chatInner, this.paddingTop, this.paddingBottom].filter(Boolean)
+    });
 
     // this.reactions = new Map();
 
@@ -1196,6 +1219,7 @@ export default class ChatBubbles {
       }
 
       this.changedMids.set(tempId, mid);
+      this.sendFlights.rekey(tempMessage, message);
 
       this.needUpdate.forEach((obj) => {
         if(obj.peerId === tempMessage.peerId && obj.mid === tempId) {
@@ -2305,7 +2329,7 @@ export default class ChatBubbles {
       if(!this.scrollable.loadedAll.bottom) {
         this.chat.setMessageId();
       } else {
-        this.renderNewMessage(message, true);
+        this.renderNewMessage(message, true, this.sendFlights.claim(message));
       }
 
       this.updateHasMessages();
@@ -3252,10 +3276,15 @@ export default class ChatBubbles {
     if(entry.isIntersecting) {
       this.observer.unobserve(entry.target, callback);
 
-      const attachmentDiv: HTMLElement = entry.target.querySelector(selector);
-      getHeavyAnimationPromise().then(() => {
-        if(isInDOM(attachmentDiv)) {
-          simulateClickEvent(attachmentDiv);
+      // what is sent flies into its bubble, and what is to be clicked may be away in the flight, or stood in
+      // for: it is looked for once the flight is over
+      const bubble = entry.target as HTMLElement;
+      const landed = this.sendFlights.whenLanded(bubble);
+      const attachmentDiv: HTMLElement = landed ? undefined : bubble.querySelector(selector);
+      Promise.all([getHeavyAnimationPromise(), landed]).then(() => {
+        const element = landed ? bubble.querySelector<HTMLElement>(selector) : attachmentDiv;
+        if(isInDOM(element)) {
+          simulateClickEvent(element);
         }
       });
     }
@@ -5588,16 +5617,20 @@ export default class ChatBubbles {
     };
   }
 
-  private renderNewMessage(message: MyMessage, scrolledDown?: boolean) {
-    const promise = this._renderNewMessage(message, scrolledDown);
+  private renderNewMessage(message: MyMessage, scrolledDown?: boolean, sendFlight?: SendFlight) {
+    const promise = this._renderNewMessage(message, scrolledDown, sendFlight);
     this.renderNewPromises.add(promise);
     promise.catch(noop).finally(() => {
       this.renderNewPromises.delete(promise);
+      // a message that is not shown at the end of the list after all does not fly
+      if(sendFlight && !sendFlight.launched) {
+        sendFlight.abort(true);
+      }
     });
     return promise;
   }
 
-  private async _renderNewMessage(message: MyMessage, scrolledDown?: boolean) {
+  private async _renderNewMessage(message: MyMessage, scrolledDown?: boolean, sendFlight?: SendFlight) {
     if(!this.scrollable.loadedAll.bottom) { // seems search active or sliced
       // this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
       const setPeerPromise = this.chat.setPeerPromise;
@@ -5686,11 +5719,18 @@ export default class ChatBubbles {
           bubble = this.getBubble(fullMid);
         }
 
-        const promise = bubble ? this.scrollToBubbleEnd(bubble) : this.scrollToEnd();
+        // the composer may have shrunk since the message came (a multi-line draft cleared), pinning the view
+        // to the bottom: the pin would jump to the new end before the scroll below has started
+        this.chat.cancelPreservePaddingScroll();
+        // a message that flies in has the list follow it as iOS has it: in the time and the curve of its way up
+        const promise = bubble ? this.scrollToBubbleEnd(bubble) : this.scrollToEnd(sendFlight && SEND_FLIGHT_SCROLL);
         if(isPaddingNeeded) {
           // it will be called only once even if was set multiple times (that won't happen)
           promise.then(unsetPadding);
         }
+
+        // the message may have been sent before its bubble came out, and the bubble is under its new id then
+        sendFlight?.launch(this.getBubble(message.peerId, this.changedMids.get(message.mid) ?? message.mid));
 
         // this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
 
@@ -5713,7 +5753,8 @@ export default class ChatBubbles {
     position: ScrollLogicalPosition,
     forceDirection?: FocusDirection,
     forceDuration?: number,
-    focusOn?: MessageFocus
+    focusOn?: MessageFocus,
+    transitionFunction?: (value: number) => number
   ) {
     const bubble = findUpClassName(element, 'bubble');
 
@@ -5770,6 +5811,7 @@ export default class ChatBubbles {
       margin,
       forceDirection,
       forceDuration,
+      transitionFunction,
       axis: 'y',
       getElementSize: focus && (() => focus.height),
       getNormalSize: isChangingHeight ? ({rect}) => {
@@ -5813,11 +5855,11 @@ export default class ChatBubbles {
     return promise;
   }
 
-  public scrollToEnd() {
-    return this.scrollToBubbleEnd(this.chatInner);
+  public scrollToEnd(scroll?: ScrollTiming) {
+    return this.scrollToBubbleEnd(this.chatInner, scroll);
   }
 
-  public async scrollToBubbleEnd(bubble: HTMLElement) {
+  public async scrollToBubbleEnd(bubble: HTMLElement, scroll?: ScrollTiming) {
     /* if(DEBUG) {
       this.log('scrollToNewLastBubble: will scroll into view:', bubble);
     } */
@@ -5825,7 +5867,7 @@ export default class ChatBubbles {
     if(bubble) {
       this.scrollingToBubble = bubble;
       const middleware = this.getMiddleware();
-      await this.scrollToBubble(bubble, 'end', undefined, undefined);
+      await this.scrollToBubble(bubble, 'end', undefined, scroll?.duration, undefined, scroll?.transition);
       if(!middleware()) return;
       this.scrollingToBubble = undefined;
     }
@@ -6115,6 +6157,7 @@ export default class ChatBubbles {
 
     this.readMetricsTracker?.finalizeAll();
     this.releaseChatInnerMiddleware();
+    this.sendFlights.abortAll();
 
     this.destroyScrollable();
 
@@ -6235,6 +6278,7 @@ export default class ChatBubbles {
 
     this.middlewareHelper.clean();
     this.releaseChatInnerMiddleware();
+    this.sendFlights.abortAll();
     this.solidMessageBodies.clear();
     this.pendingStreamedMessageUpdates.clear();
     this.pendingRerenders.clear();
@@ -7604,6 +7648,9 @@ export default class ChatBubbles {
       boxSize?: MediaSize,
       manual?: boolean,
       initFrame?: number,
+      // it flies into its message as the list scrolls to it, while the list's queue is locked: it is loaded at once,
+      // to fly as itself
+      eager?: boolean,
       noFadeIn?: boolean,
       width?: number,
       height?: number
@@ -7615,6 +7662,7 @@ export default class ChatBubbles {
       play = true,
       manual,
       initFrame,
+      eager,
       container,
       noFadeIn,
       doc,
@@ -7654,7 +7702,7 @@ export default class ChatBubbles {
         doc,
         div: container,
         middleware: context.middleware,
-        lazyLoadQueue: manual ? undefined :this.lazyLoadQueue,
+        lazyLoadQueue: manual || eager ? undefined : this.lazyLoadQueue,
         group: manual ? 'none' : this.chat.animationGroup,
         play,
         liteModeKey: manual ? false : 'stickers_chat',
@@ -9480,7 +9528,9 @@ export default class ChatBubbles {
       entities,
       passEntities: this.passEntities,
       loadPromises,
-      lazyLoadQueue: this.lazyLoadQueue,
+      // the big emoji of a message that flies in load at once, as a sticker being sent does: the list's queue is
+      // locked while it scrolls to them
+      lazyLoadQueue: bigEmojis && this.sendFlights.getFlight(message) ? false : this.lazyLoadQueue,
       customEmojiSize,
       middleware,
       animationGroup: this.chat.animationGroup,
@@ -10656,7 +10706,14 @@ export default class ChatBubbles {
           const doc = context.messageMedia.document as MyDocument;
 
           if(doc.sticker/*  && doc.size <= 1e6 */) {
-            this.wrapSticker(context, {doc, container: context.attachmentDiv});
+            const flight = this.sendFlights.getFlight(message);
+            this.wrapSticker(context, {
+              doc,
+              container: context.attachmentDiv,
+              // a sticker sent from the panel starts where the one it flies from was
+              initFrame: flight?.startFrame,
+              eager: !!flight
+            });
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);
 
@@ -10702,7 +10759,8 @@ export default class ChatBubbles {
                 boxHeight: mediaSizes.active.regular.height,
                 withTail,
                 isOut,
-                lazyLoadQueue: this.lazyLoadQueue,
+                // as a sticker being sent: it flies into its message while the queue is locked
+                lazyLoadQueue: this.sendFlights.getFlight(message) ? undefined : this.lazyLoadQueue,
                 middleware,
                 group: this.chat.animationGroup,
                 loadPromises,

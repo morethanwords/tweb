@@ -632,7 +632,8 @@ import {Message, Chat, User, InputPeer} from '@layer';
   `test:focus` cover the popup sandbox and the sign-in screens, their `:app`
   variants the signed-in client, `test:editor:e2e` the composer, `test:peek:app`
   the hold-to-peek on photos (`components/mediaPeek`), `test:viewer:app` the
-  media viewer's paging (`components/mediaViewer`), `test:calls` the calls'
+  media viewer's paging (`components/mediaViewer`), `test:send:app` a message
+  flying out of the composer (`components/chat/sendFlights`), `test:calls` the calls'
   noise suppressor (`lib/calls/noiseSuppression`), `test:memory:app` what a long
   session leaves in memory (caches, players, registries, the workers), `test:hot:app` (with `test:popups`, and
   `test:calls`, whose worklet runs the registry) the dev server's hot updates (`scripts/hot-*.mjs`,
@@ -864,6 +865,7 @@ pnpm test:a11y:app   # Axe past the login screen (needs PLAYWRIGHT_BASE_URL)
 pnpm test:idle:app   # the profile sidebar goes idle once open (needs PLAYWRIGHT_BASE_URL)
 pnpm test:peek:app   # holding a photo peeks at it: chat, rich message, shared media (needs PLAYWRIGHT_BASE_URL)
 pnpm test:viewer:app # the media viewer: its place and header, a step pressed mid-step, paging right to left, a dead picture URL, a video's stand-in (needs PLAYWRIGHT_BASE_URL)
+pnpm test:send:app   # a sent message flies out of the composer and lands on its bubble, on the very pixels it is drawn on, moved by the compositor (nothing of it restyled while it flies) while the list makes room smoothly; its custom emoji fly with it, drawn where they stand; a sticker or a GIF from the panel and the big emoji fly themselves, held still on the frame they were chosen at; nothing flies at the reduced level (sends to Saved Messages and deletes; needs PLAYWRIGHT_BASE_URL)
 pnpm test:calls      # the calls' noise suppressor: RNNoise in its AudioWorklet, in Chromium (~30 s)
 pnpm test:memory:app # a session played several times: no isolate's heap, DOM or renderer allocator keeps growing, idle lottie heaps go back (needs PLAYWRIGHT_BASE_URL of a --static preview; ~7 min)
 pnpm test:hot:app    # every module a signed-in boot loads, run again as a hot update does: no false reload (needs PLAYWRIGHT_BASE_URL)

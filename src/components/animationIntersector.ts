@@ -183,12 +183,18 @@ export class AnimationIntersector {
   // ancestor transform), so off-screen detection alone never stops avatar videos
   // animating inside the closed panel. Driven by 'right_sidebar_toggle'.
   public toggleVideosUnder(element: HTMLElement, paused: boolean) {
+    this.toggleAnimationsUnder(element, paused, 'video');
+  }
+
+  // The same for every animation (or every one of a type) inside `element`: what is sent flies its message's
+  // own sticker, GIF or emoji held still on the frame it starts at, and lets it go on once it is in its place.
+  public toggleAnimationsUnder(element: HTMLElement, paused: boolean, type?: AnimationItemType) {
     if(!element) {
       return;
     }
 
     this.byPlayer.forEach((item) => {
-      if(item.type !== 'video' || !element.contains(item.el)) {
+      if((type && item.type !== type) || !element.contains(item.el)) {
         return;
       }
 

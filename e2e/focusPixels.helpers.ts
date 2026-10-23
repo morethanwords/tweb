@@ -17,19 +17,29 @@ function decode(buffer: Buffer) {
   return PNG.sync.read(buffer);
 }
 
-/** True when the two images differ anywhere beyond encoding noise. */
-function differs(a: PNG, b: PNG, threshold = 12) {
+/**
+ * How many pixels of the two images differ beyond encoding noise, counted up to `limit`: by the sum of their
+ * channels' differences, or by the largest of them (`byChannel`)
+ */
+export function countDifferingPixels(a: PNG, b: PNG, threshold = 12, limit = Infinity, byChannel = false) {
   const w = Math.min(a.width, b.width), h = Math.min(a.height, b.height);
+  let count = 0;
   for(let y = 0; y < h; y++) {
     for(let x = 0; x < w; x++) {
       const ia = (a.width * y + x) << 2, ib = (b.width * y + x) << 2;
-      const d = Math.abs(a.data[ia] - b.data[ib]) +
-        Math.abs(a.data[ia + 1] - b.data[ib + 1]) +
-        Math.abs(a.data[ia + 2] - b.data[ib + 2]);
-      if(d > threshold) return true;
+      const red = Math.abs(a.data[ia] - b.data[ib]);
+      const green = Math.abs(a.data[ia + 1] - b.data[ib + 1]);
+      const blue = Math.abs(a.data[ia + 2] - b.data[ib + 2]);
+      const d = byChannel ? Math.max(red, green, blue) : red + green + blue;
+      if(d > threshold && ++count >= limit) return count;
     }
   }
-  return a.width !== b.width || a.height !== b.height;
+  return count;
+}
+
+/** True when the two images differ anywhere beyond encoding noise. */
+function differs(a: PNG, b: PNG, threshold = 12) {
+  return a.width !== b.width || a.height !== b.height || countDifferingPixels(a, b, threshold, 1) > 0;
 }
 
 async function savePng(path: string, png: PNG) {

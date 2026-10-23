@@ -5132,6 +5132,15 @@ export default class ChatInput {
           return;
         }
 
+        // its text flies into its message, when it goes alone as one
+        if(textMessages === 1 && !forwarding && !flags.scheduleDate && !ephemeral && !sendingParams.suggestedPost) {
+          chat.bubbles?.sendFlights?.captureText({
+            field: this.rowsWrapper,
+            input: this.messageInput,
+            reply: this.helperType === 'reply' ? this.replyElements?.container : undefined
+          });
+        }
+
         left = true;
         // the next press has a field of its own now, while the rest of this one goes
         this.sendingMessage = undefined;
@@ -5358,6 +5367,11 @@ export default class ChatInput {
       if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
       sendingParams.confirmedPaymentResult = preparedPaymentResult;
+    }
+
+    // the sticker or the GIF flies from where it was chosen into its message
+    if(target && !isEphemeral && !sendingParams.scheduleDate) {
+      this.chat.bubbles?.sendFlights?.captureDocument({target, document});
     }
 
     this.managers.appMessagesManager.sendFile({
