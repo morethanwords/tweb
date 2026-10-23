@@ -1367,6 +1367,7 @@
 "Stories.Albums.Added_other" = "%1$d stories were added to the album.";
 "Stories.Albums.Removed_one" = "This story was removed from the album.";
 "Stories.Albums.Removed_other" = "%1$d stories were removed from the album.";
+"Stories.Reorder" = "Reorder";
 "LeastActiveCommunities" = "Least active communities";
 "InactiveChannel" = "%s, inactive for %s";
 "InactiveChannel.Group" = "group";

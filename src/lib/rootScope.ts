@@ -125,6 +125,7 @@ export type BroadcastEvents = {
   'story_album_created': {peerId: PeerId, albumId: number, albums: StoryAlbum[]},
   'story_album_updated': {peerId: PeerId, albumId: number, addStories?: StoryItem.storyItem[], deleteStories?: number[], albums: StoryAlbum[]},
   'story_album_deleted': {peerId: PeerId, albumId: number, albums: StoryAlbum[]},
+  'story_albums_updated': {peerId: PeerId, albums: StoryAlbum[]},
 
   'replies_updated': Message.message,
   'replies_short_update': Message.message,

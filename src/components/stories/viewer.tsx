@@ -57,6 +57,7 @@ import {SERVICE_PEER_ID} from '@appManagers/constants';
 import idleController from '@helpers/idleController';
 import OverlayClickHandler from '@helpers/overlayClickHandler';
 import getStoryPrivacyType, {StoryPrivacyType} from '@appManagers/utils/stories/privacyType';
+import {STORY_PRIVACY_ICONS} from '@components/stories/privacyIcons';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import removeStoriesFromRecent from '@components/stories/removeFromRecent';
 import StackedAvatars from '@components/stackedAvatars';
@@ -2696,13 +2697,6 @@ const Stories = (props: {
 
   // * privacy icon start
 
-  const privacyIconMap: {[key in StoryPrivacyType]: Icon} = {
-    close: 'star_filled',
-    contacts: 'newprivate_filled',
-    public: 'newchannel_filled',
-    selected: 'newgroup_filled'
-  };
-
   const onPrivacyIconClick = async() => {
     if(isMe) {
       await openStorySettings();
@@ -2756,7 +2750,7 @@ const Stories = (props: {
       onClick={() => onPrivacyIconClick()}
       aria-label={I18n.format('PrivacyTitle', true)}
     >
-      {Icon(privacyIconMap[privacyType()])}
+      {Icon(STORY_PRIVACY_ICONS[privacyType()])}
     </A11yButton>
   );
 

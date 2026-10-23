@@ -61,6 +61,12 @@
     }
   }
 
+  // * a plate of its own that holds no tabs, only the bar it brings: the bar stands out of it,
+  // * the plate itself having no height
+  &-selection-plate.menu-horizontal-scrollable {
+    overflow: visible;
+  }
+
   &-scroll-date.bubble.is-date {
     position: sticky;
     top: calc(var(--super-offset) + #{$menu-height});
@@ -337,8 +343,78 @@
       border-radius: $border-radius-big;
       overflow: hidden;
 
+      // * the tile held may be carried past the edge of the grid
+      &.is-reordering {
+        overflow: visible;
+      }
+
       &-item {
         padding-bottom: 136.36363636%;
+
+        @include sortable-item-transition();
+
+        // * while the stories are rearranged, the ones that can move stand back a little, as on iOS
+        // * and Android - their picture cut in rather than the tile scaled, since a scale would shrink
+        // * the drag's own moves and a cut tile would cut its focus ring; the one held follows the
+        // * pointer, above the rest
+        &.is-reorderable {
+          cursor: grab;
+
+          > .grid-item-media {
+            clip-path: inset(.25rem round $border-radius-medium);
+          }
+
+          > .video-time,
+          > .grid-item-corner-icon {
+            margin: .25rem;
+          }
+        }
+
+        &.is-dragging {
+          z-index: 3;
+          opacity: .8;
+        }
+      }
+
+      // * what sets a story apart, in its top corner: pinned to the top, or who can see it. The
+      // * selection's checkbox takes the corner while stories are selected
+      &-item-corner-icon {
+        position: absolute;
+        top: .25rem;
+        inset-inline-end: .25rem;
+        z-index: 1;
+        color: #fff;
+        font-size: 1.25rem;
+        text-shadow: 0 0 3px rgba(0, 0, 0, .45);
+
+        @include animation-level(1) {
+          transition: opacity var(--transition-standard-in);
+        }
+
+        // * the pin's glyph has room of its own around it
+        &.is-pin {
+          top: 0;
+          inset-inline-end: 0;
+          font-size: 1.75rem;
+        }
+
+        .is-selecting & {
+          opacity: 0;
+        }
+      }
+
+      // * how many have seen it, in the pill a video's duration has elsewhere
+      &-item-views {
+        top: auto;
+        bottom: .25rem;
+        display: flex;
+        align-items: center;
+        gap: .125rem;
+        padding-inline-start: .25rem;
+
+        &-icon {
+          font-size: 1rem;
+        }
       }
 
       &.one {
@@ -456,6 +532,11 @@
       // text-transform: capitalize;
       margin-inline-start: 1.5rem;
     }
+  }
+
+  // * the bar of the reorder mode has no button before its title
+  &-reorder-title {
+    margin-inline-start: .5rem;
   }
 
   &-pinned-gifts {

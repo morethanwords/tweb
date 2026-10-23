@@ -1530,6 +1530,7 @@ const lang = {
     'one_value': 'This story was removed from the album.',
     'other_value': '%1$d stories were removed from the album.'
   },
+  'Stories.Reorder': 'Reorder',
   'LeastActiveCommunities': 'Least active communities',
   'InactiveChannel': '%s, inactive for %s',
   'InactiveChannel.Group': 'group',

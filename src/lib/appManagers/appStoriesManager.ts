@@ -2,6 +2,9 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import toArray from '@helpers/array/toArray';
+import putInOrder from '@helpers/array/putInOrder';
+import noop from '@helpers/noop';
+import filterUnique from '@helpers/array/filterUnique';
 import assumeType from '@helpers/assumeType';
 import callbackify from '@helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
@@ -34,6 +37,10 @@ type AlbumCacheItem = {
   ids: StoryItem['id'][],
   count: number,
   loadedAll: boolean,
+  /** a write to it was refused and it could not be read again: it is, from the top, when it is next loaded */
+  stale?: boolean,
+  /** changes whenever its list is replaced, so that a page asked for before does not land in the new one */
+  generation?: number
 }
 type StoriesPeerCache = {
   peerId: PeerId,
@@ -54,10 +61,21 @@ type StoriesPeerCache = {
   archiveCount?: number,
   albums: Map<number, AlbumCacheItem>,
   albumsOrder?: number[],
-  albumsHash?: Long
+  albumsHash?: Long,
+  /** a write to the albums was refused and they could not be read again: they are, when they are next asked for */
+  albumsStale?: boolean
 };
 
 type ExpiringItem = {peerId: PeerId, id: number, timestamp: number};
+
+/** One of a peer's lists a write changes (`writeLists`) */
+type WrittenList = {
+  key: string,
+  /** reads the list from the server, giving what puts it in place */
+  reload: () => Promise<() => void>,
+  /** marks the list as not to be trusted, for when it cannot be read again: it is read anew when it is next shown */
+  invalidate: () => void
+};
 
 const TEST_SKIPPED = false;
 const TEST_READ = false;
@@ -70,6 +88,8 @@ export default class AppStoriesManager extends AppManager {
   private changelogPeerId: PeerId;
   private expiring: ExpiringItem[];
   private stealthMode: StoriesStealthMode;
+  /** the writes to the lists of albums and of their stories, one after another (`writeLists`) */
+  private listWrites: Map<string, {queue: Promise<unknown>, pending: number, refused: boolean}>;
 
   protected after() {
     this.clear(true);
@@ -136,6 +156,7 @@ export default class AppStoriesManager extends AppManager {
       archive: []
     };
     this.expiring = [];
+    this.listWrites = new Map();
   };
 
   private onSubscriptionUpdate(peerId: PeerId) {
@@ -336,8 +357,9 @@ export default class AppStoriesManager extends AppManager {
         continue;
       }
 
+      // * the server puts a story added to an album first
       if(allowInsert && index === -1) {
-        album.ids.push(storyItem.id);
+        album.ids.unshift(storyItem.id);
       }
       album.count += 1;
     }
@@ -880,6 +902,23 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
+  /**
+   * Puts the stories pinned to the top in `ids`' order, the ones left out unpinned, each at an index
+   * of its own. Several of them move at once, so they all leave the list first and go back one by one
+   * into what is still sorted.
+   */
+  private applyPinnedToTop(cache: StoriesPeerCache, ids: StoryItem['id'][]) {
+    const changed = new Set([...cache.pinnedToTop.keys(), ...ids]);
+    cache.pinnedToTop = new Map(ids.map((id, idx) => [id, idx]));
+    changed.forEach((storyId) => indexOfAndSplice(cache.pinnedStories, storyId));
+    changed.forEach((storyId) => {
+      const storyItem = cache.storiesMap.get(storyId);
+      if(storyItem) {
+        this.saveStoryItem(storyItem, cache, StoriesCacheType.Pinned);
+      }
+    });
+  }
+
   public async togglePinnedToTop(peerId: PeerId, storyIds: StoryItem['id'][], pin: boolean) {
     const oldPins = [...this.getPeerStoriesCache(peerId).pinnedToTop.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
     const newPins = pin ? oldPins.concat(storyIds) : oldPins.filter((id) => !storyIds.includes(id));
@@ -897,14 +936,7 @@ export default class AppStoriesManager extends AppManager {
         id: newPins
       },
       processResult: () => {
-        const cache = this.getPeerStoriesCache(peerId);
-        const pinnedToTop = cache.pinnedToTop;
-        storyIds.forEach((storyId) => {
-          const storyItem = this.getStoryByIdCached(peerId, storyId);
-          if(pin) pinnedToTop.set(storyId, pinnedToTop.size);
-          else pinnedToTop.delete(storyId);
-          this.saveStoryItem(storyItem, cache, StoriesCacheType.Pinned);
-        });
+        this.applyPinnedToTop(this.getPeerStoriesCache(peerId), newPins);
       }
     });
   }
@@ -1010,7 +1042,7 @@ export default class AppStoriesManager extends AppManager {
 
   public getAlbums(peerId: PeerId, revalidate = false): MaybePromise<StoryAlbum[]> {
     const cache = this.getPeerStoriesCache(peerId);
-    if(!revalidate && cache.albumsOrder) {
+    if(!revalidate && cache.albumsOrder && !cache.albumsStale) {
       return cache.albumsOrder.map((albumId) => cache.albums.get(albumId).info);
     }
 
@@ -1025,23 +1057,33 @@ export default class AppStoriesManager extends AppManager {
           return cache.albumsOrder.map((albumId) => cache.albums.get(albumId).info);
         }
 
-        cache.albumsOrder = []
-        for(const album of response.albums) {
-          if(album.icon_photo) this.appPhotosManager.savePhoto(album.icon_photo);
-          if(album.icon_video) this.appDocsManager.saveDoc(album.icon_video);
-          cache.albumsOrder.push(album.album_id);
-          cache.albums.set(album.album_id, {
-            info: album,
-            ids: [],
-            count: 0,
-            loadedAll: false
-          });
-        }
-
+        this.saveAlbums(cache, response.albums);
         cache.albumsHash = response.hash;
         return response.albums;
       }
     });
+  }
+
+  /** Takes the albums as the server lists them; what was loaded of an album that stays is kept */
+  private saveAlbums(cache: StoriesPeerCache, albums: StoryAlbum[]) {
+    cache.albumsOrder = albums.map((album) => album.album_id);
+    cache.albumsStale = false;
+    for(const album of albums) {
+      if(album.icon_photo) this.appPhotosManager.savePhoto(album.icon_photo);
+      if(album.icon_video) this.appDocsManager.saveDoc(album.icon_video);
+      const cachedAlbum = cache.albums.get(album.album_id);
+      if(cachedAlbum) {
+        cachedAlbum.info = album;
+      } else {
+        cache.albums.set(album.album_id, {info: album, ids: [], count: 0, loadedAll: false});
+      }
+    }
+
+    for(const albumId of cache.albums.keys()) {
+      if(!cache.albumsOrder.includes(albumId)) {
+        cache.albums.delete(albumId);
+      }
+    }
   }
 
   public getPinnedStories(
@@ -1087,8 +1129,23 @@ export default class AppStoriesManager extends AppManager {
       return result instanceof Promise ? result.then(after) : after();
     }
 
+    // * an album that could not be read again after a refused write is read anew from its top
+    if(cachedAlbum.stale && !offsetId) {
+      cachedAlbum.ids = [];
+      cachedAlbum.loadedAll = false;
+      cachedAlbum.stale = false;
+      cachedAlbum.generation = (cachedAlbum.generation ?? 0) + 1;
+    }
+
     let slice: StoryItem.storyItem[] | undefined;
-    const index = offsetId ? cachedAlbum.ids.findIndex((storyId) => storyId < offsetId) : 0;
+    // * an album keeps the order its owner gave it, not the stories' own: the next page starts right
+    // * after the story it is asked from, by date only once that one has left the album
+    let index = 0;
+    if(offsetId) {
+      index = cachedAlbum.ids.indexOf(offsetId);
+      index = index === -1 ? cachedAlbum.ids.findIndex((storyId) => storyId < offsetId) : index + 1;
+    }
+
     if(index !== -1) {
       const sliced = cachedAlbum.ids.slice(index, index + limit);
       if(sliced.length === limit || cachedAlbum.loadedAll) {
@@ -1100,39 +1157,86 @@ export default class AppStoriesManager extends AppManager {
       return {count: cachedAlbum.count, stories: slice};
     }
 
-    return this.apiManager.invokeApiSingleProcess({
+    // * a page is a place in the album, not what one request brings: the stories after the last of those the asker
+    // * has, where they stand once it has come - the album can be rearranged, added to on top, or loaded further by
+    // * another read meanwhile
+    const had = new Set(index === -1 ? cachedAlbum.ids : cachedAlbum.ids.slice(0, index));
+    const getPageIds = () => {
+      const ids = cachedAlbum.ids;
+      let start = ids.length;
+      while(start && !had.has(ids[start - 1])) {
+        --start;
+      }
+
+      return ids.slice(start, start + limit);
+    };
+    const generation = cachedAlbum.generation;
+    const fetchPage = (offset: number): Promise<{count: number, stories: StoryItem.storyItem[]}> => this.apiManager.invokeApiSingleProcess({
       method: 'stories.getAlbumStories',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         album_id: albumId,
         limit,
-        offset: cachedAlbum?.ids.length ?? 0
+        offset
       },
+      // * a request is joined only within the list it was asked of: the page asked anew of a replaced list would
+      // * otherwise join the very request that asks for it, which waits on it
+      options: {cacheKey: `${peerId}_${albumId}_${limit}_${offset}_${generation}`},
       processResult: (response) => {
         this.saveStoriesStories(response, cache);
+        // * the list was replaced while the page loaded (read again from the server): the page is asked of it anew
+        if(cachedAlbum.generation !== generation) {
+          return this.getAlbumStories(peerId, albumId, limit, offsetId);
+        }
+
+        const fetched: number[] = [];
         for(const story of response.stories) {
           if(story._ !== 'storyItemDeleted' && !cachedAlbum.ids.includes(story.id)) {
             cachedAlbum.ids.push(story.id);
+            fetched.push(story.id);
           }
         }
         cachedAlbum.count = response.count;
         cachedAlbum.loadedAll = cachedAlbum.ids.length === response.count;
-        return this.getAlbumStories(peerId, albumId, limit, offsetId);
+
+        const ids = getPageIds();
+        const page = {count: cachedAlbum.count, stories: ids.map((storyId) => cache.storiesMap.get(storyId)) as StoryItem.storyItem[]};
+        // * a short page means the end of the album
+        if(ids.length < limit && !cachedAlbum.loadedAll) {
+          // * stories added meanwhile shift the server's pages down, which then repeat what is had. One of nothing
+          // * but those says they shifted by its length at least: the next new one is further on
+          if(!fetched.length && response.stories.length) {
+            return fetchPage(offset + response.stories.length);
+          }
+
+          // * one that repeats a part is filled up
+          if(fetched.length) {
+            return callbackify(
+              this.getAlbumStories(peerId, albumId, limit - ids.length, ids[ids.length - 1]),
+              (more) => ({count: more.count, stories: page.stories.concat(more.stories)})
+            );
+          }
+        }
+
+        return page;
       }
     });
+
+    return fetchPage(cachedAlbum.ids.length);
   }
 
   public async createAlbum(peerId: PeerId, title: string, storyIds?: number[]) {
-    const album = await this.apiManager.invokeApi('stories.createAlbum', {
+    const album = await this.writeAlbums(peerId, () => this.apiManager.invokeApi('stories.createAlbum', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       title,
       stories: storyIds ?? []
-    });
+    }));
 
     const cache = this.getPeerStoriesCache(peerId);
     cache.albums.set(album.album_id, {
       info: album,
-      ids: storyIds?.slice() ?? [],
+      // * each story goes first as it is added, the last one ending up at the top
+      ids: storyIds?.slice().reverse() ?? [],
       count: storyIds?.length ?? 0,
       loadedAll: true
     });
@@ -1167,8 +1271,6 @@ export default class AppStoriesManager extends AppManager {
     const cache = this.getPeerStoriesCache(peerId);
     const cachedAlbum = cache.albums.get(albumId);
     // snapshot
-    const oldCachedIds = cachedAlbum?.ids.slice();
-    const oldCachedCount = cachedAlbum?.count;
     const oldStoryAlbums = new Map<number, number[] | undefined>();
 
     // optimistically update cache and dispatch
@@ -1199,7 +1301,8 @@ export default class AppStoriesManager extends AppManager {
         for(const id of opts.addStories) {
           const hadId = cachedAlbum.ids.includes(id);
           const hadAlbum = hadId || oldStoryAlbums.get(id)?.includes(albumId);
-          if(!hadId) cachedAlbum.ids.push(id);
+          // * the server puts each one first, the last one ending up at the top
+          if(!hadId) cachedAlbum.ids.unshift(id);
           if(!hadAlbum) ++addedCount;
         }
         cachedAlbum.count += addedCount;
@@ -1230,16 +1333,29 @@ export default class AppStoriesManager extends AppManager {
       albums: this.getCachedAlbumsList(peerId)
     });
 
-    try {
-      const album = await this.apiManager.invokeApi('stories.updateAlbum', {
-        peer: this.appPeersManager.getInputPeerById(peerId),
-        album_id: albumId,
-        title: opts.title,
-        add_stories: opts.addStories,
-        delete_stories: opts.deleteStories
-      });
+    const send = () => this.apiManager.invokeApi('stories.updateAlbum', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      album_id: albumId,
+      title: opts.title,
+      add_stories: opts.addStories,
+      delete_stories: opts.deleteStories
+    });
 
-      if(cachedAlbum) cachedAlbum.info = album;
+    // * a title is the albums' own, the stories the album's list (when it is kept): a refused write has them read again
+    const lists: WrittenList[] = [];
+    if(opts.title) lists.push(this.albumsList(peerId));
+    if(cachedAlbum && (opts.addStories || opts.deleteStories)) lists.push(this.albumList(peerId, albumId));
+
+    try {
+      const album = await this.writeLists(lists, send);
+      if(cachedAlbum) {
+        cachedAlbum.info = album;
+        // * the title as the server keeps it
+        if(opts.title) {
+          this.rootScope.dispatchEvent('story_albums_updated', {peerId, albums: this.getCachedAlbumsList(peerId)});
+        }
+      }
+
       return album;
     } catch(err) {
       // revert caches and dispatch
@@ -1248,10 +1364,6 @@ export default class AppStoriesManager extends AppManager {
         if(s?._ === 'storyItem') s.albums = oldAlbums;
       }
 
-      if(cachedAlbum) {
-        cachedAlbum.ids = oldCachedIds;
-        cachedAlbum.count = oldCachedCount;
-      }
       cache.albumsHash = undefined;
 
       this.rootScope.dispatchEvent('story_album_updated', {
@@ -1264,11 +1376,182 @@ export default class AppStoriesManager extends AppManager {
     }
   }
 
+  /**
+   * The writes to a peer's lists - the albums, or an album's stories: their order, what comes in or goes out -
+   * reach the server one after another, each already shown. A write waits for, and counts in, every list it
+   * changes. A refused one is not guessed back: once the last write of a list has settled, the list is read again
+   * from the server and shown as the server has it, unless a write came while it was read, after which it is read
+   * again.
+   */
+  private writeLists<T>(lists: WrittenList[], send: () => Promise<T>): Promise<T> {
+    const states = lists.map(({key}) => {
+      let list = this.listWrites.get(key);
+      if(!list) {
+        this.listWrites.set(key, list = {queue: Promise.resolve(), pending: 0, refused: false});
+      }
+
+      ++list.pending;
+      return list;
+    });
+
+    const promise = Promise.all(states.map((list) => list.queue)).then(send);
+    lists.forEach(({reload, invalidate}, idx) => {
+      const list = states[idx];
+      list.queue = promise.then(noop, () => {
+        list.refused = true;
+      }).then(async() => {
+        if(--list.pending || !list.refused) {
+          return;
+        }
+
+        let apply: () => void;
+        try {
+          apply = await reload();
+        } catch(err) {
+          // * still to be read: with the list's next write, or when it is shown next
+          invalidate();
+          return;
+        }
+
+        if(!list.pending) {
+          list.refused = false;
+          apply();
+        }
+      });
+    });
+
+    return promise;
+  }
+
+  /** The albums themselves: their order, titles, which there are */
+  private albumsList(peerId: PeerId): WrittenList {
+    const cache = this.getPeerStoriesCache(peerId);
+    return {
+      key: `albums_${peerId}`,
+      reload: () => this.reloadAlbums(peerId),
+      invalidate: () => {
+        cache.albumsStale = true;
+      }
+    };
+  }
+
+  /** An album's stories: their order, which there are */
+  private albumList(peerId: PeerId, albumId: number): WrittenList {
+    const cache = this.getPeerStoriesCache(peerId);
+    return {
+      key: `album_${peerId}_${albumId}`,
+      reload: () => this.reloadAlbumStories(peerId, albumId),
+      invalidate: () => {
+        const cachedAlbum = cache.albums.get(albumId);
+        if(cachedAlbum) cachedAlbum.stale = true;
+      }
+    };
+  }
+
+  private writeAlbums<T>(peerId: PeerId, send: () => Promise<T>) {
+    return this.writeLists([this.albumsList(peerId)], send);
+  }
+
+  private writeAlbum<T>(peerId: PeerId, albumId: number, send: () => Promise<T>) {
+    return this.writeLists([this.albumList(peerId, albumId)], send);
+  }
+
+  private reloadAlbums(peerId: PeerId) {
+    const cache = this.getPeerStoriesCache(peerId);
+    return this.apiManager.invokeApi('stories.getAlbums', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      hash: 0
+    }).then((response) => () => {
+      if(response._ === 'stories.albumsNotModified') {
+        return;
+      }
+
+      this.saveAlbums(cache, response.albums);
+      cache.albumsHash = response.hash;
+      this.rootScope.dispatchEvent('story_albums_updated', {peerId, albums: this.getCachedAlbumsList(peerId)});
+    });
+  }
+
+  /** Reads an album's first stories again, as many as it had loaded, the rest to be loaded anew as they are paged to */
+  private async reloadAlbumStories(peerId: PeerId, albumId: number) {
+    const cache = this.getPeerStoriesCache(peerId);
+    // * as far as it was loaded, a page of the server's at most at a time
+    const loaded = Math.max(30, cache.albums.get(albumId)?.ids.length ?? 0);
+    const stories: StoryItem[] = [];
+    let response: StoriesStories;
+    do {
+      response = await this.apiManager.invokeApi('stories.getAlbumStories', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        album_id: albumId,
+        offset: stories.length,
+        limit: Math.min(100, loaded - stories.length)
+      });
+      stories.push(...response.stories);
+    } while(response.stories.length && stories.length < loaded && stories.length < response.count);
+
+    return () => {
+      const cachedAlbum = cache.albums.get(albumId);
+      if(!cachedAlbum) {
+        return;
+      }
+
+      this.saveStoriesStories({...response, stories}, cache);
+      cachedAlbum.ids = filterUnique(stories.filter((story) => story._ !== 'storyItemDeleted').map((story) => story.id));
+      cachedAlbum.count = response.count;
+      cachedAlbum.loadedAll = cachedAlbum.ids.length === response.count;
+      cachedAlbum.stale = false;
+      cachedAlbum.generation = (cachedAlbum.generation ?? 0) + 1;
+      cache.albumsHash = undefined;
+      this.rootScope.dispatchEvent('story_album_updated', {peerId, albumId, albums: this.getCachedAlbumsList(peerId)});
+    };
+  }
+
+  /** Gives the albums a new order, as the chips have already been rearranged */
+  public reorderAlbums(peerId: PeerId, order: number[]) {
+    const cache = this.getPeerStoriesCache(peerId);
+    if(!cache.albumsOrder) {
+      return;
+    }
+
+    // * sent as it is now: the list itself may change before the request goes
+    order = putInOrder(cache.albumsOrder, order);
+    cache.albumsOrder = order.slice();
+    cache.albumsHash = undefined;
+    this.rootScope.dispatchEvent('story_albums_updated', {peerId, albums: this.getCachedAlbumsList(peerId)});
+    return this.writeAlbums(peerId, () => this.apiManager.invokeApi('stories.reorderAlbums', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      order
+    }));
+  }
+
+  /**
+   * Gives an album's stories a new order, as its tiles have already been rearranged; the ones it leaves out go
+   * after the others, as the server puts them
+   */
+  public reorderAlbumStories(peerId: PeerId, albumId: number, order: number[]) {
+    const cache = this.getPeerStoriesCache(peerId);
+    const cachedAlbum = cache.albums.get(albumId);
+    if(!cachedAlbum) {
+      return;
+    }
+
+    // * sent as it is now: the list itself may change before the request goes
+    order = putInOrder(cachedAlbum.ids, order);
+    cachedAlbum.ids = order.slice();
+    cache.albumsHash = undefined;
+    this.rootScope.dispatchEvent('story_album_updated', {peerId, albumId, albums: this.getCachedAlbumsList(peerId)});
+    return this.writeAlbum(peerId, albumId, () => this.apiManager.invokeApi('stories.updateAlbum', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      album_id: albumId,
+      order
+    }));
+  }
+
   public async deleteAlbum(peerId: PeerId, albumId: number) {
-    await this.apiManager.invokeApi('stories.deleteAlbum', {
+    await this.writeAlbums(peerId, () => this.apiManager.invokeApi('stories.deleteAlbum', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       album_id: albumId
-    });
+    }));
 
     const cache = this.getPeerStoriesCache(peerId);
     cache.albums.delete(albumId);

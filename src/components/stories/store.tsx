@@ -12,6 +12,7 @@ import createListenerSetter from '../../helpers/solid/createListenerSetter';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {AnyFunction} from '@types';
 import findAndSplice from '@helpers/array/findAndSplice';
+import putInOrder from '@helpers/array/putInOrder';
 import forEachReverse from '@helpers/array/forEachReverse';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import AppStoriesManager from '@appManagers/appStoriesManager';
@@ -106,7 +107,12 @@ export type StoriesContextActions = {
   seek: (progress: number) => void,
   setStoryDuration: (storyDuration: number) => void,
   getProgress: () => number | undefined,
-  handleSwipe: (xDiff: number, setAlbumOverride?: (albumId: number | undefined) => void) => boolean
+  handleSwipe: (xDiff: number, setAlbumOverride?: (albumId: number | undefined) => void) => boolean,
+  /**
+   * Shows a list's stories or albums in the order they were dragged into, in the same task as the
+   * drop - the managers answer with the very same order a moment later
+   */
+  reorder: (order: {stories?: number[], albums?: number[]}) => void
 };
 
 export type StoriesContextValue = [
@@ -679,6 +685,23 @@ export const createStoriesStore = (props: {
       const newAlbumId = newIndex === -1 ? undefined : albums[newIndex].album_id;
       (setAlbumOverride ?? actions.setAlbumId)(newAlbumId);
       return true;
+    },
+
+    reorder: ({stories, albums}) => {
+      const peer = state.peers[0];
+      if(!peer) {
+        return;
+      }
+
+      batch(() => {
+        if(stories) {
+          setState('peers', 0, 'stories', putInOrder(peer.stories, stories, (story) => story.id));
+        }
+
+        if(albums && peer.albums) {
+          setState('peers', 0, 'albums', putInOrder(peer.albums, albums, (album) => album.album_id));
+        }
+      });
     }
   };
 
@@ -1230,6 +1253,12 @@ export const createStoriesStore = (props: {
         albumCache.delete(albumId);
       }
       setState('peers', 0, 'albums', albums);
+    });
+
+    listenerSetter.add(rootScope)('story_albums_updated', ({peerId, albums}) => {
+      if(peerId !== singlePeerId) return;
+      // * by key, so that the chips of an order already shown stay where they are
+      setState('peers', 0, 'albums', reconcile(albums, {key: 'album_id'}));
     });
 
     listenerSetter.add(rootScope)('story_album_updated', ({peerId, albumId, albums}) => {

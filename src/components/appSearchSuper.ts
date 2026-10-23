@@ -73,7 +73,7 @@ import createParticipantContextMenu from '@helpers/dom/createParticipantContextM
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
 import {children, createEffect, createRoot, For, on} from 'solid-js';
-import {StoriesProfileList} from '@components/stories/profileList';
+import {StoriesProfileList, isStoryReorderTarget} from '@components/stories/profileList';
 import {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -596,7 +596,7 @@ export default class AppSearchSuper {
           }
         },
         verifyTouchTarget: (e) => {
-          return !findUpClassName(e.target, 'scrollable-x');
+          return !findUpClassName(e.target, 'scrollable-x') && !isStoryReorderTarget(e.target);
         }
       });
     }

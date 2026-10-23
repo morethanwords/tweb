@@ -1216,10 +1216,19 @@
   &-albums {
     .stories-album-chip {
       max-width: 8rem;
-    }
 
-    .stories-album-chip {
-      max-width: 8rem;
+      @include sortable-item-transition();
+
+      &.is-reorderable {
+        cursor: grab;
+      }
+
+      // * the chip held is lifted off the row on a plate of its own, the chosen one's staying where it was
+      &.is-dragging {
+        z-index: 2;
+        background-color: var(--surface-color);
+        box-shadow: var(--menu-box-shadow);
+      }
     }
 
     .my-stories-container & {
