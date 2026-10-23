@@ -317,7 +317,7 @@ export const wrapStoryMedia = (props: {
     }
   };
 
-  let mediaResult: ReturnType<typeof wrapPhoto | typeof wrapVideo>;
+  let mediaResult: ReturnType<typeof wrapPhoto | typeof wrapVideo>, unsupported = false;
   switch(messageMedia._) {
     case 'messageMediaPhoto': {
       mediaResult = wrappers.photo(messageMedia);
@@ -335,12 +335,14 @@ export const wrapStoryMedia = (props: {
     }
 
     default: {
+      // * the note stands in its place: the viewer has no reply to offer for it either
+      unsupported = true;
       wrappers.unsupported();
       break;
     }
   }
 
-  return {container, div, media, mediaResult, thumb, ready};
+  return {container, div, media, mediaResult, thumb, ready, unsupported};
 };
 
 export const StoryPreview = (props: {

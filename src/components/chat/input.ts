@@ -590,6 +590,8 @@ export default class ChatInput {
   public onUpdateSendBtn: (icon: ChatSendBtnIcon) => void;
   public onMessageSent2: () => void;
   public forwardStoryCallback: (e: MouseEvent) => void;
+  /** asked before anything this field sends goes, after it is recorded or picked; nothing goes on `false` */
+  public confirmSending: () => Promise<boolean>;
 
   public emoticonsDropdown: EmoticonsDropdown;
 
@@ -3355,7 +3357,8 @@ export default class ChatInput {
         args = [element];
         this.placeholderParamsMiddlewareHelper.get().onClean(dispose);
       } else {
-        key = 'Story.ReplyPlaceholder';
+        // * a group's story is answered in the group, for everyone there to read
+        key = peerId.isUser() ? 'Story.ReplyPlaceholder' : 'Story.CommentPlaceholder';
       }
     } else if(isForum && type === ChatType.Chat && !threadId) {
       const topic = await this.managers.dialogsStorage.getForumTopic(peerId, GENERAL_TOPIC_ID);
@@ -3566,6 +3569,20 @@ export default class ChatInput {
 
   public canSendPlain() {
     return this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden');
+  }
+
+  public async isSendingConfirmed() {
+    return !this.confirmSending || await this.confirmSending();
+  }
+
+  // * for a send that goes at once: it waits only for what there is to ask
+  public whenSendingConfirmed(send: () => void) {
+    if(!this.confirmSending) {
+      send();
+      return;
+    }
+
+    this.confirmSending().then((confirmed) => confirmed && send());
   }
 
   public isEphemeralComposerMode() {
@@ -4291,6 +4308,10 @@ export default class ChatInput {
       textElement = i18n('SlowmodeSendError');
     } else {
       const chatFull = await managers.appProfileManager.getChatFull(chatId) as ChatFull.channelFull;
+      // * a booster sends without waiting, as tdesktop has it; the other slow mode limits still hold
+      if(await managers.appChatsManager.isRestrictionLiftedByBoosts(chatId)) {
+        return false;
+      }
 
       const getLeftDuration = () => Math.max(0, (chatFull.slowmode_next_send_date || 0) - tsNow(true));
       if(!getLeftDuration()) {
@@ -5086,6 +5107,14 @@ export default class ChatInput {
       return;
     }
 
+    // * asked only of what is there to send
+    if(
+      (!this.isInputEmpty() || this.forwarding) &&
+      (!(await this.isSendingConfirmed()) || !isCurrent())
+    ) {
+      return;
+    }
+
     const sendingParams: MessageSendingParams = {
       ...chat.getMessageSendingParams(),
       scheduleDate: flags.scheduleDate,
@@ -5359,6 +5388,10 @@ export default class ChatInput {
       element: target,
       container: this.btnSendContainer.parentElement
     })) {
+      return false;
+    }
+
+    if(!(await this.isSendingConfirmed())) {
       return false;
     }
 

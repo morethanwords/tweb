@@ -46,7 +46,6 @@ import {addToProfileMusic, getSavedMusicDocument, removeFromProfileMusic} from '
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import Icon from '@components/icon';
-import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import {ChatInputReplyTo} from '@components/chat/input';
 import {makeFullMid} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
@@ -1936,7 +1935,6 @@ export default class ChatContextMenu {
 
           this.chat.sendReaction({message: reactionsMessage, reaction});
         },
-        getOpenPosition: (hasMenu) => ChatContextMenu.getReactionsOpenPosition(reactionsMenu, hasMenu),
         isTags: tags
       });
       await reactionsMenu.init(reactionsMessage);
@@ -2534,15 +2532,6 @@ export default class ChatContextMenu {
     }
 
     return menuPadding;
-  }
-
-  public static getReactionsOpenPosition(reactionsMenu: ChatReactionsMenu, hasMenu: boolean) {
-    const rect = reactionsMenu.container.getBoundingClientRect();
-    const newRect = cloneDOMRect(rect);
-    newRect.left -= 21 / 2;
-    newRect.top -= 121 / 2;
-    if(!hasMenu) newRect.top += 37;
-    return newRect;
   }
 
   public static appendReactionsMenu({element, reactionsMenu, reactionsMenuPosition}: {

@@ -389,7 +389,8 @@ $color-inactive: rgba(255, 255, 255, .5);
         white-space: pre-wrap;
       }
 
-      &Repost {
+      &Repost,
+      &Author {
         display: inline-flex;
         align-items: center;
         gap: .25rem;
@@ -477,6 +478,17 @@ $color-inactive: rgba(255, 255, 255, .5);
         align-items: center;
       }
 
+      &Left {
+        min-width: 0;
+      }
+
+      // * "you can't reply", where the field would be
+      &Text {
+        padding-inline: .5rem;
+        font-weight: var(--font-weight-normal);
+        @include text-overflow(true);
+      }
+
       &Icon {
         display: flex;
         align-items: center;
@@ -496,8 +508,63 @@ $color-inactive: rgba(255, 255, 255, .5);
         @include hover-global(gray, background-color, false);
       }
 
-      &Reaction.isReacted &IconIcon {
-        color: #FF3B30;
+      // * the heart shows what is on it: ❤ in red, any other reaction as it is, and plays it as it is put on
+      &ReactionIcon {
+        --reaction-offset: 0px;
+        position: relative;
+        display: flex;
+        margin-inline-end: .375rem;
+
+        :global {
+          .btn-reaction-icon {
+            font-size: 1.5rem;
+          }
+
+          .btn-reaction-default {
+            color: #FF3B30;
+          }
+
+          .btn-reaction-sticker {
+            width: 26px;
+            height: 26px;
+            position: relative;
+          }
+        }
+      }
+
+      // * a group's story the member may not answer until the group is boosted: the plate stands where the
+      // * reply field would, and opens the boosts
+      &Locked {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        min-width: 0;
+        height: 2.5rem;
+        padding-inline: .5rem .375rem;
+        border-radius: $border-radius-medium;
+        cursor: pointer;
+        font-weight: var(--font-weight-normal);
+
+        @include hover-global(gray, background-color, false);
+
+        &Icon {
+          flex: 0 0 auto;
+          font-size: 1.25rem;
+        }
+
+        &Text {
+          @include text-overflow(true);
+        }
+
+        &Button {
+          flex: 0 0 auto;
+          padding: .125rem .5rem;
+          border-radius: 1rem;
+          background-color: rgba(255, 255, 255, .1);
+          color: #fff;
+          font-size: var(--font-size-14);
+          font-weight: var(--font-weight-bold);
+        }
       }
 
       :global {
@@ -781,10 +848,9 @@ $color-inactive: rgba(255, 255, 255, .5);
       backdrop-filter: var(--blur-off, blur(25px));
       opacity: 1 !important;
       visibility: visible !important;
-      // max-width: 355px;
-      // width: 355px;
-      max-width: 319px;
-      width: 319px;
+      // * as wide as the reactions and the button to the whole choice
+      width: max-content;
+      max-width: calc(100% - 1rem);
 
       :global {
         .btn-menu-reactions {
@@ -792,8 +858,9 @@ $color-inactive: rgba(255, 255, 255, .5);
             display: none;
           }
 
+          // * seven of them and the button to the whole choice fit a narrow story too
           &-reaction {
-            --size: 2.25rem;
+            --size: min(2.25rem, calc((var(--stories-width) - 5rem) / 7 - .5rem));
           }
 
           &-more {
@@ -804,8 +871,33 @@ $color-inactive: rgba(255, 255, 255, .5);
             margin-inline: .375rem 0;
             font-size: 1.25rem;
           }
+
+          &-description {
+            color: rgba(255, 255, 255, .6);
+          }
         }
       }
+
+      // * over the heart a long tap opened it on, at the end of the reply field or the footer
+      &.isLike {
+        left: auto;
+        inset-inline-end: .5rem;
+        transform: none;
+      }
+    }
+
+    // * where a reaction sent as a message plays, in the middle of the story; the reaction's own animation
+    // * fills it (its overlay stands by --reaction-offset, which only a message's reactions set)
+    &ReactionCenter {
+      --reaction-offset: 0px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: var(--size);
+      height: var(--size);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 2;
     }
 
     // the small variant is the shared story pill — see storyPill.module.scss
@@ -840,13 +932,13 @@ $color-inactive: rgba(255, 255, 255, .5);
       max-width: var(--chat-input-max-width);
       opacity: 1;
 
-      @include animation-level-global(1) {
-        transition: opacity var(--transition-standard-out) !important;
-      }
-
-      // @include animation-level-global(2) {
-      //   transition: width var(--transition-standard-out), opacity var(--transition-standard-out) !important;
-      // }
+      // * and moves, as a drag up on the story raises it
+      @include animation-level-transition(
+        opacity var(--transition-standard-out),
+        transform var(--transition-standard-out),
+        $important: true,
+        $global: true
+      );
 
       // &.is-focused {
       //   width: var(--chat-input-max-width);
@@ -887,6 +979,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       // * the reaction is an icon of the field, as the emoji one is, and stands next to the text: going
       // * away it only widens the text, the buttons at the end stay where they are
       .btn-reaction {
+        --reaction-offset: 0px;
         flex: 0 0 auto;
 
         &-default {
@@ -960,8 +1053,7 @@ $color-inactive: rgba(255, 255, 255, .5);
         background: rgba(0, 0, 0, .25);
         backdrop-filter: var(--blur-off, blur(5px));
         opacity: 1;
-      }
-    }
+      }    }
 
     .emoji-dropdown {
       --translateX: 0px;

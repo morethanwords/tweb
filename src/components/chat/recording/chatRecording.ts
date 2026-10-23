@@ -105,12 +105,17 @@ export default class ChatRecording {
   constructor(private input: ChatInput) {
     this.constructRecorder();
 
+    const isStory = this.input.chat.type === ChatType.Stories;
     this.voiceRecordingPanel = new VoiceRecordingPanel({
       onCancel: () => this.onCancelRecordClick(),
       onPauseToggle: () => this.onPauseToggleClick(),
       onPlayToggle: () => this.onPlayToggleClick(),
       onSeek: (progress) => this.onPlaybackSeek(progress)
     });
+    // * dark over a story, as the rest of the field there is
+    if(isStory) {
+      this.voiceRecordingPanel.element.classList.add('night');
+    }
     // The panel is an absolutely-positioned overlay inside the input row.
     // It sits *under* btnSendContainer in DOM order so the send button stays
     // on top while everything else (attach, input, emoji) is hidden via CSS.
@@ -125,7 +130,8 @@ export default class ChatRecording {
       // Just the centered round preview — all recording controls stay in the
       // chat input (the same voiceRecordingPanel + btn-send the voice flow
       // uses). Mounted on <body> so it's reliably screen-centered.
-      this.videoRecordingPanel = createVideoRecordingPanel();
+      // * a story's reply is recorded over the stories viewer, which stands above the chat
+      this.videoRecordingPanel = createVideoRecordingPanel(isStory);
       getOverlayRoot().append(this.videoRecordingPanel.element);
     }
 
@@ -229,15 +235,25 @@ export default class ChatRecording {
       };
       const isEphemeral = !!sendingParams.ephemeral;
       this.pinnedEphemeralSendingParams = undefined;
+      // * as long as it was recorded, not as long as the questions below kept it waiting
+      const duration = this.getRecordingElapsedMs() / 1000 | 0;
+
+      // * what is not sent lets the decoder go too, as the send does once it is decoded
+      if(!(await this.input.isSendingConfirmed())) {
+        opusDecodeController.setKeepAlive(false);
+        return;
+      }
 
       if(!isEphemeral) {
         const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
-        if(preparedPaymentResult === PAYMENT_REJECTED) return;
+        if(preparedPaymentResult === PAYMENT_REJECTED) {
+          opusDecodeController.setKeepAlive(false);
+          return;
+        }
 
         sendingParams.confirmedPaymentResult = preparedPaymentResult;
       }
 
-      const duration = this.getRecordingElapsedMs() / 1000 | 0;
       const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
       opusDecodeController.decode(typedArray, false).then((result) => {
         opusDecodeController.setKeepAlive(false);
@@ -312,13 +328,17 @@ export default class ChatRecording {
         };
         const isEphemeral = !!sendingParams.ephemeral;
         this.pinnedEphemeralSendingParams = undefined;
+        const duration = this.getRecordingElapsedMs() / 1000 | 0;
+        if(!(await this.input.isSendingConfirmed())) {
+          return;
+        }
+
         if(!isEphemeral) {
           const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
           if(preparedPaymentResult === PAYMENT_REJECTED) return;
           sendingParams.confirmedPaymentResult = preparedPaymentResult;
         }
 
-        const duration = this.getRecordingElapsedMs() / 1000 | 0;
         const thumb = await thumbPromise;
         // The Blob already carries the recorder's mime type. We hand it to
         // sendFile with isRoundMessage=true so the documentAttributeVideo flag
@@ -877,7 +897,6 @@ export default class ChatRecording {
       !this.input.forwarding &&
       !this.input.editMsgId &&
       !this.input.suggestedPost?.hasMedia &&
-      this.input.chat.type !== ChatType.Stories &&
       !!this.recorder &&
       !!this.videoRecorder;
   }

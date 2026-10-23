@@ -3214,7 +3214,12 @@ export class AppMessagesManager extends AppManager {
       }).then(noop);
     }
 
-    if(!richMessage && appConfig.emojies_send_dice?.includes(text.trim())) {
+    // * a custom emoji whose emoticon is a die is sent as itself, as in tdesktop
+    if(
+      !richMessage &&
+      appConfig.emojies_send_dice?.includes(text.trim()) &&
+      !options.entities.some((entity) => entity._ === 'messageEntityCustomEmoji')
+    ) {
       return this.sendOther({
         ...options,
         inputMedia: {
@@ -10592,7 +10597,7 @@ export class AppMessagesManager extends AppManager {
       const chatId = peerId.toChatId();
       this.appProfileManager.modifyCachedFullChat<ChatFull.channelFull>(chatId, (chatFull) => {
         const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
-        if(!(chatFull.slowmode_seconds && !chat.admin_rights)) {
+        if(!(chatFull.slowmode_seconds && !chat.admin_rights) || this.appChatsManager.isRestrictionLiftedByBoosts(chatId)) {
           return false;
         }
         chatFull.slowmode_next_send_date = message.date + chatFull.slowmode_seconds;

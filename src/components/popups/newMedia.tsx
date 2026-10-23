@@ -1014,6 +1014,11 @@ export default function showNewMediaPopup(
       toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
     }
 
+    // * what the field it came from asks before a reply goes (Stealth Mode over a story)
+    if(!isEditing() && !(await input.isSendingConfirmed())) {
+      return;
+    }
+
     const isSlowModeActive = () => input.showSlowModeTooltipIfNeeded({
       sendingFew: messagesCount() > 1,
       container: btnConfirm.parentElement,

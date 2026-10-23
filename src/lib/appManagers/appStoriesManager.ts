@@ -13,7 +13,7 @@ import deepEqual from '@helpers/object/deepEqual';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import pause from '@helpers/schedulers/pause';
 import tsNow from '@helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, ChatFull, StoryView, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
 import getStoryPrivacyType from '@appManagers/utils/stories/privacyType';
 import {StorySettings, StorySettingsSaveResult} from '@appManagers/utils/stories/storySettings';
@@ -29,6 +29,7 @@ import insertStory from '@appManagers/utils/stories/insertStory';
 type MyStoryItem = Exclude<StoryItem, StoryItem.storyItemDeleted>;
 
 export type StoriesListType = 'stories' | 'archive';
+export type StoryReplyMode = 'reply' | 'boost' | 'none';
 export type StoriesListPosition = {type: StoriesListType, index: number};
 export type StoriesSegment = {length: number, type: 'unread' | 'close' | 'read'};
 export type StoriesSegments = StoriesSegment[];
@@ -1964,6 +1965,55 @@ export default class AppStoriesManager extends AppManager {
         return false;
       }
     }
+  }
+
+  /**
+   * How a story of the peer is answered, as iOS and Android decide it: a user's privately, a group's in the
+   * group when the member can write there. A member the group's own restrictions hold back has the field locked
+   * until the group is boosted, where boosting lifts them (`boostsNeeded` more); a channel's story, or a member
+   * banned in person, has no field
+   */
+  public async getReplyMode(peerId: PeerId): Promise<{mode: StoryReplyMode, boostsNeeded?: number}> {
+    if(peerId.isUser()) {
+      return {mode: peerId === this.appPeersManager.peerId ? 'none' : 'reply'};
+    }
+
+    const chatId = peerId.toChatId();
+    if(this.appPeersManager.isBroadcast(peerId)) {
+      return {mode: 'none'};
+    }
+
+    // * the boosts the member has given are on the full chat, and the rights below read them from it
+    const chatFull = await this.appProfileManager.getChatFull(chatId) as ChatFull.channelFull;
+    const [canSend, canSendPlain] = await Promise.all([
+      this.appMessagesManager.canSendToPeer(peerId, undefined, 'send_messages'),
+      this.appMessagesManager.canSendToPeer(peerId, undefined, 'send_plain')
+    ]);
+    if(canSend && canSendPlain) {
+      return {mode: 'reply'};
+    }
+
+    // * boosting lifts the group's own restrictions only, and only where they are all that holds the member back:
+    // * boosts can lift them there (not a broadcast group, not a ban in person), they are not enough yet, not a
+    // * restricted peer or a frozen account
+    const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
+    const bannedByDefault = chat?.default_banned_rights?.pFlags;
+    const [isRestricted, appConfig] = await Promise.all([
+      this.appPeersManager.isPeerRestricted(peerId),
+      this.apiManager.getAppConfig()
+    ]);
+    if(
+      !(bannedByDefault?.send_messages || bannedByDefault?.send_plain) ||
+      !this.appChatsManager.canBoostsLiftRestriction(chatId, 'send_messages') ||
+      !this.appChatsManager.canBoostsLiftRestriction(chatId, 'send_plain') ||
+      this.appChatsManager.isRestrictionLiftedByBoosts(chatId, 'send_plain') ||
+      isRestricted ||
+      appConfig.freeze_since_date
+    ) {
+      return {mode: 'none'};
+    }
+
+    return {mode: 'boost', boostsNeeded: Math.max(1, chatFull.boosts_unrestrict - (chatFull.boosts_applied || 0))};
   }
 
   public hasRightsMany(peerId: PeerId, storyIds: number[], right: 'send' | 'edit' | 'delete' | 'archive' | 'pin') {

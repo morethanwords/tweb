@@ -143,7 +143,6 @@ export default class SendMenu {
               const availableEffect = availableEffects.find((effect) => effect.effect_sticker_id === stickerDocId);
               this.options.onEffect(availableEffect.id);
             },
-            getOpenPosition: (hasMenu) => ChatContextMenu.getReactionsOpenPosition(reactionsMenu, hasMenu),
             isEffects: true
           });
 

@@ -22,11 +22,18 @@ import {createEffect, createSignal, For, JSX, onCleanup} from 'solid-js';
 import {getMiddleware} from '@helpers/middleware';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import type {AppManagers, TabManagers} from '@lib/managers';
+import {getManagersSession, isSessionLeaving} from '@lib/accounts/getCurrentAccount';
 
 const className = 'popup-boost';
 
-export default async function showBoostPopup(peerId: PeerId, reason?: BoostReason) {
-  const managers = bindManagersToSession(rootScope.managers);
+export default async function showBoostPopup(peerId: PeerId, {reason, managers: openerManagers, onClose}: {
+  reason?: BoostReason,
+  managers?: AppManagers | TabManagers,
+  // * once it has closed, or when it does not open after all
+  onClose?: () => void
+} = {}) {
+  const managers = bindManagersToSession(openerManagers || rootScope.managers);
   const middlewareHelper = getMiddleware();
 
   const [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked, isBroadcast] = await Promise.all([
@@ -37,9 +44,17 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
     managers.appPeersManager.isBroadcast(peerId)
   ]);
 
+  // * asked for on an account the tab has left meanwhile: nothing opens on the one it shows now
+  if(isSessionLeaving(getManagersSession(managers))) {
+    middlewareHelper.destroy();
+    onClose?.();
+    return;
+  }
+
   if(!boostsStatus) {
     toastNew({langPackKey: 'CantBoostChat'});
     middlewareHelper.destroy();
+    onClose?.();
     return;
   }
 
@@ -276,7 +291,10 @@ export default async function showBoostPopup(peerId: PeerId, reason?: BoostReaso
         closable
         old
         show={show()}
-        onCloseAfterTimeout={() => deferredCloseCallbacks.splice(0).forEach((callback) => callback())}
+        onCloseAfterTimeout={() => {
+          deferredCloseCallbacks.splice(0).forEach((callback) => callback());
+          onClose?.();
+        }}
       >
         {limitLine.container}
         <MediaHeader.Title class={`${className}-title`} size={20}>{title()}</MediaHeader.Title>

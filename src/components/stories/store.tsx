@@ -97,6 +97,7 @@ export type StoriesContextActions = {
   resetIndexes: () => void,
   toggleMute: () => void,
   toggleInterface: (hide: boolean) => void,
+  setCovered: (covered: boolean) => void,
   toggleSorting: (type: StoriesSortingFreezeType, freeze: boolean) => void,
   load: () => Promise<boolean>,
   setBuffering: (owner: object, buffering: boolean) => void,
@@ -474,6 +475,11 @@ export const createStoriesStore = (props: {
     return promise;
   };
 
+  // * what stands over the viewer — a popup, the media viewer — holds the story still, and a play asked for under
+  // * it (a popup's own resume as it closes, with the next one already open) waits for it to go: nothing ever plays
+  // * behind what covers it
+  let covered = false, playWhenUncovered = false;
+
   const actions: StoriesContextActions = {
     set: (params) => {
       if(!params) {
@@ -510,6 +516,7 @@ export const createStoriesStore = (props: {
     },
 
     pause: (hideInterface) => {
+      playWhenUncovered = false;
       setState({paused: true, playAfterGesture: !!hideInterface && !state.paused});
       actions.toggleInterface(hideInterface);
     },
@@ -517,6 +524,12 @@ export const createStoriesStore = (props: {
     // * while buffering it is kept to be done: the clock waits for the data either way (on pause or buffering)
     play: (storyDuration = state.storyDuration) => {
       if(!state.hasViewer) {
+        return;
+      }
+
+      if(covered) {
+        playWhenUncovered = true;
+        setState({storyDuration});
         return;
       }
 
@@ -581,6 +594,26 @@ export const createStoriesStore = (props: {
 
     toggleInterface: (hide) => {
       setState({hideInterface: hide});
+    },
+
+    setCovered: (_covered) => {
+      if(covered === _covered) {
+        return;
+      }
+
+      if(_covered) {
+        const resume = !state.paused;
+        actions.pause();
+        covered = true;
+        playWhenUncovered = resume;
+        return;
+      }
+
+      covered = false;
+      if(playWhenUncovered) {
+        playWhenUncovered = false;
+        actions.play();
+      }
     },
 
     toggleSorting: (type, freeze) => {
