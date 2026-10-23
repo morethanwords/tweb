@@ -525,12 +525,15 @@ export class AppUsersManager extends AppManager {
       id: this.appPeersManager.getInputPeerById(peerId),
       my_stories_from: blockMyStoriesFrom === undefined ? undefined : true
     }).then(() => {
+      // * the update says both lists a peer is on: the stories' one leaves the other as the profile knew it
+      const storiesList = blockMyStoriesFrom !== undefined;
+      const known = storiesList && peerId.isUser() && this.appProfileManager.getCachedFullUser(peerId.toUserId())?.pFlags;
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePeerBlocked',
         peer_id: this.appPeersManager.getOutputPeer(peerId),
         pFlags: {
-          blocked: block || undefined,
-          blocked_my_stories_from: blockMyStoriesFrom || undefined
+          blocked: (storiesList ? known?.blocked : block) || undefined,
+          blocked_my_stories_from: (storiesList ? block : blockMyStoriesFrom) || undefined
         }
       });
 

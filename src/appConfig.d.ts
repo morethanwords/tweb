@@ -94,6 +94,7 @@ export interface MTAppConfig {
   stories_stealth_cooldown_period?:          number;
   stories_stealth_future_period?:            number;
   stories_stealth_past_period?:              number;
+  story_viewers_expire_period?:              number;
   giveaway_add_peers_max?:                   number;
   giveaway_boosts_per_premium?:              number;
   giveaway_countries_max?:                   number;

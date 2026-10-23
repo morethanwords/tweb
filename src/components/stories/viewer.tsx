@@ -12,7 +12,7 @@ import throttle from '@helpers/schedulers/throttle';
 import clamp from '@helpers/number/clamp';
 import classNames from '@helpers/string/classNames';
 import windowSize from '@helpers/windowSize';
-import {Document, DocumentAttribute, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
+import {Document, DocumentAttribute, MediaArea, MessageMedia, Reaction, StoryItem, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
 import animationIntersector from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import PeerTitle from '@components/peerTitle';
@@ -39,7 +39,7 @@ import Chat from '@components/chat/chat';
 import {ChatType} from '@components/chat/chatType';
 import middlewarePromise from '@helpers/middlewarePromise';
 import emoticonsDropdown from '@components/emoticonsDropdown';
-import showPickUserPopup from '@components/popups/pickUser';
+import showStoryViewersPopup from '@components/popups/storyViewers';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -61,7 +61,6 @@ import {STORY_PRIVACY_ICONS} from '@components/stories/privacyIcons';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import removeStoriesFromRecent from '@components/stories/removeFromRecent';
 import StackedAvatars from '@components/stackedAvatars';
-import {processDialogElementForReaction} from '@components/popups/reactedList';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import focusInput from '@helpers/dom/focusInput';
 import {preloadStoriesMedia, wrapStoryMedia} from '@components/stories/preview';
@@ -280,7 +279,7 @@ const StorySlide = (props: {
 };
 
 const DEFAULT_REACTION_EMOTICON = '❤';
-const SWIPE_TO_REPLY_RISE = 20; // * how far the reply field rises after a drag up, till it opens (Android)
+const SWIPE_UP_RISE = 20; // * how far the reply field or the footer rises after a drag up, till it opens (Android)
 const isDefaultReaction = (reaction: Reaction) => (reaction as Reaction.reactionEmoji)?.emoticon === DEFAULT_REACTION_EMOTICON;
 
 const StoryInput = (props: {
@@ -482,7 +481,7 @@ const StoryInput = (props: {
   // * set only while it moves: a transform left on it would hold what it positions as fixed
   createEffect(() => {
     const progress = props.swipeProgress();
-    input.chatInput.style.transform = progress ? `translateY(${-progress * SWIPE_TO_REPLY_RISE}px)` : '';
+    input.chatInput.style.transform = progress ? `translateY(${-progress * SWIPE_UP_RISE}px)` : '';
   });
 
   // * every button is in the field, which is as wide as the story, and focused grows past it on a wide screen
@@ -1995,13 +1994,12 @@ const Stories = (props: {
         fromName: fwdFromName
       };
 
-      const {node, readyThumbPromise} = avatarNew({
+      // * the avatar fills in as it loads: the story waits for the names alone, never for a download, as the
+      // * author's does
+      const {node: headerAvatar} = avatarNew({
         peerId: fwdFromPeerId,
         peerTitle: fwdFromName,
         size: 16,
-        // props: {
-        //   class: styles.ViewerStoryHeaderRepostAvatar
-        // },
         middleware
       });
 
@@ -2047,7 +2045,7 @@ const Stories = (props: {
         return promise;
       });
 
-      const [reply, headerPeerTitle, headerAvatar] = await Promise.all([
+      const [reply, headerPeerTitle] = await Promise.all([
         wrapPeerTitle(peerTitleOptions).then(async(peerTitle) => {
           const title = document.createDocumentFragment();
           if(fwdFromPeerId) {
@@ -2081,7 +2079,6 @@ const Stories = (props: {
           return container;
         }),
         wrapPeerTitle(peerTitleOptions),
-        readyThumbPromise.then(() => node),
         storyPromise
       ]);
       if(!middleware()) return;
@@ -2636,26 +2633,52 @@ const Stories = (props: {
           setInputReady,
           confirmSending: confirmStealthReply,
           setChatInput: (input: ChatInput) => storyChatInput = input,
-          swipeProgress: swipeReplyProgress
+          swipeProgress: swipeUpProgress
         })
       }
     />
   );
 
-  // * a drag up on a user's story opens its reply field with the keyboard, the field rising after the finger
-  // * until then (iOS, Android) — never a group's or a channel's
-  const [swipeReplyProgress, setSwipeReplyProgress] = createSignal(0);
+  // * who saw one's own story, and who reacted to a channel's or a group's one, which its stories' editors see
+  // * (iOS, Android's viewsAllowed)
+  const [canViewInteractions, setCanViewInteractions] = createSignal(isMe);
+  if(!props.state.peerId.isUser()) {
+    const managers = bindManagersToSession(rootScope.managers);
+    const middleware = createMiddleware().get();
+    const peerId = props.state.peerId;
+    const chatId = peerId.toChatId();
+    const updateCanViewInteractions = () => {
+      managers.appStoriesManager.canViewStoryInteractions(peerId).then((value) => {
+        if(middleware()) setCanViewInteractions(!!value);
+      }, noop);
+    };
+
+    updateCanViewInteractions();
+    // * the admin's rights change while the story is open
+    createListenerSetter().add(rootScope)('chat_update', (id) => id === chatId && updateCanViewInteractions());
+  }
+
+  // * a drag up opens that list where it is seen, and otherwise a user's story's reply field with the keyboard
+  // * (iOS, Android) — never a group's or a channel's; what comes rises after the finger until then
+  const [swipeUpProgress, setSwipeUpProgress] = createSignal(0);
+  const canSwipeToViews = () => canViewInteractions() && currentStory()?._ === 'storyItem';
   const canSwipeToReply = () => canReply() && props.state.peerId.isUser();
   const swipeUp: StorySwipeUp = {
     move: (offset) => {
       const distance = Math.min(200, windowSize.height * .15);
-      setSwipeReplyProgress(canSwipeToReply() ? Math.min(1, offset / distance) : 0);
+      setSwipeUpProgress(canSwipeToViews() || canSwipeToReply() ? Math.min(1, offset / distance) : 0);
     },
     end: () => {
-      const done = swipeReplyProgress() >= 1;
-      setSwipeReplyProgress(0);
-      // * in the touch's own end, or the keyboard does not come
-      if(done && canSwipeToReply() && storyChatInput) {
+      const done = swipeUpProgress() >= 1;
+      setSwipeUpProgress(0);
+      if(!done) {
+        return;
+      }
+
+      if(canSwipeToViews()) {
+        openViewsList();
+      } else if(canSwipeToReply() && storyChatInput) {
+        // * in the touch's own end, or the keyboard does not come
         focusInput(storyChatInput.messageInput);
       }
     }
@@ -3072,6 +3095,16 @@ const Stories = (props: {
       },
       verify: () => rootScope.managers.appProfileManager.canViewStatistics(peerId)
     }, {
+      // * a group's story with a reply field has no footer to open who reacted from: its admins open it here,
+      // * as the mouse and the keyboard have no swipe up
+      icon: 'reactions',
+      text: 'Reactions',
+      onClick: () => {
+        ignoreOnClose = true;
+        openViewsList(wasPlaying);
+      },
+      verify: () => story?._ === 'storyItem' && !peerId.isUser() && canViewInteractions() && canReply()
+    }, {
       icon: 'delete danger' as Icon,
       text: 'Delete',
       onClick: async() => {
@@ -3220,53 +3253,38 @@ const Stories = (props: {
     }
   });
 
-  const openViewsList = isMe && (() => {
-    let nextOffset: string;
-    const viewsMap: Map<PeerId, StoryView.storyView> = new Map();
-    const popup = showPickUserPopup({
-      titleLangKey: 'StoryViewers',
-      peerType: ['custom'],
-      getMoreCustom: (q) => {
-        const loadCount = 50;
-        return rootScope.managers.appStoriesManager.getStoryViewsList(
-          props.state.peerId,
-          currentStory().id,
-          loadCount,
-          nextOffset,
-          q
-        ).then(({nextOffset: _nextOffset, views}) => {
-          nextOffset = _nextOffset;
-          return {
-            result: views.map((storyView) => {
-              const peerId = storyView.user_id.toPeerId(false);
-              viewsMap.set(peerId, storyView);
-              return peerId;
-            }),
-            isEnd: !nextOffset
-          };
-        });
+  const openViewsList = (wasPlaying?: boolean) => {
+    const story = currentStory();
+    if(story?._ !== 'storyItem' || !canViewInteractions()) {
+      return;
+    }
+
+    // * held still from the start, not once the list has come, and played on once it closes
+    const onClose = bindOnAnyPopupClose(wasPlaying);
+    actions.pause();
+    showStoryViewersPopup({
+      peerId: props.state.peerId,
+      storyId: story.id,
+      stories: () => props.state.stories,
+      // * the story the list goes to is the one the viewer stands on once it closes (iOS, Android)
+      onStoryChange: (id) => {
+        const index = props.state.stories.findIndex((story) => story.id === id);
+        if(index !== -1) {
+          actions.set({peer: props.state, index});
+        }
       },
-      processElementAfter: (peerId, dialogElement) => {
-        const view = viewsMap.get(peerId);
-        return processDialogElementForReaction({
-          dialogElement,
-          peerId,
-          date: view.date,
-          isMine: true,
-          middleware: dialogElement.middlewareHelper.get(),
-          reaction: view.reaction
-        });
+      onOpenPeer: (peerId) => {
+        props.close(() => hotReloadGuard.appImManager.setInnerPeer({peerId}));
       },
-      onSelect: ([obj]) => {
-        props.close(() => {
-          hotReloadGuard.appImManager.setInnerPeer(obj);
-        });
+      onOpenStory: (peerId, id) => {
+        props.close(() => createStoriesViewerWithPeer({peerId, id}));
       },
-      placeholder: 'SearchPlaceholder',
-      exceptSelf: true,
-      meAsSaved: false
+      onOpenMessage: (peerId, mid) => {
+        props.close(() => hotReloadGuard.appImManager.setInnerPeer({peerId, lastMsgId: mid}));
+      },
+      onClose
     });
-  });
+  };
 
   const onDeleteClick = isMe && (async() => {
     const managers = bindManagersToSession(rootScope.managers);
@@ -3356,7 +3374,19 @@ const Stories = (props: {
 
   // * the footer of a story with no reply field: what stands on its start is the story's own to say, the
   // * heart and the sharing stand on its end
-  let footerReactionIcon: HTMLElement;
+  let footerReactionIcon: HTMLElement, footerShareButton: HTMLElement;
+  const storyViews = () => (currentStory() as StoryItem.storyItem).views;
+  // * a count stands beside its icon for as long as there is something to count, and one's own reaction is
+  // * counted before the server has (iOS, Android)
+  const footerCount = (count: number) => count > 0 && (
+    <span class={styles.ViewerStoryFooterCount}>{formatNumber(count, 1)}</span>
+  );
+  const reactionsCount = () => Math.max((currentStory() as StoryItem.storyItem).sent_reaction ? 1 : 0, storyViews()?.reactions_count || 0);
+  // * a channel's or a group's story is seen at least once, by whoever is looking at it (Android)
+  const channelViews = () => [
+    Icon('eye1_filled', styles.ViewerStoryFooterIconIcon),
+    footerCount(storyViews()?.views_count || 1)
+  ];
   const footer = () => (
     <div
       class={classNames(
@@ -3365,12 +3395,28 @@ const Stories = (props: {
         isMe && styles.isMe,
         isChangelog && styles.isChangelog
       )}
+      style={swipeUpProgress() ? {transform: `translateY(${-swipeUpProgress() * SWIPE_UP_RISE}px)`} : undefined}
     >
       {isMe ? (
         <>
-          <A11yButton class={styles.ViewerStoryFooterLeft} onClick={openViewsList}>
+          <A11yButton class={styles.ViewerStoryFooterLeft} onClick={() => openViewsList()}>
             {stackedAvatars() && stackedAvatars().container}
             {getViews()}
+            {/* * the reactions in red and the reposts in green follow the views (iOS, Android) */}
+            {storyViews()?.views_count > 0 && storyViews().reactions_count > 0 && (
+              <span class={classNames(styles.ViewerStoryFooterStat, styles.reactions)}>
+                {Icon('reactions_filled', styles.ViewerStoryFooterStatIcon)}
+                <span aria-hidden="true">{formatNumber(storyViews().reactions_count, 1)}</span>
+                <span class="sr-only">{i18n('ReactionsTooltip', [storyViews().reactions_count])}</span>
+              </span>
+            )}
+            {storyViews()?.views_count > 0 && storyViews().forwards_count > 0 && (
+              <span class={classNames(styles.ViewerStoryFooterStat, styles.reposts)}>
+                {Icon(STORY_REPOST_ICON, styles.ViewerStoryFooterStatIcon)}
+                <span aria-hidden="true">{formatNumber(storyViews().forwards_count, 1)}</span>
+                <span class="sr-only">{i18n('SharesTooltip', [storyViews().forwards_count])}</span>
+              </span>
+            )}
           </A11yButton>
           <div class={styles.ViewerStoryFooterRight}>
             <ButtonIconTsx icon="delete" onClick={onDeleteClick} />
@@ -3387,22 +3433,38 @@ const Stories = (props: {
                 <span class={styles.ViewerStoryFooterLockedText}>{i18n('Story.CommentsRestricted')}</span>
                 <span class={styles.ViewerStoryFooterLockedButton}>{i18n('Unlock')}</span>
               </A11yButton>
+            ) : canViewInteractions() ? (
+              // * the admins who edit the stories open who reacted to them from the views (Android, iOS)
+              <A11yButton
+                as="span"
+                class={classNames(styles.ViewerStoryFooterIcon, styles.ViewerStoryFooterReaction)}
+                aria-label={I18n.format('Reactions', true)}
+                onClick={() => openViewsList()}
+              >
+                {channelViews()}
+              </A11yButton>
             ) : (
               <span class={styles.ViewerStoryFooterIcon}>
-                {Icon('eye1_filled', styles.ViewerStoryFooterIconIcon)}
-                {formatNumber((currentStory() as StoryItem.storyItem).views?.views_count || 1, 1)}
+                {channelViews()}
               </span>
             )}
           </div>
           <div class={styles.ViewerStoryFooterRight}>
             {/* * a story shown as a note is not shared either (Android) */}
             {canShareStory() && !mediaUnsupported() && (
-              <ButtonIconTsx
-                icon="forward"
+              <A11yButton
+                as="span"
+                ref={footerShareButton}
+                aria-label={I18n.format('Forward', true)}
+                class={classNames(styles.ViewerStoryFooterIcon, styles.ViewerStoryFooterReaction)}
                 onClick={(e) => {
-                  onShareButtonClick(e, e.target as HTMLElement);
+                  onShareButtonClick(e, footerShareButton);
                 }}
-              />
+              >
+                {Icon('forward', styles.ViewerStoryFooterIconIcon)}
+                {/* * how many times it was shared, with the button that shares it (iOS, Android) */}
+                {footerCount(storyViews()?.forwards_count)}
+              </A11yButton>
             )}
             <A11yButton
               as="span"
@@ -3414,7 +3476,7 @@ const Stories = (props: {
             >
               <span ref={footerReactionIcon} class={styles.ViewerStoryFooterReactionIcon}>{reaction()}</span>
               {/* * counted for a channel's or a group's story, not for a person's */}
-              {!props.state.peerId.isUser() && ((currentStory() as StoryItem.storyItem).views?.reactions_count || 0)}
+              {!props.state.peerId.isUser() && footerCount(reactionsCount())}
             </A11yButton>
           </div>
         </>

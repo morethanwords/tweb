@@ -1,0 +1,230 @@
+@use "../../scss/mixins" as *;
+
+.popup {
+  --popup-width: 25rem;
+}
+
+.container {
+  height: min(37.5rem, calc(100% - 2rem));
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--surface-color);
+}
+
+// * one's stories side by side, the one the list is of marked: another one is chosen there (Android)
+.strip {
+  display: flex;
+  justify-content: safe center;
+  gap: .5rem;
+  flex: 0 0 auto;
+  padding: .75rem .75rem .25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &Item {
+    position: relative;
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 4rem;
+    border-radius: .5rem;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: .5;
+    background-color: var(--light-filled-secondary-text-color);
+
+    @include animation-level-global(1) {
+      transition: opacity var(--transition-standard-in);
+    }
+
+    @include hover-global() {
+      opacity: .8;
+    }
+
+    &.active {
+      opacity: 1;
+
+      &:after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 2px var(--primary-color);
+      }
+    }
+  }
+
+  &Media {
+    position: absolute;
+    inset: 0;
+
+    :global(.media-photo),
+    :global(.media-video) {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &Views {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .125rem;
+    padding: .5rem 0 .125rem;
+    color: #fff;
+    font-size: .6875rem;
+    font-weight: var(--font-weight-bold);
+    background: linear-gradient(transparent, rgba(0, 0, 0, .5));
+
+    :global(.tgico) {
+      font-size: .75rem;
+    }
+  }
+}
+
+.header {
+  flex: 0 0 auto;
+  gap: .5rem;
+  margin: 0;
+  padding: .5rem .75rem;
+  min-height: 3.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  flex: 1 1 auto;
+}
+
+.tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// * the order the list goes in: its icon, and the arrow of the menu it opens
+.sort {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: .125rem;
+  width: auto;
+  padding-inline: .5rem .25rem;
+  border-radius: 1.25rem;
+  font-size: 1.25rem;
+
+  &Arrow {
+    font-size: 1rem;
+  }
+}
+
+.search {
+  flex: 0 0 auto;
+  width: auto;
+  margin: .5rem .75rem 0;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollable {
+  flex: 1 1 auto;
+}
+
+.list {
+  padding: .5rem 0;
+}
+
+// * a row with something on its end: the reaction, or the story a repost or a forward is
+.row {
+  padding-inline-end: 3.25rem !important;
+
+  &.withPreview {
+    padding-inline-end: 3.5rem !important;
+  }
+}
+
+// * one who no longer sees the stories, hidden from them or blocked (Android)
+.hidden {
+  :global(.dialog-avatar),
+  :global(.row-title-row),
+  :global(.row-subtitle-row) {
+    opacity: .5;
+  }
+}
+
+.preview {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 1rem;
+  width: 1.75rem;
+  height: 2.5rem;
+  border-radius: .25rem;
+  overflow: hidden;
+  transform: translateY(-50%);
+  background-color: var(--light-filled-secondary-text-color);
+
+  :global(.media-photo),
+  :global(.media-video) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// * why the list is empty, in its middle
+.stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 15rem;
+  padding: 2rem 2.5rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+
+  &Title {
+    color: var(--primary-text-color);
+    font-size: var(--font-size-20);
+    font-weight: var(--font-weight-bold);
+  }
+
+  &Text {
+    line-height: var(--line-height-16);
+  }
+
+  &Button {
+    margin-top: 1rem;
+    width: auto;
+    padding-inline: 2rem;
+  }
+}
+
+// * why the list ends there, past its last row
+.hint {
+  padding: 1rem 1.25rem;
+  text-align: center;
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-14);
+  color: var(--secondary-text-color);
+
+  &Clickable {
+    cursor: pointer;
+
+    b {
+      color: var(--primary-color);
+    }
+  }
+}

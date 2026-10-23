@@ -495,7 +495,31 @@ $color-inactive: rgba(255, 255, 255, .5);
 
         &Icon {
           font-size: 1.5rem;
-          margin-inline-end: .375rem;
+        }
+      }
+
+      &Count {
+        margin-inline-start: .375rem;
+      }
+
+      // * the reactions in red and the reposts in green beside the views of one's own story (iOS, Android)
+      &Stat {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        margin-inline-start: .625rem;
+
+        &Icon {
+          font-size: 1.25rem;
+          margin-inline-end: .125rem;
+        }
+
+        &.reactions &Icon {
+          color: #FF3B30;
+        }
+
+        &.reposts &Icon {
+          color: #34C759;
         }
       }
 
@@ -513,7 +537,6 @@ $color-inactive: rgba(255, 255, 255, .5);
         --reaction-offset: 0px;
         position: relative;
         display: flex;
-        margin-inline-end: .375rem;
 
         :global {
           .btn-reaction-icon {

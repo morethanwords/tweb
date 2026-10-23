@@ -11,6 +11,7 @@ import './transactionSubscriptions';
 import './gifts';
 import './misc';
 import './storySettings';
+import './storyViewers';
 import './authCards';
 import './calls';
 import './callRating';

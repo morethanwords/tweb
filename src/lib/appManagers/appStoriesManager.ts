@@ -13,7 +13,7 @@ import deepEqual from '@helpers/object/deepEqual';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import pause from '@helpers/schedulers/pause';
 import tsNow from '@helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, ChatFull, StoryView, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, ChatFull, StoryView, StoryReaction, Message, MediaArea, StoryAlbum, StoriesStealthMode, InputPrivacyRule} from '@layer';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
 import getStoryPrivacyType from '@appManagers/utils/stories/privacyType';
 import {StorySettings, StorySettingsSaveResult} from '@appManagers/utils/stories/storySettings';
@@ -33,6 +33,32 @@ export type StoryReplyMode = 'reply' | 'boost' | 'none';
 export type StoriesListPosition = {type: StoriesListType, index: number};
 export type StoriesSegment = {length: number, type: 'unread' | 'close' | 'read'};
 export type StoriesSegments = StoriesSegment[];
+// * a line of the list of who saw or reacted to a story: a view (with its reaction), a repost as a story, a forward
+export type StoryInteraction = {
+  _: 'view',
+  peerId: PeerId,
+  date: number,
+  reaction?: Reaction,
+  blocked?: boolean,
+  blockedMyStoriesFrom?: boolean
+} | {
+  _: 'repost',
+  peerId: PeerId,
+  date: number,
+  story: StoryItem.storyItem
+} | {
+  _: 'forward',
+  peerId: PeerId,
+  date: number,
+  message: Message.message
+};
+export type StoryInteractionsList = {
+  count: number,
+  // * of a user's story only: how many saw it, which the list may hold fewer of
+  viewsCount?: number,
+  items: StoryInteraction[],
+  nextOffset?: string
+};
 type AlbumCacheItem = {
   info: StoryAlbum,
   ids: StoryItem['id'][],
@@ -1728,46 +1754,128 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public getStoryViewsList(
-    peerId: PeerId,
-    id: number,
+  // * who saw one's own story, reacted to it, reposted it as a story of their own or forwarded it to a public
+  // * chat (iOS, Android)
+  public getStoryViewsList(peerId: PeerId, id: number, options: {
     limit: number,
-    offset: string = '',
+    offset?: string,
     q?: string,
-    justContacts?: boolean
-  ) {
+    justContacts?: boolean,
+    reactionsFirst?: boolean
+  }) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getStoryViewsList',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         id,
-        limit,
-        offset,
-        q,
-        just_contacts: justContacts
+        limit: options.limit,
+        offset: options.offset || '',
+        q: options.q || undefined,
+        just_contacts: options.justContacts || undefined,
+        reactions_first: options.reactionsFirst || undefined
       },
-      processResult: (storiesStoryViews) => {
+      processResult: (storiesStoryViews): StoryInteractionsList => {
         this.appPeersManager.saveApiPeers(storiesStoryViews);
-
-        storiesStoryViews.views.forEach((storyView) => {
-          (storyView as StoryView.storyViewPublicForward).message = this.appMessagesManager.saveMessage((storyView as StoryView.storyViewPublicForward).message);
-          (storyView as StoryView.storyViewPublicRepost).story = (storyView as StoryView.storyViewPublicRepost).story && this.appStoriesManager.saveStoryItem(
-            (storyView as StoryView.storyViewPublicRepost).story,
-            this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId((storyView as StoryView.storyViewPublicRepost).peer_id))
-          );
-        });
-
-        const views = storiesStoryViews.views.filter((storyView) => {
-          return storyView._ === 'storyView';
-        }) as StoryView.storyView[];
-
         return {
           count: storiesStoryViews.count,
-          views: views,
+          viewsCount: storiesStoryViews.views_count,
+          items: storiesStoryViews.views.map((storyView) => {
+            if(storyView._ === 'storyView') {
+              return {
+                _: 'view',
+                peerId: storyView.user_id.toPeerId(false),
+                date: storyView.date,
+                reaction: storyView.reaction,
+                blocked: !!storyView.pFlags.blocked,
+                blockedMyStoriesFrom: !!storyView.pFlags.blocked_my_stories_from
+              };
+            }
+
+            return this.saveStoryInteractionShare(storyView);
+          }).filter((item): item is StoryInteraction => !!item),
           nextOffset: storiesStoryViews.next_offset
         };
       }
     });
+  }
+
+  // * the same for a channel's or a group's story, to those of its admins who edit its stories: who reacted to
+  // * it, reposted or forwarded it (Android, iOS)
+  public getStoryReactionsList(peerId: PeerId, id: number, options: {
+    limit: number,
+    offset?: string,
+    forwardsFirst?: boolean
+  }) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getStoryReactionsList',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id,
+        limit: options.limit,
+        offset: options.offset || undefined,
+        forwards_first: options.forwardsFirst || undefined
+      },
+      processResult: (storiesStoryReactions): StoryInteractionsList => {
+        this.appPeersManager.saveApiPeers(storiesStoryReactions);
+        return {
+          count: storiesStoryReactions.count,
+          items: storiesStoryReactions.reactions.map((storyReaction) => {
+            if(storyReaction._ === 'storyReaction') {
+              return {
+                _: 'view',
+                peerId: this.appPeersManager.getPeerId(storyReaction.peer_id),
+                date: storyReaction.date,
+                reaction: storyReaction.reaction
+              };
+            }
+
+            return this.saveStoryInteractionShare(storyReaction);
+          }).filter((item): item is StoryInteraction => !!item),
+          nextOffset: storiesStoryReactions.next_offset
+        };
+      }
+    });
+  }
+
+  private saveStoryInteractionShare(
+    share: StoryView.storyViewPublicRepost | StoryView.storyViewPublicForward | StoryReaction.storyReactionPublicRepost | StoryReaction.storyReactionPublicForward
+  ): StoryInteraction | undefined {
+    if(share._ === 'storyViewPublicForward' || share._ === 'storyReactionPublicForward') {
+      const message = this.appMessagesManager.saveMessage(share.message) as Message.message;
+      if(message?._ !== 'message') {
+        return;
+      }
+
+      return {
+        _: 'forward',
+        peerId: message.peerId,
+        date: message.date,
+        message
+      };
+    }
+
+    const peerId = this.appPeersManager.getPeerId(share.peer_id);
+    const story = this.saveStoryItem(share.story, this.getPeerStoriesCache(peerId));
+    if(story?._ !== 'storyItem') {
+      return;
+    }
+
+    return {
+      _: 'repost',
+      peerId,
+      date: story.date,
+      story
+    };
+  }
+
+  // * the views of one's own stories, and the reactions to a channel's or a group's ones its stories' editors see
+  // * (Android's viewsAllowed)
+  public canViewStoryInteractions(peerId: PeerId) {
+    if(peerId.isUser()) {
+      return peerId === this.appPeersManager.peerId;
+    }
+
+    return this.appChatsManager.hasRights(peerId.toChatId(), 'edit_stories');
   }
 
   public getStoriesViews(peerId: PeerId, ids: number[]) {

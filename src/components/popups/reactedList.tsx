@@ -36,7 +36,9 @@ export async function processDialogElementForReaction({
   middleware,
   isMine,
   date,
-  mediaSize = _mediaSize
+  mediaSize = _mediaSize,
+  icon,
+  after
 }: {
   peerId: PeerId,
   dialogElement: DialogElement,
@@ -44,7 +46,10 @@ export async function processDialogElementForReaction({
   middleware: Middleware,
   isMine: boolean,
   date: number,
-  mediaSize?: MediaSize
+  mediaSize?: MediaSize,
+  // * what the date is marked with, a reaction's or a view's own otherwise, and what follows it
+  icon?: Icon,
+  after?: (string | Node)[]
 }) {
   const managers = bindManagersToSession(rootScope.managers);
   const {dom} = dialogElement;
@@ -76,9 +81,9 @@ export async function processDialogElementForReaction({
   if(date && isMine) {
     const c = document.createElement('span');
     dom.lastMessageSpan.style.cssText = `display: flex !important; align-items: center;`;
-    const span = Icon(reaction ? 'reactions' : 'checks', 'reacted-list-checks');
+    const span = Icon(icon || (reaction ? 'reactions' : 'checks'), 'reacted-list-checks');
     const fragment = document.createDocumentFragment();
-    c.append(formatFullSentTime(date, false));
+    c.append(formatFullSentTime(date, false), ...(after || []));
     fragment.append(span, c);
     replaceContent(dom.lastMessageSpan, fragment);
   } else if(peerId.isUser()) {
