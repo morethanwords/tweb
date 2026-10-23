@@ -1140,6 +1140,14 @@ export default class AppStoriesManager extends AppManager {
     cache.albumsOrder.push(album.album_id);
     cache.albumsHash = undefined;
 
+    // * the stories it was made with are in it now, as updateAlbum puts them
+    storyIds?.forEach((id) => {
+      const story = this.getStoryByIdCached(peerId, id);
+      if(story?._ === 'storyItem' && !story.albums?.includes(album.album_id)) {
+        (story.albums ??= []).push(album.album_id);
+      }
+    });
+
     this.rootScope.dispatchEvent('story_album_created', {
       peerId,
       albumId: album.album_id,

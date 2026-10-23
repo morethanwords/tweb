@@ -5,6 +5,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import Icon from '@components/icon';
+import {getPlaybackRateMenuButton} from '@components/playbackRateButton';
 
 type PlaybackRateButtonProps = {
   skin: string;
@@ -61,14 +62,11 @@ function PlaybackRateButton(props: InternalPlaybackRateButtonProps) {
   props.controlsRef(controls);
 
   const buttons: ButtonMenuItemOptionsVerifiable[] = rates.map((rate) => ({
-    id: rate.toFixed(1),
-    emptyIcon: true,
+    ...getPlaybackRateMenuButton(rate),
     onClick: () => {
       appMediaPlaybackController.playbackRate = rate;
       setSelectedRate(rate);
-    },
-    text: rate === 1 ? 'PlaybackRateNormal' : undefined,
-    regularText: rate !== 1 ? rate + 'x' : undefined
+    }
   }));
 
   createEffect(() => {

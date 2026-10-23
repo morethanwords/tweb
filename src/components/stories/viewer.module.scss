@@ -271,6 +271,46 @@ $color-inactive: rgba(255, 255, 255, .5);
       }
     }
 
+    // * held and dragged along: the story's own line as wide as the strip, taller, and a hint under it
+    &Seek {
+      position: absolute;
+      top: .625rem;
+      inset-inline: .625rem;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+
+      &Bar {
+        position: relative;
+        align-self: stretch;
+        height: .3125rem;
+        border-radius: .3125rem;
+        overflow: hidden;
+        background-color: rgba(255, 255, 255, .3);
+        box-shadow: $shadow;
+
+        // * a video's time runs left to right, in either direction of the interface
+        &Fill {
+          position: absolute;
+          inset: 0;
+          background-color: #fff;
+          transform-origin: left center;
+          transform: scaleX(0);
+        }
+      }
+
+      &Hint {
+        margin-top: .75rem;
+        color: #fff;
+        font-size: var(--font-size-14);
+        font-weight: var(--font-weight-bold);
+        text-shadow: $shadow;
+        text-align: center;
+      }
+    }
+
     &Header {
       position: absolute;
       top: 1rem;

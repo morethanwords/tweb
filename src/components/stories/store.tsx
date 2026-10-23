@@ -74,7 +74,11 @@ export type StoriesContextState = {
   loaded: boolean,
   canEdit: boolean,
   /** how many stories a search found: the server's count while there are more pages */
-  foundCount: number
+  foundCount: number,
+  // * how fast the videos play: one speed for the whole viewer, as on iOS
+  playbackRate: number,
+  // * held and dragged along to move through the video (touch only)
+  seeking: boolean
 };
 
 export type StoriesContextActions = {
@@ -94,9 +98,14 @@ export type StoriesContextActions = {
   toggleInterface: (hide: boolean) => void,
   toggleSorting: (type: StoriesSortingFreezeType, freeze: boolean) => void,
   load: () => Promise<boolean>,
-  setBuffering: (buffering: boolean) => void,
+  setBuffering: (owner: object, buffering: boolean) => void,
   setLoop: (loop: boolean) => void,
   setAlbumId: (albumId: number | undefined) => void,
+  setPlaybackRate: (playbackRate: number) => void,
+  setSeeking: (seeking: boolean) => void,
+  seek: (progress: number) => void,
+  setStoryDuration: (storyDuration: number) => void,
+  getProgress: () => number | undefined,
   handleSwipe: (xDiff: number, setAlbumOverride?: (albumId: number | undefined) => void) => boolean
 };
 
@@ -265,7 +274,9 @@ export const createStoriesStore = (props: {
     albumId: props.initialAlbumId as number | undefined,
     loaded: false,
     canEdit: false,
-    foundCount: 0
+    foundCount: 0,
+    playbackRate: 1,
+    seeking: false
   };
 
   let loadState: string;
@@ -273,6 +284,7 @@ export const createStoriesStore = (props: {
   let changeTimeout: number;
   // * plain closure state: a `Set` is not wrappable, so keeping it in the store only pretends to be reactive
   const freezedSorting = new Set<StoriesSortingFreezeType>();
+  const bufferingOwners = new Set<object>();
   const albumCache = new Map<number | undefined, AlbumCacheItem>();
   const [state, setState] = createStore(initialState);
 
@@ -496,8 +508,9 @@ export const createStoriesStore = (props: {
       actions.toggleInterface(hideInterface);
     },
 
+    // * while buffering it is kept to be done: the clock waits for the data either way (on pause or buffering)
     play: (storyDuration = state.storyDuration) => {
-      if(state.buffering || !state.hasViewer) {
+      if(!state.hasViewer) {
         return;
       }
 
@@ -512,6 +525,7 @@ export const createStoriesStore = (props: {
     },
 
     restart: () => {
+      bufferingOwners.clear();
       setState({buffering: false});
       actions.stop();
       actions.play();
@@ -583,8 +597,14 @@ export const createStoriesStore = (props: {
 
     load,
 
-    setBuffering: (buffering) => {
-      setState({buffering});
+    // * the clock waits while anyone needs data - a video, the other quality's file loading - and each
+    // * takes back only its own: one done never lets the clock run over another still waiting
+    setBuffering: (owner, buffering) => {
+      if(buffering) bufferingOwners.add(owner);
+      else bufferingOwners.delete(owner);
+      if(state.buffering !== !!bufferingOwners.size) {
+        setState({buffering: !!bufferingOwners.size});
+      }
     },
 
     setLoop: (loop) => {
@@ -617,6 +637,34 @@ export const createStoriesStore = (props: {
       }
     },
 
+    setPlaybackRate: (playbackRate) => {
+      setState({playbackRate});
+    },
+
+    setSeeking: (seeking) => {
+      setState({seeking});
+    },
+
+    seek: (progress) => {
+      setPosition(clamp(progress, 0, 1) * state.storyDuration);
+    },
+
+    // * a video played at another speed takes another time: what has gone of it stays gone
+    setStoryDuration: (storyDuration) => {
+      const previous = state.storyDuration;
+      if(!previous || !state.startTime) {
+        setState({storyDuration});
+        return;
+      }
+
+      setPosition(getElapsedTime() / previous * storyDuration, storyDuration);
+    },
+
+    // * how far the story has gone, 0 to 1: none before it started
+    getProgress: () => {
+      return state.startTime && state.storyDuration ? Math.min(1, getElapsedTime() / state.storyDuration) : undefined;
+    },
+
     handleSwipe: (xDiff: number, setAlbumOverride?: (albumId: number | undefined) => void) => {
       const albums = state.peers[0]?.albums;
       if(!albums?.length) return false;
@@ -635,6 +683,24 @@ export const createStoriesStore = (props: {
   };
 
   untrackActions(actions);
+
+  const isRunning = () => !state.paused && !state.buffering;
+  const getElapsedTime = () => isRunning() ? Date.now() - state.startTime : state.elapsedTimeOnPause;
+
+  // * puts the story's clock at `elapsed`: a running one goes on from there, a paused one starts from
+  // * there when played
+  const setPosition = (elapsed: number, storyDuration = state.storyDuration) => {
+    if(!state.startTime) { // * not started: there is nothing to move
+      return;
+    }
+
+    batch(() => {
+      setState({storyDuration, elapsedTimeOnPause: elapsed, startTime: Date.now() - elapsed});
+      if(isRunning()) {
+        setChangeTimeout();
+      }
+    });
+  };
 
   const setChangeTimeout = () => {
     clearTimeout(changeTimeout);

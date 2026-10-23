@@ -13,6 +13,7 @@ import {StoriesProvider, useStories} from '@components/stories/store';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import removeStoriesFromRecent from '@components/stories/removeFromRecent';
+import {createStoriesNotifyMuteButtons} from '@components/stories/notifyMute';
 import {ChatType} from '@components/chat/chatType';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useCollapsable} from '@hooks/useCollapsable';
@@ -363,15 +364,6 @@ function _StoriesList(props: {
   );
 
   onMount(() => {
-    const toggleMute = async(mute: boolean) => {
-      rootScope.managers.appNotificationsManager.toggleStoriesMute(peer.peerId, mute);
-
-      toastNew({
-        langPackKey: mute ? 'NotificationsStoryMutedHint' : 'NotificationsStoryUnmutedHint',
-        langPackArguments: [await wrapPeerTitle({peerId: peer.peerId})]
-      });
-    };
-
     const toggleHidden = async(hidden: boolean) => {
       rootScope.managers.appStoriesManager.toggleStoriesHidden(peer.peerId, hidden);
 
@@ -424,19 +416,7 @@ function _StoriesList(props: {
         text: 'OpenGroup2',
         onClick: openChat,
         verify: () => !peer.peerId.isUser() && !isBroadcast
-      }, {
-        icon: 'mute',
-        text: 'NotificationsStoryMute2',
-        onClick: () => toggleMute(true),
-        verify: () => !isSelf && rootScope.managers.appNotificationsManager.isPeerStoriesMuted(peer.peerId).then((isMuted) => !isMuted),
-        multiline: true
-      }, {
-        icon: 'unmute',
-        text: 'NotificationsStoryUnmute2',
-        onClick: () => toggleMute(false),
-        verify: () => !isSelf && rootScope.managers.appNotificationsManager.isPeerStoriesMuted(peer.peerId),
-        multiline: true
-      }, {
+      }, ...createStoriesNotifyMuteButtons(() => peer.peerId, () => !isSelf), {
         icon: 'eyecross',
         text: 'Stories.StealthMode.View',
         // * another user's stories only, as iOS and Android have it

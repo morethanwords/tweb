@@ -42,7 +42,8 @@ const TEST_LOADING_DELAY = 0;
 export default function showStickersPopup(
   stickerSetInput: Parameters<AppStickersManager['getStickerSet']>[0] | Parameters<AppStickersManager['getStickerSet']>[0][],
   isEmojisInitial?: boolean,
-  chatInput: ChatInput = hotReloadGuard.appImManager.chat?.input
+  chatInput: ChatInput = hotReloadGuard.appImManager.chat?.input,
+  onClose?: () => void
 ) {
   const [show, setShow] = createSignal(true);
 
@@ -396,6 +397,7 @@ export default function showStickersPopup(
       show={show()}
       kind={STICKERS_POPUP_KIND}
       animationGroup={ANIMATION_GROUP}
+      onClose={onClose}
       containerProps={{ref: (el) => containerEl = el}}
       onCloseAfterTimeout={() => {
         deferredCloseCallbacks.splice(0).forEach((cb) => cb());

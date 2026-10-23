@@ -6,8 +6,10 @@ import {animateSingle} from '@helpers/animation';
 import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import getInlineArrowKeys from '@helpers/dom/getInlineArrowKeys';
+import {DEFAULT_MENU_WINDOW_MARGIN} from '@helpers/positionMenu';
 import overlayCounter from '@helpers/overlayCounter';
 import throttle from '@helpers/schedulers/throttle';
+import clamp from '@helpers/number/clamp';
 import classNames from '@helpers/string/classNames';
 import windowSize from '@helpers/windowSize';
 import {Document, DocumentAttribute, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
@@ -41,7 +43,7 @@ import showPickUserPopup from '@components/popups/pickUser';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import {toastNew} from '@components/toast';
+import {hideToast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
 import appDownloadManager from '@lib/appDownloadManager';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
@@ -118,6 +120,18 @@ import A11yButton from '@components/a11yButton';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {hotListen} from '@helpers/hotModule';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import createSubmenuTrigger from '@components/createSubmenuTrigger';
+import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync, setButtonMenuItemDisabled} from '@components/buttonMenu';
+import {PLAYBACK_RATES, getPlaybackRateIcon, getPlaybackRateMenuButton, setPlaybackRateMenuState} from '@components/playbackRateButton';
+import {getStoryVideoDocuments, isStoryHighQuality, showStoryQualityUpgradePopup, STORY_QUALITY_ICON} from '@components/stories/quality';
+import {createAddToAlbumSubmenuTrigger, openCreateAlbumPopup} from '@components/stories/albums';
+import {createStoriesNotifyMuteButtons} from '@components/stories/notifyMute';
+import {TranslatableMessageTsx} from '@components/translatableMessage';
+import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import replaceContent from '@helpers/dom/replaceContent';
+import showStickersPopup from '@components/popups/stickers';
+import {getStoryContainedPacks, storyHasContainedPacks, StoryContainedPacks, StoryContainedPacksKind, wrapStoryContainedPacks} from '@components/stories/containedPacks';
 
 const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
@@ -125,6 +139,7 @@ const STORIES_PRESERVE = 2;
 const STORIES_PRESERVE_HIDDEN = 2;
 const STORIES_PRELOAD = 3;
 const STORY_REPOST_ICON: Icon = 'storyrepost';
+const STORY_MENU_PADDING = 8;
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
 hotListen(import.meta.hot, rootScope, 'app_config', (appConfig) => {
@@ -1060,6 +1075,17 @@ const Stories = (props: {
   const [stackedAvatars, setStackedAvatars] = createSignal<StackedAvatars>();
   const [tooltipCloseCallback, setTooltipCloseCallback] = createSignal<VoidFunction>();
   const [reactionsMenu, setReactionsMenu] = createSignal<ChatReactionsMenu>();
+  // * the stories whose caption is shown translated, till "Hide Translation" (Android's storyItem.translated)
+  const [translatedStories, setTranslatedStories] = createSignal(new Set<number>(), {equals: false});
+  const isCaptionTranslated = (storyId: number) => translatedStories().has(storyId);
+  const toggleCaptionTranslation = (storyId: number, translated: boolean) => {
+    setTranslatedStories((storyIds) => {
+      if(translated) storyIds.add(storyId);
+      else storyIds.delete(storyId);
+      return storyIds;
+    });
+  };
+  const [, setAppSettings] = useAppSettings();
   const currentStory = createMemo(() => props.state.stories[props.state.index]);
   const isExpired = createMemo(() => {
     const story = currentStory();
@@ -1210,18 +1236,20 @@ const Stories = (props: {
       video.removeEventListener('canplay', onCanPlay);
     });
 
+    // * this video's part in the viewer's buffering, taken back once it can play, goes away or stops being
+    // * the active one
+    const setVideoBuffering = (buffering: boolean) => actions.setBuffering(video, buffering);
+
     const onCanPlay = () => {
       setLoading(false);
-      if(isActive()) {
-        actions.setBuffering(false);
-      }
+      setVideoBuffering(false);
     };
 
     const onWaiting = () => {
       if(isVideoStalled(video)) {
         setLoading(true);
         if(isActive()) {
-          actions.setBuffering(true);
+          setVideoBuffering(true);
         }
         video.addEventListener('canplay', onCanPlay, {once: true});
       }
@@ -1235,13 +1263,20 @@ const Stories = (props: {
       setCurrentTime(video, 0);
     };
 
+    // * to a point of the story: the video is as long as the story, whatever its speed
+    const seekToProgress = (progress: number) => {
+      const duration = video.duration;
+      if(progress === undefined || !Number.isFinite(duration)) {
+        return;
+      }
+
+      setCurrentTime(video, clamp(progress * duration, 0, Math.max(0, duration - 0.3)));
+    };
+
     video.addEventListener('waiting', onWaiting);
 
-    onCleanup(() => {
-      if(stories.buffering) {
-        actions.setBuffering(false);
-      }
-    });
+    onCleanup(() => setVideoBuffering(false));
+    createEffect(on(isActive, (isActive) => !isActive && setVideoBuffering(false), {defer: true}));
 
     // pause the video on viewer pause or story change
     createEffect(() => {
@@ -1281,6 +1316,40 @@ const Stories = (props: {
       if(isActive() && !stories.startTime && currentStory() === story) {
         reset();
       }
+    });
+
+    // * a video put in while its story plays - the other quality chosen - goes on from where it is
+    if(untrack(() => isActive() && stories.startTime && currentStory() === story)) {
+      seekToProgress(actions.getProgress());
+    }
+
+    // * plays at the viewer's speed, and the story lasts as long as the video does at it
+    const setPlaybackRate = (rate: number) => {
+      video.defaultPlaybackRate = video.playbackRate = rate;
+    };
+
+    setPlaybackRate(untrack(() => stories.playbackRate));
+    createEffect(on(() => stories.playbackRate, (rate) => {
+      setPlaybackRate(rate);
+      if(isActive() && currentStory() === story) {
+        actions.setStoryDuration(getVideoStoryDuration(rate));
+      }
+    }, {defer: true}));
+
+    // * held and dragged along: the video follows the point of the story the finger takes it to, a
+    // * few times a second, and lands where it is let go
+    createEffect(() => {
+      if(!stories.seeking || !isActive() || currentStory() !== story) {
+        return;
+      }
+
+      const seek = () => seekToProgress(actions.getProgress());
+      const throttledSeek = throttle(seek, 150, true);
+      createEffect(on(() => stories.elapsedTimeOnPause, throttledSeek, {defer: true}));
+      onCleanup(() => {
+        throttledSeek.clear();
+        seek();
+      });
     });
 
     if(!untrack(noSound)) {
@@ -1402,34 +1471,74 @@ const Stories = (props: {
     });
 
     createEffect(async() => {
+      // * this run's: a translation shown or hidden meanwhile starts another one, which this must not undo
+      const runMiddleware = createMiddleware().get();
       let captionNode: JSX.Element;
       const {caption, entities} = story;
       if(caption?.trim()) {
         const loadPromises: Promise<any>[] = [];
-        const {message, totalEntities} = wrapMessageEntities(caption, entities?.slice());
-        const wrapped = wrapRichText(
-          message,
-          getRichTextOptions(props.state.peerId, totalEntities, loadPromises)
-        );
+        let translated: HTMLElement, wrapped: DocumentFragment;
+        // * in place of the original once it has come, as Android shows it
+        if(isCaptionTranslated(story.id)) {
+          translated = TranslatableMessageTsx({
+            peerId: props.state.peerId,
+            // * the store's own entities, not its proxy: they go to the worker
+            textWithEntities: {_: 'textWithEntities', text: caption, entities: unwrap(entities) || []},
+            richTextOptions: getRichTextOptions(props.state.peerId, undefined, loadPromises),
+            enabled: true,
+            onError: () => {
+              toastNew({langPackKey: 'Translate.Error'});
+              toggleCaptionTranslation(story.id, false);
+            }
+          });
+        } else {
+          const {message, totalEntities} = wrapMessageEntities(caption, entities?.slice());
+          wrapped = wrapRichText(
+            message,
+            getRichTextOptions(props.state.peerId, totalEntities, loadPromises)
+          );
+        }
 
         uCaption(null);
         await Promise.all(loadPromises);
-        if(!middleware()) {
+        if(!middleware() || !runMiddleware()) {
           return;
         }
 
-        captionNode = documentFragmentToNodes(wrapped);
+        captionNode = translated || documentFragmentToNodes(wrapped);
       }
 
       uCaption(captionNode);
     });
 
+    // * the file a video plays from follows the quality chosen: another one is put in in its place
+    const videoDocId = story.media?._ === 'messageMediaDocument' && createMemo(() => {
+      const media = story.media as MessageMedia.messageMediaDocument;
+      return getStoryVideoDocuments(media, isStoryHighQuality(props.state.peerId, story)).doc?.id;
+    });
+
+    let wasWrapped = false;
     createEffect(() => {
       // * read for the effect to follow: an edit that puts other media in is wrapped anew. Media of a
       // * kind this client cannot show has no id, and is wrapped all the same, into a note in its place
       void untrack(() => getMediaFromMessage(story)).id;
+      videoDocId && videoDocId();
 
       uContent(null);
+
+      // * the other file starts where the story is (setVideoListeners), and the story waits for it as for a
+      // * stalled video: played or paused meanwhile, it is that once the file is in
+      const replacing = wasWrapped;
+      wasWrapped = true;
+      const bufferingOwner = {};
+      const stopBuffering = () => actions.setBuffering(bufferingOwner, false);
+
+      if(replacing && untrack(isActive)) {
+        setLoading(true);
+        actions.setBuffering(bufferingOwner, true);
+        onCleanup(stopBuffering);
+        createEffect(on(isActive, (isActive) => !isActive && stopBuffering(), {defer: true}));
+      }
 
       const wrapped = wrapStoryMedia({
         peerId: props.state.peerId,
@@ -1439,7 +1548,8 @@ const Stories = (props: {
           class: styles.ViewerStoryContentMediaContainer
         },
         childrenClassName: styles.ViewerStoryContentMedia,
-        useBlur: 40
+        useBlur: 40,
+        highQuality: untrack(() => isStoryHighQuality(props.state.peerId, story))
       });
 
       const onReady = () => {
@@ -1452,7 +1562,10 @@ const Stories = (props: {
         }
 
         setLoading(false);
-        untrack(() => playOnOpen());
+        stopBuffering();
+        if(!replacing || !untrack(() => stories.startTime)) {
+          untrack(() => playOnOpen());
+        }
         // props.onReady?.();
       };
 
@@ -1724,7 +1837,7 @@ const Stories = (props: {
 
     const middleware = createMiddleware().get();
     const next = untrack(() => stories.getNearestStories(true, STORIES_PRELOAD));
-    preloadStoriesMedia(next.map(({peer, index}) => peer.stories[index]), middleware);
+    preloadStoriesMedia(next.map(({peer, index}) => ({peerId: peer.peerId, storyItem: peer.stories[index]})), middleware);
   });
 
   const pollViewedStories = () => {
@@ -1827,14 +1940,16 @@ const Stories = (props: {
     return offset + 'px';
   };
 
+  // * add 0.001 just to differ video and photo stories
+  const getVideoStoryDuration = (playbackRate: number) => untrack(() => videoDuration()) / playbackRate + 0.001;
+
   const playOnReady = () => {
     if(untrack(() => loading())) {
       return;
     }
 
     const activeVideoDuration = untrack(() => videoDuration());
-    // * add 0.001 just to differ video and photo stories
-    const storyDuration = activeVideoDuration ? activeVideoDuration + 0.001 : STORY_DURATION;
+    const storyDuration = activeVideoDuration ? getVideoStoryDuration(untrack(() => stories.playbackRate)) : STORY_DURATION;
     actions.play(storyDuration);
   };
 
@@ -2181,9 +2296,153 @@ const Stories = (props: {
     peer: User.user | MTChat.channel,
     peerId: PeerId,
     story: StoryItem.storyItem | StoryItem.storyItemSkipped,
-    ignoreOnClose = false;
+    ignoreOnClose = false,
+    // * the story is the viewer's own, or a channel's whose stories they edit: what is left is someone
+    // * else's, whose menu holds what only a viewer needs (iOS performOtherMoreAction, Android's second one)
+    canEdit = false;
+
+  const isVideoStory = () => !!videoDuration();
+  const isOthersStory = () => story?._ === 'storyItem' && !canEdit;
+
+  const speedButton: ButtonMenuItemOptionsVerifiable = createSubmenuTrigger({
+    options: {
+      icon: getPlaybackRateIcon(1),
+      text: 'Story.PlaybackSpeed',
+      separatorDown: true,
+      verify: () => {
+        // * its icon says the speed the videos play at
+        speedButton.icon = getPlaybackRateIcon(stories.playbackRate);
+        return isVideoStory();
+      }
+    },
+    createSubmenu: () => {
+      const menu = ButtonMenuSync({
+        buttons: PLAYBACK_RATES.map((rate) => ({
+          ...getPlaybackRateMenuButton(rate),
+          icon: rate === stories.playbackRate ? 'check' : undefined,
+          onClick: () => actions.setPlaybackRate(rate)
+        }))
+      });
+      menu.classList.add('checkable-button-menu');
+      setPlaybackRateMenuState(menu, stories.playbackRate);
+      return menu;
+    }
+  });
+
+  const albumButton = createAddToAlbumSubmenuTrigger({
+    getPeerId: () => props.state.peerId,
+    getStoryIds: () => [story.id],
+    getAlbums: () => rootScope.managers.appStoriesManager.getAlbums(props.state.peerId),
+    verify: () => canEdit,
+    onCreateAlbum: async() => {
+      const managers = bindManagersToSession(rootScope.managers);
+      const peerId = props.state.peerId;
+      ignoreOnClose = true;
+      const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+      let albumId: number;
+      try {
+        albumId = await openCreateAlbumPopup(peerId, [story.id]);
+      } catch(err) {
+        toastNew({langPackKey: 'Error.AnError'});
+      } finally {
+        onAnyPopupClose();
+      }
+
+      if(albumId === undefined) {
+        return;
+      }
+
+      const albums = await managers.appStoriesManager.getAlbums(peerId);
+      const album = albums.find((album) => album.album_id === albumId);
+      toastNew({
+        langPackKey: 'Story.AddedToAlbum',
+        langPackArguments: [wrapEmojiText(album?.title ?? '')]
+      });
+    }
+  });
+
+  const setHighQuality = (highQuality: boolean) => {
+    setAppSettings('stories', 'highQuality', highQuality);
+    setQuizHint({
+      title: i18n(highQuality ? 'Story.ToastQualityHD.Title' : 'Story.ToastQualitySD.Title'),
+      textElement: i18n(highQuality ? 'Story.ToastQualityHD.Text' : 'Story.ToastQualitySD.Text'),
+      appendTo: storyDiv,
+      from: 'bottom',
+      duration: 3000,
+      icon: STORY_QUALITY_ICON
+    });
+  };
+
+  const isQualityShown = async() => isVideoStory() && isOthersStory() && !(await apiManagerProxy.isPremiumFeaturesHidden());
+  const isHighQuality = () => isStoryHighQuality(peerId, story as StoryItem.storyItem);
+
+  // * one's own story or a channel's one edits is saved freely; someone else's, unless it is protected,
+  // * with Premium only, which the item offers otherwise
+  const canSaveFreely = () => props.state.peerId === rootScope.myId || canEdit;
+  const canSaveWithPremium = () => story?._ === 'storyItem' && !story.pFlags.noforwards;
+
+  // * asked for as the menu opens, once for both of its items
+  let containedPacks: Promise<Record<StoryContainedPacksKind, StoryContainedPacks>>;
+  const createContainedPacksButton = (kind: StoryContainedPacksKind) => {
+    const button: ButtonMenuItemOptionsVerifiable = {
+      text: 'Loading',
+      multiline: true,
+      // * the line above the two goes with the first, and stays while either of them does
+      separator: kind === 'stickers',
+      onClick: () => {
+        ignoreOnClose = true;
+        const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+        containedPacks.then((packs) => {
+          const {inputs} = packs[kind];
+          if(inputs.length) {
+            showStickersPopup(inputs, kind === 'emoji', undefined, onAnyPopupClose);
+          } else {
+            onAnyPopupClose();
+          }
+        });
+      },
+      verify: () => !!containedPacks,
+      onOpen: () => {
+        const {element, textElement} = button;
+        if(!element) {
+          return;
+        }
+
+        // * one row says it is loading, the other one waits out of sight to be known; neither opens before
+        if(kind === 'emoji') {
+          element.classList.add('hide');
+        }
+
+        setButtonMenuItemDisabled(button, true);
+        containedPacks.then((packs) => {
+          if(button.element !== element) {
+            return;
+          }
+
+          const has = !!packs[kind].inputs.length;
+          element.classList.toggle('hide', !has);
+          setButtonMenuItemDisabled(button, !has);
+          if(has) {
+            replaceContent(textElement, wrapStoryContainedPacks(kind, packs[kind]));
+          }
+
+          if(kind === 'stickers') {
+            (button.separator as HTMLElement)?.classList?.toggle('hide', !has && !packs.emoji.inputs.length);
+          }
+        });
+      }
+    };
+
+    return button;
+  };
+
+  const containedPacksButtons = [createContainedPacksButton('stickers'), createContainedPacksButton('emoji')];
+
+  // * the submenus and the packs' items set themselves up on the menu built
+  const menuButtonsWithSetup = [albumButton, speedButton, ...containedPacksButtons];
+
   const btnMenu = ButtonMenuToggle({
-    buttons: [{
+    buttons: [albumButton, speedButton, {
       icon: 'settings',
       text: 'StorySettings',
       onClick: () => {
@@ -2234,6 +2493,24 @@ const Stories = (props: {
         return (story.pFlags.public/*  || appConfig.stories_export_nopublic_link */) && !!getPeerActiveUsernames(peer)[0];
       }
     }, {
+      icon: STORY_QUALITY_ICON,
+      text: 'Story.ContextMenuSD',
+      onClick: () => setHighQuality(false),
+      verify: async() => isHighQuality() && await isQualityShown()
+    }, {
+      icon: STORY_QUALITY_ICON,
+      text: 'Story.ContextMenuHD',
+      onClick: () => setHighQuality(true),
+      verify: async() => rootScope.premium && !isHighQuality() && await isQualityShown()
+    }, {
+      icon: 'premium_lock',
+      text: 'Story.ContextMenuHD',
+      onClick: () => {
+        ignoreOnClose = true;
+        showStoryQualityUpgradePopup(bindOnAnyPopupClose(wasPlaying));
+      },
+      verify: async() => !rootScope.premium && await isQualityShown()
+    }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
@@ -2244,21 +2521,49 @@ const Stories = (props: {
         }
         appDownloadManager.downloadToDisc({media: unwrap(media)});
       },
-      verify: () => {
-        if(props.state.peerId === rootScope.myId) {
-          return true;
-        }
-
-        const story = currentStory();
-        return !!(story?._ === 'storyItem' && !story.pFlags.noforwards && rootScope.premium);
-      }
+      verify: () => canSaveFreely() || (canSaveWithPremium() && rootScope.premium)
+    }, {
+      icon: 'premium_lock',
+      text: 'MediaViewer.Context.Download',
+      onClick: () => {
+        toastNew({
+          langPackKey: 'Story.ToastPremiumSaveToGallery',
+          langPackArguments: [anchorCallback(() => {
+            hideToast();
+            hotReloadGuard.showPremiumPopup({feature: 'stories'});
+          })],
+          // * it has a link to follow: longer than a toast that only tells
+          duration: 5000
+        });
+      },
+      verify: async() => !canSaveFreely() &&
+        canSaveWithPremium() &&
+        !rootScope.premium &&
+        !(await apiManagerProxy.isPremiumFeaturesHidden())
     }, {
       icon: 'eyecross',
       text: 'Stories.StealthMode.View',
-      onClick: () => {
+      onClick: async() => {
+        const managers = bindManagersToSession(rootScope.managers);
         ignoreOnClose = true;
-        const appConfig = useAppConfig();
         const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+        const stealthMode = await managers.appStoriesManager.getStealthMode();
+        // * already on: for how much longer, instead of the window that turns it on
+        const activeFor = (stealthMode?.active_until_date || 0) - tsNow(true);
+        if(activeFor > 0) {
+          setQuizHint({
+            title: i18n('Story.ToastStealthModeActiveTitle'),
+            textElement: i18n('Story.ToastStealthModeActiveText', [wrapStoriesStealthModeDuration(activeFor)]),
+            appendTo: storyDiv,
+            from: 'bottom',
+            duration: 5000,
+            icon: 'eyecross'
+          });
+          onAnyPopupClose();
+          return;
+        }
+
+        const appConfig = useAppConfig();
         showStoriesStealthModePopup({
           onActivate: () => {
             setQuizHint({
@@ -2275,8 +2580,13 @@ const Stories = (props: {
           },
           onClose: onAnyPopupClose
         });
-      }
-    }, {
+      },
+      // * a channel's stories are watched in the open either way: neither iOS nor Android offers it there
+      verify: () => props.state.peerId.isUser()
+    }, ...createStoriesNotifyMuteButtons(
+      () => props.state.peerId,
+      () => isOthersStory() && props.state.peerId !== CHANGELOG_PEER_ID
+    ), {
       icon: 'archive',
       text: 'ArchivePeerStories',
       onClick: () => togglePeerHidden(true),
@@ -2292,6 +2602,18 @@ const Stories = (props: {
       onClick: () => removeStoriesFromRecent(props.state.peerId),
       verify: async() => props.state.peerId !== rootScope.myId &&
         await rootScope.managers.appStoriesManager.getPeerStoriesRemoval(props.state.peerId) === 'remove'
+    }, {
+      icon: 'premium_translate',
+      text: 'TranslateMessage',
+      onClick: () => toggleCaptionTranslation(story.id, true),
+      verify: async() => isOthersStory() &&
+        !isCaptionTranslated(story.id) &&
+        !!(await detectLanguageForTranslation((story as StoryItem.storyItem).caption))
+    }, {
+      icon: 'premium_translate',
+      text: 'Story.HideTranslation',
+      onClick: () => toggleCaptionTranslation(story.id, false),
+      verify: () => story?._ === 'storyItem' && isCaptionTranslated(story.id)
     }, {
       icon: 'statistics_filled',
       text: 'ViewStatistics',
@@ -2342,9 +2664,30 @@ const Stories = (props: {
       },
       verify: () => !(story as StoryItem.storyItem).pFlags?.out && props.state.peerId !== CHANGELOG_PEER_ID
       // separator: true
-    }],
+    }, ...containedPacksButtons],
     direction: 'bottom-left',
-    ...topMenuOptions
+    positionPadding: {top: STORY_MENU_PADDING, bottom: STORY_MENU_PADDING},
+    ...topMenuOptions,
+    onOpenBefore: async() => {
+      const managers = bindManagersToSession(rootScope.managers);
+      await topMenuOptions.onOpenBefore();
+      containedPacks = story?._ === 'storyItem' && storyHasContainedPacks(story) ?
+        getStoryContainedPacks(story, managers) :
+        undefined;
+      canEdit = story?._ === 'storyItem' && await managers.appStoriesManager.hasRights(peerId, story.id, 'edit');
+    },
+    onOpen: (e, element) => {
+      topMenuOptions.onOpen(e, element);
+      // * as many items as it can have do not fit under the header of a short screen: it scrolls in the room it has,
+      // * as a floating menu does
+      const top = btnMenu.getBoundingClientRect().bottom + STORY_MENU_PADDING;
+      element.style.maxHeight = `${Math.max(0, getAppWindow().innerHeight - top - DEFAULT_MENU_WINDOW_MARGIN)}px`;
+      element.style.overflowY = 'auto';
+      menuButtonsWithSetup.forEach((button) => button.onOpen?.());
+    },
+    onClose: () => {
+      menuButtonsWithSetup.forEach((button) => button.onClose?.());
+    }
   });
   btnMenu.classList.add('night');
   btnMenu.setAttribute('aria-label', I18n.format('MultiAccount.More', true));
@@ -2698,6 +3041,9 @@ const Stories = (props: {
     }
   });
 
+  // * where the story stands while held: its clock is stopped there
+  const seekProgress = () => stories.storyDuration ? clamp(stories.elapsedTimeOnPause / stories.storyDuration, 0, 1) : 0;
+
   let div: HTMLDivElement, storyDiv: HTMLDivElement, headerDiv: HTMLDivElement;
   const ret = (
     <div
@@ -2849,6 +3195,18 @@ const Stories = (props: {
           </Show>
           {reactionsMenu()?.widthContainer}
         </div>
+        {/* held and dragged along, the story's own line stands alone, as a video's seek bar: it is not
+          mirrored (playback runs left to right), and holding hides the rest of the interface */}
+        <Transition name="fade-2">
+          {isActive() && stories.seeking && (
+            <div class={styles.ViewerStorySeek}>
+              <div class={styles.ViewerStorySeekBar} dir="ltr">
+                <div class={styles.ViewerStorySeekBarFill} style={{transform: `scaleX(${seekProgress()})`}} />
+              </div>
+              <div class={styles.ViewerStorySeekHint}>{i18n('Story.SlideToSeek')}</div>
+            </div>
+          )}
+        </Transition>
         {/* Media areas are part of the story, not of the interface drawn over it — holding to
           pause fades the interface away and has to leave them where they are (iOS keeps them in
           the content view for the same reason), so they live outside `hideOnSmall`. */}
@@ -3141,12 +3499,36 @@ export default function StoriesViewer(props: {
     );
   });
 
-  let pauseTimeout: number;
+  // * a video held still for a moment is moved through by dragging along it, the whole of it in 220 px
+  // * (Android) - the finger's own coordinates, as the video is not mirrored. Touch only, as on iOS and
+  // * Android: a mouse holds to pause alone
+  const SEEK_HOLD = 500, SEEK_DISTANCE = 220, SEEK_MOVE_TOLERANCE = 10;
+  let pauseTimeout: number, seekTimeout: number, seekFrom: number;
+  const startSeeking = () => {
+    const progress = actions.getProgress();
+    if(!stories.paused || !stories.hideInterface || progress === undefined || stories.storyDuration === STORY_DURATION) {
+      return;
+    }
+
+    seekFrom = progress;
+    actions.setSeeking(true);
+  };
+
   const swipeHandler = new SwipeHandler({
     element: div,
     onSwipe: (xDiff, yDiff, e) => {
       if(!(e instanceof TouchEvent)) {
         return;
+      }
+
+      if(stories.seeking) {
+        actions.seek(seekFrom + xDiff / SEEK_DISTANCE);
+        return false;
+      }
+
+      // * a finger that moves first swipes, as before
+      if(Math.abs(xDiff) > SEEK_MOVE_TOLERANCE || Math.abs(yDiff) > SEEK_MOVE_TOLERANCE) {
+        window.clearTimeout(seekTimeout);
       }
 
       const jumpOn = Math.min(125, windowSize.width / 3);
@@ -3193,9 +3575,18 @@ export default function StoriesViewer(props: {
       pauseTimeout = window.setTimeout(() => {
         actions.pause(true);
       }, 200);
+
+      if(IS_TOUCH_SUPPORTED) {
+        seekTimeout = window.setTimeout(startSeeking, SEEK_HOLD);
+      }
     },
     onReset: (e) => {
       window.clearTimeout(pauseTimeout);
+      window.clearTimeout(seekTimeout);
+      if(stories.seeking) {
+        actions.setSeeking(false);
+      }
+
       if(!e ||
         !stories.paused ||
         findUpClassName(e.target, 'btn-icon') ||

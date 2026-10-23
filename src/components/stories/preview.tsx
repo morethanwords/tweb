@@ -20,6 +20,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {IS_H265_SUPPORTED} from '@environment/videoSupport';
 import {i18n} from '@lib/langPack';
 import styles from '@components/stories/preview.module.scss';
+import {getStoryVideoDocuments, isStoryHighQuality} from '@components/stories/quality';
 
 let processing = false;
 const pollStories = () => {
@@ -74,11 +75,11 @@ const readyToPaint = (element: Element) => {
 const getViewerPhotoSize = (photo: Photo.photo | Document.document) => choosePhotoSize(photo, Infinity, Infinity);
 
 // * what the viewer will show of a story, fetched before it is opened: a photo whole, a video's first
-// * chunk in each file its element tries (without HEVC the main one first, then the alternative), which
-// * the service worker keeps with the file's last one, where an mp4 usually has its index. Only the
-// * first: a request further on has it read the next 20 MB ahead. A video with no streaming would have
-// * to be downloaded whole, too much ahead of time
-const preloadStoryMedia = async(storyItem: StoryItem) => {
+// * chunk in each file its element tries (in the quality it plays in, and without HEVC the original
+// * first, then the alternative), which the service worker keeps with the file's last one, where an mp4
+// * usually has its index. Only the first: a request further on has it read the next 20 MB ahead. A
+// * video with no streaming would have to be downloaded whole, too much ahead of time
+const preloadStoryMedia = async(peerId: PeerId, storyItem: StoryItem) => {
   const media = unwrap((storyItem as StoryItem.storyItem).media);
   if(media?._ === 'messageMediaPhoto') {
     const photo = media.photo as Photo.photo;
@@ -93,12 +94,11 @@ const preloadStoryMedia = async(storyItem: StoryItem) => {
     return;
   }
 
-  const doc = media.document as Document.document;
+  const {doc, altDoc} = getStoryVideoDocuments(media, isStoryHighQuality(peerId, storyItem as StoryItem.storyItem));
   if(!doc?.supportsStreaming) {
     return;
   }
 
-  const altDoc = media.alt_documents?.[0] as Document.document;
   for(const _doc of altDoc && !IS_H265_SUPPORTED ? [doc, altDoc] : [doc]) {
     const url = apiManagerProxy.getCacheContext(_doc).url;
     if(!url || prefetchedStreams.has(url)) {
@@ -118,13 +118,13 @@ const preloadStoryMedia = async(storyItem: StoryItem) => {
 };
 
 // * the stories coming next, fetched one after another behind the one being watched
-export const preloadStoriesMedia = async(storyItems: StoryItem[], middleware: Middleware) => {
-  for(const storyItem of storyItems) {
+export const preloadStoriesMedia = async(stories: {peerId: PeerId, storyItem: StoryItem}[], middleware: Middleware) => {
+  for(const {peerId, storyItem} of stories) {
     if(!middleware()) {
       return;
     }
 
-    await preloadStoryMedia(storyItem).catch(noop);
+    await preloadStoryMedia(peerId, storyItem).catch(noop);
   }
 };
 
@@ -150,7 +150,9 @@ export const wrapStoryMedia = (props: {
   childrenClassName?: string,
   noPlayButton?: boolean,
   onlyPreview?: boolean,
-  useBlur?: boolean | number
+  useBlur?: boolean | number,
+  // * the original video rather than the lower quality beside it (isStoryHighQuality)
+  highQuality?: boolean
 } & CommonProperties) => {
   const [thumb, setThumb] = createSignal<HTMLImageElement | HTMLCanvasElement>();
   const [media, setMedia] = createSignal<HTMLImageElement | HTMLVideoElement | HTMLDivElement>();
@@ -234,8 +236,7 @@ export const wrapStoryMedia = (props: {
     },
 
     video: (messageMedia: MessageMedia.messageMediaDocument) => {
-      const document = messageMedia.document as Document.document;
-      const altDocument = messageMedia.alt_documents?.[0] as Document.document; // Supposedly there is only one alt document for stories
+      const {doc: document, altDoc: altDocument} = getStoryVideoDocuments(messageMedia, props.highQuality ?? true);
       const result = wrapVideo({
         ...props,
         container: div,

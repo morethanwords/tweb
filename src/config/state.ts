@@ -207,6 +207,11 @@ export type StateSettings = {
     nightMode?: boolean,
     selectedThemeId: string
   },
+  stories: {
+    // other people's story videos play in their original quality, not the lower one the server keeps
+    // beside it — Premium only, as on iOS and Android (Android's default: on)
+    highQuality: boolean
+  }
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -605,6 +610,9 @@ export const SETTINGS_INIT: StateSettings = {
   contactsSortMode: 'online',
   qrCode: {
     selectedThemeId: ''
+  },
+  stories: {
+    highQuality: true
   }
 };
 

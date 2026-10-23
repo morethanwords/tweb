@@ -17,8 +17,7 @@ import {doubleRaf} from '@helpers/schedulers';
 import {I18nTsx} from '@helpers/solid/i18n';
 import ButtonTsx from '@components/buttonTsx';
 import {StoriesSelection, toastStoryPinnedToProfile} from './selection';
-import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
-import CheckboxField from '@components/checkboxField';
+import {ButtonMenuSync} from '@components/buttonMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import contextMenuController from '@helpers/contextMenuController';
@@ -32,7 +31,7 @@ import SidebarSlider from '../slider';
 import InputField from '@components/inputField';
 import confirmationPopup from '@components/confirmationPopup';
 import showChooseStoryPopup from '@components/popups/chooseStoryPopup';
-import createSubmenuTrigger from '@components/createSubmenuTrigger';
+import {createAddToAlbumSubmenuTrigger, openCreateAlbumPopup} from '@components/stories/albums';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
@@ -155,47 +154,12 @@ class StoriesContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: () => managers.appStoriesManager.togglePinnedToTop(this.peerId, [this.storyItem.id], false),
       verify: () => !this.state.albumId && this.state.pinned && this.storyItem?.pinnedIndex !== undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, createSubmenuTrigger({
-      options: {
-        icon: 'folder',
-        text: 'Stories.Albums.AddToAlbum',
-        verify: () => !this.state.albumId && !!(this.state.peer?.albums?.length) && hasRightsOnSelected('edit')
-      },
-      createSubmenu: async() => {
-        const selectedIds = getSelectedIds();
-        const selectedStories = await managers.appStoriesManager.getStoriesById(this.peerId, selectedIds);
-
-        const buttons: ButtonMenuItemOptions[] = this.state.peer?.albums.map((album) => {
-          const checkboxField = new CheckboxField({
-            checked: selectedStories.every((story) => {
-              return story?._ === 'storyItem' && !!story.albums?.includes(album.album_id);
-            })
-          });
-
-          const span = document.createElement('span');
-          span.classList.add('stories-album-title');
-          span.append(wrapEmojiText(album.title));
-
-          return {
-            textElement: span,
-            onClick: () => {
-              const wasChecked = checkboxField.checked;
-              checkboxField.checked = !wasChecked;
-              rootScope.managers.appStoriesManager.updateAlbum(this.peerId, album.album_id, {
-                [wasChecked ? 'deleteStories' : 'addStories']: selectedIds
-              }).catch(() => {
-                checkboxField.checked = wasChecked;
-                toastNew({langPackKey: 'Error.AnError'});
-              });
-            },
-            checkboxField,
-            noCheckboxClickListener: true,
-            keepOpen: true
-          };
-        });
-
-        return ButtonMenuSync({buttons, listenerSetter: this.listenerSetter});
-      }
+    }, createAddToAlbumSubmenuTrigger({
+      getPeerId: () => this.peerId,
+      getStoryIds: getSelectedIds,
+      getAlbums: () => this.state.peer?.albums,
+      verify: () => !this.state.albumId && !!(this.state.peer?.albums?.length) && hasRightsOnSelected('edit'),
+      listenerSetter: this.listenerSetter
     }), {
       icon: 'crossround',
       text: 'Stories.Albums.RemoveFromAlbum',
@@ -275,28 +239,6 @@ class StoriesContextMenu {
 
     this.buttons.forEach((button) => button.onOpen?.());
   }
-}
-
-async function openCreateAlbumPopup(peerId: PeerId): Promise<number | undefined> {
-  const managers = bindManagersToSession(rootScope.managers);
-  const inputField = new InputField({
-    maxLength: 64,
-    placeholder: 'Stories.Albums.CreatePlaceholder',
-    required: true
-  });
-
-  try {
-    await confirmationPopup({
-      titleLangKey: 'Stories.Albums.CreateTitle',
-      inputField,
-      button: {langKey: 'Create'}
-    });
-  } catch(e) {
-    return;
-  }
-
-  const album = await managers.appStoriesManager.createAlbum(peerId, inputField.value);
-  return album.album_id;
 }
 
 function StoriesAlbums(props: {
