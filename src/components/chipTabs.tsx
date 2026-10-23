@@ -12,6 +12,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleTabKeyDown} from '@helpers/dom/tabList';
 import Modes from '@config/modes';
 import filterAsync from '../helpers/array/filterAsync';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 interface ChipTabsContextValue {
   value: string,
@@ -131,9 +132,7 @@ export function ChipTabs(props: {
         buttons: [],
         filterButtons: async() => {
           const buttons = await props.contextMenuButtons(chosenElement.dataset.value)
-          return filterAsync(buttons, async(button) => {
-            return button?.verify ? (await button.verify()) ?? false : true;
-          })
+          return filterAsync(buttons, verifyMenuItem)
         }
       })
     })

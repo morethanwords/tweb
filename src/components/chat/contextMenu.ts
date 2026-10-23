@@ -104,6 +104,7 @@ import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 import {flattenRichMessageSummary} from '@lib/richMessage';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -759,8 +760,8 @@ export default class ChatContextMenu {
         good = false;
       } else {
         good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ?
-          await button.verify() :
-          button.notDirect && await button.verify() && button.notDirect();
+          await verifyMenuItem(button) :
+          button.notDirect && await verifyMenuItem(button) && button.notDirect();
       }
 
       return !!good;
@@ -1592,7 +1593,7 @@ export default class ChatContextMenu {
       }
     ];
 
-    const filteredButtons = await filterAsync(buttons, (button) => button.verify?.() ?? true);
+    const filteredButtons = await filterAsync(buttons, verifyMenuItem);
 
     if(!middleware()) return;
 
@@ -1638,7 +1639,7 @@ export default class ChatContextMenu {
       }
     ];
 
-    const filteredButtons = await filterAsync(buttons, (button) => button.verify?.() ?? true);
+    const filteredButtons = await filterAsync(buttons, verifyMenuItem);
 
     if(!middleware()) return;
 

@@ -115,6 +115,7 @@ import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateB
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import type appSidebarRight from '@components/sidebarRight';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 // The call log is searched by the Calls tab, never by shared media — and unlike
 // every other filter its constructor is not just its id (it carries `pFlags`),
@@ -247,7 +248,7 @@ class SearchContextMenu {
           if(this.searchSuper.selection.isSelecting && !button.withSelection) {
             good = false;
           } else {
-            good = button.verify ? !!(await button.verify()) : true;
+            good = await verifyMenuItem(button);
           }
 
           button.element.classList.toggle('hide', !good);

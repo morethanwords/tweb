@@ -1,6 +1,5 @@
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import filterAsync from '@helpers/array/filterAsync';
-import callbackify from '@helpers/callbackify';
 import contextMenuController from '@helpers/contextMenuController';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getMiddleware, Middleware} from '@helpers/middleware';
@@ -10,6 +9,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {logger} from '@lib/logger';
 import {getOverlayRoot} from '@helpers/appWindow';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 const log = logger('createContextMenu');
 
@@ -180,9 +180,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
 
   const init = async(isCurrent: () => boolean): Promise<ContextMenuInstance | undefined> => {
     buttons.forEach((button) => button.element = undefined);
-    const f = filterButtons || ((buttons: T[]) => filterAsync(buttons, (button) => {
-      return button?.verify ? callbackify(button.verify(), (result) => result ?? false) : true;
-    }));
+    const f = filterButtons || ((buttons: T[]) => filterAsync(buttons, verifyMenuItem));
 
     const filteredButtons = await f(buttons);
     if(!isCurrent() || !filteredButtons.length) {

@@ -20,6 +20,7 @@ import I18n from '@lib/langPack';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ensureButtonSemantics from '@helpers/dom/ensureButtonSemantics';
 import Modes from '@config/modes';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -72,7 +73,7 @@ export function ButtonMenuToggleHandler({
 }
 
 export function filterButtonMenuItems(buttons: ButtonMenuItemOptionsVerifiable[]) {
-  return filterAsync(buttons, (button) => button?.verify ? button.verify() ?? false : true);
+  return filterAsync(buttons, verifyMenuItem);
 }
 
 /**

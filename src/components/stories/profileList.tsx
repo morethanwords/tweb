@@ -43,6 +43,7 @@ import {copyTextToClipboard} from '@helpers/clipboard';
 import {handleShareStory, makeStoryLink} from './share';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
@@ -94,7 +95,7 @@ class StoriesContextMenu {
           this.storyItem = await rootScope.managers.appStoriesManager.getStoryById(this.peerId, this.mid);
 
           const f = await Promise.all(this.buttons.map(async(button) => {
-            const good = button.verify ? !!(await button.verify()) : true;
+            const good = await verifyMenuItem(button);
             button.element.classList.toggle('hide', !good);
             return good;
           }));

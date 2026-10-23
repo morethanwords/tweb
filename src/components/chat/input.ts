@@ -204,6 +204,7 @@ import deriveEditorDraftContent from '@components/chat/inputEditor/draftContent'
 import captureInputContent from '@components/chat/inputEditor/captureInputContent';
 import getRichMessagePostingChoice from '@components/chat/inputEditor/richMessagePostingChoice';
 import {APP_TABS} from '@lib/appColumns';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 let botCommandsListId = 0;
@@ -3409,7 +3410,7 @@ export default class ChatInput {
         button.richMessageAction,
         this.messageInputExpanded
       )) return false;
-      return button.verify ? button.verify() : true;
+      return verifyMenuItem(button);
     });
   }
 

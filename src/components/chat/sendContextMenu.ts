@@ -13,6 +13,7 @@ import type {ButtonMenuDirection} from '@components/buttonMenuToggle';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {positionMenuTrigger} from '@helpers/positionMenu';
 import {bindManagersToSession} from '@lib/accounts/bindManagersToAccount';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 /**
  * A send button's menu lives in the overlay root like every other menu, placed against the button:
@@ -111,7 +112,7 @@ export default class SendMenu {
 
         cancelEvent(e);
         await Promise.all(buttons.map(async(button) => {
-          const result = await button.verify();
+          const result = await verifyMenuItem(button);
           button.element.classList.toggle('hide', !result);
         }));
 

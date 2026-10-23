@@ -73,6 +73,7 @@ import openBoosts from '@components/openBoosts';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 import canReportBot from '@appManagers/utils/bots/canReportBot';
 import joinChat from '@components/chat/joinChat';
+import verifyMenuItem from '@helpers/verifyMenuItem';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -318,7 +319,7 @@ export default class ChatTopbar {
       const buttons = this.buttonsToVerify.concat(isMenuOpen ? this.menuButtons as any : []);
       const results = await Promise.all(buttons.map(async(button) => {
         return {
-          result: await button.verify(),
+          result: await verifyMenuItem(button),
           button
         }
       }));
