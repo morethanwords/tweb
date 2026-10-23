@@ -78,6 +78,7 @@ import {RootScope} from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import type switchAccount from '@lib/accounts/switchAccount';
+import type {closeAddAccount} from '@lib/accounts/addAccount';
 import {useAppSettings} from '@stores/appSettings';
 import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
@@ -180,6 +181,8 @@ export type SolidJSHotReloadGuardContextValue = {
   openInstantViewInAppBrowser: typeof openInstantViewInAppBrowser;
   /** it closes and reopens the app's screens, so it is the top level too */
   switchAccount: typeof switchAccount;
+  /** the sign-in of an account added over the app gives way to what was asked for from outside it */
+  closeAddAccount: typeof closeAddAccount;
   /** every tab scaffold: their registry imports each tab's component, i.e. the whole app */
   tabs: typeof tabs;
 };

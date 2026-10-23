@@ -16,7 +16,6 @@ import {HelpCountry, HelpCountryCode} from '@layer';
 import I18n, {i18n} from '@lib/langPack';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import AccountController from '@lib/accounts/accountController';
-import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import commonStateStorage from '@lib/commonStateStorage';
 import {TrueDcId} from '@types';
 
@@ -38,7 +37,7 @@ type Spec = Extract<CardSpec, {name: 'signIn'}>;
  * cancelled on unmount via a local `cancelled` flag.
  */
 export default function SignInCard(_props: {spec: Spec}) {
-  const {managers, navigate, toIm} = useAuthFlow();
+  const {accountNumber, managers, navigate, toIm} = useAuthFlow();
 
   let cancelled = false;
 
@@ -186,7 +185,7 @@ export default function SignInCard(_props: {spec: Spec}) {
           const dcId = _dcs.shift();
           if(!dcId) return;
 
-          const accountData = await AccountController.get(getCurrentAccount());
+          const accountData = await AccountController.get(accountNumber);
           const key = accountData[`dc${dcId as TrueDcId}_auth_key`];
 
           if(key) return g();
@@ -259,7 +258,7 @@ export default function SignInCard(_props: {spec: Spec}) {
         >
           {nextContent()}
         </Button>
-        {getCurrentAccount() === 1 && <LanguageChangeButton />}
+        {accountNumber === 1 && <LanguageChangeButton />}
       </div>
       <Button
         class="btn-primary btn-secondary btn-primary-transparent primary"

@@ -56,6 +56,8 @@ export class AnimationIntersector {
 
   private overrideIdleGroups: Set<string>;
   private byGroups: {[group in AnimationItemGroup]?: AnimationItem[]};
+  // * subtrees out of sight while still in the viewport (see holdUnder)
+  private heldUnder: Set<Node>;
   private byPlayer: Map<AnimationItem['animation'], AnimationItem>;
   // Element → its AnimationItems, kept in lockstep with byGroups/byPlayer (see add/removeAnimation).
   // The IntersectionObserver callback (onObserve) and getAnimations() resolve target → item via this
@@ -132,6 +134,7 @@ export class AnimationIntersector {
 
     this.intersectionLockedGroups = {};
     this.videosLocked = false;
+    this.heldUnder = new Set();
 
     // An IntersectionObserver's implicit root is the viewport of the realm that constructed it. When
     // the client pops into a Document PiP window the whole app DOM (incl. every observed sticker / gif
@@ -402,7 +405,8 @@ export class AnimationIntersector {
     if(
       blurred ||
       (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) ||
-      (player.type === 'video' && this.videosLocked)
+      (player.type === 'video' && this.videosLocked) ||
+      this.isHeld(el)
     ) {
       if(!animation.paused) {
         // console.warn('pause animation:', animation);
@@ -422,6 +426,40 @@ export class AnimationIntersector {
 
   public getOnlyOnePlayableGroup() {
     return this.onlyOnePlayableGroup;
+  }
+
+  private isHeld(el: HTMLElement) {
+    if(!this.heldUnder.size) return false;
+    for(const root of this.heldUnder) {
+      if(root.contains(el)) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Nothing under `root` plays until the returned release, whatever asks it to - the window coming back
+   * into focus, a popup closing: `root` stays in the viewport but out of sight (the app under an account's
+   * sign-in). What is elsewhere plays as before.
+   */
+  public holdUnder(root: Node) {
+    this.heldUnder.add(root);
+    this.checkAnimationsUnder(root);
+    return () => {
+      if(this.heldUnder.delete(root)) {
+        this.checkAnimationsUnder(root);
+      }
+    };
+  }
+
+  private checkAnimationsUnder(root: Node) {
+    for(const group in this.byGroups) {
+      forEachReverse(this.byGroups[group as AnimationItemGroup], (player) => {
+        if(root.contains(player.el)) {
+          this.checkAnimation(player);
+        }
+      });
+    }
   }
 
   public setOnlyOnePlayableGroup(group: AnimationItemGroup = '') {

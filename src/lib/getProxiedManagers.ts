@@ -251,10 +251,11 @@ function createCombinedManagers(owner: ProxyOwner): CombinedManagers {
  * Managers bound to one account for good: for what belongs to that account whichever one the tab shows
  * (a call, a notification), or lives and dies with it (a chat) - whatever it still sends once the tab has
  * switched to another account, a delayed draft save, a read mark, reaches the account it was meant for.
- * With `isAlive`, what comes back once the UI is gone is dropped as after a switch.
+ * With `isAlive`, what comes back once the UI is gone is dropped as after a switch - and with
+ * `refuseWhenGone`, nothing more is sent through them then.
  */
-export function createProxiedManagersForAccount(accountNumber: ActiveAccountNumber, isAlive?: () => boolean) {
-  return createCombinedManagers({account: accountNumber, isAlive}) as BoundManagers;
+export function createProxiedManagersForAccount(accountNumber: ActiveAccountNumber, isAlive?: () => boolean, refuseWhenGone?: boolean) {
+  return createCombinedManagers({account: accountNumber, isAlive, refuseWhenGone}) as BoundManagers;
 }
 
 MOUNT_CLASS_TO.createProxiedManagersForAccount = createProxiedManagersForAccount;

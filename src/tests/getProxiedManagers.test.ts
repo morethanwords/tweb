@@ -116,6 +116,18 @@ describe('proxied app managers', () => {
     await expect(managers.appDraftsManager.getDraft(123 as PeerId)).resolves.toBe('ok');
   });
 
+  test('managers of a screen that refuse once it is gone send nothing more of it', async() => {
+    let alive = true;
+    const managers = createProxiedManagersForAccount(3, () => alive, true);
+    await expect(managers.appDraftsManager.getDraft(123 as PeerId)).resolves.toBe('ok');
+    expect(invoke.mock.calls[0][1]).toMatchObject({method: 'getDraft', accountNumber: 3});
+
+    // * a poll the screen set off before it went asks again: it is not sent
+    alive = false;
+    await expect(managers.appDraftsManager.getDraft(123 as PeerId)).rejects.toMatchObject({type: 'MIDDLEWARE'});
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
   test('a session\'s managers keep to its account, and do nothing once the tab has switched to another', async() => {
     const managers = bindManagersToSession(getProxiedManagers());
     await managers.appDraftsManager.getDraft(123 as PeerId);

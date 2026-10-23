@@ -16,6 +16,7 @@ import {fastRaf} from '@helpers/schedulers';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import Animated from '@helpers/solid/animations';
 import rootScope from '@lib/rootScope';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 
@@ -133,10 +134,15 @@ export function wrapEmailPattern(pattern: string) {
 
 let emailVerificationErrorIdSeed = 0;
 
+type StepManagers = AppManagers | TabManagers;
+
 export function EnterEmailStep(props: {
   isInitialSetup?: boolean
   class?: string
   purpose: EmailVerifyPurpose
+  // * of the account whose email it is, when the tab may show another one (the sign-in of an account
+  // * added over the app of the tab's); the tab's own without them
+  managers?: StepManagers
   onCodeSent: (code: AccountSentEmailCode.accountSentEmailCode) => void
   /** Return `true` to take the error over — the step then shows nothing itself. */
   onError?: (err: ApiError) => boolean
@@ -158,7 +164,7 @@ export function EnterEmailStep(props: {
     }
 
     setLoading(true);
-    rootScope.managers.appAccountManager.sendVerifyEmailCode(
+    (props.managers ?? rootScope.managers).appAccountManager.sendVerifyEmailCode(
       props.purpose,
       email()
     ).then((sentCode) => {
@@ -263,6 +269,8 @@ export function EnterCodeStep(props: {
   class?: string
   visible?: boolean
   purpose: EmailVerifyPurpose
+  // * as EnterEmailStep's
+  managers?: StepManagers
   sentCode: AccountSentEmailCode.accountSentEmailCode
   onSuccess: (result: AccountEmailVerified) => void
   onExpired: () => void
@@ -287,7 +295,7 @@ export function EnterCodeStep(props: {
 
   function onSubmit() {
     setLoading(true);
-    rootScope.managers.appAccountManager.verifyEmail(
+    (props.managers ?? rootScope.managers).appAccountManager.verifyEmail(
       props.purpose,
       {
         _: 'emailVerificationCode',

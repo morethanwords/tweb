@@ -31,6 +31,11 @@ type GetFileAndOpenEditorArgs = {
   shouldOpenEditor?: (file: File) => boolean | Promise<boolean>;
   onSkipEditor?: (file: File) => void;
   onFinish: (args: OnFinishArgs) => void;
+  /**
+   * Whether what asked for the editor is still there: the file is picked, decoded and the editor loaded
+   * in the meantime, and an editor asked for by a screen that has gone is not opened over what is there now.
+   */
+  isAlive?: () => boolean;
 };
 
 export async function getFileAndOpenEditor({
@@ -41,7 +46,8 @@ export async function getFileAndOpenEditor({
   canImageResultInGIF = false,
   acceptMediaTypes = ['photo'],
   shouldOpenEditor,
-  onSkipEditor
+  onSkipEditor,
+  isAlive
 }: GetFileAndOpenEditorArgs) {
   // * the editor opens for the account the file was asked on, and not at all once the tab is on another
   const managers = bindManagersToSession(rootScope.managers);
@@ -77,6 +83,11 @@ export async function getFileAndOpenEditor({
   } catch(error) {
     revokeObjectURL(mediaSrc);
     throw error;
+  }
+
+  if(isAlive && !isAlive()) {
+    revokeObjectURL(mediaSrc);
+    return;
   }
 
   openMediaEditorFromMediaRaw({

@@ -371,6 +371,7 @@ export class UiNotificationsManager {
           // * the server sends the story id as msg_id, our own notification as story_id
           const storyId = +(custom?.story_id || custom?.msg_id) || undefined;
           const self = await managers.appUsersManager.getSelf();
+          hotReloadGuard.closeAddAccount?.();
           hotReloadGuard.appImManager.openStoriesForPeer(self.id.toPeerId(), storyId);
           return;
         }
@@ -389,13 +390,16 @@ export class UiNotificationsManager {
           return;
         }
 
+        // * what was clicked is shown: the sign-in of an account added over the app gives way to it
         if(custom.story_id) {
+          hotReloadGuard.closeAddAccount?.();
           hotReloadGuard.appImManager.openStoriesForPeer(peerId);
           return;
         }
 
         const lastMsgId = await managers.appMessagesIdsManager.generateMessageId(+custom.msg_id, channelId);
 
+        hotReloadGuard.closeAddAccount?.();
         hotReloadGuard.appImManager.setInnerPeer({
           peerId,
           lastMsgId
@@ -644,6 +648,8 @@ export class UiNotificationsManager {
    * account first, as Desktop does; a call goes on through the switch.
    */
   private openForAccount(accountNumber: ActiveAccountNumber, open: () => void) {
+    // * what was clicked is shown: the sign-in of an account added over the app gives way to it
+    hotReloadGuard.closeAddAccount?.();
     // * a switch under way would close what opened now: the click waits its turn behind it
     if(accountNumber === getCurrentAccount() && !getAccountSwitchingTo()) {
       open();

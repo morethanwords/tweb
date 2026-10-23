@@ -206,3 +206,46 @@ describe('animationIntersector playback settings', () => {
     expect(animation.loop).toBe(false);
   });
 });
+
+// The app under an account's sign-in stays in the viewport, out of sight: what plays in it is held until it
+// is back, whatever asks it to play meanwhile - the window coming back into focus, a popup closing.
+describe('animationIntersector held subtree', () => {
+  const playing = () => {
+    const animation = makeAnimation();
+    animation.play = vi.fn(() => animation.paused = false);
+    animation.pause = vi.fn(() => animation.paused = true);
+    return animation;
+  };
+
+  beforeEach(() => {
+    document.body.replaceChildren();
+    state.observed.clear();
+  });
+
+  it('pauses what is under the root until the release, and nothing else', () => {
+    const root = document.createElement('div');
+    const under = document.createElement('div');
+    const outside = document.createElement('div');
+    root.append(under);
+    document.body.append(root, outside);
+    const held = playing(), free = playing();
+    add(under, held);
+    add(outside, free);
+    intersect(under, true);
+    intersect(outside, true);
+    expect(held.paused).toBe(false);
+    expect(free.paused).toBe(false);
+
+    const release = animationIntersector.holdUnder(root);
+    expect(held.paused).toBe(true);
+    expect(free.paused).toBe(false);
+
+    // * a sweep that lets everything play (the focus back, a popup gone) leaves the held one paused
+    animationIntersector.checkAnimations2(false);
+    intersect(under, true);
+    expect(held.paused).toBe(true);
+
+    release();
+    expect(held.paused).toBe(false);
+  });
+});

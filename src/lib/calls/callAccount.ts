@@ -118,6 +118,8 @@ export function hasCallInTab() {
  * opens on that account: the tab switches back to it first, as Android does from its call screen.
  */
 export async function showCallAccount(accountNumber: ActiveAccountNumber) {
+  // * what the call's screen opens is shown: the sign-in of an account added over the app gives way to it
+  hotReloadGuard.closeAddAccount?.();
   // * a switch under way would close what opens now: it goes behind it
   if(accountNumber === getCurrentAccount() && !getAccountSwitchingTo()) {
     return;

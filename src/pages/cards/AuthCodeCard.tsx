@@ -93,7 +93,7 @@ function wrapLeftToRight(text: string) {
  * would flash the card.
  */
 export default function AuthCodeCard(props: {spec: Spec}) {
-  const {managers, navigate, toIm} = useAuthFlow();
+  const {managers, navigate, toIm, isLeaving} = useAuthFlow();
 
   /* ---------- state ---------- */
 
@@ -117,6 +117,10 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   let resetEmailTimer: number | undefined;
   let resendTimer: number | undefined;
   let resending = false;
+  // * an answer that comes after the card has gone - dropped, once the sign-in over the app was closed -
+  // * is not taken for a failure: no toast or popup over what is there now, no countdown started again
+  let gone = false;
+  const isGone = () => gone || isLeaving();
 
   /* ---------- header pieces (mutated imperatively in applySentCode) ---------- */
 
@@ -417,6 +421,10 @@ export default function AuthCodeCard(props: {spec: Spec}) {
       });
     }).catch((err: ApiError) => {
       resending = false;
+      if(isGone()) {
+        return;
+      }
+
       console.error('auth.resendCode error:', err);
       toastNew({langPackKey: 'Error.AnError'});
       updateResend();
@@ -447,6 +455,10 @@ export default function AuthCodeCard(props: {spec: Spec}) {
         toastNew({langPackKey: 'Error.AnError'});
       }
     }).catch((err: ApiError) => {
+      if(isGone()) {
+        return;
+      }
+
       if(err.type.includes('TASK_ALREADY_EXISTS')) {
         simpleConfirmation({
           titleLangKey: 'Login.ResetEmail.NeedPremium',
@@ -588,6 +600,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   });
 
   onCleanup(() => {
+    gone = true;
     cancelFocus?.();
     if(resetEmailTimer) clearTimeout(resetEmailTimer);
     stopResendTimer();

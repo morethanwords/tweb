@@ -32,7 +32,6 @@ type StorageValues = {
   number_of_accounts?: number, // When the storage is encrypted
   previous_account?: number, // only for back button when logging in to another account
   current_account?: number, // 1 if not set
-  should_animate_auth?: number,
   should_animate_main?: number
 }
 

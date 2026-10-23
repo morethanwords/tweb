@@ -9,8 +9,9 @@ import Modes from '@config/modes';
 import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import {revokeObjectURL} from '@helpers/objectUrl';
 import type {InputFile, Photo} from '@layer';
-import type {AppManagers} from '@lib/managers';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import appDownloadManager from '@lib/appDownloadManager';
+import getFileNameForUpload from '@helpers/getFileNameForUpload';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import chooseProfileVideoSize from '@appManagers/utils/photos/chooseProfileVideoSize';
 import rootScope from '@lib/rootScope';
@@ -28,7 +29,22 @@ export type AvatarEditPayload = {
 
 type Options = {
   isForum?: boolean;
+  // * of the account the photo is for, when the tab may show another one (an account signed in to over
+  // * the app of the tab's): the picture is uploaded by them
+  managers?: AppManagers | TabManagers;
+  // * whether the screen the avatar is on still stands, past its being on the page (one on its way out)
+  isAlive?: () => boolean;
 };
+
+// * an upload by the managers of the account it is for, or by the tab's own without them
+function uploadBlob(blob: Blob, fileName?: string, managers?: AppManagers | TabManagers) {
+  if(!managers) {
+    return appDownloadManager.upload(blob, fileName);
+  }
+
+  fileName ??= getFileNameForUpload(blob);
+  return appDownloadManager.upload(blob, fileName, managers.apiFileManager.upload({file: blob, fileName}));
+}
 
 // video_start_ts (the cover frame) in seconds relative to the *trimmed* clip
 // start, clamped within the clip. videoThumbnailPosition / videoCrop* are 0..1
@@ -53,11 +69,7 @@ export async function mediaEditorResultToAvatarPayload(
   managers?: AppManagers
 ): Promise<AvatarEditPayload | undefined> {
   const resultPayload = await editorResult.getResult();
-  const upload = (blob: Blob, fileName: string) => appDownloadManager.upload(
-    blob,
-    fileName,
-    managers?.apiFileManager.upload({file: blob, fileName})
-  );
+  const upload = (blob: Blob, fileName: string) => uploadBlob(blob, fileName, managers);
 
   if(editorResult.isVideo) {
     if(!resultPayload.thumb) return undefined;
@@ -270,11 +282,14 @@ export default class AvatarEdit {
         isEditingForAvatar: true,
         isEditingForumAvatar: options?.isForum,
         acceptMediaTypes: ['photo', 'video'],
+        // * the avatar is gone by the time the file is picked and the editor loaded: it is not opened
+        isAlive: () => this.container.isConnected && (options?.isAlive?.() ?? true),
         onFinish: ({editorResult}) => {
           finishFromResult({
             result: editorResult,
             onChange,
-            canvas: this.canvas
+            canvas: this.canvas,
+            managers: options?.managers
           })
         }
       });
@@ -291,13 +306,14 @@ type FinishFromResultArgs = {
   result: MediaEditorFinalResult;
   canvas: HTMLCanvasElement;
   onChange: (payload: AvatarEditPayload) => void;
+  managers?: Options['managers'];
 };
 
-async function finishFromResult({result: editorResult, canvas, onChange}: FinishFromResultArgs) {
+async function finishFromResult({result: editorResult, canvas, onChange, managers}: FinishFromResultArgs) {
   // Video: don't block on the (real-time) encode here — fly the preview into the
   // avatar and show the progress ring on the avatar itself, encoding in the bg.
   if(editorResult.isVideo) {
-    await finishFromVideoResult({editorResult, canvas, onChange});
+    await finishFromVideoResult({editorResult, canvas, onChange, managers});
     return;
   }
 
@@ -329,7 +345,7 @@ async function finishFromResult({result: editorResult, canvas, onChange}: Finish
 
   // Doing this now prevents the avatar blinking to the old one
   onChange({
-    file: () => appDownloadManager.upload(resultPayload.blob)
+    file: () => uploadBlob(resultPayload.blob, undefined, managers)
   });
 
   await animatedImg.animate({
@@ -345,11 +361,13 @@ async function finishFromResult({result: editorResult, canvas, onChange}: Finish
 async function finishFromVideoResult({
   editorResult,
   canvas,
-  onChange
+  onChange,
+  managers
 }: {
   editorResult: MediaEditorFinalResult;
   canvas: HTMLCanvasElement;
   onChange: (payload: AvatarEditPayload) => void;
+  managers?: Options['managers'];
 }) {
   // Fly the full-screen preview into the avatar circle straight away — we have
   // the preview frame immediately, so there's no need to wait for the encode.
@@ -391,8 +409,8 @@ async function finishFromVideoResult({
   }
 
   onChange({
-    file: () => appDownloadManager.upload(resultPayload.thumb.blob, 'cover.jpg'),
-    video: () => appDownloadManager.upload(resultPayload.blob, 'avatar.mp4'),
+    file: () => uploadBlob(resultPayload.thumb.blob, 'cover.jpg', managers),
+    video: () => uploadBlob(resultPayload.blob, 'avatar.mp4', managers),
     videoStartTs
   });
 

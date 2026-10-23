@@ -267,7 +267,8 @@ export class ApiManager extends ApiManagerMethods {
       userAuth.dcID = baseDcId;
     }
 
-    AccountController.update(this.getAccountNumber(), {
+    // * a sign-in is over once the account is recorded: a tab that switches to it right after reads it
+    await AccountController.update(this.getAccountNumber(), {
       date: (userAuth as UserAuth).date,
       userId: (userAuth as UserAuth).id,
       dcId: (userAuth as UserAuth).dcID as TrueDcId

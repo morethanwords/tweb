@@ -50,7 +50,7 @@ import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '@appManagers/constants';
 import mediaSizes from '@helpers/mediaSizes';
 import updateColumnWidths, {setOpenTabsLeftSidebar} from '@helpers/updateColumnWidths';
 import installColumnResize from '@helpers/installColumnResize';
-import {doubleRaf, fastRaf} from '@helpers/schedulers';
+import {fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
 import DOCUMENT_PICTURE_IN_PICTURE_SUPPORTED from '@environment/documentPictureInPictureSupport';
 import openClientPip, {closeClientPip, isClientPipOpen} from '@components/clientPip';
@@ -83,7 +83,7 @@ import pause from '@helpers/schedulers/pause';
 import showAccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
 import switchAccount from '@lib/accounts/switchAccount';
-import {hasCallInTab} from '@lib/calls/callAccount';
+import addAccount from '@lib/accounts/addAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider, {registerHotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
@@ -1887,26 +1887,20 @@ export class AppSidebarLeft extends SidebarSlider {
       return;
     }
 
-    // * the sign-in screen's back button returns here
-    await sessionStorage.set({previous_account: getCurrentAccount()});
-    const isUsingPasscode = await DeferredIsUsingPasscode.isUsingPasscode();
-    const openTabs = apiManagerProxy.getOpenTabsCount();
-
-    // * the sign-in screen is a page of its own: a call in this tab is not ended for it
-    const newTab = e?.ctrlKey || e?.metaKey || (openTabs <= 1 && isUsingPasscode) || hasCallInTab();
-    if(!newTab) {
-      appImManager.goOffline();
-
-      await sessionStorage.set({should_animate_auth: 1});
-
-      const chatsPageEl = document.querySelector('.page-chats');
-      chatsPageEl.classList.add('main-screen-exit');
-      await doubleRaf();
-      chatsPageEl.classList.add('main-screen-exiting');
-      await pause(200);
+    const accountNumber = (totalAccounts + 1) as ActiveAccountNumber;
+    if(e?.ctrlKey || e?.metaKey) {
+      // * the sign-in screen's back button returns here
+      await sessionStorage.set({previous_account: getCurrentAccount()});
+      changeAccount(accountNumber, true);
+      return;
     }
 
-    changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);
+    // * the sign-in is a screen of the whole tab: the client comes back from Picture-in-Picture for it
+    if(isClientPipOpen()) {
+      closeClientPip();
+    }
+
+    addAccount(accountNumber);
   };
 }
 

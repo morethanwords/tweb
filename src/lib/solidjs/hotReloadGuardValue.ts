@@ -78,6 +78,7 @@ import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import switchAccount from '@lib/accounts/switchAccount';
+import {closeAddAccount} from '@lib/accounts/addAccount';
 import {useAppSettings} from '@stores/appSettings';
 import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
@@ -178,6 +179,7 @@ registerHotReloadGuard({
   createStoriesViewerWithProvider,
   openInstantViewInAppBrowser,
   switchAccount,
+  closeAddAccount,
   tabs
 });
 

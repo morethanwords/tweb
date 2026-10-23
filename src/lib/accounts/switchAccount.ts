@@ -38,6 +38,12 @@ import type AppMediaViewerBase from '@components/mediaViewer/base';
 // * must not keep the tab between accounts
 const CLOSED_SCREENS_SAVE_TIMEOUT = 3000;
 
+export type SwitchAccountOptions = {
+  // * the app is out of sight behind the sign-in screens of the account switched to (see addAccount): its
+  // * chats need not slide away and back
+  underCover?: boolean
+};
+
 let switching: Promise<void>;
 // * the account the last switch asked for goes to: asked for again, it is that same switch
 let lastRequestedTo: ActiveAccountNumber;
@@ -56,7 +62,7 @@ MOUNT_CLASS_TO && (MOUNT_CLASS_TO.switchAccount = (accountNumber: ActiveAccountN
  * Switches asked for while one runs follow it in order; the account being switched to asked again is
  * the same switch.
  */
-export default function switchAccount(accountNumber: ActiveAccountNumber) {
+export default function switchAccount(accountNumber: ActiveAccountNumber, options?: SwitchAccountOptions) {
   if(switching && lastRequestedTo === accountNumber) {
     return switching;
   }
@@ -71,7 +77,7 @@ export default function switchAccount(accountNumber: ActiveAccountNumber) {
   const promise: Promise<void> = (switching ? switching.catch(noop) : Promise.resolve())
   .then(() => {
     setAccountSwitchingTo(accountNumber);
-    return _switchAccount(accountNumber);
+    return _switchAccount(accountNumber, options);
   })
   .finally(() => {
     if(switching === promise) {
@@ -84,7 +90,7 @@ export default function switchAccount(accountNumber: ActiveAccountNumber) {
   return switching = promise;
 }
 
-async function _switchAccount(to: ActiveAccountNumber) {
+async function _switchAccount(to: ActiveAccountNumber, options: SwitchAccountOptions = {}) {
   const from = getCurrentAccount();
   if(to === from) {
     return;
@@ -104,14 +110,14 @@ async function _switchAccount(to: ActiveAccountNumber) {
   }
 
   try {
-    await switchInPlace(from, to);
+    await switchInPlace(from, to, options);
   } catch(err) {
     console.error('account switch failed, reloading into the account', err);
     await reloadIntoAccount(to);
   }
 }
 
-async function switchInPlace(from: ActiveAccountNumber, to: ActiveAccountNumber) {
+async function switchInPlace(from: ActiveAccountNumber, to: ActiveAccountNumber, {underCover}: SwitchAccountOptions) {
   // * in the document before anything changes, or the first announcement is not read
   const announcement = getAnnouncementRegion();
 
@@ -128,7 +134,7 @@ async function switchInPlace(from: ActiveAccountNumber, to: ActiveAccountNumber)
   // * a popup's own tabs (settings in a popup) close after the popup
   const closedScreensSaved = overlaysClosed.then(whenTabsDestroyed);
   await Promise.all([
-    toggleChatListShown(false),
+    !underCover && toggleChatListShown(false),
     Promise.race([closedScreensSaved, pause(CLOSED_SCREENS_SAVE_TIMEOUT)])
   ]);
 
@@ -157,7 +163,7 @@ async function switchInPlace(from: ActiveAccountNumber, to: ActiveAccountNumber)
   }
 
   // * done: neither of these is worth a reload if it fails
-  toggleChatListShown(true);
+  underCover || toggleChatListShown(true);
   getPeerTitle({peerId: rootScope.myId, plainText: true}).then((name) => {
     announcement.replaceChildren(i18n('MultiAccount.Switched', [name]));
   }, noop);

@@ -862,6 +862,93 @@ test.describe('switching accounts while a screen waits for its data', () => {
   });
 });
 
+/*
+ * Adding an account signs in to it over the app of this one, in the tab: the app steps back and stays as it
+ * was underneath, out of reach, and back - its button, Escape, the browser's Back - puts it where it was. The
+ * tab stays on its account all along. The sign-in itself needs another device to confirm it, so it is not done
+ * here: a phone number gets a code, a QR code a scan.
+ */
+test.describe('adding an account', () => {
+  test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'needs an authorized preview (PLAYWRIGHT_BASE_URL)');
+
+  test.use({viewport: {width: 1280, height: 800}});
+
+  test('opens its sign-in over the app, which back leaves as it was', async({page}) => {
+    test.setTimeout(5 * 60_000);
+
+    const errors: string[] = [];
+    page.on('pageerror', (error) => {
+      if(/^(TypeError|ReferenceError|RangeError)$/.test(error.name)) errors.push(error.stack || error.message);
+    });
+
+    await page.goto('/?account=1');
+    await waitForChatList(page);
+    const accounts = await page.evaluate(() => (window as any).AccountController.getTotalAccounts());
+    test.skip(accounts >= 3, 'no slot left to add an account to without Premium');
+
+    await page.evaluate(() => (window as any).__sameDocument = true);
+    await page.locator('#folders-container .chatlist-chat[data-peer-id]').first().click();
+    await page.waitForFunction(() => document.body.classList.contains('has-chat'));
+    // * the conversation as it was opened: the very same one is there when the app comes back, not one
+    // * opened anew - its scroll, a draft and what it has loaded with it
+    await page.evaluate(() => (window as any).__chatOpened = (window as any).appImManager.chat.bubbles.scrollable.container);
+
+    const readApp = () => page.evaluate(() => {
+      const w = window as any;
+      const page = document.getElementById('page-chats');
+      const opened: HTMLElement = w.__chatOpened;
+      return {
+        sameDocument: !!w.__sameDocument,
+        url: location.href,
+        myId: w.rootScope.myId,
+        peerId: w.appImManager.chat?.peerId,
+        sameChat: w.appImManager.chat?.bubbles.scrollable.container === opened && opened.isConnected,
+        covered: page.inert || page.classList.contains('main-screen-exit'),
+        signIn: !!document.getElementById('auth-pages')
+      };
+    });
+    const before = await readApp();
+    expect(before.sameChat).toBe(true);
+    expect(before.covered).toBe(false);
+
+    const openSignIn = async() => {
+      await page.locator('#column-left .sidebar-tools-button').click();
+      await page.locator('.btn-menu-item', {hasText: 'Add Account'}).click();
+      await expect(page.locator('#auth-pages')).toBeVisible();
+      const over = await readApp();
+      expect(over, 'the app went or changed under the sign-in').toMatchObject({
+        sameDocument: true,
+        url: before.url,
+        myId: before.myId,
+        peerId: before.peerId,
+        sameChat: true,
+        covered: true
+      });
+      // * the app is out of reach: a click on where its chat list was lands on the sign-in
+      expect(await page.evaluate(() => !!document.elementFromPoint(100, 300)?.closest('#auth-pages'))).toBe(true);
+    };
+
+    const expectAppBack = async(how: string) => {
+      await expect(page.locator('#auth-pages'), `${how} left the sign-in up`).toHaveCount(0);
+      await expect.poll(readApp, {message: `${how} did not put the app back as it was`}).toEqual({...before, signIn: false});
+    };
+
+    await openSignIn();
+    await page.keyboard.press('Escape');
+    await expectAppBack('Escape');
+
+    await openSignIn();
+    await page.locator('#auth-pages button[aria-label="Back"]').click();
+    await expectAppBack('its back button');
+
+    await openSignIn();
+    await page.evaluate(() => history.back());
+    await expectAppBack('the browser\'s Back');
+
+    expect(errors).toEqual([]);
+  });
+});
+
 // * the accounts a manager method ('appPromoManager.getContactBirthdays') is called on, in order
 function recordManagerCalls(page: Page, key: string) {
   return page.addInitScript((key) => {

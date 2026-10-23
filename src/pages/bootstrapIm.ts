@@ -62,9 +62,7 @@ export async function bootstrapIm(): Promise<void> {
 
   // Tear down the auth UI 1s after IM appears — same delay the legacy
   // `pageIm.onFirstMount` used so the cross-fade looks right.
-  setTimeout(() => {
-    disposeActiveAuthFlow();
-  }, 1000);
+  disposeActiveAuthFlow(1000);
 }
 
 let topLevel: Promise<typeof import('@lib/appDialogsManager')['default']>;

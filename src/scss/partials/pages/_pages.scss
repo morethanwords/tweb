@@ -8,9 +8,11 @@
   transition: opacity var(--transition-standard-in);
 }
 
+// * the app zooms away from the sign-in screens of another account and back from them; reduced animations
+// * fade it where it stands
 .main-screen {
   &-enter {
-    transition: 0.2s;
+    @include animation-level-transition(opacity .2s, transform .2s);
     transform: scale(1.75);
     opacity: 0;
   }
@@ -21,7 +23,7 @@
   }
 
   &-exit {
-    transition: 0.2s, transform 0.2s ease-in;
+    @include animation-level-transition(opacity .2s, transform .2s ease-in);
     transform: scale(1);
     opacity: 1;
   }
@@ -29,6 +31,13 @@
   &-exiting {
     transform: scale(1.75);
     opacity: 0;
+  }
+
+  &-enter,
+  &-exiting {
+    @include animation-level-below(2) {
+      transform: none;
+    }
   }
 }
 

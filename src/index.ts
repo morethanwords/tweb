@@ -48,6 +48,7 @@ import {doubleRaf} from '@helpers/schedulers';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import AccountController from '@lib/accounts/accountController';
 import {changeAccount} from '@lib/accounts/changeAccount';
+import {getValidatedAccount} from '@lib/accounts/getValidatedAccount';
 import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from '@lib/accounts/constants';
 import sessionStorage from '@lib/sessionStorage';
 import replaceChildrenPolyfill from '@helpers/dom/replaceChildrenPolyfill';
@@ -640,7 +641,21 @@ if(import.meta.env.DEV) {
     }
 
     const {mountAuthFlow} = await import('./pages/mountAuthFlow');
-    mountAuthFlow(authState);
+    const accountNumber = getCurrentAccount();
+    mountAuthFlow(authState, {
+      accountNumber,
+      managers: rootScope.managers,
+      // * a page opened on a slot of its own to add an account goes back to the account it was added from
+      back: accountNumber !== 1 ? async(host) => {
+        await sessionStorage.set({should_animate_main: 1});
+        const previousAccount = getValidatedAccount(await sessionStorage.get('previous_account'));
+        await sessionStorage.delete('previous_account');
+        await host.leave();
+        changeAccount(previousAccount);
+      } : undefined,
+      toIm: () => import('./pages/bootstrapIm').then(({bootstrapIm}) => bootstrapIm()),
+      openAccount: (accountNumber) => changeAccount(accountNumber)
+    });
   } else {
     console.log('Will mount IM page:', Date.now() / 1000);
 

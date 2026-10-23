@@ -36,7 +36,7 @@ const TEST = false;
  * full account reset if recovery isn't available).
  */
 export default function PasswordCard(_props: {spec: Spec}) {
-  const {managers, navigate, toIm} = useAuthFlow();
+  const {managers, navigate, toIm, isLeaving} = useAuthFlow();
 
   let monkey: PasswordMonkey | undefined;
   const monkeyContainer = document.createElement('div');
@@ -45,6 +45,10 @@ export default function PasswordCard(_props: {spec: Spec}) {
   let getStateInterval: number | undefined;
   let state: AccountPassword;
   let resetLoading = false;
+  // * an answer that comes after the card has gone - dropped, once the sign-in over the app was closed -
+  // * is not taken for a failure: no toast over what is there now, no polling started again
+  let gone = false;
+  const isGone = () => gone || isLeaving();
 
   /* ---------- state ---------- */
 
@@ -69,6 +73,10 @@ export default function PasswordCard(_props: {spec: Spec}) {
       managers.passwordManager.requestRecovery().then((res) => {
         navigate({name: 'emailRecover', payload: {email_pattern: res.email_pattern}});
       }).catch(async(err: ApiError) => {
+        if(isGone()) {
+          return;
+        }
+
         if(err.type === 'PASSWORD_RECOVERY_NA') {
           await simpleConfirmation({
             titleLangKey: 'Login.ResetPassword.Title',
@@ -124,6 +132,10 @@ export default function PasswordCard(_props: {spec: Spec}) {
   /* ---------- state polling (session relevance) ---------- */
 
   function getState() {
+    if(isGone()) {
+      return;
+    }
+
     if(!getStateInterval) {
       getStateInterval = window.setInterval(getState, 10e3);
     }
@@ -177,6 +189,10 @@ export default function PasswordCard(_props: {spec: Spec}) {
           break;
       }
     }).catch((err: any) => {
+      if(isGone()) {
+        return;
+      }
+
       setSubmitting(false);
       passwordInput.disabled = false;
       passwordInputField.input.classList.add('error');
@@ -217,6 +233,7 @@ export default function PasswordCard(_props: {spec: Spec}) {
   });
 
   onCleanup(() => {
+    gone = true;
     cancelFocus?.();
     if(getStateInterval) {
       clearInterval(getStateInterval);

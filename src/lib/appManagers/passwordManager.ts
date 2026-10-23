@@ -76,9 +76,9 @@ export class PasswordManager extends AppManager {
       // console.log('SRP', inputCheckPassword);
       return this.apiManager.invokeApi('auth.checkPassword', {
         password: inputCheckPassword as InputCheckPasswordSRP.inputCheckPasswordSRP
-      }, options).then((auth) => {
+      }, options).then(async(auth) => {
         if(auth._ === 'auth.authorization') {
-          this.apiManager.setUser(auth.user);
+          await this.apiManager.setUser(auth.user);
         }
 
         return auth;
@@ -98,7 +98,7 @@ export class PasswordManager extends AppManager {
     const res = await this.apiManager.invokeApi('auth.recoverPassword', {code});
 
     if(res._ === 'auth.authorization') {
-      this.apiManager.setUser(res.user);
+      await this.apiManager.setUser(res.user);
     }
 
     return res;

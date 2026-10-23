@@ -13,6 +13,7 @@
 
 import type {AuthSentCodeType} from '@layer';
 import type {AuthState} from '@types';
+import rootScope from '@lib/rootScope';
 
 import {defineStories} from '../registry';
 import type {ManagerHandlers} from '../mockManagers';
@@ -59,7 +60,14 @@ const managers: ManagerHandlers = {
 async function mount(authState: Exclude<AuthState, AuthState.signedIn>) {
   // imported here rather than at the top: the auth flow pulls in the whole card graph
   const {mountAuthFlow} = await import('@/pages/mountAuthFlow');
-  return mountAuthFlow(authState);
+
+  // * the first account's sign-in, which goes nowhere from here
+  return mountAuthFlow(authState, {
+    accountNumber: 1,
+    managers: rootScope.managers,
+    toIm: () => {},
+    openAccount: () => {}
+  }).dispose;
 }
 
 function code(type: AuthSentCodeType, rest?: {next_type?: any, timeout?: number}) {

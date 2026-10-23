@@ -1,6 +1,7 @@
 import {Accessor, createContext, createRoot, createSignal, useContext} from 'solid-js';
 
-import rootScope from '@lib/rootScope';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import type {AppManagers, TabManagers} from '@lib/managers';
 import {AuthState} from '@types';
 import {AccountSentEmailCode, AuthSentCode} from '@layer';
 
@@ -64,8 +65,16 @@ export type CardSpec = {
 }[CardName];
 
 export type AuthFlowContextValue = {
-  /** Async-proxy managers from the worker — use for any MTProto call. */
-  managers: typeof rootScope.managers;
+  /**
+   * The account being signed in to. The tab's own, or - when another account is added over the app of
+   * this one (see `@lib/accounts/addAccount`) - the slot it goes into, while the tab stays on its account.
+   */
+  accountNumber: ActiveAccountNumber;
+  /**
+   * Async-proxy managers from the worker, of that account — use them for any MTProto call: when the
+   * account is added over the app, `rootScope.managers` are the app's account.
+   */
+  managers: TabManagers | AppManagers;
   /** Currently mounted card (or `null` before bootstrap). */
   current: Accessor<CardSpec | null>;
   /** Switch to another card. The current card unmounts. */
@@ -74,6 +83,10 @@ export type AuthFlowContextValue = {
   back(): void;
   /** Tear down the auth UI and bootstrap the IM page. */
   toIm(): Promise<void>;
+  /** Open an account that is signed in already instead (a passkey of one). */
+  openAccount(accountNumber: ActiveAccountNumber): void;
+  /** Back or a sign-in is under way: the screens are on their way out, and open nothing more. */
+  isLeaving(): boolean;
 };
 
 /* ------------------------------------------------------------------ */
