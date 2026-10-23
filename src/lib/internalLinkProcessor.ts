@@ -76,7 +76,7 @@ export class InternalLinkProcessor {
   private processingAddAiStyleSlugs: Set<string> = new Set();
   private tagSearchVersion = 0;
 
-  private showUsernameResolveError(err: ApiError) {
+  public showUsernameResolveError(err: ApiError) {
     if(err.type === 'USERNAME_NOT_OCCUPIED') {
       toastNew({langPackKey: 'NoUsernameFound'});
     } else if(err.type === 'USERNAME_INVALID') {

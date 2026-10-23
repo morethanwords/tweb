@@ -1,5 +1,5 @@
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, MediaArea, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -16,6 +16,7 @@ import type {BusinessHoursTabPayload} from '@components/sidebarLeft/tabs/busines
 import type {BusinessLocationTabPayload} from '@components/sidebarLeft/tabs/businessLocation';
 import type {TimezoneTabPayload} from '@components/sidebarLeft/tabs/timezone';
 import type {BusinessPeriod} from '@components/sidebarLeft/tabs/businessHoursShared';
+import type {StoriesSearch} from '@components/stories/store';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -994,6 +995,14 @@ export const AppMyStoriesTab = Object.assign(
   }),
   {getInitArgs: getMyStoriesInitArgs}
 );
+
+// * public stories with a hashtag, or from a place: the title of a place says which of the two it is
+export const AppStoriesSearchTab = scaffoldSolidJSTab<{search: StoriesSearch}>({
+  title: ({search}) => search.area ?
+    ((search.area as MediaArea.mediaAreaVenue).title ? 'SharedPlace' : 'ChatLocation') :
+    'PublicStories',
+  getComponentModule: () => import('../sidebarLeft/tabs/storiesSearch')
+});
 
 
 export const AppArchivedTab =

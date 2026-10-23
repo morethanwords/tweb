@@ -2,15 +2,12 @@ import {createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, cr
 import {getOverlayRoot} from '@helpers/appWindow';
 import {Portal} from 'solid-js/web';
 import {Document, MessageMedia, Photo, StoryItem} from '@layer';
-import {wrapStoryMedia} from '@components/stories/preview';
+import wrapStoryGridItem from '@components/stories/gridItem';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import {StoriesContext, useStories, createStoriesStore, StoriesContextState} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import I18n, {i18n} from '@lib/langPack';
-import buttonKeyDown from '@helpers/solid/buttonKeyDown';
-import Modes from '@config/modes';
-import {formatFullSentTime} from '@helpers/date';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
@@ -505,27 +502,10 @@ function StoriesGrid(props: {
   });
 
   const Item = (storyItem: StoryItem) => {
-    const {container, div, media, thumb} = wrapStoryMedia({
+    const {container, div, media, thumb} = wrapStoryGridItem({
       peerId: stories.peer.peerId,
       storyItem: storyItem as StoryItem.storyItem,
-      forPreview: true,
-      noAspecter: true,
-      containerProps: {
-        // @ts-ignore
-        'data-mid': storyItem.id,
-        'data-peer-id': stories.peer.peerId,
-        'data-timestamp': (storyItem as StoryItem.storyItem).date,
-        'class': 'grid-item search-super-item',
-        'role': 'button',
-        'tabindex': Modes.a11y ? 0 : undefined,
-        'aria-label': `${I18n.format('OpenStory', true)}, ${formatFullSentTime((storyItem as StoryItem.storyItem).date).textContent}`,
-        'onKeyDown': buttonKeyDown,
-        'onClick': () => {
-          setViewerId(storyItem.id);
-        }
-      },
-      childrenClassName: 'grid-item-media',
-      noPlayButton: true
+      onClick: () => setViewerId(storyItem.id)
     });
 
     let icon: HTMLElement;

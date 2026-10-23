@@ -90,7 +90,6 @@ const generated: GeneratedSettingsSearchData = {
     {id: 'AppBusinessLocationTab:BusinessLocationAddress', sectionId: 'AppBusinessLocationTab', kind: 'row', titleLangKey: 'BusinessLocationAddress'},
     {id: 'AppBusinessLocationTab:BusinessLocationClear', sectionId: 'AppBusinessLocationTab', kind: 'row', titleLangKey: 'BusinessLocationClear'},
     {id: 'AppBusinessLocationTab:BusinessLocationMap', sectionId: 'AppBusinessLocationTab', kind: 'toggle', titleLangKey: 'BusinessLocationMap'},
-    {id: 'AppBusinessLocationTab:Map', sectionId: 'AppBusinessLocationTab', kind: 'row', titleLangKey: 'Map'},
     {id: 'AppBusinessLocationTab:Remove', sectionId: 'AppBusinessLocationTab', kind: 'row', titleLangKey: 'Remove'},
     {id: 'AppChatAutomationTab:ChatAutomation.AccessibleChats', sectionId: 'AppChatAutomationTab', kind: 'subsection', titleLangKey: 'ChatAutomation.AccessibleChats'},
     {id: 'AppChatAutomationTab:ChatAutomation.AllExcept', sectionId: 'AppChatAutomationTab', kind: 'row', titleLangKey: 'ChatAutomation.AllExcept'},

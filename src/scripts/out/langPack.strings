@@ -611,6 +611,13 @@
 "YourStory" = "Your story";
 "MyStory" = "My Story";
 "PublicStories" = "Public Stories";
+"HashtagStoriesFound_one" = "%d Story found";
+"HashtagStoriesFound_other" = "%d Stories found";
+"HashtagStoriesFoundSubtitle" = "View stories with %s";
+"NoHashtagStoriesTitle" = "No stories found";
+"LocationStories_one" = "%d story from this location";
+"LocationStories_other" = "%d stories from this location";
+"SharedPlace" = "Place";
 "CloseFriendsTooltip" = "You are seeing this story because you have been added to %s's list of close friends.";
 "CloseFriendsTooltipYou" = "Only people from your close friends list will see this story.";
 "StoryMention" = "%s mentioned you in a story";

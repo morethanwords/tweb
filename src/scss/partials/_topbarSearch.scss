@@ -124,8 +124,14 @@
       }
     }
 
-    &-sender {
+    &-sender,
+    &-stories {
       border-radius: $border-radius-medium;
+    }
+
+    // * the authors of the stories found, in place of a chat's avatar
+    &-stories .stacked-avatars {
+      --margin-right: -1rem;
     }
 
     &-reactions {

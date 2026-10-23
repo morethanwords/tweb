@@ -10,7 +10,7 @@ import overlayCounter from '@helpers/overlayCounter';
 import throttle from '@helpers/schedulers/throttle';
 import classNames from '@helpers/string/classNames';
 import windowSize from '@helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
+import {Document, DocumentAttribute, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
 import animationIntersector from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import PeerTitle from '@components/peerTitle';
@@ -64,7 +64,6 @@ import focusInput from '@helpers/dom/focusInput';
 import {preloadStoriesMedia, wrapStoryMedia} from '@components/stories/preview';
 import {StoriesContextPeerState, useStories, StoriesProvider, STORY_DURATION} from '@components/stories/store';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
-import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import liteMode from '@helpers/liteMode';
 import Icon from '@components/icon';
 import {ChatReactionsMenu} from '@components/chat/reactionsMenu';
@@ -93,8 +92,8 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
 import {Transition} from 'solid-transition-group';
 import {TransitionGroup} from '@helpers/solid/transitionGroup';
-import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
-import {askOpenGoogleMaps} from '@components/confirmOpenGoogleMaps';
+import openStoriesSearch, {openStoriesSearchByHashtag} from '@components/stories/openStoriesSearch';
+import {getAccountSession} from '@lib/accounts/getCurrentAccount';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import showTooltip from '@components/tooltip';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -613,60 +612,16 @@ const StoryMediaArea = (props: {
   const isLink = createMemo(() => props.mediaArea._ === 'mediaAreaUrl');
   const isWeather = createMemo(() => props.mediaArea._ === 'mediaAreaWeather');
 
-  const onLocationClick = async() => {
-    const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
-    const href = makeGoogleMapsUrl(geoPoint);
-
-    const onAnchorClick = async(e: MouseEvent) => {
-      if(ignoreClickEvent) {
-        ignoreClickEvent = false;
-        return;
-      }
-
-      hasPopup = true;
-      cancelEvent(e);
-      if(!await askOpenGoogleMaps()) {
-        if(wasPlaying) {
-          actions.play();
-        }
-
-        return;
-      }
-
-      ignoreClickEvent = true;
-      a.click();
-    };
-
-    let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
-    (
-      <a
-        ref={a}
-        href={href}
-        onClick={onAnchorClick}
-      >
-        {i18n('StoryViewLocation')}
-      </a>
-    );
-    setBlankToAnchor(a);
-    const wasPlaying = !stories.paused;
-    actions.pause();
-    const {close} = showTooltip({
-      element: div,
-      vertical: 'top',
-      textElement: a,
-      centerVertically: !!rotation,
-      onClose: () => {
-        if(hasPopup) {
-          hasPopup = false;
-          return;
-        }
-
-        if(wasPlaying) {
-          actions.play();
-        }
-      }
+  // * the place leads to the public stories posted from it, its map is there too
+  const onLocationClick = () => {
+    showNotCenteredTooltip({
+      callback: () => {
+        const area = unwrap(props.mediaArea);
+        const session = getAccountSession();
+        props.close(() => openStoriesSearch({area}, session));
+      },
+      text: i18n('StoryViewLocation')
     });
-    props.setTooltipCloseCallback(() => close);
   };
 
   const onReactionClick = () => {
@@ -3270,7 +3225,10 @@ export default function StoriesViewer(props: {
       return;
     }
 
-    close(callback);
+    // * a hashtag of a story looks for the public stories with it, not for messages
+    const hashtag = findUpClassName(e.target, 'anchor-hashtag') as HTMLAnchorElement;
+    const session = getAccountSession();
+    close(hashtag ? () => openStoriesSearchByHashtag(hashtag, session) : callback);
     return false;
   };
 

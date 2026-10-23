@@ -4,7 +4,7 @@ import {createStore, reconcile} from 'solid-js/store';
 import mediaSizes from '@helpers/mediaSizes';
 import clamp from '@helpers/number/clamp';
 import windowSize from '@helpers/windowSize';
-import {StoryItem, PeerStories, StoryAlbum, StoriesStealthMode} from '@layer';
+import {StoryItem, PeerStories, StoryAlbum, StoriesStealthMode, MediaArea} from '@layer';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
@@ -20,6 +20,7 @@ import {hotListen} from '@helpers/hotModule';
 
 /** how long a story without a video stays on screen */
 export const STORY_DURATION = 5e3;
+const SEARCH_PAGE_LIMIT = 30;
 
 export type NextPrevStory = () => void;
 export type ChangeStoryParams = {
@@ -37,6 +38,13 @@ export type StoriesContextPeerState = {
 };
 
 export type StoriesSortingFreezeType = 'list' | 'viewer';
+
+/** public stories with a hashtag (of one peer's with `peerId`), or from the place of a location area */
+export type StoriesSearch = {
+  hashtag?: string,
+  area?: MediaArea,
+  peerId?: PeerId
+};
 
 export type StoriesContextState = {
   index: number,
@@ -64,7 +72,9 @@ export type StoriesContextState = {
   getNearestStories: (next: boolean, count: number, loop?: boolean) => ChangeStoryParams[],
   albumId: number | undefined,
   loaded: boolean,
-  canEdit: boolean
+  canEdit: boolean,
+  /** how many stories a search found: the server's count while there are more pages */
+  foundCount: number
 };
 
 export type StoriesContextActions = {
@@ -155,7 +165,9 @@ export const createStoriesStore = (props: {
   manualLoad?: boolean,
   onLoad?: (fullLoad: boolean) => void,
   initialAlbumId?: number,
-  singleStory?: boolean
+  singleStory?: boolean,
+  /** the found stories, in the order found: a peer once for each story */
+  search?: StoriesSearch
 }): StoriesContextValue => {
   const getNearestStory = (
     next: boolean,
@@ -252,7 +264,8 @@ export const createStoriesStore = (props: {
     getNearestStories,
     albumId: props.initialAlbumId as number | undefined,
     loaded: false,
-    canEdit: false
+    canEdit: false,
+    foundCount: 0
   };
 
   let loadState: string;
@@ -302,10 +315,57 @@ export const createStoriesStore = (props: {
     });
   };
 
+  // * where the next page of found stories starts: what the last page gave, none after the last one
+  let searchOffset = '';
+  const loadFound = (reload: boolean): Promise<boolean> => {
+    if(reload) {
+      searchOffset = '';
+    } else if(state.loaded) {
+      return Promise.resolve(true);
+    }
+
+    return rootScope.managers.appStoriesManager.searchStories({
+      ...props.search,
+      offset: searchOffset,
+      limit: SEARCH_PAGE_LIMIT
+    }).catch((): Awaited<ReturnType<AppStoriesManager['searchStories']>> => ({count: 0, nextOffset: undefined, stories: []}))
+    .then(({count, nextOffset, stories}) => {
+      if(disposed) {
+        return true;
+      }
+
+      searchOffset = nextOffset;
+      const loaded = !nextOffset;
+      const peers = reload ? [] : state.peers.slice();
+      const keys = new Set(peers.map((peer) => `${peer.peerId}_${peer.stories[0].id}`));
+      for(const {peerId, story} of stories) {
+        const key = `${peerId}_${story.id}`;
+        if(!keys.has(key)) { // * a page can repeat a story of the one before
+          keys.add(key);
+          peers.push({peerId, stories: [story], index: 0, count: 1});
+        }
+      }
+
+      setState({
+        peers,
+        ready: true,
+        loaded,
+        foundCount: loaded ? peers.length : Math.max(count, peers.length)
+      });
+
+      props.onLoad?.(loaded);
+      return loaded;
+    });
+  };
+
   const load = (reload = false) => {
     if(loadPromise && !reload) return loadPromise;
     const doLoad = () => {
       const {peerId, pinned, archive} = props;
+      if(props.search) {
+        return loadFound(reload);
+      }
+
       if(peerId) {
         if(pinned || archive) {
           const {peer} = state;
@@ -706,6 +766,10 @@ export const createStoriesStore = (props: {
   };
 
   const canAddPeer = (peerId: PeerId) => {
+    if(props.search) { // * the server alone says what was found
+      return false;
+    }
+
     if(singlePeerId) {
       return singlePeerId === peerId;
     }
@@ -853,9 +917,16 @@ export const createStoriesStore = (props: {
     return isActivePeer;
   };
 
+  // * found stories hold a peer once for each of its stories: the story picks which
+  const getStoryPeerIndex = (peerId: PeerId, id: number) => {
+    return props.search ?
+      state.peers.findIndex((peer) => peer.peerId === peerId && peer.stories[0]?.id === id) :
+      getPeerIndex(peerId);
+  };
+
   // * updates section
   const onStoryUpdate = ({peerId, story, modifiedPinned, modifiedArchive, modifiedPinnedToTop}: BroadcastEvents['story_update']) => {
-    const peerIndex = getPeerIndex(peerId);
+    const peerIndex = getStoryPeerIndex(peerId, story.id);
     if(peerIndex === -1) {
       return;
     }
@@ -974,7 +1045,7 @@ export const createStoriesStore = (props: {
       return;
     }
 
-    const peerIndex = getPeerIndex(peerId);
+    const peerIndex = getStoryPeerIndex(peerId, id);
     if(peerIndex === -1) {
       return;
     }
@@ -988,6 +1059,7 @@ export const createStoriesStore = (props: {
 
     if(stories.length === 1) {
       deletePeer(peerId, peerIndex);
+      if(props.search) setState('foundCount', (count) => Math.max(0, count - 1));
       return;
     }
 
@@ -1060,13 +1132,14 @@ export const createStoriesStore = (props: {
 
   listenerSetter.add(rootScope)('story_update', onStoryUpdate);
   listenerSetter.add(rootScope)('story_deleted', onStoryDeleted);
-  if(!props.archive && !props.pinned) {
+  // * a story found stays found past its 24 hours, and the feed's order and additions are not the search's
+  if(!props.archive && !props.pinned && !props.search) {
     listenerSetter.add(rootScope)('story_expired', onStoryDeleted);
   }
   if(!props.singleStory) {
     listenerSetter.add(rootScope)('story_new', onStoryNew);
   }
-  if(!singlePeerId || props.needUpdates) {
+  if((!singlePeerId || props.needUpdates) && !props.search) {
     listenerSetter.add(rootScope)('stories_stories', onStoriesStories);
     listenerSetter.add(rootScope)('stories_read', onStoriesRead);
     // listenerSetter.add(rootScope)('user_stories_hidden', onUserStoriesHidden);

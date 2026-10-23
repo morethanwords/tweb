@@ -9,21 +9,15 @@ import Row from '@components/rowTsx';
 import SaveButton from '@components/saveButton';
 import Section from '@components/section';
 import {toastNew} from '@components/toast';
-import wrapPhoto from '@components/wrappers/photo';
 import type {AppBusinessLocationTab} from '@components/solidJsTabs/tabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
-import getWebFileLocation from '@helpers/getWebFileLocation';
-import confirmOpenGoogleMaps from '@components/confirmOpenGoogleMaps';
-import A11yButton from '@components/a11yButton';
-import createMiddleware from '@helpers/solid/createMiddleware';
+import MapPreview from '@components/mapPreview';
 import {GrowHeightReveal} from '@helpers/solid/animations';
 import useIsConfirmationNeededOnClose from '@hooks/useIsConfirmationNeededOnClose';
 import {BusinessLocation, GeoPoint, UserFull} from '@layer';
 import {i18n} from '@lib/langPack';
 import type {PreloadedLottieAsset} from '@lib/lottie/lottieLoader';
-
-import styles from '@components/sidebarLeft/tabs/businessLocation.module.scss';
 
 type AppBusinessLocationTabType = typeof AppBusinessLocationTab;
 
@@ -33,9 +27,6 @@ export type BusinessLocationTabPayload = {
 };
 
 const MAX_ADDRESS_LENGTH = 96;
-const MAP_WIDTH = 320;
-const MAP_HEIGHT = 160;
-const MAP_ZOOM = 15;
 
 const BusinessLocationTab = () => {
   const [tab] = useSuperTab<AppBusinessLocationTabType>();
@@ -195,23 +186,7 @@ const BusinessLocationForm = (props: {
           <Row.Title>{i18n('BusinessLocationMap')}</Row.Title>
         </Row>
         <GrowHeightReveal when={geoPoint()} appear={false}>
-          <Show keyed when={geoPoint()}>{(geo) => (
-            // a press asks before leaving for Google Maps, as a profile's location does
-            <A11yButton
-              class={styles.mapPreview}
-              aria-label={i18n('Map').textContent}
-              onClick={() => confirmOpenGoogleMaps(geo)}
-              ref={(container) => {
-                wrapPhoto({
-                  photo: getWebFileLocation(geo, MAP_WIDTH, MAP_HEIGHT, MAP_ZOOM),
-                  container,
-                  middleware: createMiddleware().get(),
-                  boxWidth: MAP_WIDTH,
-                  boxHeight: MAP_HEIGHT
-                });
-              }}
-            />
-          )}</Show>
+          <Show keyed when={geoPoint()}>{(geo) => <MapPreview geo={geo} />}</Show>
         </GrowHeightReveal>
       </Section>
 

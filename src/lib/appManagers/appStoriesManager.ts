@@ -1288,6 +1288,43 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
+  /**
+   * Public stories with a hashtag (`#tag` or `$tag`; only one peer's with `peerId`), or posted from a place —
+   * `area` is the location area of a story, as it came. `offset` is the previous page's `nextOffset`, and a
+   * page without one is the last
+   */
+  public searchStories({hashtag, area, peerId, offset, limit}: {
+    hashtag?: string,
+    area?: MediaArea,
+    peerId?: PeerId,
+    offset: string,
+    limit: number
+  }) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.searchPosts',
+      params: {
+        hashtag: hashtag?.replace(/^#/, ''),
+        area,
+        peer: peerId ? this.appPeersManager.getInputPeerById(peerId) : undefined,
+        offset,
+        limit
+      },
+      processResult: (foundStories) => {
+        this.appPeersManager.saveApiPeers(foundStories);
+        const stories: {peerId: PeerId, story: StoryItem.storyItem}[] = [];
+        for(const foundStory of foundStories.stories) {
+          const peerId = this.appPeersManager.getPeerId(foundStory.peer);
+          const story = this.saveStoryItem(foundStory.story, this.getPeerStoriesCache(peerId), undefined, true);
+          if(story?._ === 'storyItem' && story.media) {
+            stories.push({peerId, story});
+          }
+        }
+
+        return {count: foundStories.count, nextOffset: foundStories.next_offset, stories};
+      }
+    });
+  }
+
   public fetchSingleStories(cache: StoriesPeerCache) {
     return cache.getStoriesPromise ??= pause(0).then(() => {
       const ids = [...cache.getStoriesPromises.keys()];

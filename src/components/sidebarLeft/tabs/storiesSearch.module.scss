@@ -1,0 +1,65 @@
+// * whose story it is, over its top: the start of the line holds the author, a video's length goes to the bottom
+.author {
+  position: absolute;
+  top: .25rem;
+  inset-inline: .25rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  min-width: 0;
+  color: #fff;
+  font-size: var(--font-size-12);
+  line-height: var(--line-height-12);
+  font-weight: var(--font-weight-bold);
+  text-shadow: 0 0 3px rgba(0, 0, 0, .45);
+  pointer-events: none;
+
+  :global(.avatar) {
+    flex: 0 0 auto;
+  }
+}
+
+.authorName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid {
+  :global(.video-time) {
+    position: absolute;
+    inset-inline-end: .25rem;
+    bottom: .25rem;
+    z-index: 2;
+    padding: 0 .375rem;
+    border-radius: .25rem;
+    background-color: var(--message-time-background);
+    color: #fff;
+    font-size: var(--font-size-12);
+    line-height: 1.125rem;
+  }
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.sticker {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  margin-bottom: 1rem;
+}
+
+.placeholderTitle {
+  font-size: var(--font-size-20);
+  line-height: var(--line-height-20);
+  font-weight: var(--font-weight-bold);
+}

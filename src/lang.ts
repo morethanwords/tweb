@@ -649,6 +649,17 @@ const lang = {
   'YourStory': 'Your story',
   'MyStory': 'My Story',
   'PublicStories': 'Public Stories',
+  'HashtagStoriesFound': {
+    'one_value': '%d Story found',
+    'other_value': '%d Stories found'
+  },
+  'HashtagStoriesFoundSubtitle': 'View stories with %s',
+  'NoHashtagStoriesTitle': 'No stories found',
+  'LocationStories': {
+    'one_value': '%d story from this location',
+    'other_value': '%d stories from this location'
+  },
+  'SharedPlace': 'Place',
   'CloseFriendsTooltip': 'You are seeing this story because you have been added to %s\'s list of close friends.',
   'CloseFriendsTooltipYou': 'Only people from your close friends list will see this story.',
   'StoryMention': '%s mentioned you in a story',
