@@ -585,7 +585,8 @@ export type SerializedChatInputDocument = {
   entities: MessageEntity[],
   positionAtTextOffset: (offset: number, affinity?: 'backward' | 'forward') => number,
   text: string,
-  textOffsetAtPosition: (position: number, affinity?: 'backward' | 'forward') => number
+  textOffsetAtPosition: (position: number, affinity?: 'backward' | 'forward') => number,
+  textEndBefore: (position: number) => number
 };
 
 export function tiptapToTelegram(
@@ -873,5 +874,12 @@ export function tiptapToTelegram(
     return nearest?.text ?? 0;
   };
 
-  return {text, entities, positionAtTextOffset, textOffsetAtPosition};
+  // where the text of what comes before a position between two blocks ends: after the block before
+  // it, not after the line break that follows that block
+  const textEndBefore = (position: number) => segments.reduce(
+    (end, segment) => segment.pmEnd <= position ? Math.max(end, segment.textEnd) : end,
+    0
+  );
+
+  return {text, entities, positionAtTextOffset, textOffsetAtPosition, textEndBefore};
 }

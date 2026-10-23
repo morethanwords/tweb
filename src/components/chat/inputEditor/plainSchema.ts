@@ -53,6 +53,7 @@ const PLAIN_MESSAGE_PLUGIN_NAMES = new Set([
   'chatEmptyDocumentSelection',
   'chatInlineAtomNavigation',
   'chatInputPlaceholders',
+  'chatPastedBlocks',
   'chatPlainListPaste',
   'chatRichMessageAttributes',
   'chatTextPaste',

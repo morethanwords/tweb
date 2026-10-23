@@ -752,6 +752,13 @@
   th {
     width: calc(100% / var(--table-columns));
     overflow-wrap: anywhere;
+
+    // monospace text (`textFixed`) too: the global `pre, code` rule's `break-word` let a long
+    // identifier widen its column and the message scroll sideways, where the composer, whose
+    // monospace is a span, wraps it
+    code {
+      overflow-wrap: inherit;
+    }
   }
 
   // pageBlockTable.compact (layer 229) — half the cells' padding (tdesktop halves the vertical
