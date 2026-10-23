@@ -4385,6 +4385,8 @@ export default class ChatInput {
       this.lastUrl = lastUrl;
       this.noWebPage = true;
 
+      if(e) this.messageInput.focus();
+
       if(needReturn) return;
     }
 
