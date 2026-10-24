@@ -783,14 +783,16 @@ export default class PeerProfileAvatars {
       return deferred;
     };
 
-    const setBackgroundColors = (bgColors: number[]) => {
+    const setBackgroundColors = (bgColors: number[], radial?: boolean) => {
       let backgroundStr: string;
       if(bgColors) {
         const colors = bgColors.map((color) => getHexColorFromTelegramColor(color));
         if(colors.length === 1) {
           backgroundStr = colors[0];
+        } else if(radial && this.peerId !== rootScope.myId) {
+          backgroundStr = `radial-gradient(circle farthest-corner at 50% 48%, ${colors.join(', ')})`;
         } else {
-          backgroundStr = `linear-gradient(180deg, ${colors.join(', ')})`;
+          backgroundStr = `linear-gradient(180deg, ${colors.slice().reverse().join(', ')})`;
         }
       }
       this.container.style.background = backgroundStr;
@@ -800,10 +802,10 @@ export default class PeerProfileAvatars {
     const peerProfileAppearance = usePeerProfileAppearance(this.peerId);
     const deferred = deferredPromise<void>();
     createEffect(() => {
-      const {bgColors, backgroundEmojiId} = peerProfileAppearance()
+      const {bgColors, backgroundEmojiId, radial} = peerProfileAppearance()
       // const docId = '5301072507598550489';
 
-      setBackgroundColors(bgColors);
+      setBackgroundColors(bgColors, radial);
       this.setCollapsed(this.isCollapsed());
 
       const isNightTheme = useIsNightTheme();

@@ -11,6 +11,7 @@ export default function useProfileColors() {
 export function usePeerProfileAppearance(peerId: PeerId): Accessor<{
   bgColors?: number[]
   backgroundEmojiId?: Long
+  radial?: boolean
 }> {
   const [colorOptions] = useProfileColors();
   const isNightTheme = useIsNightTheme();
@@ -22,8 +23,9 @@ export function usePeerProfileAppearance(peerId: PeerId): Accessor<{
     const emojiStatus = (_peer as User.user)?.emoji_status
     if(emojiStatus?._ === 'emojiStatusCollectible') {
       return {
-        bgColors: [emojiStatus.edge_color, emojiStatus.center_color],
-        backgroundEmojiId: emojiStatus.pattern_document_id
+        bgColors: [emojiStatus.center_color, emojiStatus.edge_color],
+        backgroundEmojiId: emojiStatus.pattern_document_id,
+        radial: true
       }
     }
 
