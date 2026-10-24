@@ -108,6 +108,12 @@ export class InternalLinkProcessor {
           buttons: [{
             langKey: 'Open',
             callback: () => {
+              const internalCallback = (window as any)[element.dataset.maskedCallback];
+              if(internalCallback) {
+                internalCallback(element);
+                return;
+              }
+
               a.click();
             }
           }]

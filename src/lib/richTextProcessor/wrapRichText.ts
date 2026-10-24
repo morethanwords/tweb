@@ -655,7 +655,16 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
 
           const currentContext = !!onclick;
+          let internalOnclick: string;
           if(
+            currentContext &&
+            entity._ === 'messageEntityTextUrl' &&
+            url !== fullEntityText &&
+            !options.passMaskedLinks
+          ) {
+            internalOnclick = onclick;
+            onclick = 'showMaskedAlert';
+          } else if(
             !onclick &&
             masked &&
             !currentContext &&
@@ -666,6 +675,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
           if(options.wrappingDraft) {
             onclick = undefined;
+            internalOnclick = undefined;
           }
 
           element = document.createElement('a');
@@ -679,6 +689,10 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
           if(onclick) {
             element.setAttribute('onclick', onclick + '(this)');
+          }
+
+          if(internalOnclick) {
+            element.dataset.maskedCallback = internalOnclick;
           }
         }
 
