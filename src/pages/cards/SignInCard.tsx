@@ -12,12 +12,15 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import focusWhenSettled from '@helpers/dom/focusWhenSettled';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import replaceContent from '@helpers/dom/replaceContent';
+import formatDuration from '@helpers/formatDuration';
 import {HelpCountry, HelpCountryCode} from '@layer';
+import {getFloodWaitTime} from '@appManagers/utils/getFloodWaitTime';
 import I18n, {i18n} from '@lib/langPack';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import AccountController from '@lib/accounts/accountController';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import commonStateStorage from '@lib/commonStateStorage';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {TrueDcId} from '@types';
 
 import AuthCard from '@/pages/AuthCard';
@@ -134,7 +137,7 @@ export default function SignInCard(_props: {spec: Spec}) {
     }).then((code) => {
       // the very first send has no previous `phone_code_hash` to sign up with
       return continueLogin(code, {managers, navigate, toIm, phone_number});
-    }).catch((err) => {
+    }).catch((err: ApiError) => {
       setSubmitting(false);
 
       switch(err.type) {
@@ -144,10 +147,19 @@ export default function SignInCard(_props: {spec: Spec}) {
           telEl.classList.add('error');
           setNextContent(i18n('Login.Next'));
           break;
-        default:
+        default: {
           console.error('auth.sendCode error:', err);
-          setNextContent(err.type);
+          const floodWait = getFloodWaitTime(err);
+          if(floodWait.hasWaitTime) {
+            telInputField.setError();
+            replaceContent(telInputField.label, i18n('Login.Code.TooManyAttempts', [wrapFormattedDuration(formatDuration(floodWait.waitTime))]));
+            telEl.classList.add('error');
+            setNextContent(i18n('Login.Next'));
+          } else {
+            setNextContent(err.type);
+          }
           break;
+        }
       }
     });
   }

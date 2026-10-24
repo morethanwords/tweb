@@ -22,6 +22,7 @@ import {fastRaf} from '@helpers/schedulers';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import tsNow from '@helpers/tsNow';
 import {AuthSentCodeType, AuthSignIn} from '@layer';
+import {getFloodWaitTime} from '@appManagers/utils/getFloodWaitTime';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import lottieLoader from '@lib/lottie/lottieLoader';
@@ -258,7 +259,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
           });
           break;
       }
-    }).catch((err) => {
+    }).catch((err: ApiError) => {
       let good = false;
       switch(err.type) {
         case 'SESSION_PASSWORD_NEEDED':
@@ -272,9 +273,15 @@ export default function AuthCodeCard(props: {spec: Spec}) {
         case 'PHONE_CODE_INVALID':
           showError(invalidCodeLangKey());
           break;
-        default:
-          markError(err.type);
+        default: {
+          const floodWait = getFloodWaitTime(err);
+          if(floodWait.hasWaitTime) {
+            markError(i18n('Login.Code.TooManyAttempts', [wrapFormattedDuration(formatDuration(floodWait.waitTime))]));
+          } else {
+            markError(err.type);
+          }
           break;
+        }
       }
 
       setSubmitting(false);

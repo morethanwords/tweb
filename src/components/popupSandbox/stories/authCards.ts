@@ -116,6 +116,21 @@ defineStories('SIGN IN', [
     open: code({_: 'auth.sentCodeTypeSms', length: 5}, {next_type: {_: 'auth.codeTypeCall'}, timeout: 20})
   },
   {
+    id: 'auth/codeFloodWait',
+    title: 'Too many attempts',
+    surface,
+    fixtureOnly: true,
+    managers: {
+      ...managers,
+      apiManager: {
+        invokeApi: (method: string) => {
+          throw {type: method === 'auth.signIn' ? 'FLOOD_WAIT_90' : 'PHONE_CODE_INVALID'};
+        }
+      }
+    },
+    open: code({_: 'auth.sentCodeTypeSms', length: 5})
+  },
+  {
     id: 'auth/codeWord',
     title: 'Secret word from an SMS',
     surface,

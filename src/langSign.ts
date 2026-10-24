@@ -17,6 +17,7 @@ const lang = {
   'Login.Code.SecretPhrase': 'Secret phrase',
   'Login.Code.WordInvalid': 'Incorrect, please try again',
   'Login.Code.WordBeginningInvalid': 'Incorrect word',
+  'Login.Code.TooManyAttempts': 'Too many attempts, try again in %s',
   'Login.Code.SmsAvailableIn': 'You can request an SMS in %s',
   'Login.Code.CallAvailableIn': 'You can request a call in %s',
   'Login.Code.ResendSms': '[Send the code as an SMS]()',
