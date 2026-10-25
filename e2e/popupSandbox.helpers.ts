@@ -1,4 +1,4 @@
-import type {Page} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
 
 type Story = {id: string, title: string, group: string, surface?: string};
 /** One recorded `rootScope.managers` call — what the sandbox answered, or did not. */
@@ -127,4 +127,19 @@ export async function closeStory(page: Page, story: Pick<Story, 'surface'>, {tim
   // the window of whatever the caller checks next.
   if(!leaveHiding) await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 10)));
   return true;
+}
+
+/** Opens a new-media story and its media editor, with the keyboard layer on; returns the editor's dialog */
+export async function openMediaEditor(page: Page, story = 'newMedia') {
+  page.setDefaultTimeout(30_000);
+  await preparePopupSandbox(page, true, {a11y: true});
+  expect(await openStory(page, story)).toBeNull();
+  const actions = page.getByRole('button', {name: 'Media actions', exact: true});
+  await expect(actions).toBeEnabled();
+  await actions.press('Enter');
+  await page.getByRole('menuitem', {name: 'Edit', exact: true}).press('Enter');
+  const editor = page.getByRole('dialog', {name: 'Edit', exact: true});
+  await expect(editor).toBeVisible({timeout: 30_000});
+  await expect(editor).toHaveAttribute('aria-busy', 'false', {timeout: 30_000});
+  return editor;
 }

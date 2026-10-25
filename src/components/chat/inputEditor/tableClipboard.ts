@@ -462,11 +462,13 @@ function hydratePastedTableTitle(
 
   let titleRichText: RichText | null = null;
   try {
-    const container = ownerDocument.createElement('div');
+    // pasted HTML is any page's: parsed in an inert template, never in the app's document, where its
+    // handlers would run
+    const container = ownerDocument.createElement('template');
     container.innerHTML = node.attrs.titleRichHTML;
     const document = ProseMirrorDOMParser
     .fromSchema(schema)
-    .parse(container, {preserveWhitespace: 'full'});
+    .parse(container.content, {preserveWhitespace: 'full'});
     titleRichText = tiptapDocumentToCaptionRichText(document.toJSON());
   } catch{
     // The plain title parsed from data-table-title remains a safe fallback.

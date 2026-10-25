@@ -1,7 +1,7 @@
 import {expect} from '@playwright/test';
 import type {ContactBirthdaysState, MyPromoData} from '@appManagers/appPromoManager';
 import {test} from './workerContext';
-import {openStory, preparePopupSandbox} from './popupSandbox.helpers';
+import {openMediaEditor, openStory, preparePopupSandbox} from './popupSandbox.helpers';
 
 for(const dir of ['ltr', 'rtl'] as const) {
   test(`selling a gift waits for confirmation and survives cancellation (${dir})`, async({page}) => {
@@ -105,4 +105,130 @@ test('returning to the tab on a new day expires yesterday\'s birthday suggestion
   expect(await page.evaluate(() => window.popupSandbox.calls().filter(({manager, method, args}) => (
     manager === 'appPromoManager' && method === 'getContactBirthdays' && args[0] === true
   )).length)).toBe(1);
+});
+
+// a display name is whatever its owner typed
+const MARKUP_TITLE = '<img src=x onerror="window.copiedMarkupRan = true">';
+
+test('an admin log copy holds the actor\'s name as text', async({page}) => {
+  await preparePopupSandbox(page, false);
+  const copied = await page.evaluate(async(title) => {
+    const {hotReloadGuard} = await window.e2eImport('/src/lib/solidjs/hotReloadGuardProvider.tsx');
+    const {runWithHotReloadGuard} = await window.e2eImport('/src/lib/solidjs/runWithHotReloadGuard.tsx');
+    const {createMessageCopyText, createMessageWithPreviousCopyText} = await window.e2eImport('/src/components/chat/bubbleParts/adminLogsResolver/copyTextHelpers.ts');
+    const message = (text: string) => ({_: 'message', id: 1, date: 0, message: text, pFlags: {}});
+    const {getPeerTitle} = hotReloadGuard;
+    hotReloadGuard.getPeerTitle = async() => title;
+    try {
+      const results = [
+        await runWithHotReloadGuard(() => createMessageCopyText(0, 1, message('Deleted'), (peerTitle: string) => `${peerTitle} deleted`)),
+        await runWithHotReloadGuard(() => createMessageWithPreviousCopyText(
+          0, 1, message('New'), message('Old'), (peerTitle: string) => `${peerTitle} edited`, () => 'Original'
+        ))
+      ];
+
+      return results.map(({text, html}: {text: string, html: string}) => {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        return {text, images: template.content.querySelectorAll('img').length, content: template.content.textContent};
+      });
+    } finally {
+      hotReloadGuard.getPeerTitle = getPeerTitle;
+    }
+  }, MARKUP_TITLE);
+
+  expect(copied[0].text).toMatch(/\nDeleted$/);
+  expect(copied[0].text.startsWith(`${MARKUP_TITLE} deleted [`)).toBe(true);
+  expect(copied[0].content).toContain(`${MARKUP_TITLE} deleted [`);
+  expect(copied[1].text).toMatch(/\nNew\n\nOriginal:\nOld$/);
+  expect(copied[1].content).toContain(`${MARKUP_TITLE} edited [`);
+  for(const {images} of copied) {
+    expect(images).toBe(0);
+  }
+});
+
+// a dialog's focus trap (the Translate or AI editor popup, with the keyboard layer) takes the focus
+// back from whatever takes it outside the dialog
+for(const trapped of [false, true]) test(`a copy the clipboard API refuses puts its HTML on the clipboard without rendering it${trapped ? ' (in a focus trap)' : ''}`, async({page, browserName}) => {
+  await preparePopupSandbox(page, false, {a11y: trapped});
+  if(browserName === 'chromium') {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  }
+
+  const html = `<b>Copied</b> text${MARKUP_TITLE}`;
+  const copied = await page.evaluate(async({html, trapped}) => {
+    const {copyTextToClipboard} = await window.e2eImport('/src/helpers/clipboard.ts');
+    const {default: createFocusTrap} = await window.e2eImport('/src/helpers/dom/focusTrap.ts');
+    const dialog = document.createElement('div');
+    dialog.append(document.createElement('button'));
+    document.body.append(dialog);
+    const trap = createFocusTrap(dialog);
+    if(trapped) trap.activate();
+    // as a browser without ClipboardItem writing, or one the site may not write the clipboard in
+    Object.defineProperty(navigator.clipboard, 'write', {
+      configurable: true,
+      value: () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'))
+    });
+
+    const added: string[] = [];
+    const observer = new MutationObserver((records) => {
+      records.forEach(({addedNodes}) => addedNodes.forEach((node) => added.push(node.nodeName)));
+    });
+    const copies: {text: string, html: string}[] = [];
+    const onCopy = (e: ClipboardEvent) => copies.push({
+      text: e.clipboardData.getData('text/plain'),
+      html: e.clipboardData.getData('text/html')
+    });
+    observer.observe(document.body, {childList: true, subtree: true});
+    document.addEventListener('copy', onCopy);
+    let focusedBack: boolean;
+    try {
+      await copyTextToClipboard('Copied text', html);
+      focusedBack = document.activeElement === dialog.firstElementChild;
+    } finally {
+      observer.disconnect();
+      document.removeEventListener('copy', onCopy);
+      trap.deactivate(false);
+      dialog.remove();
+    }
+
+    return {added, copies, focusedBack};
+  }, {html, trapped});
+
+  // the text it was copied from is all the document saw of it
+  expect(copied.added).toEqual(['TEXTAREA']);
+  expect(copied.copies).toEqual([{text: 'Copied text', html}]);
+  // the dialog's control the copy was asked from keeps the focus
+  if(trapped) expect(copied.focusedBack).toBe(true);
+  expect(await page.evaluate(() => (window as any).copiedMarkupRan)).toBeUndefined();
+
+  if(browserName === 'chromium') {
+    const clipboard = await page.evaluate(async() => {
+      const [item] = await navigator.clipboard.read();
+      return {
+        text: await (await item.getType('text/plain')).text(),
+        html: await (await item.getType('text/html')).text()
+      };
+    });
+    expect(clipboard.text).toBe('Copied text');
+    // what the browser reads back is sanitized: the formatting is there, the handler is not
+    expect(clipboard.html).toContain('<b>Copied</b> text');
+  }
+});
+
+test('a media editor text layer outlines its text as text', async({page}) => {
+  test.setTimeout(120_000);
+  const editor = await openMediaEditor(page);
+  await editor.getByRole('tab', {name: 'Text', exact: true}).click();
+  // the surface lies under the canvas, which takes the pointer in Firefox: the keyboard reaches it
+  await editor.getByRole('button', {name: 'Add text layer', exact: true}).press('Enter');
+  const outlined = editor.getByRole('button', {name: 'Outlined text', exact: true});
+  await outlined.press('Enter');
+  await expect(outlined).toHaveAttribute('aria-pressed', 'true');
+  await editor.getByRole('textbox', {name: 'Type something...', exact: true}).fill(MARKUP_TITLE);
+
+  const layer = editor.locator('.media-editor__resizable-container');
+  await expect(layer.locator('.media-editor__text-layer-svg-outline text')).toHaveText(MARKUP_TITLE);
+  await expect(layer.locator('img')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).copiedMarkupRan)).toBeUndefined();
 });
