@@ -3550,6 +3550,8 @@
 "StarGiftAvailabilityIssued" = "%1$d/%2$d issued";
 "StarGiftConvertButton_one" = "sell for %d Star";
 "StarGiftConvertButton_other" = "sell for %d Stars";
+"StarGiftConvertText_one" = "Do you want to sell this gift for **%d Star**? This cannot be undone.";
+"StarGiftConvertText_other" = "Do you want to sell this gift for **%d Stars**? This cannot be undone.";
 "StarGiftsCount_one" = "%d gift";
 "StarGiftsCount_other" = "%d gifts";
 "StarGiftLimitedBadge" = "limited";

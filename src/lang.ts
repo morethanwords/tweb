@@ -4053,6 +4053,10 @@ const lang = {
     'one_value': 'sell for %d Star',
     'other_value': 'sell for %d Stars'
   },
+  'StarGiftConvertText': {
+    'one_value': 'Do you want to sell this gift for **%d Star**? This cannot be undone.',
+    'other_value': 'Do you want to sell this gift for **%d Stars**? This cannot be undone.'
+  },
   'StarGiftsCount': {
     'one_value': '%d gift',
     'other_value': '%d gifts'

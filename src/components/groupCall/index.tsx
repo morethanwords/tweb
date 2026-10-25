@@ -15,6 +15,7 @@ import GroupCallTitleElement from '@components/groupCall/title';
 import requestGroupCallLeave from '@components/groupCall/requestLeave';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
 import ControlsHover from '@helpers/dom/controlsHover';
+import disableTransition from '@helpers/dom/disableTransition';
 import {MovableState} from '@components/movableElement';
 import animationIntersector from '@components/animationIntersector';
 import {IS_APPLE_MOBILE} from '@environment/userAgent';
@@ -102,11 +103,7 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
   const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
   let colorStr: 'blue' | 'green' | 'secondary' | 'red';
   switch(state) {
-    // An open microphone is blue until its owner speaks, then green — as in
-    // the native apps; green for every unmuted row said "speaking" to people
-    // who were silent.
     case states.HAND:
-    case states.UNMUTED:
       colorStr = 'blue';
       break;
     // An open microphone stays grey until its owner speaks, then turns green;
@@ -173,6 +170,7 @@ export default function showGroupCallPopup() {
   let updateBlobsVisibility: () => void;
   let groupCallMicrophoneIcon: GroupCallMicrophoneIcon;
   let bodyEl!: HTMLDivElement;
+  let fingerprintBadge: HTMLElement;
 
   // How much of the stage the participants column covers, plus a gap before it. Read off layout
   // offsets rather than boxes, so a column still sliding in reads where it is going. The column is
@@ -209,6 +207,13 @@ export default function showGroupCallPopup() {
     } */
 
     const wasBig = untrack(isBigLayout);
+    if(isBig !== wasBig && fingerprintBadge) {
+      // A restored wide panel places the pill at once; only toggling its column slides it.
+      disableTransition(Array.from(fingerprintBadge.querySelectorAll<HTMLElement>(
+        '.conference-encryption-track, .conference-encryption-card'
+      )));
+    }
+
     let buttons: HTMLElement[];
     if(isBig && !wasBig) { // fix buttons transition to 0 opacity
       buttons = Array.from(buttonsContainer.querySelectorAll<HTMLElement>('.' + className + '-button'));
@@ -336,7 +341,6 @@ export default function showGroupCallPopup() {
     // call's key, under the header, lets users visually verify the call is
     // encrypted to the same key on every participant's device. No key for a
     // legacy voice chat.
-    let fingerprintBadge: HTMLElement;
     if(instance?.e2e) {
       const [hash, setHash] = createSignal<Uint8Array | undefined>(
         instance.e2eStatus?.verification?.emojiHash

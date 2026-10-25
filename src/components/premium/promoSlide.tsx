@@ -19,6 +19,7 @@ import wrapSticker from '@components/wrappers/sticker';
 import showStickersPopup from '@components/popups/stickers';
 import PremiumOptionsForm from '@components/premium/premiumOptionsForm';
 import RowTsx from '@components/rowTsx';
+import createNewBadge from '@components/newBadge';
 import PopupElement from '@components/popups/indexTsx';
 import MediaHeader from '@components/mediaHeader';
 import {hotReloadGuard} from '@lib/solidjs/hotReloadGuardProvider';
@@ -127,9 +128,7 @@ function PremiumFeatures(props: {
         <RowTsx clickable={() => props.onSelect(feature.feature)}>
           <RowTsx.Title>
             {i18n(feature.titleLangKey, feature.titleLangArgs)}
-            {feature.new && (
-              <span class="row-title-badge" style={{'background-color': color}}>{i18n('New')}</span>
-            )}
+            {feature.new && createNewBadge()}
           </RowTsx.Title>
           {feature.subtitleLangKey && (
             <RowTsx.Subtitle>{i18n(feature.subtitleLangKey, feature.subtitleLangArgs)}</RowTsx.Subtitle>

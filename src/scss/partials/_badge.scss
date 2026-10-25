@@ -71,4 +71,16 @@
     gap: .25rem;
     padding-inline-start: 3px;
   }
+
+  &-new {
+    display: inline-block;
+    flex: 0 0 auto;
+    margin-inline-start: .375rem;
+    text-transform: uppercase;
+    vertical-align: middle;
+
+    :where(.a11y.high-contrast) & {
+      color: var(--primary-text-color);
+    }
+  }
 }

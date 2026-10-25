@@ -1950,6 +1950,12 @@ export class AppDialogsManager {
         return;
       }
 
+      if(e.ctrlKey || e.metaKey) {
+        this.openDialogInNewTab(elem);
+        cancelEvent(e);
+        return;
+      }
+
       const community = !peerId.isUser() ?
         apiManagerProxy.getChat(peerId.toChatId()) :
         undefined;
@@ -1958,12 +1964,6 @@ export class AppDialogsManager {
         !community.pFlags.left &&
         !threadId
       ) {
-        if(e.ctrlKey || e.metaKey) {
-          this.openDialogInNewTab(elem);
-          cancelEvent(e);
-          return;
-        }
-
         const isFromRightSidebar = appSidebarRight.sidebarEl.contains(elem);
         this.toggleForumTabByPeerId(
           peerId,
@@ -2018,13 +2018,6 @@ export class AppDialogsManager {
       const isForum = !!elem.querySelector('.is-forum');
       if(isForum && !e.shiftKey && !lastMsgId) {
         this.toggleForumTabByPeerId(peerId, undefined, false);
-        return;
-      }
-
-      if(e.ctrlKey || e.metaKey) {
-        // TODO: How about opening a monoforum in new tab?
-        this.openDialogInNewTab(elem);
-        cancelEvent(e);
         return;
       }
 

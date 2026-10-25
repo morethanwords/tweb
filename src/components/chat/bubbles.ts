@@ -5678,7 +5678,10 @@ export default class ChatBubbles {
       return;
     } */
 
-    if(!scrolledDown) {
+    const isSponsored = message._ === 'message' && message.pFlags.sponsored;
+    if(isSponsored) {
+      scrolledDown = false;
+    } else if(!scrolledDown) {
       scrolledDown = this.scrolledDown && (
         !this.scrollingToBubble ||
         this.scrollingToBubble === this.getLastBubble() ||
@@ -5693,7 +5696,7 @@ export default class ChatBubbles {
       this.cleanupPlaceholders(placeholder);
     }
 
-    const {isPaddingNeeded, unsetPadding} = this.setTopPadding(middleware);
+    const {isPaddingNeeded, unsetPadding} = isSponsored ? {} : this.setTopPadding(middleware);
 
     if(scrolledDown) {
       // A forward/reply send collapses the input helper, kicking off
@@ -13731,8 +13734,7 @@ export default class ChatBubbles {
       }
       log('sponsored messages:', sponsoredMessages);
 
-      // * an ad comes in at the bottom as a new message does: a chat that stood at its end, as one opened from the
-      // * server does by the time its ad comes, follows it there
+      // Ads are appended without moving the reader away from the last post.
       if(sponsoredMessages.posts_between) {
         this.sponsoredMessageEvery = sponsoredMessages.posts_between;
         Promise.all(sponsoredMessages.messages.map((it, idx) => this.generateSponsoredMessage(it, idx))).then((msgs) => {

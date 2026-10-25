@@ -856,13 +856,29 @@ export default function showStarGiftInfoPopup(options: {
             <TableButton
               text="StarGiftConvertButton"
               textArgs={[saved.convert_stars]}
-              onClick={() => {
-                rootScope.managers.appGiftsManager.convertGift(input)
-                .then(() => {
-                  context.hide()
-                }).catch(() => {
-                  toastNew({langPackKey: 'Error.AnError'})
-                })
+              onClick={async() => {
+                const managers = context.managers;
+                try {
+                  await confirmationPopup({
+                    managers,
+                    titleLangKey: 'StarGiftSellTitlePopup',
+                    descriptionLangKey: 'StarGiftConvertText',
+                    descriptionLangArgs: [saved.convert_stars],
+                    button: {
+                      langKey: 'StarGiftConvertButton',
+                      langArgs: [saved.convert_stars]
+                    }
+                  });
+                } catch(err) {
+                  return;
+                }
+
+                try {
+                  await managers.appGiftsManager.convertGift(input);
+                  context.hide();
+                } catch(err) {
+                  toastNew({langPackKey: 'Error.AnError'});
+                }
               }}
             />
           )}

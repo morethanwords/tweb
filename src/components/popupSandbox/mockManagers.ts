@@ -80,7 +80,7 @@ export const mockAppConfig = {
   aicompose_tone_title_length_max: 32,
   aicompose_tone_saved_limit_default: 3,
   aicompose_tone_saved_limit_premium: 10,
-  premium_promo_order: ['stories', 'double_limits', 'more_upload', 'faster_download'],
+  premium_promo_order: ['stories', 'double_limits', 'more_upload', 'faster_download', 'wallpapers'],
   verify_age_bot_username: 'sandbox_bot',
   verify_age_country: 'GB',
   freeze_appeal_url: 'https://t.me/spambot',

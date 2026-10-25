@@ -62,7 +62,7 @@ export default function wrapReply(options: WrapReplyOptions) {
     });
   }
 
-  if(!options.subtitle && !options.message) {
+  if(!options.subtitle && !options.message && !options.storyItem && !options.isStoryExpired) {
     replyContainer.container.classList.add('reply-no-subtitle');
     replyContainer.subtitle.remove();
   }

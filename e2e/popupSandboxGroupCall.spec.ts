@@ -16,6 +16,56 @@ declare global {
 
 type Row = {peerId: number, speaking: boolean, painted: number, green: boolean, transform: string};
 
+test('an open but silent microphone uses the same neutral colour as a muted one', async({page}) => {
+  await preparePopupSandbox(page, false);
+  const colors = await page.evaluate(async() => {
+    const {getColorByMutedState, GROUP_CALL_PARTICIPANT_MUTED_STATE: states} =
+      await window.e2eImport('/src/components/groupCall/index.tsx');
+    return {
+      open: getColorByMutedState(states.UNMUTED),
+      muted: getColorByMutedState(states.MUTED),
+      hand: getColorByMutedState(states.HAND),
+      speaking: getColorByMutedState(states.SPEAKING)
+    };
+  });
+  expect(colors.open).toEqual(colors.muted);
+  expect(colors.open).not.toEqual(colors.hand);
+  expect(colors.open).not.toEqual(colors.speaking);
+});
+
+for(const dir of ['ltr', 'rtl'] as const) test(`reopening a wide video chat places the encryption pill without sliding it (${dir})`, async({page}) => {
+  await page.setViewportSize({width: 1280, height: 900});
+  await preparePopupSandbox(page, false);
+  await page.evaluate((dir) => window.popupSandbox.setDirection(dir), dir);
+  expect(await openStory(page, 'call/conference')).toBeNull();
+  const panel = page.locator('.group-call');
+  const handle = page.locator('.popup-group-call > .movable-element-resize-handler-side-e');
+  const box = await handle.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 320, box.y + box.height / 2, {steps: 8});
+  await page.mouse.up();
+  await expect(panel).toHaveClass(/is-big-layout/);
+  await panel.locator('> .group-call-header .popup-close').click();
+  await expect(panel).toHaveCount(0);
+
+  await page.evaluate(() => {
+    (window as any).encryptionPillSlides = [];
+    document.addEventListener('transitionrun', (event: TransitionEvent) => {
+      if((event.target as HTMLElement).classList.contains('conference-encryption-track') && event.propertyName === 'translate') {
+        (window as any).encryptionPillSlides.push(event.propertyName);
+      }
+    });
+  });
+  expect(await openStory(page, 'call/conference')).toBeNull();
+  await expect(panel).toHaveClass(/is-big-layout/);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => (window as any).encryptionPillSlides)).toEqual([]);
+  const pill = await page.locator('.conference-encryption-card').boundingBox();
+  const column = await panel.locator('> .popup-body').boundingBox();
+  expect(Math.abs(pill.x + pill.width / 2 - column.x - column.width / 2)).toBeLessThan(2);
+});
+
 function readRows(page: Page): Promise<Row[]> {
   return page.evaluate(() => {
     return [...document.querySelectorAll<HTMLElement>('.group-call-participant')].map((row) => {
@@ -397,6 +447,9 @@ test('the call\'s buttons carry their names under them, and drop the words over 
   const toolbar = page.locator('.group-call-buttons');
   const names = ['Camera', 'Screen', 'Unmute', 'Settings', 'Leave'];
   await expect(toolbar.locator('.call-button-text')).toHaveText(names);
+  await page.locator('.group-call').evaluate(async(element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished));
+  });
   for(const name of names) {
     const button = toolbar.getByRole('button', {name, exact: true});
     const label = toolbar.locator('.call-button-text', {hasText: new RegExp(`^${name}$`)});

@@ -20,6 +20,7 @@ import {createRoot} from 'solid-js';
 import {AvatarNew} from '@components/avatarNew';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import {putPreloader} from '@components/putPreloader';
+import createNewBadge from '@components/newBadge';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 let nextButtonMenuLabelId = 0;
@@ -200,10 +201,7 @@ export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   el.append(textElement);
 
   if(options.new) {
-    const badge = document.createElement('span');
-    badge.classList.add('btn-menu-item-badge');
-    _i18n(badge, 'New');
-    el.append(badge);
+    el.append(createNewBadge());
   }
 
   const keepOpen = !!checkboxField || !!options.keepOpen;
