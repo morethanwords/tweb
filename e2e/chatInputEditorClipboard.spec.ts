@@ -171,6 +171,194 @@ async function pasteInto(page: Page, line: string, clipboard: {html?: string, te
   return shape(page);
 }
 
+for(const direction of ['ltr', 'rtl'] as const) test(`pastes the plain selection when full-document HTML leaks source content (${direction})`, async({page}) => {
+  await page.evaluate((direction) => {
+    document.documentElement.dir = direction;
+    window.chatInputEditorHarness.setDirection(direction);
+  }, direction);
+  const text = 'Only the selected paragraph';
+  const html = '<meta charset="utf-8"><html><body><details open>' +
+    `<slot pseudo="details-content"><p>${text}</p></slot></details>` +
+    '<details><summary>Outside the selection</summary></details><footer>Footer</footer></body></html>';
+  expect(await pasteInto(page, '', {html, text})).toBe(`paragraph(${JSON.stringify(text)})`);
+  expect(await pasteInto(page, 'XY', {html, text})).toBe(`paragraph("X${text}Y")`);
+
+  await page.evaluate(() => window.chatInputEditorHarness.setDocument({type: 'doc', content: [{type: 'codeBlock'}]}));
+  const code = '  first\n    second';
+  expect(await page.evaluate((text) => window.chatInputEditorHarness.pasteClipboard({
+    html: `<html><body><pre>${text}</pre><footer>Footer</footer></body></html>`, text
+  }), code)).toBe(true);
+  expect(await shape(page)).toBe(`codeBlock(${JSON.stringify(code)})`);
+
+  await page.evaluate(() => window.chatInputEditorHarness.setDocument({type: 'doc', content: [{type: 'paragraph'}]}));
+  expect(await page.evaluate(() => window.chatInputEditorHarness.insertStructuralBlock('table'))).toBe(true);
+  expect(await page.evaluate(() => window.chatInputEditorHarness.setCaretInNode('paragraph', 0))).toBe(true);
+  expect(await page.evaluate(({html, text}) => window.chatInputEditorHarness.pasteClipboard({html, text}), {html, text})).toBe(true);
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).value.trim()).toBe(text);
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0].type)).toBe('chatTableWrapper');
+
+  await pasteInto(page, '', {
+    html: `<html><body><p><strong>${text}</strong></p><noscript>fallback</noscript><object>fallback</object></body></html>`, text
+  });
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).entities)
+  .toContainEqual({_: 'messageEntityBold', offset: 0, length: text.length});
+
+  for(const {text, value, entity} of [
+    {text: '**bold**', value: 'bold', entity: 'messageEntityBold'},
+    {text: '__italic__', value: 'italic', entity: 'messageEntityItalic'}
+  ]) {
+    await pasteInto(page, '', {html: '<p data-pm-slice="1 1 []">internal</p>', text: 'internal'});
+    await pasteInto(page, '', {
+      html: `<html><body><p>${text}</p><footer>Footer</footer></body></html>`, text
+    });
+    expect(await page.evaluate(() => window.chatInputEditorHarness.value())).toMatchObject({
+      value, entities: [{_: entity, offset: 0, length: value.length}]
+    });
+  }
+});
+
+for(const direction of ['ltr', 'rtl'] as const) test(`pastes a selected HTML fragment without its source page (${direction})`, async({page}) => {
+  await page.evaluate((direction) => {
+    document.documentElement.dir = direction;
+    window.chatInputEditorHarness.setDirection(direction);
+  }, direction);
+  const text = 'Only the selected paragraph';
+  const html = '<html><head><title>Source page</title></head><body>' +
+    '<h2>Before the selection</h2>' +
+    `<!--StartFragment--><p><strong>${text}</strong></p><!--EndFragment-->` +
+    '<h2>After the selection</h2><p>Other page content</p></body></html>';
+
+  expect(await pasteInto(page, '', {html, text})).toBe(`paragraph(${JSON.stringify(text)})`);
+  expect(await page.evaluate(() => window.chatInputEditorHarness.value())).toMatchObject({
+    value: text,
+    entities: [{_: 'messageEntityBold', offset: 0, length: text.length}]
+  });
+  expect(await pasteInto(page, 'XY', {html, text})).toBe(`paragraph("X", ${JSON.stringify(text)}, "Y")`);
+
+  await pasteInto(page, '', {
+    html: '<ol reversed><li>Outside the selection</li><!--StartFragment-->' +
+      '<li>two</li><li>one</li><!--EndFragment--></ol>',
+    text: '2. two\n1. one'
+  });
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0])).toMatchObject({
+    type: 'orderedList',
+    attrs: {start: 2, reversed: true},
+    content: [{type: 'listItem'}, {type: 'listItem'}]
+  });
+
+  await pasteInto(page, '', {
+    html: '<ol start="4"><li>Skipped</li><li><p><!--StartFragment-->item</p></li></ol>' +
+      '<p>tail<!--EndFragment--></p>',
+    text: '5. item\ntail'
+  });
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0])).toMatchObject({
+    type: 'orderedList', attrs: {start: 5}, content: [{type: 'listItem'}]
+  });
+
+  await pasteInto(page, '', {
+    html: '<pre><code>Before<!--StartFragment-->  first\n    second<!--EndFragment-->After</code></pre>',
+    text: '  first\n    second'
+  });
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0])).toMatchObject({
+    type: 'codeBlock', content: [{type: 'text', text: '  first\n    second'}]
+  });
+
+  await pasteInto(page, '', {
+    html: '<table><tr><td><p>Before<!--StartFragment-->cell<!--EndFragment-->After</p></td></tr></table>',
+    text: 'cell'
+  });
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0].type)).toBe('chatTableWrapper');
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).value).toBe('cell');
+
+  await pasteInto(page, '', {
+    html: '<style>h2 + .copied-fragment {font-weight: bold}</style><p>Before</p><h2>Context</h2>' +
+      '<!--StartFragment--><p class="copied-fragment">styled</p><!--EndFragment--><p>After</p>' +
+      '<style>.copied-fragment {font-style: italic}</style>',
+    text: 'styled'
+  });
+  const styled = await page.evaluate(() => window.chatInputEditorHarness.value());
+  expect(styled.value).toBe('styled');
+  expect(styled.entities).toEqual(expect.arrayContaining([
+    {_: 'messageEntityBold', offset: 0, length: 6},
+    {_: 'messageEntityItalic', offset: 0, length: 6}
+  ]));
+
+  await pasteInto(page, '', {
+    html: '<!--StartFragment--><ol><li>first</li><li>second</li></ol><!--EndFragment-->',
+    text: '1. first\n2. second'
+  });
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0].attrs.startExplicit)).toBe(false);
+  expect(await page.evaluate(() => window.chatInputEditorHarness.setNodeAttributes('orderedList', 0, {reversed: true}))).toBe(true);
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).value).toBe('2. first\n1. second');
+
+  await pasteInto(page, '', {
+    html: '<!--StartFragment--><tr><td class="copied-cell">A</td><td>B</td></tr><!--EndFragment-->' +
+      '<style>table .copied-cell {font-weight: bold}</style>',
+    text: 'A\tB'
+  });
+  expect(await page.evaluate(() => window.chatInputEditorHarness.document().content[0].type)).toBe('chatTableWrapper');
+  const cells = await page.evaluate(() => window.chatInputEditorHarness.value());
+  expect(cells.value).toBe('A B');
+  expect(cells.entities).toContainEqual({_: 'messageEntityBold', offset: 0, length: 1});
+
+  expect(await page.evaluate(() => window.chatInputEditorHarness.setCaretInNode('paragraph', 0))).toBe(true);
+  expect(await page.evaluate(() => window.chatInputEditorHarness.pasteClipboard({
+    html: '<!--StartFragment--><tr><td>C</td><td>D</td></tr><!--EndFragment-->',
+    text: 'C\tD'
+  }))).toBe(true);
+  expect((await page.evaluate(() => window.chatInputEditorHarness.value())).value).toBe('C D');
+
+  for(const part of [
+    '<tr><td style="font-weight: 400; text-decoration: underline">E</td><td>F</td></tr>',
+    '<td style="font-weight: 400; text-decoration: underline">E</td><td>F</td>'
+  ]) {
+    expect(await page.evaluate(() => window.chatInputEditorHarness.setCaretInNode('paragraph', 0))).toBe(true);
+    expect(await page.evaluate((part) => window.chatInputEditorHarness.pasteClipboard({
+      html: `<!--StartFragment-->${part}<!--EndFragment-->` +
+        '<style>table {font-weight: bold} tbody {font-style: italic}</style>',
+      text: 'E\tF'
+    }), part)).toBe(true);
+    const styledCells = await page.evaluate(() => window.chatInputEditorHarness.value());
+    expect(styledCells.value).toBe('E F');
+    const hasMarkAt = (type: MessageEntity['_'], offset: number) => styledCells.entities.some(
+      (entity) => entity._ === type && entity.offset <= offset && entity.offset + entity.length > offset
+    );
+    expect(hasMarkAt('messageEntityItalic', 0)).toBe(true);
+    expect(hasMarkAt('messageEntityBold', 0)).toBe(false);
+    expect(hasMarkAt('messageEntityUnderline', 0)).toBe(true);
+    expect(hasMarkAt('messageEntityBold', 2)).toBe(true);
+  }
+});
+
+test('pastes stylesheet-formatted HTML across document realms', async({page}) => {
+  const value = await page.evaluate(async() => {
+    const {default: createEditor} = await window.e2eImport('/src/components/chat/inputEditor/index.ts') as
+      typeof import('@components/chat/inputEditor');
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    const input = frame.contentDocument.createElement('div');
+    input.className = 'input-message-input';
+    frame.contentDocument.body.append(input);
+    const editor = createEditor(input, {enableBlockSelection: false});
+    try {
+      const event = new Event('paste', {bubbles: true, cancelable: true});
+      Object.defineProperty(event, 'clipboardData', {value: {
+        getData: (type: string) => type === 'text/html' ?
+          '<style>.foreign-fragment {font-weight: bold}</style>' +
+          '<!--StartFragment--><p class="foreign-fragment">styled</p><!--EndFragment-->' :
+          type === 'text/plain' ? 'styled' : ''
+      }});
+      input.dispatchEvent(event);
+      return editor.getRichValue();
+    } finally {
+      editor.destroy();
+      frame.remove();
+    }
+  });
+  expect(value.value).toBe('styled');
+  expect(value.entities).toContainEqual({_: 'messageEntityBold', offset: 0, length: 6});
+});
+
 // what a browser copies of the block a selection ends at the start of: the element, empty
 for(const [name, block] of [
   ['list', '<ol></ol>'],

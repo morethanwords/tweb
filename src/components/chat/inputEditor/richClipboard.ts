@@ -1,8 +1,9 @@
 import {Extension} from '@tiptap/core';
 import {DOMParser as ProseMirrorDOMParser, DOMSerializer, Fragment, type Node as ProseMirrorNode, type ResolvedPos, type Schema} from '@tiptap/pm/model';
 import {Plugin} from '@tiptap/pm/state';
+import {isInTable} from '@tiptap/pm/tables';
 import type {EditorView} from '@tiptap/pm/view';
-import {listItemMarkers} from '@components/chat/inputEditor/orderedList';
+import {effectiveOrderedListItemValue, listItemMarkers} from '@components/chat/inputEditor/orderedList';
 import {entitiesFittingSchema, telegramTextToTiptap} from '@components/chat/inputEditor/model';
 import {getCopiedTextWithEntities} from '@helpers/prepareTextWithEntitiesForCopying';
 import instantViewStyles from '@components/instantViewStyles';
@@ -383,7 +384,7 @@ function fragmentWords(root: DocumentFragment, atomText: AtomText) {
     const piece = node.nodeType === node.TEXT_NODE ? node.textContent :
       node.nodeName === 'BR' ? ' ' :
       atomText(node as Element);
-    if(!piece || parent?.closest('style, script')) continue;
+    if(!piece || parent?.closest('head, noscript, object, script, style, title')) continue;
     const nodeBlock = parent?.closest(BLOCK_ELEMENTS);
     if(nodeBlock !== block) {
       flush();
@@ -485,6 +486,134 @@ function keepPastedParagraphsApart(root: DocumentFragment, text: string | undefi
   return changed;
 }
 
+/** Keep only the clipboard's fragment, with the ancestry its formatting and block structure need. */
+function keepClipboardFragment(root: DocumentFragment, inTable: boolean, schema: Schema) {
+  const ownerDocument = root.ownerDocument;
+  const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  let start: Node;
+  while(walker.nextNode()) {
+    const comment = walker.currentNode;
+    if(!start && comment.nodeValue.trim() === 'StartFragment') {
+      start = comment;
+    } else if(start && comment.nodeValue.trim() === 'EndFragment') {
+      // Match ProseMirror's table-part context before CSS or another paste transform reads it.
+      let tableParts: HTMLElement;
+      const first = Array.from(root.children).find((element) => !isClipboardFiller(element));
+      if(first?.matches('tr, td, th, thead, tbody, tfoot, caption, colgroup, col')) {
+        const table = ownerDocument.createElement('table');
+        let container: HTMLElement = table;
+        const cell = first.matches('td, th');
+        if(cell || first.tagName === 'TR') container = container.appendChild(ownerDocument.createElement('tbody'));
+        if(cell) container = container.appendChild(ownerDocument.createElement('tr'));
+        else if(first.tagName === 'COL') container = container.appendChild(ownerDocument.createElement('colgroup'));
+        container.append(root);
+        root.append(table);
+        tableParts = container;
+      }
+
+      const styles = Array.from(root.querySelectorAll('style'));
+      if(styles.length) {
+        // Match ProseMirror's stylesheet handling while selectors still have their source context.
+        const styleDocument = ownerDocument.implementation.createHTMLDocument('');
+        styleDocument.body.append(root);
+        for(const sheet of Array.from(styleDocument.styleSheets)) {
+          for(const rule of Array.from(sheet.cssRules)) {
+            if(rule.type !== CSSRule.STYLE_RULE) continue;
+            const styleRule = rule as CSSStyleRule;
+            styleDocument.body.querySelectorAll<HTMLElement>(styleRule.selectorText).forEach((element) => {
+              element.style.cssText += styleRule.style.cssText;
+            });
+          }
+        }
+
+        while(styleDocument.body.firstChild) root.append(styleDocument.body.firstChild);
+        styles.forEach((style) => style.remove());
+      }
+
+      // A grid pasted into a table stays rows or cells, so the table plugin can replace that grid.
+      if(inTable && tableParts) {
+        const rules = ProseMirrorDOMParser.fromSchema(schema).rules;
+        const properties = new Set<string>();
+        for(const rule of rules) {
+          if('style' in rule && rule.mark) properties.add(rule.style.split('=')[0]);
+        }
+
+        const inherited = new Map<string, string>();
+        for(let parent = tableParts; parent; parent = parent.parentElement) {
+          for(const property of properties) {
+            const value = parent.style.getPropertyValue(property);
+            if(value && !inherited.has(property)) inherited.set(property, value);
+          }
+        }
+
+        for(const [property, value] of inherited) {
+          if(!rules.some((rule) => {
+            if(!('style' in rule) || !rule.mark) return false;
+            const equals = rule.style.indexOf('=');
+            return (equals === -1 ? rule.style : rule.style.slice(0, equals)) === property &&
+              (equals === -1 || rule.style.slice(equals + 1) === value) &&
+              (!rule.getAttrs || rule.getAttrs(value) !== false);
+          })) continue;
+          for(const child of Array.from(tableParts.children) as HTMLElement[]) {
+            if(!child.style.getPropertyValue(property)) child.style.setProperty(property, value);
+          }
+        }
+
+        root.replaceChildren(...Array.from(tableParts.childNodes));
+      }
+
+      const range = ownerDocument.createRange();
+      range.setStartAfter(start);
+      range.setEndBefore(comment);
+      // Source and cloned lists stay in document order, including lists the range only partly takes.
+      const listStarts = Array.from(root.querySelectorAll('ol'))
+      .filter((list) => range.intersectsNode(list))
+      .map((list) => {
+        const items = directListItems(list);
+        const first = items.findIndex((item) => range.intersectsNode(item));
+        if(first === -1) return;
+        return {
+          start: first > 0 ? effectiveOrderedListItemValue({
+            attrs: {start: list.hasAttribute('start') ? list.start : undefined, reversed: list.reversed},
+            childCount: items.length,
+            child: (index) => ({attrs: {value: items[index].hasAttribute('value') ? items[index].value : undefined}})
+          }, first) : undefined,
+          implicitReversedCount: list.reversed && (!list.hasAttribute('start') ||
+            list.getAttribute('data-list-start-explicit') === 'false') ? items.length : undefined
+        };
+      });
+      let content: Node = range.cloneContents();
+      for(let context = range.commonAncestorContainer; context !== root; context = context.parentNode) {
+        const wrapper = context.cloneNode(false);
+        wrapper.appendChild(content);
+        content = wrapper;
+      }
+
+      root.replaceChildren(content);
+      root.querySelectorAll('ol').forEach((list, index) => {
+        const source = listStarts[index];
+        let start = source?.start;
+        if(start === undefined && source?.implicitReversedCount !== undefined &&
+          directListItems(list).length !== source.implicitReversedCount) start = source.implicitReversedCount;
+        if(start !== undefined) {
+          list.setAttribute('start', '' + start);
+          if(list.hasAttribute('data-list-start-explicit')) list.setAttribute('data-list-start-explicit', 'true');
+        }
+      });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/** A native copy can carry a source document with unselected text and no fragment boundaries. */
+function clipboardHasSourceContext(root: DocumentFragment, text: string) {
+  const selected = plainTextWords(text).map(({word}) => word).join(' ');
+  const content = fragmentWords(root, () => undefined).map(({word}) => word).join(' ');
+  return !!selected && content !== selected && content.includes(selected);
+}
+
 /**
  * How the blocks of what is pasted from elsewhere become the field's lines: a block the copy only
  * reached the start of is left out, and paragraphs stay as far apart as they were. Not the field's
@@ -499,7 +628,9 @@ export const ChatPastedBlocks = Extension.create({
     // the plain text of the paste or drop under way: ProseMirror reads the HTML within its event,
     // and hands only the HTML on
     let text: string;
+    let isPaste = false;
     const readText = (_view: EditorView, event: ClipboardEvent | DragEvent) => {
+      isPaste = event.type === 'paste';
       text = ((event as ClipboardEvent).clipboardData || (event as DragEvent).dataTransfer)?.getData('text/plain');
       queueMicrotask(() => text = undefined);
       return false;
@@ -509,13 +640,30 @@ export const ChatPastedBlocks = Extension.create({
       props: {
         handleDOMEvents: {paste: readText, drop: readText},
         transformPastedHTML: (html, view) => {
+          // Native HTML clipboards can include the source document around the copied fragment.
+          // Keep only the fragment before any paste plugin interprets its blocks or metadata.
           const template = view.dom.ownerDocument.createElement('template');
           template.innerHTML = html;
           const root = template.content;
-          if(root.querySelector('[data-pm-slice]')) return html;
+          const clipped = html.includes('StartFragment') && keepClipboardFragment(root, isInTable(view.state), view.state.schema);
+          if(isPaste && !clipped && text && /<html[\s>]/i.test(html) && clipboardHasSourceContext(root, text)) {
+            // Replace contradictory HTML within the normal paste pipeline, so every event hook
+            // (including Markdown paste-rule bookkeeping) still observes the native event.
+            let plain = text;
+            view.someProp('transformPastedText', (transform) => {plain = transform(plain, true, view);});
+            const {$from} = view.state.selection;
+            const slice = view.someProp('clipboardTextParser', (parse) => parse(plain, $from, true, view)) ||
+              parseClipboardTextLines(plain, $from, view);
+            root.replaceChildren(DOMSerializer.fromSchema(view.state.schema).serializeFragment(slice.content, {
+              document: view.dom.ownerDocument
+            }));
+            root.firstElementChild?.setAttribute('data-pm-slice', `${slice.openStart} ${slice.openEnd} []`);
+            return template.innerHTML;
+          }
+          if(root.querySelector('[data-pm-slice]')) return clipped ? template.innerHTML : html;
           const removed = removeTrailingEmptyBlock(root);
           const spaced = keepPastedParagraphsApart(root, text, view);
-          return removed || spaced ? template.innerHTML : html;
+          return clipped || removed || spaced ? template.innerHTML : html;
         }
       }
     })];

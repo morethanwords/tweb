@@ -36,6 +36,211 @@ describe('Tiptap chat input editor: Clipboard', () => {
     expect(handlePaste?.(tiptap.view, pasteEvent('<p>cell text</p>'), Slice.empty)).toBe(false);
   });
 
+  test.each([false, true])('pastes only the HTML clipboard fragment, plainOnly=%s', (plainOnly) => {
+    const {editor, input} = mountEditor(undefined, {plainOnly});
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    const text = 'Register as a Limited Liability Company without “FZ” in your name, unique to ' +
+      'Shams Free Zone for a more mainland-like presence.';
+    const html = '<html><head><title>Shams Free Zone</title></head><body>' +
+      '<nav><p>Packages</p></nav><h2>Exclusive LLC Suffix</h2>' +
+      `<!--StartFragment--><p><strong>${text}</strong></p><!--EndFragment-->` +
+      '<h2>Cost-Effective Setup Packages</h2><p>Other page content</p></body></html>';
+    const event = new Event('paste', {bubbles: true, cancelable: true}) as ClipboardEvent;
+    Object.defineProperty(event, 'clipboardData', {value: {
+      getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' ? text : ''
+    }});
+
+    input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(editor.getRichValue()).toMatchObject({
+      value: text,
+      entities: [{_: 'messageEntityBold', offset: 0, length: text.length}]
+    });
+    expect(logicalContent(tiptap)).toMatchObject([{type: 'paragraph'}]);
+    expect(logicalContent(tiptap)).toHaveLength(1);
+  });
+
+  test.each([false, true])('uses the plain selection when a full HTML document includes unselected content, plainOnly=%s', (plainOnly) => {
+    const {editor, input} = mountEditor(undefined, {plainOnly});
+    const text = 'Diversify your offerings by combining up to five business activities, across multiple different industries.';
+    // Reduced from a native Chromium copy inside a details element: no fragment comments,
+    // a serialized shadow slot, and unrelated following content in the HTML representation.
+    const html = '<meta charset="utf-8"><html><body><div><details open>' +
+      `<slot id="details-content" pseudo="details-content"><div><p>${text}</p></div></slot></details>` +
+      '<details><summary>Another activity</summary></details></div>' +
+      '<footer><p>Other page content</p></footer></body></html><br class="Apple-interchange-newline">';
+    const event = new Event('paste', {bubbles: true, cancelable: true});
+    Object.defineProperty(event, 'clipboardData', {value: {
+      getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' ? text + '\n\n' : ''
+    }});
+
+    input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(editor.getRichValue().value.trimEnd()).toBe(text);
+    expect((editor as TiptapEditorInternals).editor.state.doc.textContent).toBe(text);
+    expect(logicalContent((editor as TiptapEditorInternals).editor).every((node) => node.type === 'paragraph')).toBe(true);
+  });
+
+  test.each(['', '<noscript>fallback</noscript>', '<object>fallback</object>'])('keeps matching full-document HTML formatting beside ignored %s', (ignored) => {
+    const {editor, input} = mountEditor();
+    const event = new Event('paste', {bubbles: true, cancelable: true});
+    Object.defineProperty(event, 'clipboardData', {value: {
+      getData: (type: string) => type === 'text/html' ?
+        '<html><head><title>Source</title><style>p {color: red}</style></head><body><p><strong>bold</strong></p><p>tail</p>' + ignored + '</body></html>' :
+        type === 'text/plain' ? 'bold\ntail' : ''
+    }});
+
+    input.dispatchEvent(event);
+
+    expect(editor.getRichValue()).toMatchObject({
+      value: 'bold\ntail',
+      entities: [{_: 'messageEntityBold', offset: 0, length: 4}]
+    });
+  });
+
+  test.each([
+    {text: '**bold**', value: 'bold', entity: 'messageEntityBold'},
+    {text: '__italic__', value: 'italic', entity: 'messageEntityItalic'}
+  ])('parses $entity Markdown in a fallback paste after an internal clipboard paste', ({text, value, entity}) => {
+    const {editor, input} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    const paste = (html: string, text: string) => {
+      const event = new Event('paste', {bubbles: true, cancelable: true});
+      Object.defineProperty(event, 'clipboardData', {value: {
+        getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' ? text : ''
+      }});
+      input.dispatchEvent(event);
+    };
+    paste('<p data-pm-slice="1 1 []">internal</p>', 'internal');
+    tiptap.commands.setContent({type: 'doc', content: [{type: 'paragraph'}]});
+
+    paste(`<html><body><p>${text}</p><footer>Outside the selection</footer></body></html>`, text);
+
+    expect(editor.getRichValue()).toMatchObject({
+      value,
+      entities: [{_: entity, offset: 0, length: value.length}]
+    });
+  });
+
+  test('keeps the formatting and table or list context of a clipboard fragment', () => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    const pasted = (html: string) => {
+      tiptap.commands.setContent({type: 'doc', content: [{type: 'paragraph'}]});
+      expect(tiptap.view.pasteHTML(html, new Event('paste') as ClipboardEvent)).toBe(true);
+      return logicalContent(tiptap) as JSONContent[];
+    };
+
+    pasted('<p><strong>Before <!--StartFragment-->selected<!--EndFragment--> after</strong></p>');
+    expect(editor.getRichValue()).toMatchObject({
+      value: 'selected',
+      entities: [{_: 'messageEntityBold', offset: 0, length: 8}]
+    });
+    expect(pasted('<ol start="7"><!--StartFragment--><li>one</li><li>two</li><!--EndFragment--></ol>'))
+    .toMatchObject([{type: 'orderedList', attrs: {start: 7}, content: [{type: 'listItem'}, {type: 'listItem'}]}]);
+    for(const {attributes, before, start} of [
+      {attributes: 'start="7"', before: '<li>Before</li>', start: 8},
+      {attributes: 'reversed', before: '<li>Before</li>', start: 2},
+      {attributes: 'start="1" data-list-start-explicit="false"', before: '<li>Before</li>', start: 2},
+      {attributes: '', before: '<li value="20">Before</li>', start: 21}
+    ]) {
+      expect(pasted(`<ol ${attributes}>${before}<!--StartFragment--><li>one</li><li>two</li><!--EndFragment--></ol>`))
+      .toMatchObject([{type: 'orderedList', attrs: {start}, content: [{type: 'listItem'}, {type: 'listItem'}]}]);
+    }
+
+    const [wrapper] = pasted('<table><tbody><tr><td>Before</td></tr><!--StartFragment-->' +
+      '<tr><td>A</td><td>B</td></tr><!--EndFragment--><tr><td>After</td></tr></tbody></table>');
+    const table = wrapper.content.find((node) => node.type === 'table');
+    expect(table.content).toHaveLength(1);
+    expect(table.content[0].content).toHaveLength(2);
+    expect(editor.getRichValue().value).toBe('A B');
+  });
+
+  test.each([
+    {type: 'orderedList', html: '<ol start="7"><li><div><p>Before <!--StartFragment-->selected<!--EndFragment--> after</p></div></li></ol>', text: 'selected'},
+    {type: 'chatTableWrapper', html: '<table><tr><td><p>Before <!--StartFragment-->selected<!--EndFragment--> after</p></td></tr></table>', text: 'selected'},
+    {type: 'codeBlock', html: '<pre><code>Before\n<!--StartFragment-->  first\n    second<!--EndFragment-->\nafter</code></pre>', text: '  first\n    second'}
+  ])('keeps the $type ancestry of markers inside its text', ({type, html, text}) => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    expect(tiptap.view.pasteHTML(html, new Event('paste') as ClipboardEvent)).toBe(true);
+
+    expect((logicalContent(tiptap) as JSONContent[])[0].type).toBe(type);
+    expect(tiptap.state.doc.textContent).toBe(text);
+  });
+
+  test.each([
+    {html: '<ol start="7"><li>Before</li><li><!--StartFragment-->one</li><li>two</li></ol><p>tail<!--EndFragment--></p>', start: 8},
+    {html: '<ol><li value="20">Before</li><li><!--StartFragment-->one</li><li>two</li></ol><p>tail<!--EndFragment--></p>', start: 21},
+    {html: '<p><!--StartFragment-->lead</p><ol reversed><li>three</li><li>two<!--EndFragment--></li><li>After</li></ol>', start: 3}
+  ])('keeps a partially cloned list at $start when the selection extends outside it', ({html, start}) => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    expect(tiptap.view.pasteHTML(html, new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const list = (logicalContent(tiptap) as JSONContent[]).find((node) => node.type === 'orderedList');
+    expect(list.attrs.start).toBe(start);
+    expect(list.content).toHaveLength(2);
+  });
+
+  test.each([false, true])('keeps a whole list\'s start implicit, reversed=%s', (reversed) => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    expect(tiptap.view.pasteHTML(`<!--StartFragment--><ol${reversed ? ' reversed' : ''}>` +
+      '<li>one</li><li>two</li></ol><!--EndFragment-->', new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const list = () => (logicalContent(tiptap) as JSONContent[])[0];
+    expect(list().attrs.startExplicit).toBe(false);
+    tiptap.commands.setTextSelection(3);
+    tiptap.commands.updateAttributes('orderedList', {reversed: !reversed});
+    expect(list().attrs).toMatchObject({startExplicit: false, reversed: !reversed});
+    expect(editor.getRichValue().value).toBe(reversed ? '1. one\n2. two' : '2. one\n1. two');
+  });
+
+  test.each([
+    '<tr><td>A</td><td>B</td></tr>',
+    '<td>A</td><td>B</td>'
+  ])('keeps the table structure of a bare fragment followed by CSS: %s', (part) => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    expect(tiptap.view.pasteHTML(`<!--StartFragment-->${part}<!--EndFragment-->` +
+      '<style>td {font-weight: bold}</style>', new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const [wrapper] = logicalContent(tiptap) as JSONContent[];
+    expect(wrapper.type).toBe('chatTableWrapper');
+    const table = wrapper.content.find((node) => node.type === 'table');
+    expect(table.content).toHaveLength(1);
+    expect(table.content[0].content).toHaveLength(2);
+    expect(editor.getRichValue().value).toBe('A B');
+  });
+
+  test.each([
+    {part: '<tr><td>A</td><td>B</td></tr>', cells: false},
+    {part: '<tr><td>A</td><td>B</td></tr>', cells: true},
+    {part: '<td>A</td><td>B</td>', cells: false},
+    {part: '<td>A</td><td>B</td>', cells: true}
+  ])('pastes a bare fragment into the existing cell grid, cells=$cells: $part', ({part, cells}) => {
+    const {editor} = mountEditor();
+    const tiptap = (editor as TiptapEditorInternals).editor;
+    tiptap.commands.setContent(tableDocument([['X', 'Y']], false));
+    const {map, start} = currentTable(tiptap);
+    if(cells) tiptap.view.dispatch(tiptap.state.tr.setSelection(CellSelection.create(
+      tiptap.state.doc, start + map.map[0], start + map.map[1]
+    )));
+    else tiptap.commands.setTextSelection(start + map.map[0] + 2);
+
+    expect(tiptap.view.pasteHTML(`<!--StartFragment-->${part}<!--EndFragment-->`, new Event('paste') as ClipboardEvent)).toBe(true);
+
+    const {table} = currentTable(tiptap);
+    expect(table.childCount).toBe(1);
+    expect([table.child(0).child(0).textContent, table.child(0).child(1).textContent]).toEqual(['A', 'B']);
+    let count = 0;
+    tiptap.state.doc.descendants((node) => {if(node.type.name === 'table') ++count;});
+    expect(count).toBe(1);
+  });
+
   test('copies a selection that ends where a list item\'s line begins without that line, nor the item', () => {
     const {editor} = mountEditor();
     const tiptap = (editor as TiptapEditorInternals).editor;
