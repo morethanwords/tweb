@@ -68,7 +68,7 @@ test.describe('a message sent from the composer', () => {
 
   /** Types `text` in the composer, and more lines under it if given; returns the composer's box */
   async function type(page: Page, text: string, lines: string[] = []): Promise<Rect> {
-    await page.locator('#column-center .input-message-input').click();
+    await page.locator('#column-center .input-message-input[contenteditable="true"]').click();
     await page.keyboard.type(text);
     for(const line of lines) {
       await page.keyboard.press('Shift+Enter');
@@ -261,6 +261,78 @@ test.describe('a message sent from the composer', () => {
     expect(moved.size, 'the copy moves').toBeGreaterThan(5);
     expect(new Set(flying.map((frame) => frame.written)).size, 'the copy is not restyled while it flies').toBe(1);
   });
+
+  for(const direction of ['ltr', 'rtl']) {
+    test(`rapid consecutive sends keep older flights moving and land on their bubbles (${direction})`, async({page}) => {
+      await openSavedMessages(page, direction === 'rtl' ? '?rtl=1' : '');
+      await page.evaluate(() => {
+        const w = window as any;
+        const flights = w.appImManager.chat.bubbles.sendFlights;
+        const mounted: any[] = w.__burstFlights = [];
+        const frames: {time: number, tops: (number | null)[]}[] = w.__burstFrames = [];
+        const landings: {copy: number, target: number}[] = w.__burstLandings = [];
+        const top = (flight: any) => {
+          const pieces = Array.from(flight.root.querySelectorAll('[class*="_piece_"]')) as Element[];
+          return pieces.length ? Math.min(...pieces.map((piece) => piece.getBoundingClientRect().top)) : null;
+        };
+        const {mount} = flights;
+        flights.mount = function(flight: any) {
+          mounted.push(flight);
+          const {land} = flight;
+          flight.land = function() {
+            landings.push({copy: top(flight), target: flight.target.getBoundingClientRect().top});
+            return land.call(this);
+          };
+          return mount.call(this, flight);
+        };
+        const start = performance.now();
+        const record = () => {
+          frames.push({time: performance.now(), tops: mounted.map((flight) => {
+            return !flight.done && flight.animations[0]?.currentTime >= 300 ? top(flight) : null;
+          })});
+          if(performance.now() - start < 5000) requestAnimationFrame(record);
+          else flights.mount = mount;
+        };
+        requestAnimationFrame(record);
+      });
+      const prefix = `burst ${Date.now()}`;
+      await page.locator('#column-center .input-message-input[contenteditable="true"]').click();
+      for(let i = 0; i < 7; ++i) {
+        await page.keyboard.insertText(`${prefix} ${i}`);
+        await page.keyboard.press('Enter');
+        await page.waitForFunction(() => (window as any).appImManager.chat.input.isInputEmpty());
+        await page.waitForTimeout(65);
+      }
+      // Record only this test's confirmed message ids, before any assertions that might fail.
+      for(let i = 0; i < 7; ++i) sent.push(await sentMid(page, `${prefix} ${i}`));
+      await page.waitForTimeout(1800);
+      const result = await page.evaluate(() => {
+        const w = window as any;
+        return {
+          count: w.__burstFlights.length,
+          frames: w.__burstFrames as {time: number, tops: (number | null)[]}[],
+          landings: w.__burstLandings as {copy: number, target: number}[],
+          remaining: w.__burstFlights.filter((flight: any) => flight.root.isConnected).length,
+          hidden: document.querySelectorAll('#column-center .bubbles-inner [class*="_hidden_"]').length
+        };
+      });
+      expect(result.count).toBe(7);
+      expect(result.landings).toHaveLength(7);
+      for(const {copy, target} of result.landings) expect(Math.abs(copy - target)).toBeLessThanOrEqual(1);
+      for(let i = 1; i < result.frames.length; ++i) {
+        const previous = result.frames[i - 1], current = result.frames[i];
+        const elapsed = current.time - previous.time;
+        if(elapsed > 80) continue;
+        current.tops.forEach((top, index) => {
+          if(top === null || previous.tops[index] == null) return;
+          expect(Math.abs(top - previous.tops[index]), 'a finished shape follows the new scroll without jumping')
+          .toBeLessThanOrEqual(elapsed * 1.25 + 2);
+        });
+      }
+      expect(result.remaining).toBe(0);
+      expect(result.hidden).toBe(0);
+    });
+  }
 
   test('of several lines, lands on its bubble as the composer shrinks back under the list', async({page}) => {
     await openSavedMessages(page);

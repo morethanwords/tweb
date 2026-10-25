@@ -5503,7 +5503,7 @@ export default class ChatBubbles {
         });
       });
 
-      this.animateSomethingWithScroll(promise, scrollSaver);
+      this.animateSomethingWithScroll(promise, scrollSaver, placeholder);
     } else {
       bubble.middlewareHelper.destroy();
     }
@@ -5511,13 +5511,13 @@ export default class ChatBubbles {
     // this.reactions.delete(mid);
   }
 
-  public animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver) {
+  public animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver, resizeTarget?: Element) {
     if(!scrollSaver) {
       scrollSaver = this.createScrollSaver(true);
       scrollSaver.save();
     }
 
-    animateSomethingWithScroll(promise, this.scrollable, scrollSaver);
+    animateSomethingWithScroll(promise, this.scrollable, scrollSaver, resizeTarget);
   }
 
   public deleteMessagesByIds(fullMids: FullMid[], permanent = true, ignoreOnScroll?: boolean) {
@@ -6193,11 +6193,11 @@ export default class ChatBubbles {
     this.separatorIntersectorRoot?.setTopOffset(top);
   };
 
-  public updateGoDownVisibility = () => {
-    const visible = !this.scrolledDown &&
+  public updateGoDownVisibility() {
+    const visible = (!this.scrolledDown || !this.scrollable.loadedAll.bottom) &&
                     !this.container.classList.contains('search-results-active');
     this.chat.container.classList.toggle('is-go-down-visible', visible);
-  };
+  }
 
   public cleanup(bubblesToo = false) {
     this.log('cleanup');
@@ -13628,6 +13628,9 @@ export default class ChatBubbles {
     log('change', side, value);
 
     this.scrollable.loadedAll[side] = value;
+    if(side === 'bottom') {
+      this.updateGoDownVisibility();
+    }
     this.scrollable.onScroll(); // ! WARNING
     // return;
 

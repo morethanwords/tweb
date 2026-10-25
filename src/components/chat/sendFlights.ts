@@ -31,8 +31,8 @@
  * hold it up. Every part moves across in a wrapper and up in itself, each on its own curve, from where it
  * starts to where it ends: two keyframes. A text bubble's background, which changes its size, is made of
  * bands and corners that only move and stretch, so that its corners stay round. Should the message's place
- * at the end change on the way (the composer shrinking, the list growing under it), the way is bent to
- * the new place from where it is.
+ * at the end change on the way, the copy follows it. A later send moves the whole earlier copy with
+ * the list on its own clock, including after that copy's original flight has finished.
  *
  * A source is captured as it is let go (the composer about to be cleared, the panel to close), and its copy
  * stands in its place from then on, so nothing blinks while the message is being made. The next own
@@ -942,6 +942,10 @@ export abstract class SendFlight {
   /** how far the way's start is moved back for the way to bend to a new end from where it was then */
   protected shift: Box = {left: 0, top: 0, right: 0, bottom: 0};
   private animations: Animation[] = [];
+  // A later send moves the whole finished shape with the list on its own clock. Bending the original
+  // 300 ms flight instead would squeeze this movement into its last frames, or jump once it is over.
+  private listMovement: {animation: Animation, from: Point, to: Point};
+  private followedEnd: Box;
   /** its message is there: the copy goes to it, or is about to */
   public launched = false;
   /** the message's bubble, once it is there */
@@ -986,6 +990,7 @@ export abstract class SendFlight {
 
     this.launched = true;
     this.bubble = bubble;
+    this.flights.followOthers(this);
     const go = () => {
       bubble?.classList.remove(styles.hidden);
       if(this.done) {
@@ -1093,7 +1098,7 @@ export abstract class SendFlight {
 
   // what may move the message's place is watched, rather than its place read every frame
   private watch() {
-    this.observer = new ResizeObserver(this.follow);
+    this.observer = new ResizeObserver(() => this.follow());
     for(const element of [this.target, ...this.flights.host.observed()]) {
       this.observer.observe(element, {box: 'border-box'});
     }
@@ -1105,18 +1110,21 @@ export abstract class SendFlight {
    * start and its end, only drawn on a curve, so the start is moved back as far as makes the line pass where
    * the copy is.
    */
-  private follow = () => {
-    if(this.done) {
+  private follow() {
+    this.measureFollow()?.();
+  }
+
+  public measureFollow(newMessage = false): (() => void) | undefined {
+    if(this.done || !this.target) {
       return;
     }
 
     if(!this.target.isConnected) {
-      this.abort(true);
-      return;
+      return () => this.abort(true);
     }
 
     const now = this.sinceHeld(atEnd(this.target.getBoundingClientRect(), this.flights.host.scrollToEnd()));
-    const {end} = this;
+    const end = this.followedEnd || this.end;
     const delta: Box = {
       left: now.left - end.left,
       top: now.top - end.top,
@@ -1127,26 +1135,52 @@ export abstract class SendFlight {
       return;
     }
 
-    if(this.fixedWidth && Math.abs(boxWidth(now) - boxWidth(this.base)) >= .5) {
-      this.abort(true);
-      return;
+    const sameSize = Math.abs(boxWidth(now) - boxWidth(end)) < .5 && Math.abs(boxHeight(now) - boxHeight(end)) < .5;
+    if(
+      this.fixedWidth && Math.abs(boxWidth(now) - boxWidth(this.base)) >= .5 ||
+      (newMessage || this.listMovement) && !sameSize
+    ) {
+      return () => this.abort(true);
     }
 
-    const t = clamp01(this.getElapsed() / DURATION);
-    const back = (progress: number) => progress >= BEND_UNTIL ? 0 : progress / (1 - progress);
-    const x = back(EASE_X(t)), y = back(EASE_Y(t));
-    // up, its middle goes on the up curve and its height on the curve it is stretched on
-    const height = this.heightAcross ? x : y;
-    const middleDelta = (delta.top + delta.bottom) / 2, heightDelta = delta.bottom - delta.top;
-    this.shift = moveBox(this.shift, {
-      left: -delta.left * x,
-      right: -delta.right * x,
-      top: -middleDelta * y + heightDelta * height / 2,
-      bottom: -middleDelta * y - heightDelta * height / 2
-    });
-    this.end = now;
-    this.animate();
-  };
+    return () => {
+      // The list may resize before the next flight launches. Follow positional changes on the list's
+      // clock even then, rather than moving a finished flight's keyframes directly to the new end.
+      if(sameSize) {
+        const movement = this.listMovement;
+        const progress = movement?.animation.effect.getComputedTiming().progress || 0;
+        const from = movement ? {
+          x: lerp(movement.from.x, movement.to.x, progress),
+          y: lerp(movement.from.y, movement.to.y, progress)
+        } : {x: 0, y: 0};
+        const to = {x: now.left - this.end.left, y: now.top - this.end.top};
+        const animation = this.root.animate([
+          {transform: translate(from.x, from.y)},
+          {transform: translate(to.x, to.y)}
+        ], {duration: DURATION, easing: EASING_Y, fill: 'forwards'});
+        movement?.animation.cancel();
+        this.listMovement = {animation, from, to};
+        this.followedEnd = now;
+        this.arrivedAt = undefined;
+        return;
+      }
+
+      const t = clamp01(this.getElapsed() / DURATION);
+      const back = (progress: number) => progress >= BEND_UNTIL ? 0 : progress / (1 - progress);
+      const x = back(EASE_X(t)), y = back(EASE_Y(t));
+      // up, its middle goes on the up curve and its height on the curve it is stretched on
+      const height = this.heightAcross ? x : y;
+      const middleDelta = (delta.top + delta.bottom) / 2, heightDelta = delta.bottom - delta.top;
+      this.shift = moveBox(this.shift, {
+        left: -delta.left * x,
+        right: -delta.right * x,
+        top: -middleDelta * y + heightDelta * height / 2,
+        bottom: -middleDelta * y - heightDelta * height / 2
+      });
+      this.end = now;
+      this.animate();
+    };
+  }
 
   // the way is over: the copy goes once the list is at its end, where the message is under it
   private settle = () => {
@@ -1154,7 +1188,7 @@ export abstract class SendFlight {
       return;
     }
 
-    const elapsed = this.getElapsed();
+    const elapsed = Math.min(this.getElapsed(), (this.listMovement?.animation.currentTime as number) ?? DURATION);
     if(elapsed < DURATION) {
       this.settleTimeout = window.setTimeout(this.settle, DURATION - elapsed);
       return;
@@ -2089,6 +2123,14 @@ export default class SendFlights {
         return flight.landed;
       }
     }
+  }
+
+  /** A new bubble can move older ones without resizing any observed box (a short, bottom-aligned list). */
+  public followOthers(launched: SendFlight) {
+    const updates = Array.from(this.shown)
+    .filter((flight) => flight !== launched && flight.launched && !flight.done)
+    .map((flight) => flight.measureFollow(true));
+    updates.forEach((update) => update?.());
   }
 
   /** every copy goes at once: the chat it is drawn over changes, or moves to another window */
