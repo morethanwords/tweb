@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{b as e}from"./solid-Beq2bZCx.js";function t(e){for(;typeof e==`function`;)e=e();return e}function n(n,r){let i,a=e(e=>(i=e,t(n())));return r.onClean(i),a}function r(e,t){let r=t.create(),i=r.get(),a=!1,o=()=>{a||(a=!0,r.destroy())};try{return{element:n(()=>e(i),i),dispose:o,middleware:i}}catch(e){throw o(),e}}export{t as n,n as r,r as t};
+//# sourceMappingURL=wrapSolidComponent-Bf9wvG1x.js.map

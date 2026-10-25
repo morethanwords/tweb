@@ -1,0 +1,1 @@
+{"version":3,"file":"imageBitmapSupport-CNVQ3Fpp.js","names":["IS_IMAGE_BITMAP_SUPPORTED"],"sources":["../src/environment/imageBitmapSupport.ts"],"sourcesContent":["const IS_IMAGE_BITMAP_SUPPORTED = typeof(ImageBitmap) !== 'undefined';\n\nexport default IS_IMAGE_BITMAP_SUPPORTED;\n"],"mappings":";AAAA,IAAMA,EAA4B,OAAO,YAAiB"}

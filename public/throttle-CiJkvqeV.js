@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+function e(e,t,n=!0){let r=null,i,a,o=()=>{clearInterval(r),r=null},s=(...s)=>{i=!0,a=s,r||(n&&(i=!1,e(...a)),r=setInterval(()=>{i?(i=!1,e(...a)):o()},t))};return s.clear=o,s}export{e as t};
+//# sourceMappingURL=throttle-CiJkvqeV.js.map

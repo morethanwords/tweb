@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{t as e}from"./touchSupport-BE13YGjh.js";var t=new WeakMap;function n(e){return t.get(e)}function r(e,n){return t.set(e,n),()=>{t.get(e)===n&&t.delete(e)}}function i(t,r=!1,i=!0){let a=t.ownerDocument.activeElement,o=!!a&&(a.tagName===`INPUT`||a.isContentEditable);if(e&&(!r||!o))return;let s=n(t);if(s)s.focusAtEnd(i);else if(i&&t.focus(),t instanceof HTMLInputElement){let e=t.value.length;t.selectionStart=e,t.selectionEnd=e}else{let e=t.ownerDocument.defaultView;if(!e)return;let n=t.ownerDocument.createRange();n.selectNodeContents(t),n.collapse(!1);let r=e.getSelection();if(!r)return;r.removeAllRanges(),r.addRange(n)}}window.placeCaretAtEnd=i;export{n,r,i as t};
+//# sourceMappingURL=placeCaretAtEnd-PFyyYwgT.js.map

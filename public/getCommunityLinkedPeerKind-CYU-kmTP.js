@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{T as e}from"./objectUrlUtils-DT84-dvS.js";function t(e,t){return e?._===`user`?!!t:e?._===`channel`&&!e.pFlags.left}function n(n,r,i){return t(n,i)?`joined`:n?._===`user`?n.pFlags.bot||r.pFlags.can_view_history?`viewable`:r.visible===!1?e(n).length?`excluded`:`hidden`:`requestable`:r.pFlags.can_view_history?`viewable`:r.visible===!1?e(n).length?`excluded`:`hidden`:`requestable`}export{t as n,n as t};
+//# sourceMappingURL=getCommunityLinkedPeerKind-CYU-kmTP.js.map

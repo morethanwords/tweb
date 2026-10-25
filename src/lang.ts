@@ -2909,7 +2909,7 @@ const lang = {
     'other_value': 'except %d people'
   },
   'StoryAllowScreenshots': 'Allow Screenshots',
-  'StoryKeep': 'Keep on My Page',
+  'StoryKeep': 'Keep on My Profile',
   'StoryKeepGroup': 'Post to Group Page',
   'StoryKeepChannel': 'Post to Channel Page',
   'StorySettingsKeepGroupInfo': 'Keep this story on the group page after it expires.',
@@ -3016,7 +3016,7 @@ const lang = {
   'StoriesMovedToDialogs': 'Stories of **%s** were moved to **Chats**.',
   'StoriesRemoveFromRecent': 'Remove from Recent',
   'StoriesRemovedFromRecent': 'Stories of **%s** were removed from Recent.',
-  'StorySharedTo': 'Story forwarded to %s.',
+  'StorySharedTo': 'Story forwarded to **%s**.',
   'StorySharedToSavedMessages': 'Story forwarded to **Saved Messages**',
   'BoostLinkButton': 'BOOST',
   'SaveToPosts': 'Post to Profile',

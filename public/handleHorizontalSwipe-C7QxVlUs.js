@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{t as e}from"./findUpClassName-SQIKk7wK.js";import{i as t}from"./appNavigationController-DDqTWccQ.js";import{t as n}from"./cancelEvent-Bs2qkQ0q.js";import{l as r}from"./openEditors-BLbu-_6j.js";function i(i){let a=!1,o=!1;return new r({...i,verifyTouchTarget:n=>!e(n.target,`progress-line`)&&!t(n)&&(!i.verifyTouchTarget||i.verifyTouchTarget(n)),onSwipe:(e,t,r)=>{if(e*=-1,t*=-1,!a&&Math.abs(t)>20)return!0;if(!(!a&&Math.max(Math.abs(e),Math.abs(t))<(i.axisThreshold??0))){if(Math.abs(e)>Math.abs(t))n(r),a=!0;else if(!a&&Math.abs(t)>Math.abs(e))return!0;return o=!0,i.onSwipe(e,t,r)}},onReset:()=>{o&&i.onReset?.(),a=o=!1},cancelEvent:!1})}export{i as t};
+//# sourceMappingURL=handleHorizontalSwipe-C7QxVlUs.js.map

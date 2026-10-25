@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+function e(e,t,n){let r=document.createElement(`a`);r.href=e,r.download=t,r.target=`_blank`,r.style.position=`absolute`,r.style.top=`1px`,r.style.left=`1px`,document.body.append(r);try{let e=document.createEvent(`MouseEvents`);e.initMouseEvent(`click`,!0,!1,window,0,0,0,0,0,!1,!1,!1,!1,0,null),r.dispatchEvent(e)}catch(t){console.error(`Download click error`,t);try{r.click()}catch{window.open(e,`_blank`)}}setTimeout(()=>{r.remove(),n&&n()},100)}export{e as t};
+//# sourceMappingURL=createDownloadAnchor-kda53v4X.js.map

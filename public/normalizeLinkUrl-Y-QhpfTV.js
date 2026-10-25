@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=new Set([`ftp:`,`http:`,`https:`,`mailto:`,`tel:`,`tg:`,`tonsite:`]);function t(t){if(typeof t!=`string`)return!1;let n=t.replace(/[\u0000-\u0020\s]/g,``).match(/^([a-z][a-z\d+.-]*):/i);return!n||e.has(`${n[1].toLowerCase()}:`)}function n(t){let n=t.trim();if(!n||/\s/.test(n))return;if(n[0]===`#`)return/^#[^#]+$/.test(n)?n:void 0;let r=/^[a-z][a-z\d+.-]*:/i.test(n)?n:`https://${n}`;try{let t=new URL(r);return!e.has(t.protocol)||(t.protocol===`ftp:`||t.protocol===`http:`||t.protocol===`https:`||t.protocol===`tonsite:`)&&!t.hostname||(t.protocol===`mailto:`||t.protocol===`tel:`||t.protocol===`tg:`)&&!n.slice(t.protocol.length).trim()?void 0:r}catch{return}}export{n,t};
+//# sourceMappingURL=normalizeLinkUrl-Y-QhpfTV.js.map

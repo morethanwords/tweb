@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{f as e}from"./solid-Beq2bZCx.js";import{n as t}from"./hotReloadGuard-CHYXNvhm.js";var n={},r=!!n.HotReloadGuard;function i(e){Object.assign(n,e,{HotReloadGuard:c}),r=!0}var a;function o(e){a=e}async function s(){await a?.()}function c(i){if(!r)throw Error(`SolidJSHotReloadGuardProvider: nothing registered, import @lib/solidjs/hotReloadGuardValue at startup`);return e(t.Provider,{value:n,get children(){return i.children}})}export{o as a,i,n,s as r,c as t};
+//# sourceMappingURL=hotReloadGuardProvider-M_nRCQzG.js.map

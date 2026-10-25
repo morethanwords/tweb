@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=typeof WebAssembly<`u`;function t(t){return e&&typeof WebAssembly.validate==`function`&&WebAssembly.validate(t)}var n=t(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11])),r=t(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,5,3,1,0,1,10,22,1,20,0,65,0,65,0,65,0,252,10,0,0,67,0,0,0,0,252,0,192,11]));export{n,r as t};
+//# sourceMappingURL=webAssemblyBaselineSupport-ng7H3cfU.js.map

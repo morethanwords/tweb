@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{t as e}from"./cancelEvent-Bs2qkQ0q.js";import{n as t}from"./clickEvent-BUNslqEw.js";import{i as n,r,t as i}from"./copyContact-B16tMd5s.js";function a(a={}){let o=document.createElement(`a`);o.classList.add(`anchor-copy`),o.dir=`ltr`;let s;return a.mePath&&(o.href=o.innerText=i+a.mePath,s=()=>r(a.mePath)),a.username&&(o.href=i+a.username,o.innerText=`@`+a.username,s=()=>n(a.username)),t(o,t=>{e(t),a.onClick?a.onClick(s):s()}),o}export{a as t};
+//# sourceMappingURL=anchorCopy-UEfTFW2o.js.map

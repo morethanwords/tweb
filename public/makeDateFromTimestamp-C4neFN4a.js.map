@@ -1,0 +1,1 @@
+{"version":3,"file":"makeDateFromTimestamp-C4neFN4a.js","names":["makeDateFromTimestamp","timestamp"],"sources":["../src/helpers/date/makeDateFromTimestamp.ts"],"sourcesContent":["export function makeDateFromTimestamp(timestamp: number): Date {\n  return new Date(timestamp * 1000);\n}\n"],"mappings":";AAAA,SAAgBA,EAAsB,EAAyB,CAC7D,OAAO,IAAI,KAAKC,EAAY,GAAI,CAClC"}

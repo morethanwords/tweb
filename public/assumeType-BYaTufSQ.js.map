@@ -1,0 +1,1 @@
+{"version":3,"file":"assumeType-BYaTufSQ.js","names":["assumeType"],"sources":["../src/helpers/assumeType.ts"],"sourcesContent":["export default function assumeType<T>(x: unknown): asserts x is T {\n  return; // ¯\\_(ツ)_/¯\n}\n"],"mappings":";AAAA,SAAwBA,EAAc,EAA4B,CAElE"}

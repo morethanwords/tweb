@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+var e=new Set([`inlineButtonTypeUrl`,`inlineButtonTypeCopy`,`inlineButtonTypeUserProfile`,`inlineButtonTypeDisabled`]),t={inlineButtonTypeUrl:`arrow_next`,inlineButtonTypeSwitchInline:`forward_filled`,inlineButtonTypeBuy:`card_filled`,inlineButtonTypeWebView:`webview`,buttonTypeSimpleWebView:`webview`,inlineButtonTypeGame:`play_filled`,inlineButtonTypeCopy:`copy`};function n(e){return t[e._]}function r(e){if(e){if(e.pFlags.bg_success)return`success`;if(e.pFlags.bg_danger)return`danger`;if(e.pFlags.bg_primary)return`primary`}}function i(e){let{align_left:t,align_center:n,align_right:r}=e.pFlags;return t?`left`:n?`center`:r?`right`:void 0}export{i,r as n,n as r,e as t};
+//# sourceMappingURL=buttonTypes-usAGwT5K.js.map

@@ -1,0 +1,3 @@
+//# allFunctionsCalledOnLoad
+import{t as e}from"./easings-BWhDqqVj.js";import{t}from"./requestRAF-Cqm_gOYv.js";function n(e,t,n){return e+(t-e)*n}function r(e,t,n){return e.map((e,r)=>e+(t[r]-e)*n)}function i(r,i,a,o,{easing:s=e,onEnd:c=()=>{}}={}){let l,u=!1;function d(){if(u)return;let e=performance.now();l||(l=e);let f=e-l,p=a?Math.min(f/a,1):1,m=s(p);r instanceof Array&&i instanceof Array?o(r.map((e,t)=>n(e,i[t],m))):o(n(r,i,m)),p<1?t(d):c()}return t(d),()=>{u=!0}}export{n,r,i as t};
+//# sourceMappingURL=animateValue-Bu3Syp6O.js.map
