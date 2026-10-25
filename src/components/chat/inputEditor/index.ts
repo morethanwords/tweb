@@ -50,6 +50,7 @@ import {
   ChatInputRichMediaUploadUpdateEvent
 } from '@components/chat/inputEditor/events';
 import runHistoryCommandPreservingSelection from '@components/chat/inputEditor/history';
+import setInlineBotPlaceholder from '@components/chat/inputEditor/inlineBotPlaceholder';
 import {
   handleEmptyParagraphBackspaceAfterRichMedia,
   handleRichMediaCaptionBackspace,
@@ -3648,6 +3649,10 @@ class TiptapChatInputEditor implements ChatInputEditor {
       return toggle(resolved.before(depth), details);
     }
     return false;
+  }
+
+  public setInlineBotPlaceholder(placeholder?: string) {
+    setInlineBotPlaceholder(this.editor, placeholder);
   }
 
   public setContent(content: string | Node) {

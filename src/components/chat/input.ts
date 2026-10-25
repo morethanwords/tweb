@@ -4224,13 +4224,13 @@ export default class ChatInput {
             // * skips the inline path entirely, and drop back to normal send mode
             this.knownGuestBots.add(username.toLowerCase());
             needPlaceholder = false;
-            delete this.messageInput.dataset.inlinePlaceholder;
+            this.messageInputEditor?.setInlineBotPlaceholder();
             setPreloaderShow(false);
             return;
           }
 
           if(needPlaceholder && user.bot_inline_placeholder) {
-            this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
+            this.messageInputEditor?.setInlineBotPlaceholder(user.bot_inline_placeholder);
           }
 
           renderPromise.then(() => {
@@ -4243,7 +4243,7 @@ export default class ChatInput {
     }
 
     if(!needPlaceholder) {
-      delete this.messageInput.dataset.inlinePlaceholder;
+      this.messageInputEditor?.setInlineBotPlaceholder();
     }
 
     if(foundHelper !== this.inlineHelper) {

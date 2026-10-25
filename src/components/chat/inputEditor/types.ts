@@ -341,6 +341,7 @@ export interface ChatInputEditor {
   setEditable(editable: boolean): void;
   isExpanded(): boolean;
   setExpanded(expanded: boolean): void;
+  setInlineBotPlaceholder(placeholder?: string): void;
   setNoAutolink(noAutolink: boolean): void;
   setRichMessage(message: RichMessage): boolean;
   setTableTitle(title: string): boolean;

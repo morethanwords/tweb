@@ -995,17 +995,10 @@
     inset-inline-start: unset;
   }
 
-  .input-message-input {
-    // max-height is JS-owned — see RichMessageInputController.syncHeight()
-    // in components/richMessageInput/index.tsx. The same number drives both the inline
-    // style.maxHeight and the scrollHeight clamp in InputFieldAnimated, so
-    // `--chat-input-height-surplus` matches what the user actually sees.
-
-    &[data-inline-placeholder]:after {
-      content: attr(data-inline-placeholder);
-      color: var(--input-message-placeholder-color);
-      pointer-events: none;
-    }
+  .chat-input-inline-placeholder:after {
+    content: attr(data-inline-placeholder);
+    color: var(--input-message-placeholder-color);
+    pointer-events: none;
   }
 
 	.new-message-wrapper {
@@ -1236,6 +1229,10 @@
 }
 
 .input-message-input {
+  // max-height is JS-owned — see RichMessageInputController.syncHeight()
+  // in components/richMessageInput/index.tsx. The same number drives both the inline
+  // style.maxHeight and the scrollHeight clamp in InputFieldAnimated, so
+  // `--chat-input-height-surplus` matches what the user actually sees.
   --custom-emoji-size: var(--messages-custom-emoji-size);
   background: none;
   border: none;
