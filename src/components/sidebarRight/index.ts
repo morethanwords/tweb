@@ -66,7 +66,14 @@ export class AppSidebarRight extends SidebarSlider {
           tab.container.classList.add('active');
         }
 
-        previousTab.container.replaceWith(tab.container);
+        if(previousTab.container.isConnected) {
+          previousTab.container.replaceWith(tab.container);
+        } else {
+          // * the previous tab went with its chat before this one took its place: a chat opened over another
+          // * is destroyed when a different peer is opened from the list, and the chat below may still be loading
+          // * it. `replaceWith` on a detached node does nothing, and the column stayed open with no tab in it
+          this.tabsContainer.prepend(tab.container);
+        }
       } else {
         if(idx !== -1) {
           this.historyTabIds.splice(idx, 1);
