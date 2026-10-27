@@ -58,8 +58,15 @@
       border-width: calc(var(--size) / 2);
       border-left-color: rgba(0, 0, 0, .25);
       border-bottom-color: rgba(0, 0, 0, .25);
-      border-top-color: var(--message-background-color);
-      border-right-color: var(--message-background-color);
+      border-top-color: transparent;
+      border-right-color: transparent;
+      background-color: var(--message-background-color);
+      background-image: var(--message-out-gradient-image, none);
+      background-size: var(--out-grad-size, 100vw 100vh);
+      background-position: var(--out-grad-pos, 0 0);
+      background-repeat: no-repeat;
+      background-origin: border-box;
+      background-clip: border-box;
 
       @include animation-level(2) {
         transition: border-width .2s ease-in-out;

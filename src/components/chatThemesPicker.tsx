@@ -13,6 +13,8 @@ import {BaseTheme, Theme} from '@layer';
 import rootScope from '@lib/rootScope';
 import I18n from '@lib/langPack';
 import themeController from '@helpers/themeController';
+import {paintThemeOutBubble} from '@helpers/outgoingMessageGradient';
+import {getRgbColorFromTelegramColor, rgbaToHexa} from '@helpers/color';
 import liteMode from '@helpers/liteMode';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
@@ -132,6 +134,21 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     } as unknown as Theme;
     themeController.applyTheme(virtualTheme, item.container);
 
+    const messageColorHexes = (entry?.message_colors ?? []).map((color) =>
+      rgbaToHexa(getRgbColorFromTelegramColor(color))
+    );
+    paintThemeOutBubble(
+      item.container.querySelector<HTMLElement>('.theme-bubble.is-out'),
+      {
+        hexColors: messageColorHexes,
+        animated: !!(
+          entry?.pFlags?.message_colors_animated ||
+          ((entry?.flags ?? 0) & (1 << 2))
+        ),
+        host: item.container
+      }
+    );
+
     const previous = item.container.querySelector('.background-item');
     previous?.remove();
 
@@ -158,11 +175,9 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     container.classList.toggle('active', active);
     container.setAttribute('aria-pressed', String(active));
   };
-  // Start hidden so the tiles don't pop in for one frame after the async
-  // `getThemes()` resolves. We flip opacity to 1 once `buildThemes` has
-  // finished mounting the containers, letting the CSS transition fade them in.
+  // Start fade-in once the first tiles are in the DOM
   scrollable.container.style.opacity = '0';
-  scrollable.container.style.transition = 'opacity .2s ease';
+  scrollable.container.style.transition = 'opacity .15s ease';
 
   const [themesPromise] = createResource(() => rootScope.managers.appThemesManager.getThemes());
 
@@ -171,23 +186,17 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
     const themes = themesPromise();
     if(!themes) return;
 
-    // The tiles' emoticons come out of the animated-emoji set, which the stickers manager only
-    // fetches a second after start-up. Wrapping one before then throws "no sticker" and leaves the
-    // slot permanently blank — there is no retry — so wait for the set first. It is cached, so this
-    // is free on every build after the first. Hit by the empty-column tip cards, which mount as
-    // soon as the IM page does.
-    await managers.appStickersManager.getAnimatedEmojiStickerSet();
-    if(!middleware()) return;
+    const stickerSetReady = managers.appStickersManager.getAnimatedEmojiStickerSet();
 
     const defaultThemes = themes.filter((theme) => theme.pFlags.default);
     defaultThemes.unshift(DEFAULT_THEME);
 
-    const containers = await Promise.all(defaultThemes.map(async(theme) => {
+    const containers: HTMLElement[] = [];
+    for(const theme of defaultThemes) {
       const container = document.createElement('div');
+      container.classList.add('theme-container');
       const k: ThemeItem = {container, theme, wallPaperContainers: {}};
 
-      // Cloud themes (numeric id) get their tinted wallpaper navy-blended;
-      // DEFAULT_THEME (id='') and accent presets keep their curated gradients.
       const themeId = String(theme.id ?? '');
       const isCurated = themeId === '' || themeId.startsWith('preset:');
 
@@ -197,8 +206,6 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
         const shouldBlend = themeSettings.base_theme._ === 'baseThemeTinted' && !isCurated && themeSettings.wallpaper;
         const wp = shouldBlend ? blendWallpaperForTinted(themeSettings.wallpaper, themeSettings.accent_color) : themeSettings.wallpaper;
         const result = AppBackgroundTab.addWallPaper(wp, undefined, themeSettings.base_theme._);
-        // addWallPaper returns undefined for a pattern wallpaper with no colors —
-        // skip rather than deref (matches the tinted-fallback guard below).
         if(!result) return undefined;
         k.wallPaperContainers[themeSettings.base_theme._] = result.container;
         solidRoots.push(result.dispose);
@@ -206,8 +213,6 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
       })
       .filter(Boolean);
 
-      // Synthesize a tinted preview from the night entry when the theme ships
-      // only Classic/Night, matching applyNewTheme's blend-on-fallback.
       if(!k.wallPaperContainers['baseThemeTinted'] && !isCurated) {
         const nightEntry = theme.settings.find((s) => s.base_theme._ === 'baseThemeNight');
         if(nightEntry?.wallpaper) {
@@ -221,53 +226,50 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
         }
       }
 
-      themesMap.set(container, k);
-      applyThemeOnItem(k);
-
-      setActive(container, String(theme.id ?? '') === props.selectedId());
-
-      const loadPromises: Promise<any>[] = [];
-      let emoticonContainer: HTMLElement;
-      if(theme.emoticon) {
-        emoticonContainer = document.createElement('div');
-        emoticonContainer.classList.add('theme-emoticon');
-        const size = 28 * 1.75;
-        wrapStickerEmoji({
-          div: emoticonContainer,
-          width: size,
-          height: size,
-          emoji: theme.emoticon,
-          managers,
-          loadPromises,
-          middleware,
-          play: false,
-          group: 'none'
-        }).then(({render}) => render).then((player) => {
-          k.player = player as LottiePlayer;
-        });
-      }
-
       const bubble = document.createElement('div');
-      bubble.classList.add('theme-bubble');
-      const bubbleIn = bubble.cloneNode() as HTMLElement;
-      bubbleIn.classList.add('is-in');
-      bubble.classList.add('is-out');
+      bubble.classList.add('theme-bubble', 'is-out');
+      const bubbleIn = document.createElement('div');
+      bubbleIn.classList.add('theme-bubble', 'is-in');
 
-      loadPromises.push(...results.map((result) => result.loadPromise));
-      container.classList.add('theme-container');
-
-      await Promise.all(loadPromises);
-
-      if(emoticonContainer) container.append(emoticonContainer);
+      const emoticonContainer = theme.emoticon ? document.createElement('div') : undefined;
+      if(emoticonContainer) {
+        emoticonContainer.classList.add('theme-emoticon');
+        container.append(emoticonContainer);
+      }
       container.append(bubbleIn, bubble);
 
-      return container;
-    }));
+      themesMap.set(container, k);
+      applyThemeOnItem(k);
+      setActive(container, String(theme.id ?? '') === props.selectedId());
+
+      containers.push(container);
+
+      if(emoticonContainer && theme.emoticon) {
+        const loadPromises: Promise<any>[] = [];
+        stickerSetReady.then(() => {
+          if(!middleware()) return;
+          const size = 28 * 1.75;
+          return wrapStickerEmoji({
+            div: emoticonContainer,
+            width: size,
+            height: size,
+            emoji: theme.emoticon,
+            managers,
+            loadPromises,
+            middleware,
+            play: false,
+            group: 'none'
+          }).then(({render}) => render).then((player) => {
+            k.player = player as LottiePlayer;
+          });
+        }).catch(() => {});
+      }
+
+      void Promise.all(results.map((result) => result.loadPromise)).catch(() => {});
+    }
 
     if(!middleware()) return;
     scrollable.append(...containers);
-    // Reveal in the next frame so the appended DOM has settled (layout +
-    // background-item paints are flushed) before the opacity transition runs.
     requestAnimationFrame(() => {
       scrollable.container.style.opacity = '1';
     });

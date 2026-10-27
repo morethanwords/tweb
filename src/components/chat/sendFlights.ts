@@ -57,6 +57,7 @@ import {lerp} from '@helpers/lerp';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import {getSendingStatusIconState, setSendingStatusIconState, settleSendingStatusIconCopy} from '@components/sendingStatusIcon';
+import {getOutgoingMessageGradientImage, paintViewportOutgoingGradient} from '@helpers/outgoingMessageGradient';
 import {Message, MessageMedia} from '@layer';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import styles from '@components/chat/sendFlights.module.scss';
@@ -1065,7 +1066,7 @@ export abstract class SendFlight {
   }
 
   // how far the way has gone, on the animations' clock
-  private getElapsed() {
+  protected getElapsed() {
     return (this.animations[0]?.currentTime as number) || 0;
   }
 
@@ -1334,6 +1335,14 @@ class TextFlight extends SendFlight {
   // the field's text is the bubble's all the way
   private keepFieldText: boolean;
   private background: {color: string, shadow: string, radii: Radii};
+  /**
+   * Shared outgoing message_colors fill (viewport-anchored). When set, the flight's
+   * solid currentColor pieces are hidden and a rounded fill samples the same gradient
+   * the landed bubble will — updated every frame while transforms move it.
+   */
+  private gradientImage?: string;
+  private gradientFill?: HTMLElement;
+  private gradientRaf = 0;
   // the bubble's corners and tail change as it joins a group or leaves one, on the way too
   private shapeObserver: MutationObserver;
   private tail: HTMLElement;
@@ -1461,7 +1470,13 @@ class TextFlight extends SendFlight {
     }
 
     const contentStyle = getComputedStyle(content);
-    if(!hasBackground(contentStyle.backgroundColor)) {
+    // Prefer the shared theme fill; fall back to the bubble's own background-image
+    // (inline --out-grad-* already applied). Solid colour alone still counts.
+    this.gradientImage = getOutgoingMessageGradientImage() ||
+      (contentStyle.backgroundImage && contentStyle.backgroundImage !== 'none' ?
+        contentStyle.backgroundImage :
+        undefined);
+    if(!hasBackground(contentStyle.backgroundColor) && !this.gradientImage) {
       return this.prepareEmoji(bubble, wrapper);
     }
 
@@ -1649,8 +1664,38 @@ class TextFlight extends SendFlight {
     });
     shape.append(...[...bands, ...corners].map(({across}) => across));
     const tail = this.tail && createAxes(this.tail);
-    // over the background and its shadow, as the bubble's is: drawn in it, after its background
-    background.append(...[shape, tail?.across].filter(Boolean));
+
+    // Gradient themes: solid currentColor pieces can't sample the viewport fill
+    // (and scale transforms would warp it). Hide them and drive a rounded fill
+    // each frame instead — same slice the landed bubble will show.
+    if(this.gradientImage) {
+      shape.style.opacity = '0';
+      const fill = this.gradientFill = createPart(styles.part);
+      fill.style.overflow = 'hidden';
+      fill.style.filter = this.background.shadow;
+      fill.style.backgroundRepeat = 'no-repeat';
+      if(this.tail) {
+        // Same trick as landed `.bubble-tail`: paint the shared fill on the
+        // wrapper and punch the SVG silhouette through as an alpha mask.
+        const svg = this.tail.firstElementChild as SVGElement | null;
+        if(svg) {
+          try {
+            const url = `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}")`;
+            this.tail.style.maskImage = url;
+            this.tail.style.setProperty('-webkit-mask-image', url);
+            this.tail.style.maskSize = '100% 100%';
+            this.tail.style.setProperty('-webkit-mask-size', '100% 100%');
+            this.tail.style.backgroundRepeat = 'no-repeat';
+            svg.style.opacity = '0';
+          } catch(e) {}
+        }
+      }
+      background.append(...[fill, shape, tail?.across].filter(Boolean));
+      this.startGradientSync();
+    } else {
+      // over the background and its shadow, as the bubble's is: drawn in it, after its background
+      background.append(...[shape, tail?.across].filter(Boolean));
+    }
 
     const [clipStart, clipEnd] = [0, 1].map(() => {
       const clip = createPart(styles.clip);
@@ -1717,8 +1762,71 @@ class TextFlight extends SendFlight {
   }
 
   protected restore() {
+    this.stopGradientSync();
     this.statusObserver?.disconnect();
     this.shapeObserver?.disconnect();
+  }
+
+  private stopGradientSync() {
+    if(this.gradientRaf) {
+      cancelAnimationFrame(this.gradientRaf);
+      this.gradientRaf = 0;
+    }
+  }
+
+  /**
+   * Keep the flight fill (and tail) sampling the shared outgoing gradient as the
+   * morphing box moves — same viewport windowing as landed `.bubble.is-out`s.
+   * Freeform themes re-read the CSS image each frame so send-scroll advances apply.
+   */
+  private startGradientSync() {
+    this.stopGradientSync();
+    if(!this.gradientFill) return;
+
+    const tick = () => {
+      if(this.done || !this.gradientFill) {
+        this.gradientRaf = 0;
+        return;
+      }
+
+      const elapsed = Math.min(DURATION, this.getElapsed());
+      const t = elapsed / DURATION;
+      const pX = EASE_X(t);
+      const pY = EASE_Y(t);
+      const source = this.getSource(this.field);
+      const page = snapBox({
+        left: lerp(source.left, this.end.left, pX),
+        right: lerp(source.right, this.end.right, pX),
+        top: lerp(source.top, this.end.top, pY),
+        bottom: lerp(source.bottom, this.end.bottom, pY)
+      });
+      const box = fromOrigin(page, this.origin);
+      layOut(this.gradientFill, box);
+      const radii = this.background.radii;
+      this.gradientFill.style.borderTopLeftRadius = `${radii.topLeft}px`;
+      this.gradientFill.style.borderTopRightRadius = `${radii.topRight}px`;
+      this.gradientFill.style.borderBottomRightRadius = `${radii.bottomRight}px`;
+      this.gradientFill.style.borderBottomLeftRadius = `${radii.bottomLeft}px`;
+      const rect = this.gradientFill.getBoundingClientRect();
+      const image = getOutgoingMessageGradientImage() || this.gradientImage;
+      paintViewportOutgoingGradient(
+        this.gradientFill,
+        rect.width ? rect.left : page.left,
+        rect.height ? rect.top : page.top,
+        image
+      );
+
+      if(this.tail && image) {
+        const tailRect = this.tail.getBoundingClientRect();
+        if(tailRect.width) {
+          paintViewportOutgoingGradient(this.tail, tailRect.left, tailRect.top, image);
+        }
+      }
+
+      this.gradientRaf = getAppWindow().requestAnimationFrame(tick);
+    };
+
+    this.gradientRaf = getAppWindow().requestAnimationFrame(tick);
   }
 
   // where everything is at the way's start or end, from the overlay's corner

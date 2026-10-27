@@ -561,6 +561,9 @@ export default class ChatInput {
   private channelMuteBtn: HTMLButtonElement;
   private directControlBtn: HTMLButtonElement;
   private giftControlBtn: HTMLButtonElement;
+  private controlPlate: HTMLElement;
+  private controlPlateLeftSide: HTMLDivElement;
+  private controlPlateRightSide: HTMLDivElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
@@ -1883,10 +1886,49 @@ export default class ChatInput {
       ].filter(Boolean)
     }) as HTMLElement;
 
+    this.controlPlate = controlPlate;
+    const sideSlots = controlPlate.querySelectorAll<HTMLDivElement>('.chat-input-plate-side');
+    this.controlPlateLeftSide = sideSlots[0];
+    this.controlPlateRightSide = sideSlots[1];
+
     this.controlContainer.append(...[
       controlPlate,
       this.replyInTopicOverlay
     ].filter(Boolean));
+  }
+
+  /**
+   * Channel can't-write plate: only keep `.chat-input-plate-side` in the DOM when
+   * Direct Messages and/or Gifting can actually show. Otherwise omit both slots so
+   * the centre button is full-width.
+   */
+  private syncControlPlateSides(showDirect: boolean, showGift: boolean) {
+    if(!this.controlPlate || !this.directControlBtn || !this.giftControlBtn) return;
+
+    this.directControlBtn.classList.toggle('hide', !showDirect);
+    this.giftControlBtn.classList.toggle('hide', !showGift);
+
+    const showSides = showDirect || showGift;
+    const existing = this.controlPlate.querySelectorAll('.chat-input-plate-side');
+
+    if(showSides) {
+      if(existing.length === 0) {
+        const left = document.createElement('div');
+        left.className = 'chat-input-plate-side';
+        left.append(this.directControlBtn);
+        const right = document.createElement('div');
+        right.className = 'chat-input-plate-side';
+        right.append(this.giftControlBtn);
+        const center = this.controlPlate.querySelector('.chat-input-plate-center');
+        this.controlPlate.insertBefore(left, center);
+        this.controlPlate.append(right);
+        this.controlPlateLeftSide = left;
+        this.controlPlateRightSide = right;
+      }
+      return;
+    }
+
+    existing.forEach((el) => el.remove());
   }
 
   private setChatListeners() {
@@ -3055,12 +3097,21 @@ export default class ChatInput {
           this.channelMuteBtn.replaceChildren(i18n(peerMuted ? 'ChatList.Context.Unmute' : 'ChatList.Context.Mute'));
         }
 
-        // Channel "can't write" plate: write-in-direct (only when the channel
-        // has a linked direct-messages chat) on the left, gift on the right.
-        // Both are channel-only — a gigagroup or megagroup join just shows the
-        // centre button.
-        this.directControlBtn.classList.toggle('hide', !(good && channel?.linked_monoforum_id));
-        this.giftControlBtn.classList.toggle('hide', !(good && isBroadcast));
+        // Channel "can't write" plate: write-in-direct (linked monoforum) on the
+        // left, gift on the right when channelFull.stargifts_available. Side slots
+        // stay out of the DOM when both are disabled.
+        const showDirect = !!(good && channel?.linked_monoforum_id);
+        this.syncControlPlateSides(showDirect, false);
+        callbackify(ackedPeerFull.result, (peerFull) => {
+          if(!middleware()) return;
+          const channelFull = peerFull as ChatFull.channelFull;
+          const showGift = !!(
+            good &&
+            isBroadcast &&
+            channelFull?.pFlags?.stargifts_available
+          );
+          this.syncControlPlateSides(showDirect, showGift);
+        });
       }
 
       if(this.chat && this.welcomeLimitPlate) {

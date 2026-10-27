@@ -4,15 +4,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-<<<<<<< HEAD
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?6nxgvg') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?6nxgvg') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?6nxgvg##{$tgico-font-family}') format('svg');
-=======
     url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?z2p458') format('truetype'),
     url('#{$tgico-font-path}/#{$tgico-font-family}.woff?z2p458') format('woff'),
     url('#{$tgico-font-path}/#{$tgico-font-family}.svg?z2p458##{$tgico-font-family}') format('svg');
->>>>>>> b494470fa4ebbd7bb64fa9378f202944dc8158fd
   font-weight: normal;
   font-style: normal;
   font-display: block;

@@ -464,6 +464,16 @@
     user-select: none;
     background-color: var(--message-background-color);
 
+    isolation: isolate;
+
+    &-background {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: -1;
+    }
+
     body.animation-level-0 & {
       transition: none;
     }
@@ -2162,7 +2172,14 @@
         height: 20px;
         z-index: -2;
         display: block;
-        fill: var(--message-background-color);
+        background-color: var(--message-background-color);
+        background-repeat: no-repeat;
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2011%2020%22%3E%3Cg%20transform%3D%22translate%289%20-14%29%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20fill%3D%22black%22%20d%3D%22M-6%2016h6v17c-.193-2.84-.876-5.767-2.05-8.782-.904-2.325-2.446-4.485-4.625-6.48A1%201%200%2001-6%2016z%22%20transform%3D%22matrix%281%200%200%20-1%200%2049%29%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+        -webkit-mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2011%2020%22%3E%3Cg%20transform%3D%22translate%289%20-14%29%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20fill%3D%22black%22%20d%3D%22M-6%2016h6v17c-.193-2.84-.876-5.767-2.05-8.782-.904-2.325-2.446-4.485-4.625-6.48A1%201%200%2001-6%2016z%22%20transform%3D%22matrix%281%200%200%20-1%200%2049%29%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+        mask-size: 100% 100%;
+        mask-repeat: no-repeat;
         transform: translateY(1px) scaleX(var(--reflect));
       }
     }
@@ -2236,7 +2253,8 @@
         background-color: var(--light-primary-color);
 
         & ~ .bubble-tail {
-          fill: var(--light-filled-message-primary-color);
+          background-color: var(--light-filled-message-primary-color);
+          background-image: none;
         }
 
         // .tgico-next {
@@ -3597,7 +3615,18 @@
   --border-end-start-radius: #{$bubble-border-radius-big};
 
   .bubble-content {
-    margin-inline-start: auto;
+    margin-left: auto;
+    background-image: var(--message-out-gradient-image, none);
+    background-size: var(--out-grad-size, 100vw 100vh);
+    background-repeat: no-repeat;
+    background-position: var(--out-grad-pos, 0 0);
+
+    &-background {
+      background-image: var(--message-out-gradient-image, none);
+      background-size: var(--out-grad-size, 100vw 100vh);
+      background-position: var(--out-grad-pos, 0 0);
+      background-repeat: no-repeat;
+    }
 
     &,
     .poll-footer-button {
@@ -3615,6 +3644,16 @@
       &.can-zoom-fade {
         transform-origin: var(--transform-origin-right-center);
       }
+    }
+  }
+
+  &.document-message,
+  &.is-single-document,
+  &.audio-message,
+  &.voice-message {
+    .bubble-content:has(> .bubble-content-background) {
+      background-color: transparent;
+      background-image: none;
     }
   }
 
@@ -3636,6 +3675,9 @@
       .bubble-tail {
         inset-inline-end: -8.4px;
         transform: translateY(1px) scaleX(calc(var(--reflect) * -1));
+        background-image: var(--message-out-gradient-image, none);
+        background-size: var(--out-grad-size, 100vw 100vh);
+        background-position: var(--out-grad-pos, 0 0);
       }
 
       &.has-plain-media-tail {
@@ -3653,6 +3695,19 @@
     &:not(.can-have-tail) {
       --border-end-end-radius: #{$bubble-border-radius-big};
     }
+  }
+
+  &.photo .attachment,
+  &.video .attachment {
+    border-color: transparent;
+    background-image:
+      linear-gradient(#000, #000),
+      var(--message-out-gradient-image, linear-gradient(var(--message-background-color), var(--message-background-color)));
+    background-origin: padding-box, border-box;
+    background-clip: padding-box, border-box;
+    background-size: auto auto, var(--out-grad-size, 100vw 100vh);
+    background-position: 0 0, var(--out-grad-pos, 0 0);
+    background-repeat: no-repeat;
   }
 
   &.just-media {
@@ -3677,11 +3732,6 @@
     .time-sending-status {
       color: var(--message-error-color);
     }
-  }
-
-  .document-ico:after {
-    border-top-color: var(--message-background-color);
-    border-right-color: var(--message-background-color);
   }
 
   &.is-message-empty {
@@ -4102,12 +4152,7 @@
     }
 
     .has-service-before {
-<<<<<<< HEAD
-      margin: 0.5rem 0.625rem !important;
-=======
-      // `.bubble.service .bubble-content` outranks this and sets `margin: 0 auto`
-      margin-top: .5rem !important;
->>>>>>> b494470fa4ebbd7bb64fa9378f202944dc8158fd
+      margin-top: .5rem;
       border-radius: .875rem !important;
 
       .service-msg {
