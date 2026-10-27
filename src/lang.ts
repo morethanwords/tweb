@@ -5043,6 +5043,7 @@ const lang = {
   'AccDescr.CopyStreamURL': 'Copy stream URL',
   'AccDescr.CopyStreamKey': 'Copy stream key',
   'AccDescr.ShowStreamKey': 'Show stream key',
+  'AccDescr.ShowPassword': 'Show password',
   'AccDescr.OpenContact': 'Open contact %s',
   'AccDescr.CopyContactPhone': 'Copy phone number for %s',
   'AccDescr.ContactDetails': 'Contact details of %s',
