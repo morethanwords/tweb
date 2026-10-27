@@ -128,6 +128,7 @@ export type StateSettings = {
   savedAsForum: boolean,
   notifyAllAccounts: boolean,
   tabsInSidebar: boolean,
+  showPeerIds: boolean,
   /** Ids of the settings-search results picked last, most recent first. */
   settingsSearchRecent: string[],
   seenTooltips: {
@@ -558,6 +559,7 @@ export const SETTINGS_INIT: StateSettings = {
   savedAsForum: false,
   notifyAllAccounts: true,
   tabsInSidebar: false,
+  showPeerIds: false,
   settingsSearchRecent: [],
   playbackParams: {
     volume: 1,

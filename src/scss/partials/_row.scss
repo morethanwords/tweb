@@ -267,6 +267,12 @@ $row-border-radius: $border-radius-medium;
         color: #fff;
       }
 
+      &-text {
+        font-size: .875rem;
+        font-weight: var(--font-weight-bold);
+        letter-spacing: .02em;
+      }
+
       &-premium-color {
         color: var(--primary-color);
       }

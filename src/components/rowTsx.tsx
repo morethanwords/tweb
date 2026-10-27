@@ -418,6 +418,7 @@ Row.Subtitle = (props: {
 
 Row.Icon = (props: {
   icon: Icon,
+  text?: string,
   class?: string,
   noBackground?: boolean
 }) => {
@@ -433,7 +434,9 @@ Row.Icon = (props: {
         'background-image': getRowIconBackgroundImage(props.icon)
       }}
     >
-      <IconTsx icon={props.icon} class="row-icon-icon" />
+      {props.text ?
+        <span class="row-icon-text">{props.text}</span> :
+        <IconTsx icon={props.icon} class="row-icon-icon" />}
     </span>
   ));
 };
