@@ -849,7 +849,9 @@ export default class ChatInput {
     this.replyElements.content.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
     this.replyElements.container.append(this.replyElements.content);
 
-    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
+    // * a press must not take focus from the message field: Enter on a focused cancel button both sends
+    // * what is in the field and presses the button again, cancelling an edit that is being saved
+    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
     attachClickEvent(this.replyElements.content, this.onHelperClick, {listenerSetter: this.listenerSetter});
 
     const buttons: ButtonMenuItemOptions[] = [{
