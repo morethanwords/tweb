@@ -2320,7 +2320,8 @@ export default class ChatInput {
       return 'request';
     }
 
-    if((chat as MTChat.channel).pFlags.join_to_send || !threadId) {
+    // Forum topics need a Join action even when ordinary comment threads allow non-members to send.
+    if((chat as MTChat.channel).pFlags.join_to_send || !threadId || this.chat.isForumTopic) {
       return 'join';
     }
   }
