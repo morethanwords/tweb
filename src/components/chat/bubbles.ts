@@ -6390,6 +6390,9 @@ export default class ChatBubbles {
 
     // * where the chat opens is asked of the worker while the chat's flags are, not a round trip after them
     let readMaxIdAndDialogPromise: ReturnType<ChatBubbles['getReadMaxIdAndDialog']>;
+    // * the sender's settings the worker already has go into the first render: put up with the chat's other parts,
+    // * after the bubbles are built, they would take an unknown sender's links away a frame later
+    let cachedPeerSettings: PeerSettings;
     if(!samePeer) {
       // await pause(2000); // * test some bugs
       const changePeerPromise = this.chat.onChangePeer(options, m);
@@ -6399,7 +6402,13 @@ export default class ChatBubbles {
         readMaxIdAndDialogPromise.catch(noop);
       }
 
+      const peerSettingsPromise = peerId.isUser() ? this.managers.acknowledged.appProfileManager.getPeerSettings(peerId).then(
+        (acked) => acked.cached ? acked.result : undefined,
+        (): PeerSettings => undefined
+      ) : undefined;
+
       await m(changePeerPromise);
+      cachedPeerSettings = await m(peerSettingsPromise);
     }
 
     /* if(samePeer && this.chat.setPeerPromise) {
@@ -6616,6 +6625,8 @@ export default class ChatBubbles {
     if(samePeer) {
       this.peerSettings = retainedMessageLinkPolicy.peerSettings;
       this.testPeerNonContactState = retainedMessageLinkPolicy.testPeerNonContactState;
+    } else {
+      this.peerSettings = cachedPeerSettings;
     }
     this.refreshTestPeerNonContactState();
     const chatInner = this.chatInner = this.createChatInner();
@@ -13837,17 +13848,28 @@ export default class ChatBubbles {
     }
   }
 
-  private async renderUnknownUserPlaceholder() {
+  private async renderUnknownUserPlaceholder(profile?: UserFull) {
     const middleware = this.getMiddleware();
+    const userId = this.peerId.toUserId();
 
     const [
       user,
       userFull
     ] = await Promise.all([
-      this.managers.appUsersManager.getUser(this.peerId.toUserId()),
-      this.managers.appProfileManager.getProfile(this.peerId.toUserId())
+      this.managers.appUsersManager.getUser(userId),
+      profile || this.managers.appProfileManager.getCachedFullUser(userId)
     ])
     if(!middleware()) return
+
+    // * the first screen does not wait for the network: without a profile at hand the bubble goes up when it comes -
+    // * as it does when the one at hand is from before the sender got a verification, which it has no words for
+    const isOutdated = !profile && !!userFull && !!user.bot_verification_icon && !userFull.bot_verification;
+    if(!userFull || isOutdated) {
+      this.managers.appProfileManager.getProfile(userId, isOutdated).then((userFull) => {
+        if(middleware()) return this.renderUnknownUserPlaceholder(userFull);
+      }).catch(noop);
+      return;
+    }
 
     const message = await this.generateLocalFirstMessage(true);
 
@@ -14280,6 +14302,8 @@ export default class ChatBubbles {
 
   public setPeerSettings(peerId: PeerId, peerSettings: PeerSettings) {
     if(this.peerId !== peerId) return;
+    // * the first render may have had these very settings (`setPeer`): its placeholder is not built again
+    if(this.peerSettings && deepEqual(this.peerSettings, peerSettings)) return;
 
     const hadHiddenLinks = this.shouldHideCurrentPeerMessageLinks();
     this.peerSettings = peerSettings;
@@ -14384,10 +14408,12 @@ export default class ChatBubbles {
       visited.add(bubble);
 
       const {peerId, mid} = splitFullMid(fullMid);
-      const message = this.bubbleGroups.getItemByBubble(bubble)?.message || this.chat.getMessageByPeer(peerId, mid);
-      if(!message || message._ === 'channelAdminLogEvent') {
+      const groupedMessage = this.bubbleGroups.getItemByBubble(bubble)?.message || this.chat.getMessageByPeer(peerId, mid);
+      if(!groupedMessage || groupedMessage._ === 'channelAdminLogEvent') {
         continue;
       }
+      // * the group's item keeps the message it was grouped by - an edit that gave it a link preview leaves it as it was
+      const message = this.getMessageAsItIsNow(groupedMessage as MyMessage);
       const replacement = this.bubblesToReplace.get(bubble);
       const visibleBubble = replacement?.source || bubble;
 
@@ -14400,7 +14426,11 @@ export default class ChatBubbles {
 
       const solidMessageBodyEntries = this.solidMessageBodies.get(visibleBubble) ||
         this.solidMessageBodies.get(bubble);
-      if(solidMessageBodyEntries?.size && (message as Message.message).media?._ !== 'messageMediaWebPage') {
+      // * a link preview is the bubble's own, not its Solid body's: one the message has now, or one the bubble on
+      // * screen still shows (the body keeps the message it is drawn from, an edit without it may be on its way)
+      const isWebPage = (message: Message.message | Message.messageService) => (message as Message.message).media?._ === 'messageMediaWebPage';
+      const hasWebPage = isWebPage(message) || [...(solidMessageBodyEntries?.values() ?? [])].some((entry) => isWebPage(entry.message));
+      if(solidMessageBodyEntries?.size && !hasWebPage) {
         this.hiddenLinksPendingBubbles.delete(visibleBubble);
         setBubbleHiddenLinksPending(visibleBubble, false);
         setBubbleHiddenLinksFallback(visibleBubble, false);
