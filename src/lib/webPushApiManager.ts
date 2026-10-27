@@ -8,7 +8,6 @@
 import type {PushNotificationObject} from '@lib/serviceWorker/push';
 import type {ServicePushPingTaskPayload} from '@lib/serviceWorker/serviceMessagePort';
 import type {NotificationSettings} from '@lib/uiNotificationsManager';
-import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {logger} from '@lib/logger';
@@ -163,12 +162,12 @@ export class WebPushApiManager extends EventListenerBase<{
     }
 
     const accounts: ServicePushPingTaskPayload['accounts'] = {};
-    const [userIds, keysIdsBase64] = await Promise.all([
-      AccountController.getUserIds(),
+    const [signedInAccounts, keysIdsBase64] = await Promise.all([
+      AccountController.getAccounts(),
       apiManagerProxy.pushSingleManager.getKeysIdsBase64()
     ]);
-    userIds.forEach((userId, accountNumber) => {
-      accounts[(accountNumber + 1) as ActiveAccountNumber] = userId;
+    signedInAccounts.forEach(([accountNumber, accountData]) => {
+      accounts[accountNumber] = accountData.userId;
     });
 
     const payload: ServicePushPingTaskPayload = {

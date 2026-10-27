@@ -258,6 +258,8 @@ export type State = {
   version: typeof STATE_VERSION,
   build: typeof BUILD,
   authState: AuthState,
+  /** Who it is kept for: Web A signs other users in and out of the same slot (see loadState) */
+  userId?: UserId,
   /** Key: `getPinnedMessagesKey(peerId, threadId)` — thread-scoped in a forum topic. */
   hiddenPinnedMessages: {[peerIdOrThreadKey: string]: number},
   hideChatJoinRequests: {[peerId: PeerId]: number},
@@ -643,6 +645,7 @@ export const STATE_INIT: State = {
   authState: {
     _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
+  userId: undefined,
   hiddenPinnedMessages: {},
   hideChatJoinRequests: {},
   botConnectionReviews: [],

@@ -243,7 +243,7 @@ export class ApiManager extends ApiManagerMethods {
     }
 
     const accountData = await AccountController.get(this.getAccountNumber());
-    const baseDcId = accountData.dcId;
+    const baseDcId = accountData.dcId || accountData.sign_in_dc_id;
     if(!this.baseDcId) {
       if(!baseDcId) {
         this.setBaseDcId(App.baseDcId);
@@ -271,8 +271,11 @@ export class ApiManager extends ApiManagerMethods {
     await AccountController.update(this.getAccountNumber(), {
       date: (userAuth as UserAuth).date,
       userId: (userAuth as UserAuth).id,
-      dcId: (userAuth as UserAuth).dcID as TrueDcId
+      dcId: (userAuth as UserAuth).dcID as TrueDcId,
+      sign_in_dc_id: undefined
     });
+
+    this.appAccountManager.saveSessionUser();
   }
 
   public setBaseDcId(dcId: DcId) {
@@ -289,8 +292,15 @@ export class ApiManager extends ApiManagerMethods {
 
     this.baseDcId = dcId;
 
-    AccountController.update(this.getAccountNumber(), {
-      dcId: this.baseDcId as TrueDcId
+    // * a slot with a DC is a signed-in account to Web A, which opens it as one: until the sign-in records it
+    // * (setUserAuth), the DC is kept apart, for a sign-in that goes on after a reload
+    AccountController.update(this.getAccountNumber(), (data) => {
+      const dcId = this.baseDcId as TrueDcId;
+      if(data.userId) {
+        return data.dcId === dcId ? undefined : {dcId};
+      }
+
+      return data.sign_in_dc_id === dcId ? undefined : {sign_in_dc_id: dcId};
     });
   }
 

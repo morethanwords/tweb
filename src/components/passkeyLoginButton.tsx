@@ -3,7 +3,6 @@ import {createSignal, JSX, onCleanup, onMount} from 'solid-js';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
 import {AuthPasskeyLoginOptions, InputPasskeyResponse} from '@layer';
 import AccountController from '@lib/accounts/accountController';
-import {ActiveAccountNumber} from '@lib/accounts/types';
 import {getInputPasskeyCredential} from '@appManagers/utils/account/getInputPasskeyResponse';
 import {GrowHeightReveal} from '@helpers/solid/animations';
 import {TrueDcId} from '@types';
@@ -63,7 +62,7 @@ export default function PasskeyLoginButton(props: {
     setSubmitting(true);
     credentialRequest = new AbortController();
     try {
-      const userIds = await AccountController.getUserIds();
+      const signedInAccounts = await AccountController.getAccounts();
       const credential = await navigator.credentials.get({
         publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(JSON.parse(passkeyOptionJSON).publicKey),
         signal: credentialRequest.signal
@@ -76,9 +75,9 @@ export default function PasskeyLoginButton(props: {
       const [dcId, userId] = (inputPasskeyCredential.response as InputPasskeyResponse.inputPasskeyResponseLogin).user_handle
       .split(':').map((n) => parseInt(n));
 
-      const existingIndex = userIds.indexOf(userId);
-      if(existingIndex !== -1) {
-        openAccount(existingIndex + 1 as ActiveAccountNumber);
+      const existing = signedInAccounts.find(([, accountData]) => accountData.userId === userId);
+      if(existing) {
+        openAccount(existing[0]);
         return;
       }
 

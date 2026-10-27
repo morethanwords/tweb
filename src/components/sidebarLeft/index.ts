@@ -57,6 +57,7 @@ import openClientPip, {closeClientPip, isClientPipOpen} from '@components/client
 import liteMode, {AnimationLevel} from '@helpers/liteMode';
 import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
+import {AppPasscodeLockTab} from '@components/solidJsTabs/tabs';
 import Icon from '@components/icon';
 import AppSelectPeers from '@components/appSelectPeers';
 import setBadgeContent, {setBadgeCount} from '@helpers/setBadgeContent';
@@ -73,7 +74,6 @@ import {makeMediaSize} from '@helpers/mediaSize';
 import ReactionElement from '@components/chat/reaction';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import AccountController from '@lib/accounts/accountController';
-import {ActiveAccountNumber} from '@lib/accounts/types';
 import {MAX_ACCOUNTS, MAX_ACCOUNTS_FREE} from '@lib/accounts/constants';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
@@ -755,7 +755,7 @@ export class AppSidebarLeft extends SidebarSlider {
       onClick: this.addAccount,
       verify: async() => {
         const totalAccounts = await AccountController.getTotalAccounts();
-        return totalAccounts < MAX_ACCOUNTS;
+        return totalAccounts < MAX_ACCOUNTS && !!(await AccountController.getFreeAccountNumber());
       }
     }, newSubmenu, {
       icon: 'savedmessages',
@@ -856,13 +856,12 @@ export class AppSidebarLeft extends SidebarSlider {
         buttons.splice(targetIdx, 0, ...attachMenuBotsButtons);
         buttons[targetIdx].separator = true;
 
-        const [totalAccounts, notificationsCount] = await Promise.all([
-          AccountController.getTotalAccounts(),
+        const [accountNumbers, notificationsCount] = await Promise.all([
+          AccountController.getAccountNumbers(),
           uiNotificationsManager.getNotificationsCountForAllAccounts()
         ]);
         const accountButtons: typeof buttons = [];
-        for(let i = 1; i <= totalAccounts; i++) {
-          const accountNumber = i as ActiveAccountNumber;
+        for(const accountNumber of accountNumbers) {
           if(accountNumber === getCurrentAccount()) {
             const user = await managers.appUsersManager.getSelf();
             accountButtons.push({
@@ -980,6 +979,22 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'aversion',
       text: 'ChatList.Menu.SwitchTo.A',
       onClick: () => {
+        // * with a passcode the accounts are kept encrypted, where Web A can't read them; and it asks
+        // * the same before switching here
+        const [appSettings] = useAppSettings();
+        if(appSettings.passcode?.enabled) {
+          confirmationPopup({
+            titleLangKey: 'ChatList.Menu.SwitchTo.A',
+            descriptionLangKey: 'ChatList.Menu.SwitchTo.A.Passcode',
+            button: {langKey: 'Continue'}
+          }).then(() => {
+            closeTabsBefore(() => {
+              AppPasscodeLockTab.openChecked(this);
+            });
+          }, noop);
+          return;
+        }
+
         Promise.all([
           sessionStorage.set({kz_version: 'Z'}),
           sessionStorage.delete('tgme_sync')
@@ -1877,8 +1892,11 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   public addAccount = async(e?: MouseEvent | TouchEvent) => {
-    const totalAccounts = await AccountController.getTotalAccounts();
-    if(totalAccounts >= MAX_ACCOUNTS) return;
+    const [totalAccounts, accountNumber] = await Promise.all([
+      AccountController.getTotalAccounts(),
+      AccountController.getFreeAccountNumber()
+    ]);
+    if(totalAccounts >= MAX_ACCOUNTS || !accountNumber) return;
 
     const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
 
@@ -1887,8 +1905,9 @@ export class AppSidebarLeft extends SidebarSlider {
       return;
     }
 
-    const accountNumber = (totalAccounts + 1) as ActiveAccountNumber;
-    if(e?.ctrlKey || e?.metaKey) {
+    // * the first slot is free only when Web A has signed its account out, and a tab opened on it goes to
+    // * the accounts after it (see index.ts): it is signed in to here
+    if((e?.ctrlKey || e?.metaKey) && accountNumber !== 1) {
       // * the sign-in screen's back button returns here
       await sessionStorage.set({previous_account: getCurrentAccount()});
       changeAccount(accountNumber, true);

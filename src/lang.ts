@@ -348,6 +348,7 @@ const lang = {
   // "ChatList.Menu.Archived": "Archived",
   'ChatList.Menu.SwitchTo.Webogram': 'Switch to Old Version',
   'ChatList.Menu.SwitchTo.A': 'Switch to A version',
+  'ChatList.Menu.SwitchTo.A.Passcode': 'To switch to the A version, disable your local passcode first.',
   'ChatList.SharedFolder.Title': '**You can join %s**',
   'ChatList.SharedFolder.Subtitle': 'Click here to view them',
   'ClientPip.PlaceholderTitle': 'Telegram is in Picture-in-Picture',

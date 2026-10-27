@@ -88,7 +88,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   apiManagerProxy.sendEnvironment();
 });
 
-// * Randomly choose a version if user came from a search engine
+// * Randomly choose a version if user came from a search engine, and keep it. The choice is Web A's key as
+// * well, kept as JSON: a choice made in either version stays
 function randomlyChooseVersionFromSearch() {
   try {
     if(
@@ -96,15 +97,25 @@ function randomlyChooseVersionFromSearch() {
       document.referrer &&
       /(^|\.)(google|bing|duckduckgo|ya|yandex)\./i.test(new URL(document.referrer).host)
     ) {
-      const version = localStorage.getItem('kz_version');
-      if(version === 'Z' || nextRandomUint(8) > 127) {
-        localStorage.setItem('kz_version', 'Z');
+      const version = getPermanentWebVersion();
+      if(version === 'Z' || (version !== 'K' && nextRandomUint(8) > 127)) {
+        localStorage.setItem('kz_version', JSON.stringify('Z'));
         appNavigationController.navigateToUrl('https://web.telegram.org/a/');
       } else {
-        localStorage.setItem('kz_version', 'K');
+        localStorage.setItem('kz_version', JSON.stringify('K'));
       }
     }
   } catch(err) {}
+}
+
+function getPermanentWebVersion() {
+  const value = localStorage.getItem('kz_version');
+  try {
+    return JSON.parse(value);
+  } catch(err) {
+    // * as an older K wrote it
+    return value;
+  }
 }
 
 async function checkLastActiveAccountFromTMe() {
@@ -617,14 +628,24 @@ if(import.meta.env.DEV) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
     (async() => {
-      const totalAccounts = await AccountController.getTotalAccounts();
+      const [accountNumbers, freeAccountNumber] = await Promise.all([
+        AccountController.getAccountNumbers(),
+        AccountController.getFreeAccountNumber()
+      ]);
       const hasSomeonePremium = await apiManagerProxy.hasSomeonePremium();
       const maxAccountNumber = hasSomeonePremium ? MAX_ACCOUNTS_PREMIUM : MAX_ACCOUNTS_FREE;
 
       const currentAccount = getCurrentAccount();
+      // * the first slot is left empty when Web A signs its account out, with its other accounts still there:
+      // * the tab goes on to them with the link it was opened by, unless that link signs in here
+      const isEmptyFirstSlot = currentAccount === 1 && !!accountNumbers.length && authState._ !== 'authStateSignImport';
+      const canSignInHere = currentAccount === freeAccountNumber &&
+        accountNumbers.length < maxAccountNumber &&
+        !isEmptyFirstSlot;
 
-      if(currentAccount > Math.min(maxAccountNumber, totalAccounts + 1)) {
-        changeAccount(1);
+      const accountNumber = accountNumbers[0] ?? freeAccountNumber ?? 1;
+      if(!canSignInHere && accountNumber !== currentAccount) {
+        changeAccount(accountNumber, false, isEmptyFirstSlot);
       }
     })();
 

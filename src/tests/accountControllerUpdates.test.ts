@@ -70,7 +70,7 @@ describe('AccountController.update', () => {
     await late;
 
     expect(AccountController.shifting).toBe(true);
-    expect(storage.values.account1).toMatchObject({userId: 2, temp_auth_keys: {'2': {key: 'bb'}}});
+    expect(storage.values.account1).toMatchObject({userId: '2', temp_auth_keys: {'2': {key: 'bb'}}});
     expect(storage.values.account2).toBeUndefined();
   });
 

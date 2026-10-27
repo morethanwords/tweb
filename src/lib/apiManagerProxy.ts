@@ -1451,11 +1451,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   public async hasSomeonePremium() {
-    const totalAccounts = await AccountController.getTotalAccounts();
-
     let hasSomeonePremium = false;
-    for(let i = 1; i <= totalAccounts; i++) {
-      const accountNumber = i as ActiveAccountNumber;
+    for(const accountNumber of await AccountController.getAccountNumbers()) {
       const managers = createProxiedManagersForAccount(accountNumber);
       hasSomeonePremium ||= await managers.rootScope.getPremium();
       if(hasSomeonePremium) break;
