@@ -783,12 +783,15 @@ export default class PeerProfileAvatars {
       return deferred;
     };
 
-    const setBackgroundColors = (bgColors: number[]) => {
+    const setBackgroundColors = (bgColors: number[], radial?: boolean) => {
       let backgroundStr: string;
       if(bgColors) {
         const colors = bgColors.map((color) => getHexColorFromTelegramColor(color));
         if(colors.length === 1) {
           backgroundStr = colors[0];
+        } else if(radial) {
+          // * from the middle of the circle out to the farthest edges, as the other apps draw it
+          backgroundStr = `radial-gradient(farthest-side at 50% var(--profile-avatar-center-y), ${colors.join(', ')})`;
         } else {
           backgroundStr = `linear-gradient(180deg, ${colors.join(', ')})`;
         }
@@ -800,10 +803,10 @@ export default class PeerProfileAvatars {
     const peerProfileAppearance = usePeerProfileAppearance(this.peerId);
     const deferred = deferredPromise<void>();
     createEffect(() => {
-      const {bgColors, backgroundEmojiId} = peerProfileAppearance()
+      const {bgColors, backgroundEmojiId, radial} = peerProfileAppearance()
       // const docId = '5301072507598550489';
 
-      setBackgroundColors(bgColors);
+      setBackgroundColors(bgColors, radial);
       this.setCollapsed(this.isCollapsed());
 
       const isNightTheme = useIsNightTheme();

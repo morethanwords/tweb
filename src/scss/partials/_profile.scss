@@ -37,6 +37,13 @@
       cursor: pointer;
       z-index: 1;
       min-height: 276px;
+      // * the middle of the circle in the collapsed header, higher over the buttons: the circle's own
+      // * place (`-fake`) and the middle of a collectible status's background
+      --profile-avatar-center-y: 48%;
+
+      .has-actions & {
+        --profile-avatar-center-y: calc(48% - var(--profile-actions-room) / 2);
+      }
 
       @include animation-level(2) {
         transition: padding-bottom var(--transition-standard-in);
@@ -207,15 +214,11 @@
       &-fake {
         position: absolute !important;
         left: 50%;
-        top: 48%;
-        transform: translate(-50%, -50%);
-        visibility: hidden;
-
         // * with the circle, above the buttons - open as well, where the photo covers it: a place
         // * of the collapsed header's alone would be let go of at once as it opens, a step down
-        .has-actions & {
-          top: calc(48% - var(--profile-actions-room) / 2);
-        }
+        top: var(--profile-avatar-center-y);
+        transform: translate(-50%, -50%);
+        visibility: hidden;
       }
     }
 
