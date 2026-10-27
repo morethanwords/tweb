@@ -87,6 +87,31 @@ const surface = '#auth-pages';
 
 defineStories('SIGN IN', [
   {
+    // the error shows once a number is typed and sent
+    id: 'auth/phoneFloodWait',
+    title: 'Phone number: too many attempts',
+    surface,
+    fixtureOnly: true,
+    managers: {
+      ...managers,
+      appAccountManager: {
+        ...managers.appAccountManager,
+        // the passkey button under the form asks for these as the card mounts
+        initPasskeyLogin: () => ({_: 'auth.passkeyLoginOptions', options: {_: 'dataJSON', data: '{}'}})
+      },
+      apiManager: {
+        invokeApi: (method: string) => {
+          if(method === 'help.getNearestDc') {
+            return {_: 'nearestDc', country: 'US', this_dc: 2, nearest_dc: 2};
+          }
+
+          throw {type: 'FLOOD_WAIT_22098'};
+        }
+      }
+    },
+    open: () => mount({_: 'authStateSignIn'})
+  },
+  {
     id: 'auth/emailSetup',
     title: 'Add a login email',
     surface,

@@ -289,6 +289,16 @@ $corner-button-size: 2.5rem;
   }
 }
 
+// Where nothing puts a gap between the error line and what is above it — the code
+// card lays its children out itself, `.fieldWithError` keeps a field and its line
+// in one cell of the wrapper's grid — the line needs room of its own, or it touches
+// the code cells or the field. Padding, not a margin, so that `AutoHeight` measures
+// it with the line
+.pageAuthCode .errorLabel,
+.fieldWithError .errorLabel {
+  padding-top: .75rem;
+}
+
 .pagePassword {
   :global(.input-wrapper) {
     @include respond-to(handhelds) {

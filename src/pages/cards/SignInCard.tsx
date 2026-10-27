@@ -23,6 +23,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {TrueDcId} from '@types';
 
 import AuthCard from '@/pages/AuthCard';
+import AuthCardError from '@/pages/AuthCardError';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import {continueLogin} from '@/pages/continueLogin';
 import styles from '@/pages/authFlow.module.scss';
@@ -49,6 +50,8 @@ export default function SignInCard(_props: {spec: Spec}) {
   const [submitting, setSubmitting] = createSignal(false);
   const [hasValidInput, setHasValidInput] = createSignal(false);
   const [nextContent, setNextContent] = createSignal<JSX.Element>(i18n('Login.Next'));
+  // a whole sentence with a duration: too long for the field's floating label, so it gets a line under it
+  const [floodError, setFloodError] = createSignal<JSX.Element>();
 
   /* ---------- inputs ---------- */
 
@@ -94,6 +97,7 @@ export default function SignInCard(_props: {spec: Spec}) {
       }
 
       setHasValidInput(!!(country || (telInputField.value.length - 1) > 1));
+      setFloodError();
     }
   });
 
@@ -112,6 +116,7 @@ export default function SignInCard(_props: {spec: Spec}) {
     if(e) cancelEvent(e);
 
     setSubmitting(true);
+    setFloodError();
     setNextContent(
       <>
         {i18n('PleaseWait')}
@@ -151,8 +156,7 @@ export default function SignInCard(_props: {spec: Spec}) {
           const floodWait = getFloodWaitTime(err);
           if(floodWait.hasWaitTime) {
             telInputField.setError();
-            replaceContent(telInputField.label, i18n('Login.Code.TooManyAttempts', [wrapFormattedDuration(formatDuration(floodWait.waitTime))]));
-            telEl.classList.add('error');
+            setFloodError(i18n('Login.Code.TooManyAttempts', [wrapFormattedDuration(formatDuration(floodWait.waitTime))]));
             setNextContent(i18n('Login.Next'));
           } else {
             setNextContent(err.type);
@@ -262,7 +266,11 @@ export default function SignInCard(_props: {spec: Spec}) {
     >
       <div class="input-wrapper">
         {countryInputField.container}
-        {telInputField.container}
+        {/* one grid cell with its error line, so that the line takes no gap of the wrapper while empty */}
+        <div class={styles.fieldWithError}>
+          {telInputField.container}
+          <AuthCardError content={floodError()} describes={telEl} />
+        </div>
         <Button
           class="btn-primary btn-color-primary"
           disabled={!hasValidInput() || submitting()}
