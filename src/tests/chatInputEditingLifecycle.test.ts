@@ -284,8 +284,8 @@ for(const interruption of ['none', 'peer', 'typed', 'rewritten', 'new-edit'] as 
       field: {input}
     },
     effect: (): undefined => undefined,
-    chat: {type: ChatType.Chat, peerId: 42, getMessageSendingParams: () => ({peerId: 42})},
-    managers: {appMessagesManager: {readAllHistory: vi.fn()}, appEmojiManager: {pushRecentEmoji: vi.fn()}},
+    chat: {type: ChatType.Chat, peerId: 42, getMessageSendingParams: () => ({peerId: 42}), bubbles: {readAllHistory: vi.fn()}},
+    managers: {appEmojiManager: {pushRecentEmoji: vi.fn()}},
     verifyEphemeralCommand: () => true,
     checkWelcomeMessagesLimit: () => Promise.resolve(true),
     getDefaultParamsForSlowModeTooltip: () => ({}),
@@ -306,7 +306,7 @@ for(const interruption of ['none', 'peer', 'typed', 'rewritten', 'new-edit'] as 
     // the field goes whole, with what was typed while it was checked; one gone or holding an edit stays
     const left = interruption !== 'peer' && interruption !== 'new-edit';
     expect(host.clearInput).toHaveBeenCalledTimes(left ? 1 : 0);
-    expect(host.managers.appMessagesManager.readAllHistory).toHaveBeenCalledTimes(left ? 1 : 0);
+    expect(host.chat.bubbles.readAllHistory).toHaveBeenCalledTimes(left ? 1 : 0);
   } finally {
     send.mockRestore();
   }

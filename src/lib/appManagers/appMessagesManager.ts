@@ -482,7 +482,9 @@ type ReadHistoryArgs = {
 type MarkDialogUnreadArgs = {
   peerId: PeerId,
   read?: boolean,
-  monoforumThreadId?: PeerId
+  monoforumThreadId?: PeerId,
+  /** how far `read` reads the history; the top message by default */
+  maxId?: number
 };
 
 type FlushHistoryArgs = {
@@ -5013,6 +5015,14 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    // * whether the user is suspicious is asked once the server has the message: their settings may come
+    // * in the meantime; a scheduled message reaches no one yet and changes nothing
+    if(pending && !options.isScheduled && !options.isWelcome && peerId.isUser() && peerId !== this.appPeersManager.peerId) {
+      this.invokeAfterMessageIsSent(messageId, 'endSuspiciousPeer', async() => {
+        this.appProfileManager.endSuspiciousPeer(peerId);
+      });
+    }
+
     if(message.reactions) {
       const reaction = message.reactions.results[0].reaction;
       this.invokeAfterMessageIsSent(
@@ -8676,7 +8686,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
+  public async markDialogUnread({peerId, read, monoforumThreadId, maxId}: MarkDialogUnreadArgs) {
     const dialog = monoforumThreadId ?
       this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
       this.getDialogOnly(peerId);
@@ -8702,7 +8712,7 @@ export class AppMessagesManager extends AppManager {
       const promise = this.readHistory({
         peerId,
         monoforumThreadId,
-        maxId: dialog.top_message,
+        maxId: maxId || dialog.top_message,
         force: true
       });
       if(!dialog.pFlags.unread_mark) {

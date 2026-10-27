@@ -20,7 +20,9 @@ import {ReferenceContext} from '@lib/storages/references';
 import assumeType from '@helpers/assumeType';
 import makeError from '@helpers/makeError';
 import callbackify from '@helpers/callbackify';
+import noop from '@helpers/noop';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import isSuspiciousPeer, {endSuspiciousPeerSettings} from '@appManagers/utils/peers/isSuspiciousPeer';
 import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
 import callbackifyAll from '@helpers/callbackifyAll';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -55,6 +57,8 @@ export class AppProfileManager extends AppManager {
   private botCommandsByPeer: State['botCommands'] = {};
   private typingsInPeer: {[key: string]: UserTyping[]};
   private peerSettings: {[peerId: PeerId]: PeerSettings};
+  // * the users whose settings are on the way, and whether a send to them was answered meanwhile (`endSuspiciousPeer`)
+  private peerSettingsLoading: Map<PeerId, boolean> = new Map();
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -1284,6 +1288,21 @@ export class AppProfileManager extends AppManager {
     return true;
   }
 
+  /**
+   * A message the account sent a suspicious user (`isSuspiciousPeer`), once the server has it, ends
+   * that state, as on iOS: only the report and block offers go, so an Add Contact one stays, and the
+   * chat may be read again.
+   */
+  public endSuspiciousPeer(peerId: PeerId) {
+    // * the settings still on the way were read before the send: they are ended as they come
+    if(this.peerSettingsLoading.has(peerId)) {
+      this.peerSettingsLoading.set(peerId, true);
+    }
+
+    if(!isSuspiciousPeer(peerId, this.peerSettings[peerId])) return;
+    this.modifyCachedPeerSettings(peerId, endSuspiciousPeerSettings);
+  }
+
   public getPeerSettings(peerId: PeerId, overwrite?: boolean) {
     if(this.appPeersManager.isMonoforum(peerId)) return this.peerSettings[peerId] ??= {
       _: 'peerSettings',
@@ -1291,7 +1310,11 @@ export class AppProfileManager extends AppManager {
     };
 
     if(this.peerSettings[peerId]) return this.peerSettings[peerId];
-    return this.apiManager.invokeApiSingleProcess({
+    if(!this.peerSettingsLoading.has(peerId)) {
+      this.peerSettingsLoading.set(peerId, false);
+    }
+
+    const promise = this.apiManager.invokeApiSingleProcess({
       method: 'messages.getPeerSettings',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId)
@@ -1301,9 +1324,17 @@ export class AppProfileManager extends AppManager {
         this.appChatsManager.saveApiChats(messagesPeerSettings.chats, true);
         this.appUsersManager.saveApiUsers(messagesPeerSettings.users);
 
-        return this.peerSettings[peerId] = messagesPeerSettings.settings;
+        const {settings} = messagesPeerSettings;
+        if(this.peerSettingsLoading.get(peerId)) {
+          endSuspiciousPeerSettings(settings);
+        }
+
+        return this.peerSettings[peerId] = settings;
       }
     });
+
+    promise.finally(() => this.peerSettingsLoading.delete(peerId)).catch(noop);
+    return promise;
   }
 
   /**

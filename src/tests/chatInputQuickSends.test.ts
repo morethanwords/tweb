@@ -53,6 +53,7 @@ function setup() {
     chat: {
       type: ChatType.Chat,
       peerId: 42,
+      bubbles: {readAllHistory: vi.fn()},
       getMessageSendingParams: () => ({
         peerId: 42,
         replyToMsgId: host.replyToMsgId,
@@ -66,7 +67,7 @@ function setup() {
     inputValueGeneration: 0,
     ownSends: [],
     managers: {
-      appMessagesManager: {readAllHistory: vi.fn(), editMessage: vi.fn(async() => {})},
+      appMessagesManager: {editMessage: vi.fn(async() => {})},
       appEmojiManager: {pushRecentEmoji: vi.fn()}
     },
     // the chat's: one taken in the next chat is that chat's, and alive
