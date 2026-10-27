@@ -1865,7 +1865,7 @@ describe('manager cache race guards', () => {
 
       expect(dialogsResult.dialogs).toEqual([cutoffMarkerDialog, currentDialog]);
       expect(saveDialog).toHaveBeenCalledTimes(2);
-      expect(saveDialog).toHaveBeenCalledWith({dialog: cutoffMarkerDialog});
+      expect(saveDialog).toHaveBeenCalledWith({dialog: cutoffMarkerDialog, keepPlace: true});
 
       saveDialog.mockClear();
       const cutoffMarkerTopic = {
@@ -1899,7 +1899,7 @@ describe('manager cache race guards', () => {
         11
       ]);
       expect(saveDialog).toHaveBeenCalledTimes(2);
-      expect(saveDialog).toHaveBeenCalledWith({dialog: cutoffMarkerTopic});
+      expect(saveDialog).toHaveBeenCalledWith({dialog: cutoffMarkerTopic, keepPlace: true});
     });
 
     test('monoforum list and by-id snapshots retry before saving and accept fresh metadata-only tops', async() => {

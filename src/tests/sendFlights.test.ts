@@ -146,6 +146,21 @@ describe('overlapping send flights', () => {
     expect(operations).toEqual(['measure 40 100', 'measure 40 140', 'animate', 'animate']);
   });
 
+  // * the composer shrinking under a copy on its way moves its message's place: the way bends to it and still
+  // * comes on time, rather than going to the old place first and on to the new one after it
+  test('bends its own way to a place that moves while it flies', () => {
+    const first = add();
+    first.animation.currentTime = 100;
+    first.rect.top += 40;
+    first.flight.measureFollow()?.();
+    expect(animations.get(first.flight.root)).toBeUndefined();
+    expect(first.animation.frames[1].transform).toBe('translateY(140px)');
+
+    first.animation.currentTime = 300;
+    vi.advanceTimersByTime(300);
+    expect(first.flight.done).toBe(true);
+  });
+
   test('reveals a target that changes size while its list movement is running', () => {
     const first = add();
     first.rect.top -= 40;

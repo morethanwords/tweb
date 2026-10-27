@@ -691,6 +691,15 @@ const getSponsoredPhoto = (sponsoredMessage: SponsoredMessage) => {
   // return photo;
 };
 
+// * a touch screen presses on mousedown (CLICK_EVENT_NAME), so a press cancelled there still has its click to come,
+// * which would follow the web page's link - a masked one with nothing asked. Only the primary button's press has
+// * one: a middle or right one ends in auxclick or a context menu, and the next click anywhere would be swallowed
+function cancelWebPageLink(event: Event) {
+  if(event.type !== 'click' && event.defaultPrevented && !(event as MouseEvent).button) {
+    cancelClickOrNextIfNotClick(event);
+  }
+}
+
 function getBubbleFullMid(bubble: HTMLElement) {
   if(!bubble) return;
   const mid = bubble.dataset.mid;
@@ -7872,6 +7881,7 @@ export default class ChatBubbles {
     if(target?.closest('.webpage-name-tip')) return false;
     if(target?.closest('.webpage-preview-resizer')) {
       event.preventDefault();
+      cancelWebPageLink(event);
       return false;
     }
 
@@ -7880,6 +7890,7 @@ export default class ChatBubbles {
     const callback = webPageContainer.dataset.callback as Parameters<typeof addAnchorListener>[0]['name'];
     if(callback) {
       (window as any)[callback](targetAnchor, event);
+      cancelWebPageLink(event);
     }
 
     // * a footer button has an action of its own (a shared contact's MESSAGE / ADD)

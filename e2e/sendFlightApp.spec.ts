@@ -238,6 +238,16 @@ test.describe('a message sent from the composer', () => {
     return flying;
   }
 
+  /**
+   * The copy rises to where its bubble ends up and no further: the composer shrinking under it moves that place down
+   * on the way, and the way bends to it rather than going to the old place first and sinking to the new one after
+   */
+  function expectNoOvershoot(flying: ReturnType<typeof expectLanding>) {
+    const landed = flying[flying.length - 1].bubble;
+    const highest = Math.min(...flying.map((frame) => frame.copy.top));
+    expect(highest, `never past its bubble: ${highest} vs ${landed.top}`).toBeGreaterThanOrEqual(landed.top - 1);
+  }
+
   test('flies out of the composer and lands on its bubble', async({page}) => {
     await openSavedMessages(page);
     const result = await send(page, `flight ${Date.now()}`);
@@ -343,7 +353,7 @@ test.describe('a message sent from the composer', () => {
     expect(result.mid, 'the message was sent').toBeTruthy();
     // * the composer had grown for the lines: as it shrinks, the list's end moves down under the copy
     expect(result.field.height, 'the composer grew').toBeGreaterThan(70);
-    expectLanding(result);
+    expectNoOvershoot(expectLanding(result));
 
     // * the older messages make room for it as it flies, on their way up all along: not at once, nor back
     const tops = result.frames.slice(result.frames.findIndex((frame) => frame.bubble)).map((frame) => frame.previous);
@@ -352,6 +362,26 @@ test.describe('a message sent from the composer', () => {
     expect(moved, 'the list made room').toBeGreaterThan(20);
     expect(Math.min(...steps), `never back: ${steps}`).toBeGreaterThanOrEqual(-1);
     expect(Math.max(...steps), `not at once: ${steps}`).toBeLessThan(moved / 2);
+  });
+
+  test('of several lines in reply, lands on its bubble as the composer loses the reply panel too', async({page}) => {
+    await openSavedMessages(page);
+    const replied = await page.evaluate(() => {
+      const chat = (window as any).appImManager.chat;
+      const bubble = Array.from(document.querySelectorAll<HTMLElement>('#column-center .bubbles-inner .bubble[data-mid]'))
+      .filter((bubble) => +bubble.dataset.mid > 0 && !bubble.classList.contains('service')).pop();
+      if(bubble) chat.input.initMessageReply({replyToMsgId: +bubble.dataset.mid});
+      return !!bubble;
+    });
+    test.skip(!replied, 'Saved Messages has no message to reply to');
+    await page.waitForSelector('#column-center .reply-wrapper .reply', {state: 'visible'});
+
+    const result = await send(page, `reply lines ${Date.now()}`, [
+      'a second line, long enough to be wrapped in the bubble but not in the composer',
+      'and a third'
+    ]);
+    expect(result.mid, 'the message was sent').toBeTruthy();
+    expectNoOvershoot(expectLanding(result));
   });
 
   test('lands on the very pixels its bubble is drawn on', async({page}) => {

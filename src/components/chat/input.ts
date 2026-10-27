@@ -2823,19 +2823,17 @@ export default class ChatInput {
     }
 
     this.noWebPage = draft.pFlags.no_webpage;
-    if(draftReplyToMsgId) {
-      this.initMessageReply({
-        replyToMsgId: draftReplyToMsgId,
-        replyToPeerId: replyTo.reply_to_peer_id && getPeerId(replyTo.reply_to_peer_id),
-        replyToQuote: replyTo.quote_text && {
-          text: replyTo.quote_text,
-          entities: replyTo.quote_entities,
-          offset: replyTo.quote_offset
-        },
-        replyToPollOption: replyTo.poll_option,
-        replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
-      });
-    }
+    const replySet = draftReplyToMsgId && this.initMessageReply({
+      replyToMsgId: draftReplyToMsgId,
+      replyToPeerId: replyTo.reply_to_peer_id && getPeerId(replyTo.reply_to_peer_id),
+      replyToQuote: replyTo.quote_text && {
+        text: replyTo.quote_text,
+        entities: replyTo.quote_entities,
+        offset: replyTo.quote_offset
+      },
+      replyToPollOption: replyTo.poll_option,
+      replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
+    });
 
     const inputSet = this.setInputValue(
       draftTextWithEntities(draft),
@@ -2845,6 +2843,36 @@ export default class ChatInput {
       draft.rich_message
     );
     this.suppressDraftSyncForUnsupportedRichMessage = !inputSet && !!draft.rich_message;
+    if(!inputSet) {
+      return inputSet;
+    }
+
+    // the field holds the received draft now: a save the resets before it asked for (`clearHelper`) has nothing
+    // of the user's to keep, and pending, it would hold off the draft's next clear and then publish it back
+    this.saveDraftDebounced.clearTimeout();
+
+    // its reply is set once its message is read, after the text: what counts as applied takes the reply in then,
+    // or saving the untouched field would publish the draft back. Only the reply: a change of the user's since
+    // (the text, an effect) stays theirs to save
+    if(replySet) {
+      const appliedGeneration = this.inputValueGeneration;
+      void replySet.then(() => {
+        const applied = this.appliedInputDraft;
+        const current = this.getCurrentInputAsDraft();
+        const onlyReplyCame = applied && current && (applied.value ?
+          deepEqual(current, applied.value, ['date', 'reply_to']) :
+          !current.message && !current.rich_message && !current.media && !current.effect);
+        if(
+          middleware() &&
+          appliedGeneration === this.inputValueGeneration &&
+          onlyReplyCame &&
+          this.replyToMsgId === draftReplyToMsgId
+        ) {
+          this.appliedInputDraft = {value: current};
+        }
+      });
+    }
+
     return inputSet;
   }
 

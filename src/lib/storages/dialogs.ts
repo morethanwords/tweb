@@ -94,6 +94,8 @@ export default class DialogsStorage extends AppManager {
   private dialogsOffsetDate: {[folder_id: number]: number};
   private pinnedOrders: {[folder_id: number]: PeerId[]};
   private dialogsNum: number;
+  // * the index a dialog took among those of its date, and the top message it took it for
+  private dateIndexes: WeakMap<AnyDialog, {index: number, topMessage: number}>;
 
   private dialogsIndex: SearchIndex<PeerId>;
 
@@ -370,6 +372,7 @@ export default class DialogsStorage extends AppManager {
     this.folders = {};
     this.dialogsOffsetDate = {};
     this.dialogsNum = 0;
+    this.dateIndexes = new WeakMap();
     this.dialogsIndex = this.createSearchIndex();
     this.cachedResults = {
       query: '',
@@ -1020,7 +1023,18 @@ export default class DialogsStorage extends AppManager {
 
     topDate ||= tsNow(true);
 
+    // * dialogs of one date stand in the order they took their indexes in, as in tdesktop: only a new date or
+    // * top message takes a new one - a re-run for a read or a mute must not lift a dialog over its neighbours
+    const was = !isPinned && this.dateIndexes.get(dialog);
+    if(was && was.topMessage === dialog.top_message && Math.floor(was.index / 0x10000) === topDate) {
+      return was.index;
+    }
+
     const index = this.generateDialogIndex(topDate, isPinned);
+    if(!isPinned) {
+      this.dateIndexes.set(dialog, {index, topMessage: dialog.top_message});
+    }
+
     if(justReturn) {
       return index;
     }
@@ -1408,7 +1422,7 @@ export default class DialogsStorage extends AppManager {
       }
 
       if(topMid || (dialog as Dialog | ForumTopic).draft?._ === 'draftMessage') {
-        if(this.saveDialog({dialog})) {
+        if(this.saveDialog({dialog, keepPlace: true})) {
           const cache = getUpdateCache(peerId);
 
           if(isForum) {
@@ -1548,11 +1562,15 @@ export default class DialogsStorage extends AppManager {
   public saveDialog({
     dialog,
     ignoreOffsetDate,
-    saveGlobalOffset
+    saveGlobalOffset,
+    keepPlace
   }: {
     dialog: AnyDialog | MTDialog.dialogCommunity,
     ignoreOffsetDate?: boolean,
-    saveGlobalOffset?: boolean
+    saveGlobalOffset?: boolean,
+    // * a dialog refreshed on its own keeps its place among those of its date; a page of the list takes the
+    // * server's order instead
+    keepPlace?: boolean
   }) {
     if(dialog._ === 'dialogCommunity') {
       this.appNotificationsManager.savePeerSettings({
@@ -1607,6 +1625,10 @@ export default class DialogsStorage extends AppManager {
     }
 
     const wasDialogBefore = this.getAnyDialog(peerId, topicId);
+    const wasDateIndex = keepPlace && wasDialogBefore && this.dateIndexes.get(wasDialogBefore);
+    if(wasDateIndex) {
+      this.dateIndexes.set(dialog, wasDateIndex);
+    }
 
     let mid: number, message: MyMessage;
     if(dialog.top_message || true) {

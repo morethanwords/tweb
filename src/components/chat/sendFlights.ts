@@ -31,8 +31,9 @@
  * hold it up. Every part moves across in a wrapper and up in itself, each on its own curve, from where it
  * starts to where it ends: two keyframes. A text bubble's background, which changes its size, is made of
  * bands and corners that only move and stretch, so that its corners stay round. Should the message's place
- * at the end change on the way, the copy follows it. A later send moves the whole earlier copy with
- * the list on its own clock, including after that copy's original flight has finished.
+ * at the end change on the way (the composer shrinking under it), the way is bent to the new place from
+ * where it is. A later send moves the whole earlier copy with the list on its own clock, including after
+ * that copy's original flight has finished.
  *
  * A source is captured as it is let go (the composer about to be cleared, the panel to close), and its copy
  * stands in its place from then on, so nothing blinks while the message is being made. The next own
@@ -1143,10 +1144,21 @@ export abstract class SendFlight {
       return () => this.abort(true);
     }
 
+    // A move while the way still goes is this send's own (the composer shrinking under the copy): the way bends
+    // to it and still comes on time. One a later send makes, or one the way is too far on to bend to, goes with
+    // the list on its own clock - the list may resize before the next flight launches, and a finished flight's
+    // keyframes are not moved to the new end either.
+    const t = clamp01(this.getElapsed() / DURATION);
+    const canBend = (progress: number, ...moves: number[]) => progress < BEND_UNTIL || moves.every((move) => Math.abs(move) < .5);
+    const withList = sameSize && (
+      newMessage ||
+      !!this.listMovement ||
+      !canBend(EASE_X(t), delta.left, delta.right) ||
+      !canBend(EASE_Y(t), delta.top, delta.bottom)
+    );
+
     return () => {
-      // The list may resize before the next flight launches. Follow positional changes on the list's
-      // clock even then, rather than moving a finished flight's keyframes directly to the new end.
-      if(sameSize) {
+      if(withList) {
         const movement = this.listMovement;
         const progress = movement?.animation.effect.getComputedTiming().progress || 0;
         const from = movement ? {
@@ -1165,7 +1177,6 @@ export abstract class SendFlight {
         return;
       }
 
-      const t = clamp01(this.getElapsed() / DURATION);
       const back = (progress: number) => progress >= BEND_UNTIL ? 0 : progress / (1 - progress);
       const x = back(EASE_X(t)), y = back(EASE_Y(t));
       // up, its middle goes on the up curve and its height on the curve it is stretched on

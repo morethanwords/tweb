@@ -524,8 +524,17 @@ export class AppDraftsManager extends AppManager {
       return promise;
     }
 
-    // Local clearing after send cancels preparation, but retains the queue until
-    // any already dispatched write settles so a new draft cannot overtake it.
+    this.cancelDraftSync(key);
+    return true;
+  }
+
+  /**
+   * Local clearing after send cancels preparation, but retains the queue until
+   * any already dispatched write settles so a new draft cannot overtake it. A
+   * save still waiting there would reach the server after the send's
+   * `clear_draft` and bring the draft back.
+   */
+  private cancelDraftSync(key: string) {
     const previousSync = this.draftSyncStates.get(key);
     if(previousSync) {
       const id = ++this.draftSyncId;
@@ -537,7 +546,6 @@ export class AppDraftsManager extends AppManager {
         this.protectDraftSync(key);
       });
     }
-    return true;
   }
 
   public clearAllDrafts() {
@@ -578,6 +586,7 @@ export class AppDraftsManager extends AppManager {
         notify: true,
         force: true
       });
+      this.cancelDraftSync(this.getKey(peerId, monoforumThreadId));
     }
   }
 

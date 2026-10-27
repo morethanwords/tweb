@@ -5,6 +5,7 @@ import {ChatType} from '@components/chat/chatType';
 import {mountChatInputEditor} from '@/tests/helpers/chatInputEditor';
 import createChatInputEditor from '@components/chat/inputEditor';
 import reloadChatInputEditor from '@components/chat/inputEditor/reload';
+import deferredPromise from '@helpers/cancellablePromise';
 import type {DraftMessage} from '@layer';
 
 vi.mock('@lib/appImManager', () => ({AppImManager: class {}, APP_TABS: {}, default: {}}));
@@ -54,7 +55,8 @@ function setup({canWriteRich = true} = {}) {
     effect: () => effect,
     setEffect: (value?: string) => effect = value,
     clearHelper: vi.fn(),
-    saveDraftDebounced: {isDebounced: () => false},
+    // the field's resets ask for its save a while on (`clearHelper`): a test sets `pending` for that
+    saveDraftDebounced: {pending: false, isDebounced() {return this.pending;}, clearTimeout() {this.pending = false;}},
     clearInput: vi.fn(async(_restore: boolean, _emit: boolean, value = '') => {
       ++host.inputValueGeneration;
       host.appliedInputDraft = undefined;
@@ -132,6 +134,68 @@ test('clears an untouched received draft without restoring or echoing it', async
   expect(editor.isEmpty()).toBe(true);
   host.saveDraft();
   expect(syncDraft).not.toHaveBeenCalled();
+});
+
+// * left pending, the save the resets before a received draft asked for would hold off the draft's clear coming next
+// * from the server (another session sent it), and then publish the draft back
+test('leaves no save pending once a received draft is in', async() => {
+  const {host, apply} = setup();
+  host.saveDraftDebounced.pending = true;
+  await apply('Remote');
+  expect(host.saveDraftDebounced.isDebounced()).toBe(false);
+});
+
+test('counts the reply of a received draft as received, though it is set once its message is read', async() => {
+  const {host, flush, syncDraft} = setup();
+  host.initMessageReply = async({replyToMsgId}: {replyToMsgId: number}) => {
+    await new Promise((resolve) => setTimeout(resolve));
+    host.replyToMsgId = replyToMsgId;
+  };
+  const draft = richDraft('Remote');
+  draft.reply_to = {_: 'inputReplyToMessage', reply_to_msg_id: 9} as DraftMessage.draftMessage['reply_to'];
+  expect(await host.setDraft(draft, true)).toBe(true);
+  flush();
+  await new Promise((resolve) => setTimeout(resolve));
+  host.saveDraft();
+  expect(syncDraft).not.toHaveBeenCalled();
+});
+
+test('saves an effect chosen while the reply of a received draft is read', async() => {
+  const {host, flush, syncDraft} = setup();
+  const read = deferredPromise<void>();
+  host.initMessageReply = async({replyToMsgId}: {replyToMsgId: number}) => {
+    await read;
+    host.replyToMsgId = replyToMsgId;
+  };
+  const draft = richDraft('Remote');
+  draft.reply_to = {_: 'inputReplyToMessage', reply_to_msg_id: 9} as DraftMessage.draftMessage['reply_to'];
+  await host.setDraft(draft, true);
+  flush();
+  host.setEffect('42');
+  read.resolve();
+  await new Promise((resolve) => setTimeout(resolve));
+  host.saveDraft();
+  expect(syncDraft).toHaveBeenCalledTimes(1);
+  expect(syncDraft.mock.calls[0][0].localDraft.effect).toBe('42');
+});
+
+test('a clear that comes while the reply of a received draft is read leaves no text behind', async() => {
+  const {host, editor, flush} = setup();
+  const asked = deferredPromise<void>(), read = deferredPromise<void>();
+  host.initMessageReply = async({replyToMsgId}: {replyToMsgId: number}) => {
+    asked.resolve();
+    await read;
+    host.replyToMsgId = replyToMsgId;
+  };
+  const draft = richDraft('Remote');
+  draft.reply_to = {_: 'inputReplyToMessage', reply_to_msg_id: 9} as DraftMessage.draftMessage['reply_to'];
+  const applying = host.setDraft(draft, true);
+  await asked;
+  await host.setDraft(undefined, true);
+  read.resolve();
+  await applying;
+  flush();
+  expect(editor.isEmpty()).toBe(true);
 });
 
 test('keeps the undo history of an emptied composer when its own cleared draft comes back', async() => {

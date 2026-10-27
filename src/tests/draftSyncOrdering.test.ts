@@ -128,3 +128,20 @@ test('local clearing retains the ordering of an already dispatched write', async
   await Promise.all([first, newest]);
   expect(invokeApi.mock.calls.map(([, params]) => (params as {message: string}).message)).toEqual(['Old', 'New']);
 });
+
+// * lines typed fast are saved one by one (Shift+Enter saves at once): a save queued behind another when the message
+// * is sent would reach the server after the send's `clear_draft` and bring the draft back
+for(const threadId of [undefined, 7]) {
+  test(`a send drops a save still queued behind one on its way (${threadId ? 'a topic' : 'a chat'})`, async() => {
+    const {manager, save, invokeApi} = setup();
+    const request = deferredPromise<unknown>();
+    invokeApi.mockReturnValueOnce(request);
+    const first = save('Line', false, threadId);
+    await vi.waitFor(() => expect(invokeApi).toHaveBeenCalledTimes(1));
+    const queued = save('Line\nAnother', false, threadId);
+    manager.clearDraft({peerId: (42 as UserId).toPeerId(false), threadId});
+    request.resolve(true);
+    await Promise.all([first, queued]);
+    expect(invokeApi.mock.calls.map(([, params]) => (params as {message: string}).message)).toEqual(['Line']);
+  });
+}
